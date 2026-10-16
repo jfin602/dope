@@ -1,0 +1,31 @@
+TASK: Phase 11 / P8 — Initial known usability repairs closeout and hunt handoff
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+The assigned project version is `0.11.8`. This is a **product Phase 11** stack. The runner/operator owns coherent bumps for all 13 manifests and 20 @dope/* references according to docs/workflow.md; no premature bump during prompt authoring, dependency changes or lockfile churn.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0037-human-centered-ui-and-usability.md, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-recovery-contract.md, this stack README, assessment and implementation plan. Current planning head for source inspection: b60afd4 (2026-10-16). Before execution re-read actual local HEAD, installed code and relevant latest documentation; do not pin implementation to this historical inspection hash.
+Check actual Git ancestry/HEAD, coherent version, dirty user worktree, overlapping agent tasks and source ownership. Do not reset/stash/clean or self-commit. No separate /activate step; only owner's future deliberate Run of an authored stack authorizes execution. Protect Phase 10 R6 historical qualification and remaining scope exclusions, one saved Chat/Work owner, model consent/locality and Phase 12 inactivity.
+
+SCOPE / PRIMARY GOAL — T3
+**MANUAL BROWSER/GUI checkpoint, not automatically runnable via headless runner.** Confirm P1–P7 source/version/manifests, run exact-candidate browser/Electron GUI tasks on disposable workspace for U1–U9: wrong live linked source and new unrelated file replacement preview/confirmation, old file intact, cancellation/error/invalid/stale/restart/external new-source edit, no duplicate ghost checkpoints or false Green, keyboard/narrow panel/accessibility. Exercise one saved Chat with local Q4 selected for JSON-only no-action.message, honest no-write outcome, collapsed raw details/copy, and request "I linked the wrong Roadmap, how do I change it?" with true in-app guidance. Check safe blocked cases, cross-project/no-model workflow, Codex-backed parity only with explicit available credentials/consent. Run **one npm run check** on exact candidate (typecheck/product tests and browser/Electron builds already nested; no double aggregate). Record source SHA, screenshots, actual model settings, pass/fail/evidence gaps and any revisions in a new `docs/tasks/p11/known-issue-closeout.md`. P8 is *ONLY initial known-issue tranche closeout*. Maintain UX ledger, trigger the separate existing manual Usability Hunter afterward, keep Phase 11 product **NOT QUALIFIED** until repeated discovery + final owner acceptance.
+
+INSPECT
+P1–P7 commits and docs/planning/p11/usability-recovery-contract.md U1–U9; docs/tasks/p11/usability-hunt-manual.md
+
+FOCUSED VALIDATION — T3
+Real browser and Electron where accessible; one npm run check for exact candidate; record unavailable tooling as Evidence Gap. Do not infer UI Green from unit tests or screenshot alone.
+Manual T3 is not bound by ordinary coding prompt timing; evidence gaps are never silent Green.
+
+PRESERVE
+All source/permission/owner boundaries, failure records, phase statuses and initial-bump source coherence.
+
+DEFER / NON-GOALS
+Further usability hunts, their correction stacks and Phase 11 final product qualification stay OPEN.
+
+DONE / REPORT
+A source-bound honest initial-tranche qualification record exists, and the reusable separate Hunter/ledger receives next handoff; **Phase 11 is NOT CLOSED or Green**. Do not self-commit, rewrite original failures, or approve whole-phase usability.

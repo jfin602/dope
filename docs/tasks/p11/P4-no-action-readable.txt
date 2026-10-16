@@ -1,0 +1,31 @@
+TASK: Phase 11 / P4 — Surface validated no-action message as Chat reply
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.11.4`. This is a **product Phase 11** stack. The runner/operator owns coherent bumps for all 13 manifests and 20 @dope/* references according to docs/workflow.md; no premature bump during prompt authoring, dependency changes or lockfile churn.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0037-human-centered-ui-and-usability.md, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-recovery-contract.md, this stack README, assessment and implementation plan. Current planning head for source inspection: b60afd4 (2026-10-16). Before execution re-read actual local HEAD, installed code and relevant latest documentation; do not pin implementation to this historical inspection hash.
+Check actual Git ancestry/HEAD, coherent version, dirty user worktree, overlapping agent tasks and source ownership. Do not reset/stash/clean or self-commit. No separate /activate step; only owner's future deliberate Run of an authored stack authorizes execution. Protect Phase 10 R6 historical qualification and remaining scope exclusions, one saved Chat/Work owner, model consent/locality and Phase 12 inactivity.
+
+SCOPE / PRIMARY GOAL — T1
+In shared `chat-panel-presentation.ts` and `chat-panel-widget.ts`, use the already backend-validated `no-action.message` (max 1000 chars) as primary readable assistant response for trusted completed local planning turn; retain the original structured JSON in compact muted expandable/copyable activity. Keep terse accurate **no change** status but suppress/rewrite irrelevant generic checkpoint objective questions and duplicate narrative. Unknown/user-authored/malformed JSON must not receive privileged presentation. Preserve accessible focus, raw provenance, safe markdown/text escaping, saved Chat restored states, pending/denied/stale/cancel/approved truth and ordinary prose streaming.
+
+INSPECT
+packages/theia-extension/src/browser/chat-panel-presentation.ts, chat-panel-widget.ts, dope.css; node/chat-backend.ts existing trusted activity marker
+
+FOCUSED VALIDATION — T1
+Build only @dope/theia-extension if lib projection is imported. node --test test/unit/chat-presentation.test.ts test/unit/roadmap-chat-panel.test.ts only when directly affected. Explicit no-action reply, malicious JSON-like text, normal prose, copy/expand, no duplicate/fake write.
+Ordinary prompt estimated <=8 minutes, 10-minute soft / 15-minute hard stop; if more extensive, stop and split rather than forcing broad tests. git diff --check; report only commands actually run.
+
+PRESERVE
+c10-better-planning historical outcome, strict local JSON/action grammar and no extra inference call.
+
+DEFER / NON-GOALS
+Dope-specific help grounding to P5/P6, integrated real model GUI to P8.
+
+DONE / REPORT
+One narrow coherent product responsibility passes directly relevant tests and safety/authority checks, with changed paths and next prompt reported. Runner owns implementation checkpoint commits; agent must not self-commit.

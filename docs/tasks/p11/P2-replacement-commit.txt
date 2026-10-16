@@ -1,0 +1,31 @@
+TASK: Phase 11 / P2 — Commit approved Roadmap source replacement safely
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.11.2`. This is a **product Phase 11** stack. The runner/operator owns coherent bumps for all 13 manifests and 20 @dope/* references according to docs/workflow.md; no premature bump during prompt authoring, dependency changes or lockfile churn.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0037-human-centered-ui-and-usability.md, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-recovery-contract.md, this stack README, assessment and implementation plan. Current planning head for source inspection: b60afd4 (2026-10-16). Before execution re-read actual local HEAD, installed code and relevant latest documentation; do not pin implementation to this historical inspection hash.
+Check actual Git ancestry/HEAD, coherent version, dirty user worktree, overlapping agent tasks and source ownership. Do not reset/stash/clean or self-commit. No separate /activate step; only owner's future deliberate Run of an authored stack authorizes execution. Protect Phase 10 R6 historical qualification and remaining scope exclusions, one saved Chat/Work owner, model consent/locality and Phase 12 inactivity.
+
+SCOPE / PRIMARY GOAL — T2
+Add the dedicated approved `applyReplacement` owner operation using P1 typed preview, revalidating exact project/index revision, source fingerprints and prospective imported checkpoint identities **under existing owner lock** before replacing active Roadmap and durable linked source. Explicitly approved replacement must not append old source checkpoints as `acceptImport` does. Keep independent Project Mind/Planning Map/History artifacts, historical evidence in their owner stores, old Markdown bytes and appropriate non-lossy unsynced-edit preservation/rejection. Bind typed RoadmapService/backend-module APIs; notify and rebind only one linked observer on success, restart safe. Cancel/stale/interruption/unsupported leaves old active map and link unchanged, or visibly records partial/recovery status if a failure is truly uncertain.
+
+INSPECT
+packages/project-intelligence/src/node/roadmap-store.ts, roadmap-linked-observer.ts; packages/theia-extension/src/roadmap-service.ts, src/node/backend-module.ts; test/unit/roadmap-linked-store.test.ts
+
+FOCUSED VALIDATION — T2
+Build @dope/project-intelligence then @dope/theia-extension only if changed public API output needs rebuilding. node --test test/unit/roadmap-replacement.test.ts test/unit/roadmap-document-sync.test.ts. Fault/stale/project isolation, approval=false, old file hash, no linked ghost/status Green, same-file moved relink regression.
+Ordinary prompt estimated <=8 minutes, 10-minute soft / 15-minute hard stop; if more extensive, stop and split rather than forcing broad tests. git diff --check; report only commands actually run.
+
+PRESERVE
+Existing moved-file relink and pending-sync recovery, stale guards, one owner writer; no model shell/file authority.
+
+DEFER / NON-GOALS
+UI presentation to P3, combined watcher/restart and cross-seam tests to P7/P8.
+
+DONE / REPORT
+One narrow coherent product responsibility passes directly relevant tests and safety/authority checks, with changed paths and next prompt reported. Runner owns implementation checkpoint commits; agent must not self-commit.

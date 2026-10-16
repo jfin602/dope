@@ -1,0 +1,31 @@
+TASK: Phase 11 / P5 — Define concise verified Dope UI help capabilities
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.11.5`. This is a **product Phase 11** stack. The runner/operator owns coherent bumps for all 13 manifests and 20 @dope/* references according to docs/workflow.md; no premature bump during prompt authoring, dependency changes or lockfile churn.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0037-human-centered-ui-and-usability.md, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-recovery-contract.md, this stack README, assessment and implementation plan. Current planning head for source inspection: b60afd4 (2026-10-16). Before execution re-read actual local HEAD, installed code and relevant latest documentation; do not pin implementation to this historical inspection hash.
+Check actual Git ancestry/HEAD, coherent version, dirty user worktree, overlapping agent tasks and source ownership. Do not reset/stash/clean or self-commit. No separate /activate step; only owner's future deliberate Run of an authored stack authorizes execution. Protect Phase 10 R6 historical qualification and remaining scope exclusions, one saved Chat/Work owner, model consent/locality and Phase 12 inactivity.
+
+SCOPE / PRIMARY GOAL — T1
+Add a small **informational**, typed capability/help projection near Chat context owner: actual verified Dope controls and navigation including Roadmap Markdown > Change linked file (after P3), Roadmap refresh/source states, current Chat Follow/Pin, AI Center and Work/History only if those entry points are verified at current source. Each entry declares user goal, UI path, availability conditions, permission/Chat limitations and recovery step. Source documentation must NOT invent an action or grant any executable tool. Keep this versioned/minimal for local Q4; test help names match real registrations.
+
+INSPECT
+packages/theia-extension/src/browser/roadmap-canvas-widget.ts, chat-panel-widget.ts, ai-center-contribution.ts, history-navigation.ts; src/node/chat-context-composer.ts and existing unit tests
+
+FOCUSED VALIDATION — T1
+Add node --test test/unit/dope-capability-help.test.ts with source-backed route checks; build affected extension only if compiled import required. Cover missing feature, unavailable project, no permissions, correct button labels.
+Ordinary prompt estimated <=8 minutes, 10-minute soft / 15-minute hard stop; if more extensive, stop and split rather than forcing broad tests. git diff --check; report only commands actually run.
+
+PRESERVE
+No agent runtime/tool capability registry, alternate Chat implementation, global model instructions on every turn or hosted calls.
+
+DEFER / NON-GOALS
+Context routing/token selection to P6, broad app tutorial system or menus to subsequent hunt-derived scopes.
+
+DONE / REPORT
+One narrow coherent product responsibility passes directly relevant tests and safety/authority checks, with changed paths and next prompt reported. Runner owns implementation checkpoint commits; agent must not self-commit.

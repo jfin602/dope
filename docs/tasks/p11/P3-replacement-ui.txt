@@ -1,0 +1,31 @@
+TASK: Phase 11 / P3 — Expose safe Change linked file in Roadmap Markdown
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.11.3`. This is a **product Phase 11** stack. The runner/operator owns coherent bumps for all 13 manifests and 20 @dope/* references according to docs/workflow.md; no premature bump during prompt authoring, dependency changes or lockfile churn.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0037-human-centered-ui-and-usability.md, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-recovery-contract.md, this stack README, assessment and implementation plan. Current planning head for source inspection: b60afd4 (2026-10-16). Before execution re-read actual local HEAD, installed code and relevant latest documentation; do not pin implementation to this historical inspection hash.
+Check actual Git ancestry/HEAD, coherent version, dirty user worktree, overlapping agent tasks and source ownership. Do not reset/stash/clean or self-commit. No separate /activate step; only owner's future deliberate Run of an authored stack authorizes execution. Protect Phase 10 R6 historical qualification and remaining scope exclusions, one saved Chat/Work owner, model consent/locality and Phase 12 inactivity.
+
+SCOPE / PRIMARY GOAL — T1
+Use existing `roadmap-canvas-widget.ts` source overlay: whenever an active Roadmap source is linked, show a discoverable **Change linked file** action (not only `Relink Markdown` on missing source). Use project Markdown discovery selector and P1/P2 preview/commit APIs; show accurate old→new, active Roadmap loss/replacement warning, unsupported/conflict diagnostics, **old file remains on disk**, and explicit Confirm replacing active Roadmap / Cancel. Keep distinct old moved-file recovery path. Only show success after acknowledged backend result; failure/cancel retains current link, selected source and focus, no Chat auto-launch.
+
+INSPECT
+packages/theia-extension/src/browser/roadmap-canvas-widget.ts, source panel lifecycle, roadmap-service.ts, dope.css; source overlay/import test files
+
+FOCUSED VALIDATION — T1
+node --test test/unit/roadmap-source-overlay.test.ts test/unit/roadmap-import-ui.test.ts plus focused new UI guard; build @dope/theia-extension only if test imports changed lib; verify confirmation, error, narrow/keyboard/source panel states.
+Ordinary prompt estimated <=8 minutes, 10-minute soft / 15-minute hard stop; if more extensive, stop and split rather than forcing broad tests. git diff --check; report only commands actually run.
+
+PRESERVE
+Existing theme tokens, single saved Chat, source overlay close/minimize state, import and old relink flows; no global restyle.
+
+DEFER / NON-GOALS
+Do not repair unrelated screenshot loader/correction title without reproduction. Manual browser proof in P8.
+
+DONE / REPORT
+One narrow coherent product responsibility passes directly relevant tests and safety/authority checks, with changed paths and next prompt reported. Runner owns implementation checkpoint commits; agent must not self-commit.

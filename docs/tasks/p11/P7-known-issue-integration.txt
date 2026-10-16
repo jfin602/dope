@@ -1,0 +1,31 @@
+TASK: Phase 11 / P7 — Regress Roadmap replacement and helpful Chat together
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.11.7`. This is a **product Phase 11** stack. The runner/operator owns coherent bumps for all 13 manifests and 20 @dope/* references according to docs/workflow.md; no premature bump during prompt authoring, dependency changes or lockfile churn.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0037-human-centered-ui-and-usability.md, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-recovery-contract.md, this stack README, assessment and implementation plan. Current planning head for source inspection: b60afd4 (2026-10-16). Before execution re-read actual local HEAD, installed code and relevant latest documentation; do not pin implementation to this historical inspection hash.
+Check actual Git ancestry/HEAD, coherent version, dirty user worktree, overlapping agent tasks and source ownership. Do not reset/stash/clean or self-commit. No separate /activate step; only owner's future deliberate Run of an authored stack authorizes execution. Protect Phase 10 R6 historical qualification and remaining scope exclusions, one saved Chat/Work owner, model consent/locality and Phase 12 inactivity.
+
+SCOPE / PRIMARY GOAL — T2
+Integrate only P1–P6 behavior and close reproducible cross-seam gaps: replace current valid but wrong Markdown, verify projected new checkpoint set and history truth, confirm old file bytes untouched, failure/cancel/stale/cross-project and active watcher/restart state; verify saved Chat no-action user message visible with raw collapsed JSON and correct UI navigation help, no false change or duplicate answer. Validate authority and one owner/one Chat after project/tab switches. Changes to implementation allowed only for failures proven by these focused tests; do not expand to other UI redesign.
+
+INSPECT
+RoadmapStore/observer, RoadmapService/backend-module, roadmap-canvas-widget, ChatBackend/composer/presentation; test/unit/roadmap-create-sync-integration.test.ts, roadmap-chat-actions.test.ts, roadmap-chat-panel.test.ts
+
+FOCUSED VALIDATION — T2
+Build only changed packages in dependency order when compiled lib is imported; node --test test/unit/roadmap-replacement.test.ts test/unit/roadmap-create-sync-integration.test.ts test/unit/roadmap-chat-actions.test.ts test/unit/roadmap-chat-panel.test.ts; include permission/restart simulation and git diff --check. No full npm run check.
+Ordinary prompt estimated <=8 minutes, 10-minute soft / 15-minute hard stop; if more extensive, stop and split rather than forcing broad tests. git diff --check; report only commands actually run.
+
+PRESERVE
+No external source deletion, old-state clobber on failure, loose Chat authority, hidden erroneous status Green; exact version 0.11.7.
+
+DEFER / NON-GOALS
+One final aggregate, browser/Electron/real-Q4/real human verification in P8; other hunter issues remain later.
+
+DONE / REPORT
+One narrow coherent product responsibility passes directly relevant tests and safety/authority checks, with changed paths and next prompt reported. Runner owns implementation checkpoint commits; agent must not self-commit.

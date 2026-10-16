@@ -1,0 +1,36 @@
+# p11 — Initial known-issue usability repair stack
+
+**State:** /prompt-ass + /prompt-plan + /prompt-write authored, **NOT RUN / NOT IMPLEMENTED / NOT QUALIFIED**. **Date:** 2026-10-16.
+**Authoring source:** main `b60afd4` at coherent `0.11.0` version-only baseline. The last directly qualified product is Phase 10 `0.10.16` / `af2b0f0` under approved R6 scope, not a newly validated 0.11.0 product.
+**Goal:** Address UX-001 Roadmap source replacement; UX-002 no-action response visibility; UX-003 accurate Dope-aware guidance. Related P1 investigations on loader/overlays are **not** automatically defects or included in this stack.
+
+| Prompt | Assigned version | Tier | Model | Browser |
+| --- | --- | --- | --- | --- |
+| [P1 — Validate explicit Roadmap replacement preview](P1-replacement-preview.txt) | `0.11.1` | T2 | Sol High | no |
+| [P2 — Commit approved Roadmap source replacement safely](P2-replacement-commit.txt) | `0.11.2` | T2 | Sol High | no |
+| [P3 — Expose safe Change linked file in Roadmap Markdown](P3-replacement-ui.txt) | `0.11.3` | T1 | Sol Medium | no |
+| [P4 — Surface validated no-action message as Chat reply](P4-no-action-readable.txt) | `0.11.4` | T1 | Sol Medium | no |
+| [P5 — Define concise verified Dope UI help capabilities](P5-capability-guide.txt) | `0.11.5` | T1 | Sol Medium | no |
+| [P6 — Ground Chat guidance in actual available Dope actions](P6-capability-grounding.txt) | `0.11.6` | T2 | Sol High | no |
+| [P7 — Regress Roadmap replacement and helpful Chat together](P7-known-issue-integration.txt) | `0.11.7` | T2 | Sol High | no |
+| [P8 — Initial known usability repairs closeout and hunt handoff](P8-initial-repair-closeout.txt) | `0.11.8` | T3 | Sol High | yes (manual) |
+
+## Workflow and authority
+
+Use `npm run codex:phase:validate -- p11` **locally before** any implementation. The runner processes P1–P7; P8 is its only final **manual** T3 closeout/handoff, not an automatically accepted phase completion. Under docs/workflow.md, the owner's later explicit Run of an authored stack authorizes implementation; **no /activate gate**. Prompt authorship is not an execution order. **Do not auto-run P8** or a manual hunter in the headless runner. Prompt runner/owner handles Git/version commits; agents do not self-commit.
+
+Expected coherent versions P1 `0.11.1` through P8 `0.11.8` (13 manifests, 20 internal pins, no unrelated lockfile churn); check real checkout before running. P8 may be marked Not Green/Evidence Gap if actual live proof is unavailable. Do not call its success **Phase 11 product Green**: Phase 11 intentionally remains open for recurring [manual Hunt → Triage → Repair → Verify](../../planning/p11/phase-11-plan.md) through [usability-hunt-manual.md](usability-hunt-manual.md), [coverage matrix](../../planning/p11/panel-usability-matrix.md) and [issue ledger](../../planning/p11/usability-issue-ledger.md). Future new findings should become individually assessed/authorized `c11-<slug>` correction stacks at then-current unchanged version, not an arbitrarily expanded p11 runner stack.
+
+## Critical existing seams
+
+`roadmap-store.ts` already has safe moved-file same-bytes relink and approval, **not replacement of an intact wrongly selected file**; preserve both operations as distinct concepts. `chat-panel-presentation.ts` already has muted raw JSON activity but **generic no-action summaries** that omit `message`; do not build a second chat system. `chat-context-composer.ts` currently instructs Objective editability; short versioned capability-aware advice must be grounded in actual registered Dope controls. All writes are Dope-owned, approval/revision-safe, and manual operation works without AI.
+
+## Gates
+
+- **Initial repair:** P1–P3 authority/GUI Roadmap replacement, P4 validated readable no-action prose, P5–P6 grounded Dope help, P7 focused combined regression.
+- **Initial T3:** P8 U1–U9 on a real disposable project with exact-source/version, user-visible screenshots/errors, old-file unchanged, new source/restart, Q4 provider selection, Chat one-owner/permissions, and one exact-candidate aggregate.
+- **Long-term:** After P8, repeated diverse manual hunts, persistent deduplication/coverage, bounded repairs and final owner closeout. Two different clean broad hunts alone never guarantee product Green.
+
+## Efficiency
+
+All P1–P7 have **one coherent scope**, minimum source/lib builds and selected direct tests, expected <=8m with 10m soft / 15m hard ceiling. Full `npm run check` occurs only in manual P8 if justified, not once per prompt. P8 T3 may take longer and requires real GUI tools. No invented timing or Green from authored docs. Do not execute the phase merely by reading this README.
