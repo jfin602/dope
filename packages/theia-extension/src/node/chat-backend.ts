@@ -15,7 +15,11 @@ import { LocalPlanningOutputFailure, localPlanningJson, roadmapLocalBudget, veri
 import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 
-const draftInstruction = 'You are editing a noncanonical Roadmap draft. Propose exactly one small step using only the supplied IDs: {"type":"roadmap-draft-proposal","projectId":"<projectId>","draftRevision":<revision>,"action":<one create-phase/create-checkpoint/edit-phase/edit-checkpoint/reorder-phase/reorder-checkpoint action>}. Return only JSON. This requires developer approval. If no safe edit is justified, return {"type":"no-action","message":"brief reason"}. Never claim an edit was applied.';
+function draftInstruction(projectId: string, revision: number): string {
+    const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
+        action: { type: 'create-phase', title: 'Example phase', objective: 'One clear objective' } });
+    return `You are editing a noncanonical Roadmap draft. Propose exactly one small step using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. For a checkpoint, use action {"type":"create-checkpoint","phaseId":"<existing phase ID>","title":"<title>","objective":"<objective>"}; copy phaseId from the current draft. Other supported action types are edit-phase, edit-checkpoint, reorder-phase, and reorder-checkpoint. Return only one JSON object. This requires developer approval. If no safe edit is justified, return {"type":"no-action","message":"brief reason"}. Never claim an edit was applied.`;
+}
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
@@ -95,7 +99,7 @@ export class ChatBackend implements ChatService {
             current.revision || current.linkedDocument || current.pendingCreation)
             throw new Error('Greenfield Roadmap draft is stale');
         return { handle: bound.handle, revision: bound.draft.revision, projectId: current.projectId,
-                text: `${draftInstruction}\nCurrent draft: ${JSON.stringify({ projectId: current.projectId,
+                text: `${draftInstruction(current.projectId, bound.draft.revision)}\nCurrent draft: ${JSON.stringify({ projectId: current.projectId,
                     draftRevision: bound.draft.revision, phases: bound.draft.phases.slice(-6).map(phase => ({
                         id: phase.id, title: phase.title, objective: phase.objective.slice(0, 200),
                         checkpoints: phase.checkpoints.slice(-5).map(item => ({ id: item.id, title: item.title,

@@ -65,6 +65,9 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         assert.equal(greenfield.read(handle).revision, 0);
         assert.equal((await store.read(root)).revision, 0);
         assert.match(sent.at(-1) ?? '', /draftRevision/);
+        assert.ok((sent.at(-1) ?? '').includes(proposal(projectId, 0,
+            { type: 'create-phase', title: 'Example phase', objective: 'One clear objective' })));
+        assert.match(sent.at(-1) ?? '', /not a property named after the action/);
         await assert.rejects(readFile(join(root, 'ROADMAP.md')), /ENOENT/);
         await backend.decidePlanningProposal(projectHandle, selected, lease.token, pending.id, false);
         assert.equal(greenfield.read(handle).revision, 0);
