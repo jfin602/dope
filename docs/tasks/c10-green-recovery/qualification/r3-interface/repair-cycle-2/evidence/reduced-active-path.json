@@ -1,0 +1,42 @@
+{
+  "browser": {
+    "viewport": [
+      1920,
+      1113
+    ],
+    "media": true,
+    "activeCard": {
+      "status": "▶\nActive",
+      "color": "rgb(41, 41, 41)",
+      "border": "color(srgb 0.417647 0.322549 0.139216)",
+      "transition": "0s"
+    },
+    "relatedEdge": {
+      "stroke": "rgba(41, 41, 41, 0.7)",
+      "width": "3px",
+      "dash": "2px, 5px",
+      "animation": "none"
+    },
+    "runningAnimations": 0
+  },
+  "native": {
+    "viewport": [
+      1920,
+      1146
+    ],
+    "media": true,
+    "activeCard": {
+      "status": "▶\nActive",
+      "color": "rgb(41, 41, 41)",
+      "border": "color(srgb 0.417647 0.322549 0.139216)",
+      "transition": "0s"
+    },
+    "relatedEdge": {
+      "stroke": "rgba(41, 41, 41, 0.7)",
+      "width": "3px",
+      "dash": "2px, 5px",
+      "animation": "none"
+    },
+    "runningAnimations": 0
+  }
+}

@@ -1,0 +1,3104 @@
+{
+  "browser": {
+    "window": "0x05a00004",
+    "start": {
+      "focus": {
+        "tag": "BODY",
+        "label": null,
+        "text": "File\nEdit\nSelection\nView\nGo\nRun\nTerminal\nHelp\nRoadmap\nP1-the"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "selectedVisible": true,
+      "selectedRect": [
+        282.5,
+        522.2000122070312,
+        392,
+        152.5999755859375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": []
+    },
+    "phaseFocusSetup": {
+      "tag": "BUTTON",
+      "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+    },
+    "tab": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "text": "correction\nc10-better-planning\n?\nSource only · status unknow"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "selectedVisible": true,
+      "selectedRect": [
+        831.02685546875,
+        867.0919189453125,
+        391.6962890625,
+        152.4818115234375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    },
+    "shiftTab": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "text": "phase\nProduct Phase 10 — Unified Roadmap & Local-First AI Pl"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "selectedVisible": true,
+      "selectedRect": [
+        831.02685546875,
+        867.0919189453125,
+        391.6962890625,
+        152.4818115234375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Shift",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        }
+      ]
+    },
+    "right": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "phase: Product Phase 11 — Human-Centered UI / Usability Qualification; Not implemented; Chronological phase progression; no release gate implied Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+        "text": "phase\nProduct Phase 11 — Human-Centered UI / Usability Quali"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "selectedVisible": true,
+      "selectedRect": [
+        282.65185546875,
+        522.259033203125,
+        391.6962890625,
+        152.4818115234375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Shift",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "key": "ArrowRight",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    },
+    "home": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "phase: Foundation Spike 0 — Theia substrate qualification; Green",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+        "text": "phase\nFoundation Spike 0 — Theia substrate qualification\n✓\nG"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "selectedVisible": true,
+      "selectedRect": [
+        303.5282897949219,
+        530.385986328125,
+        349.9433898925781,
+        136.22796630859375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "key": "ArrowRight",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Home",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    },
+    "end": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "correction: October 2, 2026 — Phase 6 Flow projection-contract correction; Unknown",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+        "text": "October 2, 2026 — Phase 6 Flow projection-contract correctio"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": true,
+      "selectedRect": [
+        424.6087646484375,
+        580.7928466796875,
+        107.782470703125,
+        29.2552490234375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "ArrowRight",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Home",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "End",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    },
+    "focusToolbarSetup": {
+      "tag": "BUTTON",
+      "label": "Focus selected Roadmap checkpoint"
+    },
+    "focusToolbar": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Focus selected Roadmap checkpoint",
+        "text": ""
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": true,
+      "selectedRect": [
+        282.5,
+        542.5,
+        391.99951171875,
+        128.7999267578125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Home",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "End",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Focus selected Roadmap checkpoint"
+        }
+      ]
+    },
+    "fitToolbarSetup": {
+      "tag": "BUTTON",
+      "label": "Fit Roadmap"
+    },
+    "fitToolbar": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Fit Roadmap",
+        "text": ""
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "End",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Focus selected Roadmap checkpoint"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Fit Roadmap"
+        }
+      ]
+    },
+    "detailsSetup": {
+      "tag": "BUTTON",
+      "label": "Show Roadmap details on canvas"
+    },
+    "detailsOpen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Roadmap checkpoint details",
+        "text": "October 2, 2026 — Phase 6 Flow projection-contract correctio"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Focus selected Roadmap checkpoint"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Fit Roadmap"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Show Roadmap details on canvas"
+        }
+      ]
+    },
+    "detailsMinimizeSetup": {
+      "tag": "BUTTON",
+      "label": "Minimize Roadmap details"
+    },
+    "detailsMinimized": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Expand Roadmap details",
+        "text": "Expand"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Fit Roadmap"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Show Roadmap details on canvas"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Minimize Roadmap details"
+        }
+      ]
+    },
+    "detailsEscapeSetup": {
+      "tag": "SECTION",
+      "label": "Roadmap checkpoint details"
+    },
+    "detailsEscaped": {
+      "focus": {
+        "tag": "DIV",
+        "label": "Roadmap checkpoints canvas",
+        "text": "Foundation Spike 0 — Theia substrate qualification\n✓\nGreen\nP"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": false,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Show Roadmap details on canvas"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Minimize Roadmap details"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Roadmap checkpoint details"
+        }
+      ]
+    },
+    "markdownSetup": {
+      "tag": "BUTTON",
+      "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged"
+    },
+    "markdownOpen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Linked Markdown",
+        "text": "Linked Markdown · docs/roadmap/mvp-roadmap.md · unchanged\nEx"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": true,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Minimize Roadmap details"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Roadmap checkpoint details"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged"
+        }
+      ]
+    },
+    "markdownTab": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Expand Linked Markdown",
+        "text": "Expand"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": true,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Roadmap checkpoint details"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged"
+        },
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "Linked Markdown"
+        }
+      ]
+    },
+    "markdownEscape": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged",
+        "text": "Markdown · unchanged"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": false,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged"
+        },
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "Linked Markdown"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Expand Linked Markdown"
+        }
+      ]
+    },
+    "poolsSetup": {
+      "tag": "BUTTON",
+      "label": "Ideas, Issues and unlinked tasks"
+    },
+    "poolsOpen": {
+      "focus": {
+        "tag": "INPUT",
+        "label": "Filter Ideas and Issues",
+        "text": ""
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": false,
+        "details": false,
+        "pools": true
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "Linked Markdown"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Expand Linked Markdown"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Ideas, Issues and unlinked tasks"
+        }
+      ]
+    },
+    "poolsEscape": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Ideas, Issues and unlinked tasks",
+        "text": " Ideas / Issues"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        640.7000122070312,
+        55.99993896484375,
+        15.20001220703125
+      ],
+      "open": {
+        "markdown": false,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Expand Linked Markdown"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Ideas, Issues and unlinked tasks"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Filter Ideas and Issues"
+        }
+      ]
+    },
+    "phaseEnterSetup": {
+      "tag": "BUTTON",
+      "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+    },
+    "phaseEnter": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "text": "phase\nProduct Phase 10 — Unified Roadmap & Local-First AI Pl"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedVisible": true,
+      "selectedRect": [
+        282.5,
+        542.5,
+        392,
+        128.7999267578125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Ideas, Issues and unlinked tasks"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Filter Ideas and Issues"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    }
+  },
+  "native": {
+    "window": "0x06400004",
+    "start": {
+      "focus": {
+        "tag": "BODY",
+        "label": null,
+        "text": "Roadmap\nP1-theia-175-bootstrap.txt\nP1-source-import.txt\nP1-s"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "selectedVisible": true,
+      "selectedRect": [
+        282.5,
+        522.7000122070312,
+        392,
+        152.5999755859375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": []
+    },
+    "phaseFocusSetup": {
+      "tag": "BUTTON",
+      "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+    },
+    "tab": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "text": "correction\nc10-better-planning\n?\nSource only · status unknow"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "selectedVisible": true,
+      "selectedRect": [
+        829.7646484375,
+        866.6302490234375,
+        390.2939453125,
+        151.9359130859375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    },
+    "shiftTab": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "text": "phase\nProduct Phase 10 — Unified Roadmap & Local-First AI Pl"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "selectedVisible": true,
+      "selectedRect": [
+        829.7646484375,
+        866.6302490234375,
+        390.2939453125,
+        151.9359130859375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Shift",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        }
+      ]
+    },
+    "right": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "phase: Product Phase 11 — Human-Centered UI / Usability Qualification; Not implemented; Chronological phase progression; no release gate implied Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+        "text": "phase\nProduct Phase 11 — Human-Centered UI / Usability Quali"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+      "selectedVisible": true,
+      "selectedRect": [
+        283.35302734375,
+        523.0320434570312,
+        390.2939453125,
+        151.9359130859375
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Shift",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "key": "ArrowRight",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    },
+    "home": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "phase: Foundation Spike 0 — Theia substrate qualification; Green",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+        "text": "phase\nFoundation Spike 0 — Theia substrate qualification\n✓\nG"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "selectedVisible": true,
+      "selectedRect": [
+        307.9826965332031,
+        532.6199951171875,
+        341.0345764160156,
+        132.75994873046875
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning"
+        },
+        {
+          "key": "ArrowRight",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Home",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    },
+    "end": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "correction: October 2, 2026 — Phase 6 Flow projection-contract correction; Unknown",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+        "text": "October 2, 2026 — Phase 6 Flow projection-contract correctio"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": true,
+      "selectedRect": [
+        438.76806640625,
+        585.9451904296875,
+        79.464111328125,
+        21.56884765625
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "ArrowRight",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Home",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "End",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    },
+    "focusToolbarSetup": {
+      "tag": "BUTTON",
+      "label": "Focus selected Roadmap checkpoint"
+    },
+    "focusToolbar": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Focus selected Roadmap checkpoint",
+        "text": ""
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": true,
+      "selectedRect": [
+        282.5,
+        543,
+        391.99951171875,
+        128.7999267578125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Home",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "End",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Focus selected Roadmap checkpoint"
+        }
+      ]
+    },
+    "fitToolbarSetup": {
+      "tag": "BUTTON",
+      "label": "Fit Roadmap"
+    },
+    "fitToolbar": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Fit Roadmap",
+        "text": ""
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "End",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Focus selected Roadmap checkpoint"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Fit Roadmap"
+        }
+      ]
+    },
+    "detailsSetup": {
+      "tag": "BUTTON",
+      "label": "Show Roadmap details on canvas"
+    },
+    "detailsOpen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Roadmap checkpoint details",
+        "text": "October 2, 2026 — Phase 6 Flow projection-contract correctio"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Focus selected Roadmap checkpoint"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Fit Roadmap"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Show Roadmap details on canvas"
+        }
+      ]
+    },
+    "detailsMinimizeSetup": {
+      "tag": "BUTTON",
+      "label": "Minimize Roadmap details"
+    },
+    "detailsMinimized": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Expand Roadmap details",
+        "text": "Expand"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Fit Roadmap"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Show Roadmap details on canvas"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Minimize Roadmap details"
+        }
+      ]
+    },
+    "detailsEscapeSetup": {
+      "tag": "SECTION",
+      "label": "Roadmap checkpoint details"
+    },
+    "detailsEscaped": {
+      "focus": {
+        "tag": "DIV",
+        "label": "Roadmap checkpoints canvas",
+        "text": "Foundation Spike 0 — Theia substrate qualification\n✓\nGreen\nP"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": false,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Show Roadmap details on canvas"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Minimize Roadmap details"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Roadmap checkpoint details"
+        }
+      ]
+    },
+    "markdownSetup": {
+      "tag": "BUTTON",
+      "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged"
+    },
+    "markdownOpen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Linked Markdown",
+        "text": "Linked Markdown · docs/roadmap/mvp-roadmap.md · unchanged\nEx"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": true,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Minimize Roadmap details"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Roadmap checkpoint details"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged"
+        }
+      ]
+    },
+    "markdownTab": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Expand Linked Markdown",
+        "text": "Expand"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": true,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Roadmap checkpoint details"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged"
+        },
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "Linked Markdown"
+        }
+      ]
+    },
+    "markdownEscape": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged",
+        "text": "Markdown · unchanged"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": false,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged"
+        },
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "Linked Markdown"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Expand Linked Markdown"
+        }
+      ]
+    },
+    "poolsSetup": {
+      "tag": "BUTTON",
+      "label": "Ideas, Issues and unlinked tasks"
+    },
+    "poolsOpen": {
+      "focus": {
+        "tag": "INPUT",
+        "label": "Filter Ideas and Issues",
+        "text": ""
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": false,
+        "details": false,
+        "pools": true
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Tab",
+          "trust": true,
+          "target": "Linked Markdown"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Expand Linked Markdown"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Ideas, Issues and unlinked tasks"
+        }
+      ]
+    },
+    "poolsEscape": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Ideas, Issues and unlinked tasks",
+        "text": " Ideas / Issues"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#october-2-2026-phase-6-flow-projection-contract-correction",
+      "selectedVisible": false,
+      "selectedRect": [
+        1008.5000610351562,
+        426.3999938964844,
+        55.99993896484375,
+        15.199981689453125
+      ],
+      "open": {
+        "markdown": false,
+        "details": false,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "minimized"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Expand Linked Markdown"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Ideas, Issues and unlinked tasks"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Filter Ideas and Issues"
+        }
+      ]
+    },
+    "phaseEnterSetup": {
+      "tag": "BUTTON",
+      "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+      "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10"
+    },
+    "phaseEnter": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "text": "phase\nProduct Phase 10 — Unified Roadmap & Local-First AI Pl"
+      },
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedVisible": true,
+      "selectedRect": [
+        282.5,
+        543,
+        392,
+        128.7999267578125
+      ],
+      "open": {
+        "markdown": false,
+        "details": true,
+        "pools": false
+      },
+      "overlayState": {
+        "markdown": "compact",
+        "details": "compact"
+      },
+      "prompts": 0,
+      "editorTabs": [
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Search",
+        "SMAP CONTROLS",
+        "Chat",
+        "Work",
+        "Source Control",
+        "Debug",
+        "Extensions",
+        "Testing",
+        "Explorer",
+        "Testing",
+        "Extensions",
+        "Debug",
+        "Source Control",
+        "Work",
+        "Chat",
+        "SMAP CONTROLS",
+        "Search",
+        "Roadmap",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "P1-source-import.txt",
+        "Problems",
+        "Spell Checker",
+        "bash",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Work",
+        "History",
+        "Outline",
+        "Chat",
+        "Outline",
+        "History",
+        "Work"
+      ],
+      "keys": [
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "Ideas, Issues and unlinked tasks"
+        },
+        {
+          "key": "Escape",
+          "trust": true,
+          "target": "Filter Ideas and Issues"
+        },
+        {
+          "key": "Enter",
+          "trust": true,
+          "target": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History"
+        }
+      ]
+    }
+  }
+}

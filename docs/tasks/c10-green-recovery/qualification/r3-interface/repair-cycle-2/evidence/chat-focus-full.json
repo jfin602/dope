@@ -1,0 +1,46 @@
+{
+  "browser": {
+    "before": {
+      "focusId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedId": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+      "chatButtons": 2,
+      "chatVisible": true,
+      "viewport": [
+        1920,
+        1113
+      ]
+    },
+    "after": {
+      "focusId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedId": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+      "chatButtons": 2,
+      "chatVisible": true,
+      "viewport": [
+        1920,
+        1113
+      ]
+    }
+  },
+  "native": {
+    "before": {
+      "focusId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedId": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "chatButtons": 2,
+      "chatVisible": true,
+      "viewport": [
+        1920,
+        1146
+      ]
+    },
+    "after": {
+      "focusId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectedId": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "chatButtons": 2,
+      "chatVisible": true,
+      "viewport": [
+        1920,
+        1146
+      ]
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "browser": {
+    "fit": {
+      "media": true,
+      "viewport": [
+        1920,
+        1113
+      ],
+      "transform": "translate(-169.3px, 406.7px) scale(0.2)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "activeAnimations": 0
+    },
+    "immediate": {
+      "media": true,
+      "viewport": [
+        1920,
+        1113
+      ],
+      "transform": "translate(-5736.1px, -459.5px) scale(1.4)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "activeAnimations": 0
+    },
+    "after60": {
+      "media": true,
+      "viewport": [
+        1920,
+        1113
+      ],
+      "transform": "translate(-5736.1px, -459.5px) scale(1.4)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "activeAnimations": 0
+    },
+    "after480": {
+      "media": true,
+      "viewport": [
+        1920,
+        1113
+      ],
+      "transform": "translate(-5736.1px, -459.5px) scale(1.4)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "activeAnimations": 0
+    }
+  },
+  "native": {
+    "fit": {
+      "media": true,
+      "viewport": [
+        1920,
+        1146
+      ],
+      "transform": "translate(-169.3px, 224.4px) scale(0.2)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "activeAnimations": 0
+    },
+    "immediate": {
+      "media": true,
+      "viewport": [
+        1920,
+        1146
+      ],
+      "transform": "translate(-5736.1px, -427px) scale(1.4)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "activeAnimations": 0
+    },
+    "after60": {
+      "media": true,
+      "viewport": [
+        1920,
+        1146
+      ],
+      "transform": "translate(-5736.1px, -427px) scale(1.4)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "activeAnimations": 0
+    },
+    "after480": {
+      "media": true,
+      "viewport": [
+        1920,
+        1146
+      ],
+      "transform": "translate(-5736.1px, -427px) scale(1.4)",
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "activeAnimations": 0
+    }
+  }
+}

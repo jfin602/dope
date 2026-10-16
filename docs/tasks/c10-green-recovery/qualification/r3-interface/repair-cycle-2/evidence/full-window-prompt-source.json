@@ -1,0 +1,76 @@
+{
+  "browser": {
+    "afterPhaseEnter": {
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "detailsOpen": true,
+      "disclosure": "Hide implementation prompts for Foundation Spike 0 — Theia substrate qualification"
+    },
+    "prompt": {
+      "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+      "label": "prompt: P1 — Theia 1.75 IDE application foundation; Unknown; Supporting task or prompt: Disclosed implementation prompt Foundation Spike 0 — Theia substrate qualification"
+    },
+    "before": {
+      "focusId": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+      "currentTabs": [
+        "Explorer",
+        "Roadmap",
+        "P1-source-import.txt",
+        "Problems2",
+        "Chat",
+        "Chat",
+        "Chat"
+      ]
+    },
+    "after": {
+      "focus": "Editor content",
+      "currentTabs": [
+        "Explorer",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "Problems2",
+        "Chat",
+        "Chat",
+        "Chat"
+      ],
+      "promptVisible": true,
+      "hasExecutionText": false
+    }
+  },
+  "native": {
+    "afterPhaseEnter": {
+      "selected": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "detailsOpen": true,
+      "disclosure": "Hide implementation prompts for Foundation Spike 0 — Theia substrate qualification"
+    },
+    "prompt": {
+      "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "label": "prompt: P1 — Theia 1.75 IDE application foundation; Unknown; Supporting task or prompt: Disclosed implementation prompt Foundation Spike 0 — Theia substrate qualification"
+    },
+    "before": {
+      "focusId": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "currentTabs": [
+        "Explorer",
+        "Roadmap",
+        "P1-source-import.txt",
+        "Problems2",
+        "Chat",
+        "Chat",
+        "Chat"
+      ]
+    },
+    "after": {
+      "focus": "Editor content",
+      "currentTabs": [
+        "Explorer",
+        "P1-theia-175-bootstrap.txt",
+        "P1-source-import.txt",
+        "Problems2",
+        "Chat",
+        "Chat",
+        "Chat"
+      ],
+      "promptVisible": true,
+      "hasExecutionText": false
+    }
+  }
+}

@@ -1,0 +1,450 @@
+{
+  "browser": {
+    "detailsButton": {
+      "tag": "BUTTON",
+      "label": "Show Roadmap details on canvas",
+      "text": ""
+    },
+    "detailsOpen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Roadmap checkpoint details",
+        "text": "P1 — Theia 1.75 IDE application foundationExpandCo"
+      },
+      "details": {
+        "hidden": false,
+        "state": "compact"
+      },
+      "source": {
+        "hidden": true,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "detailsMinButton": {
+      "tag": "BUTTON",
+      "label": "Minimize Roadmap details",
+      "text": "Minimize"
+    },
+    "detailsMin": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Expand Roadmap details",
+        "text": "Expand"
+      },
+      "details": {
+        "hidden": false,
+        "state": "minimized"
+      },
+      "source": {
+        "hidden": true,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "detailsExpandButton": {
+      "tag": "BUTTON",
+      "label": "Expand Roadmap details",
+      "text": "Expand"
+    },
+    "detailsReopen": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Open prompt source: P1 — Theia 1.75 IDE application foundation",
+        "text": "Open Prompt"
+      },
+      "details": {
+        "hidden": false,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "detailsCloseButton": {
+      "tag": "BUTTON",
+      "label": "Close Roadmap details",
+      "text": "Close"
+    },
+    "detailsClose": {
+      "focus": {
+        "tag": "DIV",
+        "label": "Roadmap checkpoints canvas",
+        "text": "phaseFoundation Spike 0 — Theia substrate qualific"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "sourceButton": {
+      "tag": "BUTTON",
+      "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged",
+      "text": "Markdown · unchanged"
+    },
+    "sourceOpen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Linked Markdown",
+        "text": "Linked Markdown · docs/roadmap/mvp-roadmap.md · un"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": false,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "sourceMinButton": {
+      "tag": "BUTTON",
+      "label": "Minimize Linked Markdown",
+      "text": "Minimize"
+    },
+    "sourceMin": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged",
+        "text": "Markdown · unchanged"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": false,
+        "state": "minimized"
+      },
+      "stageWidth": 859
+    },
+    "sourceExpandButton": {
+      "tag": "BUTTON",
+      "label": "Expand Linked Markdown",
+      "text": "Expand"
+    },
+    "sourceReopen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Linked Markdown",
+        "text": "Linked Markdown · docs/roadmap/mvp-roadmap.md · un"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": false,
+        "state": "expanded"
+      },
+      "stageWidth": 859
+    },
+    "sourceCloseButton": {
+      "tag": "BUTTON",
+      "label": "Close Linked Markdown",
+      "text": "Close"
+    },
+    "sourceClose": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged",
+        "text": "Markdown · unchanged"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "stageWidth": 859
+    },
+    "otherTab": {
+      "focus": {
+        "tag": "DIV",
+        "label": "Editor content",
+        "text": ""
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "stageWidth": 0
+    },
+    "roadmapBack": {
+      "focus": {
+        "tag": "BODY",
+        "label": null,
+        "text": "FileEditSelectionViewGoRunTerminalHelpExplorerSear"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "stageWidth": 859
+    },
+    "roadmapButton": {
+      "tag": "BUTTON",
+      "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+      "text": "phaseProduct Phase 10 — Unified Roadmap & Local-Fi"
+    },
+    "roadmapKeyboard": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "text": "correctionc10-better-planning?Source only · status"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "stageWidth": 859
+    }
+  },
+  "native": {
+    "detailsButton": {
+      "tag": "BUTTON",
+      "label": "Show Roadmap details on canvas",
+      "text": ""
+    },
+    "detailsOpen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Roadmap checkpoint details",
+        "text": "P1 — Theia 1.75 IDE application foundationExpandCo"
+      },
+      "details": {
+        "hidden": false,
+        "state": "compact"
+      },
+      "source": {
+        "hidden": true,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "detailsMinButton": {
+      "tag": "BUTTON",
+      "label": "Minimize Roadmap details",
+      "text": "Minimize"
+    },
+    "detailsMin": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Expand Roadmap details",
+        "text": "Expand"
+      },
+      "details": {
+        "hidden": false,
+        "state": "minimized"
+      },
+      "source": {
+        "hidden": true,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "detailsExpandButton": {
+      "tag": "BUTTON",
+      "label": "Expand Roadmap details",
+      "text": "Expand"
+    },
+    "detailsReopen": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Open prompt source: P1 — Theia 1.75 IDE application foundation",
+        "text": "Open Prompt"
+      },
+      "details": {
+        "hidden": false,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "detailsCloseButton": {
+      "tag": "BUTTON",
+      "label": "Close Roadmap details",
+      "text": "Close"
+    },
+    "detailsClose": {
+      "focus": {
+        "tag": "DIV",
+        "label": "Roadmap checkpoints canvas",
+        "text": "phaseFoundation Spike 0 — Theia substrate qualific"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "sourceButton": {
+      "tag": "BUTTON",
+      "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged",
+      "text": "Markdown · unchanged"
+    },
+    "sourceOpen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Linked Markdown",
+        "text": "Linked Markdown · docs/roadmap/mvp-roadmap.md · un"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": false,
+        "state": "compact"
+      },
+      "stageWidth": 859
+    },
+    "sourceMinButton": {
+      "tag": "BUTTON",
+      "label": "Minimize Linked Markdown",
+      "text": "Minimize"
+    },
+    "sourceMin": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged",
+        "text": "Markdown · unchanged"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": false,
+        "state": "minimized"
+      },
+      "stageWidth": 859
+    },
+    "sourceExpandButton": {
+      "tag": "BUTTON",
+      "label": "Expand Linked Markdown",
+      "text": "Expand"
+    },
+    "sourceReopen": {
+      "focus": {
+        "tag": "SECTION",
+        "label": "Linked Markdown",
+        "text": "Linked Markdown · docs/roadmap/mvp-roadmap.md · un"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": false,
+        "state": "expanded"
+      },
+      "stageWidth": 859
+    },
+    "sourceCloseButton": {
+      "tag": "BUTTON",
+      "label": "Close Linked Markdown",
+      "text": "Close"
+    },
+    "sourceClose": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Roadmap Markdown docs/roadmap/mvp-roadmap.md: unchanged",
+        "text": "Markdown · unchanged"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "stageWidth": 859
+    },
+    "otherTab": {
+      "focus": {
+        "tag": "DIV",
+        "label": "Editor content",
+        "text": ""
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "stageWidth": 0
+    },
+    "roadmapBack": {
+      "focus": {
+        "tag": "BODY",
+        "label": null,
+        "text": "ExplorerSearchSMAP CONTROLSChatWorkSource ControlD"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "stageWidth": 859
+    },
+    "roadmapButton": {
+      "tag": "BUTTON",
+      "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+      "text": "phaseProduct Phase 10 — Unified Roadmap & Local-Fi"
+    },
+    "roadmapKeyboard": {
+      "focus": {
+        "tag": "BUTTON",
+        "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "text": "correctionc10-better-planning?Source only · status"
+      },
+      "details": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "source": {
+        "hidden": true,
+        "state": "expanded"
+      },
+      "stageWidth": 859
+    }
+  }
+}

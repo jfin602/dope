@@ -1,0 +1,56 @@
+{
+  "sourceCommit": "6218ae8f5d8c907c64b9dd418ca47126f3795381",
+  "version": "0.10.16",
+  "bundles": {
+    "browser": "af62e93025b94bc63d96a5139e888a91a6fc407d17d4436878f8f5c6613598f2",
+    "native": "8fc8fc44078f562aa6aefdefe0da9817f40f62112d94416c06217183271ea238"
+  },
+  "shells": {
+    "browser": {
+      "debugPort": 9223,
+      "windowId": "0x05a00004",
+      "projectRoot": "/tmp/dope-r3-g2-browser",
+      "ui": {
+        "viewport": [
+          1920,
+          1113
+        ],
+        "outer": [
+          1920,
+          1200
+        ],
+        "stageWidth": 859,
+        "theme": "monaco-enable-motion underline-links linux hc-light hc-theia-light theia-hcLight"
+      },
+      "files": {
+        "roadmap": "b3e85c84fdb9b41d6f222f1a4f672ea12d6bb8d4dab7270341b172bbf1c2ef14",
+        "linkedMarkdown": "d436aec16228afc65b9dea47d1a3547a6754c30c3f929584fb1f5b0153bce7c1",
+        "savedChatIndex": "d342e51c8f6748055c921f44946439604ec3bb8aead78478f95e5582750d32ea",
+        "savedChat": "7dc50b5dbe3026703390e724e54c750e495cab355adde56059457ad879afc0c5"
+      }
+    },
+    "native": {
+      "debugPort": 9224,
+      "windowId": "0x06400004",
+      "projectRoot": "/tmp/dope-r3-g2-native",
+      "ui": {
+        "viewport": [
+          1920,
+          1146
+        ],
+        "outer": [
+          1920,
+          1172
+        ],
+        "stageWidth": 859,
+        "theme": "monaco-enable-motion underline-links linux hc-light hc-theia-light theia-hcLight"
+      },
+      "files": {
+        "roadmap": "f01649e7ab67a3252082a68c12cc74780b0e879f83b3508d3e15092f2d06aee2",
+        "linkedMarkdown": "bf5486fb22a890064e99a8eba7ebc369bf4f41942caacf47f1516335cd2a2d02",
+        "savedChatIndex": "d342e51c8f6748055c921f44946439604ec3bb8aead78478f95e5582750d32ea",
+        "savedChat": "7dc50b5dbe3026703390e724e54c750e495cab355adde56059457ad879afc0c5"
+      }
+    }
+  }
+}

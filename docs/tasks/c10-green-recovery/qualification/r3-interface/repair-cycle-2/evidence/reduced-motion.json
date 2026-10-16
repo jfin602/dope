@@ -1,0 +1,24 @@
+{
+  "browser": {
+    "media": true,
+    "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+    "status": "○\nNot implemented",
+    "cardTransition": "0s",
+    "edgeAnimation": "none",
+    "edgeDuration": "0s",
+    "edgeDash": "none",
+    "activeAnimations": [],
+    "viewport": "translate(-6324.1px, -479.8px) scale(1.4)"
+  },
+  "native": {
+    "media": true,
+    "selected": "roadmap:docs/roadmap/mvp-roadmap.md#phase-11",
+    "status": "○\nNot implemented",
+    "cardTransition": "0s",
+    "edgeAnimation": "none",
+    "edgeDuration": "0s",
+    "edgeDash": "none",
+    "activeAnimations": [],
+    "viewport": "translate(-6324.1px, -447.3px) scale(1.4)"
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "browser": {
+    "source": {
+      "tabs": 4,
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Compact Linked Markdown",
+          "text": "Compact",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Minimize Linked Markdown",
+          "text": "Minimize",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Close Linked Markdown",
+          "text": "Close",
+          "focusVisible": true
+        },
+        {
+          "inside": false,
+          "tag": "BUTTON",
+          "label": "Ideas, Issues and unlinked tasks",
+          "text": "Ideas / Issues",
+          "focusVisible": true
+        }
+      ],
+      "exited": true,
+      "afterEscape": {
+        "tag": "BUTTON",
+        "label": "Ideas, Issues and unlinked tasks"
+      }
+    },
+    "details": {
+      "tabs": 5,
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Compact Roadmap details",
+          "text": "Compact",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Minimize Roadmap details",
+          "text": "Minimize",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Close Roadmap details",
+          "text": "Close",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Open prompt source: P1 — Theia 1.75 IDE application foundation",
+          "text": "Open Prompt",
+          "focusVisible": true
+        },
+        {
+          "inside": false,
+          "tag": "BUTTON",
+          "label": "Ideas, Issues and unlinked tasks",
+          "text": "Ideas / Issues",
+          "focusVisible": true
+        }
+      ],
+      "exited": true,
+      "afterEscape": {
+        "tag": "BUTTON",
+        "label": "Ideas, Issues and unlinked tasks"
+      }
+    },
+    "pools": {
+      "tabs": 1,
+      "sequence": [
+        {
+          "inside": false,
+          "tag": "DIV",
+          "label": "Editor content",
+          "text": "",
+          "focusVisible": true
+        }
+      ],
+      "exited": true,
+      "afterEscape": {
+        "tag": "DIV",
+        "label": "Editor content"
+      }
+    }
+  },
+  "native": {
+    "source": {
+      "tabs": 4,
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Compact Linked Markdown",
+          "text": "Compact",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Minimize Linked Markdown",
+          "text": "Minimize",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Close Linked Markdown",
+          "text": "Close",
+          "focusVisible": true
+        },
+        {
+          "inside": false,
+          "tag": "BUTTON",
+          "label": "Ideas, Issues and unlinked tasks",
+          "text": "Ideas / Issues",
+          "focusVisible": true
+        }
+      ],
+      "exited": true,
+      "afterEscape": {
+        "tag": "BUTTON",
+        "label": "Ideas, Issues and unlinked tasks"
+      }
+    },
+    "details": {
+      "tabs": 5,
+      "sequence": [
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Compact Roadmap details",
+          "text": "Compact",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Minimize Roadmap details",
+          "text": "Minimize",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Close Roadmap details",
+          "text": "Close",
+          "focusVisible": true
+        },
+        {
+          "inside": true,
+          "tag": "BUTTON",
+          "label": "Open prompt source: P1 — Theia 1.75 IDE application foundation",
+          "text": "Open Prompt",
+          "focusVisible": true
+        },
+        {
+          "inside": false,
+          "tag": "BUTTON",
+          "label": "Ideas, Issues and unlinked tasks",
+          "text": "Ideas / Issues",
+          "focusVisible": true
+        }
+      ],
+      "exited": true,
+      "afterEscape": {
+        "tag": "BUTTON",
+        "label": "Ideas, Issues and unlinked tasks"
+      }
+    },
+    "pools": {
+      "tabs": 1,
+      "sequence": [
+        {
+          "inside": false,
+          "tag": "DIV",
+          "label": "Editor content",
+          "text": "",
+          "focusVisible": true
+        }
+      ],
+      "exited": true,
+      "afterEscape": {
+        "tag": "DIV",
+        "label": "Editor content"
+      }
+    }
+  }
+}

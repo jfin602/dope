@@ -1,0 +1,134 @@
+{
+  "browser": {
+    "dope-dark": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "focusId": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+      "focusVisible": true,
+      "focusOutline": "color(srgb 0.605294 0.605294 0.605294)",
+      "focusWidth": "2px",
+      "focusVsCard": 4.96,
+      "focusVsCanvas": 5.86,
+      "selectedId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectionShadow": "rgb(255, 122, 26)",
+      "selectionVsCard": 4.48,
+      "selectionVsCanvas": 6.32
+    },
+    "light": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "focusId": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+      "focusVisible": true,
+      "focusOutline": "color(srgb 0 0.440471 0.737176)",
+      "focusWidth": "2px",
+      "focusVsCard": 4.28,
+      "focusVsCanvas": 5.19,
+      "selectedId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectionShadow": "color(srgb 0 0.440471 0.737176)",
+      "selectionVsCard": 3.76,
+      "selectionVsCanvas": 5.19
+    },
+    "hc-theia": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "focusId": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+      "focusVisible": true,
+      "focusOutline": "rgb(243, 133, 24)",
+      "focusWidth": "2px",
+      "focusVsCard": 6.53,
+      "focusVsCanvas": 8.18,
+      "selectedId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectionShadow": "rgb(243, 133, 24)",
+      "selectionVsCard": 5.96,
+      "selectionVsCanvas": 8.18
+    },
+    "hc-theia-light": {
+      "viewport": [
+        1920,
+        1113
+      ],
+      "focusId": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+      "focusVisible": true,
+      "focusOutline": "rgb(0, 107, 189)",
+      "focusWidth": "2px",
+      "focusVsCard": 5.06,
+      "focusVsCanvas": 5.47,
+      "selectedId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectionShadow": "rgb(0, 107, 189)",
+      "selectionVsCard": 4.39,
+      "selectionVsCanvas": 5.47
+    }
+  },
+  "native": {
+    "dope-dark": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "focusId": "roadmap:docs/roadmap/mvp-roadmap.md#foundation-spike-0",
+      "focusVisible": true,
+      "focusOutline": "color(srgb 0.605294 0.605294 0.605294)",
+      "focusWidth": "2px",
+      "focusVsCard": 4.04,
+      "focusVsCanvas": 5.86,
+      "selectedId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectionShadow": "rgb(255, 122, 26)",
+      "selectionVsCard": 4.48,
+      "selectionVsCanvas": 6.32
+    },
+    "light": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "focusId": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+      "focusVisible": true,
+      "focusOutline": "color(srgb 0 0.440471 0.737176)",
+      "focusWidth": "2px",
+      "focusVsCard": 4.32,
+      "focusVsCanvas": 5.19,
+      "selectedId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectionShadow": "color(srgb 0 0.440471 0.737176)",
+      "selectionVsCard": 3.76,
+      "selectionVsCanvas": 5.19
+    },
+    "hc-theia": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "focusId": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+      "focusVisible": true,
+      "focusOutline": "rgb(243, 133, 24)",
+      "focusWidth": "2px",
+      "focusVsCard": 6.53,
+      "focusVsCanvas": 8.18,
+      "selectedId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectionShadow": "rgb(243, 133, 24)",
+      "selectionVsCard": 5.96,
+      "selectionVsCanvas": 8.18
+    },
+    "hc-theia-light": {
+      "viewport": [
+        1920,
+        1146
+      ],
+      "focusId": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+      "focusVisible": true,
+      "focusOutline": "rgb(0, 107, 189)",
+      "focusWidth": "2px",
+      "focusVsCard": 5.06,
+      "focusVsCanvas": 5.47,
+      "selectedId": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+      "selectionShadow": "rgb(0, 107, 189)",
+      "selectionVsCard": 4.39,
+      "selectionVsCanvas": 5.47
+    }
+  }
+}

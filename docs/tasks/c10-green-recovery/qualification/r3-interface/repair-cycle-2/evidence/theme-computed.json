@@ -1,0 +1,2580 @@
+{
+  "browser": {
+    "url": "http://127.0.0.1:3000/#/tmp/dope-r3-g2-browser",
+    "themes": {
+      "dope-dark": {
+        "theme": "monaco-enable-motion underline-links linux dope-dark vs-dark dark-theia theia-dark",
+        "viewport": [
+          1920,
+          1113
+        ],
+        "canvasBackground": "rgb(31, 31, 31)",
+        "focusToken": "color-mix(in srgb, #484848 55%, white)",
+        "selectionToken": "#FF7A1A",
+        "status": {
+          "green": {
+            "text": "✓\nGreen",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.215553 0.231612 0.22289)",
+              "border": "color(srgb 0.585882 0.678529 0.608529)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.687059 0.810588 0.717255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.687059 0.810588 0.717255)",
+              "outline": "color(srgb 0.687059 0.810588 0.717255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.73,
+              "titleToCard": 7.67,
+              "borderToCard": 4.73,
+              "cardToCanvas": 1.45
+            }
+          },
+          "active": {
+            "text": "▶\nActive",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.256235 0.216471 0.176549)",
+              "border": "color(srgb 0.820588 0.591177 0.341176)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(255, 177, 92)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 177, 92)",
+              "outline": "rgb(255, 177, 92)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.46,
+              "titleToCard": 7.83,
+              "borderToCard": 4.57,
+              "cardToCanvas": 1.42
+            }
+          },
+          "not-green": {
+            "text": "!\nNot Green",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.252029 0.210353 0.205353)",
+              "border": "color(srgb 0.796324 0.555882 0.507353)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.967647 0.647059 0.582353)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.967647 0.647059 0.582353)",
+              "outline": "color(srgb 0.967647 0.647059 0.582353)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6,
+              "titleToCard": 7.89,
+              "borderToCard": 4.3,
+              "cardToCanvas": 1.41
+            }
+          },
+          "waived": {
+            "text": "◇\nOwner-closed for sequencing",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.2284 0.210914 0.245373)",
+              "border": "color(srgb 0.66 0.559118 0.738235)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.785882 0.651373 0.890196)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.785882 0.651373 0.890196)",
+              "outline": "color(srgb 0.785882 0.651373 0.890196)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.63,
+              "titleToCard": 7.96,
+              "borderToCard": 4.11,
+              "cardToCanvas": 1.4
+            }
+          },
+          "not-implemented": {
+            "text": "○\nNot implemented",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.191827 0.191827 0.195396)",
+              "border": "color(srgb 0.568824 0.568824 0.568824)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.664314 0.664314 0.664314)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.664314 0.664314 0.664314)",
+              "outline": "color(srgb 0.664314 0.664314 0.664314)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.53,
+              "titleToCard": 8.77,
+              "borderToCard": 4.12,
+              "cardToCanvas": 1.27
+            }
+          },
+          "unknown": {
+            "text": "?\nUnknown",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.173183 0.173183 0.176937 / 0.982118)",
+              "border": "color(srgb 0.633333 0.633333 0.633333 / 0.776471)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgba(204, 204, 204, 0.7)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgba(204, 204, 204, 0.7)",
+              "outline": "rgba(204, 204, 204, 0.7)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 8.69,
+              "titleToCard": 9.41,
+              "borderToCard": 5.4,
+              "cardToCanvas": 1.18
+            }
+          }
+        },
+        "toolbar": {
+          "color": "rgb(255, 255, 255)",
+          "background": "rgb(48, 48, 48)",
+          "border": "rgb(72, 72, 72)",
+          "outline": "rgb(255, 255, 255)",
+          "outlineWidth": "3px",
+          "boxShadow": "none",
+          "opacity": "1",
+          "fontSize": "13.3333px",
+          "fontWeight": "400",
+          "textContrast": 13.2,
+          "borderContrast": 1.44
+        },
+        "disabled": [
+          {
+            "text": "Expand selected Roadmap branch",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(48, 48, 48)",
+              "border": "rgb(72, 72, 72)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Collapse selected Roadmap branch",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(48, 48, 48)",
+              "border": "rgb(72, 72, 72)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Show next implementation prompts for selected checkpoint",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(48, 48, 48)",
+              "border": "rgb(72, 72, 72)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Preview and save",
+            "style": {
+              "color": "rgb(204, 204, 204)",
+              "background": "rgb(48, 48, 48)",
+              "border": "rgb(72, 72, 72)",
+              "outline": "rgb(204, 204, 204)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          }
+        ]
+      },
+      "light": {
+        "theme": "monaco-enable-motion underline-links linux vs light-theia theia-light",
+        "viewport": [
+          1920,
+          1113
+        ],
+        "canvasBackground": "rgb(255, 255, 255)",
+        "focusToken": "#0090f1",
+        "selectionToken": "",
+        "status": {
+          "green": {
+            "text": "✓\nGreen",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.87851 0.87851 0.87851)",
+              "border": "color(srgb 0.493137 0.493137 0.493137)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(97, 97, 97)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(97, 97, 97)",
+              "outline": "rgb(97, 97, 97)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 4.69,
+              "titleToCard": 15.91,
+              "borderToCard": 3.08,
+              "cardToCanvas": 1.32
+            }
+          },
+          "active": {
+            "text": "▶\nActive",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.895272 0.876205 0.830099)",
+              "border": "color(srgb 0.589843 0.479843 0.213843)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.509333 0.362667 0.008)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.509333 0.362667 0.008)",
+              "outline": "color(srgb 0.509333 0.362667 0.008)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 4.54,
+              "titleToCard": 15.8,
+              "borderToCard": 3.08,
+              "cardToCanvas": 1.33
+            }
+          },
+          "not-green": {
+            "text": "!\nNot Green",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.911137 0.848431 0.835686)",
+              "border": "color(srgb 0.681373 0.319608 0.246078)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(161, 38, 13)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(161, 38, 13)",
+              "outline": "rgb(161, 38, 13)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.44,
+              "titleToCard": 15.21,
+              "borderToCard": 3.73,
+              "cardToCanvas": 1.38
+            }
+          },
+          "waived": {
+            "text": "◇\nOwner-closed for sequencing",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.880549 0.852 0.902471)",
+              "border": "color(srgb 0.504902 0.340196 0.631373)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(101, 45, 144)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(101, 45, 144)",
+              "outline": "rgb(101, 45, 144)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.55,
+              "titleToCard": 15.27,
+              "borderToCard": 4.01,
+              "cardToCanvas": 1.38
+            }
+          },
+          "not-implemented": {
+            "text": "○\nNot implemented",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.901412 0.901412 0.901412)",
+              "border": "color(srgb 0.493137 0.493137 0.493137)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(97, 97, 97)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(97, 97, 97)",
+              "outline": "rgb(97, 97, 97)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 4.96,
+              "titleToCard": 16.83,
+              "borderToCard": 3.25,
+              "cardToCanvas": 1.25
+            }
+          },
+          "unknown": {
+            "text": "?\nUnknown",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.915706 0.915706 0.915706)",
+              "border": "color(srgb 0.457108 0.457108 0.457108)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.332353 0.332353 0.332353)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.332353 0.332353 0.332353)",
+              "outline": "color(srgb 0.332353 0.332353 0.332353)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.2,
+              "titleToCard": 17.46,
+              "borderToCard": 3.83,
+              "cardToCanvas": 1.2
+            }
+          }
+        },
+        "toolbar": {
+          "color": "rgb(255, 255, 255)",
+          "background": "rgb(95, 106, 121)",
+          "border": "rgb(212, 212, 212)",
+          "outline": "rgb(255, 255, 255)",
+          "outlineWidth": "3px",
+          "boxShadow": "none",
+          "opacity": "1",
+          "fontSize": "13.3333px",
+          "fontWeight": "400",
+          "textContrast": 5.49,
+          "borderContrast": 3.7
+        },
+        "disabled": [
+          {
+            "text": "Expand selected Roadmap branch",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(95, 106, 121)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Collapse selected Roadmap branch",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(95, 106, 121)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Show next implementation prompts for selected checkpoint",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(95, 106, 121)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Preview and save",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(0, 122, 204)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          }
+        ]
+      },
+      "hc-theia": {
+        "theme": "monaco-enable-motion underline-links linux hc-black hc-theia theia-hc",
+        "viewport": [
+          1920,
+          1113
+        ],
+        "canvasBackground": "rgb(0, 0, 0)",
+        "focusToken": "#f38518",
+        "selectionToken": "",
+        "status": {
+          "green": {
+            "text": "✓\nGreen",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.170941 0.198235 0.235765)",
+              "border": "color(srgb 0.858824 0.941176 0.968627)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 12.76,
+              "titleToCard": 12.76,
+              "borderToCard": 10.83,
+              "cardToCanvas": 1.65
+            }
+          },
+          "active": {
+            "text": "▶\nActive",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.170941 0.175804 0.162863)",
+              "border": "color(srgb 0.858824 0.811765 0.548039)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(255, 211, 112)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 211, 112)",
+              "outline": "rgb(255, 211, 112)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 9.77,
+              "titleToCard": 13.85,
+              "borderToCard": 8.78,
+              "cardToCanvas": 1.52
+            }
+          },
+          "not-green": {
+            "text": "!\nNot Green",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.165333 0.137059 0.163373)",
+              "border": "color(srgb 0.826471 0.588235 0.55098)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(244, 135, 113)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(244, 135, 113)",
+              "outline": "rgb(244, 135, 113)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.23,
+              "titleToCard": 15.3,
+              "borderToCard": 6.2,
+              "cardToCanvas": 1.37
+            }
+          },
+          "waived": {
+            "text": "◇\nOwner-closed for sequencing",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.131176 0.13349 0.215373)",
+              "border": "color(srgb 0.629412 0.567647 0.85098)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(177, 128, 215)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(177, 128, 215)",
+              "outline": "rgb(177, 128, 215)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.14,
+              "titleToCard": 15.57,
+              "borderToCard": 5.61,
+              "cardToCanvas": 1.35
+            }
+          },
+          "not-implemented": {
+            "text": "○\nNot implemented",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.132823 0.161373 0.200627)",
+              "border": "color(srgb 0.858824 0.941176 0.968627)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 14.65,
+              "titleToCard": 14.65,
+              "borderToCard": 12.43,
+              "cardToCanvas": 1.43
+            }
+          },
+          "unknown": {
+            "text": "?\nUnknown",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.0879253 0.117952 0.15924 / 0.982118)",
+              "border": "color(srgb 0.818182 0.924242 0.959596 / 0.776471)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgba(255, 255, 255, 0.7)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgba(255, 255, 255, 0.7)",
+              "outline": "rgba(255, 255, 255, 0.7)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 16.78,
+              "titleToCard": 16.78,
+              "borderToCard": 13.6,
+              "cardToCanvas": 1.25
+            }
+          }
+        },
+        "toolbar": {
+          "color": "rgb(255, 255, 255)",
+          "background": "rgb(0, 0, 0)",
+          "border": "rgb(111, 195, 223)",
+          "outline": "rgb(255, 255, 255)",
+          "outlineWidth": "3px",
+          "boxShadow": "none",
+          "opacity": "1",
+          "fontSize": "13.3333px",
+          "fontWeight": "400",
+          "textContrast": 21,
+          "borderContrast": 10.55
+        },
+        "disabled": [
+          {
+            "text": "Expand selected Roadmap branch",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(0, 0, 0)",
+              "border": "rgb(111, 195, 223)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Collapse selected Roadmap branch",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(0, 0, 0)",
+              "border": "rgb(111, 195, 223)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Show next implementation prompts for selected checkpoint",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(0, 0, 0)",
+              "border": "rgb(111, 195, 223)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Preview and save",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(0, 0, 0)",
+              "border": "rgb(111, 195, 223)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          }
+        ]
+      },
+      "hc-theia-light": {
+        "theme": "monaco-enable-motion underline-links linux hc-light hc-theia-light theia-hcLight",
+        "viewport": [
+          1920,
+          1113
+        ],
+        "canvasBackground": "rgb(255, 255, 255)",
+        "focusToken": "#006bbd",
+        "selectionToken": "",
+        "status": {
+          "green": {
+            "text": "✓\nGreen",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.890902 0.890902 0.890902)",
+              "border": "color(srgb 0.135294 0.193137 0.25098)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 11.34,
+              "titleToCard": 11.34,
+              "borderToCard": 10.35,
+              "cardToCanvas": 1.28
+            }
+          },
+          "active": {
+            "text": "▶\nActive",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.939843 0.913333 0.871529)",
+              "border": "color(srgb 0.417647 0.322549 0.139216)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(137, 85, 3)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(137, 85, 3)",
+              "outline": "rgb(137, 85, 3)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.18,
+              "titleToCard": 12.06,
+              "borderToCard": 6.12,
+              "cardToCanvas": 1.21
+            }
+          },
+          "not-green": {
+            "text": "!\nNot Green",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.962274 0.886314 0.876627)",
+              "border": "color(srgb 0.547059 0.166667 0.168627)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(181, 32, 13)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(181, 32, 13)",
+              "outline": "rgb(181, 32, 13)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.3,
+              "titleToCard": 11.66,
+              "borderToCard": 6.75,
+              "cardToCanvas": 1.25
+            }
+          },
+          "waived": {
+            "text": "◇\nOwner-closed for sequencing",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.92149 0.892941 0.943412)",
+              "border": "color(srgb 0.311765 0.204902 0.553922)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(101, 45, 144)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(101, 45, 144)",
+              "outline": "rgb(101, 45, 144)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 7.25,
+              "titleToCard": 11.71,
+              "borderToCard": 7.62,
+              "cardToCanvas": 1.24
+            }
+          },
+          "not-implemented": {
+            "text": "○\nNot implemented",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.924471 0.924471 0.924471)",
+              "border": "color(srgb 0.135294 0.193137 0.25098)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 12.31,
+              "titleToCard": 12.31,
+              "borderToCard": 11.24,
+              "cardToCanvas": 1.18
+            }
+          },
+          "unknown": {
+            "text": "?\nUnknown",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.964011 0.964011 0.964011 / 0.982118)",
+              "border": "color(srgb 0.127956 0.202451 0.276946 / 0.776471)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgba(41, 41, 41, 0.7)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgba(41, 41, 41, 0.7)",
+              "outline": "rgba(41, 41, 41, 0.7)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 13.46,
+              "titleToCard": 13.46,
+              "borderToCard": 11.8,
+              "cardToCanvas": 1.08
+            }
+          }
+        },
+        "toolbar": {
+          "color": "rgb(41, 41, 41)",
+          "background": "rgb(255, 255, 255)",
+          "border": "rgb(15, 74, 133)",
+          "outline": "rgb(41, 41, 41)",
+          "outlineWidth": "3px",
+          "boxShadow": "none",
+          "opacity": "1",
+          "fontSize": "13.3333px",
+          "fontWeight": "400",
+          "textContrast": 14.55,
+          "borderContrast": 8.98
+        },
+        "disabled": [
+          {
+            "text": "Expand selected Roadmap branch",
+            "style": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgb(255, 255, 255)",
+              "border": "rgb(15, 74, 133)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Collapse selected Roadmap branch",
+            "style": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgb(255, 255, 255)",
+              "border": "rgb(15, 74, 133)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Show next implementation prompts for selected checkpoint",
+            "style": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgb(255, 255, 255)",
+              "border": "rgb(15, 74, 133)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Preview and save",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(15, 74, 133)",
+              "border": "rgb(15, 74, 133)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "native": {
+    "url": "file:///home/jfin/dev/dope/apps/electron/lib/frontend/index.html?port=39743#/tmp/dope-r3-g2-native",
+    "themes": {
+      "dope-dark": {
+        "theme": "monaco-enable-motion underline-links linux dope-dark vs-dark dark-theia theia-dark",
+        "viewport": [
+          1920,
+          1146
+        ],
+        "canvasBackground": "rgb(31, 31, 31)",
+        "focusToken": "color-mix(in srgb, #484848 55%, white)",
+        "selectionToken": "#FF7A1A",
+        "status": {
+          "green": {
+            "text": "✓\nGreen",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.215553 0.231612 0.22289)",
+              "border": "color(srgb 0.585882 0.678529 0.608529)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.687059 0.810588 0.717255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.687059 0.810588 0.717255)",
+              "outline": "color(srgb 0.687059 0.810588 0.717255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.73,
+              "titleToCard": 7.67,
+              "borderToCard": 4.73,
+              "cardToCanvas": 1.45
+            }
+          },
+          "active": {
+            "text": "▶\nActive",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.256235 0.216471 0.176549)",
+              "border": "color(srgb 0.820588 0.591177 0.341176)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(255, 177, 92)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 177, 92)",
+              "outline": "rgb(255, 177, 92)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.46,
+              "titleToCard": 7.83,
+              "borderToCard": 4.57,
+              "cardToCanvas": 1.42
+            }
+          },
+          "not-green": {
+            "text": "!\nNot Green",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.252029 0.210353 0.205353)",
+              "border": "color(srgb 0.796324 0.555882 0.507353)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.967647 0.647059 0.582353)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.967647 0.647059 0.582353)",
+              "outline": "color(srgb 0.967647 0.647059 0.582353)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6,
+              "titleToCard": 7.89,
+              "borderToCard": 4.3,
+              "cardToCanvas": 1.41
+            }
+          },
+          "waived": {
+            "text": "◇\nOwner-closed for sequencing",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.2284 0.210914 0.245373)",
+              "border": "color(srgb 0.66 0.559118 0.738235)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.785882 0.651373 0.890196)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.785882 0.651373 0.890196)",
+              "outline": "color(srgb 0.785882 0.651373 0.890196)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.63,
+              "titleToCard": 7.96,
+              "borderToCard": 4.11,
+              "cardToCanvas": 1.4
+            }
+          },
+          "not-implemented": {
+            "text": "○\nNot implemented",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.191827 0.191827 0.195396)",
+              "border": "color(srgb 0.568824 0.568824 0.568824)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.664314 0.664314 0.664314)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.664314 0.664314 0.664314)",
+              "outline": "color(srgb 0.664314 0.664314 0.664314)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.53,
+              "titleToCard": 8.77,
+              "borderToCard": 4.12,
+              "cardToCanvas": 1.27
+            }
+          },
+          "unknown": {
+            "text": "?\nUnknown",
+            "card": {
+              "color": "rgb(212, 212, 212)",
+              "background": "color(srgb 0.173183 0.173183 0.176937 / 0.982118)",
+              "border": "color(srgb 0.633333 0.633333 0.633333 / 0.776471)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgba(204, 204, 204, 0.7)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgba(204, 204, 204, 0.7)",
+              "outline": "rgba(204, 204, 204, 0.7)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(212, 212, 212)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(212, 212, 212)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 8.69,
+              "titleToCard": 9.41,
+              "borderToCard": 5.4,
+              "cardToCanvas": 1.18
+            }
+          }
+        },
+        "toolbar": {
+          "color": "rgb(255, 255, 255)",
+          "background": "rgb(48, 48, 48)",
+          "border": "rgb(72, 72, 72)",
+          "outline": "rgb(255, 255, 255)",
+          "outlineWidth": "3px",
+          "boxShadow": "none",
+          "opacity": "1",
+          "fontSize": "13.3333px",
+          "fontWeight": "400",
+          "textContrast": 13.2,
+          "borderContrast": 1.44
+        },
+        "disabled": [
+          {
+            "text": "Show next implementation prompts for selected checkpoint",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(48, 48, 48)",
+              "border": "rgb(72, 72, 72)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Preview and save",
+            "style": {
+              "color": "rgb(204, 204, 204)",
+              "background": "rgb(48, 48, 48)",
+              "border": "rgb(72, 72, 72)",
+              "outline": "rgb(204, 204, 204)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          }
+        ]
+      },
+      "light": {
+        "theme": "monaco-enable-motion underline-links linux vs light-theia theia-light",
+        "viewport": [
+          1920,
+          1146
+        ],
+        "canvasBackground": "rgb(255, 255, 255)",
+        "focusToken": "#0090f1",
+        "selectionToken": "",
+        "status": {
+          "green": {
+            "text": "✓\nGreen",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.87851 0.87851 0.87851)",
+              "border": "color(srgb 0.493137 0.493137 0.493137)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(97, 97, 97)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(97, 97, 97)",
+              "outline": "rgb(97, 97, 97)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 4.69,
+              "titleToCard": 15.91,
+              "borderToCard": 3.08,
+              "cardToCanvas": 1.32
+            }
+          },
+          "active": {
+            "text": "▶\nActive",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.895272 0.876205 0.830099)",
+              "border": "color(srgb 0.589843 0.479843 0.213843)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.509333 0.362667 0.008)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.509333 0.362667 0.008)",
+              "outline": "color(srgb 0.509333 0.362667 0.008)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 4.54,
+              "titleToCard": 15.8,
+              "borderToCard": 3.08,
+              "cardToCanvas": 1.33
+            }
+          },
+          "not-green": {
+            "text": "!\nNot Green",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.911137 0.848431 0.835686)",
+              "border": "color(srgb 0.681373 0.319608 0.246078)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(161, 38, 13)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(161, 38, 13)",
+              "outline": "rgb(161, 38, 13)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.44,
+              "titleToCard": 15.21,
+              "borderToCard": 3.73,
+              "cardToCanvas": 1.38
+            }
+          },
+          "waived": {
+            "text": "◇\nOwner-closed for sequencing",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.880549 0.852 0.902471)",
+              "border": "color(srgb 0.504902 0.340196 0.631373)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(101, 45, 144)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(101, 45, 144)",
+              "outline": "rgb(101, 45, 144)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.55,
+              "titleToCard": 15.27,
+              "borderToCard": 4.01,
+              "cardToCanvas": 1.38
+            }
+          },
+          "not-implemented": {
+            "text": "○\nNot implemented",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.901412 0.901412 0.901412)",
+              "border": "color(srgb 0.493137 0.493137 0.493137)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(97, 97, 97)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(97, 97, 97)",
+              "outline": "rgb(97, 97, 97)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 4.96,
+              "titleToCard": 16.83,
+              "borderToCard": 3.25,
+              "cardToCanvas": 1.25
+            }
+          },
+          "unknown": {
+            "text": "?\nUnknown",
+            "card": {
+              "color": "rgb(0, 0, 0)",
+              "background": "color(srgb 0.915706 0.915706 0.915706)",
+              "border": "color(srgb 0.457108 0.457108 0.457108)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "color(srgb 0.332353 0.332353 0.332353)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "color(srgb 0.332353 0.332353 0.332353)",
+              "outline": "color(srgb 0.332353 0.332353 0.332353)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(0, 0, 0)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(0, 0, 0)",
+              "outline": "rgb(0, 0, 0)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.2,
+              "titleToCard": 17.46,
+              "borderToCard": 3.83,
+              "cardToCanvas": 1.2
+            }
+          }
+        },
+        "toolbar": {
+          "color": "rgb(255, 255, 255)",
+          "background": "rgb(95, 106, 121)",
+          "border": "rgb(212, 212, 212)",
+          "outline": "rgb(255, 255, 255)",
+          "outlineWidth": "3px",
+          "boxShadow": "none",
+          "opacity": "1",
+          "fontSize": "13.3333px",
+          "fontWeight": "400",
+          "textContrast": 5.49,
+          "borderContrast": 3.7
+        },
+        "disabled": [
+          {
+            "text": "Show next implementation prompts for selected checkpoint",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(95, 106, 121)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Preview and save",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(0, 122, 204)",
+              "border": "rgb(212, 212, 212)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          }
+        ]
+      },
+      "hc-theia": {
+        "theme": "monaco-enable-motion underline-links linux hc-black hc-theia theia-hc",
+        "viewport": [
+          1920,
+          1146
+        ],
+        "canvasBackground": "rgb(0, 0, 0)",
+        "focusToken": "#f38518",
+        "selectionToken": "",
+        "status": {
+          "green": {
+            "text": "✓\nGreen",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.170941 0.198235 0.235765)",
+              "border": "color(srgb 0.858824 0.941176 0.968627)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 12.76,
+              "titleToCard": 12.76,
+              "borderToCard": 10.83,
+              "cardToCanvas": 1.65
+            }
+          },
+          "active": {
+            "text": "▶\nActive",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.170941 0.175804 0.162863)",
+              "border": "color(srgb 0.858824 0.811765 0.548039)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(255, 211, 112)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 211, 112)",
+              "outline": "rgb(255, 211, 112)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 9.77,
+              "titleToCard": 13.85,
+              "borderToCard": 8.78,
+              "cardToCanvas": 1.52
+            }
+          },
+          "not-green": {
+            "text": "!\nNot Green",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.165333 0.137059 0.163373)",
+              "border": "color(srgb 0.826471 0.588235 0.55098)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(244, 135, 113)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(244, 135, 113)",
+              "outline": "rgb(244, 135, 113)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 6.23,
+              "titleToCard": 15.3,
+              "borderToCard": 6.2,
+              "cardToCanvas": 1.37
+            }
+          },
+          "waived": {
+            "text": "◇\nOwner-closed for sequencing",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.131176 0.13349 0.215373)",
+              "border": "color(srgb 0.629412 0.567647 0.85098)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(177, 128, 215)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(177, 128, 215)",
+              "outline": "rgb(177, 128, 215)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.14,
+              "titleToCard": 15.57,
+              "borderToCard": 5.61,
+              "cardToCanvas": 1.35
+            }
+          },
+          "not-implemented": {
+            "text": "○\nNot implemented",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.132823 0.161373 0.200627)",
+              "border": "color(srgb 0.858824 0.941176 0.968627)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 14.65,
+              "titleToCard": 14.65,
+              "borderToCard": 12.43,
+              "cardToCanvas": 1.43
+            }
+          },
+          "unknown": {
+            "text": "?\nUnknown",
+            "card": {
+              "color": "rgb(255, 255, 255)",
+              "background": "color(srgb 0.0879253 0.117952 0.15924 / 0.982118)",
+              "border": "color(srgb 0.818182 0.924242 0.959596 / 0.776471)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgba(255, 255, 255, 0.7)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgba(255, 255, 255, 0.7)",
+              "outline": "rgba(255, 255, 255, 0.7)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(255, 255, 255)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 16.78,
+              "titleToCard": 16.78,
+              "borderToCard": 13.6,
+              "cardToCanvas": 1.25
+            }
+          }
+        },
+        "toolbar": {
+          "color": "rgb(255, 255, 255)",
+          "background": "rgb(0, 0, 0)",
+          "border": "rgb(111, 195, 223)",
+          "outline": "rgb(255, 255, 255)",
+          "outlineWidth": "3px",
+          "boxShadow": "none",
+          "opacity": "1",
+          "fontSize": "13.3333px",
+          "fontWeight": "400",
+          "textContrast": 21,
+          "borderContrast": 10.55
+        },
+        "disabled": [
+          {
+            "text": "Show next implementation prompts for selected checkpoint",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(0, 0, 0)",
+              "border": "rgb(111, 195, 223)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Preview and save",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(0, 0, 0)",
+              "border": "rgb(111, 195, 223)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          }
+        ]
+      },
+      "hc-theia-light": {
+        "theme": "monaco-enable-motion underline-links linux hc-light hc-theia-light theia-hcLight",
+        "viewport": [
+          1920,
+          1146
+        ],
+        "canvasBackground": "rgb(255, 255, 255)",
+        "focusToken": "#006bbd",
+        "selectionToken": "",
+        "status": {
+          "green": {
+            "text": "✓\nGreen",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.890902 0.890902 0.890902)",
+              "border": "color(srgb 0.135294 0.193137 0.25098)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 11.34,
+              "titleToCard": 11.34,
+              "borderToCard": 10.35,
+              "cardToCanvas": 1.28
+            }
+          },
+          "active": {
+            "text": "▶\nActive",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.939843 0.913333 0.871529)",
+              "border": "color(srgb 0.417647 0.322549 0.139216)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(137, 85, 3)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(137, 85, 3)",
+              "outline": "rgb(137, 85, 3)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.18,
+              "titleToCard": 12.06,
+              "borderToCard": 6.12,
+              "cardToCanvas": 1.21
+            }
+          },
+          "not-green": {
+            "text": "!\nNot Green",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.962274 0.886314 0.876627)",
+              "border": "color(srgb 0.547059 0.166667 0.168627)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(181, 32, 13)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(181, 32, 13)",
+              "outline": "rgb(181, 32, 13)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 5.3,
+              "titleToCard": 11.66,
+              "borderToCard": 6.75,
+              "cardToCanvas": 1.25
+            }
+          },
+          "waived": {
+            "text": "◇\nOwner-closed for sequencing",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.92149 0.892941 0.943412)",
+              "border": "color(srgb 0.311765 0.204902 0.553922)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(101, 45, 144)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(101, 45, 144)",
+              "outline": "rgb(101, 45, 144)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 7.25,
+              "titleToCard": 11.71,
+              "borderToCard": 7.62,
+              "cardToCanvas": 1.24
+            }
+          },
+          "not-implemented": {
+            "text": "○\nNot implemented",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.924471 0.924471 0.924471)",
+              "border": "color(srgb 0.135294 0.193137 0.25098)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 12.31,
+              "titleToCard": 12.31,
+              "borderToCard": 11.24,
+              "cardToCanvas": 1.18
+            }
+          },
+          "unknown": {
+            "text": "?\nUnknown",
+            "card": {
+              "color": "rgb(41, 41, 41)",
+              "background": "color(srgb 0.964011 0.964011 0.964011 / 0.982118)",
+              "border": "color(srgb 0.127956 0.202451 0.276946 / 0.776471)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            },
+            "status": {
+              "color": "rgba(41, 41, 41, 0.7)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgba(41, 41, 41, 0.7)",
+              "outline": "rgba(41, 41, 41, 0.7)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "12px",
+              "fontWeight": "600"
+            },
+            "title": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgba(0, 0, 0, 0)",
+              "border": "rgb(41, 41, 41)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "14px",
+              "fontWeight": "700"
+            },
+            "ratios": {
+              "statusToCard": 13.46,
+              "titleToCard": 13.46,
+              "borderToCard": 11.8,
+              "cardToCanvas": 1.08
+            }
+          }
+        },
+        "toolbar": {
+          "color": "rgb(41, 41, 41)",
+          "background": "rgb(255, 255, 255)",
+          "border": "rgb(15, 74, 133)",
+          "outline": "rgb(41, 41, 41)",
+          "outlineWidth": "3px",
+          "boxShadow": "none",
+          "opacity": "1",
+          "fontSize": "13.3333px",
+          "fontWeight": "400",
+          "textContrast": 14.55,
+          "borderContrast": 8.98
+        },
+        "disabled": [
+          {
+            "text": "Show next implementation prompts for selected checkpoint",
+            "style": {
+              "color": "rgb(41, 41, 41)",
+              "background": "rgb(255, 255, 255)",
+              "border": "rgb(15, 74, 133)",
+              "outline": "rgb(41, 41, 41)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          },
+          {
+            "text": "Preview and save",
+            "style": {
+              "color": "rgb(255, 255, 255)",
+              "background": "rgb(15, 74, 133)",
+              "border": "rgb(15, 74, 133)",
+              "outline": "rgb(255, 255, 255)",
+              "outlineWidth": "3px",
+              "boxShadow": "none",
+              "opacity": "1",
+              "fontSize": "13.3333px",
+              "fontWeight": "400"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

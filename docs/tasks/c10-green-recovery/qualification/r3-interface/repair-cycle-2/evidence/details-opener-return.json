@@ -1,0 +1,32 @@
+{
+  "browser": {
+    "before": {
+      "panelHidden": true,
+      "focus": "Show Roadmap details on canvas"
+    },
+    "opened": {
+      "panelHidden": false,
+      "focus": "Roadmap checkpoint details"
+    },
+    "closed": {
+      "panelHidden": true,
+      "focus": "Show Roadmap details on canvas",
+      "tag": "BUTTON"
+    }
+  },
+  "native": {
+    "before": {
+      "panelHidden": true,
+      "focus": "Show Roadmap details on canvas"
+    },
+    "opened": {
+      "panelHidden": false,
+      "focus": "Roadmap checkpoint details"
+    },
+    "closed": {
+      "panelHidden": true,
+      "focus": "Show Roadmap details on canvas",
+      "tag": "BUTTON"
+    }
+  }
+}

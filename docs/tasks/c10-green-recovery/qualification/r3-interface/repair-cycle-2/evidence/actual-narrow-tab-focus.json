@@ -1,0 +1,258 @@
+{
+  "browser": {
+    "before": {
+      "viewport": [
+        1100,
+        813
+      ],
+      "stage": {
+        "x": 49,
+        "y": 116,
+        "width": 449,
+        "height": 675,
+        "top": 116,
+        "right": 498,
+        "bottom": 791,
+        "left": 49
+      },
+      "focus": {
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+        "rect": {
+          "x": 79.74609375,
+          "y": 378.07427978515625,
+          "width": 387.50830078125,
+          "height": 150.8515625,
+          "top": 378.07427978515625,
+          "right": 467.25439453125,
+          "bottom": 528.9258422851562,
+          "left": 79.74609375
+        },
+        "focusVisible": true,
+        "intersectsStage": true,
+        "visibleHorizontalEdges": {
+          "left": true,
+          "right": true
+        },
+        "visibleVerticalEdges": {
+          "top": true,
+          "bottom": true
+        }
+      },
+      "selected": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+      "hasFocus": true
+    },
+    "tab": {
+      "viewport": [
+        1100,
+        813
+      ],
+      "stage": {
+        "x": 49,
+        "y": 116,
+        "width": 449,
+        "height": 675,
+        "top": 116,
+        "right": 498,
+        "bottom": 791,
+        "left": 49
+      },
+      "focus": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+        "rect": {
+          "x": 79.74560546875,
+          "y": 400.9095764160156,
+          "width": 387.5087890625,
+          "height": 105.180908203125,
+          "top": 400.9095764160156,
+          "right": 467.25439453125,
+          "bottom": 506.0904846191406,
+          "left": 79.74560546875
+        },
+        "focusVisible": true,
+        "intersectsStage": true,
+        "visibleHorizontalEdges": {
+          "left": true,
+          "right": true
+        },
+        "visibleVerticalEdges": {
+          "top": true,
+          "bottom": true
+        }
+      },
+      "selected": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+      "hasFocus": true
+    },
+    "shiftTab": {
+      "viewport": [
+        1100,
+        813
+      ],
+      "stage": {
+        "x": 49,
+        "y": 116,
+        "width": 449,
+        "height": 675,
+        "top": 116,
+        "right": 498,
+        "bottom": 791,
+        "left": 49
+      },
+      "focus": {
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+        "rect": {
+          "x": 79.74609375,
+          "y": 378.07427978515625,
+          "width": 387.50830078125,
+          "height": 150.8515625,
+          "top": 378.07427978515625,
+          "right": 467.25439453125,
+          "bottom": 528.9258422851562,
+          "left": 79.74609375
+        },
+        "focusVisible": true,
+        "intersectsStage": true,
+        "visibleHorizontalEdges": {
+          "left": true,
+          "right": true
+        },
+        "visibleVerticalEdges": {
+          "top": true,
+          "bottom": true
+        }
+      },
+      "selected": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+      "hasFocus": true
+    }
+  },
+  "native": {
+    "before": {
+      "viewport": [
+        1100,
+        824
+      ],
+      "stage": {
+        "x": 49,
+        "y": 84,
+        "width": 449,
+        "height": 718,
+        "top": 84,
+        "right": 498,
+        "bottom": 802,
+        "left": 49
+      },
+      "focus": {
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+        "rect": {
+          "x": 78.12109375,
+          "y": 366.94195556640625,
+          "width": 390.75732421875,
+          "height": 152.11614990234375,
+          "top": 366.94195556640625,
+          "right": 468.87841796875,
+          "bottom": 519.05810546875,
+          "left": 78.12109375
+        },
+        "focusVisible": true,
+        "intersectsStage": true,
+        "visibleHorizontalEdges": {
+          "left": true,
+          "right": true
+        },
+        "visibleVerticalEdges": {
+          "top": true,
+          "bottom": true
+        }
+      },
+      "selected": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "hasFocus": true
+    },
+    "tab": {
+      "viewport": [
+        1100,
+        824
+      ],
+      "stage": {
+        "x": 49,
+        "y": 84,
+        "width": 449,
+        "height": 718,
+        "top": 84,
+        "right": 498,
+        "bottom": 802,
+        "left": 49
+      },
+      "focus": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "label": "correction: c10-better-planning; Source only · status unknown; Correction belongs to Product Phase 10 — Unified Roadmap & Local-First AI Planning Product Phase 10 — Unified Roadmap & Local-First AI Planning",
+        "rect": {
+          "x": 78.12109375,
+          "y": 389.96868896484375,
+          "width": 390.75732421875,
+          "height": 106.0626220703125,
+          "top": 389.96868896484375,
+          "right": 468.87841796875,
+          "bottom": 496.03131103515625,
+          "left": 78.12109375
+        },
+        "focusVisible": true,
+        "intersectsStage": true,
+        "visibleHorizontalEdges": {
+          "left": true,
+          "right": true
+        },
+        "visibleVerticalEdges": {
+          "top": true,
+          "bottom": true
+        }
+      },
+      "selected": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "hasFocus": true
+    },
+    "shiftTab": {
+      "viewport": [
+        1100,
+        824
+      ],
+      "stage": {
+        "x": 49,
+        "y": 84,
+        "width": 449,
+        "height": 718,
+        "top": 84,
+        "right": 498,
+        "bottom": 802,
+        "left": 49
+      },
+      "focus": {
+        "id": "roadmap:docs/roadmap/mvp-roadmap.md#phase-10",
+        "label": "phase: Product Phase 10 — Unified Roadmap & Local-First AI Planning; Not Green; Chronological phase progression; no release gate implied Product Phase 9 — Developer Continuity / History",
+        "rect": {
+          "x": 78.12109375,
+          "y": 366.94195556640625,
+          "width": 390.75732421875,
+          "height": 152.11614990234375,
+          "top": 366.94195556640625,
+          "right": 468.87841796875,
+          "bottom": 519.05810546875,
+          "left": 78.12109375
+        },
+        "focusVisible": true,
+        "intersectsStage": true,
+        "visibleHorizontalEdges": {
+          "left": true,
+          "right": true
+        },
+        "visibleVerticalEdges": {
+          "top": true,
+          "bottom": true
+        }
+      },
+      "selected": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+      "hasFocus": true
+    }
+  }
+}

@@ -1,0 +1,334 @@
+{
+  "browser": {
+    "dope-dark": {
+      "selected": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+        "shadow": "rgb(255, 122, 26) 0px 0px 0px 2px",
+        "weight": "600",
+        "bg": "color(srgb 0.173183 0.173183 0.176937 / 0.982118)"
+      },
+      "focused": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "tag": "BUTTON",
+        "focusVisible": true,
+        "outlineColor": "color(srgb 0.605294 0.605294 0.605294)",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "bg": "color(srgb 0.173183 0.173183 0.176937 / 0.982118)",
+        "selected": null
+      },
+      "hover": {
+        "hovered": true,
+        "bg": "color(srgb 0.301382 0.240471 0.231353)",
+        "border": "color(srgb 0.796324 0.555882 0.507353)"
+      },
+      "disabled": [
+        {
+          "label": "Expand selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Collapse selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Show next implementation prompts for selected checkpoint",
+          "opacity": "1",
+          "disabled": true
+        }
+      ],
+      "body": "monaco-enable-motion underline-links linux dope-dark vs-dark dark-theia theia-dark"
+    },
+    "light": {
+      "selected": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+        "shadow": "color(srgb 0 0.440471 0.737176) 0px 0px 0px 2px",
+        "weight": "600",
+        "bg": "color(srgb 0.915706 0.915706 0.915706)"
+      },
+      "focused": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "tag": "BUTTON",
+        "focusVisible": true,
+        "outlineColor": "color(srgb 0 0.440471 0.737176)",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "bg": "color(srgb 0.915706 0.915706 0.915706)",
+        "selected": null
+      },
+      "hover": {
+        "hovered": true,
+        "bg": "color(srgb 0.891843 0.800196 0.781569)",
+        "border": "color(srgb 0.681373 0.319608 0.246078)"
+      },
+      "disabled": [
+        {
+          "label": "Expand selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Collapse selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Show next implementation prompts for selected checkpoint",
+          "opacity": "1",
+          "disabled": true
+        }
+      ],
+      "body": "monaco-enable-motion underline-links linux vs light-theia theia-light"
+    },
+    "hc-theia": {
+      "selected": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+        "shadow": "rgb(243, 133, 24) 0px 0px 0px 2px",
+        "weight": "600",
+        "bg": "color(srgb 0.0879253 0.117952 0.15924 / 0.982118)"
+      },
+      "focused": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "tag": "BUTTON",
+        "focusVisible": true,
+        "outlineColor": "rgb(243, 133, 24)",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "bg": "color(srgb 0.0879253 0.117952 0.15924 / 0.982118)",
+        "selected": null
+      },
+      "hover": {
+        "hovered": true,
+        "bg": "color(srgb 0.219922 0.164118 0.182667)",
+        "border": "color(srgb 0.826471 0.588235 0.55098)"
+      },
+      "disabled": [
+        {
+          "label": "Expand selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Collapse selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Show next implementation prompts for selected checkpoint",
+          "opacity": "1",
+          "disabled": true
+        }
+      ],
+      "body": "monaco-enable-motion underline-links linux hc-black hc-theia theia-hc"
+    },
+    "hc-theia-light": {
+      "selected": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fp0:P1",
+        "shadow": "rgb(0, 107, 189) 0px 0px 0px 2px",
+        "weight": "600",
+        "bg": "color(srgb 0.964011 0.964011 0.964011 / 0.982118)"
+      },
+      "focused": {
+        "id": "task:a53e0c28-eef7-4c0b-8419-e6339f22c58d:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "tag": "BUTTON",
+        "focusVisible": true,
+        "outlineColor": "rgb(0, 107, 189)",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "bg": "color(srgb 0.964011 0.964011 0.964011 / 0.982118)",
+        "selected": null
+      },
+      "hover": {
+        "hovered": true,
+        "bg": "color(srgb 0.944863 0.833843 0.819686)",
+        "border": "color(srgb 0.547059 0.166667 0.168627)"
+      },
+      "disabled": [
+        {
+          "label": "Expand selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Collapse selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Show next implementation prompts for selected checkpoint",
+          "opacity": "1",
+          "disabled": true
+        }
+      ],
+      "body": "monaco-enable-motion underline-links linux hc-light hc-theia-light theia-hcLight"
+    }
+  },
+  "native": {
+    "dope-dark": {
+      "selected": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+        "shadow": "rgb(255, 122, 26) 0px 0px 0px 2px",
+        "weight": "600",
+        "bg": "color(srgb 0.173183 0.173183 0.176937 / 0.982118)"
+      },
+      "focused": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "tag": "BUTTON",
+        "focusVisible": true,
+        "outlineColor": "color(srgb 0.605294 0.605294 0.605294)",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "bg": "color(srgb 0.173183 0.173183 0.176937 / 0.982118)",
+        "selected": null
+      },
+      "hover": {
+        "hovered": true,
+        "bg": "color(srgb 0.301382 0.240471 0.231353)",
+        "border": "color(srgb 0.796324 0.555882 0.507353)"
+      },
+      "disabled": [
+        {
+          "label": "Expand selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Collapse selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Show next implementation prompts for selected checkpoint",
+          "opacity": "1",
+          "disabled": true
+        }
+      ],
+      "body": "monaco-enable-motion underline-links linux dope-dark vs-dark dark-theia theia-dark"
+    },
+    "light": {
+      "selected": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+        "shadow": "color(srgb 0 0.440471 0.737176) 0px 0px 0px 2px",
+        "weight": "600",
+        "bg": "color(srgb 0.915706 0.915706 0.915706)"
+      },
+      "focused": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "tag": "BUTTON",
+        "focusVisible": true,
+        "outlineColor": "color(srgb 0 0.440471 0.737176)",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "bg": "color(srgb 0.915706 0.915706 0.915706)",
+        "selected": null
+      },
+      "hover": {
+        "hovered": true,
+        "bg": "color(srgb 0.891843 0.800196 0.781569)",
+        "border": "color(srgb 0.681373 0.319608 0.246078)"
+      },
+      "disabled": [
+        {
+          "label": "Expand selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Collapse selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Show next implementation prompts for selected checkpoint",
+          "opacity": "1",
+          "disabled": true
+        }
+      ],
+      "body": "monaco-enable-motion underline-links linux vs light-theia theia-light"
+    },
+    "hc-theia": {
+      "selected": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+        "shadow": "rgb(243, 133, 24) 0px 0px 0px 2px",
+        "weight": "600",
+        "bg": "color(srgb 0.0879253 0.117952 0.15924 / 0.982118)"
+      },
+      "focused": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "tag": "BUTTON",
+        "focusVisible": true,
+        "outlineColor": "rgb(243, 133, 24)",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "bg": "color(srgb 0.0879253 0.117952 0.15924 / 0.982118)",
+        "selected": null
+      },
+      "hover": {
+        "hovered": true,
+        "bg": "color(srgb 0.219922 0.164118 0.182667)",
+        "border": "color(srgb 0.826471 0.588235 0.55098)"
+      },
+      "disabled": [
+        {
+          "label": "Expand selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Collapse selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Show next implementation prompts for selected checkpoint",
+          "opacity": "1",
+          "disabled": true
+        }
+      ],
+      "body": "monaco-enable-motion underline-links linux hc-black hc-theia theia-hc"
+    },
+    "hc-theia-light": {
+      "selected": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fp0:P1",
+        "shadow": "rgb(0, 107, 189) 0px 0px 0px 2px",
+        "weight": "600",
+        "bg": "color(srgb 0.964011 0.964011 0.964011 / 0.982118)"
+      },
+      "focused": {
+        "id": "task:a0f1243b-f230-4318-a207-ed7629c6561f:docs%2Ftasks%2Fc10-better-planning:stack:correction",
+        "tag": "BUTTON",
+        "focusVisible": true,
+        "outlineColor": "rgb(0, 107, 189)",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "bg": "color(srgb 0.964011 0.964011 0.964011 / 0.982118)",
+        "selected": null
+      },
+      "hover": {
+        "hovered": true,
+        "bg": "color(srgb 0.944863 0.833843 0.819686)",
+        "border": "color(srgb 0.547059 0.166667 0.168627)"
+      },
+      "disabled": [
+        {
+          "label": "Expand selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Collapse selected Roadmap branch",
+          "opacity": "1",
+          "disabled": true
+        },
+        {
+          "label": "Show next implementation prompts for selected checkpoint",
+          "opacity": "1",
+          "disabled": true
+        }
+      ],
+      "body": "monaco-enable-motion underline-links linux hc-light hc-theia-light theia-hcLight"
+    }
+  }
+}
