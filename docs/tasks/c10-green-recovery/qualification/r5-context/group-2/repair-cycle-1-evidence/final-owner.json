@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+  "projectRoot": "/tmp/dope-r5-c7-repair-1",
+  "revision": 21,
+  "checkpoints": [
+    {
+      "id": "roadmap:docs/roadmap.md#phase-1",
+      "kind": "phase",
+      "title": "Product Phase 1 — Foundation",
+      "objective": "Establish the source and review boundaries.",
+      "order": 0,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap.md",
+        "sha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b",
+        "line": 3,
+        "text": "## Product Phase 1 — Foundation"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap.md",
+          "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+          "line": 3,
+          "text": "Status: **GREEN**",
+          "status": "green",
+          "statusText": "Status: **GREEN**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+      "kind": "milestone",
+      "title": "Milestone Integration Gate",
+      "objective": "Keep Integration Gate blocked until Key Rotation credential rollover has a Green verification record and a named verifier; review that evidence before integrating release components.",
+      "order": 1,
+      "dependencies": [
+        "roadmap:docs/roadmap.md#milestone-key-rotation"
+      ],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap.md",
+        "sha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b",
+        "line": 7,
+        "text": "## Milestone Integration Gate"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap.md",
+          "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+          "line": 7,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap.md#milestone-key-rotation",
+      "kind": "milestone",
+      "title": "Milestone Key Rotation",
+      "objective": "Repair credential rollover and complete verification before cutover.",
+      "order": 2,
+      "dependencies": [],
+      "links": [],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap.md",
+        "sha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b",
+        "line": 11,
+        "text": "## Milestone Key Rotation"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap.md",
+          "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+          "line": 11,
+          "text": "Status: **NOT GREEN**",
+          "status": "not-green",
+          "statusText": "Status: **NOT GREEN**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+      "kind": "milestone",
+      "title": "Milestone Release Candidate",
+      "objective": "Keep the release canary paused until Key Rotation credential rollover verification is Green; record the release verifier and reassess Integration Gate and Release Candidate.",
+      "order": 3,
+      "dependencies": [
+        "roadmap:docs/roadmap.md#milestone-integration-gate"
+      ],
+      "links": [],
+      "status": "active",
+      "readOnly": false,
+      "source": {
+        "path": "docs/roadmap.md",
+        "sha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b",
+        "line": 15,
+        "text": "## Milestone Release Candidate"
+      },
+      "evidence": [
+        {
+          "path": "docs/roadmap.md",
+          "sha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+          "line": 15,
+          "text": "Status: **ACTIVE**",
+          "status": "active",
+          "statusText": "Status: **ACTIVE**"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/tmp/dope-r5-c7-repair-1",
+    "projectId": "332b814a-3c58-4776-a4dc-35cc3ddf64ee",
+    "path": "docs/roadmap.md",
+    "sourceHash": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b",
+    "sections": [
+      {
+        "sectionKey": "phase-1",
+        "checkpointId": "roadmap:docs/roadmap.md#phase-1"
+      },
+      {
+        "sectionKey": "milestone-integration-gate",
+        "checkpointId": "roadmap:docs/roadmap.md#milestone-integration-gate"
+      },
+      {
+        "sectionKey": "milestone-key-rotation",
+        "checkpointId": "roadmap:docs/roadmap.md#milestone-key-rotation"
+      },
+      {
+        "sectionKey": "milestone-release-candidate",
+        "checkpointId": "roadmap:docs/roadmap.md#milestone-release-candidate"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b",
+      "roadmapRevision": 21,
+      "fields": [
+        {
+          "checkpointId": "roadmap:docs/roadmap.md#phase-1",
+          "title": "Product Phase 1 — Foundation",
+          "objective": "Establish the source and review boundaries."
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap.md#milestone-integration-gate",
+          "title": "Milestone Integration Gate",
+          "objective": "Keep Integration Gate blocked until Key Rotation credential rollover has a Green verification record and a named verifier; review that evidence before integrating release components."
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap.md#milestone-key-rotation",
+          "title": "Milestone Key Rotation",
+          "objective": "Repair credential rollover and complete verification before cutover."
+        },
+        {
+          "checkpointId": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "title": "Milestone Release Candidate",
+          "objective": "Keep the release canary paused until Key Rotation credential rollover verification is Green; record the release verifier and reassess Integration Gate and Release Candidate."
+        }
+      ]
+    },
+    "syncState": "synced"
+  }
+}

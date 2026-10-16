@@ -1,0 +1,15 @@
+[
+  {
+    "modelKey": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+    "format": "gguf",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits": 4
+    },
+    "contextLength": 32768,
+    "parallel": 4,
+    "status": "idle",
+    "queued": 0,
+    "path": "lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-GGUF/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf"
+  }
+]

@@ -1,0 +1,894 @@
+{
+  "schemaVersion": 1,
+  "scope": "R5 Group 2 C7 targeted repair, disposable saved Chat",
+  "productCommit": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+  "chatSettings": {
+    "schemaVersion": 1,
+    "modelPolicy": {
+      "type": "exact",
+      "model": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      }
+    },
+    "context": {
+      "maxInputTokens": 25000,
+      "reservedOutputTokens": 1024,
+      "history": "recent",
+      "savedChatSearch": false,
+      "allowedSources": [
+        "roadmap-checkpoint",
+        "file"
+      ]
+    }
+  },
+  "notes": [
+    "Turns 1–5 ran before the final browser bundle rebuild. Their bundle SHA was not captured; they are continuity observations, not final-bundle repair proof.",
+    "Turn 9 was interrupted by the task controller while the provider request was in flight; it was saved as cancelled, not graded as an incorrect model answer or a Dope browser crash.",
+    "Provider request counts and retry totals for turns 1–5 were not instrumented. HTTP header response time is not provider first delta.",
+    "The rev-9 owner SHA was deterministically reconstructed from the immutable Group 2 final-owner fixture using the same projectRoot substitution and JSON serialization as the disposable fixture setup; its f6ca38 prefix matches the initial observed hash."
+  ],
+  "attempts": [
+    {
+      "turn": 1,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "pre-final-rebuild",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": null,
+      "frontendBundleSha256": null,
+      "ownerRevisionAtStart": 9,
+      "sourceAtStart": {
+        "ownerSha256": "f6ca38cd455e3773d2c3e8daab3d2688a2bb9f51da94fc697000268aefb1ed79",
+        "linkedMarkdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "f6ca38cd455e3773d2c3e8daab3d2688a2bb9f51da94fc697000268aefb1ed79",
+        "linkedMarkdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T19:37:58.391Z",
+      "finishedAt": "2026-10-16T19:38:39.088Z",
+      "endToEndMs": 40697,
+      "userPrompt": "Read the selected Release Candidate checkpoint and attached complete planning brief. State the current Roadmap owner revision, current planning-brief decision revision, complete relevant dependency chain, each relevant status, actual Not Green blocker, current canary decision, and next safe action. Cite current source evidence. Do not propose an edit; return a no-action answer.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 9,
+          "includedBytes": 1425,
+          "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+          "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+        },
+        {
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"The current Roadmap owner revision is 9. The current planning-brief decision revision is 4. The relevant dependency chain includes: Milestone Release Candidate depends on Milestone Integration Gate, which in turn depends on Milestone Key Rotation. The status of Milestone Release Candidate is active. The actual Not Green blocker is Key Rotation due to failed credential rollover verification. The current canary decision is blocked. The next safe action is to repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": null,
+      "providerMeter": null,
+      "providerFirstDeltaMs": null,
+      "retryCount": null,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 2,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "pre-final-rebuild",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": null,
+      "frontendBundleSha256": null,
+      "ownerRevisionAtStart": 9,
+      "sourceAtStart": {
+        "ownerSha256": "f6ca38cd455e3773d2c3e8daab3d2688a2bb9f51da94fc697000268aefb1ed79",
+        "linkedMarkdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "f6ca38cd455e3773d2c3e8daab3d2688a2bb9f51da94fc697000268aefb1ed79",
+        "linkedMarkdownSha256": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T19:38:52.700Z",
+      "finishedAt": "2026-10-16T19:39:02.057Z",
+      "endToEndMs": 9357,
+      "userPrompt": "For the selected Release Candidate checkpoint, propose changing only its Objective to this exact one-line text: Hold the release canary until Key Rotation credential rollover verification is Green; name the release verifier, then reassess Integration Gate and Release Candidate. Do not change title, status, dependencies, or other checkpoints. Return a pending Objective intent for developer review; do not claim it is already applied.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 9,
+          "includedBytes": 1425,
+          "contentHash": "5471d49ccb3237b3b92d0d3c04754a09a74920b29a456402253f26b9f5d86f38",
+          "sourceHash": "9bace3b3b5eca76bd09650607b21ea945b799c4f3e9c07ffdd30c125bce926a0"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Hold the release canary until Key Rotation credential rollover verification is Green; name the release verifier, then reassess Integration Gate and Release Candidate.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": null,
+      "providerMeter": null,
+      "providerFirstDeltaMs": null,
+      "retryCount": null,
+      "browserCrash": false,
+      "cancellationCause": null,
+      "explicitUiApprovalAfterModelTurn": {
+        "reviewedObjectiveOnly": true,
+        "ownerRevisionAfter": 12,
+        "ownerSha256After": "aa0ec2dee8112af35c03efb9d024cfe4d5b5cbd1873cf1f45a6e8cc3919d92db",
+        "linkedMarkdownSha256After": "b6df7ba712ab9487ebb49902f81783a636bcf94d130d8ab815f73b48a033e766"
+      }
+    },
+    {
+      "turn": 3,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "pre-final-rebuild",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": null,
+      "frontendBundleSha256": null,
+      "ownerRevisionAtStart": 12,
+      "sourceAtStart": {
+        "ownerSha256": "aa0ec2dee8112af35c03efb9d024cfe4d5b5cbd1873cf1f45a6e8cc3919d92db",
+        "linkedMarkdownSha256": "b6df7ba712ab9487ebb49902f81783a636bcf94d130d8ab815f73b48a033e766"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "aa0ec2dee8112af35c03efb9d024cfe4d5b5cbd1873cf1f45a6e8cc3919d92db",
+        "linkedMarkdownSha256": "b6df7ba712ab9487ebb49902f81783a636bcf94d130d8ab815f73b48a033e766"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T19:39:41.633Z",
+      "finishedAt": "2026-10-16T19:39:51.488Z",
+      "endToEndMs": 9855,
+      "userPrompt": "Read the current selected Release Candidate checkpoint. State the current Roadmap owner revision and exact current Objective. Do not propose an edit; return no-action.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 12,
+          "includedBytes": 1453,
+          "contentHash": "1174bfb0162089096ccfc835b474ece5543ff6abf724ecc986a1fe45739ab109",
+          "sourceHash": "b6df7ba712ab9487ebb49902f81783a636bcf94d130d8ab815f73b48a033e766"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 12. Current Objective is \\\"Hold the release canary until Key Rotation credential rollover verification is Green; name the release verifier, then reassess Integration Gate and Release Candidate.\\\"\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": null,
+      "providerMeter": null,
+      "providerFirstDeltaMs": null,
+      "retryCount": null,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 4,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "pre-final-rebuild",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": null,
+      "frontendBundleSha256": null,
+      "ownerRevisionAtStart": 12,
+      "sourceAtStart": {
+        "ownerSha256": "aa0ec2dee8112af35c03efb9d024cfe4d5b5cbd1873cf1f45a6e8cc3919d92db",
+        "linkedMarkdownSha256": "b6df7ba712ab9487ebb49902f81783a636bcf94d130d8ab815f73b48a033e766"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "aa0ec2dee8112af35c03efb9d024cfe4d5b5cbd1873cf1f45a6e8cc3919d92db",
+        "linkedMarkdownSha256": "b6df7ba712ab9487ebb49902f81783a636bcf94d130d8ab815f73b48a033e766"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T19:40:26.332Z",
+      "finishedAt": "2026-10-16T19:40:37.481Z",
+      "endToEndMs": 11149,
+      "userPrompt": "For the selected Integration Gate checkpoint, propose changing only its Objective to this exact one-line text: Verify Key Rotation credential rollover is Green and record the verification owner before integrating release components; keep Integration Gate blocked until that evidence is reviewed. Do not change title, status, dependencies, or any other checkpoint. Return a pending Objective intent for explicit review.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+          "ownerRevision": 12,
+          "includedBytes": 1834,
+          "contentHash": "d8e55da19512fc432370c43fc4bceb5f2bc2e739221f4fe411393076b9eb9d68",
+          "sourceHash": "b6df7ba712ab9487ebb49902f81783a636bcf94d130d8ab815f73b48a033e766"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Verify Key Rotation credential rollover is Green and record the verification owner before integrating release components; keep Integration Gate blocked until that evidence is reviewed.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": null,
+      "providerMeter": null,
+      "providerFirstDeltaMs": null,
+      "retryCount": null,
+      "browserCrash": false,
+      "cancellationCause": null,
+      "explicitUiApprovalAfterModelTurn": {
+        "reviewedObjectiveOnly": true,
+        "ownerRevisionAfter": 15,
+        "ownerSha256After": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256After": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      }
+    },
+    {
+      "turn": 5,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "pre-final-rebuild",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": null,
+      "frontendBundleSha256": null,
+      "ownerRevisionAtStart": 15,
+      "sourceAtStart": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T19:41:55.344Z",
+      "finishedAt": "2026-10-16T19:42:08.489Z",
+      "endToEndMs": 13145,
+      "userPrompt": "Read the current selected Integration Gate checkpoint. State the current Roadmap owner revision, exact current Objective, direct Key Rotation dependency, and current status. Do not propose an edit; return no-action.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+          "ownerRevision": 15,
+          "includedBytes": 1868,
+          "contentHash": "89a6287d3a468b6188793065395551bce9effb41554a7132723ce44acde4ad20",
+          "sourceHash": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 15. Current Objective is \\\"Verify Key Rotation credential rollover is Green and record the verification owner before integrating release components; keep Integration Gate blocked until that evidence is reviewed.\\\" Direct Key Rotation dependency is Milestone Key Rotation. Current status is active.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": null,
+      "providerMeter": null,
+      "providerFirstDeltaMs": null,
+      "retryCount": null,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 6,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 15,
+      "sourceAtStart": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T19:45:23.208Z",
+      "finishedAt": "2026-10-16T19:46:10.905Z",
+      "endToEndMs": 47697,
+      "userPrompt": "Read the selected Release Candidate checkpoint and attached complete planning brief. State the current Roadmap owner revision, current planning-brief decision revision, complete relevant dependency chain, each relevant status, actual Not Green blocker, current canary decision, and next safe action. Cite current source evidence. Do not propose an edit; return a no-action answer.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 15,
+          "includedBytes": 1463,
+          "contentHash": "170420096972424c46b98146480bdd439cdd0ccc0a45ff336b168b12113be31b",
+          "sourceHash": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+        },
+        {
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 15. Current planning-brief decision revision is 4. Complete relevant dependency chain is: Milestone Release Candidate → Milestone Integration Gate → Milestone Key Rotation. Each relevant status: Milestone Release Candidate is active, Milestone Integration Gate is active, Milestone Key Rotation is blocked. Actual Not Green blocker is Key Rotation due to failed credential rollover verification. Current canary decision is blocked. Next safe action is to repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-calls-final-bundle-initial.jsonl",
+        "id": 1
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 7,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 15,
+      "sourceAtStart": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T19:47:01.820Z",
+      "finishedAt": "2026-10-16T19:47:45.485Z",
+      "endToEndMs": 43665,
+      "userPrompt": "Read the selected Release Candidate checkpoint and attached complete planning brief. State the current Roadmap owner revision, current planning-brief decision revision, complete relevant dependency chain, each relevant status, actual Not Green blocker, current canary decision, and next safe action. Cite current source evidence. Do not propose an edit; return a no-action answer.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 15,
+          "includedBytes": 1463,
+          "contentHash": "170420096972424c46b98146480bdd439cdd0ccc0a45ff336b168b12113be31b",
+          "sourceHash": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+        },
+        {
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 15. Current planning-brief decision revision is 4. Complete relevant dependency chain is: Milestone Release Candidate → Milestone Integration Gate → Milestone Key Rotation. Each relevant status: Milestone Release Candidate is active, Milestone Integration Gate is active, Milestone Key Rotation is blocked. Actual Not Green blocker is Key Rotation due to failed credential rollover verification. Current canary decision is blocked. Next safe action is to repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-calls-final-bundle-initial.jsonl",
+        "id": 2
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 8,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 15,
+      "sourceAtStart": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T19:49:44.368Z",
+      "finishedAt": "2026-10-16T19:50:30.764Z",
+      "endToEndMs": 46396,
+      "userPrompt": "Read the selected Release Candidate checkpoint and attached complete planning brief. State the current Roadmap owner revision, current planning-brief decision revision, complete relevant dependency chain, each relevant status, actual Not Green blocker, current canary decision, and next safe action. Cite current source evidence. Do not propose an edit; return a no-action answer.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 15,
+          "includedBytes": 1463,
+          "contentHash": "170420096972424c46b98146480bdd439cdd0ccc0a45ff336b168b12113be31b",
+          "sourceHash": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+        },
+        {
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 15. Current planning-brief decision revision is 4. Complete relevant dependency chain is: Milestone Release Candidate → Milestone Integration Gate → Milestone Key Rotation. Each relevant status: Milestone Release Candidate is active, Milestone Integration Gate is active, Milestone Key Rotation is blocked. Actual Not Green blocker is Key Rotation due to failed credential rollover verification. Current canary decision is blocked. Next safe action is to repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-source-probe-rev15.jsonl",
+        "id": 1
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 9,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 15,
+      "sourceAtStart": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "cancelled",
+      "startedAt": "2026-10-16T19:51:28.543Z",
+      "finishedAt": "2026-10-16T19:51:41.323Z",
+      "endToEndMs": 12780,
+      "userPrompt": "Read the selected Release Candidate checkpoint and attached complete planning brief. State the current Roadmap owner revision, current planning-brief decision revision, complete relevant dependency chain, each relevant status, actual Not Green blocker, current canary decision, and next safe action. Cite current source evidence. Do not propose an edit; return a no-action answer.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 15,
+          "includedBytes": 1463,
+          "contentHash": "170420096972424c46b98146480bdd439cdd0ccc0a45ff336b168b12113be31b",
+          "sourceHash": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+        },
+        {
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": null,
+      "strictJsonAccepted": false,
+      "factualOrIntentCorrect": false,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-source-probe-rev15-v2.jsonl",
+        "id": 1
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": "task turn interruption; backend process ended; saved Chat recorded cancelled and no write"
+    },
+    {
+      "turn": 10,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 15,
+      "sourceAtStart": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "4cebae7e4a7f840b05fd0ae764c1d18b007b83437458388daf0bedff9c762f47",
+        "linkedMarkdownSha256": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T20:03:44.603Z",
+      "finishedAt": "2026-10-16T20:03:54.348Z",
+      "endToEndMs": 9745,
+      "userPrompt": "For the selected Release Candidate checkpoint, propose changing only its Objective to this exact one-line text: Keep the release canary paused until Key Rotation credential rollover verification is Green; record the release verifier and reassess Integration Gate and Release Candidate. Return a roadmap-intent for developer review.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 15,
+          "includedBytes": 1463,
+          "contentHash": "170420096972424c46b98146480bdd439cdd0ccc0a45ff336b168b12113be31b",
+          "sourceHash": "9cda2bab83caa9d61bc5453738f8e5e6879e91b34ab29a37204d7390dcb145ef"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Keep the release canary paused until Key Rotation credential rollover verification is Green; record the release verifier and reassess Integration Gate and Release Candidate.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-source-probe-final-bundle-edits.jsonl",
+        "id": 1
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null,
+      "explicitUiApprovalAfterModelTurn": {
+        "reviewedObjectiveOnly": true,
+        "ownerRevisionAfter": 18,
+        "ownerSha256After": "dfbb9abe020925940f8fcc3997a499cdb3c862a64bf387ad62edfb73a4818aa4",
+        "linkedMarkdownSha256After": "ce189b08e4d9d2f9555e2a964312ecb6316a695dbf03919203495c24a53698bc"
+      }
+    },
+    {
+      "turn": 11,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 18,
+      "sourceAtStart": {
+        "ownerSha256": "dfbb9abe020925940f8fcc3997a499cdb3c862a64bf387ad62edfb73a4818aa4",
+        "linkedMarkdownSha256": "ce189b08e4d9d2f9555e2a964312ecb6316a695dbf03919203495c24a53698bc"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "dfbb9abe020925940f8fcc3997a499cdb3c862a64bf387ad62edfb73a4818aa4",
+        "linkedMarkdownSha256": "ce189b08e4d9d2f9555e2a964312ecb6316a695dbf03919203495c24a53698bc"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T20:04:29.428Z",
+      "finishedAt": "2026-10-16T20:04:39.716Z",
+      "endToEndMs": 10288,
+      "userPrompt": "Read the current selected Release Candidate checkpoint. State the current Roadmap owner revision and exact current Objective. Do not propose any edit.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 18,
+          "includedBytes": 1470,
+          "contentHash": "2d24e72743043a8f366517ff4c89646d4c7552df593f6a8ff6e849215f3eb996",
+          "sourceHash": "ce189b08e4d9d2f9555e2a964312ecb6316a695dbf03919203495c24a53698bc"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 18. Current Objective is \\\"Keep the release canary paused until Key Rotation credential rollover verification is Green; record the release verifier and reassess Integration Gate and Release Candidate.\\\"\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-source-probe-final-bundle-edits.jsonl",
+        "id": 2
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 12,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 18,
+      "sourceAtStart": {
+        "ownerSha256": "dfbb9abe020925940f8fcc3997a499cdb3c862a64bf387ad62edfb73a4818aa4",
+        "linkedMarkdownSha256": "ce189b08e4d9d2f9555e2a964312ecb6316a695dbf03919203495c24a53698bc"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "dfbb9abe020925940f8fcc3997a499cdb3c862a64bf387ad62edfb73a4818aa4",
+        "linkedMarkdownSha256": "ce189b08e4d9d2f9555e2a964312ecb6316a695dbf03919203495c24a53698bc"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T20:05:17.245Z",
+      "finishedAt": "2026-10-16T20:05:27.228Z",
+      "endToEndMs": 9983,
+      "userPrompt": "For the selected Integration Gate checkpoint, propose changing only its Objective to this exact one-line text: Keep Integration Gate blocked until Key Rotation credential rollover has a Green verification record and a named verifier; review that evidence before integrating release components. Return a roadmap-intent for developer review.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+          "ownerRevision": 18,
+          "includedBytes": 1868,
+          "contentHash": "bd4049ee29abdde91ba2cf34406db5e73e4c58c49da66734c18f0c7745550938",
+          "sourceHash": "ce189b08e4d9d2f9555e2a964312ecb6316a695dbf03919203495c24a53698bc"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Keep Integration Gate blocked until Key Rotation credential rollover has a Green verification record and a named verifier; review that evidence before integrating release components.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-source-probe-final-bundle-edits.jsonl",
+        "id": 3
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null,
+      "explicitUiApprovalAfterModelTurn": {
+        "reviewedObjectiveOnly": true,
+        "ownerRevisionAfter": 21,
+        "ownerSha256After": "ee18f086bc4111f511052db7b0729d9b2ae112a4396fa6425b16fe153626dadc",
+        "linkedMarkdownSha256After": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+      }
+    },
+    {
+      "turn": 13,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 21,
+      "sourceAtStart": {
+        "ownerSha256": "ee18f086bc4111f511052db7b0729d9b2ae112a4396fa6425b16fe153626dadc",
+        "linkedMarkdownSha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "ee18f086bc4111f511052db7b0729d9b2ae112a4396fa6425b16fe153626dadc",
+        "linkedMarkdownSha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T20:06:00.005Z",
+      "finishedAt": "2026-10-16T20:06:11.300Z",
+      "endToEndMs": 11295,
+      "userPrompt": "Read the current selected Integration Gate checkpoint. State the current Roadmap owner revision, exact current Objective, direct dependency, and current status. Do not propose an edit.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-integration-gate",
+          "ownerRevision": 21,
+          "includedBytes": 1866,
+          "contentHash": "9cc6122ceb85eaf9e0878917be2b60523ec4b569ab7bea4cb2910ca5e5ef1c14",
+          "sourceHash": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 21. Current Objective is \\\"Keep Integration Gate blocked until Key Rotation credential rollover has a Green verification record and a named verifier; review that evidence before integrating release components.\\\" Direct dependency is Milestone Key Rotation. Current status is active.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-source-probe-final-bundle-edits.jsonl",
+        "id": 4
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 14,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 21,
+      "sourceAtStart": {
+        "ownerSha256": "ee18f086bc4111f511052db7b0729d9b2ae112a4396fa6425b16fe153626dadc",
+        "linkedMarkdownSha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "ee18f086bc4111f511052db7b0729d9b2ae112a4396fa6425b16fe153626dadc",
+        "linkedMarkdownSha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T20:07:46.960Z",
+      "finishedAt": "2026-10-16T20:08:42.455Z",
+      "endToEndMs": 55495,
+      "userPrompt": "Read the selected Release Candidate checkpoint and attached complete planning brief. State the current Roadmap owner revision, current planning-brief decision revision, complete relevant dependency chain, each relevant status, actual Not Green blocker, current canary decision, and next safe action. Cite current source evidence. Do not propose an edit; return a no-action answer.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 21,
+          "includedBytes": 1470,
+          "contentHash": "9a33a33d3a2fc191a6dfa5a7d3b04ca0411e5c7503ca38dfc119510f4a52755a",
+          "sourceHash": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+        },
+        {
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 21. Current planning-brief decision revision is 4. Complete relevant dependency chain is: Milestone Release Candidate → Milestone Integration Gate → Milestone Key Rotation. Each relevant status: Milestone Release Candidate is active, Milestone Integration Gate is active, Milestone Key Rotation is blocked. Actual Not Green blocker is Key Rotation due to failed credential rollover verification. Current canary decision is blocked. Next safe action is to repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-source-probe-rev21.jsonl",
+        "id": 1
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null
+    },
+    {
+      "turn": 15,
+      "savedChatId": "a846856b-fbcf-4238-8492-ac3492f04ca6",
+      "runtimeBundleClass": "final-build",
+      "productSource": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+      "backendBundleSha256": "f29566c0ec7031fbd7fe4152990a46c3cf8ae668fc5589ff16c32c989aab961c",
+      "frontendBundleSha256": "fbc43e4dfb31c38c6b963fa3390497b2f76e3c06af0db852b472539168299695",
+      "ownerRevisionAtStart": 21,
+      "sourceAtStart": {
+        "ownerSha256": "ee18f086bc4111f511052db7b0729d9b2ae112a4396fa6425b16fe153626dadc",
+        "linkedMarkdownSha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+      },
+      "sourceAfterModelTurn": {
+        "ownerSha256": "ee18f086bc4111f511052db7b0729d9b2ae112a4396fa6425b16fe153626dadc",
+        "linkedMarkdownSha256": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+      },
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "status": "complete",
+      "startedAt": "2026-10-16T20:09:14.482Z",
+      "finishedAt": "2026-10-16T20:10:12.163Z",
+      "endToEndMs": 57681,
+      "userPrompt": "Read the selected Release Candidate checkpoint and attached complete planning brief. State the current Roadmap owner revision, current planning-brief decision revision, complete relevant dependency chain, each relevant status, actual Not Green blocker, current canary decision, and next safe action. Cite current source evidence. Do not propose an edit; return a no-action answer.",
+      "sourceRefs": [
+        {
+          "kind": "roadmap-checkpoint",
+          "id": "roadmap:docs/roadmap.md#milestone-release-candidate",
+          "ownerRevision": 21,
+          "includedBytes": 1470,
+          "contentHash": "9a33a33d3a2fc191a6dfa5a7d3b04ca0411e5c7503ca38dfc119510f4a52755a",
+          "sourceHash": "f11e5bd5b45f103c00430fd695c48ee3dd0324240dedcdd9c1f78d52a3a02b1b"
+        },
+        {
+          "kind": "file",
+          "id": "docs/planning-brief.md",
+          "includedBytes": 18548,
+          "contentHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b"
+        },
+        {
+          "kind": "project-orientation",
+          "id": "project:orientation",
+          "includedBytes": 71,
+          "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3"
+        }
+      ],
+      "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Current Roadmap owner revision is 21. Current planning-brief decision revision is 4. Complete relevant dependency chain is: Milestone Release Candidate → Milestone Integration Gate → Milestone Key Rotation. Each relevant status: Milestone Release Candidate is active, Milestone Integration Gate is active, Milestone Key Rotation is blocked. Actual Not Green blocker is Key Rotation due to failed credential rollover verification. Current canary decision is blocked. Next safe action is to repair Key Rotation, obtain a Green verification record, then reassess Integration Gate and Release Candidate.\"}",
+      "strictJsonAccepted": true,
+      "factualOrIntentCorrect": true,
+      "providerRequestCount": 1,
+      "providerMeter": {
+        "file": "provider-source-probe-rev21.jsonl",
+        "id": 2
+      },
+      "providerFirstDeltaMs": null,
+      "retryCount": 0,
+      "browserCrash": false,
+      "cancellationCause": null
+    }
+  ]
+}

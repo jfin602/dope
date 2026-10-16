@@ -1,0 +1,4 @@
+{"id":1,"pid":24935,"at":"2026-10-16T19:45:23.238Z","elapsedMs":0,"event":"request"}
+{"id":1,"pid":24935,"at":"2026-10-16T19:45:23.261Z","elapsedMs":23,"event":"response","status":200}
+{"id":2,"pid":24935,"at":"2026-10-16T19:47:01.849Z","elapsedMs":0,"event":"request"}
+{"id":2,"pid":24935,"at":"2026-10-16T19:47:01.863Z","elapsedMs":14,"event":"response","status":200}
