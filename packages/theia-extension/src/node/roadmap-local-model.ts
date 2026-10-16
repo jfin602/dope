@@ -6,6 +6,7 @@ const SAFETY_RESERVE = 256;
 const MAX_ATTEMPTS = 2;
 const MAX_PLANNING_OUTPUT_TOKENS = 4096;
 const MAX_PLANNING_JSON_BYTES = 32768;
+const EMPTY_NO_ACTION_MESSAGES = new Set(['source-backed answer', 'brief source-backed reason', 'brief reason']);
 
 export class LocalPlanningOutputFailure extends ModelRuntimeFailure {
     constructor(message: string, readonly rawText: string) { super(message, 'invalid-json'); }
@@ -77,7 +78,8 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                 Object.keys(raw).sort().join(',') === 'intent,type,value' && raw.intent === 'set-objective' &&
                 typeof raw.value === 'string' && raw.value.length <= 8192 && !/[\r\n\0]/.test(raw.value);
             const noAction = raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
-                typeof raw.message === 'string' && raw.message.length <= 1000;
+                typeof raw.message === 'string' && raw.message.trim().length > 0 && raw.message.length <= 1000 &&
+                !EMPTY_NO_ACTION_MESSAGES.has(raw.message.trim().toLowerCase());
             if (proposal || intent || noAction) return complete;
         } catch { /* One bounded repair attempt; no mutation or provider switch. */ }
     }

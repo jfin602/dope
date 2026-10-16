@@ -101,7 +101,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     assert.match(sent, /docs\/phase.md/);
     assert.doesNotMatch(sent, /Other 9/);
     assert.match(sentSystem, /a request to read does not make a linked checkpoint unlinked or read-only/);
-    assert.match(sentSystem, /answer the requested facts from the supplied evidence/);
+    assert.match(sentSystem, /put the concrete answer in its message field/);
     assert.match(sentSystem, /distinguish those counters/);
     assert.equal(providerCalls, 1);
     for (const measured of [16384, 32768, 65536]) {

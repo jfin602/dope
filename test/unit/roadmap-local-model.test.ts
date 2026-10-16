@@ -55,6 +55,18 @@ test('non-tools JSON fallback repairs once and never accepts a second malformed 
     assert.equal(calls, 2);
 });
 
+test('a copied no-action placeholder is retried once and never published as an answer', async () => {
+    const placeholder = '{"type":"no-action","message":"source-backed answer"}';
+    let calls = 0;
+    const generate = async function* () { calls++; yield complete(calls === 1 ? placeholder : noAction); };
+    assert.equal((await localPlanningJson(generate, new AbortController().signal, 4096, 'linked')).text, noAction);
+    assert.equal(calls, 2);
+    calls = 0;
+    await assert.rejects(localPlanningJson(async function* () { calls++; yield complete(placeholder); },
+        new AbortController().signal, 4096, 'linked'), /strict JSON/);
+    assert.equal(calls, 2);
+});
+
 test('abort stops retries; strict fallback rejects tool and multiple-action envelopes', async () => {
     const controller = new AbortController();
     let calls = 0;
@@ -101,6 +113,7 @@ test('strict local completion accepts only known, bounded envelopes', async () =
     for (const value of [
         '{"type":"other","message":"looks structured"}',
         '{"type":"no-action","message":{"text":"nested"}}',
+        '{"type":"no-action","message":"  "}',
         '{"type":"no-action","message":"okay","saved":true}',
         '{"type":"roadmap-proposal","projectId":"p","ownerRevision":1,"action":{"type":"shell","command":"pwd"}}',
         '{"type":"no-action","message":"' + 'x'.repeat(1001) + '"}',
