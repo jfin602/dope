@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { localPlanningJson, roadmapLocalBudget, verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
+import { localPlanningJson, requestsRoadmapOwnerRevision, roadmapLocalBudget,
+    verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
@@ -65,6 +66,35 @@ test('a copied no-action placeholder is retried once and never published as an a
     await assert.rejects(localPlanningJson(async function* () { calls++; yield complete(placeholder); },
         new AbortController().signal, 4096, 'linked'), /strict JSON/);
     assert.equal(calls, 2);
+});
+
+test('a requested owner revision must be stated from trusted context before accepting no-action', async () => {
+    assert.equal(requestsRoadmapOwnerRevision('Give the current Roadmap owner revision and decision'), true);
+    assert.equal(requestsRoadmapOwnerRevision('Give the brief decision revision'), false);
+    const incomplete = '{"type":"no-action","message":"Brief decision revision 4; do not start the canary."}';
+    const completeAnswer = '{"type":"no-action","message":"Roadmap owner revision: 9. Brief decision revision: 4; do not start the canary."}';
+    const hints: Array<string | undefined> = [], causes: string[] = [];
+    let calls = 0;
+    const answer = await localPlanningJson(async function* (hint) {
+        hints.push(hint); calls++; yield complete(calls === 1 ? incomplete : completeAnswer);
+    }, new AbortController().signal, 4096, 'linked', true,
+    { requiredOwnerRevision: 9, onRetry: cause => causes.push(cause) });
+    assert.equal(answer.text, completeAnswer);
+    assert.equal(calls, 2);
+    assert.equal(hints[0], undefined);
+    assert.match(hints[1]!, /owner revision 9/);
+    assert.deepEqual(causes, ['missing-owner-revision']);
+    calls = 0;
+    await assert.rejects(localPlanningJson(async function* () { calls++; yield complete(incomplete); },
+        new AbortController().signal, 4096, 'linked', true,
+        { requiredOwnerRevision: 9 }), (error: Error & { failureClass?: string }) => {
+        assert.match(error.message, /omitted the requested current Roadmap owner revision/);
+        assert.equal(error.failureClass, 'incomplete-answer');
+        return true;
+    });
+    assert.equal(calls, 2);
+    assert.equal((await localPlanningJson(async function* () { yield complete(incomplete); },
+        new AbortController().signal, 4096, 'linked')).text, incomplete);
 });
 
 test('abort stops retries; strict fallback rejects tool and multiple-action envelopes', async () => {

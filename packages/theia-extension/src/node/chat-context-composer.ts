@@ -277,6 +277,7 @@ export class ChatContextComposer {
         if (!attached.length) remaining += wrapperTokens;
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];
         if (roadmapAction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
+        const historyMessages: ConversationMessage[] = [];
         if (policy.history === 'recent') {
             const history = chat.messages.filter(item => item.role === 'user' || item.execution.status === 'complete');
             for (const item of history.reverse()) {
@@ -286,9 +287,10 @@ export class ChatContextComposer {
                     break;
                 }
                 remaining -= cost;
-                messages.unshift({ role: item.role, content: item.content });
+                historyMessages.unshift({ role: item.role, content: item.content });
             }
         }
+        messages.push(...historyMessages);
         messages.push({ role: 'user', content: attached.length ? `${content}\n\nProject context:\n${attached.join('\n\n')}` : content });
         return { messages, refs, diagnostics, usedTokens: budgetTokens - remaining, budgetTokens };
     }

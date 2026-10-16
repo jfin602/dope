@@ -9,9 +9,27 @@ const MAX_PLANNING_JSON_BYTES = 32768;
 const EMPTY_NO_ACTION_MESSAGES = new Set(['source-backed answer', 'brief source-backed reason', 'brief reason']);
 
 export class LocalPlanningOutputFailure extends ModelRuntimeFailure {
-    constructor(message: string, readonly rawText: string) { super(message, 'invalid-json'); }
+    constructor(message: string, readonly rawText: string,
+        kind: 'invalid-json' | 'incomplete-answer' = 'invalid-json') { super(message, kind); }
 }
-const fail = (message: string, rawText = ''): never => { throw new LocalPlanningOutputFailure(message, rawText); };
+const fail = (message: string, rawText = '', kind: 'invalid-json' | 'incomplete-answer' = 'invalid-json'): never => {
+    throw new LocalPlanningOutputFailure(message, rawText, kind);
+};
+
+/** Only current, typed Roadmap context may supply this value; Chat history is not authority. */
+export function requestsRoadmapOwnerRevision(question: string): boolean {
+    return /\b(?:roadmap\s+)?owner\s+rev(?:ision)?\b/i.test(question);
+}
+
+function citesOwnerRevision(answer: string, revision: number): boolean {
+    const citations = answer.matchAll(/\b(?:roadmap\s+)?owner\s+rev(?:ision)?\s*(?::|=|is|at)?\s*#?\s*(\d+)\b/gi);
+    return [...citations].some(match => Number(match[1]) === revision);
+}
+
+export interface LocalPlanningAnswerCheck {
+    requiredOwnerRevision?: number;
+    onRetry?: (cause: 'invalid-envelope' | 'missing-owner-revision') => void;
+}
 
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
 export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number,
@@ -44,14 +62,17 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
-    generate: () => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
-    mode: 'linked' | 'unlinked' | 'draft' = 'unlinked', eligibleObjective = true): Promise<T> {
+    generate: (retryInstruction?: string) => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
+    mode: 'linked' | 'unlinked' | 'draft' = 'unlinked', eligibleObjective = true,
+    check: LocalPlanningAnswerCheck = {}): Promise<T> {
     let lastInvalid = '';
+    let retryInstruction: string | undefined;
+    let incompleteOwnerRevision = false;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         let complete: T | undefined;
         let streamedBytes = 0;
-        for await (const event of generate()) {
+        for await (const event of generate(retryInstruction)) {
             if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
             if (event.type === 'delta') {
                 streamedBytes += Buffer.byteLength(event.text, 'utf8');
@@ -60,6 +81,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
         }
         if (!complete) throw new LocalPlanningOutputFailure('Local planning stream ended without completion', lastInvalid);
         if (Buffer.byteLength(complete.text, 'utf8') <= maxOutputBytes) lastInvalid = complete.text;
+        incompleteOwnerRevision = false;
         try {
             if (complete.finishReason && !['stop', 'eos', 'end_turn'].includes(complete.finishReason))
                 throw new Error('unfinished');
@@ -80,10 +102,24 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const noAction = raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
                 typeof raw.message === 'string' && raw.message.trim().length > 0 && raw.message.length <= 1000 &&
                 !EMPTY_NO_ACTION_MESSAGES.has(raw.message.trim().toLowerCase());
-            if (proposal || intent || noAction) return complete;
+            if (proposal || intent) return complete;
+            if (noAction) {
+                if (check.requiredOwnerRevision === undefined ||
+                    citesOwnerRevision(raw.message as string, check.requiredOwnerRevision)) return complete;
+                incompleteOwnerRevision = true;
+                retryInstruction = `Previous answer omitted current Roadmap owner revision ${check.requiredOwnerRevision}. Re-answer all requested facts from attached evidence as strict JSON no-action.`;
+            } else {
+                incompleteOwnerRevision = false;
+                retryInstruction = undefined;
+            }
         } catch { /* One bounded repair attempt; no mutation or provider switch. */ }
+        if (attempt + 1 < MAX_ATTEMPTS)
+            check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
     }
-    return fail('Local planning did not return strict JSON after two attempts', lastInvalid);
+    return fail(incompleteOwnerRevision ?
+        'Local planning answer omitted the requested current Roadmap owner revision after two attempts' :
+        'Local planning did not return strict JSON after two attempts', lastInvalid,
+        incompleteOwnerRevision ? 'incomplete-answer' : 'invalid-json');
 }
 
 function validNestedAction(value: unknown, mode: 'linked' | 'unlinked' | 'draft'): boolean {

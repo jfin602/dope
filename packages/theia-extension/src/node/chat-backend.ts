@@ -11,7 +11,8 @@ import { ChatContextComposer } from './chat-context-composer';
 import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
-import { LocalPlanningOutputFailure, localPlanningJson, roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
+import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevision,
+    roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 
@@ -497,7 +498,12 @@ export class ChatBackend implements ChatService {
                 await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
             }
             let sequence = 0;
-            const generate = () => following ? this.routing!.generate({ roleId: 'interactive',
+            const withRetryInstruction = (messages: readonly ConversationMessage[], instruction?: string): readonly ConversationMessage[] => {
+                const sent = instruction ? [{ role: 'system' as const, content: instruction }, ...messages] : messages;
+                if (localRoadmap) verifyRoadmapLocalInput(sent, budget!);
+                return sent;
+            };
+            const generate = (retryInstruction?: string) => following ? this.routing!.generate({ roleId: 'interactive',
                 requestHard: localRoadmap ? { ...requestHard, locality: 'local-only' as const } : requestHard,
                 hostedProjectDataAuthorized: !localRoadmap && request.hostedProjectDataAuthorized === true,
                 allowFallback: !roadmapTurn,
@@ -526,22 +532,25 @@ export class ChatBackend implements ChatService {
                     }
                     preview = { refs: next.refs, diagnostics: next.diagnostics,
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
-                    return { messages: this.withDraft(next.messages, draft), controls, signal: abort.signal,
+                    return { messages: withRetryInstruction(this.withDraft(next.messages, draft), retryInstruction), controls, signal: abort.signal,
                         ...(chat.settings.context.reservedOutputTokens > 0 ?
                         { maxOutputTokens: nextBudget?.output ?? chat.settings.context.reservedOutputTokens } : {}) };
                 } }) : this.models!.generate(selectedModel!,
-                { messages: this.withDraft(composed.messages, draft), controls, signal: abort.signal,
+                { messages: withRetryInstruction(this.withDraft(composed.messages, draft), retryInstruction), controls, signal: abort.signal,
                     ...(chat.settings.context.reservedOutputTokens > 0 ?
                         { maxOutputTokens: budget?.output ?? chat.settings.context.reservedOutputTokens } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
             const events = localRoadmap ? (async function* (backend: ChatBackend) {
-                const guardedGenerate = async function* () {
+                const guardedGenerate = async function* (retryInstruction?: string) {
                     if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!,
                         chat.settings.context.reservedOutputTokens);
-                    yield* generate();
+                    yield* generate(retryInstruction);
                 };
+                const requestedRevision = !draft && requestsRoadmapOwnerRevision(content) ?
+                    preview.refs.find(ref => ref.kind === 'roadmap-checkpoint')?.ownerRevision : undefined;
                 const complete = await localPlanningJson(guardedGenerate, abort.signal, budget!.maxOutputBytes,
-                    localMode, eligibleObjective);
+                    localMode, eligibleObjective, { requiredOwnerRevision: requestedRevision,
+                        onRetry: cause => tracePlanning('retry', key, assistant!.id, cause) });
                 await backend.verifyLoadedCapacity(selectedModel!, budget!,
                     chat.settings.context.reservedOutputTokens);
                 tracePlanning('validated', key, assistant!.id);

@@ -27,7 +27,7 @@ export interface ModelGenerationExecution { output: unknown; usage: ModelGenerat
 /** Adapter-classified, safe failure. Raw provider errors stay inside the adapter. */
 export class ModelRuntimeFailure extends Error {
     constructor(message: string, readonly failureClass: 'transient-transport' | 'transient-upstream' |
-        'cancelled' | 'invalid-json' | 'authentication' | 'nonretryable-provider' |
+        'cancelled' | 'invalid-json' | 'incomplete-answer' | 'authentication' | 'nonretryable-provider' |
         'connection-unavailable' | 'model-unavailable' | 'unsupported-capability') {
         super(message);
     }

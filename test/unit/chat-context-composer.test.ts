@@ -105,6 +105,33 @@ test('context and active history share selected-model budget with explicit omiss
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('current grounding and Roadmap instructions precede saved history in model requests', async () => {
+  const active = chat();
+  active.settings.context.maxInputTokens = 2000;
+  active.settings.context.allowedSources.push('roadmap-checkpoint');
+  active.messages = [
+    { schemaVersion: 1, id: id(), role: 'user', createdAt: active.createdAt,
+      content: 'Old question', contextRefs: [] },
+    { schemaVersion: 1, id: id(), role: 'assistant', createdAt: active.createdAt,
+      content: 'Old answer', execution: { schemaVersion: 1, id: id(), status: 'complete',
+        selectedModel: { connectionId: 'local', modelId: 'model' }, startedAt: active.createdAt,
+        finishedAt: active.createdAt } },
+  ];
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository,
+    { read: async () => ({ projectRoot: '/tmp', projectId: 'p', revision: 1,
+      checkpoints: [{ id: 'checkpoint', kind: 'milestone', title: 'Current', objective: 'Current objective',
+        status: 'active', dependencies: [], links: [], evidence: [] }] }) } as never);
+  const result = await composer.compose('/tmp', active, 'Current question',
+    [{ kind: 'roadmap-checkpoint', id: 'checkpoint', projectId: 'p', ownerRevision: 1 }],
+    { conversationalText: true, streaming: true, contextWindowTokens: 4000 },
+    { blocks: [], diagnostics: [] } as never);
+  assert.deepEqual(result.messages.map(message => message.role),
+    ['system', 'system', 'user', 'assistant', 'user']);
+  assert.equal(result.messages[2].content, 'Old question');
+  assert.match(result.messages.at(-1)!.content, /Current question/);
+});
+
 test('loaded context caps preview below Chat policy and omits oversized context', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-loaded-context-'));
   try {

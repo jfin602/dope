@@ -39,6 +39,9 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     const composer = new ChatContextComposer({} as ProjectMindStore, planning, {} as SoftwareMapIndex,
       repository, roadmapStore);
     let providerCalls = 0;
+    let revisionRetryCalls = 0;
+    let revisionRetryMode = false;
+    let retryInstruction = '';
     let sent = '';
     let sentSystem = '';
     let changeAfterComplete: number | undefined;
@@ -53,7 +56,12 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
       assert.ok(Buffer.byteLength(JSON.stringify(request.messages), 'utf8') +
         (request.maxOutputTokens ?? 0) + 512 + 256 <= capabilities.contextWindowTokens);
       if (changeAfterComplete) capabilities.contextWindowTokens = changeAfterComplete;
-      yield { type: 'complete' as const, text: '{"type":"no-action","message":"Done"}', usage: { tokenMeasurement: 'estimated' as const } };
+      const answer = revisionRetryMode ? ++revisionRetryCalls === 2 ?
+        '{"type":"no-action","message":"Current Roadmap owner revision: 3. Phase A is active."}' :
+        '{"type":"no-action","message":"Phase A is active."}' :
+        '{"type":"no-action","message":"Done"}';
+      if (revisionRetryCalls === 2) retryInstruction = request.messages[0]?.content ?? '';
+      yield { type: 'complete' as const, text: answer, usage: { tokenMeasurement: 'estimated' as const } };
     } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer);
     const { projectHandle } = await backend.attach(new URL(`file://${root}`).href);
@@ -104,6 +112,18 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     assert.match(sentSystem, /put the concrete answer in its message field/);
     assert.match(sentSystem, /distinguish those counters/);
     assert.equal(providerCalls, 1);
+    capabilities.contextWindowTokens = 8192;
+    revisionRetryMode = true;
+    const revisionTurn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+      selectedModel: selection, content: 'Give the current Roadmap owner revision and status; no edit.', context });
+    assert.equal(revisionTurn.refs[0].ownerRevision, 3);
+    assert.equal(revisionRetryCalls, 2);
+    assert.match(retryInstruction, /owner revision 3/);
+    const revisionAnswer = (await repository.read(root)).chats[0].messages.at(-1);
+    assert.equal(revisionAnswer?.role, 'assistant');
+    if (revisionAnswer?.role === 'assistant') assert.match(revisionAnswer.content, /owner revision: 3/);
+    revisionRetryMode = false;
+    capabilities.contextWindowTokens = 4096;
     for (const measured of [16384, 32768, 65536]) {
       capabilities.contextWindowTokens = measured;
       const larger = await backend.previewContext({ projectHandle, chatId, selectedModel: selection,
@@ -178,7 +198,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
       content: 'Next', context }), /Stale Roadmap source/);
     await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
       selectedModel: selection, content: 'Next', context }), /Stale Roadmap source/);
-    assert.equal(providerCalls, 6);
+    assert.equal(providerCalls, 8);
     backend.dispose();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
