@@ -54,6 +54,17 @@ test('Theia Markdown path formats documents while escaping model-authored HTML',
     assert.match(html, /&lt;script&gt;/);
 });
 
+test('untrusted Markdown images cannot initiate remote loads before removal', async () => {
+    const markdown = await readFile(new URL('../../packages/theia-extension/src/browser/untrusted-message-markdown.ts', import.meta.url), 'utf8');
+    assert.match(markdownit().render('![private context](https://example.test/pixel?context=private)'),
+        /<img src="https:\/\/example\.test\/pixel\?context=private"/);
+    assert.match(markdown, /policy\.content = "img-src 'self' data: blob:"/);
+    assert.match(markdown, /policy\.httpEquiv = 'Content-Security-Policy'/);
+    assert.ok(markdown.indexOf('blockRemoteMessageImages();') < markdown.indexOf('markdown.render(new MarkdownStringImpl'));
+    assert.match(markdown, /rendered\.querySelectorAll\('img'\)/);
+    assert.match(markdown, /image\.replaceWith\(document\.createTextNode/);
+});
+
 test('conversation surface keeps shell, roles, color and safe Markdown boundaries', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     const markdown = await readFile(new URL('../../packages/theia-extension/src/browser/untrusted-message-markdown.ts', import.meta.url), 'utf8');
