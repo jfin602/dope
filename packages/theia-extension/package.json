@@ -34,11 +34,16 @@
     "@theia/navigator": "1.75.0",
     "@theia/workspace": "1.75.0",
     "@xyflow/react": "12.11.6",
+    "dompurify": "^3.4.13",
+    "markdown-it": "^14.3.0",
+    "markdown-it-emoji": "^3.1.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "@dope/ai": "0.10.16"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/markdown-it-emoji": "^3.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19"
   }

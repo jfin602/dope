@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
 import { planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
 test('only persisted trusted planning activity receives a compact label and honest status', () => {
@@ -43,26 +44,34 @@ test('untrusted Markdown links permit web/mail destinations only', () => {
         assert.equal(safeChatLink(href, base), false, href);
 });
 
-test('Theia Markdown path formats documents while escaping model-authored HTML', async () => {
-    const renderer = await readFile(new URL('../../node_modules/@theia/core/lib/browser/markdown-rendering/markdown-renderer.js', import.meta.url), 'utf8');
-    assert.match(renderer, /markdownit\(\)/);
-    assert.match(renderer, /DOMPurify\.sanitize\(html/);
-    const html = markdownit().render('# Heading\n\n**bold** *italic*\n\n1. one\n2. two\n\n- item\n\n[link](https://example.com) `inline`\n\n```ts\nconst x = 1\n```\n\n> quote\n\n|a|b|\n|-|-|\n|1|2|\n\n<script>alert(1)</script>');
+test('untrusted message renderer retains Markdown formatting while escaping model-authored HTML', () => {
+    const html = renderUntrustedMessageHtml('# Heading\n\n**bold** *italic*\n\n1. one\n2. two\n\n- item\n\n[link](https://example.com) `inline`\n\n```ts\nconst x = 1\n```\n\n> quote\n\n|a|b|\n|-|-|\n|1|2|\n\n<script>alert(1)</script>');
     for (const tag of ['h1', 'strong', 'em', 'ol', 'ul', 'a', 'code', 'pre', 'blockquote', 'table'])
         assert.match(html, new RegExp(`<${tag}\\b`), tag);
     assert.doesNotMatch(html, /<script>/);
     assert.match(html, /&lt;script&gt;/);
 });
 
-test('untrusted Markdown images cannot initiate remote loads before removal', async () => {
+test('untrusted Markdown omits image tokens before DOM creation without a document-wide policy', async () => {
     const markdown = await readFile(new URL('../../packages/theia-extension/src/browser/untrusted-message-markdown.ts', import.meta.url), 'utf8');
     assert.match(markdownit().render('![private context](https://example.test/pixel?context=private)'),
         /<img src="https:\/\/example\.test\/pixel\?context=private"/);
-    assert.match(markdown, /policy\.content = "img-src 'self' data: blob:"/);
-    assert.match(markdown, /policy\.httpEquiv = 'Content-Security-Policy'/);
-    assert.ok(markdown.indexOf('blockRemoteMessageImages();') < markdown.indexOf('markdown.render(new MarkdownStringImpl'));
-    assert.match(markdown, /rendered\.querySelectorAll\('img'\)/);
-    assert.match(markdown, /image\.replaceWith\(document\.createTextNode/);
+    for (const input of [
+        '![private context](https://example.test/pixel?context=private)',
+        '[![nested](https://example.test/nested)](https://example.test/destination)',
+        '![reference][remote]\n\n[remote]: https://example.test/reference',
+        '<img src="https://example.test/raw">'
+    ]) {
+        const html = renderUntrustedMessageHtml(input);
+        assert.doesNotMatch(html, /<(?:img|picture|source)\b/i);
+    }
+    assert.match(renderUntrustedMessageHtml('<img src="https://example.test/raw">'), /&lt;img src=&quot;/);
+    assert.match(renderUntrustedMessageHtml('**bold** and [link](https://example.test/page)'),
+        /<strong>bold<\/strong> and <a href="https:\/\/example\.test\/page">link<\/a>/);
+    assert.match(markdown, /DOMPurify\.sanitize\(renderUntrustedMessageHtml\(text\)/);
+    assert.match(markdown, /RETURN_DOM_FRAGMENT: true/);
+    assert.match(markdown, /FORBID_TAGS: \['img'/);
+    assert.doesNotMatch(markdown, /Content-Security-Policy|document\.head\.append/);
 });
 
 test('conversation surface keeps shell, roles, color and safe Markdown boundaries', async () => {
@@ -83,7 +92,7 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(widget, /type: 'set-color', chatId, color: value/);
     assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, body\)/);
     assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, state\.stream\.content\)/);
-    assert.match(markdown, /markdown\.render\(new MarkdownStringImpl\(text,\s*\{ supportHtml: false, isTrusted: false \}\)\)\.element/);
+    assert.match(markdown, /messageMarkdown\.renderer\.rules\.image =/);
     assert.match(markdown, /safeChatLink\(link\.getAttribute\('href'\)!, document\.baseURI\)/);
     assert.match(markdown, /link\.removeAttribute\('href'\)/);
     assert.match(markdown, /link\.setAttribute\('rel', 'noopener noreferrer'\)/);

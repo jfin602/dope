@@ -26,6 +26,8 @@ test('Work reads every saved page from the beginning, including truncation state
         async listTasks() { return []; }, async listRuns() { return []; },
         async readRun() { return { id: 'run', taskId: 'task', status: 'completed' }; },
         async readTask() { return undefined; },
+        async readSteering() { return undefined; }, async listActions() { return []; },
+        async readMapImpact() { return undefined; },
         async readTranscript(_handle: string, _runId: string, cursor: number) {
             cursors.push(cursor);
             return { state: 'recorded', entries: [{ kind: 'message', sequence: cursor + 1,
@@ -36,10 +38,42 @@ test('Work reads every saved page from the beginning, including truncation state
     const controller = new WorkSelectionController(runtime, () => {});
     await controller.attach('file:///project');
     await controller.select({ kind: 'run', id: 'run' });
+    assert.equal(controller.message, '');
     assert.equal(controller.transcript.length, 31);
     assert.equal(controller.transcript[0].kind, 'message');
-    assert.deepEqual([cursors[0], cursors.at(-1)], [0, 30]);
+    assert.deepEqual(cursors, Array.from({ length: 31 }, (_, index) => index));
+    assert.equal(controller.transcript.at(-1)?.kind, 'message');
+    assert.equal((controller.transcript.at(-1) as { text: string }).text, 'message 31');
+    assert.equal(controller.transcriptState, 'recorded');
     assert.equal(controller.transcriptIncomplete, true);
+});
+
+test('a late transcript page cannot repopulate a cleared Work selection', async () => {
+    let began!: () => void;
+    let finish!: (page: unknown) => void;
+    const reading = new Promise<void>(resolve => { began = resolve; });
+    const page = new Promise<unknown>(resolve => { finish = resolve; });
+    const runtime = {
+        async attach() { return { projectHandle: 'handle' }; },
+        async listTaskStacks() { return []; }, async listSequences() { return []; },
+        async listTasks() { return []; }, async listRuns() { return []; },
+        async readRun() { return { id: 'run', taskId: 'task', status: 'completed' }; },
+        async readTask() { return undefined; },
+        async readSteering() { return undefined; }, async listActions() { return []; },
+        async readMapImpact() { return undefined; },
+        readTranscript() { began(); return page; }
+    } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    await controller.attach('file:///project');
+    const selecting = controller.select({ kind: 'run', id: 'run' });
+    await reading;
+    await controller.select(undefined);
+    finish({ state: 'recorded', entries: [{ kind: 'message', text: 'stale', sequence: 1 }],
+        nextSequence: 1, hasMore: false, incomplete: false });
+    await selecting;
+    assert.equal(controller.selectedRun, undefined);
+    assert.deepEqual(controller.transcript, []);
+    assert.equal(controller.message, '');
 });
 
 test('Work keeps untrusted Markdown sanitized, commands collapsed and follow independent', async () => {
@@ -47,7 +81,8 @@ test('Work keeps untrusted Markdown sanitized, commands collapsed and follow ind
     const markdown = await readFile(new URL('../../packages/theia-extension/src/browser/untrusted-message-markdown.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, entry\.text\)/);
-    assert.match(markdown, /new MarkdownStringImpl\(text,\s*\{ supportHtml: false, isTrusted: false \}\)/);
+    assert.match(markdown, /messageMarkdown\.renderer\.rules\.image =/);
+    assert.match(markdown, /DOMPurify\.sanitize\(renderUntrustedMessageHtml\(text\)/);
     assert.match(markdown, /safeChatLink\(link\.getAttribute\('href'\)!/);
     assert.match(widget, /transcript\.className = 'dope-chat-transcript dope-work-transcript'/);
     assert.match(widget, /article\.className = 'dope-chat-message dope-chat-message-assistant dope-work-message'/);

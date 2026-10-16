@@ -1,28 +1,30 @@
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
-import { MarkdownStringImpl } from '@theia/core/lib/common/markdown-rendering/markdown-string';
+import markdownit = require('markdown-it');
+import emoji = require('markdown-it-emoji');
+import DOMPurify = require('dompurify');
 import { safeChatLink } from './chat-panel-presentation';
 
-const mediaPolicyId = 'dope-untrusted-message-media-policy';
+const messageMarkdown = markdownit({ html: false, linkify: false }).use(emoji.full);
+messageMarkdown.renderer.rules.image = (tokens, index) => {
+    const alt = tokens[index].content;
+    return messageMarkdown.utils.escapeHtml(alt ? `[Image omitted: ${alt}]` : '[Image omitted]');
+};
 
-function blockRemoteMessageImages(): void {
-    if (document.getElementById(mediaPolicyId)) return;
-    // Theia's Markdown renderer parses HTML before returning the detached
-    // element. A remote image may start loading before it can be removed below.
-    const policy = document.createElement('meta');
-    policy.id = mediaPolicyId;
-    policy.httpEquiv = 'Content-Security-Policy';
-    policy.content = "img-src 'self' data: blob:";
-    document.head.append(policy);
+/** Image tokens become text before HTML parsing can create an image request. */
+export function renderUntrustedMessageHtml(text: string): string {
+    return messageMarkdown.render(text);
 }
 
 /** Shared presentation boundary for untrusted Chat and AgentRun prose. */
-export function renderUntrustedMessageMarkdown(markdown: MarkdownRenderer, text: string): HTMLElement {
-    blockRemoteMessageImages();
-    const rendered = markdown.render(new MarkdownStringImpl(text,
-        { supportHtml: false, isTrusted: false })).element;
-    for (const image of rendered.querySelectorAll('img')) {
-        image.replaceWith(document.createTextNode(image.alt ? `[Image omitted: ${image.alt}]` : '[Image omitted]'));
-    }
+export function renderUntrustedMessageMarkdown(_markdown: MarkdownRenderer, text: string): HTMLElement {
+    // Theia's renderer creates <img> during its own HTML parse, before callers
+    // can remove it. Keep the service argument for existing widget bindings.
+    const rendered = document.createElement('div');
+    rendered.append(DOMPurify.sanitize(renderUntrustedMessageHtml(text), {
+        RETURN_DOM_FRAGMENT: true,
+        FORBID_TAGS: ['img', 'picture', 'source', 'svg', 'video', 'audio', 'iframe', 'object', 'embed'],
+        FORBID_ATTR: ['src', 'srcset', 'poster']
+    }));
     for (const link of rendered.querySelectorAll('a[href]')) {
         if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
         else link.setAttribute('rel', 'noopener noreferrer');
