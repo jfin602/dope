@@ -1,6 +1,6 @@
 # Phase 11 — Living Usability Issue and Hunt Ledger
 
-**Status:** Seeded from owner complaint and screenshot; **NO Phase 11 hunter executed or issue verified fixed**. **Date:** 2026-10-16.
+**Status:** Seeded from owner complaint and screenshot; [P1–P8 initial known-issue repair prompts](../../tasks/p11/README.md) authored but not run; **NO Phase 11 hunter executed or issue verified fixed**. **Date:** 2026-10-16.
 **Authority:** [Plan](phase-11-plan.md), [Hunter](../../tasks/p11/usability-hunt-manual.md), [matrix](panel-usability-matrix.md), [initial U1–U9 checks](usability-recovery-contract.md).
 
 | Stable ID | Evidence / severity | Task or suspected issue | Current disposition |
