@@ -40,13 +40,15 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
       repository, roadmapStore);
     let providerCalls = 0;
     let sent = '';
+    let sentSystem = '';
     let changeAfterComplete: number | undefined;
     const capabilities = { conversationalText: true, streaming: true, contextWindowTokens: 4096 };
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
       models: [{ id: 'short', label: 'Short', usable: true, capabilities }] }] }),
-    async *generate(_selection: unknown, request: { messages: { content: string }[]; maxOutputTokens?: number }) {
+    async *generate(_selection: unknown, request: { messages: { role: string; content: string }[]; maxOutputTokens?: number }) {
       providerCalls++;
       sent = request.messages.at(-1)?.content ?? '';
+      sentSystem = request.messages.find(message => message.role === 'system')?.content ?? '';
       assert.equal(request.maxOutputTokens, 1024);
       assert.ok(Buffer.byteLength(JSON.stringify(request.messages), 'utf8') +
         (request.maxOutputTokens ?? 0) + 512 + 256 <= capabilities.contextWindowTokens);
@@ -98,6 +100,9 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     assert.match(sent, /Target map/);
     assert.match(sent, /docs\/phase.md/);
     assert.doesNotMatch(sent, /Other 9/);
+    assert.match(sentSystem, /a request to read does not make a linked checkpoint unlinked or read-only/);
+    assert.match(sentSystem, /answer the requested facts from the supplied evidence/);
+    assert.match(sentSystem, /distinguish those counters/);
     assert.equal(providerCalls, 1);
     for (const measured of [16384, 32768, 65536]) {
       capabilities.contextWindowTokens = measured;
@@ -145,9 +150,9 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     await backend.mutate({ projectHandle, expectedRevision: latest.revision,
       operation: { type: 'set-settings', chatId, settings: constrained } });
     await assert.rejects(backend.previewContext({ projectHandle, chatId, selectedModel: selection,
-      content: 'What next?', context }), /does not fit|budget/);
+      content: 'What next?', context }), /do not fit|does not fit|budget/);
     await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-      selectedModel: selection, content: 'What next?', context }), /does not fit|budget/);
+      selectedModel: selection, content: 'What next?', context }), /do not fit|does not fit|budget/);
     latest = await repository.read(root);
     await backend.mutate({ projectHandle, expectedRevision: latest.revision,
       operation: { type: 'set-settings', chatId, settings } });
