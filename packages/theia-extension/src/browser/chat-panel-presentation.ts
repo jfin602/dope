@@ -40,7 +40,11 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                 const objective = activity.kind === 'roadmap-intent' ? value.value : action?.objective;
                 const normalized = typeof objective === 'string' ? objective.replace(/\s+/g, ' ') : undefined;
                 const short = normalized?.slice(0, 120);
-                if (short) change = `set the objective of ${target} to “${short}${(normalized?.length ?? 0) > 120 ? '…' : ''}”`;
+                if (activity.kind === 'roadmap-draft-proposal' && action?.type === 'create-phase')
+                    change = 'create a phase in Roadmap draft';
+                else if (activity.kind === 'roadmap-draft-proposal' && action?.type === 'create-checkpoint')
+                    change = 'create a checkpoint in Roadmap draft';
+                else if (short) change = `set the objective of ${target} to “${short}${(normalized?.length ?? 0) > 120 ? '…' : ''}”`;
                 else if (action && typeof action.type === 'string' &&
                     ['create', 'edit', 'reorder', 'create-phase', 'create-checkpoint', 'edit-phase',
                         'edit-checkpoint', 'reorder-phase', 'reorder-checkpoint'].includes(action.type))

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { planningActivityPresentation, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
 test('only persisted trusted planning activity receives a compact label and honest status', () => {
@@ -21,6 +21,18 @@ test('only persisted trusted planning activity receives a compact label and hone
     assert.equal(planningActivityPresentation({ ...message, planningActivity: {
         schemaVersion: 1, kind: 'error', status: 'failed', refs: [],
     } }) , undefined);
+});
+
+test('trusted greenfield creation is described as creation even when it has an objective', () => {
+    for (const [type, expected] of [['create-phase', 'create a phase'],
+        ['create-checkpoint', 'create a checkpoint']] as const) {
+        const message = { content: JSON.stringify({ type: 'roadmap-draft-proposal', projectId: 'uninitialized',
+            draftRevision: 0, action: { type, title: 'Cache', objective: 'Define a cache boundary' } }),
+        planningActivity: { schemaVersion: 1, kind: 'roadmap-draft-proposal', status: 'pending', refs: [],
+            proposalId: 'proposal' } } as ChatAssistantMessage;
+        assert.match(planningOutcome(message)?.summary ?? '', new RegExp(expected));
+        assert.doesNotMatch(planningOutcome(message)?.summary ?? '', /set the objective/);
+    }
 });
 
 test('untrusted Markdown links permit web/mail destinations only', () => {
