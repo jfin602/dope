@@ -98,6 +98,39 @@ test('competing write at linked publication is preserved and requires source-awa
         await assert.rejects(lstat(`${file}.dope-pending-backup`), /ENOENT/);
     }));
 
+test('atomic external replacement during publication cannot be overwritten', async () => fixture(initial,
+    async (root, store, actions, file) => {
+        const { imported, projectHandle, item } = await setup(root, store, actions);
+        const request = { projectHandle, ownerId: imported.projectId, expectedRevision: imported.revision,
+            sourceHashes: { [item.id]: item.source!.sha256 },
+            actions: [{ type: 'document-edit' as const, id: item.id, objective: 'approved' }] };
+        const preview = await actions.preview(request);
+        const external = initial.replace('Objective: old prose', 'Objective: replaced externally');
+        const replacement = `${file}.external-staged`;
+        await writeFile(replacement, external);
+        const fs = createRequire(import.meta.url)('node:fs/promises') as typeof import('node:fs/promises');
+        const originalRename = fs.rename;
+        let injected = false;
+        (fs as { rename: typeof fs.rename }).rename = async (from, to) => {
+            if (!injected && from === file && typeof to === 'string' && to.endsWith('.dope-pending-backup')) {
+                injected = true;
+                await originalRename(replacement, file);
+            }
+            return originalRename(from, to);
+        };
+        try { await assert.rejects(actions.apply(request, preview.token, true), /source changed during publication/); }
+        finally { (fs as { rename: typeof fs.rename }).rename = originalRename; }
+        assert.equal(injected, true);
+        assert.equal(await readFile(file, 'utf8'), external);
+        const restarted = new RoadmapStore();
+        const recovery = await restarted.previewPendingRecovery(root);
+        assert.equal(recovery.state, 'ready');
+        const settled = await restarted.applyPendingRecovery(root, recovery, true);
+        assert.equal(settled.linkedDocument?.syncState, 'synced');
+        assert.equal(await readFile(file, 'utf8'), external);
+        await assert.rejects(lstat(`${file}.dope-pending-backup`), /ENOENT/);
+    }));
+
 test('restart clears an empty reserved backup after interrupted publication', async () => fixture(initial,
     async (root, store, actions, file) => {
         const { imported, projectHandle, item } = await setup(root, store, actions);
