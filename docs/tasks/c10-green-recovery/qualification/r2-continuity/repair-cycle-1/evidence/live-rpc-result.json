@@ -1,0 +1,579 @@
+{
+  "fixtureRoot": "/tmp/dope-r2-g1-tFefy8",
+  "transport": "Theia Socket.IO /services initialConnection + ChannelMultiplexer /services/dope/roadmap + RpcProxyFactory",
+  "fixtures": {
+    "A": {
+      "root": "/tmp/dope-r2-g1-tFefy8/project-a",
+      "files": {
+        ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+        "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+      },
+      "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+      "revision": 1,
+      "checkpoints": [
+        {
+          "id": "roadmap:ROADMAP.md#phase-1",
+          "status": "not-green",
+          "dependencies": [],
+          "links": []
+        }
+      ],
+      "pendingCreation": null
+    },
+    "B": {
+      "root": "/tmp/dope-r2-g1-tFefy8/project-b",
+      "files": {
+        ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+        "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+      },
+      "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+      "revision": 1,
+      "checkpoints": [
+        {
+          "id": "roadmap:ROADMAP.md#phase-2",
+          "status": "not-green",
+          "dependencies": [],
+          "links": []
+        }
+      ],
+      "pendingCreation": null
+    }
+  },
+  "cases": [
+    {
+      "name": "A handle with B owner preview",
+      "response": "Foreign or disposed planning handle",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "A handle with B owner apply and A token",
+      "response": "Foreign or disposed planning handle",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "B handle with A owner preview",
+      "response": "Foreign or disposed planning handle",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "B handle with A owner apply and A token",
+      "response": "Foreign or disposed planning handle",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "A stale owner revision",
+      "response": "Stale or foreign planning owner revision",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "A foreign source fingerprint",
+      "response": "Stale or unsupported linked Roadmap section",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "A request for B checkpoint",
+      "response": "Stale or unsupported linked Roadmap section",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "A apply without approval",
+      "response": "Planning preview or approval required",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "A handle on separate app connection",
+      "response": "Foreign or disposed planning handle",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "B handle on separate app connection",
+      "response": "Foreign or disposed planning handle",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "disposed A handle preview",
+      "response": "Foreign or disposed planning handle",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    },
+    {
+      "name": "disposed A handle apply",
+      "response": "Foreign or disposed planning handle",
+      "A": {
+        "files": {
+          ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+          "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+        },
+        "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-1",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "B": {
+        "files": {
+          ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+          "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+        },
+        "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+        "revision": 1,
+        "checkpoints": [
+          {
+            "id": "roadmap:ROADMAP.md#phase-2",
+            "status": "not-green",
+            "dependencies": [],
+            "links": []
+          }
+        ],
+        "pendingCreation": null
+      },
+      "unchanged": true
+    }
+  ],
+  "notifications": [],
+  "authorized": {
+    "read": {
+      "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+      "revision": 1,
+      "checkpointId": "roadmap:ROADMAP.md#phase-1"
+    },
+    "A": {
+      "handle": "f9ae243f-e831-4e8c-84d5-bab26191bf19",
+      "ownerId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4"
+    },
+    "B": {
+      "handle": "0627dd07-308e-40d7-8364-00c0eb94bf3b",
+      "ownerId": "a4077f9f-3654-4196-919e-1adb61d86153"
+    },
+    "preview": {
+      "ownerId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+      "revision": 1,
+      "requiresApproval": true,
+      "tokenSha256": "9177c18e47f5f42997f3c27962c4ead8ee6185e8cc25d4ceb191f60e2ac75734"
+    },
+    "nonMutating": true
+  },
+  "approval": {
+    "foreignPreviewReturnedToken": false,
+    "foreignApplyAccepted": false,
+    "disposedHandleUsable": false,
+    "AUndoToken": null,
+    "BUndoToken": null
+  },
+  "final": {
+    "A": {
+      "files": {
+        ".dope/roadmap.json": "8a1536630fd655a17bd7b146e287c95e0a3dc54df52254553fe2f696ffce65d2",
+        "ROADMAP.md": "a257bafe189bc02d07c4551a65b253fa8f51bca2d95ba7f2f210b31a72fa591d"
+      },
+      "projectId": "fab0950d-2d12-40f0-99ee-f7b8185d10e4",
+      "revision": 1,
+      "checkpoints": [
+        {
+          "id": "roadmap:ROADMAP.md#phase-1",
+          "status": "not-green",
+          "dependencies": [],
+          "links": []
+        }
+      ],
+      "pendingCreation": null
+    },
+    "B": {
+      "files": {
+        ".dope/roadmap.json": "dbcebde1b22b029fe3c1eeebb7193d0ff13435f0f6f510942816463a4eb59a44",
+        "ROADMAP.md": "b05adc8f981004c67a1d2e3afc1c02cb94ebbdd1fdde7f957daf1fb9f369de02"
+      },
+      "projectId": "a4077f9f-3654-4196-919e-1adb61d86153",
+      "revision": 1,
+      "checkpoints": [
+        {
+          "id": "roadmap:ROADMAP.md#phase-2",
+          "status": "not-green",
+          "dependencies": [],
+          "links": []
+        }
+      ],
+      "pendingCreation": null
+    }
+  },
+  "finalUnchanged": true
+}

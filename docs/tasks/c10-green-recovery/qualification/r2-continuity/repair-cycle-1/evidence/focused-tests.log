@@ -1,0 +1,30 @@
+✔ preview is write-free; approval, events and next selected read use the committed revision (22.242733ms)
+✔ stale race, foreign handle, invalid type and gate promotion fail without writes (11.328502ms)
+✔ dependency cycle and invalid foreign link roll back an entire owner batch (8.247164ms)
+✔ typed link, approval for unlink, and revision-safe undo conflict (22.610051ms)
+✔ eligible edit undo restores one owner object and detects a changed source (30.155327ms)
+✔ approved mapped patch preserves CRLF, unrelated bytes and evidence status (58.436577ms)
+✔ concurrent source edit and Roadmap revision refuse publication (17.601472ms)
+✔ unsupported field/section and direct owner writes refuse changes (11.454394ms)
+✔ duplicate mapped labels remain unsupported while a structured source is eligible (16.535852ms)
+✔ foreign and symlink source paths fail closed (11.823726ms)
+✔ read-only source section and denied document directory cannot publish a change (23.7599ms)
+✔ detached original owners promote by link only, duplicate refs fail, and unlink restores detached records (38.824747ms)
+✔ changed owners, foreign IDs, unsupported Markdown and wrong handles fail closed (28.54767ms)
+✔ duplicate issue headings are refused without writing either owner (10.108469ms)
+✔ Question and Decision references resolve from Project Mind but stay outside detached Idea pool (30.690451ms)
+✔ revisioned atomic writes publish only committed changed IDs and survive restart (28.715136ms)
+✔ corruption, unsupported version, oversized and symlink state fail closed (16.502693ms)
+✔ stale process lock from a crash is recovered without replacing a live lock (13.0728ms)
+✔ project copy and symlink root cannot adopt another project identity (7.115928ms)
+✔ explicit preview acceptance keeps stable IDs and original Markdown bytes (27.797406ms)
+✔ duplicate source headings cannot create duplicate IDs or editable prose (4.481158ms)
+✔ unsupported source status stays read-only after explicit import (9.585686ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 259.371269

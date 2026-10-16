@@ -1,0 +1,30 @@
+Backend main: entry point loaded [0.024 s since backend process start]
+Backend server: loading modules... [0.033 s since backend process start]
+Backend server: container created [0.262 s since backend process start]
+Backend server: modules loaded [0.709 s since backend process start]
+2026-10-16T02:06:39.627Z core:EnvVariablesServerImpl INFO Configuration directory URI: 'file:///tmp/dope-r2-g1-config'
+Backend server: resolving application [0.723 s since backend process start]
+2026-10-16T02:06:39.718Z core:Stopwatch WARN Backend DefaultMessagingService.initialize took longer than the expected maximum 50 milliseconds: 69.0 ms [0.801 s since backend process start]
+2026-10-16T02:06:39.718Z core:Stopwatch WARN Backend Object.initialize took longer than the expected maximum 50 milliseconds: 67.5 ms [0.801 s since backend process start]
+2026-10-16T02:06:39.718Z plugin-ext:PluginApiContribution INFO Configuring to accept webviews on '^.+\.webview\..+$' hostname.
+2026-10-16T02:06:39.718Z core:Stopwatch WARN Backend PluginLocalizationServer.initialize took longer than the expected maximum 50 milliseconds: 77.7 ms [0.811 s since backend process start]
+2026-10-16T02:06:39.722Z core:BackendApplication INFO configured all backend app contributions
+2026-10-16T02:06:39.725Z core:BackendApplication INFO Theia app listening on http://127.0.0.1:3001.
+2026-10-16T02:06:39.725Z core:SettingServiceImpl INFO Settings file not found at '/tmp/dope-r2-g1-config/backend-settings.json'. Falling back to defaults.
+2026-10-16T02:06:39.727Z core:Stopwatch INFO Backend application startup sequence completed (async work may still be pending): 7.2 ms [0.823 s since backend process start]
+2026-10-16T02:06:39.727Z core:Stopwatch INFO All backend contributions settled: 98.3 ms [0.823 s since backend process start]
+2026-10-16T02:06:39.733Z plugin-ext:LocalPluginDeployerResolver WARN The local plugin referenced by local-dir:/tmp/dope-r2-g1-config/plugins does not exist.
+2026-10-16T02:06:39.734Z plugin-ext:LocalPluginDeployerResolver WARN The local plugin referenced by local-dir:/tmp/dope-r2-g1-config/deployedPlugins does not exist.
+2026-10-16T02:06:39.784Z core:Stopwatch INFO Resolve plugins list: 57.9 ms [0.879 s since backend process start]
+2026-10-16T02:06:39.846Z core:Stopwatch INFO Deploy batch of 91 accepted plugins: 62.1 ms [0.942 s since backend process start]
+2026-10-16T02:06:39.846Z core:Stopwatch INFO Deploy plugins list: 120.3 ms [0.942 s since backend process start]
+2026-10-16T02:06:42.862Z core:WebsocketFrontendConnectionService INFO creating connection for 2807115d-2716-4f14-86fb-85f8f2fd9894
+2026-10-16T02:06:42.931Z core:WebsocketFrontendConnectionService INFO creating connection for b04369e0-16a9-407a-a6a4-698b78919305
+2026-10-16T02:06:42.951Z core:DefaultMessagingService INFO Closing channel on service path '/services/dope/roadmap'.
+2026-10-16T02:06:42.953Z core:WebsocketFrontendConnectionService INFO socket closed
+2026-10-16T02:06:42.953Z core:WebsocketFrontendConnectionService INFO closing connection for b04369e0-16a9-407a-a6a4-698b78919305
+2026-10-16T02:06:42.953Z core:WebsocketFrontendConnectionService INFO socket closed
+2026-10-16T02:06:42.953Z core:WebsocketFrontendConnectionService INFO closing connection for 2807115d-2716-4f14-86fb-85f8f2fd9894
+2026-10-16T02:06:42.953Z core:DefaultMessagingService INFO Closing channel on service path '/services/dope/roadmap'.
+2026-10-16T02:06:56.201Z core:BackendApplication INFO >>> Stopping backend contributions...
+2026-10-16T02:06:56.202Z core:BackendApplication INFO <<< All backend contributions have been stopped.
