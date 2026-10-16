@@ -1,0 +1,800 @@
+{
+  "capturedAt": "2026-10-16T07:30:15-0500",
+  "roots": {
+    "browserBackend": [
+      {
+        "pid": 25051,
+        "ppid": 25038,
+        "uid": 1000,
+        "startTicks": 326147,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:46-0500",
+        "role": "backend"
+      },
+      {
+        "pid": 25065,
+        "ppid": 25051,
+        "uid": 1000,
+        "startTicks": 326206,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:47-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25321,
+        "ppid": 25051,
+        "uid": 1000,
+        "startTicks": 326955,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:54-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25336,
+        "ppid": 25051,
+        "uid": 1000,
+        "startTicks": 326983,
+        "exe": "/usr/bin/bash",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:54-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25346,
+        "ppid": 25321,
+        "uid": 1000,
+        "startTicks": 327056,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:55-0500",
+        "role": "other"
+      },
+      {
+        "pid": 27001,
+        "ppid": 25051,
+        "uid": 1000,
+        "startTicks": 330561,
+        "exe": "/usr/bin/bash",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:25:30-0500",
+        "role": "other"
+      },
+      {
+        "pid": 27617,
+        "ppid": 25051,
+        "uid": 1000,
+        "startTicks": 333251,
+        "exe": "/usr/bin/bash",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:25:57-0500",
+        "role": "other"
+      },
+      {
+        "pid": 27879,
+        "ppid": 25051,
+        "uid": 1000,
+        "startTicks": 334176,
+        "exe": "/usr/bin/bash",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:26:06-0500",
+        "role": "other"
+      },
+      {
+        "pid": 28303,
+        "ppid": 25051,
+        "uid": 1000,
+        "startTicks": 336925,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:26:34-0500",
+        "role": "other"
+      },
+      {
+        "pid": 28315,
+        "ppid": 25051,
+        "uid": 1000,
+        "startTicks": 336942,
+        "exe": "/usr/bin/bash",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:26:34-0500",
+        "role": "other"
+      },
+      {
+        "pid": 28378,
+        "ppid": 28303,
+        "uid": 1000,
+        "startTicks": 337405,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:26:39-0500",
+        "role": "other"
+      }
+    ],
+    "chromeDope": [
+      {
+        "pid": 25080,
+        "ppid": 2468,
+        "uid": 1000,
+        "startTicks": 326751,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:52-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25100,
+        "ppid": 25080,
+        "uid": 1000,
+        "startTicks": 326753,
+        "exe": "/usr/bin/cat",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:52-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25101,
+        "ppid": 25080,
+        "uid": 1000,
+        "startTicks": 326753,
+        "exe": "/usr/bin/cat",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:52-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25111,
+        "ppid": 25080,
+        "uid": 1000,
+        "startTicks": 326781,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:52-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25112,
+        "ppid": 25080,
+        "uid": 1000,
+        "startTicks": 326782,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533060]",
+        "startTime": "2026-10-16T07:24:52-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25114,
+        "ppid": 25112,
+        "uid": 1000,
+        "startTicks": 326787,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533060]",
+        "startTime": "2026-10-16T07:24:52-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25139,
+        "ppid": 25111,
+        "uid": 1000,
+        "startTicks": 326811,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:53-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25142,
+        "ppid": 25080,
+        "uid": 1000,
+        "startTicks": 326812,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:53-0500",
+        "role": "network-service"
+      },
+      {
+        "pid": 25153,
+        "ppid": 25114,
+        "uid": 1000,
+        "startTicks": 326817,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533060]",
+        "startTime": "2026-10-16T07:24:53-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25226,
+        "ppid": 25114,
+        "uid": 1000,
+        "startTicks": 326837,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533060]",
+        "startTime": "2026-10-16T07:24:53-0500",
+        "role": "renderer"
+      },
+      {
+        "pid": 25236,
+        "ppid": 25114,
+        "uid": 1000,
+        "startTicks": 326843,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533060]",
+        "startTime": "2026-10-16T07:24:53-0500",
+        "role": "renderer"
+      },
+      {
+        "pid": 25718,
+        "ppid": 25114,
+        "uid": 1000,
+        "startTicks": 327290,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533060]",
+        "startTime": "2026-10-16T07:24:57-0500",
+        "role": "renderer"
+      }
+    ],
+    "chromeBlankControl": [
+      {
+        "pid": 29326,
+        "ppid": 2468,
+        "uid": 1000,
+        "startTicks": 348474,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:28:29-0500",
+        "role": "other"
+      },
+      {
+        "pid": 29330,
+        "ppid": 29326,
+        "uid": 1000,
+        "startTicks": 348477,
+        "exe": "/usr/bin/cat",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:28:29-0500",
+        "role": "other"
+      },
+      {
+        "pid": 29331,
+        "ppid": 29326,
+        "uid": 1000,
+        "startTicks": 348477,
+        "exe": "/usr/bin/cat",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:28:29-0500",
+        "role": "other"
+      },
+      {
+        "pid": 29357,
+        "ppid": 29326,
+        "uid": 1000,
+        "startTicks": 348487,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:28:29-0500",
+        "role": "other"
+      },
+      {
+        "pid": 29358,
+        "ppid": 29326,
+        "uid": 1000,
+        "startTicks": 348487,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533181]",
+        "startTime": "2026-10-16T07:28:29-0500",
+        "role": "other"
+      },
+      {
+        "pid": 29360,
+        "ppid": 29358,
+        "uid": 1000,
+        "startTicks": 348490,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533181]",
+        "startTime": "2026-10-16T07:28:29-0500",
+        "role": "other"
+      },
+      {
+        "pid": 29388,
+        "ppid": 29357,
+        "uid": 1000,
+        "startTicks": 348509,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:28:30-0500",
+        "role": "other"
+      },
+      {
+        "pid": 29392,
+        "ppid": 29326,
+        "uid": 1000,
+        "startTicks": 348510,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:28:30-0500",
+        "role": "network-service"
+      },
+      {
+        "pid": 29404,
+        "ppid": 29360,
+        "uid": 1000,
+        "startTicks": 348517,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533181]",
+        "startTime": "2026-10-16T07:28:30-0500",
+        "role": "other"
+      },
+      {
+        "pid": 29453,
+        "ppid": 29360,
+        "uid": 1000,
+        "startTicks": 348532,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533181]",
+        "startTime": "2026-10-16T07:28:30-0500",
+        "role": "renderer"
+      },
+      {
+        "pid": 29476,
+        "ppid": 29360,
+        "uid": 1000,
+        "startTicks": 348545,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533181]",
+        "startTime": "2026-10-16T07:28:30-0500",
+        "role": "renderer"
+      },
+      {
+        "pid": 29726,
+        "ppid": 29360,
+        "uid": 1000,
+        "startTicks": 348795,
+        "exe": "/opt/google/chrome/chrome",
+        "netns": "net:[4026533181]",
+        "startTime": "2026-10-16T07:28:32-0500",
+        "role": "renderer"
+      }
+    ],
+    "electronDope": [
+      {
+        "pid": 25402,
+        "ppid": 25395,
+        "uid": 1000,
+        "startTicks": 327148,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:56-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25405,
+        "ppid": 25402,
+        "uid": 1000,
+        "startTicks": 327168,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:56-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25406,
+        "ppid": 25402,
+        "uid": 1000,
+        "startTicks": 327169,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026533124]",
+        "startTime": "2026-10-16T07:24:56-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25408,
+        "ppid": 25406,
+        "uid": 1000,
+        "startTicks": 327172,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026533124]",
+        "startTime": "2026-10-16T07:24:56-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25438,
+        "ppid": 25402,
+        "uid": 1000,
+        "startTicks": 327212,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:57-0500",
+        "role": "backend"
+      },
+      {
+        "pid": 25457,
+        "ppid": 25405,
+        "uid": 1000,
+        "startTicks": 327222,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:57-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25463,
+        "ppid": 25402,
+        "uid": 1000,
+        "startTicks": 327223,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:57-0500",
+        "role": "network-service"
+      },
+      {
+        "pid": 25667,
+        "ppid": 25438,
+        "uid": 1000,
+        "startTicks": 327278,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:57-0500",
+        "role": "other"
+      },
+      {
+        "pid": 25685,
+        "ppid": 25402,
+        "uid": 1000,
+        "startTicks": 327281,
+        "exe": "/home/jfin/dev/dope/node_modules/electron/dist/electron",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:24:57-0500",
+        "role": "renderer"
+      }
+    ],
+    "lmStudio": [
+      {
+        "pid": 22774,
+        "ppid": 1,
+        "uid": 1000,
+        "startTicks": 282707,
+        "exe": "/tmp/.mount_LM-Stugaoobb/lm-studio",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:17:32-0500",
+        "role": "other"
+      },
+      {
+        "pid": 22785,
+        "ppid": 22774,
+        "uid": 1000,
+        "startTicks": 282734,
+        "exe": "/tmp/.mount_LM-Stugaoobb/lm-studio",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:17:32-0500",
+        "role": "other"
+      },
+      {
+        "pid": 22786,
+        "ppid": 22774,
+        "uid": 1000,
+        "startTicks": 282735,
+        "exe": "/tmp/.mount_LM-Stugaoobb/lm-studio",
+        "netns": "net:[4026532936]",
+        "startTime": "2026-10-16T07:17:32-0500",
+        "role": "other"
+      },
+      {
+        "pid": 22788,
+        "ppid": 22786,
+        "uid": 1000,
+        "startTicks": 282742,
+        "exe": "/tmp/.mount_LM-Stugaoobb/lm-studio",
+        "netns": "net:[4026532936]",
+        "startTime": "2026-10-16T07:17:32-0500",
+        "role": "other"
+      },
+      {
+        "pid": 22822,
+        "ppid": 22785,
+        "uid": 1000,
+        "startTicks": 282923,
+        "exe": "/tmp/.mount_LM-Stugaoobb/lm-studio",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:17:34-0500",
+        "role": "other"
+      },
+      {
+        "pid": 22828,
+        "ppid": 22774,
+        "uid": 1000,
+        "startTicks": 282929,
+        "exe": "/tmp/.mount_LM-Stugaoobb/lm-studio",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:17:34-0500",
+        "role": "network-service"
+      },
+      {
+        "pid": 22868,
+        "ppid": 22774,
+        "uid": 1000,
+        "startTicks": 282938,
+        "exe": "/home/jfin/.lmstudio/.internal/utils/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:17:34-0500",
+        "role": "worker"
+      },
+      {
+        "pid": 25943,
+        "ppid": 22774,
+        "uid": 1000,
+        "startTicks": 328448,
+        "exe": "/home/jfin/.lmstudio/extensions/backends/llama.cpp-linux-x86_64-vulkan-avx2-2.59.0/llama-server",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:25:09-0500",
+        "role": "other"
+      }
+    ],
+    "browserBackendRestart": [
+      {
+        "pid": 31379,
+        "ppid": 31351,
+        "uid": 1000,
+        "startTicks": 367405,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:31:39-0500",
+        "role": "backend"
+      },
+      {
+        "pid": 31397,
+        "ppid": 31379,
+        "uid": 1000,
+        "startTicks": 367464,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:31:39-0500",
+        "role": "other"
+      },
+      {
+        "pid": 31425,
+        "ppid": 31379,
+        "uid": 1000,
+        "startTicks": 367758,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:31:42-0500",
+        "role": "other"
+      },
+      {
+        "pid": 31469,
+        "ppid": 31379,
+        "uid": 1000,
+        "startTicks": 367789,
+        "exe": "/usr/bin/bash",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:31:42-0500",
+        "role": "other"
+      },
+      {
+        "pid": 31490,
+        "ppid": 31425,
+        "uid": 1000,
+        "startTicks": 367872,
+        "exe": "/home/jfin/.local/share/fnm/node-versions/v24.21.0/installation/bin/node",
+        "netns": "net:[4026531833]",
+        "startTime": "2026-10-16T07:31:43-0500",
+        "role": "other"
+      }
+    ]
+  },
+  "iab": [
+    {
+      "pid": 2206,
+      "ppid": 1922,
+      "uid": 1000,
+      "startTicks": 2987,
+      "exe": "/usr/lib/chatgpt/ChatGPT",
+      "netns": "net:[4026531833]",
+      "startTime": "2026-10-16T06:30:54-0500"
+    },
+    {
+      "pid": 2258,
+      "ppid": 2206,
+      "uid": 1000,
+      "startTicks": 3123,
+      "exe": "/usr/lib/chatgpt/ChatGPT",
+      "netns": "net:[4026531833]",
+      "startTime": "2026-10-16T06:30:56-0500"
+    },
+    {
+      "pid": 26897,
+      "ppid": 2221,
+      "uid": 1000,
+      "startTicks": 330384,
+      "exe": "/usr/lib/chatgpt/ChatGPT",
+      "netns": "net:[4026532981]",
+      "startTime": "2026-10-16T07:25:28-0500"
+    },
+    {
+      "pid": 26906,
+      "ppid": 2221,
+      "uid": 1000,
+      "startTicks": 330386,
+      "exe": "/usr/lib/chatgpt/ChatGPT",
+      "netns": "net:[4026532981]",
+      "startTime": "2026-10-16T07:25:28-0500"
+    }
+  ],
+  "socketSnapshotAt": "2026-10-16T07:30:21-0500",
+  "sockets": [
+    {
+      "protocol": "udp",
+      "state": "ESTAB",
+      "local": "10.20.19.25:37992",
+      "peer": "142.251.211.14:443",
+      "pids": [
+        29392
+      ]
+    },
+    {
+      "protocol": "udp",
+      "state": "ESTAB",
+      "local": "10.20.19.25:49877",
+      "peer": "142.251.155.119:443",
+      "pids": [
+        29392
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "LISTEN",
+      "local": "127.0.0.1:33813",
+      "peer": "0.0.0.0:*",
+      "pids": [
+        25943
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "LISTEN",
+      "local": "127.0.0.1:1234",
+      "peer": "0.0.0.0:*",
+      "pids": [
+        22774
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "LISTEN",
+      "local": "127.0.0.1:3000",
+      "peer": "0.0.0.0:*",
+      "pids": [
+        25051
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "LISTEN",
+      "local": "127.0.0.1:42647",
+      "peer": "0.0.0.0:*",
+      "pids": [
+        25438
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "LISTEN",
+      "local": "127.0.0.1:41343",
+      "peer": "0.0.0.0:*",
+      "pids": [
+        22774
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "127.0.0.1:3000",
+      "peer": "127.0.0.1:47194",
+      "pids": [
+        25051
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "127.0.0.1:54338",
+      "peer": "127.0.0.1:42647",
+      "pids": [
+        25463
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "127.0.0.1:47194",
+      "peer": "127.0.0.1:3000",
+      "pids": [
+        25142
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "127.0.0.1:49356",
+      "peer": "127.0.0.1:3000",
+      "pids": [
+        2258
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "10.20.19.25:48558",
+      "peer": "34.104.35.123:80",
+      "pids": [
+        29392
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "10.20.19.25:49320",
+      "peer": "34.104.35.123:80",
+      "pids": [
+        25142
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "10.20.19.25:53220",
+      "peer": "172.217.77.95:443",
+      "pids": [
+        25142
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "10.20.19.25:45080",
+      "peer": "172.217.116.4:443",
+      "pids": [
+        25142
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "127.0.0.1:3000",
+      "peer": "127.0.0.1:49356",
+      "pids": [
+        25051
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "127.0.0.1:42647",
+      "peer": "127.0.0.1:54338",
+      "pids": [
+        25438
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "10.20.19.25:50530",
+      "peer": "192.178.232.188:5228",
+      "pids": [
+        25142
+      ]
+    },
+    {
+      "protocol": "tcp",
+      "state": "ESTAB",
+      "local": "10.20.19.25:49798",
+      "peer": "142.250.112.188:5228",
+      "pids": [
+        29392
+      ]
+    }
+  ],
+  "afterRestartCapturedAt": "2026-10-16T07:34:12-0500"
+}

@@ -1,0 +1,1619 @@
+{
+  "capturedAt": "2026-10-16T07:38:07-0500",
+  "monitorPid": 24420,
+  "monitorWindowLocal": "2026-10-16 07:22:42\u201307:37:37 -05:00",
+  "traceFinalSha256": "8ffbcc2b04ffdbbd54c60b0c32accd82130b09b884557e712b5a694dee24e3e6",
+  "traceSizeBytes": 5058670,
+  "traceLineCount": 55982,
+  "groups": {
+    "codexIabShared": {
+      "firstEvent": "07:22:42",
+      "lastEvent": "07:37:35",
+      "mixedExternalEventCount": 1140,
+      "note": "Shared Codex service: external destinations omitted because unrelated app traffic cannot be separated from the Dope tab.",
+      "eventCounts": [
+        {
+          "type": "CONNECT4",
+          "destination": "127.0.0.1:3000",
+          "count": 18
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:3000",
+          "count": 10827
+        }
+      ]
+    },
+    "lmStudio": {
+      "firstEvent": "07:24:10",
+      "lastEvent": "07:29:43",
+      "eventCounts": [
+        {
+          "type": "CONNECT4",
+          "destination": "127.0.0.1:33813",
+          "count": 113
+        },
+        {
+          "type": "SENDMSG_NO_ADDR",
+          "destination": "<unresolved>",
+          "count": 14
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:33630",
+          "count": 9
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:33784",
+          "count": 5
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:33813",
+          "count": 111
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:34576",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:34580",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:34584",
+          "count": 8
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:34596",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:37884",
+          "count": 38
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41650",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41664",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41680",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41690",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41820",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41822",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41834",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41842",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41858",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41866",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41880",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41884",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41886",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41892",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41900",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41916",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41930",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41942",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41956",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41962",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41964",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41972",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41976",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41980",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41994",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42006",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42010",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42022",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42028",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42042",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42050",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42066",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42078",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42090",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42098",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42106",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44112",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44128",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44134",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44144",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44158",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44162",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44166",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44172",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44178",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44182",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44188",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44204",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44210",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44224",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44238",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44246",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44262",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44266",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44270",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44284",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44296",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44302",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44312",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44318",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44330",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44336",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44350",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44366",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44376",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44380",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44396",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44412",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44420",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44436",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44450",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44462",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44478",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44486",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44488",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44494",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:45600",
+          "count": 35
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:46562",
+          "count": 43
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48210",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48226",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48238",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48244",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48260",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48274",
+          "count": 448
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49450",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49458",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49474",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49488",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49494",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49508",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49520",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49524",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49528",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49542",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49548",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49552",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49562",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49566",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49582",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49596",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49608",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49618",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49626",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49628",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49638",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49642",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49648",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49658",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49666",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49672",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49682",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49694",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49702",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49710",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49716",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49722",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49736",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49746",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:50378",
+          "count": 100
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:50384",
+          "count": 129
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:50648",
+          "count": 30
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:52800",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:52810",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:54034",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:54042",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:54054",
+          "count": 8
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:54066",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:54534",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:57896",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:57900",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:57910",
+          "count": 8
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:57924",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:59384",
+          "count": 219
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:60422",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:60430",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:60446",
+          "count": 8
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:60460",
+          "count": 4
+        }
+      ]
+    },
+    "chromeDope": {
+      "firstEvent": "07:24:53",
+      "lastEvent": "07:37:27",
+      "eventCounts": [
+        {
+          "type": "CONNECT4",
+          "destination": "127.0.0.1:3000",
+          "count": 47
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "127.0.0.53:53",
+          "count": 49
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.250.188.174:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.250.189.97:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.250.189.99:443",
+          "count": 2
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.157.119:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.210.110:443",
+          "count": 2
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.210.238:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.211.14:443",
+          "count": 10
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.211.14:80",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.215.142:443",
+          "count": 3
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.4.84:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "172.217.115.4:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "172.217.116.4:443",
+          "count": 3
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "172.217.119.4:443",
+          "count": 3
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "172.217.77.95:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "192.178.232.188:5228",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "34.104.35.123:80",
+          "count": 4
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "50.151.212.212:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "50.151.212.27:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "74.125.129.101:443",
+          "count": 3
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "74.125.129.101:80",
+          "count": 1
+        },
+        {
+          "type": "CONNECT6",
+          "destination": "[2001:4860:4860::8888]:443",
+          "count": 51
+        },
+        {
+          "type": "SENDMSG_NO_ADDR",
+          "destination": "<unresolved>",
+          "count": 1390
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:3000",
+          "count": 2402
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.250.189.97:443",
+          "count": 6
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.250.189.99:443",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.210.110:443",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.211.14:443",
+          "count": 16
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.211.14:80",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.215.142:443",
+          "count": 14
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.4.84:443",
+          "count": 6
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "172.217.115.4:443",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "172.217.116.4:443",
+          "count": 17
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "172.217.119.4:443",
+          "count": 11
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "172.217.77.95:443",
+          "count": 9
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "192.178.232.188:5228",
+          "count": 3
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "34.104.35.123:80",
+          "count": 19
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "74.125.129.101:443",
+          "count": 8
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "74.125.129.101:80",
+          "count": 1
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "127.0.0.53:53",
+          "count": 49
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.250.188.174:443",
+          "count": 10
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.251.157.119:443",
+          "count": 24
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.251.210.238:443",
+          "count": 9
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.251.211.14:443",
+          "count": 127
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.251.215.142:443",
+          "count": 31
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "172.217.116.4:443",
+          "count": 8
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "172.217.119.4:443",
+          "count": 4048
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "50.151.212.212:443",
+          "count": 72
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "50.151.212.27:443",
+          "count": 94
+        }
+      ]
+    },
+    "browserBackend": {
+      "firstEvent": "07:24:54",
+      "lastEvent": "07:31:30",
+      "eventCounts": [
+        {
+          "type": "CONNECT4",
+          "destination": "127.0.0.1:1234",
+          "count": 7
+        },
+        {
+          "type": "SENDMSG_NO_ADDR",
+          "destination": "<unresolved>",
+          "count": 26
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:1234",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:39552",
+          "count": 2
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:39560",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:39568",
+          "count": 2049
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44360",
+          "count": 20
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44376",
+          "count": 71
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44392",
+          "count": 1867
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:47148",
+          "count": 20
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:47150",
+          "count": 67
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:47162",
+          "count": 3
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:47170",
+          "count": 2
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:47178",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:47194",
+          "count": 3416
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49346",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49354",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49356",
+          "count": 2859
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:60188",
+          "count": 3
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:60204",
+          "count": 5
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:60216",
+          "count": 2116
+        }
+      ]
+    },
+    "electronDope": {
+      "firstEvent": "07:24:57",
+      "lastEvent": "07:37:35",
+      "eventCounts": [
+        {
+          "type": "CONNECT4",
+          "destination": "127.0.0.1:42647",
+          "count": 3
+        },
+        {
+          "type": "CONNECT6",
+          "destination": "[2001:4860:4860::8888]:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT6",
+          "destination": "[::1]:42647",
+          "count": 3
+        },
+        {
+          "type": "SENDMSG_NO_ADDR",
+          "destination": "<unresolved>",
+          "count": 196
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:42647",
+          "count": 931
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:54336",
+          "count": 3
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:54338",
+          "count": 1169
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:54354",
+          "count": 2
+        }
+      ]
+    },
+    "chromeBlankControl": {
+      "firstEvent": "07:28:30",
+      "lastEvent": "07:37:12",
+      "eventCounts": [
+        {
+          "type": "CONNECT4",
+          "destination": "127.0.0.53:53",
+          "count": 41
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.250.112.188:5228",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.250.189.97:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.250.189.99:443",
+          "count": 2
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.155.119:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.210.110:443",
+          "count": 2
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.211.14:443",
+          "count": 9
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.211.14:80",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.214.78:443",
+          "count": 3
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.4.84:443",
+          "count": 2
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "142.251.41.78:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "172.217.113.4:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "172.217.116.4:443",
+          "count": 3
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "172.217.119.4:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "172.217.77.95:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "34.104.35.123:80",
+          "count": 3
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "50.151.212.212:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "50.151.212.27:443",
+          "count": 1
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "74.125.129.100:443",
+          "count": 3
+        },
+        {
+          "type": "CONNECT4",
+          "destination": "74.125.129.101:80",
+          "count": 1
+        },
+        {
+          "type": "CONNECT6",
+          "destination": "[2001:4860:4860::8888]:443",
+          "count": 10
+        },
+        {
+          "type": "SENDMSG_NO_ADDR",
+          "destination": "<unresolved>",
+          "count": 1320
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.250.112.188:5228",
+          "count": 3
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.250.189.97:443",
+          "count": 6
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.250.189.99:443",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.210.110:443",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.211.14:443",
+          "count": 15
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.211.14:80",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.214.78:443",
+          "count": 15
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "142.251.4.84:443",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "172.217.113.4:443",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "172.217.116.4:443",
+          "count": 12
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "172.217.119.4:443",
+          "count": 7
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "172.217.77.95:443",
+          "count": 9
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "34.104.35.123:80",
+          "count": 19
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "74.125.129.100:443",
+          "count": 9
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "74.125.129.101:80",
+          "count": 1
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "127.0.0.53:53",
+          "count": 41
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.251.155.119:443",
+          "count": 25
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.251.211.14:443",
+          "count": 129
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.251.214.78:443",
+          "count": 25
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "142.251.41.78:443",
+          "count": 11
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "172.217.116.4:443",
+          "count": 3816
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "50.151.212.212:443",
+          "count": 72
+        },
+        {
+          "type": "UDP_SEND4",
+          "destination": "50.151.212.27:443",
+          "count": 104
+        }
+      ]
+    },
+    "browserBackendRestart": {
+      "firstEvent": "07:31:41",
+      "lastEvent": "07:37:33",
+      "eventCounts": [
+        {
+          "type": "SENDMSG_NO_ADDR",
+          "destination": "<unresolved>",
+          "count": 23
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:33392",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:33788",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:33828",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:34080",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:34956",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:35592",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:36778",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:37552",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:38442",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:38890",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:39006",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:39072",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:39272",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:40034",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:41974",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:43444",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:43762",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:44114",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:45412",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:45620",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:46512",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48652",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48688",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48698",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48710",
+          "count": 4
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48722",
+          "count": 2300
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:48724",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:49778",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:51232",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:51318",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:55392",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:55632",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:55750",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:56284",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:56320",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:56418",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:56634",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:56908",
+          "count": 1
+        },
+        {
+          "type": "TCP_SEND4",
+          "destination": "127.0.0.1:59786",
+          "count": 1
+        }
+      ]
+    }
+  }
+}

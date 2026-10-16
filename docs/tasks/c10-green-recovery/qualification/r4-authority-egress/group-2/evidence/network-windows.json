@@ -1,0 +1,137 @@
+{
+  "generatedAt": "2026-10-16T07:33:45-0500",
+  "windows": {
+    "startup": {
+      "intervalLocal": "07:24:46-07:25:05",
+      "groups": {
+        "codexIabShared": {
+          "externalSocketSendAttempts": 16,
+          "externalConnectAttempts": 2,
+          "destinationlessSendmsgEntries": 18
+        },
+        "chromeDope": {
+          "destinationlessSendmsgEntries": 875,
+          "externalConnectAttempts": 32,
+          "externalSocketSendAttempts": 301,
+          "loopbackBackendSendAttempts": 1791
+        },
+        "browserBackend": {},
+        "electronDope": {
+          "destinationlessSendmsgEntries": 130,
+          "externalConnectAttempts": 1
+        }
+      }
+    },
+    "idle": {
+      "intervalLocal": "07:25:05-07:27:44",
+      "groups": {
+        "codexIabShared": {
+          "externalConnectAttempts": 39,
+          "externalSocketSendAttempts": 253,
+          "destinationlessSendmsgEntries": 768,
+          "loopbackBackendSendAttempts": 8395
+        },
+        "chromeDope": {
+          "destinationlessSendmsgEntries": 464,
+          "externalConnectAttempts": 15,
+          "externalSocketSendAttempts": 4217,
+          "loopbackBackendSendAttempts": 477
+        },
+        "browserBackend": {
+          "destinationlessSendmsgEntries": 26,
+          "loopbackModelSendAttempts": 2
+        },
+        "electronDope": {
+          "destinationlessSendmsgEntries": 4
+        },
+        "lmStudio": {
+          "destinationlessSendmsgEntries": 14
+        }
+      }
+    },
+    "approvedAndControls": {
+      "intervalLocal": "07:27:44-07:29:45",
+      "groups": {
+        "codexIabShared": {
+          "loopbackBackendSendAttempts": 180,
+          "externalConnectAttempts": 24,
+          "externalSocketSendAttempts": 162,
+          "destinationlessSendmsgEntries": 364
+        },
+        "browserBackend": {
+          "loopbackModelSendAttempts": 5
+        },
+        "electronDope": {
+          "destinationlessSendmsgEntries": 20
+        },
+        "chromeDope": {
+          "loopbackBackendSendAttempts": 52,
+          "destinationlessSendmsgEntries": 7,
+          "externalSocketSendAttempts": 18,
+          "externalConnectAttempts": 4
+        },
+        "lmStudio": {},
+        "chromeBlankControl": {
+          "destinationlessSendmsgEntries": 1221,
+          "externalConnectAttempts": 39,
+          "externalSocketSendAttempts": 4226
+        }
+      }
+    },
+    "postActionIdle": {
+      "intervalLocal": "07:29:45-07:31:20",
+      "groups": {
+        "chromeBlankControl": {
+          "externalSocketSendAttempts": 63,
+          "destinationlessSendmsgEntries": 92,
+          "externalConnectAttempts": 5
+        },
+        "electronDope": {
+          "destinationlessSendmsgEntries": 10
+        },
+        "codexIabShared": {
+          "externalSocketSendAttempts": 80,
+          "destinationlessSendmsgEntries": 80,
+          "loopbackBackendSendAttempts": 59,
+          "externalConnectAttempts": 16
+        },
+        "browserBackend": {},
+        "chromeDope": {
+          "loopbackBackendSendAttempts": 41,
+          "externalConnectAttempts": 4,
+          "externalSocketSendAttempts": 19,
+          "destinationlessSendmsgEntries": 2
+        }
+      }
+    },
+    "restart": {
+      "intervalLocal": "07:31:20-07:31:50",
+      "groups": {
+        "electronDope": {
+          "destinationlessSendmsgEntries": 3
+        },
+        "codexIabShared": {
+          "destinationlessSendmsgEntries": 94,
+          "loopbackBackendSendAttempts": 1970,
+          "externalConnectAttempts": 10,
+          "externalSocketSendAttempts": 51
+        },
+        "browserBackend": {},
+        "chromeDope": {
+          "loopbackBackendSendAttempts": 7,
+          "destinationlessSendmsgEntries": 8,
+          "externalConnectAttempts": 4
+        },
+        "chromeBlankControl": {
+          "externalConnectAttempts": 2,
+          "externalSocketSendAttempts": 10,
+          "destinationlessSendmsgEntries": 6
+        },
+        "browserBackendRestart": {
+          "destinationlessSendmsgEntries": 23
+        }
+      }
+    }
+  },
+  "interpretation": "Socket probe entries are attempts; no success/delivery/loss claim. Codex IAB shared process includes unrelated traffic."
+}

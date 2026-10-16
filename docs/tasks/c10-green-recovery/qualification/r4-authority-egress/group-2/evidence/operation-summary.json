@@ -1,0 +1,146 @@
+{
+  "capturedAt": "2026-10-16T07:32:07-0500",
+  "projectRoot": "/tmp/dope-r4-g1-6cnBNP/project-a",
+  "chatId": "d2779b2e-3d40-44dc-98b3-7b43a60aa851",
+  "chatRevision": 21,
+  "chatSettings": {
+    "maxInputTokens": 8192,
+    "reservedOutputTokens": 1024,
+    "modelPolicy": "follow-interactive"
+  },
+  "preOperation": {
+    "ownerRevision": 1,
+    "ownerSha256": "ca61e517c63c12b46fc018b1110c9c7cd4100548321c5b1d0c99a3dbc11b3b7a",
+    "markdownSha256": "decaa7a139047ebe18b7e9eb2e9657597a214b8e1e2bd8a50d681ebe3069cded"
+  },
+  "postOperation": {
+    "ownerRevision": 4,
+    "ownerSha256": "d660742d33113b8dafd9c2b8120724a79930d81c2476c5e090e48f17cde3204a",
+    "markdownSha256": "f9065fd49bf4e8818fdd2c3fd7d4b5314d78c570ca088cbd8e3873a0bdd60cb0",
+    "linkedSourceHash": "f9065fd49bf4e8818fdd2c3fd7d4b5314d78c570ca088cbd8e3873a0bdd60cb0",
+    "statuses": [
+      "not-green",
+      "not-green"
+    ],
+    "objectiveChangedOnlyFor": "roadmap:ROADMAP.md#phase-31"
+  },
+  "turns": [
+    {
+      "executionId": "01577b2e-9eec-4d37-98ea-759794769be8",
+      "startedAt": "2026-10-16T12:27:45.606Z",
+      "finishedAt": "2026-10-16T12:27:52.732Z",
+      "status": "complete",
+      "failure": null,
+      "resolutionSource": "explicit-turn",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "planningKind": "roadmap-intent",
+      "planningStatus": "applied",
+      "appliedRevision": 4,
+      "checkpointRefs": [
+        {
+          "ownerRevision": 1,
+          "sourceHash": "decaa7a139047ebe18b7e9eb2e9657597a214b8e1e2bd8a50d681ebe3069cded",
+          "id": "roadmap:ROADMAP.md#phase-31"
+        }
+      ]
+    },
+    {
+      "executionId": "21d25ce5-ce39-46ad-9027-c686bab941d6",
+      "startedAt": "2026-10-16T12:28:18.358Z",
+      "finishedAt": "2026-10-16T12:28:35.272Z",
+      "status": "failed",
+      "failure": "Local planning did not return strict JSON after two attempts",
+      "resolutionSource": "explicit-turn",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "planningKind": "error",
+      "planningStatus": "failed",
+      "appliedRevision": null,
+      "checkpointRefs": [
+        {
+          "ownerRevision": 4,
+          "sourceHash": "f9065fd49bf4e8818fdd2c3fd7d4b5314d78c570ca088cbd8e3873a0bdd60cb0",
+          "id": "roadmap:ROADMAP.md#phase-31"
+        }
+      ]
+    },
+    {
+      "executionId": "0055da5d-b175-4b8d-b0ee-2a0ed4a471cd",
+      "startedAt": "2026-10-16T12:29:03.672Z",
+      "finishedAt": "2026-10-16T12:29:09.438Z",
+      "status": "complete",
+      "failure": null,
+      "resolutionSource": "explicit-turn",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "planningKind": "no-action",
+      "planningStatus": "no-action",
+      "appliedRevision": null,
+      "checkpointRefs": [
+        {
+          "ownerRevision": 4,
+          "sourceHash": "f9065fd49bf4e8818fdd2c3fd7d4b5314d78c570ca088cbd8e3873a0bdd60cb0",
+          "id": "roadmap:ROADMAP.md#phase-31"
+        }
+      ]
+    },
+    {
+      "executionId": "f2b58f28-52f1-4234-8d6d-7c3cd61fe2ee",
+      "startedAt": "2026-10-16T12:29:40.314Z",
+      "finishedAt": "2026-10-16T12:29:43.608Z",
+      "status": "cancelled",
+      "failure": null,
+      "resolutionSource": "explicit-turn",
+      "selectedModel": {
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "actualModel": {
+        "schemaVersion": 1,
+        "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "providerId": "local",
+        "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      },
+      "planningKind": "cancelled",
+      "planningStatus": "cancelled",
+      "appliedRevision": null,
+      "checkpointRefs": [
+        {
+          "ownerRevision": 4,
+          "sourceHash": "f9065fd49bf4e8818fdd2c3fd7d4b5314d78c570ca088cbd8e3873a0bdd60cb0",
+          "id": "roadmap:ROADMAP.md#phase-31"
+        }
+      ]
+    }
+  ],
+  "tokenUsage": "not persisted in saved Chat"
+}
