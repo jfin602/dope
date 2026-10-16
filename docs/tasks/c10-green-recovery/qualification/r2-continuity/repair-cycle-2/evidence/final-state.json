@@ -1,0 +1,38 @@
+{
+  "productSource": "afe1f7f099d62f44866a64f5d576a41672ac8cf0",
+  "accept": {
+    "root": "/tmp/dope-r2-repair-g2-accept",
+    "files": [
+      ".dope/chats/folders/d7e4b152-5aae-4cec-991f-d90ba5b35ecd.17.3ed413e1-c369-4d2c-b942-9ebf641ec977.json",
+      ".dope/chats/index.json",
+      ".dope/history-focus.json",
+      ".dope/roadmap.json",
+      "ROADMAP.md"
+    ],
+    "ownerExists": true,
+    "markdownExists": true,
+    "agentStateExists": false,
+    "ownerSha256": "83182706031080d3a582858c09cfc52b38b9a7b9a9b6904ff04f5ac2387beccf",
+    "projectId": "4f3076a0-d592-45a1-ad13-37907d7985cf",
+    "revision": 2,
+    "checkpointIds": [
+      "roadmap:ROADMAP.md#phase-1",
+      "roadmap:ROADMAP.md#milestone-local-cache-interface"
+    ],
+    "linkedSourceHash": "4390f4d56d36c52b708c0fd6a9efdc417977ae847b11a425f9ed2beaa07a7783",
+    "linkedSyncState": "synced",
+    "markdownSha256": "4390f4d56d36c52b708c0fd6a9efdc417977ae847b11a425f9ed2beaa07a7783"
+  },
+  "reject": {
+    "root": "/tmp/dope-r2-repair-g2-reject",
+    "files": [
+      ".dope/chats/folders/83e5fe93-db2f-4990-aaf3-8dd2ee703679.11.218aad9d-7298-4ef6-be57-3e135c6289ae.json",
+      ".dope/chats/index.json",
+      ".dope/history-focus.json"
+    ],
+    "ownerExists": false,
+    "markdownExists": false,
+    "agentStateExists": false
+  },
+  "finalQualificationSource": "d4ad098652c613527dc60a044f753f4fd90f9e6c"
+}

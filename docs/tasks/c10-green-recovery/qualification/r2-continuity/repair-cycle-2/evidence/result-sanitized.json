@@ -1,0 +1,404 @@
+{
+  "productSource": "afe1f7f099d62f44866a64f5d576a41672ac8cf0",
+  "model": {
+    "key": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+    "architecture": "qwen3moe",
+    "quantization": {
+      "name": "Q4_K_M",
+      "bits_per_weight": 4
+    },
+    "params_string": "30B-A3B",
+    "format": "gguf",
+    "loaded_instances": [
+      {
+        "id": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+        "config": {
+          "context_length": 32768,
+          "eval_batch_size": 2048,
+          "physical_batch_size": 512,
+          "parallel": 4,
+          "flash_attention": true,
+          "context_checkpoints": 32,
+          "reasoning_budget_message": "",
+          "speculative_draft_mtp": false,
+          "speculative_draft_simple": false,
+          "speculative_draft_model": "",
+          "speculative_draft_max_tokens": 3,
+          "speculative_draft_min_tokens": 0,
+          "speculative_draft_min_continue_probability": 0,
+          "num_experts": 8,
+          "offload_kv_cache_to_gpu": true
+        }
+      }
+    ]
+  },
+  "previousFailureBoundary": [
+    "[2026-10-15 12:37:15][INFO][qwen3-coder-30b-a3b-instruct@q4_k_m] Running chat completion on conversation with 3 messages.",
+    "[2026-10-15 12:37:40][INFO][qwen3-coder-30b-a3b-instruct@q4_k_m] Finished streaming response",
+    "[2026-10-15 12:37:40][INFO][qwen3-coder-30b-a3b-instruct@q4_k_m] Running chat completion on conversation with 3 messages.",
+    "[2026-10-15 12:37:40][ERROR][qwen3-coder-30b-a3b-instruct@q4_k_m] Engine protocol predict request failed: fetch failed. Error Data: n/a, Additional Data: n/a"
+  ],
+  "accept": {
+    "root": "/tmp/dope-r2-repair-g2-accept",
+    "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+    "chatRevision": 17,
+    "ownerProjectId": "4f3076a0-d592-45a1-ad13-37907d7985cf",
+    "ownerRevision": 2,
+    "linkedPath": "ROADMAP.md",
+    "linkedSourceHash": "4390f4d56d36c52b708c0fd6a9efdc417977ae847b11a425f9ed2beaa07a7783",
+    "markdownSha256": "4390f4d56d36c52b708c0fd6a9efdc417977ae847b11a425f9ed2beaa07a7783",
+    "ownerSha256": "83182706031080d3a582858c09cfc52b38b9a7b9a9b6904ff04f5ac2387beccf",
+    "checkpointIds": [
+      "roadmap:ROADMAP.md#phase-1",
+      "roadmap:ROADMAP.md#milestone-local-cache-interface"
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "id": "80ef16fb-270c-4165-b615-21a2466e5758",
+        "checkpointContext": []
+      },
+      {
+        "role": "assistant",
+        "id": "d30547be-03f7-425f-b246-cdf6ab22e410",
+        "content": "{\"type\":\"roadmap-draft-proposal\",\"projectId\":\"uninitialized\",\"draftRevision\":0,\"action\":{\"type\":\"create-phase\",\"title\":\"Cache Boundary\",\"objective\":\"Define a project-local cache interface with deterministic keys and explicit invalidation\"}}",
+        "status": "complete",
+        "planningStatus": "applied",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "startedAt": "2026-10-16T02:17:12.035Z",
+        "finishedAt": "2026-10-16T02:17:43.696Z"
+      },
+      {
+        "role": "user",
+        "id": "0f53fc6e-a02a-4ddf-855c-15cb4114d92b",
+        "checkpointContext": []
+      },
+      {
+        "role": "assistant",
+        "id": "9aae6796-d20f-4c43-8f81-52e55d7fc996",
+        "content": "{\"type\":\"roadmap-draft-proposal\",\"projectId\":\"uninitialized\",\"draftRevision\":1,\"action\":{\"type\":\"create-checkpoint\",\"phaseId\":\"2f43b968-477d-4fa5-b903-e045499acbbe\",\"title\":\"Local Cache Interface\",\"objective\":\"Add deterministic cache keys, explicit invalidation, and project-local storage boundaries\"}}",
+        "status": "complete",
+        "planningStatus": "applied",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "startedAt": "2026-10-16T02:18:05.817Z",
+        "finishedAt": "2026-10-16T02:18:50.104Z"
+      },
+      {
+        "role": "user",
+        "id": "6b1ec7f4-c984-4179-beca-15aa113990e7",
+        "checkpointContext": [
+          {
+            "id": "roadmap:ROADMAP.md#milestone-local-cache-interface",
+            "ownerRevision": 2,
+            "sourceHash": "4390f4d56d36c52b708c0fd6a9efdc417977ae847b11a425f9ed2beaa07a7783",
+            "projectId": "4f3076a0-d592-45a1-ad13-37907d7985cf"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "id": "9d91ef8a-29b4-4e49-9dbd-c6faaf8dfec0",
+        "content": "{\"type\":\"no-action\",\"message\":\"Checkpoint identified as 'Milestone Local Cache Interface' with objective 'Add deterministic cache keys, explicit invalidation, and project-local storage boundaries' from the accepted roadmap source.\"}",
+        "status": "complete",
+        "planningStatus": "no-action",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "startedAt": "2026-10-16T02:20:02.665Z",
+        "finishedAt": "2026-10-16T02:20:55.029Z"
+      }
+    ],
+    "chatContextSettings": {
+      "maxInputTokens": 8192,
+      "reservedOutputTokens": 1024,
+      "history": "recent",
+      "savedChatSearch": false,
+      "allowedSources": [
+        "roadmap-checkpoint"
+      ]
+    }
+  },
+  "reject": {
+    "root": "/tmp/dope-r2-repair-g2-reject",
+    "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+    "chatRevision": 11,
+    "linkedMarkdownExists": false,
+    "ownerExists": false,
+    "messages": [
+      {
+        "role": "user",
+        "id": "e1f50bb3-2c17-4c87-aad6-9efb756e55c7",
+        "checkpointContext": []
+      },
+      {
+        "role": "assistant",
+        "id": "06752b80-be56-44b8-a3ca-04b76edc4f0d",
+        "content": "{\n  \"type\": \"roadmap-draft-proposal\",\n  \"projectId\": \"uninitialized\",\n  \"draftRevision\": 0,\n  \"action\": {\n    \"type\": \"create-phase\",\n    \"title\": \"Cache Boundary\",\n    \"objective\": \"Define deterministic cache keys and explicit invalidation in project-local storage\"\n  }\n}",
+        "status": "complete",
+        "planningStatus": "denied",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "startedAt": "2026-10-16T02:22:08.860Z",
+        "finishedAt": "2026-10-16T02:22:35.071Z"
+      },
+      {
+        "role": "user",
+        "id": "a229e293-70e7-47fb-9ee5-fde28a813640",
+        "checkpointContext": []
+      },
+      {
+        "role": "assistant",
+        "id": "06d57341-0a6f-4179-9f0b-614f7f9c065c",
+        "content": "",
+        "status": "cancelled",
+        "planningStatus": "cancelled",
+        "selectedModel": {
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "actualModel": {
+          "schemaVersion": 1,
+          "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+          "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+          "providerId": "local",
+          "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+        },
+        "startedAt": "2026-10-16T02:22:49.965Z",
+        "finishedAt": "2026-10-16T02:22:52.493Z"
+      }
+    ]
+  },
+  "planningTrace": [
+    {
+      "at": "2026-10-16T02:17:12.044Z",
+      "stage": "submitted",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "d30547be-03f7-425f-b246-cdf6ab22e410"
+    },
+    {
+      "at": "2026-10-16T02:17:12.045Z",
+      "stage": "waiting",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "d30547be-03f7-425f-b246-cdf6ab22e410"
+    },
+    {
+      "at": "2026-10-16T02:17:43.680Z",
+      "stage": "validated",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "d30547be-03f7-425f-b246-cdf6ab22e410"
+    },
+    {
+      "at": "2026-10-16T02:17:43.682Z",
+      "stage": "validating",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "d30547be-03f7-425f-b246-cdf6ab22e410"
+    },
+    {
+      "at": "2026-10-16T02:17:43.751Z",
+      "stage": "result-recorded",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "d30547be-03f7-425f-b246-cdf6ab22e410",
+      "status": "pending"
+    },
+    {
+      "at": "2026-10-16T02:17:58.964Z",
+      "stage": "decision-requested",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "d30547be-03f7-425f-b246-cdf6ab22e410",
+      "status": "approve"
+    },
+    {
+      "at": "2026-10-16T02:17:58.974Z",
+      "stage": "decision-recorded",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "d30547be-03f7-425f-b246-cdf6ab22e410",
+      "status": "applied"
+    },
+    {
+      "at": "2026-10-16T02:18:05.825Z",
+      "stage": "submitted",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9aae6796-d20f-4c43-8f81-52e55d7fc996"
+    },
+    {
+      "at": "2026-10-16T02:18:05.825Z",
+      "stage": "waiting",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9aae6796-d20f-4c43-8f81-52e55d7fc996"
+    },
+    {
+      "at": "2026-10-16T02:18:50.085Z",
+      "stage": "validated",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9aae6796-d20f-4c43-8f81-52e55d7fc996"
+    },
+    {
+      "at": "2026-10-16T02:18:50.091Z",
+      "stage": "validating",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9aae6796-d20f-4c43-8f81-52e55d7fc996"
+    },
+    {
+      "at": "2026-10-16T02:18:50.167Z",
+      "stage": "result-recorded",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9aae6796-d20f-4c43-8f81-52e55d7fc996",
+      "status": "pending"
+    },
+    {
+      "at": "2026-10-16T02:18:55.141Z",
+      "stage": "decision-requested",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9aae6796-d20f-4c43-8f81-52e55d7fc996",
+      "status": "approve"
+    },
+    {
+      "at": "2026-10-16T02:18:55.148Z",
+      "stage": "decision-recorded",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9aae6796-d20f-4c43-8f81-52e55d7fc996",
+      "status": "applied"
+    },
+    {
+      "at": "2026-10-16T02:20:02.672Z",
+      "stage": "submitted",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9d91ef8a-29b4-4e49-9dbd-c6faaf8dfec0"
+    },
+    {
+      "at": "2026-10-16T02:20:02.672Z",
+      "stage": "waiting",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9d91ef8a-29b4-4e49-9dbd-c6faaf8dfec0"
+    },
+    {
+      "at": "2026-10-16T02:20:55.012Z",
+      "stage": "validated",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9d91ef8a-29b4-4e49-9dbd-c6faaf8dfec0"
+    },
+    {
+      "at": "2026-10-16T02:20:55.016Z",
+      "stage": "validating",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9d91ef8a-29b4-4e49-9dbd-c6faaf8dfec0"
+    },
+    {
+      "at": "2026-10-16T02:20:55.065Z",
+      "stage": "result-recorded",
+      "chatId": "d7e4b152-5aae-4cec-991f-d90ba5b35ecd",
+      "messageId": "9d91ef8a-29b4-4e49-9dbd-c6faaf8dfec0",
+      "status": "no-action"
+    },
+    {
+      "at": "2026-10-16T02:22:08.866Z",
+      "stage": "submitted",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06752b80-be56-44b8-a3ca-04b76edc4f0d"
+    },
+    {
+      "at": "2026-10-16T02:22:08.866Z",
+      "stage": "waiting",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06752b80-be56-44b8-a3ca-04b76edc4f0d"
+    },
+    {
+      "at": "2026-10-16T02:22:35.054Z",
+      "stage": "validated",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06752b80-be56-44b8-a3ca-04b76edc4f0d"
+    },
+    {
+      "at": "2026-10-16T02:22:35.057Z",
+      "stage": "validating",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06752b80-be56-44b8-a3ca-04b76edc4f0d"
+    },
+    {
+      "at": "2026-10-16T02:22:35.122Z",
+      "stage": "result-recorded",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06752b80-be56-44b8-a3ca-04b76edc4f0d",
+      "status": "pending"
+    },
+    {
+      "at": "2026-10-16T02:22:37.005Z",
+      "stage": "decision-requested",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06752b80-be56-44b8-a3ca-04b76edc4f0d",
+      "status": "reject"
+    },
+    {
+      "at": "2026-10-16T02:22:37.012Z",
+      "stage": "decision-recorded",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06752b80-be56-44b8-a3ca-04b76edc4f0d",
+      "status": "denied"
+    },
+    {
+      "at": "2026-10-16T02:22:49.972Z",
+      "stage": "submitted",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06d57341-0a6f-4179-9f0b-614f7f9c065c"
+    },
+    {
+      "at": "2026-10-16T02:22:49.972Z",
+      "stage": "waiting",
+      "chatId": "83e5fe93-db2f-4990-aaf3-8dd2ee703679",
+      "messageId": "06d57341-0a6f-4179-9f0b-614f7f9c065c"
+    }
+  ],
+  "processes": {
+    "lmStudioServicePid": 6404,
+    "llamaServerPid": 106094,
+    "ownedDopeBackendAfterRestartPid": 113116,
+    "ownedDopePort": 3001,
+    "lmStudioLoopbackPort": 1234
+  },
+  "capacity": {
+    "loadedContextTokens": 32768,
+    "chatInputBudgetTokens": 8192,
+    "reservedOutputTokens": 1024,
+    "planningInputAdmissionBytes": 30976,
+    "planningSystemReserveTokens": 512,
+    "planningSafetyReserveTokens": 256
+  },
+  "finalQualificationSource": "d4ad098652c613527dc60a044f753f4fd90f9e6c"
+}
