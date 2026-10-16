@@ -1,0 +1,16 @@
+{
+  "productSource": "00121646f6b5f3d66e06e3cd320935a76dc73353",
+  "version": "0.10.16",
+  "bundleSha256": {
+    "apps/browser/src-gen/backend/main.js": "3cadf81668e99b6674b6f248f54bc04615ed7876787d8a1ba79314815035407a",
+    "apps/browser/lib/frontend/bundle.js": "65788a33cf1d353d81eae010cb3151ea4592273e9a75c7fd3a6436b60058ee54",
+    "apps/electron/lib/frontend/bundle.js": "b9079688a05034b7d124f46175fc4931cda5575dab8f0e64650ac6099ec58ccd",
+    "packages/project-intelligence/lib/node/roadmap-document-patch.js": "8234aa6a07cacbcd69219964d7a91fe061a10aaecd8a96d890561ec1c0e1f62b",
+    "packages/project-intelligence/lib/node/roadmap-store.js": "c317373a47d24ae7d03e09f191080f50722e4542acbca09c2cee3e838e6e5b69"
+  },
+  "finalBackendPid": 18807,
+  "backendBind": "127.0.0.1:3000",
+  "nativeGuiObservationAtThisSource": false,
+  "runtimeBuiltFrom": "7d006f5847c9989912aacdddeaf5753624fa8363",
+  "postBuildChange": "0012164 adds only atomic replacement regression test; runtime and bundle inputs unchanged"
+}

@@ -1,0 +1,14 @@
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ theia rebuild:browser --cacheRoot ../.. && theia build
+native node modules are already rebuilt for browser
+[build/browser] Build started
+
+[build/browser] Finished with 0 errors in 834ms.
+
+[build/node] Build started
+
+[build/node] Finished with 0 errors in 743ms.
+
+Done in 3.67s.
+Done in 3.90s.

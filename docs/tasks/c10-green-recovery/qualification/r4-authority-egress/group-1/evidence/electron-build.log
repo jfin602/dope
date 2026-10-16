@@ -1,0 +1,33 @@
+yarn workspace v1.22.22
+yarn run v1.22.22
+$ theia rebuild:electron --cacheRoot ../.. && theia build
+Module not found: find-git-repositories
+Processed "keytar"
+Processed "drivelist"
+Processed "native-keymap"
+Processed "node-pty"
+npm warn Unknown env config "version-commit-hooks". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "version-tag-prefix". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "version-git-message". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "argv". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "version-git-tag". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+Searching dependency tree
+Building modules: drivelist, keytar, native-keymap
+✔ Rebuild Complete
+Downloaded ffmpeg shared library { version: "42.8.1", dist: "/home/jfin/dev/dope/node_modules/electron/dist" }.
+Successfully replaced "/home/jfin/dev/dope/node_modules/electron/dist/libffmpeg.so".
+"/home/jfin/dev/dope/node_modules/electron/dist/libffmpeg.so" does not contain proprietary codecs (13 found).
+[build/browser] Build started
+
+[build/browser] Finished with 0 errors in 613ms.
+
+[build/node] Build started
+
+[build/node] Finished with 0 errors in 709ms.
+
+[build/electron] Build started
+
+[build/electron] Finished with 0 errors in 6ms.
+
+Done in 11.24s.
+Done in 11.56s.

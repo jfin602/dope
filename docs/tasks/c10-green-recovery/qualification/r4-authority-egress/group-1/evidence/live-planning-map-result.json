@@ -1,0 +1,59 @@
+{
+  "root": "/tmp/dope-r4-planning-8ue7WS",
+  "transport": "Theia registered MsgPack RPC channels",
+  "cases": [
+    {
+      "name": "wrong Planning Map project",
+      "response": "Foreign or unresolved Roadmap link",
+      "roadmapUnchanged": true
+    },
+    {
+      "name": "missing Planning Map owner",
+      "response": "Planning Map link requires exact owner and basis",
+      "roadmapUnchanged": true
+    },
+    {
+      "name": "wrong basis",
+      "response": "Foreign or unresolved Roadmap link",
+      "roadmapUnchanged": true
+    },
+    {
+      "name": "invalid transformation identity",
+      "response": "Foreign or unresolved Roadmap link",
+      "roadmapUnchanged": true
+    },
+    {
+      "name": "Planning Map revision changed after preview",
+      "response": "Foreign or unresolved Roadmap link",
+      "roadmapUnchanged": true
+    }
+  ],
+  "link": {
+    "roadmapRevision": 2,
+    "mapRevision": 2,
+    "planningOwner": "project-96630683-ec3a-4bba-ab19-ef50049c3d00",
+    "planningInitial": "c4ba479389ad7a187be02190ebed75f22f54e695c4499f7de5f03d37aad31095",
+    "planningBeforeLink": "2ac66fc6461737b730f91a5312601bf420c45816fca8af8b976240de9b5b319d",
+    "planningAfterLink": "2ac66fc6461737b730f91a5312601bf420c45816fca8af8b976240de9b5b319d",
+    "roadmapBefore": "d38a3225198281e92a75100b60ac3d70b167b7c79d8c4a9cb432b9c00c44f3a6",
+    "roadmapAfterLink": "9dcbc5084efc6d97675471f8700ba765f002935e8c7919784648eec6075b86c8",
+    "sourceSha256": "f1368b2dbb597d70d1cc12b383571b992a437991d485607fb589b8d750e484d2"
+  },
+  "adoption": {
+    "previewChanges": [
+      {
+        "id": "worker",
+        "action": "add"
+      }
+    ],
+    "architectureBefore": "d9be15239a37a11fb4f0b8f8f1f509a04b718b3e69b5045afe53ddf4499b9a88",
+    "architectureAfter": "9ddf0312110e9401a91183ae2f6d54b81143d74eb552473a3d0e66fa0098c067",
+    "planningBefore": "2ac66fc6461737b730f91a5312601bf420c45816fca8af8b976240de9b5b319d",
+    "planningAfter": "ff2283f85a38192f505c4b6efce9e27aa9611943c6b8bfdf38ee86a5967589bb",
+    "roadmapAfter": "9dcbc5084efc6d97675471f8700ba765f002935e8c7919784648eec6075b86c8",
+    "mapRevisionAfter": 3,
+    "oldRoadmapReferenceUnresolved": true,
+    "staleLinkResponse": "Foreign or unresolved Roadmap link",
+    "rejectedAdoption": "Adoption diff was not accepted"
+  }
+}
