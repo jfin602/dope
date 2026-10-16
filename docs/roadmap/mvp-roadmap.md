@@ -1096,7 +1096,7 @@ Exit requires real local/manual edits, UI consistency, restart, stale/project is
 
 ## Product Phase 11 — Human-Centered UI / Usability Qualification
 
-**Status: DESIGN APPROVED (ADR 0037), PHASE 10 ENTRY SATISFIED, COHERENT `0.11.0` BASELINE ESTABLISHED AT `70c41e6`, NOT ACTIVATED OR QUALIFIED.** Separate Phase 11 owner activation and a `0.11.0` baseline decision remain pending. Audit real developer tasks across Dope-owned panels and improve navigation, affordances, feedback and recovery with direct GUI evidence. Palette-only `c9-theme-fix` remains separate. Phase 11 requires separate activation after Phase 10.
+**Status: DESIGN APPROVED (ADR 0037), PHASE 10 ENTRY SATISFIED, COHERENT 0.11.0 VERSION-ONLY BASELINE ESTABLISHED AT 70c41e6, NOT IMPLEMENTED OR QUALIFIED.** The baseline is already established. [Phase 11 plan](../planning/p11/phase-11-plan.md) and [owner-approved usability recovery contract](../planning/p11/usability-recovery-contract.md) specify P0 Roadmap Markdown source relinking, readable planning Chat messages and application-grounded help, followed by directly verified UI recovery and human qualification. Screenshot observations are not passing GUI tests. No P11 executable prompt stack has yet been authored or run; a future deliberate developer Run on an authored stack authorizes implementation without preliminary /activate. Preserve Phase 10 source-specific results, old Markdown files, permission/Chat ownership, provider/locality safety and Phase 12 inactivity. Palette-only c9-theme-fix remains separate.
 
 ## Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)
 

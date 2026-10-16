@@ -24,6 +24,20 @@
 | Editor / SCM / terminal / Problems seams | Move naturally between Dope-owned and ordinary IDE views | Integration seam; not audited |
 | Project Mind surviving Phase 10 entry points | Locate Notes, Ideas and Decisions without a redundant launcher | **Verify actual surviving routes and retired surfaces** in first Phase 11 registration/GUI audit; not audited |
 
+
+## Owner screenshot triage and qualification targets — 2026-10-16
+
+| Human task or issue | Screenshot-level observation | Severity / disposition | Proposed response |
+| --- | --- | --- | --- |
+| Replace incorrectly linked project Roadmap | User cannot discover a way to change selected mvp-roadmap.md | P0 reported / not live-retested | Markdown menu relink with safe confirmation and rollback |
+| Read local planning Chat response | no-action JSON carries the useful message while internal payload dominates | P0 observed / not live-retested | Surface result message as assistant prose; collapse tool details |
+| Ask Dope how to unlink a Roadmap | Response discusses checkpoint edit restrictions and suggests irrelevant objective clarification | P0 observed / not live-retested | Explain real supported navigation and next action |
+| Roadmap loading indicator | Loading Roadmap appears in still image | P1 investigation / Evidence Gap | Verify whether it resolves, errors or remains stuck |
+| Correction overlay and controls | Repeated/truncated correction title; many dense icon controls | P1 investigation | Verify overlay hierarchy, labels, tooltips and keyboard/narrow behavior |
+| Follow Interactive and metadata | Composer context unclear and transcript IDs/JSON crowd response | P2 investigation | Explain context controls; use progressive disclosure |
+
+**U1–U9 direct qualification gates:** U1 relink success; U2 cancel/failure/unsynced/stale protection; U3 restart, new linked source synchronization and project isolation; U4 correct no-action user prose; U5 collapsed yet inspectable activity; U6 grounded recovery without invented UI actions; U7 real local Q4 and Codex selection/consent and response parity; U8 real loading/empty/error/overlay/accessibility states; U9 existing Phase 10 ownership/permission/Markdown/Chat regressions. For each, record exact source, tested action, expected vs observed result, and Qualified/Not Green/Evidence Gap. See [recovery contract](usability-recovery-contract.md).
+
 For **every confirmed active surface**, capture:
 
 - Surface, location and owning widget/entry point
