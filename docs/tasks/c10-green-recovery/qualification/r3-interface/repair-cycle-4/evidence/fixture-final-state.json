@@ -1,0 +1,156 @@
+{
+  "productSha": "687721ee720122c5f01ca8ff6ee2b3a92b65b950",
+  "version": "0.10.16",
+  "fixtures": [
+    {
+      "shell": "browser",
+      "kind": "conflict",
+      "root": "/tmp/dope-r3-g4-browser-conflict",
+      "projectId": "0bd689de-4571-4d0e-b0fb-c47804d3a603",
+      "ownerRevision": 13,
+      "ownerFileHash": "7b222152776d20e413847d0c8b89a812e90f07cf98462a573b1fac439c678738",
+      "linkedPath": "ROADMAP.md",
+      "acceptedSourceHash": "fd612fb693f297169b817da905aca76e5cb9c11ad5a7380ad169e21d42b3d264",
+      "currentSourceHash": "fd612fb693f297169b817da905aca76e5cb9c11ad5a7380ad169e21d42b3d264",
+      "syncState": "synced",
+      "pending": false,
+      "chatIds": [
+        "33578334-ca8c-46b5-b6d0-ffa3c43bc13e"
+      ],
+      "checkpointIds": [
+        "roadmap:ROADMAP.md#phase-1",
+        "roadmap:g4#owner-browser",
+        "roadmap:g4#unrelated-browser",
+        "roadmap:g4#unrelated2-browser"
+      ]
+    },
+    {
+      "shell": "browser",
+      "kind": "relink",
+      "root": "/tmp/dope-r3-g4-browser-relink",
+      "projectId": "f6329c5d-5814-4a44-a56e-745e2bac1dec",
+      "ownerRevision": 2,
+      "ownerFileHash": "cf9a4588c084b8a00ab10cc603e85f93c79eea869106c3c953953ea272044034",
+      "linkedPath": "MOVED.md",
+      "acceptedSourceHash": "d427bd366b73a823343a42da83dc7b2619e2cf35f51b269162bd2f251871894b",
+      "currentSourceHash": "d427bd366b73a823343a42da83dc7b2619e2cf35f51b269162bd2f251871894b",
+      "syncState": "synced",
+      "pending": false,
+      "chatIds": [
+        "140421d7-e4db-4afb-a264-77a5a57a08a0"
+      ],
+      "checkpointIds": [
+        "roadmap:ROADMAP.md#phase-1"
+      ]
+    },
+    {
+      "shell": "browser",
+      "kind": "pending",
+      "root": "/tmp/dope-r3-g4-browser-pending",
+      "projectId": "377b9706-0d9c-49c7-9b44-8334892b19fb",
+      "ownerRevision": 4,
+      "ownerFileHash": "1506024525ce59a98b08786ae29a6b34af02cffd66fd32c4b072c439f8ebfaf8",
+      "linkedPath": "ROADMAP.md",
+      "acceptedSourceHash": "d1d8b282ec7b8310d18f2662a726acbd6e2df841356df703c0c056c5896cf47a",
+      "currentSourceHash": "d1d8b282ec7b8310d18f2662a726acbd6e2df841356df703c0c056c5896cf47a",
+      "syncState": "synced",
+      "pending": false,
+      "chatIds": [],
+      "checkpointIds": [
+        "roadmap:ROADMAP.md#phase-1"
+      ]
+    },
+    {
+      "shell": "browser",
+      "kind": "migration",
+      "root": "/tmp/dope-r3-g4-browser-migration",
+      "projectId": "1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+      "ownerRevision": 1,
+      "ownerFileHash": "3ed8a0fb021cc0b76cb67dab19674b9f69f3196b42b88a08d4b9c2f0ba04bc6b",
+      "linkedPath": "ROADMAP.md",
+      "acceptedSourceHash": "79be6879e0a1ad9ab24e1ef26a1c8c633fa48fb6ade7ab91ed3c43708f23f1ff",
+      "currentSourceHash": "79be6879e0a1ad9ab24e1ef26a1c8c633fa48fb6ade7ab91ed3c43708f23f1ff",
+      "syncState": "synced",
+      "pending": false,
+      "chatIds": [],
+      "checkpointIds": [
+        "roadmap:ROADMAP.md#phase-1"
+      ]
+    },
+    {
+      "shell": "native",
+      "kind": "conflict",
+      "root": "/tmp/dope-r3-g4-native-conflict",
+      "projectId": "6eaba033-b794-44bd-b252-93ecb985773c",
+      "ownerRevision": 13,
+      "ownerFileHash": "35f5fafb60b95ac827519f909ef662ec77fd7034ff97e4f58c9289002332900c",
+      "linkedPath": "ROADMAP.md",
+      "acceptedSourceHash": "34d0555e713119965c16b8caec6c147c4c39e1b391ff16e7d6328dd2f7fe5e4e",
+      "currentSourceHash": "34d0555e713119965c16b8caec6c147c4c39e1b391ff16e7d6328dd2f7fe5e4e",
+      "syncState": "synced",
+      "pending": false,
+      "chatIds": [
+        "e30c2532-d921-4231-9eab-79fb151e20f6"
+      ],
+      "checkpointIds": [
+        "roadmap:ROADMAP.md#phase-1",
+        "roadmap:g4#owner-native",
+        "roadmap:g4#unrelated-native",
+        "roadmap:g4#unrelated2-native"
+      ]
+    },
+    {
+      "shell": "native",
+      "kind": "relink",
+      "root": "/tmp/dope-r3-g4-native-relink",
+      "projectId": "c6af01a5-3fa3-44af-af94-24355242171f",
+      "ownerRevision": 2,
+      "ownerFileHash": "35474546a8a64516bfdcaa6bd21bfcdb3dc25b750729226fca3f9abd65537df0",
+      "linkedPath": "MOVED.md",
+      "acceptedSourceHash": "0f73f4fca81d63700beffbd3f8ec41d2066fbc6b5222ccc7179e353e80cc261f",
+      "currentSourceHash": "0f73f4fca81d63700beffbd3f8ec41d2066fbc6b5222ccc7179e353e80cc261f",
+      "syncState": "synced",
+      "pending": false,
+      "chatIds": [
+        "1d7ffaca-e068-4d51-a3c8-b7ace7ba8835"
+      ],
+      "checkpointIds": [
+        "roadmap:ROADMAP.md#phase-1"
+      ]
+    },
+    {
+      "shell": "native",
+      "kind": "pending",
+      "root": "/tmp/dope-r3-g4-native-pending",
+      "projectId": "9f7c29ac-3844-419c-bfbc-9c10bde3d652",
+      "ownerRevision": 4,
+      "ownerFileHash": "52abc18ebbff09b284954c82c8bd68316829dbeb00f045a1c544a7b1b18f7618",
+      "linkedPath": "ROADMAP.md",
+      "acceptedSourceHash": "d1d8b282ec7b8310d18f2662a726acbd6e2df841356df703c0c056c5896cf47a",
+      "currentSourceHash": "d1d8b282ec7b8310d18f2662a726acbd6e2df841356df703c0c056c5896cf47a",
+      "syncState": "synced",
+      "pending": false,
+      "chatIds": [],
+      "checkpointIds": [
+        "roadmap:ROADMAP.md#phase-1"
+      ]
+    },
+    {
+      "shell": "native",
+      "kind": "migration",
+      "root": "/tmp/dope-r3-g4-native-migration",
+      "projectId": "56868231-675f-4184-8cf2-2964500f2274",
+      "ownerRevision": 1,
+      "ownerFileHash": "8d36fc0f0ddb763327dfe3bbcbf74585e3b8a2569a53d2f0b9c21d64ff290fc3",
+      "linkedPath": "ROADMAP.md",
+      "acceptedSourceHash": "3ff95a797849ab90716528c206b228bee8e7e6bd432af1092fdfda50a349269b",
+      "currentSourceHash": "3ff95a797849ab90716528c206b228bee8e7e6bd432af1092fdfda50a349269b",
+      "syncState": "synced",
+      "pending": false,
+      "chatIds": [],
+      "checkpointIds": [
+        "roadmap:ROADMAP.md#phase-1"
+      ]
+    }
+  ]
+}

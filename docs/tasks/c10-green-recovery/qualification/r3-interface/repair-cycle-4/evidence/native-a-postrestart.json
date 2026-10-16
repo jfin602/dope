@@ -1,0 +1,42 @@
+{
+  "url": "file:///home/jfin/dev/dope/apps/electron/lib/frontend/index.html?port=38203#/tmp/dope-r3-g4-native-conflict",
+  "dimensions": {
+    "innerWidth": 1920,
+    "innerHeight": 1146
+  },
+  "camera": "transform: translate(241.4px, -299.7px) scale(0.9);",
+  "selected": [
+    "roadmap:g4#owner-native"
+  ],
+  "stored": [
+    {
+      "key": "theia:file:///tmp/dope-r3-g4-native-conflict:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-native-conflict:uninitialized",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "uninitialized",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    },
+    {
+      "key": "theia:file:///tmp/dope-r3-g4-native-conflict:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-native-conflict:6eaba033-b794-44bd-b252-93ecb985773c",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "6eaba033-b794-44bd-b252-93ecb985773c",
+        "viewport": {
+          "x": 211.39999999999998,
+          "y": -685,
+          "zoom": 0.9
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:g4#owner-native",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    }
+  ]
+}

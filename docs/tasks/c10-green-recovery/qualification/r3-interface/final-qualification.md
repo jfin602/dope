@@ -1,0 +1,9 @@
+# R3 supplemental interface qualification
+
+**GREEN / QUALIFIED** at committed product source `687721ee720122c5f01ca8ff6ee2b3a92b65b950`, package `0.10.16`.
+
+[Repair cycle 4](repair-cycle-4.md) completes the browser and independent native Electron matrix for Roadmap source conflict/relink/recovery, eligible Undo, A/B project isolation, v2 viewport persistence, versioned v1 migration, actual full-window and physically resized 1100 px layout, and current-source saved Chat completion. Its two product repairs are `34a3ba3da6b1486250c031f4f04e1aacd39858eb` (selected-card visibility after resize) and `687721ee720122c5f01ca8ff6ee2b3a92b65b950` (stale Undo feedback). Eighty-six focused tests passed; Theia extension, browser and Electron builds had zero errors. Browser backend and native app restarts were directly observed after the repairs. The [hashed evidence](repair-cycle-4/evidence/manifest.sha256) includes numeric viewport state and UI captures in both renderers.
+
+[Repair cycles 1–3](family-summary.md) supply direct saved Chat docking/lease, keyboard/accessibility/theme/motion, relationships, and trusted Chromium touch-equivalent observations on unchanged seams. Cycle 4 retested the two affected Roadmap presentation consumers; it did not claim physical touchscreen hardware. [Cycle 1](cycle-1.md) remains its historical NOT GREEN result. This later supplemental qualification does not rewrite that observation.
+
+**Scope boundary:** R3 is an interface gate only. R4's live foreign-owner RPC denial and monitored Q4 egress, R5's Q4-generated greenfield approval/freshness, and R6's independent final aggregate/audit remain separate. Phase 10 is not owner-closed; Phases 11/12 are inactive. No global model/provider setting changed. No full `npm run check` was used to substitute for the R3 live matrix.

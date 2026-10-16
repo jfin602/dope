@@ -1,0 +1,59 @@
+{
+  "url": "file:///home/jfin/dev/dope/apps/electron/lib/frontend/index.html?port=39743#/tmp/dope-r3-g4-native-relink",
+  "dimensions": {
+    "innerWidth": 1920,
+    "innerHeight": 1146,
+    "stage": {
+      "x": 49,
+      "y": 74,
+      "width": 1822,
+      "height": 1050,
+      "top": 74,
+      "right": 1871,
+      "bottom": 1124,
+      "left": 49
+    }
+  },
+  "camera": "transform: translate(646.616px, -408.12px) scale(1.296);",
+  "selected": [
+    "roadmap:ROADMAP.md#phase-1"
+  ],
+  "viewports": [
+    {
+      "key": "theia:file:///tmp/dope-r3-g4-native-conflict:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-native-conflict:6eaba033-b794-44bd-b252-93ecb985773c",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "6eaba033-b794-44bd-b252-93ecb985773c",
+        "viewport": {
+          "x": 167.4,
+          "y": -396,
+          "zoom": 0.9
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:g4#owner-native",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    },
+    {
+      "key": "theia:file:///tmp/dope-r3-g4-native-relink:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-native-relink:c6af01a5-3fa3-44af-af94-24355242171f",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "c6af01a5-3fa3-44af-af94-24355242171f",
+        "viewport": {
+          "x": 646.616,
+          "y": -408.12,
+          "zoom": 1.296
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    }
+  ]
+}

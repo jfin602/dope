@@ -1,0 +1,42 @@
+{
+  "outcomes": [
+    "The local planning turn proposed no change to checkpoint Roadmap checkpoint: Milestone First checkpoint. Nothing was written.Is there a specific objective you want to clarify? Would reviewing the current checkpoint help choose the next step?",
+    "The approved proposal to set the objective of checkpoint Roadmap checkpoint: Milestone First checkpoint to “Build a local search prototype, run focused tests, and document recovery” was saved at revision 4.Does the saved result match your current objective? Would you like to review the linked source or next checkpoint?",
+    "The local planning turn proposed no change to checkpoint Roadmap checkpoint: Milestone First checkpoint. Nothing was written.Is there a specific objective you want to clarify? Would reviewing the current checkpoint help choose the next step?",
+    "The local planning turn was cancelled. No proposal from this turn was applied.Would you like to review the current checkpoint before retrying?",
+    "The local planning turn proposed no change to checkpoint Roadmap checkpoint: Milestone First checkpoint. Nothing was written.Is there a specific objective you want to clarify? Would reviewing the current checkpoint help choose the next step?",
+    "The local planning turn proposed no change to checkpoint Roadmap checkpoint: Milestone First checkpoint. Nothing was written.Is there a specific objective you want to clarify? Would reviewing the current checkpoint help choose the next step?"
+  ],
+  "active": [
+    {
+      "open": false,
+      "label": "No planning action: No change. Original JSON",
+      "w": 70
+    },
+    {
+      "open": true,
+      "label": "Roadmap intent: Applied. Original JSON",
+      "w": 70
+    },
+    {
+      "open": false,
+      "label": "No planning action: No change. Original JSON",
+      "w": 70
+    },
+    {
+      "open": false,
+      "label": "No planning action: No change. Original JSON",
+      "w": 70
+    },
+    {
+      "open": false,
+      "label": "No planning action: No change. Original JSON",
+      "w": 70
+    }
+  ],
+  "view": {
+    "width": 1920,
+    "height": 1146
+  },
+  "owner": "file:///home/jfin/dev/dope/apps/electron/lib/frontend/index.html?port=39743#/tmp/dope-r3-g2-native"
+}

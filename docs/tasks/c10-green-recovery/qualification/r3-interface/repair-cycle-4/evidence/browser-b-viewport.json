@@ -1,0 +1,59 @@
+{
+  "url": "http://127.0.0.1:3000/#/tmp/dope-r3-g4-browser-relink",
+  "dimensions": {
+    "innerWidth": 1920,
+    "innerHeight": 1113,
+    "stage": {
+      "x": 49,
+      "y": 106,
+      "width": 1822,
+      "height": 985,
+      "top": 106,
+      "right": 1871,
+      "bottom": 1091,
+      "left": 49
+    }
+  },
+  "camera": "transform: translate(646.616px, -440.62px) scale(1.296);",
+  "selected": [
+    "roadmap:ROADMAP.md#phase-1"
+  ],
+  "viewports": [
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-conflict:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-conflict:0bd689de-4571-4d0e-b0fb-c47804d3a603",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "0bd689de-4571-4d0e-b0fb-c47804d3a603",
+        "viewport": {
+          "x": 167.4,
+          "y": -412,
+          "zoom": 0.9
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:g4#owner-browser",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    },
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-relink:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-relink:f6329c5d-5814-4a44-a56e-745e2bac1dec",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "f6329c5d-5814-4a44-a56e-745e2bac1dec",
+        "viewport": {
+          "x": 646.616,
+          "y": -440.62,
+          "zoom": 1.296
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    }
+  ]
+}

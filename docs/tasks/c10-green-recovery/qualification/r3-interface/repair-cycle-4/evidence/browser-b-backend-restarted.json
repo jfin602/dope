@@ -1,0 +1,48 @@
+{
+  "url": "http://127.0.0.1:3000/#/tmp/dope-r3-g4-browser-relink",
+  "dimensions": {
+    "innerWidth": 1920,
+    "innerHeight": 1113
+  },
+  "camera": "transform: translate(625.4px, -662px) scale(1.4);",
+  "selected": [
+    "roadmap:ROADMAP.md#phase-1"
+  ],
+  "stored": [
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-relink:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-relink:uninitialized",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "uninitialized",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    },
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-relink:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-relink:f6329c5d-5814-4a44-a56e-745e2bac1dec",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "f6329c5d-5814-4a44-a56e-745e2bac1dec",
+        "viewport": {
+          "x": 625.4000000000001,
+          "y": -661.9999999999999,
+          "zoom": 1.4
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {
+          "roadmap:ROADMAP.md#phase-1": {
+            "x": 136.85714285714286,
+            "y": 650
+          }
+        }
+      }
+    }
+  ],
+  "chatButtons": []
+}

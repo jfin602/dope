@@ -1,0 +1,43 @@
+{
+  "key": "theia:/:file:///tmp/dope-r3-g4-browser-migration:dope.roadmap.viewport.v1:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-migration:1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+  "fixture": {
+    "version": 1,
+    "projectId": "1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+    "viewport": {
+      "x": -98765,
+      "y": 33333,
+      "zoom": 1.4
+    },
+    "selectedId": "roadmap:ROADMAP.md#phase-1",
+    "expanded": [
+      "roadmap:ROADMAP.md#phase-1"
+    ],
+    "collapsed": [],
+    "placements": {
+      "roadmap:ROADMAP.md#phase-1": {
+        "x": 9999,
+        "y": 88888
+      }
+    }
+  },
+  "readBack": {
+    "version": 1,
+    "projectId": "1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+    "viewport": {
+      "x": -98765,
+      "y": 33333,
+      "zoom": 1.4
+    },
+    "selectedId": "roadmap:ROADMAP.md#phase-1",
+    "expanded": [
+      "roadmap:ROADMAP.md#phase-1"
+    ],
+    "collapsed": [],
+    "placements": {
+      "roadmap:ROADMAP.md#phase-1": {
+        "x": 9999,
+        "y": 88888
+      }
+    }
+  }
+}

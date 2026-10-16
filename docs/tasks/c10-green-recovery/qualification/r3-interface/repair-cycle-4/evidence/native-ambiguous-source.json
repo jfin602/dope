@@ -1,0 +1,8 @@
+{
+  "url": "file:///home/jfin/dev/dope/apps/electron/lib/frontend/index.html?port=38203#/tmp/dope-r3-g4-native-relink",
+  "label": "Roadmap Markdown MOVED.md: Source check failed · review; review required",
+  "footer": "ion\n\nLinked Markdown compare failed: Error: ENOENT: no such file or directory, lstat '/tmp/dope-r3-g4-native-relink/MOVED.md'. Review the file and Refresh.\n\n Ideas / Issues\nProblems\nSpell Checker\nbash\nNo problems have been detected in the workspace so far.\n0\n0",
+  "selected": [
+    "roadmap:ROADMAP.md#phase-1"
+  ]
+}

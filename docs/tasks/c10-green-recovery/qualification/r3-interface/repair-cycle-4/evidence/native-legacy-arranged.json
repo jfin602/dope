@@ -1,0 +1,73 @@
+{
+  "stage": {
+    "x": 49,
+    "y": 74,
+    "width": 1822,
+    "height": 1050,
+    "top": 74,
+    "right": 1871,
+    "bottom": 1124,
+    "left": 49
+  },
+  "camera": "transform: translate(690.68px, -252.6px) scale(1.08);",
+  "node": {
+    "x": 892.7999877929688,
+    "y": 565.4000244140625,
+    "width": 302.39996337890625,
+    "height": 99.3599853515625,
+    "top": 565.4000244140625,
+    "right": 1195.199951171875,
+    "bottom": 664.760009765625,
+    "left": 892.7999877929688
+  },
+  "states": [
+    {
+      "key": "theia:file:///tmp/dope-r3-g4-native-migration:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-native-migration:56868231-675f-4184-8cf2-2964500f2274",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "56868231-675f-4184-8cf2-2964500f2274",
+        "viewport": {
+          "x": 690.68,
+          "y": -252.60000000000002,
+          "zoom": 1.08
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [
+          "roadmap:ROADMAP.md#phase-1"
+        ],
+        "collapsed": [],
+        "placements": {
+          "roadmap:ROADMAP.md#phase-1": {
+            "x": 141.77777777777777,
+            "y": 688.8888888888889
+          }
+        }
+      }
+    },
+    {
+      "key": "theia:file:///tmp/dope-r3-g4-native-migration:dope.roadmap.viewport.v1:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-native-migration:56868231-675f-4184-8cf2-2964500f2274",
+      "value": {
+        "version": 1,
+        "projectId": "56868231-675f-4184-8cf2-2964500f2274",
+        "viewport": {
+          "x": -98765,
+          "y": 33333,
+          "zoom": 1.4
+        },
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [
+          "roadmap:ROADMAP.md#phase-1"
+        ],
+        "collapsed": [],
+        "placements": {
+          "roadmap:ROADMAP.md#phase-1": {
+            "x": 9999,
+            "y": 88888
+          }
+        }
+      }
+    }
+  ]
+}

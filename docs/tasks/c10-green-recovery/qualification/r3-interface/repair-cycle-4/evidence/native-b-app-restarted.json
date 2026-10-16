@@ -1,0 +1,47 @@
+{
+  "url": "file:///home/jfin/dev/dope/apps/electron/lib/frontend/index.html?port=38203#/tmp/dope-r3-g4-native-relink",
+  "dimensions": {
+    "innerWidth": 1920,
+    "innerHeight": 1146
+  },
+  "camera": "transform: translate(625.4px, -641.5px) scale(1.4);",
+  "selected": [
+    "roadmap:ROADMAP.md#phase-1"
+  ],
+  "stored": [
+    {
+      "key": "theia:file:///tmp/dope-r3-g4-native-relink:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-native-relink:uninitialized",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "uninitialized",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    },
+    {
+      "key": "theia:file:///tmp/dope-r3-g4-native-relink:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-native-relink:c6af01a5-3fa3-44af-af94-24355242171f",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "c6af01a5-3fa3-44af-af94-24355242171f",
+        "viewport": {
+          "x": 625.4000000000001,
+          "y": -641.4999999999999,
+          "zoom": 1.4
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {
+          "roadmap:ROADMAP.md#phase-1": {
+            "x": 186.85714285714283,
+            "y": 666.4285714285714
+          }
+        }
+      }
+    }
+  ]
+}

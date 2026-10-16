@@ -1,0 +1,80 @@
+{
+  "dimensions": {
+    "innerWidth": 1100,
+    "innerHeight": 757,
+    "outerWidth": 1134,
+    "outerHeight": 935
+  },
+  "stage": {
+    "x": 49,
+    "y": 106,
+    "width": 1002,
+    "height": 629,
+    "top": 106,
+    "right": 1051,
+    "bottom": 735,
+    "left": 49
+  },
+  "node": {
+    "x": 398.79998779296875,
+    "y": 370.8200378417969,
+    "width": 302.4000244140625,
+    "height": 99.3599853515625,
+    "top": 370.8200378417969,
+    "right": 701.2000122070312,
+    "bottom": 470.1800231933594,
+    "left": 398.79998779296875
+  },
+  "camera": "transform: translate(196.68px, -477.98px) scale(1.08);",
+  "selected": "true",
+  "states": [
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-migration:dope.roadmap.viewport.v1:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-migration:1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+      "value": {
+        "version": 1,
+        "projectId": "1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+        "viewport": {
+          "x": -98765,
+          "y": 33333,
+          "zoom": 1.4
+        },
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [
+          "roadmap:ROADMAP.md#phase-1"
+        ],
+        "collapsed": [],
+        "placements": {
+          "roadmap:ROADMAP.md#phase-1": {
+            "x": 9999,
+            "y": 88888
+          }
+        }
+      }
+    },
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-migration:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-migration:1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+        "viewport": {
+          "x": 690.68,
+          "y": -285.1,
+          "zoom": 1.08
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [
+          "roadmap:ROADMAP.md#phase-1"
+        ],
+        "collapsed": [],
+        "placements": {
+          "roadmap:ROADMAP.md#phase-1": {
+            "x": 141.77777777777777,
+            "y": 687.7777777777778
+          }
+        }
+      }
+    }
+  ]
+}

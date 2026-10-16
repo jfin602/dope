@@ -1,0 +1,14 @@
+{
+  "before": {
+    "undo": [
+      "Undo last edit"
+    ],
+    "objective": "Undo stale repaired browseUndo reload browser",
+    "footer": " implemented\nnot green\ngreen\nwaived\nPreview and save\nUndo last edit\n\n Ideas / Issues\nProblems\nChat\nSpell Checker\nbash\nBack / Chats\nNew Chat\n⚙\n+\nFollow Interactive\nFollowing active selection: checkpoint roadmap:g4#owner-browser\n0\n0"
+  },
+  "after": {
+    "undo": [],
+    "objective": "Undo stale repaired browseUndo reload browser",
+    "footer": "pell Checker\nbash\n\nChat is open in another window (dope-chat-panel:9474ce19-23ff-42ce-a706-cc1bc94b4acb); restore will retry after its lease expires.\n\nSelect Chat\nNew Chat\nNew Folder\nManage AI connections\nNew Chat\n10/15/2026\n⋯\n0\n0"
+  }
+}

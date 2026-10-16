@@ -1,0 +1,6 @@
+{
+  "body": "heck failed · review\nCheckpoint detail\nphase\nProduct Phase 1 — NATIVE RELINK checkpoint\n!\nNot Green\n1 source citation\n\nLinked Markdown compare failed: Error: ENOENT: no such file or directory, lstat '/tmp/dope-r3-g4-native-relink/MOVED.md'. Review the file and Refresh.\n\nLinked Markdown · MOVED.md · Source check failed · review\nExpand\nMinimize\nClose\n\nLinked Markdown compare failed: Error: ENOENT: no such file or directory, lstat '/tmp/dope-r3-g4-native-relink/MOVED.md'. Review the file and Refresh.\n\nLinked Markdown: MOVED.md · relink-needed\n\nThe linked Markdown stays at its original path. Review external changes before applying supported title, objective, order or prose fields; status evidence is preserved.\n\nRelink needed: Linked Markdown is missing, moved or unsafe; relink explicitly.. Review the Markdown and Refresh.\n\nRelink Markdown\n Ideas / Issues\nProblems\nSpell Checker\nbash\nNo problems have been detected in the workspace so far.\n0\n0",
+  "relinkButtons": [
+    "Relink Markdown"
+  ]
+}

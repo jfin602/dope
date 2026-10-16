@@ -1,0 +1,42 @@
+{
+  "url": "http://127.0.0.1:3000/#/tmp/dope-r3-g4-browser-conflict",
+  "dimensions": {
+    "innerWidth": 1920,
+    "innerHeight": 1113
+  },
+  "camera": "transform: translate(167.4px, -412px) scale(0.9);",
+  "selected": [
+    "roadmap:g4#owner-browser"
+  ],
+  "stored": [
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-conflict:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-conflict:uninitialized",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "uninitialized",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    },
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-conflict:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-conflict:0bd689de-4571-4d0e-b0fb-c47804d3a603",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "0bd689de-4571-4d0e-b0fb-c47804d3a603",
+        "viewport": {
+          "x": 167.4,
+          "y": -412,
+          "zoom": 0.9
+        },
+        "viewportIntent": "user",
+        "selectedId": "roadmap:g4#owner-browser",
+        "expanded": [],
+        "collapsed": [],
+        "placements": {}
+      }
+    }
+  ]
+}

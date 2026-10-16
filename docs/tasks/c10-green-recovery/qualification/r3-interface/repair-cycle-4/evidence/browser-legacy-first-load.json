@@ -1,0 +1,52 @@
+{
+  "camera": "transform: translate(727.4px, -155.5px) scale(0.9);",
+  "node": {
+    "x": 834,
+    "y": 526.5,
+    "width": 252,
+    "height": 82.79998779296875,
+    "top": 526.5,
+    "right": 1086,
+    "bottom": 609.2999877929688,
+    "left": 834
+  },
+  "states": [
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-migration:dope.roadmap.viewport.v1:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-migration:1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+      "value": {
+        "version": 1,
+        "projectId": "1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+        "viewport": {
+          "x": -98765,
+          "y": 33333,
+          "zoom": 1.4
+        },
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [
+          "roadmap:ROADMAP.md#phase-1"
+        ],
+        "collapsed": [],
+        "placements": {
+          "roadmap:ROADMAP.md#phase-1": {
+            "x": 9999,
+            "y": 88888
+          }
+        }
+      }
+    },
+    {
+      "key": "theia:/:file:///tmp/dope-r3-g4-browser-migration:dope.roadmap.viewport.v2:file%3A%2F%2F%2Ftmp%2Fdope-r3-g4-browser-migration:1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+      "value": {
+        "version": 2,
+        "orientation": "horizontal",
+        "projectId": "1fdd9a2b-93be-48e5-8c1d-54c09f48bce1",
+        "selectedId": "roadmap:ROADMAP.md#phase-1",
+        "expanded": [
+          "roadmap:ROADMAP.md#phase-1"
+        ],
+        "collapsed": [],
+        "placements": {}
+      }
+    }
+  ]
+}
