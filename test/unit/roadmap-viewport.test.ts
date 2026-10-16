@@ -97,6 +97,19 @@ test('keyboard navigation reveals an offscreen checkpoint at the current zoom', 
     assert.match(widget, /roadmapKeyboardCamera\(position, this\.stage\.clientWidth, this\.stage\.clientHeight/);
 });
 
+test('a full-width saved camera reveals its selected card on a narrow stage and restores on widening', () => {
+    const saved = { x: 690.68, y: -285.1, zoom: 1.08 };
+    const position = { x: 141.78, y: 687.78 };
+    const narrow = roadmapKeyboardCamera(position, 1002, 629, saved, 280, 92);
+    assert.ok(narrow);
+    assert.equal(narrow.zoom, saved.zoom);
+    assert.ok(narrow.x + (position.x + 280) * narrow.zoom <= 1002 - 16);
+    assert.ok(narrow.y + (position.y + 92) * narrow.zoom <= 629 - 16);
+    assert.equal(roadmapKeyboardCamera(position, 1822, 985, saved, 280, 92), undefined);
+    assert.match(widget, /this\.applyInitialCamera\(\);\s*this\.restoreVisibleCameraOnResize\(\)/);
+    assert.match(widget, /roadmapKeyboardCamera\(position, this\.stage\.clientWidth, this\.stage\.clientHeight,\s*saved/);
+});
+
 test('keyboard and Focus Selection camera changes honor reduced motion', () => {
     assert.match(widget, /duration: window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches \? 0 : 160/);
     assert.match(widget, /duration: window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches \? 0 : 320/);

@@ -79,6 +79,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly stage = document.createElement('div');
     private readonly stageResize = new ResizeObserver(() => {
         this.applyInitialCamera();
+        this.restoreVisibleCameraOnResize();
         if (this.stage.clientWidth < 1240 && this.sourceOpen && this.inspectionOpen &&
             this.sourceView === 'expanded' && this.inspectionView === 'expanded') this.setSourceOpen(false);
     });
@@ -698,7 +699,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             },
             onInit: (flow: ReactFlowInstance) => { this.flow = flow;
                 if (this.viewport) void flow.setViewport(this.viewport);
-                this.queueInitialCamera(); },
+                this.queueInitialCamera();
+                requestAnimationFrame(() => { if (flow === this.flow) this.restoreVisibleCameraOnResize(); }); },
             onMoveStart: (event: unknown) => {
                 if (roadmapUserViewportEvent(event) && cameraGeneration === this.cameraGeneration && cameraProjectUri === this.projectUri)
                     this.initialCameraPending = false;
@@ -747,6 +749,26 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.displayedViewport = camera;
         this.detail = roadmapDetailAtZoom(camera.zoom, this.detail);
         void this.flow.setViewport(camera);
+    }
+
+    /** A saved full-width camera may clip its selected card in a narrower editor.
+     * Derive the temporary camera from the saved intent so widening restores it. */
+    private restoreVisibleCameraOnResize(): void {
+        const flow = this.flow, saved = this.viewport, projection = this.projection, id = this.selectedId;
+        if (!flow || !saved || !projection || !id || !this.stage.clientWidth || !this.stage.clientHeight) return;
+        const card = [...this.path.querySelectorAll<HTMLButtonElement>('button[data-checkpoint-id]')]
+            .find(button => button.dataset.checkpointId === id);
+        if (!card) return;
+        const visible = roadmapVisibleGraph(projection, this.detail, id,
+            this.expanded, this.collapsed, 96, this.promptWindow);
+        const position = this.placements.get(id) ?? roadmapSpatialLayout({ ...projection, ...visible }).get(id);
+        if (!position) return;
+        const camera = roadmapKeyboardCamera(position, this.stage.clientWidth, this.stage.clientHeight,
+            saved, card.offsetWidth, card.offsetHeight) ?? saved;
+        const current = flow.getViewport();
+        if (current.x === camera.x && current.y === camera.y && current.zoom === camera.zoom) return;
+        this.displayedViewport = camera;
+        void flow.setViewport(camera);
     }
 
     private recordUserCamera(camera = this.flow?.getViewport()): void {
