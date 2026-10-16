@@ -1,0 +1,252 @@
+{
+  "chromeCaptures": {
+    "blank": {
+      "browserMainPid": 50004,
+      "captureMode": "Default",
+      "configuredMaxMb": 20,
+      "configuredMaxSeconds": 45,
+      "eventCount": 120857,
+      "hostTraceEventKinds": {
+        "CONNECT4": 64,
+        "CONNECT6": 5,
+        "SENDMSG_NO_ADDR": 31,
+        "TCP_SEND4": 93,
+        "UDP_SEND4": 4032
+      },
+      "netlogBytes": 19682283,
+      "netlogSha256": "e98d615e427d3339fd7d1427a1fbeede31268024b97a58a1d7efc233d523fc13",
+      "networkServicePid": 50045,
+      "processStart": "08:03:15",
+      "publicDestinationTop": [
+        {
+          "destination": "172.217.116.4:443",
+          "dnsHostCandidates": [
+            "optimizationguide-pa.googleapis.com"
+          ],
+          "socketSendAttempts": 3855
+        },
+        {
+          "destination": "50.151.212.27:443",
+          "dnsHostCandidates": [
+            "rr11---sn-bvvbaxivnuxqjvhj5nu-vgqe.gvt1.com"
+          ],
+          "socketSendAttempts": 102
+        },
+        {
+          "destination": "192.178.157.100:443",
+          "dnsHostCandidates": [
+            "android.clients.google.com"
+          ],
+          "socketSendAttempts": 36
+        },
+        {
+          "destination": "142.251.211.14:443",
+          "dnsHostCandidates": [
+            "update.googleapis.com"
+          ],
+          "socketSendAttempts": 25
+        },
+        {
+          "destination": "142.251.156.119:443",
+          "dnsHostCandidates": [
+            "www.google.com"
+          ],
+          "socketSendAttempts": 16
+        },
+        {
+          "destination": "172.217.68.100:443",
+          "dnsHostCandidates": [
+            "redirector.gvt1.com"
+          ],
+          "socketSendAttempts": 8
+        },
+        {
+          "destination": "142.251.214.78:443",
+          "dnsHostCandidates": [
+            "android.clients.google.com",
+            "clientservices.googleapis.com"
+          ],
+          "socketSendAttempts": 7
+        },
+        {
+          "destination": "172.217.71.102:443",
+          "dnsHostCandidates": [
+            "clients2.google.com"
+          ],
+          "socketSendAttempts": 7
+        }
+      ],
+      "retainedFirst": "2026-10-16T08:03:31.124000-05:00",
+      "retainedLast": "2026-10-16T08:03:59.479000-05:00",
+      "retainedSeconds": 28.355,
+      "retainedUrlRequestHosts": {
+        "android.clients.google.com": 1
+      }
+    },
+    "dope": {
+      "browserMainPid": 51328,
+      "captureMode": "Default",
+      "configuredMaxMb": 20,
+      "configuredMaxSeconds": 45,
+      "eventCount": 118556,
+      "hostTraceEventKinds": {
+        "CONNECT4": 74,
+        "CONNECT6": 5,
+        "SENDMSG_NO_ADDR": 44,
+        "TCP_SEND4": 2047,
+        "UDP_SEND4": 4193
+      },
+      "netlogBytes": 19755071,
+      "netlogSha256": "290284f1f3d9525126348ebb3fbc41c0f36c6fb695d10fb05c3e27674aefaf19",
+      "networkServicePid": 51383,
+      "processStart": "08:04:25",
+      "publicDestinationTop": [
+        {
+          "destination": "172.217.119.4:443",
+          "dnsHostCandidates": [
+            "content-autofill.googleapis.com",
+            "optimizationguide-pa.googleapis.com"
+          ],
+          "socketSendAttempts": 3941
+        },
+        {
+          "destination": "50.151.212.27:443",
+          "dnsHostCandidates": [
+            "rr11---sn-bvvbaxivnuxqjvhj5nu-vgqe.gvt1.com"
+          ],
+          "socketSendAttempts": 93
+        },
+        {
+          "destination": "50.151.212.212:443",
+          "dnsHostCandidates": [
+            "rr4---sn-bvvbaxivnuxqjvhj5nu-vgqz.gvt1.com"
+          ],
+          "socketSendAttempts": 74
+        },
+        {
+          "destination": "142.250.177.78:443",
+          "dnsHostCandidates": [
+            "android.clients.google.com"
+          ],
+          "socketSendAttempts": 41
+        },
+        {
+          "destination": "142.251.211.14:443",
+          "dnsHostCandidates": [
+            "update.googleapis.com"
+          ],
+          "socketSendAttempts": 20
+        },
+        {
+          "destination": "172.217.117.4:443",
+          "dnsHostCandidates": [
+            "content-autofill.googleapis.com",
+            "optimizationguide-pa.googleapis.com"
+          ],
+          "socketSendAttempts": 18
+        },
+        {
+          "destination": "142.251.150.119:443",
+          "dnsHostCandidates": [
+            "www.google.com"
+          ],
+          "socketSendAttempts": 14
+        },
+        {
+          "destination": "172.217.118.4:443",
+          "dnsHostCandidates": [
+            "content-autofill.googleapis.com",
+            "optimizationguide-pa.googleapis.com"
+          ],
+          "socketSendAttempts": 7
+        }
+      ],
+      "retainedFirst": "2026-10-16T08:04:42.096000-05:00",
+      "retainedLast": "2026-10-16T08:05:10.899000-05:00",
+      "retainedSeconds": 28.803,
+      "retainedUrlRequestHosts": {
+        "android.clients.google.com": 3
+      }
+    }
+  },
+  "chromeTurnAfterTrace": {
+    "chatId": "9a2ddf2d-9eed-4a61-83c1-04ff07af5e36",
+    "containsCurrentObjectiveAndRevision": false,
+    "endApproxUtc": "2026-10-16T13:18:13.070Z",
+    "executionStatus": "complete",
+    "jsonType": "strict-json-no-action",
+    "markdownSha256BeforeAfter": "f9065fd49bf4e8818fdd2c3fd7d4b5314d78c570ca088cbd8e3873a0bdd60cb0",
+    "monitorCoverage": false,
+    "ownerSha256BeforeAfter": "d660742d33113b8dafd9c2b8120724a79930d81c2476c5e090e48f17cde3204a",
+    "provider": "local",
+    "roadmapContextRefCount": 0,
+    "selectedAndActualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+    "startUtc": "2026-10-16T13:18:04.134Z"
+  },
+  "knownLimits": [
+    "NetLog 20MB cap overwrote initial ~16 seconds in both profiles",
+    "No independent zero-loss counter",
+    "Pretrace native external TLS payload/origin unresolved",
+    "Other transmission paths beyond verified probes remain unqualified",
+    "Native GUI and independent Chrome Q4 UI replay were not observed and are owner-waived for this supplement",
+    "Original Group 2 native IPv6 external connect attempt remains unclassified"
+  ],
+  "nativeBackendTurn": {
+    "backendSendsToLmLoopback": true,
+    "chatId": "01ef9608-78f2-460d-ba85-843b3051a3ca",
+    "endUtc": "2026-10-16T13:17:03.129Z",
+    "executionStatus": "complete",
+    "externalDestinationEventsInIntervalForNativeBackendElectronNetworkLm": 0,
+    "loadedContextTokens": 32768,
+    "markdownSha256BeforeAfter": "decaa7a139047ebe18b7e9eb2e9657597a214b8e1e2bd8a50d681ebe3069cded",
+    "ownerSha256BeforeAfter": "2ebadb4b670a246155d0722765224bed37a8720aa30360e36e9cd3a1c4103ef3",
+    "planningStatus": "no-action",
+    "provider": "local",
+    "responseHasExactObjectiveAndRevision": true,
+    "selectedAndActualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+    "startUtc": "2026-10-16T13:16:42.941Z",
+    "uiCoverage": false
+  },
+  "ownerScopeUpdate": "Separate native and independent Chrome Q4 UI replay requirement removed; earlier Codex in-app-browser Q4 behavior accepted as UI evidence. Network evidence remains mandatory.",
+  "packageVersion": "0.10.16",
+  "pretraceElectronExternal": {
+    "attributionStatus": "strong_chromium_spellcheck_candidate_socket_request_link_not_proven",
+    "candidateHost": "redirector.gvt1.com",
+    "candidateRequest": "https://redirector.gvt1.com/edgedl/chrome/dict/en-us-10-1.bdic",
+    "destination": "172.217.68.100:443",
+    "primarySource": "https://chromium.googlesource.com/chromium/src/+/master/chrome/browser/spellchecker/spellcheck_hunspell_dictionary.cc",
+    "processPid": 39731,
+    "socketBytesReceived": 7304,
+    "socketBytesSent": 2552
+  },
+  "privateArtifactHashes": {
+    "blankNetLogSha256": "e98d615e427d3339fd7d1427a1fbeede31268024b97a58a1d7efc233d523fc13",
+    "dopeNetLogSha256": "290284f1f3d9525126348ebb3fbc41c0f36c6fb695d10fb05c3e27674aefaf19",
+    "ownerHostTraceBytes": 4529088,
+    "ownerHostTraceSha256": "678340d260463293fe978d700aca9313f9733adae6b06424ac8dde6e91fca6ca"
+  },
+  "productSource": "00121646f6b5f3d66e06e3cd320935a76dc73353",
+  "status": "NOT_GREEN_INCOMPLETE",
+  "trace": {
+    "browserBackendPid": 31379,
+    "calibration": {
+      "perMessageDestinationsObserved": true,
+      "pid": 53456,
+      "sendmmsg4Returned": 2,
+      "sendmmsg6Returned": 2,
+      "tcp4": true,
+      "tcp6": true,
+      "udp4ExplicitAndConnected": true,
+      "udp6ExplicitAndConnected": true
+    },
+    "firstEventLocal": "08:02:25",
+    "independentZeroLossCounter": false,
+    "lastEventLocal": "08:17:22",
+    "lmServicePid": 22774,
+    "lmWorkerPid": 25943,
+    "lossWarningsObserved": 0,
+    "nativeBackendPid": 39705,
+    "nativeNetworkPid": 39731,
+    "recordLines": 58265
+  }
+}
