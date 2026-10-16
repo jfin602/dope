@@ -28,6 +28,8 @@ The isolated root `/tmp/dope-r2-repair-g2-accept` began without `.dope/roadmap.j
 
 The actual generated JSON, message IDs, selected/actual model provenance, timestamps, and `submitted → validated → pending → applied` traces are in [sanitized evidence](repair-cycle-2/evidence/result-sanitized.json). These are persisted model outputs, not injected or manually authored drafts. The UI preview showed the before/after change and “Pending · no write.” The final creation control was a distinct, explicit approval; model proposal Apply alone did not publish canonical state.
 
+The draft's opaque in-memory handle was deliberately not logged or retained as a reusable capability. Its binding is evidenced by the selected saved Chat completing validated edits against draft revisions **0 → 1 → 2** and by the greenfield service rejecting a changed handle in the focused test. No raw draft handle or approval token is in the evidence bundle.
+
 After publication, owner `4f3076a0-d592-45a1-ad13-37907d7985cf` had revision **2**, linked path `ROADMAP.md`, sync state `synced`, and IDs `roadmap:ROADMAP.md#phase-1` and `roadmap:ROADMAP.md#milestone-local-cache-interface`. The checkpoint Objective was “Add deterministic cache keys, explicit invalidation, and project-local storage boundaries.” The Markdown SHA-256 and stored `linkedDocument.sourceHash` both equal `4390f4d56d36c52b708c0fd6a9efdc417977ae847b11a425f9ed2beaa07a7783`; owner-file SHA-256 is `83182706031080d3a582858c09cfc52b38b9a7b9a9b6904ff04f5ac2387beccf`. Before approval both canonical files were absent. [Final file inventory](repair-cycle-2/evidence/final-state.json) independently recomputes these values; neither project has `.dope/agent` state.
 
 ## Reload, backend restart and fresh continuation
