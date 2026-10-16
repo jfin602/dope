@@ -548,7 +548,22 @@ export class RoadmapStore {
                         fields: mapped.sections.map(({ line, heading, ...field }) => field) } } }, root);
             if ((await readRoadmapMappedSections(root, linked)).hash !== mapped.hash)
                 throw new Error('Stale pending Roadmap source');
+            const backup = join(root, `${linked.path}.dope-pending-backup`);
+            let backupPresent = false;
+            try {
+                const info = await lstat(backup);
+                if (!info.isFile() || info.isSymbolicLink() || info.size > 2 * 1024 * 1024)
+                    throw new Error('Unsafe pending Roadmap backup');
+                const handle = await open(backup, constants.O_RDONLY | constants.O_NOFOLLOW);
+                try {
+                    const backupHash = createHash('sha256').update(await handle.readFile()).digest('hex');
+                    if (![linked.pending!.beforeHash, mapped.hash].includes(backupHash))
+                        throw new Error('Unresolved pending Roadmap backup');
+                } finally { await handle.close(); }
+                backupPresent = true;
+            } catch (error) { if (!missing(error)) throw error; }
             await this.replace(root, next);
+            if (backupPresent) await rm(backup);
             return { snapshot: next, changedIds: checkpoints.filter((item, at) =>
                 JSON.stringify(item) !== JSON.stringify(current.checkpoints[at])).map(item => item.id) };
         });
@@ -622,6 +637,34 @@ export class RoadmapStore {
                 await this.replace(root, next);
                 return next;
             };
+            const backup = join(root, `${linked.path}.dope-pending-backup`);
+            let backupPresent = false;
+            try {
+                const info = await lstat(backup);
+                if (!info.isFile() || info.isSymbolicLink()) return { snapshot: await conflict(), changedIds: [] as string[] };
+                if (info.size === 0) {
+                    try { await lstat(join(root, linked.path)); await rm(backup); }
+                    catch (error) { if (!missing(error)) throw error;
+                        return { snapshot: await conflict(), changedIds: [] as string[] }; }
+                } else backupPresent = true;
+            } catch (error) { if (!missing(error)) throw error; }
+            if (backupPresent) {
+                const handle = await open(backup, constants.O_RDONLY | constants.O_NOFOLLOW);
+                let backupHash: string;
+                try {
+                    const info = await handle.stat();
+                    if (!info.isFile() || info.size > 2 * 1024 * 1024) return { snapshot: await conflict(), changedIds: [] as string[] };
+                    backupHash = createHash('sha256').update(await handle.readFile()).digest('hex');
+                } finally { await handle.close(); }
+                if (backupHash !== pending.beforeHash) return { snapshot: await conflict(), changedIds: [] as string[] };
+                try { await lstat(join(root, linked.path)); }
+                catch (error) {
+                    if (!missing(error)) throw error;
+                    await hardLink(backup, join(root, linked.path)).catch(linkError => {
+                        if ((linkError as NodeJS.ErrnoException).code !== 'EEXIST') throw linkError;
+                    });
+                }
+            }
             let mapped: Awaited<ReturnType<typeof readRoadmapMappedSections>>;
             try { mapped = await readRoadmapMappedSections(root, linked); }
             catch { return { snapshot: await conflict(), changedIds: [] as string[] }; }
@@ -630,6 +673,7 @@ export class RoadmapStore {
                 return { snapshot: await conflict(), changedIds: [] as string[] };
             if (mapped.hash === pending.beforeHash) {
                 if (pending.outcome === 'conflict') return { snapshot: current, changedIds: [] as string[] };
+                if (backupPresent) { await rm(backup); backupPresent = false; }
                 const patch = await planRoadmapDocumentPatch(root, { ...current,
                     linkedDocument: { ...linked, syncState: 'synced', pending: undefined } }, {
                     checkpointId: pending.checkpointId, sourceHash: pending.beforeHash,
@@ -668,6 +712,7 @@ export class RoadmapStore {
                     lastSynced: { sourceHash: pending.afterHash, roadmapRevision: nextRevision,
                         fields: mapped.sections.map(({ line, heading, ...field }) => field) } } }, root);
             await this.replace(root, next);
+            if (backupPresent) await rm(backup);
             return { snapshot: next, changedIds: checkpoints.filter((item, i) =>
                 JSON.stringify(item) !== JSON.stringify(current.checkpoints[i])).map(item => item.id) };
         });

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -63,6 +64,67 @@ test('concurrent source edit and Roadmap revision refuse publication', async () 
     await assert.rejects(actions.apply(request, preview.token, true), /Stale Roadmap revision/);
     assert.deepEqual(await readFile(file, 'utf8'), initial);
 }));
+
+test('competing write at linked publication is preserved and requires source-aware recovery', async () => fixture(initial,
+    async (root, store, actions, file) => {
+        const { imported, projectHandle, item } = await setup(root, store, actions);
+        const request = { projectHandle, ownerId: imported.projectId, expectedRevision: imported.revision,
+            sourceHashes: { [item.id]: item.source!.sha256 },
+            actions: [{ type: 'document-edit' as const, id: item.id, objective: 'approved' }] };
+        const preview = await actions.preview(request);
+        const external = initial.replace('Objective: old prose', 'Objective: external competing write');
+        const fs = createRequire(import.meta.url)('node:fs/promises') as typeof import('node:fs/promises');
+        const originalRename = fs.rename;
+        let injected = false;
+        (fs as { rename: typeof fs.rename }).rename = async (from, to) => {
+            if (!injected && from === file && typeof to === 'string' && to.endsWith('.dope-pending-backup')) {
+                injected = true;
+                await writeFile(file, external);
+            }
+            return originalRename(from, to);
+        };
+        try { await assert.rejects(actions.apply(request, preview.token, true), /source changed during publication/); }
+        finally { (fs as { rename: typeof fs.rename }).rename = originalRename; }
+        assert.equal(injected, true);
+        assert.equal(await readFile(file, 'utf8'), external);
+        assert.equal((await store.read(root)).linkedDocument?.syncState, 'pending-sync');
+        const restarted = new RoadmapStore();
+        const recovery = await restarted.previewPendingRecovery(root);
+        assert.equal(recovery.state, 'ready');
+        const settled = await restarted.applyPendingRecovery(root, recovery, true);
+        assert.equal(settled.linkedDocument?.syncState, 'synced');
+        assert.equal(settled.checkpoints[0].status, 'not-green');
+        assert.equal(await readFile(file, 'utf8'), external);
+        await assert.rejects(lstat(`${file}.dope-pending-backup`), /ENOENT/);
+    }));
+
+test('restart clears an empty reserved backup after interrupted publication', async () => fixture(initial,
+    async (root, store, actions, file) => {
+        const { imported, projectHandle, item } = await setup(root, store, actions);
+        const request = { projectHandle, ownerId: imported.projectId, expectedRevision: imported.revision,
+            sourceHashes: { [item.id]: item.source!.sha256 },
+            actions: [{ type: 'document-edit' as const, id: item.id, objective: 'approved' }] };
+        const preview = await actions.preview(request);
+        const fs = createRequire(import.meta.url)('node:fs/promises') as typeof import('node:fs/promises');
+        const originalRename = fs.rename;
+        let interrupted = false;
+        (fs as { rename: typeof fs.rename }).rename = async (from, to) => {
+            if (!interrupted && from === file && typeof to === 'string' && to.endsWith('.dope-pending-backup')) {
+                interrupted = true;
+                throw new Error('injected interruption before source move');
+            }
+            return originalRename(from, to);
+        };
+        try { await assert.rejects(actions.apply(request, preview.token, true), /pending sync/); }
+        finally { (fs as { rename: typeof fs.rename }).rename = originalRename; }
+        assert.equal(interrupted, true);
+        assert.equal(await readFile(file, 'utf8'), initial);
+        const restarted = new RoadmapStore();
+        const recovered = await restarted.recoverDocumentSync(root);
+        assert.equal(recovered.linkedDocument?.syncState, 'synced');
+        assert.match(await readFile(file, 'utf8'), /Objective: approved/);
+        await assert.rejects(lstat(`${file}.dope-pending-backup`), /ENOENT/);
+    }));
 
 test('unsupported field/section and direct owner writes refuse changes', async () => fixture(initial.replace('Objective: old prose\r\n', ''), async (root, store, actions, file) => {
     const { imported, projectHandle, item } = await setup(root, store, actions);

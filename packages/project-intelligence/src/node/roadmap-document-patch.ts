@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { lstat, open, realpath, rename, rm, stat } from 'node:fs/promises';
+import { link as hardLink, lstat, open, realpath, rename, rm, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import type { RoadmapIndex } from './roadmap-store';
 import { roadmapSectionKey } from './roadmap-import';
@@ -181,6 +181,8 @@ export async function publishRoadmapDocumentPatch(root: string, patch: RoadmapDo
     if (hash(source.bytes) !== patch.beforeHash || source.bytes.toString('utf8') !== patch.before)
         throw new Error('Stale linked Roadmap source fingerprint');
     const temporary = join(source.directory, `.dope-roadmap-${randomUUID()}.tmp`);
+    const backup = `${source.file}.dope-pending-backup`;
+    const abandoned = `${temporary}.abandoned`;
     let published = false;
     try {
         const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, source.mode);
@@ -188,12 +190,43 @@ export async function publishRoadmapDocumentPatch(root: string, patch: RoadmapDo
         const fresh = await checkedFile(root, patch.path);
         if (hash(fresh.bytes) !== patch.beforeHash || !fresh.bytes.equals(source.bytes))
             throw new Error('Stale linked Roadmap source fingerprint');
-        await rename(temporary, source.file);
+        // Reserve a recoverable copy, then move the *current* directory entry away.
+        // A competing replacement is moved into backup and detected; publication
+        // links the staged bytes only if the source name is still absent.
+        const reserved = await open(backup, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+        await reserved.close();
+        await rename(source.file, backup);
+        const displaced = await lstat(backup);
+        if (!displaced.isFile() || displaced.isSymbolicLink() ||
+            hash(await readFileNoFollow(backup)) !== patch.beforeHash) {
+            await hardLink(backup, source.file).catch(error => {
+                if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+            });
+            throw new Error('Linked Roadmap source changed during publication');
+        }
+        await hardLink(temporary, source.file);
         published = true;
+        if (hash(await readFileNoFollow(backup)) !== patch.beforeHash) {
+            await rename(source.file, abandoned);
+            await hardLink(backup, source.file).catch(error => {
+                if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+            });
+            throw new Error('Linked Roadmap source changed during publication');
+        }
         const parent = await open(source.directory, 'r');
         try { await parent.sync(); } finally { await parent.close(); }
+        await rm(backup);
     } catch (error) {
         if (published) throw new Error(`Linked Roadmap write outcome uncertain; re-read before retrying: ${String(error)}`);
         throw error;
-    } finally { await rm(temporary, { force: true }); }
+    } finally { await rm(temporary, { force: true }); await rm(abandoned, { force: true }); }
+}
+
+async function readFileNoFollow(file: string): Promise<Buffer> {
+    const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+        const info = await handle.stat();
+        if (!info.isFile() || info.size > MAX_FILE) throw new Error('Unsafe linked Roadmap backup');
+        return await handle.readFile();
+    } finally { await handle.close(); }
 }
