@@ -1,0 +1,78 @@
+{
+  "productSha": "af2b0f031c521d5992e3f3cd2125e80f3e6ad619",
+  "checkType": "final-source composition only; no provider request",
+  "fixture": {
+    "briefSha256": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b",
+    "briefBytes": 18548,
+    "lateFactByteOffset": 15244,
+    "roadmapSha256": "fa5813d4c85cb2a173073a4e5b7c3ac73294dd2d01f00e5e6c9a058f1345a8f4",
+    "ownerRevision": 3
+  },
+  "chat": {
+    "maxInputTokens": 25000,
+    "reservedOutputTokens": 1024,
+    "history": "none"
+  },
+  "results": [
+    {
+      "loadedContext": 16384,
+      "scenario": "heavy1",
+      "composerBudgetTokens": 4864,
+      "inputByteLimit": 14592,
+      "serializedBytes": 14584,
+      "messageRoles": [
+        "system",
+        "user"
+      ],
+      "fileIncludedBytes": 11668,
+      "fileHash": "8a0301a92d186bdaa86e5f1a4b80a5c9a7ad4f122cc27d85484c442ec5ed4bcb",
+      "lateClausePresent": false,
+      "fileTruncated": true
+    },
+    {
+      "loadedContext": 16384,
+      "scenario": "heavy2",
+      "composerBudgetTokens": 4864,
+      "inputByteLimit": 14592,
+      "serializedBytes": 14582,
+      "messageRoles": [
+        "system",
+        "user"
+      ],
+      "fileIncludedBytes": 11686,
+      "fileHash": "7cfeb35922bf1a16233c735d418425ff9551729a3b69168e2a8abc0fd1347700",
+      "lateClausePresent": false,
+      "fileTruncated": true
+    },
+    {
+      "loadedContext": 32768,
+      "scenario": "heavy1",
+      "composerBudgetTokens": 10325,
+      "inputByteLimit": 30976,
+      "serializedBytes": 21504,
+      "messageRoles": [
+        "system",
+        "user"
+      ],
+      "fileIncludedBytes": 18548,
+      "fileHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b",
+      "lateClausePresent": true,
+      "fileTruncated": false
+    },
+    {
+      "loadedContext": 32768,
+      "scenario": "heavy2",
+      "composerBudgetTokens": 10325,
+      "inputByteLimit": 30976,
+      "serializedBytes": 21484,
+      "messageRoles": [
+        "system",
+        "user"
+      ],
+      "fileIncludedBytes": 18548,
+      "fileHash": "995602c60c94ef3d3ac324cbc5ca542e47ff53b42fa1a67ef2faf1453f3a856b",
+      "lateClausePresent": true,
+      "fileTruncated": false
+    }
+  ]
+}
