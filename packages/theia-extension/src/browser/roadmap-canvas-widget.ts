@@ -20,13 +20,14 @@ import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSel
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
-import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapUserViewportEvent,
+import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
     roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
     type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
 
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
-    select: (id: string) => void; activate: (id: string) => void } }): React.ReactElement {
+    select: (id: string) => void; activate: (id: string) => void;
+    reveal: (id: string, element: HTMLButtonElement) => void } }): React.ReactElement {
     const item = data.item;
     return React.createElement(React.Fragment, null,
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
@@ -36,6 +37,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement('button', { type: 'button', className: `dope-roadmap-node dope-roadmap-status-${item.status}`,
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
             'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
+            onFocus: event => data.reveal(item.id, event.currentTarget as HTMLButtonElement),
             onClick: event => { event.stopPropagation(); data.select(item.id); },
             onDoubleClick: event => { event.stopPropagation(); data.activate(item.id); } },
         data.detail !== 'world' ? React.createElement('small', null, item.kind) : null,
@@ -514,6 +516,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private setInspectionOpen(open: boolean, focus = false): void {
+        const hadFocus = this.inspection.contains(document.activeElement);
         if (open && !this.inspectionOpen) {
             const active = document.activeElement;
             this.inspectionReturnFocus = active instanceof HTMLElement && !this.inspection.contains(active) ? active : this.path;
@@ -529,7 +532,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 if (this.inspectionFocus?.isConnected && this.inspectionEditor.node.contains(this.inspectionFocus)) this.inspectionFocus.focus();
                 else this.inspection.focus();
             }
-        } else if (this.inspection.contains(document.activeElement)) {
+        } else if (hadFocus) {
             const target = this.inspectionReturnFocus;
             if (target?.isConnected && !this.inspection.contains(target)) target.focus();
             else this.path.focus();
@@ -624,15 +627,19 @@ export class RoadmapCanvasWidget extends BaseWidget {
         for (const edge of visible ? roadmapCanvasConnectors(visible) : [])
             relations.set(edge.to, [...(relations.get(edge.to) ?? []),
                 `${edge.label} ${titles.get(edge.from) ?? edge.from}`]);
-        const nodes: Node[] = (visible ? roadmapCanvasOrder(visible) : []).map(item => ({
-            id: item.id, type: 'checkpoint', position: this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 },
-            data: { item, selected: item.id === this.selectedId, detail: this.detail,
-                relation: (relations.get(item.id) ?? []).join(', '),
-                omitted: visible?.omittedByStack.get(item.id) ?? 0,
-                select: (id: string) => this.select(id), activate: (id: string) => this.activateCheckpoint(id) },
-            selected: item.id === this.selectedId, draggable: this.arranging, selectable: true,
-            className: item.id === this.selectedId ? 'dope-roadmap-selected' : undefined,
-        }));
+        const nodes: Node[] = (visible ? roadmapCanvasOrder(visible) : []).map(item => {
+            const position = this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 };
+            return {
+                id: item.id, type: 'checkpoint', position,
+                data: { item, selected: item.id === this.selectedId, detail: this.detail,
+                    relation: (relations.get(item.id) ?? []).join(', '),
+                    omitted: visible?.omittedByStack.get(item.id) ?? 0,
+                    select: (id: string) => this.select(id), activate: (id: string) => this.activateCheckpoint(id),
+                    reveal: (id: string, element: HTMLButtonElement) => this.revealFocusedCard(id, position, element) },
+                selected: item.id === this.selectedId, draggable: this.arranging, selectable: true,
+                className: item.id === this.selectedId ? 'dope-roadmap-selected' : undefined,
+            };
+        });
         const displayed = new Map(nodes.map(node => [node.id, node.position]));
         const statuses = new Map(visible?.nodes.map(node => [node.id, node.status]) ?? []);
         const edges: Edge[] = (visible ? roadmapCanvasConnectors(visible) : []).map(item => {
@@ -773,7 +780,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const position = this.placements.get(this.selectedId) ?? roadmapSpatialLayout({ ...this.projection, ...visible }).get(this.selectedId);
         if (!position) return;
         this.intentionalCamera(flow => flow.setCenter(position.x + 140, position.y + 40,
-            { zoom: Math.max(1.4, flow.getZoom()), duration: 320 }));
+            { zoom: Math.max(1.4, flow.getZoom()),
+                duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 320 }));
     }
 
     private nextPrompts(): void {
@@ -1447,8 +1455,20 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.setInspectionView('compact');
         this.setInspectionOpen(true);
         this.render();
-        if (focus) requestAnimationFrame(() => [...this.path.querySelectorAll<HTMLButtonElement>('button')]
-            .find(button => button.dataset.checkpointId === id)?.focus());
+        if (focus) {
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                if (this.selectedId === id) [...this.path.querySelectorAll<HTMLButtonElement>('button[data-checkpoint-id]')]
+                    .find(button => button.dataset.checkpointId === id)?.focus();
+            }));
+        }
+    }
+
+    private revealFocusedCard(id: string, position: { x: number; y: number }, card: HTMLButtonElement): void {
+        if (!this.flow || !this.projection?.nodes.some(node => node.id === id)) return;
+        const camera = roadmapKeyboardCamera(position, this.stage.clientWidth, this.stage.clientHeight,
+            this.flow.getViewport(), card.offsetWidth, card.offsetHeight);
+        if (camera) this.intentionalCamera(flow => flow.setViewport(camera, {
+            duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 160 }));
     }
 
     private activateCheckpoint(id: string): void {

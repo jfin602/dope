@@ -100,6 +100,21 @@ export function roadmapInitialCamera(target: { x: number; y: number }, width: nu
         y: height / 2 - (target.y + 80) * zoom, zoom };
 }
 
+/** Keyboard navigation keeps the selected card in view without changing its zoom. */
+export function roadmapKeyboardCamera(target: { x: number; y: number }, width: number, height: number,
+    current: { x: number; y: number; zoom: number }, cardWidth = 280, cardHeight = 80):
+    { x: number; y: number; zoom: number } | undefined {
+    const left = current.x + target.x * current.zoom;
+    const top = current.y + target.y * current.zoom;
+    const right = left + cardWidth * current.zoom;
+    const bottom = top + cardHeight * current.zoom;
+    const margin = 16;
+    if (left >= margin && right <= width - margin && top >= margin && bottom <= height - margin)
+        return undefined;
+    return { x: width / 2 - (target.x + cardWidth / 2) * current.zoom,
+        y: height / 2 - (target.y + cardHeight / 2) * current.zoom, zoom: current.zoom };
+}
+
 export const roadmapGestures = (arranging: boolean): { panOnDrag: boolean; zoomOnScroll: boolean;
     zoomOnPinch: boolean; nodesDraggable: boolean; nodesConnectable: boolean } => ({
     panOnDrag: true, zoomOnScroll: true, zoomOnPinch: true, nodesDraggable: arranging, nodesConnectable: false,

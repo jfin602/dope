@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction,
+import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera,
     roadmapUserViewportEvent, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot } from
     '../../packages/theia-extension/src/browser/roadmap-viewport.ts';
 
@@ -77,6 +77,29 @@ test('current work uses authoritative phase statuses and a readable centered cam
     assert.equal(640 * camera.zoom + camera.y + 80 * camera.zoom, 350);
     assert.ok((4200 - 420) * camera.zoom + camera.x > 0);
     assert.ok((4200 + 420) * camera.zoom + camera.x < 1100);
+});
+
+test('keyboard navigation reveals an offscreen checkpoint at the current zoom', () => {
+    const current = { x: -4000, y: -400, zoom: 0.9 };
+    const target = { x: 6000, y: 500 };
+    const next = roadmapKeyboardCamera(target, 700, 470, current);
+    assert.ok(next);
+    assert.equal(next.zoom, current.zoom);
+    assert.equal(next.x + (target.x + 140) * next.zoom, 350);
+    assert.equal(next.y + (target.y + 40) * next.zoom, 235);
+    assert.equal(roadmapKeyboardCamera(target, 700, 470, next), undefined);
+    const tall = roadmapKeyboardCamera({ x: 0, y: 300 }, 700, 470,
+        { x: 80, y: 0, zoom: 1 }, 280, 170);
+    assert.ok(tall);
+    assert.equal(tall.y + 300 + 85, 235);
+    assert.match(widget, /this\.select\(next, true\)/);
+    assert.match(widget, /onFocus: event => data\.reveal\(item\.id, event\.currentTarget as HTMLButtonElement\)/);
+    assert.match(widget, /roadmapKeyboardCamera\(position, this\.stage\.clientWidth, this\.stage\.clientHeight/);
+});
+
+test('keyboard and Focus Selection camera changes honor reduced motion', () => {
+    assert.match(widget, /duration: window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches \? 0 : 160/);
+    assert.match(widget, /duration: window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches \? 0 : 320/);
 });
 
 test('widget initializes after project projection and saves only intentional camera changes', () => {

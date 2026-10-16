@@ -50,7 +50,7 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(widget, /this\.importEntry\.hidden = !open/);
     assert.match(css, /\.dope-roadmap-stage-host > \[hidden\] \{ display: none !important; \}/);
     assert.match(css, /\.dope-roadmap-canvas.*var\(--theia-editor-background\)/);
-    assert.match(css, /\.dope-roadmap-node\[aria-current="true"\].*var\(--dope-primary, var\(--theia-focusBorder\)\)/);
+    assert.match(css, /\.dope-roadmap-node\[aria-current="true"\].*var\(--dope-primary, var\(--dope-roadmap-focus, var\(--theia-focusBorder\)\)\)/);
     const rules = css.slice(css.indexOf('.dope-roadmap-canvas'), css.indexOf('.dope-history-panel'));
     assert.doesNotMatch(rules, /#[0-9a-fA-F]{3,8}\b/);
     assert.match(rules, /max-width: 480px/);
@@ -119,8 +119,8 @@ test('the whole Roadmap card keeps its status tint through hover, selection and 
     assert.match(hover, /background: color-mix\(in srgb, var\(--roadmap-status-color/);
     assert.match(hover, /var\(--roadmap-status-hover-fill, 19%\)/);
     assert.doesNotMatch(selected, /background:|border-left:/);
-    assert.match(selected, /box-shadow: 0 0 0 2px var\(--dope-primary, var\(--theia-focusBorder\)\)/);
-    assert.match(css, /\.dope-roadmap-canvas button:focus-visible \{ outline: 2px solid var\(--theia-focusBorder\)/);
+    assert.match(selected, /box-shadow: 0 0 0 2px var\(--dope-primary, var\(--dope-roadmap-focus, var\(--theia-focusBorder\)\)\)/);
+    assert.match(css, /\.dope-roadmap-canvas button:focus-visible \{ outline: 2px solid var\(--dope-roadmap-focus, var\(--theia-focusBorder\)\)/);
     assert.doesNotMatch(rule('\\.dope-roadmap-node:disabled'), /opacity:|background:/);
     for (const status of ['green', 'active', 'not-green', 'waived', 'not-implemented', 'unknown']) {
         assert.match(rule(`\\.dope-roadmap-status-${status}`), /--roadmap-status-color: var\(--dope-roadmap-/);
@@ -156,4 +156,17 @@ test('relationship motion is brief, selection-only and static under reduced moti
     assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.dope-roadmap-edge-related \.react-flow__edge-path \{ animation: none; \}/);
     assert.doesNotMatch(css, /\.dope-roadmap-edge-active \.react-flow__edge-path \{[^}]*animation:/);
     assert.doesNotMatch(css, /animation-iteration-count:\s*infinite/);
+});
+
+test('Roadmap status ink uses theme-scoped contrast corrections', () => {
+    const css = read('packages/theia-extension/src/browser/dope.css');
+    assert.match(css, /body\.theia-light:not\(\.dope-dark\) \{[\s\S]*?--dope-roadmap-active:/);
+    assert.match(css, /body\.theia-light:not\(\.dope-dark\) \{[\s\S]*?--dope-roadmap-unknown:/);
+    assert.match(css, /body\.theia-light:not\(\.dope-dark\) \{[\s\S]*?--dope-roadmap-focus:/);
+    assert.match(css, /--dope-roadmap-not-implemented: color-mix\(in srgb, var\(--theia-foreground\) 80%/);
+});
+
+test('closing details restores focus captured before the panel becomes hidden', () => {
+    const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    assert.match(widget, /const hadFocus = this\.inspection\.contains\(document\.activeElement\);[\s\S]*?this\.inspection\.hidden = !open;[\s\S]*?else if \(hadFocus\)/);
 });
