@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { DOPE_CAPABILITY_HELP, DOPE_CAPABILITY_HELP_VERSION, projectDopeCapabilityHelp } from
+import { DOPE_CAPABILITY_HELP, DOPE_CAPABILITY_HELP_VERSION, projectDopeCapabilityHelp, selectDopeCapabilityHelp } from
     '../../packages/theia-extension/src/node/dope-capability-help.ts';
 
 const root = new URL('../../', import.meta.url).pathname;
@@ -63,4 +63,49 @@ test('missing feature, unavailable project and denied Roadmap permission never a
     assert.match(byId('work').limitation, /separate execution and approval authority/);
     assert.equal(projectDopeCapabilityHelp({ ...ready, hasPlanningSelection: false })
         .find(entry => entry.id === 'chat-pin')?.available, false);
+});
+
+test('Roadmap source replacement intent is recognized without a literal file noun', () => {
+    const questions = [
+        'I linked the wrong Roadmap, how do I change it?',
+        'i LINKED the wrong roadmap! How do I change it?',
+        'How do I change the linked Roadmap?',
+        'I selected the wrong Roadmap. How can I change it?',
+        'I selected the wrong document for my Roadmap. How do I change it?',
+        'I linked the wrong document to the Roadmap. Can I change it?',
+        'How can I switch my Roadmap?',
+        'How do I switch to a different Roadmap?',
+        'Can I replace the linked Roadmap?',
+        'How do I unlink the Roadmap?',
+        'Where can I relink the Roadmap?',
+        'Where can I relink a different Roadmap?',
+        'How do I change the linked Roadmap file in Dope?',
+        'How do I change the Roadmap Markdown source?',
+        'How do I replace the Roadmap document?'
+    ];
+    for (const question of questions)
+        assert.equal(selectDopeCapabilityHelp(question), 'roadmap-change-file', question);
+});
+
+test('Roadmap source guidance does not take planning edits, factual turns or other UI tasks', () => {
+    const cases: readonly (readonly [string, ReturnType<typeof selectDopeCapabilityHelp>])[] = [
+        ['Change the Roadmap checkpoint Objective', undefined],
+        ['Replace the title of my Roadmap checkpoint', undefined],
+        ['Switch the Roadmap checkpoint status', undefined],
+        ['What is the progress of my Roadmap?', undefined],
+        ['What changed in the Roadmap this week?', undefined],
+        ['How do I change the linked issue on my Roadmap?', undefined],
+        ['How do I replace the Roadmap link to my Planning Map?', undefined],
+        ['How do I change the source link in this web page?', undefined],
+        ['How do I refresh the Roadmap?', 'roadmap-refresh'],
+        ['How do I sync the linked Roadmap file?', 'roadmap-refresh'],
+        ['The Roadmap source changed; how do I refresh it?', 'roadmap-refresh'],
+        ['How do I pin the selected checkpoint in Chat?', 'chat-pin'],
+        ['How do I follow the active planning selection in Chat?', 'chat-follow'],
+        ['Open my saved Work', 'work'],
+        ['Find my History', 'history'],
+        ['Tell me about TypeScript generics', undefined]
+    ];
+    for (const [question, expected] of cases)
+        assert.equal(selectDopeCapabilityHelp(question), expected, question);
 });

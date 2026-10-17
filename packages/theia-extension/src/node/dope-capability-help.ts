@@ -94,12 +94,14 @@ export function projectDopeCapabilityHelp(state: DopeHelpAvailability): readonly
 /** Match only explicit Dope UI tasks; ordinary Roadmap planning stays on its existing path. */
 export function selectDopeCapabilityHelp(question: string): DopeHelpId | undefined {
     if (/\b(?:roadmap|markdown|linked\s+(?:file|document|source))\b/i.test(question)) {
-        const sourceTask = /\b(?:file|document|source|link)\b/i.test(question) &&
-            /\b(?:roadmap|markdown|linked)\b/i.test(question);
-        if (sourceTask && (/\b(?:unlink|relink|replace|switch|wrong|different)\b/i.test(question) ||
-            /\bchange\b/i.test(question) &&
-            /\b(?:linked\s+(?:(?:roadmap|markdown)\s+)?(?:file|source|document)|(?:roadmap|markdown)\s+(?:file|source|link))\b/i.test(question) &&
-            !/\b(?:objective|checkpoint|title|status)\b/i.test(question))) return 'roadmap-change-file';
+        const otherPlanningTarget = /\b(?:objective|checkpoint|title|status|issues?|planning\s+maps?|dependenc(?:y|ies))\b/i.test(question);
+        const sourceBinding = /\b(?:roadmap|markdown)\s+(?:file|document|source|link)\b/i.test(question) ||
+            /\b(?:linked|selected)\s+(?:(?:the|a|my)\s+)?(?:(?:wrong|different)\s+)?(?:roadmap|markdown|file|document|source)\b/i.test(question);
+        const sourceChange = /\b(?:unlink|relink|replace|switch)\b/i.test(question) ||
+            sourceBinding && /\b(?:change|wrong|different)\b/i.test(question);
+        if (!otherPlanningTarget && sourceChange &&
+            (sourceBinding || /\b(?:unlink|relink|replace|switch)\s+(?:(?:to|from)\s+)?(?:(?:the|a|my)\s+)?(?:(?:wrong|different|linked)\s+)?(?:roadmap|markdown)\b/i.test(question)))
+            return 'roadmap-change-file';
         if (/\b(?:refresh|sync|conflict|source.changed|relink.needed)\b/i.test(question)) return 'roadmap-refresh';
     }
     if (/\b(?:chat|context)\b/i.test(question) && /\b(?:follow|pin)\b/i.test(question))
