@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { link as hardLink, lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { previewRoadmapImport } from './roadmap-import';
-import { planRoadmapDocumentPatch, publishRoadmapDocumentPatch } from './roadmap-document-patch';
+import { checkedRoadmapDocumentFile, planRoadmapDocumentPatch, publishRoadmapDocumentPatch } from './roadmap-document-patch';
 import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPendingRecovery } from './roadmap-document-sync';
 import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
@@ -62,6 +62,28 @@ export interface RoadmapIndex {
     linkedDocument?: RoadmapLinkedDocument;
     /** Accepted creation intent. It is not a published Roadmap or a second draft store. */
     pendingCreation?: { path: string; sourceHash: string; content: string };
+}
+/** Read-only evidence for a deliberate change of the active Markdown owner. */
+export interface RoadmapReplacementPreview {
+    state: 'ready' | 'review';
+    projectId: string;
+    revision: number;
+    previousPath: string;
+    previousHash: string;
+    observedPreviousHash?: string;
+    path: string;
+    sourceHash: string;
+    removedCheckpointIds: string[];
+    addedCheckpointIds: string[];
+    retainedCheckpointIds: string[];
+    manualCheckpointIds: string[];
+    /** Active checkpoint data and links on these IDs need an explicit P2 disposition. */
+    atRiskCheckpointIds: string[];
+    atRiskCheckpoints: { id: string; title: string; status: RoadmapStatus; dependencies: number; links: number }[];
+    /** A replacement changes the active owner; it never deletes the previous Markdown. */
+    replacementWarning: string;
+    sections: { sectionKey: string; checkpointId: string; line: number }[];
+    diagnostics: { path: string; line?: number; checkpointId?: string; message: string; severity: 'blocking' | 'warning' }[];
 }
 export interface RoadmapChange { root: string; projectId: string; revision: number; changedIds: string[] }
 export type RoadmapMutation =
@@ -570,6 +592,96 @@ export class RoadmapStore {
         if (result.changedIds.length) this.publish({ root, projectId: result.snapshot.projectId,
             revision: result.snapshot.revision, changedIds: result.changedIds });
         return result.snapshot;
+    }
+
+    /** Inspect a different Markdown owner without initializing, recovering or writing Roadmap state. */
+    async previewReplacement(root: string, path: string): Promise<RoadmapReplacementPreview> {
+        const current = await this.read(root);
+        const linked = current.linkedDocument;
+        if (!linked || linked.projectRoot !== root || linked.projectId !== current.projectId)
+            throw new Error('Roadmap has no linked document for this project');
+        if (typeof path !== 'string' || path.length > 512 || path.split('/')[0] === '.dope' || path === linked.path)
+            throw new Error('Choose a different safe project Markdown path');
+        // Import and document readers independently check containment, every component for
+        // symlinks, source bounds and candidate bytes. Neither initializes an owner.
+        const candidate = await previewRoadmapImport(root, path);
+        const selected = candidate.sources.find(source => source.path === path);
+        if (!selected) throw new Error('Selected Roadmap source missing');
+        const diagnostics: RoadmapReplacementPreview['diagnostics'] = [];
+        const report = (sourcePath: string, message: string, line?: number, checkpointId?: string,
+            severity: 'blocking' | 'warning' = 'blocking'): void => {
+            diagnostics.push({ path: sourcePath, ...(line === undefined ? {} : { line }),
+                ...(checkpointId === undefined ? {} : { checkpointId }), message, severity });
+        };
+        if (current.pendingCreation) report(linked.path, 'Pending Roadmap creation requires recovery.');
+        if (linked.pending || linked.syncState === 'pending-sync')
+            report(linked.path, 'Pending linked Roadmap sync requires recovery.');
+        if (linked.syncState !== 'synced') report(linked.path, `Linked Roadmap is ${linked.syncState}; reconcile it first.`);
+        if (linked.lastSynced.sourceHash !== linked.sourceHash)
+            report(linked.path, 'Accepted source basis differs from the active link.');
+        if (linked.lastSynced.roadmapRevision !== current.revision)
+            report(linked.path, 'Roadmap changed after the last linked sync; preserve or reconcile local state first.');
+        let observedPreviousHash: string | undefined;
+        try {
+            const source = await checkedRoadmapDocumentFile(root, linked.path);
+            observedPreviousHash = createHash('sha256').update(source.bytes).digest('hex');
+            if (observedPreviousHash !== linked.sourceHash)
+                report(linked.path, 'Linked Markdown changed since acceptance; reconcile it first.');
+        } catch (error) {
+            if (missing(error) || /Unsafe linked Roadmap|Unsupported linked Roadmap/.test(String(error)))
+                report(linked.path, 'Linked Markdown is missing or unsafe; review before replacement.');
+            else throw error;
+        }
+        for (const section of linked.sections) {
+            const accepted = linked.lastSynced.fields?.find(field => field.checkpointId === section.checkpointId);
+            const checkpoint = current.checkpoints.find(item => item.id === section.checkpointId);
+            if (!accepted || !checkpoint || checkpoint.source?.path !== linked.path ||
+                checkpoint.source.sha256 !== linked.sourceHash ||
+                checkpoint.title !== accepted.title || checkpoint.objective !== (accepted.objective ?? '') ||
+                checkpoint.order !== (accepted.order ?? checkpoint.order))
+                report(linked.path, 'Active Roadmap has unsynced or unsupported mapped state; preserve or reconcile it first.',
+                    checkpoint?.source?.line, section.checkpointId);
+        }
+        for (const message of candidate.diagnostics) {
+            const line = /\bat line (\d+)/.exec(message);
+            const referencedPath = /^(?:Missing source(?: directory)?|Unsafe source skipped): (.+)$/.exec(message)?.[1];
+            report(referencedPath ?? path, message, line ? Number(line[1]) : undefined, undefined,
+                /^(Missing source|Unsafe source skipped)/.test(message) ? 'warning' : 'blocking');
+        }
+        for (const checkpoint of candidate.checkpoints)
+            for (const message of checkpoint.diagnostics)
+                report(checkpoint.source.path, message, checkpoint.source.line, checkpoint.id,
+                    checkpoint.sectionKey.includes('/checklist-') ? 'warning' : 'blocking');
+        const supported = candidate.checkpoints.filter(item => item.source.path === path && !item.readOnly);
+        const sections = supported.map(item => ({ sectionKey: item.sectionKey, checkpointId: item.id, line: item.source.line }));
+        if (!sections.length) report(path, 'Candidate has no supported, source-mapped Roadmap checkpoints.');
+        if (sections.length) {
+            const mapped = await readRoadmapMappedSections(root, { ...linked, path, sourceHash: selected.sha256,
+                sections: sections.map(({ sectionKey, checkpointId }) => ({ sectionKey, checkpointId })) });
+            if (mapped.hash !== selected.sha256) report(path, 'Candidate changed during preview; retry.');
+            for (const message of mapped.diagnostics) report(path, message);
+            if (mapped.sections.length !== sections.length)
+                report(path, 'Candidate checkpoint mapping is incomplete.');
+        }
+        const oldIds = current.checkpoints.map(item => item.id);
+        const newIds = [...new Set(candidate.checkpoints.map(item => item.id))];
+        const oldSet = new Set(oldIds);
+        const newSet = new Set(newIds);
+        const removedCheckpointIds = oldIds.filter(id => !newSet.has(id));
+        const atRiskCheckpointIds = removedCheckpointIds;
+        const atRiskCheckpoints = current.checkpoints.filter(item => !newSet.has(item.id)).map(item => ({
+            id: item.id, title: item.title, status: item.status,
+            dependencies: item.dependencies.length, links: item.links.length }));
+        return { state: diagnostics.some(item => item.severity === 'blocking') ? 'review' : 'ready',
+            projectId: current.projectId, revision: current.revision,
+            previousPath: linked.path, previousHash: linked.sourceHash, ...(observedPreviousHash ? { observedPreviousHash } : {}),
+            path, sourceHash: selected.sha256, removedCheckpointIds,
+            addedCheckpointIds: newIds.filter(id => !oldSet.has(id)),
+            retainedCheckpointIds: oldIds.filter(id => newSet.has(id)),
+            manualCheckpointIds: current.checkpoints.filter(item => !item.source).map(item => item.id),
+            atRiskCheckpointIds, atRiskCheckpoints,
+            replacementWarning: 'Replacing the active project Roadmap may remove checkpoint state and links. The previous Markdown file remains on disk.',
+            sections, diagnostics };
     }
 
     /** Relink changes only the accepted owner reference. A changed document needs separate reconciliation. */
