@@ -1,6 +1,6 @@
 # Phase 11 Plan — Human-Centered UI
 
-**Status:** DESIGN APPROVED / COHERENT `0.11.0` BASELINE ESTABLISHED / P1–P8 PROMPTS AUTHORED BUT NOT RUN / PRODUCT NOT IMPLEMENTED OR QUALIFIED
+**Status:** P1–P7 IMPLEMENTED THROUGH `0.11.7` / `8cad838`; [MANUAL P8](../../tasks/p11/known-issue-closeout.md) NOT GREEN ON UNCOMMITTED `0.11.8` CANDIDATE; PHASE 11 PRODUCT NOT QUALIFIED / OPEN. Earlier design and entry paragraphs below are dated history.
 **Date:** 2026-10-12; predecessor and version entry reconciled 2026-10-16
 **Authority:** ADR 0037; ADRs 0016, 0030, 0036; docs/ARCHITECTURE.md; docs/workflow.md.
 **Entry:** [Phase 10 owner closeout](../p10/phase-10-closeout.md) is **SATISFIED** at `0.10.16` / `af2b0f0` for the approved R6 recovery scope (737/737 final-source pass). Phase 9 was owner-closed at `0.9.35`. **The separate version-only `0.11.0` baseline is now established** in [baseline.md](baseline.md) at `70c41e6`; this satisfies version readiness, not implementation. The [initial P1–P8 known-issue prompt stack](../../tasks/p11/README.md) is now authored but **not run**. Only a later explicit owner/developer Run authorizes P1–P7 implementation, and P8 requires manual real-GUI qualification. No separate `/activate` gate is needed. The initial tranche does not close iterative Phase 11. Preserve R6 network exclusions and all historical Not Green records.

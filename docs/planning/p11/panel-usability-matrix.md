@@ -1,6 +1,6 @@
 # Phase 11 — Preliminary panel usability matrix
 
-**Status:** PRELIMINARY INVENTORY / NOT AUDITED / NO PHASE 11 HUMAN TEST EVIDENCE
+**Status:** PRELIMINARY INVENTORY; P8 has bounded AI-operated browser evidence for Roadmap/Chat/AI Center, but **no Phase 11 human usability audit or product qualification**. Initial tranche **NOT GREEN**; see [P8 closeout](../../tasks/p11/known-issue-closeout.md).
 **Date:** 2026-10-12; Phase 10 predecessor updated 2026-10-16
 **Authority:** ADR 0037 and [Phase 11 `0.11.0` baseline](baseline.md). Phase 10 is owner-closed at `0.10.16` / `af2b0f0`; this matrix describes candidate **Phase 11 usability audit targets**, not directly verified current widget registrations or pass/fail outcomes. First Phase 11 step must inspect live source/GUI and retire or add rows accordingly.
 
@@ -39,6 +39,10 @@
 **U1–U9 direct qualification gates:** U1 relink success; U2 cancel/failure/unsynced/stale protection; U3 restart, new linked source synchronization and project isolation; U4 correct no-action user prose; U5 collapsed yet inspectable activity; U6 grounded recovery without invented UI actions; U7 real local Q4 and Codex selection/consent and response parity; U8 real loading/empty/error/overlay/accessibility states; U9 existing Phase 10 ownership/permission/Markdown/Chat regressions. For each, record exact source, tested action, expected vs observed result, and Qualified/Not Green/Evidence Gap. See [recovery contract](usability-recovery-contract.md).
 
 ## Living workflow/task-state coverage
+
+**P8 browser-only coverage delta (uncommitted `0.11.8` candidate, product source `8cad838`):** Roadmap manual wrong-file replacement, preview/cancel/invalid/stale/missing/confirm, external new-source edit, restart and second-project isolation were directly exercised. One saved Chat had explicit local Q4 selection, a validated no-action message, raw JSON disclosure/copy, keyboard and narrow rendering. Exact reported Roadmap help wording **failed** despite a matched “linked Roadmap file” wording passing; native Electron GUI and Codex-backed parity were not exercised. AI Center was inspected only to confirm the existing local connection/model, not to qualify provider configuration. This is scoped regression evidence, not a broad Hunter pass.
+
+**Next separate Hunter target:** History → exact continuation → Work status/review on a disposable project, with empty/stale/restart and keyboard/narrow recovery. The first Hunter remains **not yet run** and must use the reusable [manual prompt](../../tasks/p11/usability-hunt-manual.md). Other preliminary rows remain unaudited until a direct task/state record exists.
 
 The table above is **only a preliminary UI inventory**, not a single-pass completion checklist. Each manually executed [Hunter](../../tasks/p11/usability-hunt-manual.md) selects under-tested workflow/state pairs and updates this matrix and the [issue ledger](usability-issue-ledger.md) after evidence review.
 
