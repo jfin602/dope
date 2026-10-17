@@ -22,6 +22,20 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
         alert: ['rejected', 'denied', 'stale', 'failed', 'cancelled'].includes(activity.status) };
 }
 
+/** A saved backend activity marker, completed turn, and intact strict payload are all required. */
+function validatedNoActionMessage(message: ChatAssistantMessage): string | undefined {
+    if (message.execution.status !== 'complete' || message.planningActivity?.kind !== 'no-action' ||
+        message.planningActivity.status !== 'no-action') return undefined;
+    try {
+        const raw: unknown = JSON.parse(message.content);
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+        const value = raw as Record<string, unknown>;
+        if (Object.keys(value).sort().join(',') !== 'message,type' || value.type !== 'no-action' ||
+            typeof value.message !== 'string' || !value.message.trim() || value.message.length > 1000) return undefined;
+        return value.message.trim();
+    } catch { return undefined; }
+}
+
 /** Explain only the backend-verified activity; raw model text is never an authority signal. */
 export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
     const activity = message.planningActivity;
@@ -64,8 +78,8 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         questions: ['Does the proposed change match your intent?', 'Should you review the affected source before deciding?'],
     };
     if (activity.status === 'no-action') return {
-        summary: `The local planning turn proposed no change to ${target}. Nothing was written.`,
-        questions: ['Is there a specific objective you want to clarify?', 'Would reviewing the current checkpoint help choose the next step?'],
+        summary: validatedNoActionMessage(message) ?? `The local planning turn proposed no change to ${target}. Nothing was written.`,
+        questions: [],
     };
     if (activity.status === 'denied') return {
         summary: `You rejected the proposed change to ${target}. Nothing was written by that proposal.`,

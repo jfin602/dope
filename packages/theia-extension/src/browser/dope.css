@@ -662,6 +662,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-message-content :last-child { margin-bottom: 0; }
 .dope-chat-message-content pre { box-sizing: border-box; max-width: 100%; overflow: auto; padding: 10px; border-radius: 6px; background: var(--theia-textCodeBlock-background, var(--theia-input-background)); }
 .dope-chat-planning-activity { min-width: 0; max-width: 100%; color: var(--theia-descriptionForeground); font-size: 12px; }
+.dope-chat-planning-reply { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dope-chat-planning-activity > summary { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; }
 .dope-chat-planning-activity > summary::before { content: '▸'; flex: none; }
 .dope-chat-planning-activity[open] > summary::before { content: '▾'; }

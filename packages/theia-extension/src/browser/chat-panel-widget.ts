@@ -1192,6 +1192,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 content.append(dots);
             } else if (message.role === 'assistant') {
                 const activity = state.stream?.messageId === message.id ? undefined : planningActivityPresentation(message);
+                const outcome = state.stream?.messageId === message.id ? undefined : planningOutcome(message);
+                if (activity?.status === 'No change' && outcome) {
+                    const reply = document.createElement('p');
+                    reply.className = 'dope-chat-planning-reply';
+                    reply.textContent = outcome.summary;
+                    content.append(reply);
+                }
                 if (activity) {
                     const details = document.createElement('details');
                     details.className = 'dope-chat-planning-activity';
@@ -1205,7 +1212,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const label = document.createElement('span'); label.className = 'dope-chat-activity-label';
                     label.textContent = activity.label;
                     const preview = document.createElement('span'); preview.className = 'dope-chat-activity-preview';
-                    preview.textContent = body.replace(/\s+/g, ' ').slice(0, 160);
+                    preview.textContent = activity.status === 'No change' ? 'Original structured response' : body.replace(/\s+/g, ' ').slice(0, 160);
                     const status = document.createElement('span'); status.className = 'dope-chat-activity-status';
                     status.textContent = activity.status;
                     summary.append(label, preview, status);
@@ -1233,13 +1240,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         content.append(raw);
                     }
                 } else content.append(renderUntrustedMessageMarkdown(this.markdown, body));
-                const outcome = planningOutcome(message);
-                if (outcome && state.stream?.messageId !== message.id) {
+                if (outcome && activity?.status !== 'No change') {
                     const explanation = document.createElement('div');
                     explanation.className = 'dope-chat-planning-outcome';
                     const summary = document.createElement('p'); summary.textContent = outcome.summary;
-                    const questions = document.createElement('p'); questions.textContent = outcome.questions.join(' ');
-                    explanation.append(summary, questions);
+                    explanation.append(summary);
+                    if (outcome.questions.length) {
+                        const questions = document.createElement('p'); questions.textContent = outcome.questions.join(' ');
+                        explanation.append(questions);
+                    }
                     content.append(explanation);
                 }
             } else content.textContent = body;

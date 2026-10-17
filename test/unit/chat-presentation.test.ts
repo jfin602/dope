@@ -36,6 +36,35 @@ test('trusted greenfield creation is described as creation even when it has an o
     }
 });
 
+test('completed backend-validated no-action presents its message once without implying a write', () => {
+    const content = JSON.stringify({ type: 'no-action', message: 'Use the Roadmap source menu to review the linked file.' });
+    const message = { content, execution: { status: 'complete' }, planningActivity: {
+        schemaVersion: 1, kind: 'no-action', status: 'no-action', refs: [],
+    } } as ChatAssistantMessage;
+    assert.deepEqual(planningOutcome(message), {
+        summary: 'Use the Roadmap source menu to review the linked file.', questions: [],
+    });
+    assert.equal(planningActivityPresentation(message)?.status, 'No change');
+    for (const damaged of [
+        { ...message, planningActivity: undefined },
+        { ...message, execution: { status: 'streaming' } },
+        { ...message, content: '{"type":"no-action","message":"<script>bad</script>","extra":true}' },
+        { ...message, content: '{"type":"no-action","message":""}' },
+        { ...message, content: '{"type":"no-action","message":"' + 'x'.repeat(1001) + '"}' },
+        { ...message, content: 'not JSON' },
+    ] as ChatAssistantMessage[]) {
+        assert.notEqual(planningOutcome(damaged)?.summary, '<script>bad</script>');
+        assert.notEqual(planningOutcome(damaged)?.summary, 'x'.repeat(1001));
+        assert.notEqual(planningOutcome(damaged)?.summary, 'Use the Roadmap source menu to review the linked file.');
+    }
+    assert.equal(planningOutcome({ ...message, planningActivity: undefined }), undefined);
+    assert.equal(planningActivityPresentation({ ...message, planningActivity: undefined }), undefined);
+    assert.equal(planningOutcome({ ...message, planningActivity: undefined, content: 'Ordinary assistant prose' }), undefined);
+    assert.equal(planningOutcome({ ...message,
+        content: JSON.stringify({ type: 'no-action', message: '<script>literal text</script>' }) })?.summary,
+    '<script>literal text</script>'); // The widget inserts this through textContent, never HTML.
+});
+
 test('untrusted Markdown links permit web/mail destinations only', () => {
     const base = 'https://example.test/chat';
     for (const href of ['https://example.com', 'mailto:dev@example.com', './docs', '#answer'])
@@ -114,6 +143,9 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
     assert.match(widget, /summary\.setAttribute\('aria-label', `\$\{activity\.label\}: \$\{activity\.status\}\. Original JSON`\)/);
     assert.match(widget, /raw\.textContent = body/);
     assert.match(widget, /navigator\.clipboard\?\.writeText\(body\)/);
+    assert.match(widget, /reply\.textContent = outcome\.summary/);
+    assert.match(widget, /activity\.status === 'No change' \? 'Original structured response'/);
+    assert.match(widget, /if \(outcome && activity\?\.status !== 'No change'\)/);
     assert.match(widget, /this\.openPlanningActivities\.add\(message\.id\)/);
     assert.match(widget, /if \(activity\.alert\) item\.classList\.add\('dope-chat-message-alert'\)/);
     assert.match(widget, /else content\.append\(renderUntrustedMessageMarkdown\(this\.markdown, body\)\)/);
