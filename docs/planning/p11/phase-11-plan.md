@@ -29,6 +29,8 @@ Make every Dope-owned panel and practical cross-panel flow **obvious, predictabl
 
 ## Bounded navigation correction — Explorer search and Roadmap shortcut
 
+**Implementation update (2026-10-16):** The owner separately requested implementation. An uncommitted `0.11.8` candidate on `65465342` now has a [browser-scoped N1–N5 implementation check](ux-007-implementation-check.md); native GUI and additional states remain Evidence Gaps. The approval and intended contract below record the earlier planning decision.
+
 **Owner request / evidence:** Explorer screenshot and owner design request on 2026-10-16 America/Chicago (2026-10-17 UTC). **UX-007** is an owner-requested navigational improvement, not a source-reproduced failure or proof that Theia integration already supports the proposed layout without adaptation. Scope is limited to shell navigation, the existing Explorer/Search seam and reuse of the Phase 10 Roadmap canvas. Current `0.11.8` status, the approved UX-003 verified-guidance M1 contract, native/hosted evidence gaps and historical failed checks remain unchanged. Schedule this after the in-flight guidance correction unless explicitly reprioritized; do not silently expand that stack.
 
 **Intended interaction:**

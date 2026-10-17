@@ -61,6 +61,12 @@ import { RoadmapCanvasWidget, ROADMAP_CANVAS_ID } from './roadmap-canvas-widget'
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget, ROADMAP_INSPECTOR_ID } from './roadmap-inspector-widget';
+import { FileNavigatorWidget } from '@theia/navigator/lib/browser/navigator-widget';
+import { createFileNavigatorContainer } from '@theia/navigator/lib/browser/navigator-container';
+import { SearchInWorkspaceFrontendContribution } from '@theia/search-in-workspace/lib/browser/search-in-workspace-frontend-contribution';
+import { ExplorerSearchWidget } from './explorer-search-widget';
+import { SearchNavigationContribution } from './search-navigation-contribution';
+import { RoadmapNavigationContribution, roadmapLauncherFactory } from './roadmap-navigation-contribution';
 import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
 
 const modelInventoryChanged = new Emitter<void>();
@@ -143,6 +149,16 @@ class RightHistoryLauncher extends AbstractViewContribution<HistoryWidget> imple
 }
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
+    rebind(FileNavigatorWidget).toDynamicValue(context => {
+        const child = createFileNavigatorContainer(context.container);
+        child.rebind(FileNavigatorWidget).to(ExplorerSearchWidget);
+        return child.get(FileNavigatorWidget);
+    });
+    rebind(SearchInWorkspaceFrontendContribution).to(SearchNavigationContribution).inSingletonScope();
+    bind(RoadmapNavigationContribution).toSelf().inSingletonScope();
+    bind(FrontendApplicationContribution).toService(RoadmapNavigationContribution);
+    bind(WidgetFactory).toDynamicValue(context =>
+        roadmapLauncherFactory(context.container.get(RoadmapNavigationContribution))).inSingletonScope();
     rebind(SidebarBottomMenuWidget).to(AICenterBottomMenuWidget);
     bind(AICenterContribution).toSelf().inSingletonScope();
     bind(codexAuthServicePath).toDynamicValue(context =>
