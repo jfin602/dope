@@ -1,0 +1,47 @@
+# Correction 11 / P3 — manual grounded guidance closeout
+
+**Disposition: NOT GREEN for scoped browser/local-Q4 UX-003. Phase 11 remains OPEN / NOT QUALIFIED.** The P1/P2 routing correction reaches the real Roadmap source-change help for the owner's exact wording, but none of four repeated local answers gave the complete safe recovery instructions. A negative-control Planning Map question received misleading validated guidance to use **Change linked file** and edit a checkpoint Objective. The original [P8 NOT GREEN result](../p11/known-issue-closeout.md) remains historical and unchanged.
+
+## Source and environment
+
+- **Tested product HEAD:** `3acbb6e0d4d279182e6841288dad9c2ec64284e7` on `main`, descendant of planning reference `266720b`; P1 `4f88101` and P2 `3acbb6e` are committed ancestors. The worktree was clean before P3; no concurrent phase runner/browser backend mutator was found. P3 changed documentation/evidence only and leaves it uncommitted for the owner workflow.
+- **Version:** all 13 manifests and 20 internal `@dope/*` pins were coherently `0.11.8`; no package lockfile exists. No manifest, pin or `yarn.lock` edit was made.
+- **Real GUI:** Codex in-app browser tab `1`, `http://127.0.0.1:3000/#/tmp/dope-c11-p3-browser`, operated by this agent. `npm run build:browser` completed after P2; the newly started backend PID `116606` listened on `127.0.0.1:3000`. The served `/bundle.js` SHA-256 equaled the rebuilt local bundle: `3bcf635f59f1f918b809cc26a21296d6599c4a2efd1282f3befbb12cae20b8c3`. This excludes an old bundle from the observations. Browser screenshots were captured in this task's GUI transcript for the first readable no-action answer, selected-checkpoint waiting state and final misleading Planning Map answer; the browser tool did not export standalone PNG files. The durable [sanitized saved-turn log](evidence/p3-saved-chat.json) has SHA-256 `2195f9db0a8703c08e5de9802a448155129e99e8a09766d2d0c681cb69229893`.
+- **Disposable project:** `/tmp/dope-c11-p3-browser`; deliberately linked valid `docs/roadmap/wrong-roadmap.md`, owner project `c1a97af4-3874-4903-bf77-1cf57176ab8c`, revision **1**, one active checkpoint. `ROADMAP.md` was the valid intended replacement and was never confirmed. One saved Chat `cba6c22b-d8a8-4c39-9894-8aa894124275` held all eleven completed turns; a twelfth missing-source attempt failed in preview before creating a turn.
+- **Model:** each completed turn explicitly selected `LM Studio · qwen3-coder-30b-a3b-instruct@q4_k_m`; the saved messages report `actualProvider: local`, the same model ID and explicit-turn provenance. LM Studio's live model inventory reported Q4_K_M **loaded at 32,768 context**, parallel **1**; the running local llama process used GPU offload. This is a P3 operating profile, **not** the Phase 10 R6 CPU-only/parallel-4 profile or a global default. No hosted fallback, model role/default change, or hosted project-context send occurred.
+
+## Observed turns in the same saved Chat
+
+The [turn log](evidence/p3-saved-chat.json) retains the exact user and raw assistant text and model provenance. All eleven completed turns used the browser Chat UI, not a scripted backend request. Turn numbers below refer to that log.
+
+| Turn | Selection and question | Observed assistant / result | Gate |
+| --- | --- | --- | --- |
+| 1–2 | No checkpoint; exact **“I linked the wrong Roadmap, how do I change it?”** twice | Both validated `no-action` replies gave `Roadmap > Roadmap Markdown and setup > Change linked file` and said Chat cannot perform it. Neither mentioned preview, confirmation or that the previous source remains on disk. | **FAIL** full guidance; **PASS** route/no-write |
+| 3–4 | Existing wrong-source checkpoint selected; exact wording twice | Both validated `no-action` replies gave the same menu path and named the linked wrong file. Neither mentioned preview, confirmation, old-file preservation or Chat's direct-action limitation. No Objective-edit detour occurred. | **FAIL** full guidance; **PASS** route/no-write |
+| 5 | “I selected the wrong Roadmap” | Validated no-action with correct change-file path and current source, missing safe replacement details. | **PARTIAL** |
+| 6 | “replace the linked roadmap” | Validated no-action with correct path and current source, missing safe replacement details. | **PARTIAL** |
+| 7 | “switch the Roadmap document” | Validated no-action with correct path and current source, missing safe replacement details. | **PARTIAL** |
+| 8 | “What is the current Roadmap status?” | Source-grounded active checkpoint, Objective and linked path; no change-file instruction. | **PASS** negative control |
+| 9 | “How do I refresh or sync the current Roadmap?” | Gave Refresh Roadmap, but falsely said the **synced** source “shows a conflict status.” The owner/UI showed `synced` throughout this turn. | **FAIL** grounded state; **PASS** distinct route |
+| 10 | “How do I edit this checkpoint Objective?” | Model emitted a no-op `set-objective` proposal with the existing Objective. Product validation rejected it as “Linked Roadmap edit makes no change”; the UI showed **Rejected · no change**. It did not route to change-file help, but failed to answer the how-to question. | **PASS** rejection/no-write; **FAIL** useful guidance |
+| 11 | “How do I change a Planning Map link?” | Validated `no-action` prose incorrectly said to first edit the checkpoint Objective and then use **Roadmap > Roadmap Markdown and setup > Change linked file** for the Planning Map reference. This is an unrelated link and a misleading endorsed workflow. | **FAIL** negative-control guidance |
+
+The deterministic selector's focused tests reject Objective, status, refresh and Planning Map source-change intent; the negative UI failures above arose in generated answers, and cannot be called selector success for end users. No invalid/non-JSON model response occurred in these eleven turns; its live display behavior is **NOT OBSERVED** in P3. The unchanged strict fallback tests passed and the guard was not weakened.
+
+## GUI recovery, persistence and no-write gates
+
+| Gate | Direct observation | Disposition |
+| --- | --- | --- |
+| Real change-file path and UX-001 seam | Browser `Roadmap > Roadmap Markdown and setup` showed **Change linked file**. Choosing `ROADMAP.md` showed an old→new preview, explicit checkpoint-risk counts, the previous-file-on-disk statement and **Confirm replacing active Roadmap**. **Cancel** retained the wrong link. | **PASS**, narrow browser regression |
+| UX-002 readable no-action | Validated no-action message was the primary prose; raw JSON appeared in a muted, collapsed **No planning action · No change** disclosure. Expansion showed strict JSON and a Copy control; the click was exercised but clipboard bytes could not be independently read from this browser session. Reload restored collapsed disclosures. | **PASS** prose/disclosure/replay; **BLOCKED** independent copy-byte verification |
+| Missing source/stale selected context | Temporarily moving the disposable linked Markdown yielded **Source check failed · review**, `relink-needed` and **Relink Markdown** in Roadmap. With the old checkpoint still selected, the exact Chat prompt was blocked during preview with a missing-file `realpath` error; no new user/assistant message or model turn was saved. Restoring the file and Refresh returned the UI to synced. | **PASS** nonmutation and visible Roadmap recovery; **BLOCKED** model guidance in that stale-selection state |
+| Saved Chat and no-write | Browser reload, Select Chat and reopening the same Chat restored all eleven completed turns. Final owner revision remained **1** and owner JSON SHA-256 remained `94acdb88dc2810b00d9880a7eea3cb897f9bdba2634c1f727d49abf16659d287`. Wrong file SHA-256 remained `75ddf7be000db7e889c459b1bf0aaebfb70f60dbe25e3757d96990bff70deee7`; intended file SHA-256 remained `7dfec5021bc222e88e9cf39097e21542a69b3ba5c0748f8e351a85d97b817cdc`. | **PASS** for observed project/owner files |
+| Empty/unlinked, conflict and cross-project negative guidance | No additional disposable owner state was created for these model turns after the exact-wording and negative-control failures. | **NOT RUN** |
+| Native Electron GUI | No independent native UI session was operated in P3. | **NOT RUN / Evidence Gap** |
+| Codex/hosted parity | No explicit consent to send project context to a hosted provider; no hosted turn was made. | **NOT RUN / Evidence Gap** |
+
+## Validation and next step
+
+Focused tests on the rebuilt source passed **7/7** (`dope-capability-help`, `roadmap-chat-context`, `roadmap-chat-drafts`) and **21/21** (`roadmap-local-model`, `chat-presentation`). `npm run build:browser` passed. `npm run check` was **NOT RUN** in P3: the observed product result is already Not Green, and no new whole-source Green or Electron GUI claim is made. P8's earlier 738-test count is historical, not a P3 execution count.
+
+The correction needs a new bounded assessment/repair for complete source-change recovery prose and for contaminated factual/unrelated-link answers in a long saved Chat. Preserve strict JSON validation and manual-only Roadmap replacement. Keep this P3 **NOT GREEN** record and the original P8 failure. Separately run the first [manual Usability Hunter](../p11/usability-hunt-manual.md) on the different **History → exact continuation → Work status/review** target when the owner chooses that discovery pass; it has **not** run here. Native, hosted parity and broader Phase 11 acceptance remain independent open evidence.

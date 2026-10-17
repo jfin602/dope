@@ -1,5 +1,7 @@
 # Phase 11 Plan — Human-Centered UI
 
+**Status (2026-10-16 P3 handoff):** UX-003 [c11-guidance](../../tasks/c11-guidance/README.md) P1/P2 are committed through `3acbb6e` at unchanged `0.11.8`; [manual browser/local-Q4 P3](../../tasks/c11-guidance/closeout.md) is **NOT GREEN**. Exact wording reaches the true path but gives incomplete safe guidance, and an unrelated Planning Map link answer is misleading. The original [P8 failure](../../tasks/p11/known-issue-closeout.md) remains historical. First separate Usability Hunter, native GUI, hosted parity and Phase 11 owner acceptance are unrun; Phase 11 remains **OPEN / NOT QUALIFIED**. The earlier status below is dated history.
+
 **Status (2026-10-16):** Initial P11 P1–P7 implemented through `8cad838` / `0.11.7`; manual [P8](../../tasks/p11/known-issue-closeout.md) **NOT GREEN** on the then-uncommitted `0.11.8` candidate, whose manifests/evidence were subsequently committed as `266720b` **without a new GUI replay**. UX-003 [c11-guidance](../../tasks/c11-guidance/README.md) owner-approved documentation and P1–P3 prompts are **AUTHORED / NOT RUN** at unchanged `0.11.8`. Phase 11 remains **NOT QUALIFIED / OPEN**. Older planning/entry paragraphs below are historical.
 **Date:** 2026-10-12; predecessor and version entry reconciled 2026-10-16
 **Authority:** ADR 0037; ADRs 0016, 0030, 0036; docs/ARCHITECTURE.md; docs/workflow.md.

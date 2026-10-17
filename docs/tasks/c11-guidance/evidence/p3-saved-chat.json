@@ -1,0 +1,131 @@
+{
+  "source": "3acbb6e0d4d279182e6841288dad9c2ec64284e7",
+  "version": "0.11.8",
+  "project": "/tmp/dope-c11-p3-browser",
+  "chatId": "cba6c22b-d8a8-4c39-9894-8aa894124275",
+  "chatRevision": 55,
+  "notes": "Sanitized from the disposable project saved Chat after real browser turns; omitted connection IDs, full routing policy and project path hashes. Visible UI outcomes and no-write checks are in closeout.md.",
+  "turns": [
+    {
+      "turn": 1,
+      "askedAt": "2026-10-17T01:33:59.619Z",
+      "question": "I linked the wrong Roadmap, how do I change it?",
+      "selection": null,
+      "answer": "{\"type\":\"no-action\",\"message\":\"To change the linked Roadmap file, you must manually navigate to 'Roadmap > Roadmap Markdown and setup > Change linked file' in the UI. The chat interface cannot perform this action directly.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 2,
+      "askedAt": "2026-10-17T01:34:25.729Z",
+      "question": "I linked the wrong Roadmap, how do I change it?",
+      "selection": null,
+      "answer": "{\"type\":\"no-action\",\"message\":\"To change the linked Roadmap file, you must manually navigate to 'Roadmap > Roadmap Markdown and setup > Change linked file' in the UI. The chat interface cannot perform this action directly.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 3,
+      "askedAt": "2026-10-17T01:34:40.897Z",
+      "question": "I linked the wrong Roadmap, how do I change it?",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"no-action\",\"message\":\"You need to manually change the linked Roadmap file through the UI. Navigate to 'Roadmap > Roadmap Markdown and setup > Change linked file' to select a new source. The current roadmap is pointing to docs/roadmap/wrong-roadmap.md as shown in the checkpoint.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 4,
+      "askedAt": "2026-10-17T01:35:12.123Z",
+      "question": "I linked the wrong Roadmap, how do I change it?",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"no-action\",\"message\":\"To change the linked Roadmap file, you must manually navigate to 'Roadmap > Roadmap Markdown and setup > Change linked file' in the UI. The current roadmap is pointing to docs/roadmap/wrong-roadmap.md as shown in the checkpoint.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 5,
+      "askedAt": "2026-10-17T01:35:55.462Z",
+      "question": "I selected the wrong Roadmap",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"no-action\",\"message\":\"To change the linked Roadmap file, you must manually navigate to 'Roadmap > Roadmap Markdown and setup > Change linked file' in the UI. The current roadmap is pointing to docs/roadmap/wrong-roadmap.md as shown in the checkpoint.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 6,
+      "askedAt": "2026-10-17T01:36:26.278Z",
+      "question": "replace the linked roadmap",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"no-action\",\"message\":\"To replace the linked Roadmap file, you must manually navigate to 'Roadmap > Roadmap Markdown and setup > Change linked file' in the UI. The current roadmap is pointing to docs/roadmap/wrong-roadmap.md as shown in the checkpoint.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 7,
+      "askedAt": "2026-10-17T01:36:43.981Z",
+      "question": "switch the Roadmap document",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"no-action\",\"message\":\"To switch the Roadmap document, you must manually navigate to 'Roadmap > Roadmap Markdown and setup > Change linked file' in the UI. The current roadmap is pointing to docs/roadmap/wrong-roadmap.md as shown in the checkpoint.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 8,
+      "askedAt": "2026-10-17T01:37:09.775Z",
+      "question": "What is the current Roadmap status?",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"no-action\",\"message\":\"The current Roadmap status shows 'Product Phase 1 — Wrong source' with objective 'Keep the wrong source intact' and status 'active'. The roadmap is pointing to docs/roadmap/wrong-roadmap.md as shown in the checkpoint.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 9,
+      "askedAt": "2026-10-17T01:37:27.107Z",
+      "question": "How do I refresh or sync the current Roadmap?",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"no-action\",\"message\":\"To refresh or sync the current Roadmap, you need to manually perform a 'Roadmap > Refresh Roadmap' action in the UI. The system indicates that the roadmap is synced with docs/roadmap/wrong-roadmap.md but shows a conflict status. You must resolve any conflicts or pending sync states before retrying the refresh.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 10,
+      "askedAt": "2026-10-17T01:37:58.556Z",
+      "question": "How do I edit this checkpoint Objective?",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"roadmap-intent\",\"intent\":\"set-objective\",\"value\":\"Keep the wrong source intact\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    },
+    {
+      "turn": 11,
+      "askedAt": "2026-10-17T01:38:16.269Z",
+      "question": "How do I change a Planning Map link?",
+      "selection": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+      "answer": "{\"type\":\"no-action\",\"message\":\"The checkpoint Objective is editable as indicated by capabilities.objective.editable=true. To change the Planning Map link, you need to first edit the Objective using the roadmap-intent action, then manually update the planning map reference in the UI under 'Roadmap > Roadmap Markdown and setup > Change linked file'.\"}",
+      "result": "complete",
+      "selectedModel": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+      "actualProvider": "local",
+      "actualModel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+    }
+  ]
+}
