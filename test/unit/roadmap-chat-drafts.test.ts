@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -10,6 +10,8 @@ import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadm
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/node/project-planning-actions.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { projectRoadmapDraft } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import type { GreenfieldChange } from '../../packages/project-intelligence/src/node/roadmap-greenfield.ts';
 
 const proposal = (projectId: string, draftRevision: number, action: unknown) => JSON.stringify({
     type: 'roadmap-draft-proposal', projectId, draftRevision, action });
@@ -60,6 +62,8 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
     const other = await mkdtemp(join(tmpdir(), 'dope-chat-draft-other-'));
     const store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);
+    const changes: GreenfieldChange[] = [];
+    const stopObserving = greenfield.onChange(change => changes.push(change));
     const repository = new ChatRepository();
     const outputs: string[] = [];
     const sent: string[] = [];
@@ -74,6 +78,9 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         if (target.connectionId === 'hosted') hostedCalls++;
         sent.push(request.messages.map(item => item.content).join('\n'));
         if (cancelOnGenerate) { const cancel = cancelOnGenerate; cancelOnGenerate = undefined; await cancel(); }
+        const beforePartial = changes.length;
+        yield { type: 'delta' as const, text: '{"type":"roadmap-draft-' };
+        assert.equal(changes.length, beforePartial, 'partial model text must not publish a draft event');
         yield { type: 'complete' as const, text: outputs.shift() ?? '{"type":"no-action","message":"none"}' };
     } };
     const composer = { compose: async (_root: string, _chat: unknown, content: string) => ({
@@ -110,6 +117,14 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         outputs.push(proposal(projectId, 0, { type: 'create-phase', title: 'Build' }));
         const pending = (await turn()).proposal;
         assert.ok(pending);
+        const proposed = changes.at(-1)!;
+        assert.equal(proposed.kind, 'proposed');
+        assert.equal(proposed.projectId, projectId);
+        assert.equal(proposed.revision, 0);
+        const graph = projectRoadmapDraft({ projectId, revision: 0, nodes: [], edges: [],
+            pools: { ideas: [], issues: [] }, diagnostics: [] }, greenfield.read(handle), proposed.draft);
+        assert.equal(graph.nodes.find(node => node.title === 'Build')?.draftState, 'proposed');
+        assert.equal(graph.nodes.find(node => node.title === 'Build')?.status, 'not-implemented');
         assert.equal(greenfield.read(handle).revision, 0);
         assert.equal((await store.read(root)).revision, 0);
         const restartedDrafts = new RoadmapGreenfield(new RoadmapStore());
@@ -130,6 +145,7 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         assert.match(sent.at(-1) ?? '', /not a property named after the action/);
         await assert.rejects(readFile(join(root, 'ROADMAP.md')), /ENOENT/);
         await backend.decidePlanningProposal(projectHandle, selected, lease.token, pending.id, false);
+        assert.equal(changes.at(-1)?.kind, 'cleared');
         assert.equal(greenfield.read(handle).revision, 0);
         await assert.rejects(backend.decidePlanningProposal(projectHandle, selected, lease.token,
             pending.id, true), /Planning proposal unavailable/);
@@ -139,6 +155,7 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         assert.ok(approved);
         const result = await backend.decidePlanningProposal(projectHandle, selected, lease.token, approved.id, true);
         assert.equal(result?.revision, 1);
+        assert.equal(changes.at(-1)?.kind, 'accepted');
         const phase = greenfield.read(handle).phases[0];
         assert.equal(phase.title, 'Build');
         assert.equal((await store.read(root)).revision, 0);
@@ -155,6 +172,7 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         outputs.push(proposal(projectId, 2, { type: 'create-checkpoint', phaseId: phase.id, title: 'First' }));
         const checkpointProposal = (await turn()).proposal;
         assert.ok(checkpointProposal);
+        assert.match(sent.at(-1) ?? '', /Human decision/);
         await backend.decidePlanningProposal(projectHandle, selected, lease.token, checkpointProposal.id, true);
         const checkpointId = greenfield.read(handle).phases[0].checkpoints[0].id;
         outputs.push(proposal(projectId, 3, { type: 'edit-checkpoint', phaseId: phase.id,
@@ -171,6 +189,12 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
 
         outputs.push(proposal('foreign', 5, { type: 'create-phase', title: 'Wrong' }));
         assert.match((await turn()).proposalError ?? '', /foreign/);
+        outputs.push(proposal(projectId, 5, { type: 'shell', command: 'touch ROADMAP.md' }),
+            proposal(projectId, 5, { type: 'shell', command: 'touch ROADMAP.md' }));
+        await assert.rejects(turn(), /strict JSON|planning/i);
+        assert.equal(greenfield.read(handle).revision, 5);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId: selected, leaseToken: lease.token,
+            selectedModel: { connectionId: 'missing', modelId: 'missing' }, content: 'Plan' }), /unavailable/);
         outputs.push('{bad', '{bad');
         await assert.rejects(turn(), /strict JSON/);
         cancelOnGenerate = () => backend.cancelTurn(projectHandle, selected, lease.token);
@@ -190,15 +214,26 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         greenfield.unbindChat(root, handle);
         assert.equal((await backend.runTurn({ projectHandle, chatId: unselected, leaseToken: otherLease.token,
             selectedModel: { connectionId: 'local', modelId: 'short' }, content: 'Hello' })).proposal, undefined);
-        const preview = greenfield.preview(handle, 'ROADMAP.md');
+        const resumedDrafts = new RoadmapGreenfield(new RoadmapStore());
+        const recovered = await resumedDrafts.restore(root);
+        assert.equal(recovered[0].handle, handle);
+        assert.equal(recovered[0].draft.revision, 5);
+        assert.equal(recovered[0].draft.phases[0].checkpoints[0].objective, 'Confirmed');
+        await writeFile(join(root, 'ROADMAP.md'), '# Existing owner\n');
+        const occupied = resumedDrafts.preview(handle, 'ROADMAP.md');
+        await assert.rejects(resumedDrafts.accept(handle, occupied, true), /already exists/);
+        assert.equal(await readFile(join(root, 'ROADMAP.md'), 'utf8'), '# Existing owner\n');
+        const preview = resumedDrafts.preview(handle, 'NEW-ROADMAP.md');
         assert.equal((await store.read(root)).revision, 0);
-        const created = await greenfield.accept(handle, preview, true);
+        const created = await resumedDrafts.accept(handle, preview, true);
         const reopened = await new RoadmapStore().read(root);
-        assert.equal(await readFile(join(root, 'ROADMAP.md'), 'utf8'), preview.markdown);
+        assert.equal(await readFile(join(root, 'NEW-ROADMAP.md'), 'utf8'), preview.markdown);
+        assert.equal(await readFile(join(root, 'ROADMAP.md'), 'utf8'), '# Existing owner\n');
         assert.equal(reopened.revision, created.revision);
         assert.deepEqual(reopened.checkpoints.map(item => item.id), created.checkpoints.map(item => item.id));
+        assert.equal(reopened.linkedDocument?.path, 'NEW-ROADMAP.md');
         assert.equal(reopened.linkedDocument?.syncState, 'synced');
         assert.equal((await new ChatRepository().read(root)).chats.some(chat => chat.id === selected), true);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true });
+    } finally { stopObserving(); backend.dispose(); await rm(root, { recursive: true, force: true });
         await rm(other, { recursive: true, force: true }); }
 });
