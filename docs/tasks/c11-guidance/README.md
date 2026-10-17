@@ -10,7 +10,13 @@
 | [P2 help routing](P2-help-routing.txt) | Shared ChatBackend/composer, grounded help, strict Q4 no-action + authority regressions | T2 | GPT-6 Sol High | no |
 | [P3 guidance closeout](P3-guidance-closeout.txt) | Direct saved Chat/browser/local Q4 qualification and scoped disposition | T3 | GPT-6 Sol High | **yes — manual** |
 
-## Execution instructions
+## Owner-approved targeted manual recovery — documentation only
+
+The original P1/P2 implementation and [P3 Not Green](closeout.md) are historical, not prompts to rerun. A new owner-approved [verified-guidance manual repair contract](manual/verified-guidance-repair-contract.md) scopes **one future M1 repair and direct GUI qualification loop** at **unchanged `0.11.8`**. It targets missing preview/confirmation/old-file preservation facts and false conflict/Planning Map link instructions **after routing**. The executable `manual/M1-verified-guidance-repair.txt` **has not been written or run**; authoring it needs a separate explicit `/prompt-write`, and execution requires a subsequent owner Run with real browser tools, **outside `codex:phase`**. Do not reclassify P3 or P8 as Green, rerun the completed runner stack or change product source merely because this contract exists. Native Electron and hosted parity remain Evidence Gaps; the separate Usability Hunter is not yet run.
+
+## Historical P1–P3 execution instructions
+
+
 
 Read [assessment](prompt-assessment.md), [plan](implementation-plan.md), [issue ledger](../../planning/p11/usability-issue-ledger.md) and [P8 failure](../p11/known-issue-closeout.md). The correct order is **P1 → P2 → P3**; P3 is the **only final closeout**, manually performed with real browser tools, and must **not** be auto-run by headless phase runner. Authoring this stack is not authorization to execute it.
 
