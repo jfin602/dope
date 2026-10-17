@@ -1,0 +1,26 @@
+TASK: Correction 11 / P15 — Manual Planning Bridge closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: do not modify manifests, internal pins, yarn.lock or package-lock.
+
+PREFLIGHT / EVIDENCE AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1–PB8 and this stack assessment/plan/README. This is **T3 MANUAL QUALIFICATION** outside the headless `codex:phase` runner. Execute only upon separate explicit owner Run after P1–P14 implementation is source-stable. Verify actual HEAD/commit SHA, clean/dirty distinction, coherent `0.11.8`, identical running browser/Electron assets and project workspace. Validate `c11-brainstorm` P8 source/evidence disposition before claiming an end-to-end qualified producer; any incomplete prerequisite is BLOCKED/Evidence Gap, never silently waived. Use disposable projects. No agent self-commit, root overwrite, fabricated model/GUI evidence or Phase 12 activation.
+
+PB1 / D1 — With the **existing saved ChatPanel** (or separate provider-free manual path), brainstorm an actual small Dope feature and deliberately approve canonical linked Roadmap/Markdown; real Q4_K_M/32768 loaded only if actually selected/ready, never infer global default or qualified 64K. Confirm proposed draft vs approved checkpoint and no unauthorized write.
+PB2 / D2 — From an approved checkpoint choose **Prepare Work**; observe Physical Map/source impact, source IDs/current fingerprint/freshness, unavailable/no-map error/recovery; project switch and restart without chat movement.
+PB3 / D3 — Review current/target/diff in existing Planning Map, propose and explicitly approve a real typed transformation; stale/foreign/changed canonical/physical basis blocks until rebase. Do not auto-**Adopt Target**.
+PB4 / D4 — Produce/edit/split/merge real WorkItems with dependency and acceptance tests; verify one-to-many relationships, cycle/unsafe path rejects, human-reserved scope and no AgentTask born merely from suggestions.
+PB5 / D5 — Inspect generated real `docs/tasks/` prompt stack and its T1/T2/T3/manual roles, source hashes/versions, shared runner validator; reject bad/moved/colliding file, stale changed WorkItem or dirty Git. Confirm explicit preview/approval alone cannot Run.
+PB5 / D6 — Deliberately start one approved safe stack in **existing Work** on disposable project with actual authority/grants/candidate validation/review/promotion/checkpoint, recording real outcomes. If unsafe/unavailable, mark BLOCKED or NOT RUN rather than simulate agent success. No hidden model/shell/hosted egress.
+PB6 / D7 — Refresh only affected Physical Map branches, compare actual file/architecture/evidence to saved transformations and record implemented-as-planned, implemented-differently, not-implemented or unexpected; preserve original intent and distinction among run, validation, candidate promotion, WorkItem and canonical adoption.
+PB6 / D8 — Exercise an observed failure/correction or accepted deviation with properly sourced vertical branch; replan only affected unfinished tasks. Review exact evidence-linked Roadmap/Work/History/Markdown progress and separately decide scoped qualification vs Not Green. No automatic Phase 11 owner-close.
+PB7 — Run provider-free fast lane on a tiny issue that truly needs no architecture changes; preserve source/permission/evidence gates with no fake map/WorkItem. Attempt a real bounded selected local-model proposal and no-action question path; record loaded context/cancel/error. Verify browser and independently observed **Electron**, Chat in supported left/right/bottom/center placements, accessible keyboard/narrow/alternate-theme, restart/project isolation, disallowed foreign/stale/grant/egress behavior with actual observation scope. Do not conflate model mock/unit tests, browser tab network proof and Electron whole-host network proof.
+PB8 — Verify all P1–P14 source-bound focused checks, required valid final-source integration/aggregate (`npm run check` once if justified and not already valid on unchanged source), actual per-gate PASS/FAIL/BLOCKED/NOT RUN and evidence links. Preserve Phase 10 R6 scope/historical P11 failures, original Phase 11 H01/H02/Hunt/UX-003 evidence, no-mode/default changes, and Phase 12 inactivity.
+
+WRITE CLOSEOUT ONLY AFTER ACTUAL RUN
+Create `docs/tasks/c11-planning-bridge/closeout.md` with exact source SHA/version/worktree/running bundle, actual evidence paths/screenshots/logs if available, P1–P14 summary and PB1–PB8/D1–D8 per-gate result with residual gaps. Declare one **Bridge-scoped** Green/Not Green/Evidence Gap disposition; no fictional Phase 11 Green or implicit owner approval. Full Phase 11 still requires its independent D1–D8 final-source journey, **two materially distinct broad clean usability Hunts**, complete GUI/authority coverage and explicit owner closeout. Manually commit evidence only under separate owner policy; **no agent self-commit**.

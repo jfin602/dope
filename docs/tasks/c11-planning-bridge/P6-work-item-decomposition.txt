@@ -1,0 +1,24 @@
+TASK: Correction 11 / P6 — Deterministic WorkItem decomposition and dependencies
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: do not alter any version manifests, internal pins or lockfiles.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1-PB8 plan and this stack README/assessment/implementation plan. Reinspect actual checkout HEAD/version/dirty status, nearby live sources and tests. The source review at 6e475a7 is a reference, not an execution pin. Upstream c11-brainstorm P1-P7 are committed at inspection but P8 is unqualified: confirm upstream handoff before dependent implementation, avoid overlapping worktrees; fail closed if unresolved. A separate explicit owner Run authorizes this stack; no /activate. Runner, not agent, owns commits; never self-commit, clean, reset or overwrite owner edits. Preserve existing Chat, Roadmap/Planning/Work/History ownership, local/no-model safety, no silent hosted fallback, no false Green or Phase 12 activation.
+
+SCOPE — T2
+Extend/reuse `suggestWorkItems`, `acceptSuggestion`, `putWorkItem`, `splitWorkItem` and `mergeWorkItems` (actual `@dope/visual-planning` owner) to prepare **bounded** transformation-linked WorkItems from explicitly approved target. Suggest dependency DAG/working set, testable acceptance, constraints and validation targets grounded in approved transformations/Physical Map evidence. Preserve one-to-many/many-to-one transformation mapping, stable IDs, explicit HUMAN/AI/SHARED assignment and human reserved paths; reject cycles, cross-project, stale target, unsupported references/unsafe path, empty acceptance or out-of-scope work. Suggestions are editable and noncanonical until developer accepts through `VisualPlanningService`; never manufacture an AgentTask.
+
+ACCEPTANCE AND FOCUSED VALIDATION
+Focused `test/unit/planning-work.test.ts`, `test/unit/visual-planning.test.ts`, relevant delegation/authority tests for human-reserved restrictions; dependency ordering, stale transforms, split/merge references and no completion by suggestion.
+
+EXCLUSIONS
+No task/agent execution, new WorkItem store, UI, AI-required decomposition or phase runner.
+
+HANDOFF
+Run only smallest justified focused tests; inspect whether tests import compiled lib and build changed package output in dependency order if required. Run `git diff --check`, report source/commands/outcome. No blanket npm run check or browser claim. Target <=8 minutes, 10 soft/15 hard; stop/split if unachievable. Preserve independent manual P15, Phase 11 Hunts and owner closeout.

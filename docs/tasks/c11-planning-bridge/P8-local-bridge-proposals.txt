@@ -1,0 +1,24 @@
+TASK: Correction 11 / P8 — Bounded local-model Bridge proposals
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no manifest, internal package-pin or lockfile bump.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1-PB8 plan and this stack README/assessment/implementation plan. Reinspect the actual Git checkout HEAD, coherent version, dirty worktree, live code/test paths and overlapping tasks. Planning main 6e475a7 and upstream c11-brainstorm P1-P7 at 3787c6c are **historical inspection bases**, not safe run pins. c11-brainstorm P8 manual is not qualified at authoring: stop dependent live producer work until its source/evidence is explicitly dispositioned; never infer Green. Only later explicit owner Run authorizes this stack; no /activate. Runner owns commits; no agent self-commit/stash/reset/clean. Reuse existing ChatPanel, Roadmap, Planning, Work/runner, History owners, authority and local/no-model paths. Never auto-run, auto-adopt, switch provider, silently egress to hosted, mark Green or activate Phase 12.
+
+SCOPE — T2
+Extend the **existing** saved `ChatPanel` -> `ChatBackend/ChatContextComposer` -> selected model pipeline with a narrow context proposal for the selected approved checkpoint, impact evidence, PlanningMap target and WorkItem suggestion. Reuse `roadmap-local-model.ts` completed strict JSON/no-action/validation, selected model capacity budgeting and current project/revision context, not a second Chat or provider-native tool requirement. Local-model output may **propose** typed target/decomposition changes and ask useful questions; one inference by default, bounded explicit continuation and cancel; no partial-token action, no automatic execution. Deterministic validators check current scope, map revision/basis, dependency/path safety, and developer approval through existing owning services. No AI requirement for manual preparation.
+
+ACCEPTANCE / FOCUSED VALIDATION
+Focused `test/unit/roadmap-local-model.test.ts`, `test/unit/chat-context-composer.test.ts`, `test/unit/roadmap-chat-actions.test.ts` and new Bridge proposal tests. Validate malformed/injected/no-action, wrong owner, stale changes, real selected model settings and explicit local-only/hosted-consent rules in bounded mocks; no claim of live Q4 until P15.
+
+EXCLUSIONS
+No new Chat panel/store, second model role/default, agent tools, hosted fallback, autonomous multi-step code edits, Phase 12 scheduler.
+
+HANDOFF
+Inspect compiled lib dependency before tests, build only changed output as necessary, run `git diff --check` and report exactly observed commands/results. Ordinary task <=8-minute target, 10-minute soft, 15-minute hard; split or stop safely if overbound. P15 is manual independent closeout, not replaceable by unit tests; original Phase 11 Hunts/owner signoff remain outstanding.

@@ -1,0 +1,24 @@
+TASK: Correction 11 / P14 — Cross-owner Planning Bridge integration regressions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no manifest, internal package-pin or lockfile bump.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1-PB8 plan and this stack README/assessment/implementation plan. Reinspect the actual Git checkout HEAD, coherent version, dirty worktree, live code/test paths and overlapping tasks. Planning main 6e475a7 and upstream c11-brainstorm P1-P7 at 3787c6c are **historical inspection bases**, not safe run pins. c11-brainstorm P8 manual is not qualified at authoring: stop dependent live producer work until its source/evidence is explicitly dispositioned; never infer Green. Only later explicit owner Run authorizes this stack; no /activate. Runner owns commits; no agent self-commit/stash/reset/clean. Reuse existing ChatPanel, Roadmap, Planning, Work/runner, History owners, authority and local/no-model paths. Never auto-run, auto-adopt, switch provider, silently egress to hosted, mark Green or activate Phase 12.
+
+SCOPE — T2
+Join P1–P13 in **focused integrated fixtures**: existing accepted Roadmap -> Prepare Work -> evidence-backed impact -> PlanningMap transformations -> developer target approval -> WorkItems -> draft/published validated stack -> explicit Work handoff -> actual owner evidence/reconciliation and a correction/fast-lane variant. Test no-model path and bounded model *proposal validation* separately; preserve all three approvals, source/permission separation and no accidental Run. Use actual package surfaces, not a fake second Roadmap/Chat/Work runtime; correct only independently reproduced integration defects. Keep complete browser/native/local model/D1–D8 observations for P15, and original Phase 11 usability Hunts separate.
+
+ACCEPTANCE / FOCUSED VALIDATION
+Run smallest changed-source set among Bridge tests, `roadmap-create-sync-integration`, `roadmap-planning-links`, `planning-map-ui`, `planning-work`, `roadmap-task-discovery`, agent sequence/authority and targeted restart/foreign/unsafe path checks. Only changed package lib in dependency order; one bounded integration suite, no blanket full aggregate per small fix. Record what is still unqualified at P15.
+
+EXCLUSIONS
+No fabricated real Q4/browser/Electron qualification, broad unrelated UI refactor, phase-wide closeout.
+
+HANDOFF
+Inspect compiled lib dependency before tests, build only changed output as necessary, run `git diff --check` and report exactly observed commands/results. Ordinary task <=8-minute target, 10-minute soft, 15-minute hard; split or stop safely if overbound. P15 is manual independent closeout, not replaceable by unit tests; original Phase 11 Hunts/owner signoff remain outstanding.

@@ -1,0 +1,24 @@
+TASK: Correction 11 / P12 — Evidence-backed implementation reconciliation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no manifest, internal package-pin or lockfile bump.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1-PB8 plan and this stack README/assessment/implementation plan. Reinspect the actual Git checkout HEAD, coherent version, dirty worktree, live code/test paths and overlapping tasks. Planning main 6e475a7 and upstream c11-brainstorm P1-P7 at 3787c6c are **historical inspection bases**, not safe run pins. c11-brainstorm P8 manual is not qualified at authoring: stop dependent live producer work until its source/evidence is explicitly dispositioned; never infer Green. Only later explicit owner Run authorizes this stack; no /activate. Runner owns commits; no agent self-commit/stash/reset/clean. Reuse existing ChatPanel, Roadmap, Planning, Work/runner, History owners, authority and local/no-model paths. Never auto-run, auto-adopt, switch provider, silently egress to hosted, mark Green or activate Phase 12.
+
+SCOPE — T2
+Connect **existing** `visual-planning/reconciliation.ts`, targeted fresh Physical Map analysis and authoritative Work/AgentRun/validation/Git/History references into a **read-only truthful outcome projection** after implementation. Preserve planned-versus-actual transformation outcomes: implemented-as-planned, implemented-differently, not-implemented and unexpected-implementation, plus evidence IDs, source/generation/basis and unresolved ambiguities. Use existing PlanningMap reconcile/disposition/closeout permissions; do not infer WorkItem completed, architecture Adopt Target, Green or owner-close from tests, candidate promotion or agent output. Present factual link back to exact checkpoint/WorkItem/stack/run and classify old evidence source drift honestly.
+
+ACCEPTANCE / FOCUSED VALIDATION
+Focused `test/unit/planning-reconciliation.test.ts`, `test/unit/history-integration.test.ts`, pertinent AgentRun/roadmap-status-truth tests and new Bridge rollup assertions; no-change/changed-source/restart/unknown/manual different outcome, no false completion and only explicit affected branch refresh.
+
+EXCLUSIONS
+No Phase 12 background watcher, broad automatic reanalysis, synthetic run result, automatic canonical adoption.
+
+HANDOFF
+Inspect compiled lib dependency before tests, build only changed output as necessary, run `git diff --check` and report exactly observed commands/results. Ordinary task <=8-minute target, 10-minute soft, 15-minute hard; split or stop safely if overbound. P15 is manual independent closeout, not replaceable by unit tests; original Phase 11 Hunts/owner signoff remain outstanding.

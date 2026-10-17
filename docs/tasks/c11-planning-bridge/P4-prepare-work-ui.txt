@@ -1,0 +1,24 @@
+TASK: Correction 11 / P4 — Roadmap Prepare Work navigation and inspection
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: do not alter any version manifests, internal pins or lockfiles.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1-PB8 plan and this stack README/assessment/implementation plan. Reinspect actual checkout HEAD/version/dirty status, nearby live sources and tests. The source review at 6e475a7 is a reference, not an execution pin. Upstream c11-brainstorm P1-P7 are committed at inspection but P8 is unqualified: confirm upstream handoff before dependent implementation, avoid overlapping worktrees; fail closed if unresolved. A separate explicit owner Run authorizes this stack; no /activate. Runner, not agent, owns commits; never self-commit, clean, reset or overwrite owner edits. Preserve existing Chat, Roadmap/Planning/Work/History ownership, local/no-model safety, no silent hosted fallback, no false Green or Phase 12 activation.
+
+SCOPE — T1
+Add one clear **Prepare Work** contextual action to the **existing** Roadmap overlay inspector on an approved eligible checkpoint; explain why it is blocked for provisional/rejected/stale/uninitialized/foreign checkpoints. Use existing `RoadmapCanvasWidget`, inspector model, `RoadmapService`, Theia shell and `PlanningMapController` to focus or create the *existing center Planning Map* for this project, conveying selected checkpoint requirements/impact references. Do not replace tabs, force default layout or start Chat; preserve saved ChatPanel left/right/center/bottom, selected project, viewport and keyboard focus. Route only to real registered commands/services; stable restore and safe no-map state.
+
+ACCEPTANCE AND FOCUSED VALIDATION
+Focused `test/unit/roadmap-canvas.test.ts`, `test/unit/roadmap-inspector.test.ts`, `test/unit/planning-map-ui.test.ts` and relevant navigation tests; keyboard/narrow/disabled reason, project change, no second widget/Chat, no unintended edits or agent execution. Live browser/Electron reserved for P15.
+
+EXCLUSIONS
+No standalone checkpoint detail page, second Planning Map, color rewrite, target approval or agent Run.
+
+HANDOFF
+Run only smallest justified focused tests; inspect whether tests import compiled lib and build changed package output in dependency order if required. Run `git diff --check`, report source/commands/outcome. No blanket npm run check or browser claim. Target <=8 minutes, 10 soft/15 hard; stop/split if unachievable. Preserve independent manual P15, Phase 11 Hunts and owner closeout.

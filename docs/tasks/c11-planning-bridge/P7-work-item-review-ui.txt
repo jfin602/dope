@@ -1,0 +1,24 @@
+TASK: Correction 11 / P7 — Developer WorkItem preparation and edit UI
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: do not alter any version manifests, internal pins or lockfiles.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1-PB8 plan and this stack README/assessment/implementation plan. Reinspect actual checkout HEAD/version/dirty status, nearby live sources and tests. The source review at 6e475a7 is a reference, not an execution pin. Upstream c11-brainstorm P1-P7 are committed at inspection but P8 is unqualified: confirm upstream handoff before dependent implementation, avoid overlapping worktrees; fail closed if unresolved. A separate explicit owner Run authorizes this stack; no /activate. Runner, not agent, owns commits; never self-commit, clean, reset or overwrite owner edits. Preserve existing Chat, Roadmap/Planning/Work/History ownership, local/no-model safety, no silent hosted fallback, no false Green or Phase 12 activation.
+
+SCOPE — T1
+In the existing **Planning Map/WorkItem** projection and inspector, expose generated suggested WorkItems, dependency order, transformation cross-highlighting, user edit/split/merge and explicit **accept** per item using `PlanningMapController` and `VisualPlanningService`. Show source evidence/freshness and errors without inventing new architecture nodes or a separate Planning Bridge page. Keep user-dockable saved Chat unaffected. Block confirmation for stale target/scope and preserve screen-reader names, keyboard/narrow/alternate-theme and neutral Dope theme controls. No silent assignment becoming ExecutionGrant.
+
+ACCEPTANCE AND FOCUSED VALIDATION
+Focused `test/unit/planning-map-ui.test.ts`, `test/unit/planning-work.test.ts`, planning controller tests; verify accept/reject/edit/dependency changes/restart, no model required, no AgentTask launch, correct UI blocked state. Save direct human browser/Electron checks for P15.
+
+EXCLUSIONS
+No new Work/Chat panel, stack generation, Phase 12, automatic execution.
+
+HANDOFF
+Run only smallest justified focused tests; inspect whether tests import compiled lib and build changed package output in dependency order if required. Run `git diff --check`, report source/commands/outcome. No blanket npm run check or browser claim. Target <=8 minutes, 10 soft/15 hard; stop/split if unachievable. Preserve independent manual P15, Phase 11 Hunts and owner closeout.

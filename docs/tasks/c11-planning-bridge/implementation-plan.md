@@ -1,0 +1,42 @@
+# /prompt-plan — c11-planning-bridge
+
+**Status:** PLANNED / docs only, NOT EXECUTED. Inspection reference main `6e475a7a33a2b9c7d3c6742acf63b12199bb5f94`, unchanged `0.11.8`. Actual Run must re-inspect checkout HEAD/dirty status, upstream `c11-brainstorm` manual P8 and real source/testing. Authority [ADR 0038](../../decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md), [Phase 11 plan](../../planning/p11/phase-11-plan.md), [PB1–PB8](../../planning/planning-bridge/plan.md).
+
+## Producer / consumer and data flow
+
+Existing accepted Roadmap + linked Markdown (`RoadmapStore/ProjectPlanningActions`) -> project/revision-scoped checkpoint `Prepare Work` -> real `SoftwareMapIndex`/current canonical architecture evidence -> existing `VisualPlanningService` PlanningMap current/target transformations -> source-backed approved target -> existing WorkItem owner/suggestions -> proposed prompt-stack source -> human stack approval -> existing `AgentTaskSequence`/Work explicit Run -> candidate validation/review/promotion and actual Git evidence -> focused Physical Map reconciliation -> Roadmap/History read-only truthful state projection. Preserve three human planning approvals **scope**, **target**, **stack**, plus independent actual Run and final owner closeout.
+
+Do not introduce an alternative Plan entity, mandatory Session, second Chat, duplicated AgentRun status or independently writable task grammar. For minimal new Bridge provenance use versioned, project-local, optimistic-revision and recoverable metadata with one writer; leave source/architecture/planning/execution facts in their current owner stores. Validate foreign-project and stale links at every approval, never claim distributed atomic writes.
+
+## Bounded implementation plan
+
+| Prompt | Owner / source seam | Intent and immediate tests | Tier |
+| --- | --- | --- | --- |
+| P1 | Existing Roadmap/Planning/agent owner resolver and pure Bridge projection | Stable typed lineage and nine **derived** states, orthogonal blockers and truthful missing/revised links; tests from `roadmap-owner-links`, `roadmap-planning-links`, `planning-work`. | T2 High |
+| P2 | Minimal Bridge approval/provenance owner, project scoped | Explicit scope/target/stack approval token/basis and invalidation; durable safe reads/revisions/restart/foreign denial; tests new Bridge approval plus planning persistence. | T2 High |
+| P3 | `visual-planning-backend`, `SoftwareMapIndex`, rebase snapshot | Bounded current software impact evidence packet and freshness/unavailable/targeted branch handling, **no canonical mutation**; tests planning rebase/source isolation. | T2 High |
+| P4 | Existing `roadmap-canvas-widget`/inspector and Planning Map shell | **Prepare Work** and source-checked selected-checkpoint focus of existing center Planning Map; unchanged docked saved Chat; roadmap/planning UI focused tests. | T1 Medium |
+| P5 | Existing `VisualPlanningService`/PlanningMap controller | Reviewable target approval anchored to map revision/basis/approved checkpoint, explicit rebase, no `Adopt Target`; planning-editing/rebase tests. | T2 High |
+| P6 | `visual-planning/src/work.ts` existing `suggestWorkItems` and typed operations | Deterministic bounded transformation -> WorkItem suggestions with checked dependency DAG and acceptance data; planning-work tests. | T2 High |
+| P7 | Existing Planning Map/WorkItem UI/controller | Editable accept/split/merge and one-to-many traceable decomposition, no automatic task/grant; planning-map-ui and planning-work UI tests. | T1 Medium |
+| P8 | Current ChatBackend/ChatContextComposer local proposal orchestration | Selected model bounded impact/target/WorkItem proposal only, constrained completed JSON/no-action, per-turn latest basis, no egress/authority side channel; chat-context and roadmap-local-model tests. | T2 High |
+| P9 | Shared agent-core stack source/import + runner grammar | Pure version-correct valid P*.txt stack drafts, dependencies, single closeout, manual T3, narrow validation and prompt-efficiency diagnostics; task-discovery/sequence tests. | T2 High |
+| P10 | Dope-owned stack draft/publish adapter (NOT model direct FS) | Preview, three-way source/fingerprint checks, explicit stack approval, safe root-relative path/atomic partial-write recovery and no auto-Run; adapter tests. | T2 High |
+| P11 | Existing Work/Prompt Stack and Roadmap/Planning Map UI | Stack preview and prompt navigation; explicit Work action, no agent started by approval; tests Work/roadmap-task projection. | T1/T2 Medium |
+| P12 | `visual-planning/reconciliation.ts`, existing Work/History evidence resolvers | Actual implemented/planned comparison with targeted physical freshness, evidence-status rollups and source-backed links, no synthetic Green; reconciliation/History tests. | T2 High |
+| P13 | Existing Roadmap correction branch / WorkItem map rebase | Correction lineage, affected-only draft regeneration/approval invalidation and fast lane N/A architecture, without broad authority shortcut; revision/correction tests. | T2 High |
+| P14 | Focused integration suites and smallest gap repairs | End-to-end seeded project no-model data path, stale/source/permission/approval/dependency/manual-gate negatives, provenance/restart; targeted aggregate only. | T2 High |
+| P15 | Manual real browser + independent Electron + local model and exact source | Bridge qualification PB1–PB8 / bridge-scoped D1–D8 observations, one source-bound final closeout; NOT headless runner/Phase 11 close. | T3 High |
+
+## Dependencies and qualification disposition
+
+- P1 -> P2 -> P3 -> P4 -> P5 -> P6 -> P7 -> P8 -> P9 -> P10 -> P11 -> P12 -> P13 -> P14 -> P15. These are operationally ordered for a *single runner-compatible stack*. P1–P3 do not depend on unqualified live brainstorming behavior; later handoffs must verify actual upstream P8 source/evidence before assuming a qualified producer.
+- **Do not run P15 via headless phase runner**. The runner can import the final manual-gate entry but a human drives real model, GUI, browser/Electron, network/authority and source-bound evidence. P15 is the **sole final closeout**.
+- P15 reports each Bridge gate as PASS/FAIL/BLOCKED/NOT RUN and preserves Phase 11 D1–D8 as **not globally qualified** until separately evidenced with full usability/Hunter coverage and owner review.
+- The stack changes no root version: all implementation prompts declare unchanged `0.11.8`; if current coherent version differs when started, owner must re-assess stack, do not mutate manifests to fit.
+- Use the existing runner Task/source version grammar and semantic token/color/accessibility conventions; no second Chat/Work or forced dock.
+- Each prompt only executes relevant tests and builds. Inspect package import of compiled `lib`, build changed packages in dependency order before testing; avoid double-running package/full aggregates. One final `npm run check` only if needed at stable P15 source, with actual results.
+
+## Manual PB closeout scope vs Phase 11 owner closeout
+
+The accepted Phase 11 plan requires D1 Roadmap brainstorm/approval, D2 Prepare Work, D3 architecture target, D4 WorkItems, D5 generated stack, D6 authorized real Work execution, D7 fresh Map reconciliation and D8 qualification/closeout. P15 may exercise this trajectory to establish **Bridge-scoped evidence**, but can't claim broader Phase 11 Green while its two distinct broad clean Hunts, other GUI/native/security gates, c11-brainstorm P8, and final owner acceptance remain independent. Lack of native/real-model data must be labeled Evidence Gap, not waived by unit tests.

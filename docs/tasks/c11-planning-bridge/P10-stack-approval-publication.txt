@@ -1,0 +1,24 @@
+TASK: Correction 11 / P10 — Explicit approved stack publication and recovery
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no manifest, internal package-pin or lockfile bump.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1-PB8 plan and this stack README/assessment/implementation plan. Reinspect the actual Git checkout HEAD, coherent version, dirty worktree, live code/test paths and overlapping tasks. Planning main 6e475a7 and upstream c11-brainstorm P1-P7 at 3787c6c are **historical inspection bases**, not safe run pins. c11-brainstorm P8 manual is not qualified at authoring: stop dependent live producer work until its source/evidence is explicitly dispositioned; never infer Green. Only later explicit owner Run authorizes this stack; no /activate. Runner owns commits; no agent self-commit/stash/reset/clean. Reuse existing ChatPanel, Roadmap, Planning, Work/runner, History owners, authority and local/no-model paths. Never auto-run, auto-adopt, switch provider, silently egress to hosted, mark Green or activate Phase 12.
+
+SCOPE — T2
+Implement a Dope-owned, project-scoped **preview/approval/publication boundary** for P9's draft stack (not raw Chat filesystem writes). Present complete diff and stable draft/source hashes, existing destination status, dependencies, validation/manual gates and scope. Human explicitly approves only after latest Roadmap+Planning+WorkItem and Git/source/owner basis preflight. Reject path traversal/symlinks/foreign roots, collisions, overwrites, stale edits and malformed grammar; reuse current runner shared validator and recoverable atomic-write/partial-write conventions, leaving pre-existing user bytes unchanged on failed or cancelled commit. Persist only minimal revisioned publication/provenance metadata; enforce explicit recovery/review after interrupted partial success without pretending distributed atomicity. Approval does **not** execute the stack, import AgentTaskSequence or grant tool/agent authority.
+
+ACCEPTANCE / FOCUSED VALIDATION
+New targeted publish/recovery suite with source hash/Git movement, source edits before confirm, cancel/duplicate path, symlink/outside-root/foreign project, crash/partial write and replay denial. Validate published bytes with strict runner/agent importer and read-only task discovery; no AgentRun or version modification from approval.
+
+EXCLUSIONS
+No automatic Run, hidden overwrite/stash/commit, new separate task store, model file grant.
+
+HANDOFF
+Inspect compiled lib dependency before tests, build only changed output as necessary, run `git diff --check` and report exactly observed commands/results. Ordinary task <=8-minute target, 10-minute soft, 15-minute hard; split or stop safely if overbound. P15 is manual independent closeout, not replaceable by unit tests; original Phase 11 Hunts/owner signoff remain outstanding.

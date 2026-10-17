@@ -1,0 +1,24 @@
+TASK: Correction 11 / P11 — Existing Work stack preview and explicit handoff UI
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no manifest, internal package-pin or lockfile bump.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0017/0034/0036/0037/0038, Phase 11 plan, PB1-PB8 plan and this stack README/assessment/implementation plan. Reinspect the actual Git checkout HEAD, coherent version, dirty worktree, live code/test paths and overlapping tasks. Planning main 6e475a7 and upstream c11-brainstorm P1-P7 at 3787c6c are **historical inspection bases**, not safe run pins. c11-brainstorm P8 manual is not qualified at authoring: stop dependent live producer work until its source/evidence is explicitly dispositioned; never infer Green. Only later explicit owner Run authorizes this stack; no /activate. Runner owns commits; no agent self-commit/stash/reset/clean. Reuse existing ChatPanel, Roadmap, Planning, Work/runner, History owners, authority and local/no-model paths. Never auto-run, auto-adopt, switch provider, silently egress to hosted, mark Green or activate Phase 12.
+
+SCOPE — T1/T2
+In **existing** Planning Map/Roadmap work projection and Work panel, show a compact editable draft preview with WorkItem/source references, prompts/dependencies, exact files, manual gate indicators and status (draft/approved/stale/unresolved). Link generated/approved prompt source to ordinary Theia editor and existing Work Prompt Stack discovery; developer can explicitly navigate/open/focus Work and then **separately** start via existing authorized Run. Opening a prompt, Approve, toggling a projection or selecting a checkpoint never calls Work start or causes a new saved Chat; support keyboard/narrow and ordinary user-docked Chat. Project/revision/source drift yields visible blocked/recovery rather than invalid action.
+
+ACCEPTANCE / FOCUSED VALIDATION
+Focused Roadmap task projection, `test/unit/roadmap-prompt-open.test.ts`, `test/unit/roadmap-canvas.test.ts` and Work UI/AgentTaskSequence tests. No-run on preview/approval/open, stale/foreign project safe block, manual gate still manual. Real GUI observed at P15.
+
+EXCLUSIONS
+No replacement Work panel/runner, new Chat, automatic candidate promotion or final qualification from UI state.
+
+HANDOFF
+Inspect compiled lib dependency before tests, build only changed output as necessary, run `git diff --check` and report exactly observed commands/results. Ordinary task <=8-minute target, 10-minute soft, 15-minute hard; split or stop safely if overbound. P15 is manual independent closeout, not replaceable by unit tests; original Phase 11 Hunts/owner signoff remain outstanding.
