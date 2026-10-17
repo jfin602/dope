@@ -84,6 +84,8 @@ export interface ChatPlanningActivity {
     refs: ChatContextRef[];
     proposalId?: string;
     appliedRevision?: number;
+    /** Backend-verified UI guidance captured for this turn; model content remains untouched. */
+    verifiedGuidance?: { capabilityId: string; version: string; text: string };
 }
 export type ChatMessage = ChatUserMessage | ChatAssistantMessage;
 
@@ -303,7 +305,7 @@ export function parseChatMessage(value: unknown): ChatMessage {
     throw new Error('Invalid Chat role');
 }
 export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
-    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision'],
+    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
     const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-draft-proposal', 'no-action',
@@ -314,10 +316,18 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         (kind === 'error') !== (status === 'failed') || (kind === 'cancelled') !== (status === 'cancelled') ||
         (['pending', 'denied', 'stale', 'applied'].includes(status) && v.proposalId === undefined) ||
         (['no-action', 'failed', 'cancelled'].includes(status) && v.proposalId !== undefined) ||
-        (status === 'applied') !== (v.appliedRevision !== undefined)) throw new Error('Invalid planning activity state');
+        (status === 'applied') !== (v.appliedRevision !== undefined) ||
+        (v.verifiedGuidance !== undefined && kind !== 'no-action')) throw new Error('Invalid planning activity state');
+    const guidance = v.verifiedGuidance === undefined ? undefined : record(v.verifiedGuidance,
+        ['capabilityId', 'version', 'text'], ['capabilityId', 'version', 'text']);
     return { schemaVersion: 1, kind, status, refs: v.refs.map(parseChatContextRef),
         ...(v.proposalId === undefined ? {} : { proposalId: string(v.proposalId, 'proposal ID') }),
-        ...(v.appliedRevision === undefined ? {} : { appliedRevision: count(v.appliedRevision, 'applied revision') }) };
+        ...(v.appliedRevision === undefined ? {} : { appliedRevision: count(v.appliedRevision, 'applied revision') }),
+        ...(guidance === undefined ? {} : { verifiedGuidance: {
+            capabilityId: string(guidance.capabilityId, 'guidance capability'),
+            version: string(guidance.version, 'guidance version'),
+            text: string(guidance.text, 'verified guidance'),
+        } }) };
 }
 export function parseChat(value: unknown): Chat {
     const v = record(value, ['schemaVersion', 'id', 'revision', 'folderPath', 'title', 'titleSource',

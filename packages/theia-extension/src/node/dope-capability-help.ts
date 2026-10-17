@@ -1,8 +1,8 @@
 /** Verified UI guidance for Chat grounding. This data grants no action or tool authority. */
-export const DOPE_CAPABILITY_HELP_VERSION = '0.11.5' as const;
+export const DOPE_CAPABILITY_HELP_VERSION = '0.11.8-m1' as const;
 
-export type DopeHelpId = 'roadmap-change-file' | 'roadmap-refresh' | 'chat-follow' | 'chat-pin' |
-    'ai-center' | 'work' | 'history';
+export type DopeHelpId = 'roadmap-change-file' | 'roadmap-refresh' | 'roadmap-status' |
+    'roadmap-objective' | 'planning-map-link' | 'chat-follow' | 'chat-pin' | 'ai-center' | 'work' | 'history';
 export type DopeHelpRequirement = 'project' | 'roadmap-write' | 'planning-selection';
 
 export interface DopeHelpEntry {
@@ -29,6 +29,24 @@ export const DOPE_CAPABILITY_HELP: readonly DopeHelpEntry[] = [
         requires: ['project'],
         limitation: 'Refresh reports source-changed, conflict, relink-needed and pending-sync states; it does not approve or apply source changes.',
         recovery: 'Open Roadmap Markdown and setup to review the linked path and source status; resolve the reported conflict or pending sync before retrying.'
+    },
+    {
+        id: 'roadmap-status', goal: 'Inspect current Roadmap source status',
+        uiPath: 'Roadmap > Roadmap Markdown and setup', requires: ['project'],
+        limitation: 'The recorded sync state is a current snapshot, not proof that a later external file change has been checked.',
+        recovery: 'Use Refresh Roadmap to check the source again.'
+    },
+    {
+        id: 'roadmap-objective', goal: 'Edit a checkpoint Objective in Roadmap',
+        uiPath: 'Roadmap > select checkpoint > Objective', requires: ['project'],
+        limitation: 'An Objective edit requires a supported editable source and an explicit preview or approval. Chat cannot apply it from a help request.',
+        recovery: 'If the Objective is read-only or the source is stale, review Roadmap Markdown and setup and Refresh Roadmap.'
+    },
+    {
+        id: 'planning-map-link', goal: 'Find the owner of a Planning Map link',
+        uiPath: 'Planning Map', requires: ['project'],
+        limitation: 'Chat has no verified direct workflow for changing a Planning Map link.',
+        recovery: 'Open the relevant Planning Map and inspect its current relationship and owner before editing. Roadmap Change linked file replaces the Roadmap Markdown source, not a Planning Map link.'
     },
     {
         id: 'chat-follow', goal: 'Follow the active planning selection in the saved Chat',
@@ -93,6 +111,11 @@ export function projectDopeCapabilityHelp(state: DopeHelpAvailability): readonly
 
 /** Match only explicit Dope UI tasks; ordinary Roadmap planning stays on its existing path. */
 export function selectDopeCapabilityHelp(question: string): DopeHelpId | undefined {
+    if (/\bplanning\s+map\b/i.test(question) && /\b(?:link|relink|reference)\b/i.test(question) &&
+        /\b(?:how|change|edit|replace|switch|update)\b/i.test(question)) return 'planning-map-link';
+    if (/\b(?:checkpoint|roadmap|this)\b/i.test(question) && /\bobjective\b/i.test(question) &&
+        /\b(?:how|where)\b/i.test(question) && /\b(?:edit|change|update)\b/i.test(question))
+        return 'roadmap-objective';
     if (/\b(?:roadmap|markdown|linked\s+(?:file|document|source))\b/i.test(question)) {
         const otherPlanningTarget = /\b(?:objective|checkpoint|title|status|issues?|planning\s+maps?|dependenc(?:y|ies))\b/i.test(question);
         const sourceBinding = /\b(?:roadmap|markdown)\s+(?:file|document|source|link)\b/i.test(question) ||
@@ -103,6 +126,8 @@ export function selectDopeCapabilityHelp(question: string): DopeHelpId | undefin
             (sourceBinding || /\b(?:unlink|relink|replace|switch)\s+(?:(?:to|from)\s+)?(?:(?:the|a|my)\s+)?(?:(?:wrong|different|linked)\s+)?(?:roadmap|markdown)\b/i.test(question)))
             return 'roadmap-change-file';
         if (/\b(?:refresh|sync|conflict|source.changed|relink.needed)\b/i.test(question)) return 'roadmap-refresh';
+        if (/\b(?:status|state)\b/i.test(question) && /\b(?:what(?:'s| is)|show|tell me)\b/i.test(question))
+            return 'roadmap-status';
     }
     if (/\b(?:chat|context)\b/i.test(question) && /\b(?:follow|pin)\b/i.test(question))
         return /\bpin\b/i.test(question) ? 'chat-pin' : 'chat-follow';

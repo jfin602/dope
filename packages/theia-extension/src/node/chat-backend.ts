@@ -611,6 +611,8 @@ export class ChatBackend implements ChatService {
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
                             { schemaVersion: 1, kind, refs: preview.refs,
                                 status: kind === 'no-action' ? 'no-action' : result.proposal ? 'pending' : 'rejected',
+                                ...(helpTurn && kind === 'no-action' && composed.verifiedGuidance ?
+                                    { verifiedGuidance: composed.verifiedGuidance } : {}),
                                 ...(result.proposal ? { proposalId: result.proposal.id } : {}) });
                         tracePlanning('result-recorded', key, assistant.id,
                             kind === 'no-action' ? 'no-action' : result.proposal ? 'pending' : 'rejected');

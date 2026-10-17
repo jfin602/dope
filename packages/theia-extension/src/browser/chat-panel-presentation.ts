@@ -5,7 +5,8 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
     const activity = message.planningActivity;
     if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-draft-proposal', 'no-action'].includes(activity.kind))
         return undefined;
-    const label = activity.kind === 'no-action' ? 'No planning action' :
+    const label = activity.verifiedGuidance && noActionEnvelope(message) ? 'Verified Dope guidance' :
+        activity.kind === 'no-action' ? 'No planning action' :
         activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
         activity.kind === 'roadmap-proposal' ? 'Roadmap proposal' : 'Roadmap intent';
     const statuses: Record<typeof activity.status, string> = {
@@ -23,7 +24,7 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
 }
 
 /** A saved backend activity marker, completed turn, and intact strict payload are all required. */
-function validatedNoActionMessage(message: ChatAssistantMessage): string | undefined {
+function noActionEnvelope(message: ChatAssistantMessage): string | undefined {
     if (message.execution.status !== 'complete' || message.planningActivity?.kind !== 'no-action' ||
         message.planningActivity.status !== 'no-action') return undefined;
     try {
@@ -32,14 +33,19 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
         const value = raw as Record<string, unknown>;
         if (Object.keys(value).sort().join(',') !== 'message,type' || value.type !== 'no-action' ||
             typeof value.message !== 'string' || !value.message.trim() || value.message.length > 1000) return undefined;
-        const reply = value.message.trim();
+        return value.message.trim();
+    } catch { return undefined; }
+}
+
+function validatedNoActionMessage(message: ChatAssistantMessage): string | undefined {
+        const reply = noActionEnvelope(message);
+        if (!reply) return undefined;
         // The backend validates the no-action shape, not the truth of model prose.
         // Keep contradictory write claims in the inspectable raw JSON, never as the main reply.
         if (/\b(?:I|we)\s+(?:have\s+)?(?:applied|committed|saved|wrote|updated|changed|deleted|created)\b/i.test(reply) ||
             /\b(?:was|were|has been|have been)\s+(?:applied|committed|saved|written|updated|changed|deleted|created)\b/i.test(reply))
             return undefined;
         return reply;
-    } catch { return undefined; }
 }
 
 /** Explain only the backend-verified activity; raw model text is never an authority signal. */
@@ -84,7 +90,9 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         questions: ['Does the proposed change match your intent?', 'Should you review the affected source before deciding?'],
     };
     if (activity.status === 'no-action') return {
-        summary: validatedNoActionMessage(message) ?? `The local planning turn proposed no change to ${target}. Nothing was written.`,
+        summary: (noActionEnvelope(message) ? activity.verifiedGuidance?.text : undefined) ??
+            validatedNoActionMessage(message) ??
+            `The local planning turn proposed no change to ${target}. Nothing was written.`,
         questions: [],
     };
     if (activity.status === 'denied') return {

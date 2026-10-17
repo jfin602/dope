@@ -14,13 +14,14 @@ import { ChatRepository } from '@dope/chat/lib/node';
 import { RoadmapStore, type RoadmapCheckpoint, type RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import type { GroundingResult } from './chat-project-grounder';
-import { projectDopeCapabilityHelp, selectDopeCapabilityHelp, type DopeHelpId } from './dope-capability-help';
+import { DOPE_CAPABILITY_HELP_VERSION, projectDopeCapabilityHelp, selectDopeCapabilityHelp, type DopeHelpId } from './dope-capability-help';
 
 export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
 const ROADMAP_ACTION_INSTRUCTION = 'Use the supplied checkpoint capabilities to determine whether its Objective is editable; a request to read does not make a linked checkpoint unlinked or read-only. For a factual or decision question without an edit request, choose type no-action and put the concrete answer in its message field. Answer from the supplied evidence, including owner and document revisions when present, and distinguish those counters. If a fact is absent, say so without inventing it; do not replace available facts with a generic missing-evidence or edit-capability reason. Never copy an instruction phrase as the answer. For a linked Markdown checkpoint, only if capabilities.objective.editable is true and the user requests an Objective change, propose {"type":"roadmap-intent","intent":"set-objective","value":"one line"}. Otherwise choose type no-action with a concrete source-backed reason in its message field. For an unlinked checkpoint, a validated roadmap-proposal action may be used. All proposals require developer approval. Never claim an edit was applied.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
-    diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
+    diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number;
+    verifiedGuidance?: { capabilityId: string; version: string; text: string } }
 
 /** One project-scoped translation boundary. Model requests never read project state directly. */
 export class ChatContextComposer {
@@ -29,12 +30,16 @@ export class ChatContextComposer {
         private readonly roadmap?: RoadmapStore,
         private readonly planningLinkCurrent?: (root: string, link: RoadmapLink) => Promise<boolean>) {}
 
-    private async helpContext(root: string, id: DopeHelpId, selections: ChatContextSelection[], strictJson: boolean): Promise<string> {
+    private async helpContext(root: string, id: DopeHelpId, selections: ChatContextSelection[], strictJson: boolean):
+        Promise<{ instruction: string; guidance: ComposedChatContext['verifiedGuidance'] }> {
         let linkState = '';
         let projectOpen = true;
         let unlinkedImport = false;
         let hasLinkedFile = false;
-        if (id === 'roadmap-change-file' || id === 'roadmap-refresh') {
+        let syncState: string | undefined;
+        let pendingSync = false;
+        let roadmapSummary = '';
+        if (id.startsWith('roadmap-')) {
             if (!this.roadmap) projectOpen = false;
             else {
                 const index = await this.roadmap.read(root);
@@ -44,7 +49,20 @@ export class ChatContextComposer {
                 const linked = index.linkedDocument;
                 hasLinkedFile = !!linked;
                 unlinkedImport = !linked && index.revision === 0;
-                linkState = linked ? `Current project records linked Roadmap Markdown ${linked.path.length <= 120 ? linked.path : '(path omitted)'} (${linked.syncState}); Refresh Roadmap to verify the live source.` :
+                syncState = linked?.syncState;
+                pendingSync = !!linked?.pending;
+                if (linked && syncState === 'synced') {
+                    try {
+                        const file = await this.file(root, linked.path, 2 * 1024 * 1024);
+                        if (createHash('sha256').update(await readFile(file)).digest('hex') !== linked.sourceHash)
+                            syncState = 'source-changed';
+                    } catch { syncState = 'unavailable'; }
+                }
+                const active = index.checkpoints.filter(item => item.status === 'active');
+                roadmapSummary = `Roadmap owner revision ${index.revision}; ${index.checkpoints.length} checkpoint(s), ` +
+                    `${active.length} active${active.length ? ` (${active.slice(0, 3).map(item => item.title.slice(0, 100)).join(', ')}` +
+                    `${active.length > 3 ? ', …' : ''})` : ''}.`;
+                linkState = linked ? `Current project records linked Roadmap Markdown ${linked.path.length <= 120 ? linked.path : '(path omitted)'} (${syncState}); Refresh Roadmap to verify the live source.` :
                     `Current project has no linked Roadmap Markdown file (${index.revision ? 'existing Roadmap' : 'empty Roadmap'}).`;
             }
         }
@@ -54,21 +72,42 @@ export class ChatContextComposer {
         const route = id === 'roadmap-change-file' && unlinkedImport ?
             'Roadmap > Roadmap Markdown and setup > Import Roadmap' : entry.uiPath;
         const blocked = id === 'roadmap-change-file' &&
-            (!hasLinkedFile && !unlinkedImport ||
-                /\((?:conflict|pending-sync|missing|source-changed)\)/.test(linkState));
+            (!hasLinkedFile && !unlinkedImport || pendingSync ||
+                syncState === 'conflict' || syncState === 'pending-sync' ||
+                syncState === 'relink-needed' || syncState === 'source-changed' ||
+                syncState === 'missing' || syncState === 'unavailable');
         const recovery = id === 'roadmap-change-file' && !hasLinkedFile ?
             (unlinkedImport ? 'Choose a project Markdown Roadmap, review its import preview and approve it manually.' :
                 'No linked file can be changed from this existing unlinked Roadmap; keep the current Roadmap and report the missing workflow if replacement is needed.') :
             entry.recovery;
-        return `Dope UI help (${id}): ${linkState} ${entry.limitation} ` +
-            (entry.available && !blocked ? `Available manual path: ${route}.` :
-                `Do not claim this action is available now: ${entry.unavailableReason ??
-                    (!hasLinkedFile ? 'No replacement action is supported for an existing unlinked Roadmap.' :
-                        'Review the linked source state first.')}`) +
-            ` ${recovery} This Chat turn cannot perform the UI action. ` +
+        const guidance = !entry.available ? `${entry.unavailableReason} ${entry.recovery}` :
+            id === 'roadmap-change-file' && blocked ?
+                `The Roadmap source replacement is blocked in the recorded ${syncState ?? 'unlinked'} state. ` +
+                (syncState === 'missing' || syncState === 'relink-needed' || syncState === 'unavailable' ?
+                    'Open Roadmap Markdown and setup, use Relink Markdown to recover the missing current source, then Refresh Roadmap and preview again. ' :
+                    `${recovery} `) +
+                'Chat cannot change the link. The previous Markdown file remains on disk. Nothing changed.' :
+            id === 'roadmap-change-file' && unlinkedImport ?
+                `Open Roadmap, then Roadmap Markdown and setup > Import Roadmap. ${recovery} Chat cannot change the linked file. Nothing changed.` :
+            id === 'roadmap-change-file' ?
+                `Open Roadmap, then Roadmap Markdown and setup > Change linked file. Select the intended project Markdown file. Review the replacement preview and affected Roadmap content, then explicitly confirm the replacement. The previously linked Markdown file remains on disk. Chat cannot directly change the linked file. The recorded source state is ${syncState ?? 'unknown'}; Refresh Roadmap to check it before acting. Nothing changed in this Chat turn.` :
+            id === 'roadmap-refresh' ?
+                `The recorded Roadmap source state is ${syncState ?? 'unlinked'}${pendingSync ? ' with pending sync' : ''}. Open Roadmap and use Refresh Roadmap to check the current source, then open Roadmap Markdown and setup to review the result. Refresh does not approve source changes. Nothing changed in this Chat turn.` :
+            id === 'roadmap-status' ?
+                `${roadmapSummary} The recorded linked Markdown source state is ${syncState ?? 'unlinked'}${pendingSync ? ' with pending sync' : ''}. Refresh Roadmap to check for later external changes. Nothing changed in this Chat turn.` :
+            id === 'roadmap-objective' ?
+                `Open Roadmap and select the checkpoint. In its inspector, edit Objective, then use Preview and save and review any required approval. A linked Objective may be read-only when its source cannot be safely edited; review Roadmap Markdown and setup and Refresh Roadmap if blocked. Chat cannot apply an Objective change from this help request. Nothing changed.` :
+            id === 'planning-map-link' ?
+                `Chat has no verified direct procedure for changing a Planning Map link. Open the relevant Planning Map and inspect its relationship and owner. The Roadmap source replacement control does not edit Planning Map links. Editing a checkpoint Objective is not a prerequisite. Nothing changed.` :
+                `${entry.uiPath}. ${entry.limitation} ${entry.recovery} Nothing changed.`;
+        const instruction = `Dope UI help (${id}): ${linkState} ${entry.limitation} ` +
+            (entry.available && !blocked ? `Manual path: ${route}.` :
+                `Do not claim this action is available now: ${entry.unavailableReason ?? 'Review the linked source state first.'}`) +
+            ` ${recovery} Verified answer: ${guidance} This Chat turn cannot perform the UI action. ` +
             (strictJson ? 'Reply only as strict JSON {"type":"no-action","message":"brief useful answer"}; ' :
                 'Answer in brief natural language; ') +
             'state that nothing changed. Do not propose an Objective edit or invent a control.';
+        return { instruction, guidance: { capabilityId: id, version: DOPE_CAPABILITY_HELP_VERSION, text: guidance } };
     }
 
     private async roadmapContext(root: string, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
@@ -266,7 +305,7 @@ export class ChatContextComposer {
         const help = helpId ? await this.helpContext(root, helpId, selections, strictHelpJson) : undefined;
         const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
         let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0) -
-            (roadmapAction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) - (help ? tokens(help) : 0);
+            (roadmapAction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) - (help ? tokens(help.instruction) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
         if (grounding) for (const diagnostic of grounding.diagnostics)
@@ -323,9 +362,9 @@ export class ChatContextComposer {
         if (!attached.length) remaining += wrapperTokens;
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];
         if (roadmapAction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
-        if (help) messages.push({ role: 'system', content: help });
+        if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];
-        if (policy.history === 'recent') {
+        if (policy.history === 'recent' && !help) {
             const history = chat.messages.filter(item => item.role === 'user' || item.execution.status === 'complete');
             for (const item of history.reverse()) {
                 const cost = tokens(item.content);
@@ -339,6 +378,7 @@ export class ChatContextComposer {
         }
         messages.push(...historyMessages);
         messages.push({ role: 'user', content: attached.length ? `${content}\n\nProject context:\n${attached.join('\n\n')}` : content });
-        return { messages, refs, diagnostics, usedTokens: budgetTokens - remaining, budgetTokens };
+        return { messages, refs, diagnostics, usedTokens: budgetTokens - remaining, budgetTokens,
+            ...(help?.guidance ? { verifiedGuidance: help.guidance } : {}) };
     }
 }

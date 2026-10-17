@@ -7,6 +7,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { RoadmapStore, RoadmapIndex } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import type { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
 import type { ProjectMindStore } from '../../packages/project-intelligence/lib/node/project-mind-store.js';
@@ -19,6 +20,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     const markdown = '# Phase A\nEvidence from source\n';
     const sha256 = createHash('sha256').update(markdown).digest('hex');
     await writeFile(join(root, 'docs/phase.md'), markdown);
+    await writeFile(join(root, 'ROADMAP.md'), markdown);
     const source = { path: 'docs/phase.md', sha256, line: 1, text: '# Phase A' };
     const basis = { architectureRevision: 1, architectureFingerprint: 'arch', physicalInputFingerprint: 'input', physicalGeneration: 1 };
     const roadmap: RoadmapIndex = { schemaVersion: 1, projectId: 'roadmap-project', projectRoot: root, revision: 3,
@@ -210,6 +212,7 @@ test('source-change help has one grounded no-action route in preview and saved C
     const markdown = '# Current phase\n';
     const sha256 = createHash('sha256').update(markdown).digest('hex');
     await writeFile(join(root, 'docs/phase.md'), markdown);
+    await writeFile(join(root, 'ROADMAP.md'), markdown);
     const source = { path: 'docs/phase.md', sha256, line: 1, text: '# Current phase' };
     const roadmap: RoadmapIndex = { schemaVersion: 1, projectId: 'project', projectRoot: root, revision: 2,
       checkpoints: [{ id: 'phase', kind: 'phase', title: 'Current phase', objective: 'Keep planning', order: 0,
@@ -261,8 +264,47 @@ test('source-change help has one grounded no-action route in preview and saved C
       assert.match(system, /Roadmap > Roadmap Markdown and setup > Change linked file/);
       assert.match(system, /Chat cannot change the link/);
       assert.doesNotMatch(system, /Use the supplied checkpoint capabilities|noncanonical Roadmap draft/);
-      assert.equal((await repository.read(root)).chats[0].messages.at(-1)?.role, 'assistant');
+      const saved = (await repository.read(root)).chats[0].messages.at(-1);
+      assert.equal(saved?.role, 'assistant');
+      if (saved?.role === 'assistant') {
+        assert.equal(saved.content, answer);
+        assert.equal(saved.planningActivity?.verifiedGuidance?.capabilityId, 'roadmap-change-file');
+        const visible = planningOutcome(saved)?.summary ?? '';
+        for (const required of ['Open Roadmap', 'Roadmap Markdown and setup', 'Change linked file',
+          'Select the intended project Markdown file', 'Review the replacement preview',
+          'affected Roadmap content', 'explicitly confirm', 'remains on disk', 'Chat cannot directly change'])
+          assert.match(visible, new RegExp(required), required);
+      }
     }
+    answer = '{"type":"no-action","message":"The synced Roadmap is conflicted; replace its file."}';
+    await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token, selectedModel: selection,
+      content: 'What is the current Roadmap status?', context: [] });
+    let verified = (await repository.read(root)).chats[0].messages.at(-1);
+    if (verified?.role === 'assistant') {
+      assert.match(planningOutcome(verified)?.summary ?? '', /linked Markdown source state is synced/);
+      assert.match(planningOutcome(verified)?.summary ?? '', /1 active \(Current phase\)/);
+      assert.doesNotMatch(planningOutcome(verified)?.summary ?? '', /conflicted|Change linked file/);
+      assert.match(verified.content, /conflicted/);
+    }
+    answer = '{"type":"no-action","message":"First edit the checkpoint Objective, then use Roadmap Change linked file."}';
+    await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token, selectedModel: selection,
+      content: 'How do I change a Planning Map link?', context: [] });
+    verified = (await repository.read(root)).chats[0].messages.at(-1);
+    if (verified?.role === 'assistant') {
+      assert.equal(verified.planningActivity?.verifiedGuidance?.capabilityId, 'planning-map-link');
+      assert.match(planningOutcome(verified)?.summary ?? '', /no verified direct procedure/);
+      assert.match(planningOutcome(verified)?.summary ?? '', /not a prerequisite/);
+      assert.match(verified.content, /First edit/);
+    }
+    await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token, selectedModel: selection,
+      content: 'How do I edit this checkpoint Objective?', context });
+    verified = (await repository.read(root)).chats[0].messages.at(-1);
+    if (verified?.role === 'assistant') {
+      assert.equal(verified.planningActivity?.verifiedGuidance?.capabilityId, 'roadmap-objective');
+      assert.match(planningOutcome(verified)?.summary ?? '', /Preview and save/);
+      assert.doesNotMatch(planningOutcome(verified)?.summary ?? '', /Change linked file/);
+    }
+    answer = '{"type":"no-action","message":"Done"}';
     for (const syncState of ['pending-sync', 'conflict', 'missing', 'source-changed'] as const) {
       roadmap.linkedDocument!.syncState = syncState;
       const active = (await repository.read(root)).chats[0];
@@ -272,6 +314,16 @@ test('source-change help has one grounded no-action route in preview and saved C
       assert.doesNotMatch(guidance, /Available manual path:.*Change linked file/);
     }
     roadmap.linkedDocument!.syncState = 'synced';
+    await writeFile(join(root, 'ROADMAP.md'), '# Externally changed\n');
+    let live = await composer.compose(root, (await repository.read(root)).chats[0], phrase, [],
+      capabilities, undefined, true);
+    assert.match(live.verifiedGuidance?.text ?? '', /blocked in the recorded source-changed state/);
+    await rm(join(root, 'ROADMAP.md'));
+    live = await composer.compose(root, (await repository.read(root)).chats[0], phrase, [],
+      capabilities, undefined, true);
+    assert.match(live.verifiedGuidance?.text ?? '', /blocked in the recorded unavailable state/);
+    assert.match(live.verifiedGuidance?.text ?? '', /Relink Markdown/);
+    await writeFile(join(root, 'ROADMAP.md'), markdown);
     const active = (await repository.read(root)).chats[0];
     const editing = await composer.compose(root, active, 'Change the checkpoint Objective to Prepare release',
       context, capabilities, undefined, true);
@@ -289,7 +341,7 @@ test('source-change help has one grounded no-action route in preview and saved C
     const restored = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer);
     const attached = await restored.attach(new URL(`file://${root}`).href);
     assert.equal(attached.snapshot.chats[0].id, chatId);
-    assert.equal(attached.snapshot.chats[0].messages.length, 6);
+    assert.equal(attached.snapshot.chats[0].messages.length, 12);
     const restoredLease = await restored.claim({ projectHandle: attached.projectHandle, chatId, ownerId: 'restored' });
     assert.equal(restoredLease.acquired, true);
     if (!restoredLease.acquired) return;

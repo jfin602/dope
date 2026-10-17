@@ -15,7 +15,7 @@ const history = source('history-widget.ts');
 const byId = (id: string) => DOPE_CAPABILITY_HELP.find(entry => entry.id === id)!;
 
 test('help labels and routes match current UI controls and command registrations', () => {
-    assert.equal(DOPE_CAPABILITY_HELP_VERSION, '0.11.5');
+    assert.equal(DOPE_CAPABILITY_HELP_VERSION, '0.11.8-m1');
     assert.equal(new Set(DOPE_CAPABILITY_HELP.map(entry => entry.id)).size, DOPE_CAPABILITY_HELP.length);
     assert.match(roadmap, /icon\(this\.reload, 'Refresh Roadmap'/);
     assert.match(roadmap, /icon\(this\.sourceButton, 'Roadmap Markdown and setup'/);
@@ -95,7 +95,10 @@ test('Roadmap source guidance does not take planning edits, factual turns or oth
         ['What is the progress of my Roadmap?', undefined],
         ['What changed in the Roadmap this week?', undefined],
         ['How do I change the linked issue on my Roadmap?', undefined],
-        ['How do I replace the Roadmap link to my Planning Map?', undefined],
+        ['How do I replace the Roadmap link to my Planning Map?', 'planning-map-link'],
+        ['How do I change a Planning Map link?', 'planning-map-link'],
+        ['How do I edit this checkpoint Objective?', 'roadmap-objective'],
+        ['What is the current Roadmap status?', 'roadmap-status'],
         ['How do I change the source link in this web page?', undefined],
         ['How do I refresh the Roadmap?', 'roadmap-refresh'],
         ['How do I sync the linked Roadmap file?', 'roadmap-refresh'],

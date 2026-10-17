@@ -69,6 +69,24 @@ test('completed backend-validated no-action presents its message once without im
     }
 });
 
+test('verified guidance is distinct from preserved model text and requires a valid no-action envelope', () => {
+    const message = { content: JSON.stringify({ type: 'no-action',
+        message: 'I changed the linked file and the synced Roadmap is conflicted.' }),
+    execution: { status: 'complete' }, planningActivity: { schemaVersion: 1, kind: 'no-action',
+        status: 'no-action', refs: [], verifiedGuidance: { capabilityId: 'roadmap-change-file',
+            version: '0.11.8-m1', text: 'Review the replacement preview and explicitly confirm it. The old file remains on disk.' } } } as ChatAssistantMessage;
+    assert.equal(planningActivityPresentation(message)?.label, 'Verified Dope guidance');
+    assert.match(planningOutcome(message)?.summary ?? '', /explicitly confirm/);
+    assert.doesNotMatch(planningOutcome(message)?.summary ?? '', /conflicted|I changed/);
+    assert.match(message.content, /conflicted/);
+    for (const content of ['garbage', '{"type":"no-action","message":"ok","extra":true}',
+        '{"type":"unknown","message":"ok"}']) {
+        const damaged = { ...message, content };
+        assert.equal(planningActivityPresentation(damaged)?.label, 'No planning action');
+        assert.doesNotMatch(planningOutcome(damaged)?.summary ?? '', /explicitly confirm/);
+    }
+});
+
 test('untrusted Markdown links permit web/mail destinations only', () => {
     const base = 'https://example.test/chat';
     for (const href of ['https://example.com', 'mailto:dev@example.com', './docs', '#answer'])
