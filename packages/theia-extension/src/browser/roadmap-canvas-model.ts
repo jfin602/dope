@@ -8,7 +8,8 @@ export function currentDraftChange(change: GreenfieldChange, state: { root: stri
         Number.isSafeInteger(change.revision) && change.revision >= state.revision &&
         (change.kind === 'accepted' ? change.revision > state.revision && change.draft?.revision === change.revision :
             change.kind === 'proposed' ? change.revision === state.revision &&
-                change.draft?.revision === state.revision + 1 :
+                Number.isSafeInteger(change.draft?.revision) && change.draft!.revision > state.revision &&
+                change.draft!.revision <= state.revision + 3 :
                 (change.kind === 'cleared' || change.kind === 'cancelled') && change.revision === state.revision);
 }
 
@@ -18,7 +19,8 @@ export function projectRoadmapDraft<T extends RoadmapProjection>(base: T, accept
     if (!accepted && !proposed) return base;
     const before = new Map<string, string>();
     for (const [order, phase] of (accepted?.phases ?? []).entries()) {
-        before.set(phase.id, JSON.stringify({ title: phase.title, objective: phase.objective, order }));
+        before.set(phase.id, JSON.stringify({ title: phase.title, objective: phase.objective, order,
+            kind: phase.kind, parentId: phase.parentId }));
         for (const [index, item] of phase.checkpoints.entries())
             before.set(item.id, JSON.stringify({ ...item, order: index }));
     }
@@ -26,11 +28,14 @@ export function projectRoadmapDraft<T extends RoadmapProjection>(base: T, accept
     const nodes: CheckpointNode[] = [];
     const edges: CheckpointEdge[] = [];
     for (const [order, phase] of active.phases.entries()) {
-        const phaseState = proposed && before.get(phase.id) !== JSON.stringify({ title: phase.title, objective: phase.objective, order })
+        const phaseState = proposed && before.get(phase.id) !== JSON.stringify({ title: phase.title, objective: phase.objective, order,
+            kind: phase.kind, parentId: phase.parentId })
             ? 'proposed' : 'accepted';
-        nodes.push({ id: phase.id, kind: 'phase', title: phase.title, order, status: 'not-implemented',
+        nodes.push({ id: phase.id, kind: phase.kind ?? 'phase', title: phase.title, order, status: 'not-implemented',
             statusLabel: phaseState === 'proposed' ? 'Proposed · not implemented' : 'Accepted draft · not implemented',
-            evidence: [], readOnly: true, lane: 'path', draftState: phaseState });
+            evidence: [], readOnly: true, lane: phase.kind ? 'branch' : 'path', draftState: phaseState });
+        if (phase.parentId) edges.push({ id: `draft-correction:${phase.parentId}:${phase.id}`,
+            from: phase.parentId, to: phase.id, kind: 'branch', label: 'Explicit correction parent' });
         for (const [index, item] of phase.checkpoints.entries()) {
             const state = proposed && before.get(item.id) !== JSON.stringify({ ...item, order: index }) ? 'proposed' : 'accepted';
             nodes.push({ id: item.id, kind: 'milestone', title: item.title, order: index,
@@ -39,6 +44,9 @@ export function projectRoadmapDraft<T extends RoadmapProjection>(base: T, accept
                 draftState: state, phaseAssociation: { phaseId: phase.id } });
             edges.push({ id: `draft:${phase.id}:${item.id}`, from: phase.id, to: item.id,
                 kind: 'branch', label: state === 'proposed' ? 'Proposed draft checkpoint' : 'Accepted draft checkpoint' });
+            for (const dependency of item.dependencies ?? []) edges.push({
+                id: `draft-dependency:${dependency}:${item.id}`, from: dependency, to: item.id,
+                kind: 'dependency', label: 'Depends on' });
         }
     }
     const ids = new Set(base.nodes.map(node => node.id));

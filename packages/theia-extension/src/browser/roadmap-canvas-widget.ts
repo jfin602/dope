@@ -14,7 +14,7 @@ import type { RoadmapLink, RoadmapReplacementPreview } from '@dope/project-intel
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
-import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { currentDraftChange, projectRoadmapDraft, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
@@ -161,7 +161,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private importState?: { uri: string; projectId: string; revision: number; discovery: RoadmapCandidateDiscovery;
         preview?: RoadmapImportPreview; path?: string; busy: boolean; showChooser: boolean; message?: string };
     private createState?: { uri: string; projectId: string; handle: string; draft: GreenfieldDraft;
-        mode: 'manual' | 'chat'; chatId?: string; path: string; preview?: GreenfieldPreview; busy: boolean; error?: string };
+        mode: 'manual' | 'chat'; chatId?: string; path: string; preview?: GreenfieldPreview;
+        editPreview?: GreenfieldEditPreview; busy: boolean; error?: string };
     private createSerial = 0;
     private draftSequence = 0;
     private draftEpoch?: string;
@@ -1400,8 +1401,47 @@ export class RoadmapCanvasWidget extends BaseWidget {
         try {
             const draft = await this.service.editDraft(state.handle, state.draft.revision, action);
             if (serial !== this.createSerial || this.createState !== state) return;
-            state.draft = draft; state.preview = undefined;
+            state.draft = draft; state.preview = undefined; state.editPreview = undefined;
         } catch (error) { if (serial === this.createSerial && this.createState === state) state.error = `Draft edit failed: ${String(error)}. Correct the fields and retry.`; }
+        finally { if (serial === this.createSerial && this.createState === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private async previewCreateEdit(action: GreenfieldEdit): Promise<void> {
+        const state = this.createState; if (!state || state.busy) return;
+        const serial = ++this.createSerial; state.busy = true; state.error = undefined; state.editPreview = undefined;
+        this.renderImportEntry();
+        try {
+            const preview = await this.service.previewDraftEdit(state.handle, state.draft.revision, action);
+            if (serial === this.createSerial && this.createState === state) state.editPreview = preview;
+        } catch (error) { if (serial === this.createSerial && this.createState === state)
+            state.error = `Graph change could not be previewed: ${String(error)}`; }
+        finally { if (serial === this.createSerial && this.createState === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private async applyCreateEdit(): Promise<void> {
+        const state = this.createState, preview = state?.editPreview; if (!state || !preview || state.busy) return;
+        const serial = ++this.createSerial; state.busy = true; this.renderImportEntry();
+        try {
+            const draft = await this.service.applyDraftEdit(state.handle, preview, true);
+            if (serial === this.createSerial && this.createState === state) {
+                state.draft = draft; state.editPreview = undefined; state.preview = undefined; state.error = undefined;
+            }
+        } catch (error) { if (serial === this.createSerial && this.createState === state) {
+            state.editPreview = undefined; state.error = `Graph change was not accepted: ${String(error)}. Preview again.`;
+        } } finally { if (serial === this.createSerial && this.createState === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private async replayCreateEdit(redo: boolean): Promise<void> {
+        const state = this.createState; if (!state || state.busy) return;
+        const serial = ++this.createSerial; state.busy = true; state.editPreview = undefined; this.renderImportEntry();
+        try {
+            const draft = redo ? await this.service.redoDraftEdit(state.handle, state.draft.revision) :
+                await this.service.undoDraftEdit(state.handle, state.draft.revision);
+            if (serial === this.createSerial && this.createState === state) {
+                state.draft = draft; state.preview = undefined; state.error = undefined;
+            }
+        } catch (error) { if (serial === this.createSerial && this.createState === state)
+            state.error = `Undo/redo unavailable: ${String(error)}`; }
         finally { if (serial === this.createSerial && this.createState === state) { state.busy = false; this.renderImportEntry(); } }
     }
 
@@ -1485,11 +1525,38 @@ export class RoadmapCanvasWidget extends BaseWidget {
         form.onsubmit = event => { event.preventDefault(); void this.editCreate({ type: 'create-phase', title: phase.value, objective: objective.value }); };
         const addPhase = document.createElement('button'); addPhase.type = 'submit'; addPhase.textContent = 'Add phase'; addPhase.disabled = state.busy;
         form.append(phaseLabel, objectiveLabel, addPhase); section.append(form);
+        const parentChoices = state.draft.phases.flatMap(item => [
+            { id: item.id, label: `Phase: ${item.title}` },
+            ...item.checkpoints.map(checkpoint => ({ id: checkpoint.id, label: `Checkpoint: ${checkpoint.title}` }))]);
+        const choose = (label: string, choices: { id: string; label: string }[]): HTMLSelectElement => {
+            const select = document.createElement('select'); select.setAttribute('aria-label', label);
+            for (const choice of choices) { const option = document.createElement('option'); option.value = choice.id;
+                option.textContent = choice.label; select.append(option); }
+            select.disabled = state.busy; return select;
+        };
+        if (parentChoices.length) {
+            const correction = document.createElement('form');
+            const name = document.createElement('input'); name.required = true; name.maxLength = 200;
+            name.setAttribute('aria-label', 'New correction title');
+            const parent = choose('Correction parent', parentChoices);
+            correction.onsubmit = event => { event.preventDefault(); void this.previewCreateEdit({ type: 'create-correction',
+                parentId: parent.value, title: name.value }); };
+            const create = document.createElement('button'); create.type = 'submit'; create.textContent = 'Preview correction branch';
+            create.disabled = state.busy; correction.append(name, parent, create); section.append(correction);
+        }
         for (const item of state.draft.phases) {
             const group = document.createElement('section');
             const title = document.createElement('h5'); title.textContent = item.title;
             const description = document.createElement('p'); description.textContent = item.objective || 'No objective yet.';
             group.append(title, description);
+            if (item.kind === 'correction') {
+                const parents = parentChoices.filter(choice => choice.id !== item.id &&
+                    !item.checkpoints.some(checkpoint => checkpoint.id === choice.id));
+                const parent = choose(`Parent for correction ${item.title}`, parents);
+                parent.value = item.parentId ?? '';
+                group.append(parent, button('Preview correction parent', () => void this.previewCreateEdit({
+                    type: 'attach-correction', correctionId: item.id, parentId: parent.value })));
+            }
             const phaseEdit = document.createElement('form');
             const phaseTitleLabel = document.createElement('label'); phaseTitleLabel.textContent = `Edit ${item.title} title`;
             const phaseTitle = document.createElement('input'); phaseTitle.value = item.title; phaseTitle.required = true; phaseTitle.maxLength = 200; phaseTitleLabel.append(phaseTitle);
@@ -1511,6 +1578,32 @@ export class RoadmapCanvasWidget extends BaseWidget {
                     checkpointId: checkpoint.id, title: checkpointTitle.value, objective: checkpointObjective.value }); };
                 const save = document.createElement('button'); save.type = 'submit'; save.textContent = 'Update checkpoint'; save.disabled = state.busy;
                 edit.append(checkpointTitleLabel, checkpointObjectiveLabel, save); group.append(edit);
+                const split = document.createElement('form');
+                const splitTitle = document.createElement('input'); splitTitle.required = true; splitTitle.maxLength = 200;
+                splitTitle.setAttribute('aria-label', `New checkpoint after ${checkpoint.title}`);
+                split.onsubmit = event => { event.preventDefault(); void this.previewCreateEdit({ type: 'split-checkpoint',
+                    phaseId: item.id, checkpointId: checkpoint.id, title: splitTitle.value }); };
+                const splitButton = document.createElement('button'); splitButton.type = 'submit';
+                splitButton.textContent = 'Preview split'; splitButton.disabled = state.busy;
+                split.append(splitTitle, splitButton); group.append(split);
+                const target = choose(`Move ${checkpoint.title} to phase`, state.draft.phases.map(phase =>
+                    ({ id: phase.id, label: phase.title })));
+                target.value = item.id;
+                const order = document.createElement('input'); order.type = 'number'; order.min = '0'; order.value = '0';
+                order.setAttribute('aria-label', `New order for ${checkpoint.title}`);
+                group.append(target, order, button('Preview move', () => void this.previewCreateEdit({
+                    type: 'move-checkpoint', phaseId: item.id, checkpointId: checkpoint.id,
+                    targetPhaseId: target.value, order: Number(order.value) })));
+                const choices = parentChoices.filter(choice => choice.id !== checkpoint.id &&
+                    !(checkpoint.dependencies ?? []).includes(choice.id));
+                if (choices.length) { const dependency = choose(`Dependency for ${checkpoint.title}`, choices);
+                    group.append(dependency, button('Preview dependency', () => void this.previewCreateEdit({
+                        type: 'add-dependency', checkpointId: checkpoint.id, dependencyId: dependency.value }))); }
+                for (const dependencyId of checkpoint.dependencies ?? []) {
+                    const name = parentChoices.find(choice => choice.id === dependencyId)?.label ?? dependencyId;
+                    group.append(button(`Preview removing dependency ${name}`, () => void this.previewCreateEdit({
+                        type: 'remove-dependency', checkpointId: checkpoint.id, dependencyId })));
+                }
             }
             const checkpointForm = document.createElement('form');
             const checkpointLabel = document.createElement('label'); checkpointLabel.textContent = `New checkpoint in ${item.title}`;
@@ -1527,10 +1620,25 @@ export class RoadmapCanvasWidget extends BaseWidget {
         path.oninput = () => { state.path = path.value; state.preview = undefined;
             section.querySelector('[data-approve-draft]')?.remove(); section.querySelector('pre')?.remove(); };
         pathLabel.append(path); section.append(pathLabel);
+        section.append(button('Undo last draft edit', () => void this.replayCreateEdit(false)),
+            button('Redo last draft edit', () => void this.replayCreateEdit(true)));
+        if (state.editPreview) {
+            const preview = document.createElement('pre'); preview.setAttribute('aria-label', 'Before and after graph change');
+            preview.textContent = `Before:\n${JSON.stringify(state.editPreview.before.phases, null, 2)}\nAfter:\n${JSON.stringify(state.editPreview.after.phases, null, 2)}`;
+            section.append(preview, button('Accept graph change', () => void this.applyCreateEdit()),
+                button('Reject graph change', () => { state.editPreview = undefined; this.renderImportEntry(); }));
+        }
         section.append(button('Preview Roadmap', () => void this.previewCreate()), button('Cancel draft', () => this.cancelCreate()));
         if (state.preview) {
             const summary = document.createElement('pre'); summary.setAttribute('aria-label', 'Roadmap creation preview');
-            summary.textContent = state.preview.markdown; section.append(summary);
+            const names = new Map(state.preview.phases.flatMap(item => [[item.id, item.title] as const,
+                ...item.checkpoints.map(checkpoint => [checkpoint.id, checkpoint.title] as const)]));
+            const relations = state.preview.phases.flatMap(item => [
+                ...(item.parentId ? [`Correction ${item.title} branches from ${names.get(item.parentId) ?? item.parentId}`] : []),
+                ...item.checkpoints.flatMap(checkpoint => (checkpoint.dependencies ?? []).map(dependency =>
+                    `${checkpoint.title} depends on ${names.get(dependency) ?? dependency}`))]);
+            summary.textContent = `${state.preview.markdown}\nGraph relationships:\n${relations.length ? relations.join('\n') : 'None'}\n`;
+            section.append(summary);
             const approve = button(`Approve and create ${state.preview.path}`, () => void this.acceptCreate());
             approve.dataset.approveDraft = 'true'; section.append(approve);
         }

@@ -20,7 +20,7 @@ import { selectDopeCapabilityHelp } from './dope-capability-help';
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
         action: { type: 'create-phase', title: 'Example phase', objective: 'One clear objective' } });
-    return `You are discussing a noncanonical Roadmap draft. Answer questions or ask one meaningful clarifying question as {"type":"no-action","message":"your concrete answer or question"}; do not force an edit. If the user asks for an edit, ${maxSteps ? `you may propose from two to ${maxSteps} small steps in one atomic preview using {"type":"roadmap-draft-sequence","projectId":"${projectId}","draftRevision":${revision},"actions":[{"type":"create-phase","title":"First phase"},{"type":"create-phase","title":"Second phase"}]}, or propose one step` : 'propose exactly one small step'} using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. For a checkpoint, use action {"type":"create-checkpoint","phaseId":"<existing phase ID>","title":"<title>","objective":"<objective>"}; copy phaseId from the current draft. Other supported action types are edit-phase, edit-checkpoint, reorder-phase, and reorder-checkpoint. Return only one JSON object. This requires developer approval. Never claim an edit was applied.`;
+    return `You are discussing a noncanonical Roadmap draft. Answer questions or ask one meaningful clarifying question as {"type":"no-action","message":"your concrete answer or question"}; do not force an edit. If the user asks for an edit, ${maxSteps ? `you may propose from two to ${maxSteps} small steps in one atomic preview using {"type":"roadmap-draft-sequence","projectId":"${projectId}","draftRevision":${revision},"actions":[{"type":"create-phase","title":"First phase"},{"type":"create-phase","title":"Second phase"}]}, or propose one step` : 'propose exactly one small step'} using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. For a checkpoint, use action {"type":"create-checkpoint","phaseId":"<existing phase ID>","title":"<title>","objective":"<objective>"}; copy IDs from the current draft. Supported actions also include edit-phase, edit-checkpoint, reorder-phase, reorder-checkpoint, split-checkpoint (phaseId, checkpointId, title, optional objective), move-checkpoint (phaseId, checkpointId, targetPhaseId, order), add-dependency/remove-dependency (checkpointId, dependencyId), create-correction (parentId, title, optional objective), and attach-correction (correctionId, parentId). Never supply a new ID: Dope creates it. A correction parent must be an exact existing phase or checkpoint ID. Return only one JSON object. This requires developer approval. Never claim an edit was applied.`;
 }
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
@@ -275,9 +275,12 @@ export class ChatBackend implements ChatService {
                     ...preview.after.phases.flatMap(phase => phase.checkpoints.filter(item =>
                         !preview.before.phases.some(old => old.checkpoints.some(checkpoint => checkpoint.id === item.id)))
                         .map(item => item.id)),
-                    ...actions.flatMap(step => 'checkpointId' in step ? [step.phaseId, step.checkpointId] :
-                        'phaseId' in step ? [step.phaseId] : [])
-                ])] : ['phaseId' in action ? action.phaseId : 'new-phase'];
+                    ...actions.flatMap(step => [
+                        ...('phaseId' in step ? [step.phaseId] : []),
+                        ...('checkpointId' in step ? [step.checkpointId] : []),
+                        ...('correctionId' in step ? [step.correctionId] : [])])
+                ])] : ['checkpointId' in action ? action.checkpointId :
+                    'phaseId' in action ? action.phaseId : 'correctionId' in action ? action.correctionId : 'new-phase'];
                 this.proposals.set(chatId, { id, messageId, leaseToken, changedIds,
                     draft: { handle: draft.handle, preview } });
                 return { proposal: { id, chatId, messageId, ownerId: draft.projectId,

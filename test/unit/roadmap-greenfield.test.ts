@@ -69,6 +69,56 @@ test('model-free draft edits, preview and approved acceptance create one linked 
     assert.equal((await store.previewDocumentSync(root)).state, 'unchanged');
 }));
 
+test('typed split, move, dependencies and correction branch share manual preview, undo and canonical recovery', async () => fixture(async root => {
+    const store = new RoadmapStore(), drafts = new RoadmapGreenfield(store);
+    const { handle } = await drafts.begin(root);
+    let draft = drafts.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    const firstPhase = draft.phases[0].id;
+    draft = drafts.edit(handle, 1, { type: 'create-phase', title: 'Verify' });
+    const secondPhase = draft.phases[1].id;
+    draft = drafts.edit(handle, 2, { type: 'create-checkpoint', phaseId: firstPhase, title: 'First' });
+    const first = draft.phases[0].checkpoints[0].id;
+    const split = drafts.previewEdit(handle, 3, { type: 'split-checkpoint', phaseId: firstPhase,
+        checkpointId: first, title: 'Second' });
+    assert.equal(drafts.read(handle).phases[0].checkpoints.length, 1);
+    await assert.rejects(drafts.applyEdit(handle, split, false), /approval/);
+    draft = await drafts.applyEdit(handle, split, true);
+    const second = draft.phases[0].checkpoints[1].id;
+    assert.deepEqual(draft.phases[0].checkpoints[1].dependencies, [first]);
+    draft = drafts.undoEdit(handle, 4);
+    assert.equal(draft.phases[0].checkpoints.length, 1);
+    draft = drafts.redoEdit(handle, 5);
+    assert.equal(draft.phases[0].checkpoints[1].id, second);
+    assert.throws(() => drafts.edit(handle, 6, { type: 'move-checkpoint', phaseId: firstPhase,
+        checkpointId: second, targetPhaseId: secondPhase, order: 0 }), /reviewed preview/);
+    draft = await drafts.applyEdit(handle, drafts.previewEdit(handle, 6, { type: 'move-checkpoint',
+        phaseId: firstPhase, checkpointId: second, targetPhaseId: secondPhase, order: 0 }), true);
+    assert.equal(draft.phases[1].checkpoints[0].id, second);
+    assert.throws(() => drafts.previewEdit(handle, 7, { type: 'add-dependency', checkpointId: first,
+        dependencyId: second }), /cyclic/i);
+    assert.throws(() => drafts.previewEdit(handle, 7, { type: 'add-dependency', checkpointId: first,
+        dependencyId: '123e4567-e89b-42d3-a456-426614174000' }), /Foreign/);
+    draft = await drafts.applyEdit(handle, drafts.previewEdit(handle, 7,
+        { type: 'create-correction', parentId: second, title: 'Repair' }), true);
+    const correction = draft.phases[2].id;
+    assert.equal(draft.phases[2].parentId, second);
+    draft = await drafts.applyEdit(handle, drafts.previewEdit(handle, 8,
+        { type: 'attach-correction', correctionId: correction, parentId: first }), true);
+    assert.equal(draft.phases[2].parentId, first);
+    const stale = drafts.previewEdit(handle, 9, { type: 'add-dependency', checkpointId: second,
+        dependencyId: draft.phases[0].id });
+    drafts.edit(handle, 9, { type: 'edit-checkpoint', phaseId: firstPhase, checkpointId: first,
+        objective: 'Human edit' });
+    await assert.rejects(drafts.applyEdit(handle, stale, true), /Stale/);
+    const creation = drafts.preview(handle, 'ROADMAP.md');
+    const canonical = await drafts.accept(handle, creation, true);
+    const byTitle = new Map(canonical.checkpoints.map(item => [item.title, item]));
+    assert.equal(byTitle.get('Milestone Second')?.dependencies[0], byTitle.get('Milestone First')?.id);
+    assert.equal(byTitle.get('Correction Repair')?.kind, 'correction');
+    assert.equal(byTitle.get('Correction Repair')?.dependencies[0], byTitle.get('Milestone First')?.id);
+    assert.deepEqual((await new RoadmapStore().read(root)).checkpoints, canonical.checkpoints);
+}));
+
 test('cancellation and duplicate headings cannot publish a Roadmap', async () => fixture(async root => {
     const store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);

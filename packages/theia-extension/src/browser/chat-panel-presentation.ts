@@ -73,10 +73,16 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                     change = 'create a phase in Roadmap draft';
                 else if (activity.kind === 'roadmap-draft-proposal' && action?.type === 'create-checkpoint')
                     change = 'create a checkpoint in Roadmap draft';
+                else if (activity.kind === 'roadmap-draft-proposal' && typeof action?.type === 'string' &&
+                    ['split-checkpoint', 'move-checkpoint', 'add-dependency', 'remove-dependency',
+                        'create-correction', 'attach-correction'].includes(action.type))
+                    change = `${action.type.replace(/-/g, ' ')} in the Roadmap draft`;
                 else if (short) change = `set the objective of ${target} to “${short}${(normalized?.length ?? 0) > 120 ? '…' : ''}”`;
                 else if (action && typeof action.type === 'string' &&
                     ['create', 'edit', 'reorder', 'create-phase', 'create-checkpoint', 'edit-phase',
-                        'edit-checkpoint', 'reorder-phase', 'reorder-checkpoint'].includes(action.type))
+                        'edit-checkpoint', 'reorder-phase', 'reorder-checkpoint', 'split-checkpoint',
+                        'move-checkpoint', 'add-dependency', 'remove-dependency',
+                        'create-correction', 'attach-correction'].includes(action.type))
                     change = action.type === 'create' ? `create a Roadmap item near ${target}` :
                         action.type === 'edit' || action.type === 'reorder' ? `${action.type} ${target}` :
                             `${action.type.replace(/-/g, ' ')} in ${target}`;

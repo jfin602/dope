@@ -35,7 +35,7 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(module, /getOrCreateWidget<RoadmapCanvasWidget>\(ROADMAP_CANVAS_ID\)/);
     assert.match(module, /shell\.addWidget\(widget, \{ area: 'main' \}\)/);
     assert.match(module, /dope\.roadmap\.open/);
-    assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|split/);
+    assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|shell\.addWidget/);
     assert.match(widget, /React\.createElement\('strong', null, item\.title\)/);
     assert.match(widget, /className: `dope-roadmap-node dope-roadmap-status-\$\{item\.status\}\$\{item\.draftState/);
     assert.match(widget, /roadmapStatusMark\[item\.status\]/);

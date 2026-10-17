@@ -7,8 +7,9 @@ import { roadmapSectionKey } from './roadmap-import';
 import { RoadmapStore } from './roadmap-store';
 import type { RoadmapIndex } from './roadmap-store';
 
-export interface GreenfieldCheckpoint { id: string; title: string; objective: string }
-export interface GreenfieldPhase { id: string; title: string; objective: string; checkpoints: GreenfieldCheckpoint[] }
+export interface GreenfieldCheckpoint { id: string; title: string; objective: string; dependencies?: string[] }
+export interface GreenfieldPhase { id: string; title: string; objective: string; checkpoints: GreenfieldCheckpoint[];
+    kind?: 'correction'; parentId?: string }
 export interface GreenfieldDraft { revision: number; phases: GreenfieldPhase[] }
 export type GreenfieldEdit =
     | { type: 'create-phase'; title: string; objective?: string }
@@ -16,7 +17,12 @@ export type GreenfieldEdit =
     | { type: 'edit-phase'; phaseId: string; title?: string; objective?: string }
     | { type: 'edit-checkpoint'; phaseId: string; checkpointId: string; title?: string; objective?: string }
     | { type: 'reorder-phase'; phaseId: string; order: number }
-    | { type: 'reorder-checkpoint'; phaseId: string; checkpointId: string; order: number };
+    | { type: 'reorder-checkpoint'; phaseId: string; checkpointId: string; order: number }
+    | { type: 'split-checkpoint'; phaseId: string; checkpointId: string; title: string; objective?: string }
+    | { type: 'move-checkpoint'; phaseId: string; checkpointId: string; targetPhaseId: string; order: number }
+    | { type: 'add-dependency' | 'remove-dependency'; checkpointId: string; dependencyId: string }
+    | { type: 'create-correction'; parentId: string; title: string; objective?: string }
+    | { type: 'attach-correction'; correctionId: string; parentId: string };
 export interface GreenfieldPreview { token: string; draftRevision: number; path: string; markdown: string;
     phases: GreenfieldPhase[]; requiresApproval: true }
 export interface GreenfieldEditPreview { token: string; draftRevision: number; before: GreenfieldDraft;
@@ -49,26 +55,44 @@ function validDraft(value: unknown): value is GreenfieldDraft {
     let checkpoints = 0;
     const ids = new Set<string>();
     const keys = new Set<string>();
+    const dependencies = new Map<string, string[]>();
     for (const [index, phase] of draft.phases.entries()) {
-        if (!phase || !fields(phase, ['id', 'title', 'objective', 'checkpoints']) || !uuid(phase.id) ||
+        if (!phase || !fields(phase, ['id', 'title', 'objective', 'checkpoints'], ['kind', 'parentId']) || !uuid(phase.id) ||
             ids.has(phase.id) || !title(phase.title) || !objective(phase.objective) ||
-            !Array.isArray(phase.checkpoints)) return false;
+            !Array.isArray(phase.checkpoints) || (phase.kind !== undefined && phase.kind !== 'correction') ||
+            (phase.kind === 'correction' ? !uuid(phase.parentId) || phase.parentId === phase.id ||
+                phase.checkpoints.some(item => item.id === phase.parentId) : phase.parentId !== undefined)) return false;
         ids.add(phase.id);
-        const phaseKey = roadmapSectionKey(`Phase ${index + 1} — ${phase.title}`, true);
+        if (phase.parentId) dependencies.set(phase.id, [phase.parentId]);
+        const phaseKey = roadmapSectionKey(phase.kind === 'correction' ? `Correction ${phase.title}` :
+            `Phase ${draft.phases.slice(0, index + 1).filter(item => !item.kind).length} — ${phase.title}`, true);
         if (!phaseKey || keys.has(phaseKey)) return false;
         keys.add(phaseKey);
         for (const checkpoint of phase.checkpoints) {
             checkpoints++;
-            if (!checkpoint || !fields(checkpoint, ['id', 'title', 'objective']) || !uuid(checkpoint.id) ||
+            if (!checkpoint || !fields(checkpoint, ['id', 'title', 'objective'], ['dependencies']) || !uuid(checkpoint.id) ||
                 ids.has(checkpoint.id) || !title(checkpoint.title) ||
-                !objective(checkpoint.objective)) return false;
+                !objective(checkpoint.objective) || (checkpoint.dependencies !== undefined &&
+                    (!Array.isArray(checkpoint.dependencies) || checkpoint.dependencies.length > 128 ||
+                        checkpoint.dependencies.some(id => !uuid(id)) ||
+                        new Set(checkpoint.dependencies).size !== checkpoint.dependencies.length))) return false;
             ids.add(checkpoint.id);
+            dependencies.set(checkpoint.id, checkpoint.dependencies ?? []);
             const key = roadmapSectionKey(`Milestone ${checkpoint.title}`, true);
             if (!key || keys.has(key)) return false;
             keys.add(key);
         }
     }
-    return checkpoints <= 256;
+    if (checkpoints > 256) return false;
+    const visiting = new Set<string>(), visited = new Set<string>();
+    const visit = (id: string): boolean => {
+        if (!ids.has(id) || visiting.has(id)) return false;
+        if (visited.has(id)) return true;
+        visiting.add(id);
+        for (const dependency of dependencies.get(id) ?? []) if (!visit(dependency)) return false;
+        visiting.delete(id); visited.add(id); return true;
+    };
+    return [...ids].every(visit);
 }
 
 /** A local, disposable draft. Only an approved preview crosses into the Roadmap owner. */
@@ -78,6 +102,7 @@ export class RoadmapGreenfield {
     private readonly generations = new Map<string, number>();
     private readonly editPreviews = new Map<string, GreenfieldEditPreview>();
     private readonly creationPreviews = new Map<string, string>();
+    private readonly history = new Map<string, { before: GreenfieldDraft; after: GreenfieldDraft; redo?: boolean }>();
     private readonly accepting = new Set<string>();
     private readonly listeners = new Set<(change: GreenfieldChange) => void>();
     private readonly eventEpoch = randomUUID();
@@ -168,6 +193,7 @@ export class RoadmapGreenfield {
             throw new Error('Stale greenfield draft owner');
         for (const [handle, entry] of this.drafts) if (entry.root === root) {
             this.drafts.delete(handle);
+            this.history.delete(handle);
             this.editPreviews.delete(handle);
             this.creationPreviews.delete(handle);
         }
@@ -263,6 +289,7 @@ export class RoadmapGreenfield {
         this.sequences.delete(handle);
         this.editPreviews.delete(handle);
         this.creationPreviews.delete(handle);
+        this.history.delete(handle);
         for (const [chatId, binding] of this.chats) if (binding.handle === handle) this.chats.delete(chatId);
     }
 
@@ -323,12 +350,19 @@ export class RoadmapGreenfield {
             'create-phase': ['type', 'title'], 'create-checkpoint': ['type', 'phaseId', 'title'],
             'edit-phase': ['type', 'phaseId'], 'edit-checkpoint': ['type', 'phaseId', 'checkpointId'],
             'reorder-phase': ['type', 'phaseId', 'order'],
-            'reorder-checkpoint': ['type', 'phaseId', 'checkpointId', 'order']
+            'reorder-checkpoint': ['type', 'phaseId', 'checkpointId', 'order'],
+            'split-checkpoint': ['type', 'phaseId', 'checkpointId', 'title'],
+            'move-checkpoint': ['type', 'phaseId', 'checkpointId', 'targetPhaseId', 'order'],
+            'add-dependency': ['type', 'checkpointId', 'dependencyId'],
+            'remove-dependency': ['type', 'checkpointId', 'dependencyId'],
+            'create-correction': ['type', 'parentId', 'title'],
+            'attach-correction': ['type', 'correctionId', 'parentId']
         };
         if (!action || !Object.hasOwn(required, action.type) ||
             required[action.type].some(key => !Object.hasOwn(raw, key)) ||
             Object.keys(raw).some(key => !required[action.type].includes(key) &&
-                !(key === 'objective' && ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint'].includes(action.type)) &&
+                !(key === 'objective' && ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint',
+                    'split-checkpoint', 'create-correction'].includes(action.type)) &&
                 !(key === 'title' && ['edit-phase', 'edit-checkpoint'].includes(action.type))))
             throw new Error('Invalid greenfield edit fields');
         const phase = 'phaseId' in action ? next.phases.find(item => item.id === action.phaseId) : undefined;
@@ -372,19 +406,71 @@ export class RoadmapGreenfield {
                 phase!.checkpoints.splice(action.order, 0, phase!.checkpoints.splice(index, 1)[0]);
                 break;
             }
+            case 'split-checkpoint': {
+                const index = phase!.checkpoints.findIndex(item => item.id === action.checkpointId);
+                if (index < 0) throw new Error('Unknown greenfield checkpoint');
+                if (next.phases.reduce((count, item) => count + item.checkpoints.length, 0) >= 256)
+                    throw new Error('Greenfield checkpoint limit');
+                phase!.checkpoints.splice(index + 1, 0, { id: randomUUID(), title: action.title,
+                    objective: action.objective ?? '', dependencies: [action.checkpointId] });
+                break;
+            }
+            case 'move-checkpoint': {
+                const target = next.phases.find(item => item.id === action.targetPhaseId);
+                const index = phase!.checkpoints.findIndex(item => item.id === action.checkpointId);
+                if (!target || index < 0 || !Number.isSafeInteger(action.order) || action.order < 0 ||
+                    action.order >= target.checkpoints.length + (target === phase ? 0 : 1))
+                    throw new Error('Unknown greenfield target or invalid order');
+                target.checkpoints.splice(action.order, 0, phase!.checkpoints.splice(index, 1)[0]);
+                break;
+            }
+            case 'add-dependency': case 'remove-dependency': {
+                const target = next.phases.flatMap(item => item.checkpoints).find(item => item.id === action.checkpointId);
+                const member = next.phases.some(item => item.id === action.dependencyId ||
+                    item.checkpoints.some(checkpoint => checkpoint.id === action.dependencyId));
+                if (!target || !member || target.id === action.dependencyId) throw new Error('Foreign or invalid greenfield dependency');
+                const current = target.dependencies ?? [];
+                if (action.type === 'add-dependency') {
+                    if (current.includes(action.dependencyId)) throw new Error('Duplicate greenfield dependency');
+                    target.dependencies = [...current, action.dependencyId];
+                } else {
+                    if (!current.includes(action.dependencyId)) throw new Error('Unknown greenfield dependency');
+                    target.dependencies = current.filter(id => id !== action.dependencyId);
+                }
+                break;
+            }
+            case 'create-correction': {
+                if (next.phases.length >= 32 || !next.phases.some(item => item.id === action.parentId ||
+                    item.checkpoints.some(checkpoint => checkpoint.id === action.parentId)))
+                    throw new Error('Foreign correction parent or phase limit');
+                next.phases.push({ id: randomUUID(), title: action.title, objective: action.objective ?? '',
+                    checkpoints: [], kind: 'correction', parentId: action.parentId });
+                break;
+            }
+            case 'attach-correction': {
+                const correction = next.phases.find(item => item.id === action.correctionId && item.kind === 'correction');
+                if (!correction || correction.id === action.parentId || !next.phases.some(item =>
+                    item.id === action.parentId || item.checkpoints.some(checkpoint => checkpoint.id === action.parentId)))
+                    throw new Error('Foreign correction parent');
+                correction.parentId = action.parentId;
+                break;
+            }
         }
-        const keys = next.phases.flatMap((item, index) => [roadmapSectionKey(`Phase ${index + 1} — ${item.title}`, true),
-            ...item.checkpoints.map(checkpoint => roadmapSectionKey(`Milestone ${checkpoint.title}`, true))]);
-        if (keys.some(key => !key) || new Set(keys).size !== keys.length) throw new Error('Duplicate greenfield checkpoint heading');
+        if (!validDraft(next)) throw new Error('Duplicate, cyclic or invalid greenfield graph');
         next.revision++;
         return copy(next);
     }
 
     edit(handle: string, expectedRevision: number, action: GreenfieldEdit): GreenfieldDraft {
+        if (['split-checkpoint', 'move-checkpoint', 'add-dependency', 'remove-dependency',
+            'create-correction', 'attach-correction'].includes(action?.type))
+            throw new Error('Graph restructuring requires a reviewed preview and approval');
         const next = this.project(handle, expectedRevision, action);
         const entry = this.drafts.get(handle)!;
+        const before = copy(entry.value);
         this.persist(entry.root, this.entries(entry.root).map(item => item.handle === handle ? { ...item, value: next } : item));
-        this.drafts.get(handle)!.value = next;
+        entry.value = next;
+        this.history.set(handle, { before, after: copy(next) });
         this.editPreviews.delete(handle);
         this.creationPreviews.delete(handle);
         this.announce(handle, 'accepted', next);
@@ -438,11 +524,41 @@ export class RoadmapGreenfield {
             JSON.stringify(this.editPreviews.get(handle)) !== JSON.stringify(preview))
             throw new Error('Stale greenfield draft');
         this.persist(entry.root, this.entries(entry.root).map(item => item.handle === handle ? { ...item, value: preview.after } : item));
+        this.history.set(handle, { before: copy(entry.value), after: copy(preview.after) });
         entry.value = copy(preview.after);
         this.editPreviews.delete(handle);
         this.creationPreviews.delete(handle);
         this.announce(handle, 'accepted', entry.value);
         return copy(entry.value);
+    }
+
+    /** Last accepted draft change only. A newer human/model edit or revision invalidates redo. */
+    undoEdit(handle: string, expectedRevision: number): GreenfieldDraft {
+        return this.replay(handle, expectedRevision, false);
+    }
+
+    redoEdit(handle: string, expectedRevision: number): GreenfieldDraft {
+        return this.replay(handle, expectedRevision, true);
+    }
+
+    private replay(handle: string, expectedRevision: number, redo: boolean): GreenfieldDraft {
+        const entry = this.drafts.get(handle), history = this.history.get(handle);
+        if (!entry || !history || !!history.redo !== redo || entry.value.revision !== expectedRevision ||
+            this.accepting.has(handle)) throw new Error('Greenfield undo/redo conflict or unavailable');
+        this.assertUninitialized(entry.root);
+        const expected = redo ? history.before : history.after;
+        if (JSON.stringify({ ...entry.value, revision: 0 }) !== JSON.stringify({ ...expected, revision: 0 }))
+            throw new Error('Greenfield undo/redo conflict');
+        const target = copy(redo ? history.after : history.before);
+        target.revision = expectedRevision + 1;
+        if (!validDraft(target)) throw new Error('Invalid greenfield undo/redo target');
+        this.persist(entry.root, this.entries(entry.root).map(item => item.handle === handle ? { ...item, value: target } : item));
+        entry.value = target;
+        history.redo = !redo;
+        this.clearEditPreview(handle);
+        this.creationPreviews.delete(handle);
+        this.announce(handle, 'accepted', target);
+        return copy(target);
     }
 
     preview(handle: string, path: string): GreenfieldPreview {
@@ -457,8 +573,10 @@ export class RoadmapGreenfield {
             throw new Error('Unsafe greenfield Roadmap path');
         const lines = ['# Roadmap', ''];
         let order = 0;
-        for (const [index, phase] of entry.value.phases.entries()) {
-            lines.push(`## Phase ${index + 1} — ${phase.title}`, 'Status: NOT IMPLEMENTED',
+        let phaseNumber = 0;
+        for (const phase of entry.value.phases) {
+            lines.push(phase.kind === 'correction' ? `## Correction ${phase.title}` :
+                `## Phase ${++phaseNumber} — ${phase.title}`, 'Status: NOT IMPLEMENTED',
                 `Objective: ${phase.objective}`, `Order: ${order++}`, 'Prose: ', '');
             for (const checkpoint of phase.checkpoints)
                 lines.push(`### Milestone ${checkpoint.title}`, 'Status: NOT IMPLEMENTED',
@@ -483,7 +601,20 @@ export class RoadmapGreenfield {
             const current = await this.store.read(entry.root);
             if (current.revision) throw new Error('Stale Roadmap revision');
             if (current.projectId !== entry.projectId) throw new Error('Stale greenfield project identity');
-            const result = await this.store.acceptGreenfield(entry.root, 0, preview.path, preview.markdown);
+            const keys = new Map<string, string>();
+            let phaseNumber = 0;
+            for (const phase of entry.value.phases) {
+                keys.set(phase.id, roadmapSectionKey(phase.kind === 'correction' ? `Correction ${phase.title}` :
+                    `Phase ${++phaseNumber} — ${phase.title}`, true)!);
+                for (const checkpoint of phase.checkpoints)
+                    keys.set(checkpoint.id, roadmapSectionKey(`Milestone ${checkpoint.title}`, true)!);
+            }
+            const topology = entry.value.phases.flatMap(phase => [
+                ...(phase.parentId ? [{ sectionKey: keys.get(phase.id)!, dependencies: [keys.get(phase.parentId)!] }] : []),
+                ...phase.checkpoints.filter(item => item.dependencies?.length).map(item => ({
+                    sectionKey: keys.get(item.id)!, dependencies: item.dependencies!.map(id => keys.get(id)!) }))
+            ]);
+            const result = await this.store.acceptGreenfield(entry.root, 0, preview.path, preview.markdown, topology);
             this.accepting.delete(handle);
             this.cancel(handle);
             return result;

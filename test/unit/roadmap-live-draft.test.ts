@@ -13,6 +13,18 @@ import { currentDraftChange, projectRoadmapDraft, roadmapCanvasConnectors } from
 const empty = (projectId: string): RoadmapProjection => ({ projectId, revision: 0, nodes: [], edges: [],
     pools: { ideas: [], issues: [] }, diagnostics: [] });
 
+test('draft correction provenance and dependencies appear as provisional edges', () => {
+    const draft: GreenfieldDraft = { revision: 4, phases: [
+        { id: 'phase', title: 'Build', objective: '', checkpoints: [
+            { id: 'first', title: 'First', objective: '' },
+            { id: 'second', title: 'Second', objective: '', dependencies: ['first'] }] },
+        { id: 'correction', title: 'Repair', objective: '', kind: 'correction', parentId: 'first', checkpoints: [] }] };
+    const graph = projectRoadmapDraft(empty('project'), draft);
+    assert.equal(graph.nodes.find(node => node.id === 'correction')?.kind, 'correction');
+    assert.equal(graph.edges.find(edge => edge.id === 'draft-correction:first:correction')?.kind, 'branch');
+    assert.equal(graph.edges.find(edge => edge.id === 'draft-dependency:first:second')?.kind, 'dependency');
+});
+
 test('validated preview, accepted edit and rejection project into one provisional graph without canonical mutation', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-live-draft-'));
     try {
@@ -56,6 +68,8 @@ test('draft notifications reject duplicate, old, foreign and malformed updates',
     const change: GreenfieldChange = { root: '/one', projectId: 'project', handle: 'handle',
         revision: 2, epoch: 'process', sequence: 6, kind: 'proposed', draft };
     assert.equal(currentDraftChange(change, state), true);
+    assert.equal(currentDraftChange({ ...change, draft: { revision: 5, phases: [] } }, state), true);
+    assert.equal(currentDraftChange({ ...change, draft: { revision: 6, phases: [] } }, state), false);
     for (const altered of [{ sequence: 5 }, { sequence: 4 }, { root: '/two' }, { projectId: 'other' },
         { handle: 'other' }, { revision: 1 }, { draft: { revision: 2, phases: [] } },
         { sequence: Number.NaN }])

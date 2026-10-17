@@ -61,7 +61,19 @@ export interface RoadmapIndex {
     checkpoints: RoadmapCheckpoint[];
     linkedDocument?: RoadmapLinkedDocument;
     /** Accepted creation intent. It is not a published Roadmap or a second draft store. */
-    pendingCreation?: { path: string; sourceHash: string; content: string };
+    pendingCreation?: { path: string; sourceHash: string; content: string;
+        topology?: { sectionKey: string; dependencies: string[] }[] };
+}
+export type GreenfieldTopology = NonNullable<RoadmapIndex['pendingCreation']>['topology'];
+function validGreenfieldTopology(value: unknown): value is GreenfieldTopology {
+    return Array.isArray(value) && value.length <= MAX_CHECKPOINTS &&
+        value.every(item => item && typeof item === 'object' && !Array.isArray(item) &&
+            Object.keys(item).sort().join(',') === 'dependencies,sectionKey' &&
+            typeof item.sectionKey === 'string' && item.sectionKey.length > 0 && item.sectionKey.length <= 256 &&
+            Array.isArray(item.dependencies) && item.dependencies.length <= MAX_LINKS &&
+            item.dependencies.every((key: unknown) => typeof key === 'string' && key.length > 0 && key.length <= 256) &&
+            new Set(item.dependencies).size === item.dependencies.length) &&
+        new Set(value.map(item => item.sectionKey)).size === value.length;
 }
 /** Read-only evidence for a deliberate change of the active Markdown owner. */
 export interface RoadmapReplacementPreview {
@@ -188,7 +200,9 @@ export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
     if (raw.pendingCreation !== undefined) {
         const pending = raw.pendingCreation as Record<string, unknown>;
         if (!pending || typeof pending !== 'object' || Array.isArray(pending) ||
-            Object.keys(pending).sort().join(',') !== 'content,path,sourceHash' ||
+            Object.keys(pending).sort().join(',') !== (pending.topology === undefined ?
+                'content,path,sourceHash' : 'content,path,sourceHash,topology') ||
+            (pending.topology !== undefined && !validGreenfieldTopology(pending.topology)) ||
             !text(pending.path, 512) || !pending.path || isAbsolute(pending.path) ||
             !/\.md$/i.test(pending.path) || pending.path.includes('\\') || pending.path.includes(':') ||
             pending.path.split('/').some(part => !part || part === '.' || part === '..') ||
@@ -449,9 +463,11 @@ export class RoadmapStore {
     }
 
     /** Approval is checked by the caller; persist intent before the first source-file effect. */
-    async acceptGreenfield(root: string, expectedRevision: number, path: string, content: string): Promise<RoadmapIndex> {
+    async acceptGreenfield(root: string, expectedRevision: number, path: string, content: string,
+        topology?: GreenfieldTopology): Promise<RoadmapIndex> {
         if (expectedRevision !== 0 || !text(content, 2 * 1024 * 1024) ||
-            Buffer.byteLength(content) > 2 * 1024 * 1024 || !content.startsWith('# Roadmap\n'))
+            Buffer.byteLength(content) > 2 * 1024 * 1024 || !content.startsWith('# Roadmap\n') ||
+            (topology !== undefined && !validGreenfieldTopology(topology)))
             throw new Error('Invalid greenfield Roadmap creation');
         const result = await this.locked(root, async () => {
             const current = await this.read(root);
@@ -462,7 +478,8 @@ export class RoadmapStore {
             catch (error) { if (!missing(error)) throw error; }
             const marker = parseRoadmapIndex({ schemaVersion: 1, projectId: randomUUID(), projectRoot: root,
                 revision: 1, checkpoints: [], pendingCreation: { path, content,
-                    sourceHash: createHash('sha256').update(content).digest('hex') } }, root);
+                    sourceHash: createHash('sha256').update(content).digest('hex'),
+                    ...(topology?.length ? { topology } : {}) } }, root);
             await this.replace(root, marker);
             return marker;
         });
@@ -502,6 +519,16 @@ export class RoadmapStore {
                 .map((item, order) => ({ id: item.id, kind: item.kind, title: item.title, objective: '', order,
                     dependencies: [], links: [], status: item.status, readOnly: false,
                     source: item.source, evidence: item.evidence }));
+            if (pending.topology?.length) {
+                const byKey = new Map(preview.checkpoints.filter(item => item.source.path === pending.path)
+                    .map(item => [item.sectionKey, item.id]));
+                for (const item of pending.topology) {
+                    const target = checkpoints.find(checkpoint => checkpoint.id === byKey.get(item.sectionKey));
+                    if (!target || item.dependencies.some(key => !byKey.has(key)))
+                        throw new Error('Greenfield graph mapping changed; pending creation requires review');
+                    target.dependencies = item.dependencies.map(key => byKey.get(key)!);
+                }
+            }
             const sections = checkpoints.map(item => ({ sectionKey: preview.checkpoints.find(entry => entry.id === item.id)!.sectionKey,
                 checkpointId: item.id }));
             const linked: RoadmapLinkedDocument = { projectRoot: root, projectId: current.projectId, path: pending.path,

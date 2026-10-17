@@ -144,7 +144,13 @@ function validNestedAction(value: unknown, mode: 'linked' | 'unlinked' | 'draft'
         'edit-phase': [['type', 'phaseId'], ['title', 'objective']],
         'edit-checkpoint': [['type', 'phaseId', 'checkpointId'], ['title', 'objective']],
         'reorder-phase': [['type', 'phaseId', 'order'], []],
-        'reorder-checkpoint': [['type', 'phaseId', 'checkpointId', 'order'], []]
+        'reorder-checkpoint': [['type', 'phaseId', 'checkpointId', 'order'], []],
+        'split-checkpoint': [['type', 'phaseId', 'checkpointId', 'title'], ['objective']],
+        'move-checkpoint': [['type', 'phaseId', 'checkpointId', 'targetPhaseId', 'order'], []],
+        'add-dependency': [['type', 'checkpointId', 'dependencyId'], []],
+        'remove-dependency': [['type', 'checkpointId', 'dependencyId'], []],
+        'create-correction': [['type', 'parentId', 'title'], ['objective']],
+        'attach-correction': [['type', 'correctionId', 'parentId'], []]
     } : {
         create: [['type', 'id', 'kind', 'title', 'objective', 'order'], []],
         edit: [['type', 'id'], ['title', 'objective']],

@@ -112,6 +112,18 @@ export default new ContainerModule(bind => {
                 editDraft: async (handle, revision, action) => {
                     if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.edit(handle, revision, action);
                 },
+                previewDraftEdit: async (handle, revision, action) => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.previewEdit(handle, revision, action);
+                },
+                applyDraftEdit: async (handle, preview, approved) => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.applyEdit(handle, preview, approved);
+                },
+                undoDraftEdit: async (handle, revision) => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.undoEdit(handle, revision);
+                },
+                redoDraftEdit: async (handle, revision) => {
+                    if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.redoEdit(handle, revision);
+                },
                 readDraft: async handle => {
                     if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.read(handle);
                 },
