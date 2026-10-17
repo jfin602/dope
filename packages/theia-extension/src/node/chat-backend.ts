@@ -15,6 +15,7 @@ import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevi
     roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
+import { selectDopeCapabilityHelp } from './dope-capability-help';
 
 function draftInstruction(projectId: string, revision: number): string {
     const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
@@ -118,7 +119,7 @@ export class ChatBackend implements ChatService {
         let inputTokens = capabilities.maxInputTokens;
         for (let attempt = 0; attempt < 4; attempt++) {
             const composed = await this.composer!.compose(root, chat, content, context,
-                inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding);
+                inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding, !!budget);
             if (!budget) return composed;
             const bytes = Buffer.byteLength(JSON.stringify(this.withDraft(composed.messages, draft)), 'utf8');
             if (bytes <= budget.inputBytes) {
@@ -175,7 +176,8 @@ export class ChatBackend implements ChatService {
         const draft = await this.draftContext(root, request.chatId);
         if (draft && connection?.providerId !== 'local') throw new Error('Greenfield Chat planning requires a local model');
         const localRoadmap = connection?.providerId === 'local' &&
-            (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft);
+            (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft ||
+                !!selectDopeCapabilityHelp(request.content));
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
         const composed = await this.composeTurn(root, chat, request.content, request.context,
@@ -387,7 +389,8 @@ export class ChatBackend implements ChatService {
         })() : request.content?.trim() ?? '';
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const draft = await this.draftContext(root, request.chatId);
-        const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') || !!draft;
+        const helpTurn = !!selectDopeCapabilityHelp(content);
+        const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn;
         const requestHard: AIRoleHardConstraints = { ...chatHard,
             minimumKnownContextTokens: Math.ceil(Buffer.byteLength(content, 'utf8') / 3) + 4 +
                 chat.settings.context.reservedOutputTokens };
@@ -430,11 +433,12 @@ export class ChatBackend implements ChatService {
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
         const composed = await this.composeTurn(root, contextChat, content, request.context ?? [],
             model.capabilities, budget, draft, grounding);
-        if (roadmapTurn && !draft && !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
+        if ((request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') &&
+            !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
-        let localMode: 'linked' | 'unlinked' | 'draft' = draft ? 'draft' : 'unlinked';
+        let localMode: 'linked' | 'unlinked' | 'draft' | 'help' = helpTurn ? 'help' : draft ? 'draft' : 'unlinked';
         let eligibleObjective = true;
-        if (localRoadmap && !draft && this.planning) {
+        if (localRoadmap && !draft && !helpTurn && this.planning) {
             const ref = composed.refs.filter(item => item.kind === 'roadmap-checkpoint');
             if (ref.length !== 1) throw new Error('Select exactly one Roadmap checkpoint');
             const attached = await this.planning.attach(root);

@@ -63,7 +63,7 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
     generate: (retryInstruction?: string) => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
-    mode: 'linked' | 'unlinked' | 'draft' = 'unlinked', eligibleObjective = true,
+    mode: 'linked' | 'unlinked' | 'draft' | 'help' = 'unlinked', eligibleObjective = true,
     check: LocalPlanningAnswerCheck = {}): Promise<T> {
     let lastInvalid = '';
     let retryInstruction: string | undefined;
@@ -102,7 +102,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const noAction = raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
                 typeof raw.message === 'string' && raw.message.trim().length > 0 && raw.message.length <= 1000 &&
                 !EMPTY_NO_ACTION_MESSAGES.has(raw.message.trim().toLowerCase());
-            if (proposal || intent) return complete;
+            if (mode !== 'help' && (proposal || intent)) return complete;
             if (noAction) {
                 if (check.requiredOwnerRevision === undefined ||
                     citesOwnerRevision(raw.message as string, check.requiredOwnerRevision)) return complete;

@@ -14,6 +14,7 @@ import { ChatRepository } from '@dope/chat/lib/node';
 import { RoadmapStore, type RoadmapCheckpoint, type RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import type { GroundingResult } from './chat-project-grounder';
+import { projectDopeCapabilityHelp, selectDopeCapabilityHelp, type DopeHelpId } from './dope-capability-help';
 
 export const GROUNDED_CHAT_INSTRUCTION = 'Project facts are verified only when supported by the supplied project evidence. Do not claim to have read, listed, searched, or inspected project state beyond that evidence. State what is missing or unknown.';
 const ROADMAP_ACTION_INSTRUCTION = 'Use the supplied checkpoint capabilities to determine whether its Objective is editable; a request to read does not make a linked checkpoint unlinked or read-only. For a factual or decision question without an edit request, choose type no-action and put the concrete answer in its message field. Answer from the supplied evidence, including owner and document revisions when present, and distinguish those counters. If a fact is absent, say so without inventing it; do not replace available facts with a generic missing-evidence or edit-capability reason. Never copy an instruction phrase as the answer. For a linked Markdown checkpoint, only if capabilities.objective.editable is true and the user requests an Objective change, propose {"type":"roadmap-intent","intent":"set-objective","value":"one line"}. Otherwise choose type no-action with a concrete source-backed reason in its message field. For an unlinked checkpoint, a validated roadmap-proposal action may be used. All proposals require developer approval. Never claim an edit was applied.';
@@ -27,6 +28,48 @@ export class ChatContextComposer {
         private readonly index: SoftwareMapIndex, private readonly chats: ChatRepository,
         private readonly roadmap?: RoadmapStore,
         private readonly planningLinkCurrent?: (root: string, link: RoadmapLink) => Promise<boolean>) {}
+
+    private async helpContext(root: string, id: DopeHelpId, selections: ChatContextSelection[], strictJson: boolean): Promise<string> {
+        let linkState = '';
+        let projectOpen = true;
+        let unlinkedImport = false;
+        let hasLinkedFile = false;
+        if (id === 'roadmap-change-file' || id === 'roadmap-refresh') {
+            if (!this.roadmap) projectOpen = false;
+            else {
+                const index = await this.roadmap.read(root);
+                if (index.projectRoot !== root || index.linkedDocument &&
+                    (index.linkedDocument.projectRoot !== root || index.linkedDocument.projectId !== index.projectId))
+                    throw new Error('Stale or foreign Roadmap help context');
+                const linked = index.linkedDocument;
+                hasLinkedFile = !!linked;
+                unlinkedImport = !linked && index.revision === 0;
+                linkState = linked ? `Current project records linked Roadmap Markdown ${linked.path.length <= 120 ? linked.path : '(path omitted)'} (${linked.syncState}); Refresh Roadmap to verify the live source.` :
+                    `Current project has no linked Roadmap Markdown file (${index.revision ? 'existing Roadmap' : 'empty Roadmap'}).`;
+            }
+        }
+        const entry = projectDopeCapabilityHelp({ projectOpen, canWriteRoadmap: projectOpen,
+            hasPlanningSelection: selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'planning-map') })
+            .find(item => item.id === id)!;
+        const route = id === 'roadmap-change-file' && unlinkedImport ?
+            'Roadmap > Roadmap Markdown and setup > Import Roadmap' : entry.uiPath;
+        const blocked = id === 'roadmap-change-file' &&
+            (!hasLinkedFile && !unlinkedImport ||
+                /\((?:conflict|pending-sync|missing|source-changed)\)/.test(linkState));
+        const recovery = id === 'roadmap-change-file' && !hasLinkedFile ?
+            (unlinkedImport ? 'Choose a project Markdown Roadmap, review its import preview and approve it manually.' :
+                'No linked file can be changed from this existing unlinked Roadmap; keep the current Roadmap and report the missing workflow if replacement is needed.') :
+            entry.recovery;
+        return `Dope UI help (${id}): ${linkState} ${entry.limitation} ` +
+            (entry.available && !blocked ? `Available manual path: ${route}.` :
+                `Do not claim this action is available now: ${entry.unavailableReason ??
+                    (!hasLinkedFile ? 'No replacement action is supported for an existing unlinked Roadmap.' :
+                        'Review the linked source state first.')}`) +
+            ` ${recovery} This Chat turn cannot perform the UI action. ` +
+            (strictJson ? 'Reply only as strict JSON {"type":"no-action","message":"brief useful answer"}; ' :
+                'Answer in brief natural language; ') +
+            'state that nothing changed. Do not propose an Objective edit or invent a control.';
+    }
 
     private async roadmapContext(root: string, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
         if (!this.roadmap) throw new Error('Roadmap context unavailable');
@@ -198,7 +241,8 @@ export class ChatContextComposer {
     }
 
     async compose(root: string, chat: Chat, content: string, selections: ChatContextSelection[],
-        capabilities: ConversationModelCapabilities, grounding?: GroundingResult): Promise<ComposedChatContext> {
+        capabilities: ConversationModelCapabilities, grounding?: GroundingResult,
+        strictHelpJson = false): Promise<ComposedChatContext> {
         if (!content.trim()) throw new Error('Enter a message before sending');
         if (!Array.isArray(selections) || selections.length > 20) throw new Error('Too many context selections');
         const policy = chat.settings.context;
@@ -218,9 +262,11 @@ export class ChatContextComposer {
             }
             return bytes.subarray(0, low).toString('utf8').replace(/\uFFFD+$/, '');
         };
-        const roadmapAction = selections.some(source => source.kind === 'roadmap-checkpoint');
+        const helpId = selectDopeCapabilityHelp(content);
+        const help = helpId ? await this.helpContext(root, helpId, selections, strictHelpJson) : undefined;
+        const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
         let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0) -
-            (roadmapAction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0);
+            (roadmapAction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) - (help ? tokens(help) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
         if (grounding) for (const diagnostic of grounding.diagnostics)
@@ -277,6 +323,7 @@ export class ChatContextComposer {
         if (!attached.length) remaining += wrapperTokens;
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];
         if (roadmapAction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
+        if (help) messages.push({ role: 'system', content: help });
         const historyMessages: ConversationMessage[] = [];
         if (policy.history === 'recent') {
             const history = chat.messages.filter(item => item.role === 'user' || item.execution.status === 'complete');

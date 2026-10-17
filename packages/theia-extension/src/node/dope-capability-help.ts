@@ -90,3 +90,22 @@ export function projectDopeCapabilityHelp(state: DopeHelpAvailability): readonly
         return { ...entry, available: !unavailableReason, ...(unavailableReason ? { unavailableReason } : {}) };
     });
 }
+
+/** Match only explicit Dope UI tasks; ordinary Roadmap planning stays on its existing path. */
+export function selectDopeCapabilityHelp(question: string): DopeHelpId | undefined {
+    if (/\b(?:roadmap|markdown|linked\s+(?:file|document|source))\b/i.test(question)) {
+        const sourceTask = /\b(?:file|document|source|link)\b/i.test(question) &&
+            /\b(?:roadmap|markdown|linked)\b/i.test(question);
+        if (sourceTask && (/\b(?:unlink|relink|replace|switch|wrong|different)\b/i.test(question) ||
+            /\bchange\b/i.test(question) &&
+            /\b(?:linked\s+(?:(?:roadmap|markdown)\s+)?(?:file|source|document)|(?:roadmap|markdown)\s+(?:file|source|link))\b/i.test(question) &&
+            !/\b(?:objective|checkpoint|title|status)\b/i.test(question))) return 'roadmap-change-file';
+        if (/\b(?:refresh|sync|conflict|source.changed|relink.needed)\b/i.test(question)) return 'roadmap-refresh';
+    }
+    if (/\b(?:chat|context)\b/i.test(question) && /\b(?:follow|pin)\b/i.test(question))
+        return /\bpin\b/i.test(question) ? 'chat-pin' : 'chat-follow';
+    if (/\bai\s*center\b/i.test(question)) return 'ai-center';
+    if (/\b(?:open|find|resume)\s+(?:my\s+|the\s+)?(?:saved\s+)?work\b/i.test(question)) return 'work';
+    if (/\b(?:open|find|refresh)\s+(?:my\s+|the\s+)?history\b/i.test(question)) return 'history';
+    return undefined;
+}
