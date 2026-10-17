@@ -1,5 +1,8 @@
 # Dope Project Overview
 
+**Forward Phase 11 scope update (2026-10-17; docs only):** **Phase 11 — Human-Centered Development Workflow** includes existing usability/Hunts, `c11-brainstorm`, separately planned `c11-planning-bridge` PB1–PB8, and D1–D8 integrated journey in addition to the unchanged two-clean-Hunt exit. At reviewed main `3787c6c`, brainstorm P1–P7 committed; P8 remains manual/unqualified and Bridge has no executable stack. Phase 11 stays OPEN/NOT QUALIFIED, `0.11.8` unchanged, historical source-scoped results intact and Phase 12 inactive. See [Phase 11 plan](planning/p11/phase-11-plan.md). Earlier status paragraphs below retain original dates.
+
+
 **Current Phase 11 status (2026-10-16):** [UX-003 M1 supplemental recovery](tasks/c11-guidance/manual/m1-recovery-qualification.md) is **SCOPED GREEN in browser/local Q4** at committed `e69d7e5` / `0.11.8`. Phase 11 remains OPEN / NOT QUALIFIED; native/hosted parity and wider usability remain open, and the first separate Hunter is not run. Earlier dated recovery notes below are historical.
 
 **CURRENT RECOVERY AFTER R2 (2026-10-15):** [R2](tasks/c10-green-recovery/qualification/r2-continuity/family-summary.md) is NOT GREEN at `e7f46f1`: saved Roadmap and Chat restart, revision-6 Q4/32K freshness, and canonical statuses PASS; supported live foreign-owner write denial not reached (R4) and real Q4-generated greenfield failed before proposal (R5). R3 UI next, R6 final independent audit. Product c8c41f9 / `0.10.16` unchanged; Phase 10 remains NOT GREEN / NOT OWNER-CLOSED.
@@ -216,7 +219,7 @@ Foundation Spike 0 — qualify Theia
 -> Phase 8 — Coding Agent / Scoped Delegation (owner-closed Green at 0.8.47)
 -> Phase 9 — Developer Continuity / History (owner-closed Green at 0.9.35; successor baseline 0.10.0)
 -> Phase 10 — Unified Roadmap & Local-First AI Planning (ADR 0036; correction P1–P18 implemented, P19 Not Green at unchanged `0.10.16` / `71d91ef`; original P16 remains Not Green)
--> Phase 11 — Human-Centered UI / Usability Qualification (ADR 0037; design only)
+-> Phase 11 — Human-Centered Development Workflow (ADR 0037 + ADR 0038; usability, brainstorm, Planning Bridge, integrated qualification)
 -> Phase 12 — Living Software Knowledge Model (ADR 0023; inactive)
 
 Phase 8 qualified Dope-owned agent execution, WorkItem delegation and candidate review. Phase 9's current product goal is **Developer Continuity**: right-toolbar History, automatic factual activity, exact one-click return and opt-in local-first understanding (ADR 0034). Original Session 9A/9B bounded Green remains history; Session 9C P1–P9 reached `0.9.22` / `0752415` but P10 is superseded/unexecuted. Phase 9 subsequently qualified Green at `0.9.35` / `af3447c`, and was owner-closed on 2026-10-12; historical Session work below is retained. The `0.10.0` successor is a version baseline only, not Phase 10 activation or qualification. Phase 10 Roadmap is now separately owner-activated for its P1–P16 stack, without implementation or qualification; Phase 11 owns the later human usability audit and Phase 12 the inactive background knowledge alignment.

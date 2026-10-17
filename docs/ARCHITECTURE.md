@@ -321,6 +321,9 @@ Qualify exact grammar parity, correction/slice layout, malformed/one-off/superse
 
 ## Forward Planning Bridge orchestration — ADR 0038 (accepted design, docs only)
 
+**2026-10-17 Phase 11 sequencing amendment:** This unchanged orchestration design is the separate `c11-planning-bridge` workstream of **Phase 11 — Human-Centered Development Workflow**, following qualified `c11-brainstorm` output and preceding final integrated D1–D8 qualification. The original usability/Hunt gates remain additionally mandatory. There is no new task/Chat/architecture owner, implicit Run, version shift or Phase 12 activation. See [Phase 11 plan](planning/p11/phase-11-plan.md) and ADR 0037/0038.
+
+
 An approved Roadmap checkpoint transitions through a **Planning Bridge** without moving ownership: **Prepare Work** -> source-backed Physical/Canonical Map impact -> existing PlanningMap target/PlannedTransformations -> bounded WorkItem decomposition -> shared grammar Prompt Stack draft -> human-approved stack -> separate deliberate existing Work/runner execution -> exact-source validation/reconciliation and owner closeout. Architectural target and physical evidence stay separate. No duplicate Plan/Task/Chat/runner/Session domain, independent Markdown writer or cross-owner distributed atomicity.
 
 The Bridge projects **Captured -> Brainstorming -> Roadmapped -> Architecting -> Prepared -> Implementing -> Validating -> Qualified -> Closed**, grouped into five stages (Idea & Brainstorm; Approved Roadmap; Planning Bridge; Implementation; Qualification & Reconciliation). Conditions Blocked/Stale/Needs Decision/Failed/Not Green remain orthogonal. The projection reads authoritative Roadmap, PlanningMap, Work/AgentRun, validation and closeout facts; it cannot substitute a new status owner, imply Green or treat an AgentRun finish as qualification.

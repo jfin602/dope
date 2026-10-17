@@ -1,5 +1,8 @@
 # Planning Bridge — PB1–PB8 Implementation and Qualification Plan
 
+**Approved Phase 11 placement (2026-10-17):** Implement this unchanged PB1–PB8 plan as separately scoped **`c11-planning-bridge` under Product Phase 11 — Human-Centered Development Workflow**, consuming the independently approved/qualified `c11-brainstorm` Roadmap handoff. PB8's own qualification does not substitute for the final D1–D8 Phase 11 integrated journey, original usability/Hunt qualification and explicit owner closeout in [Phase 11 plan](../p11/phase-11-plan.md). No Phase 12 work, prompt authoring, Run, product source edit or version change is authorized by this sequencing note.
+
+
 **Status:** OWNER-APPROVED DESIGN / PLANNED ONLY; NOT IMPLEMENTED, PROMPT-WRITTEN, RUN OR QUALIFIED.
 **Date:** 2026-10-16 (America/Chicago). **Authority:** [ADR 0038](../../decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md).
 **Upstream:** separately approved `docs/tasks/c11-brainstorm/` (authored only at reviewed `0.11.8`). Phase 11 OPEN / NOT QUALIFIED; Phase 12 inactive.

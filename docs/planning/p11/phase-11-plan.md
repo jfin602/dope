@@ -1,4 +1,7 @@
-# Phase 11 Plan — Human-Centered UI
+# Phase 11 Plan — Human-Centered Development Workflow
+
+**CURRENT PHASE 11 SCOPE / 2026-10-17 (OWNER-APPROVED, DOCS ONLY):** Phase 11 comprises original usability foundation/Hunts, `c11-brainstorm`, `c11-planning-bridge` PB1–PB8, and a separate integrated D1–D8 Dope Builds Dope qualification. At reviewed main `3787c6c` brainstorming P1–P7 are committed at unchanged `0.11.8`; P8 is manual/not qualified; Bridge design only, no prompt stack. Original usability requirements and history remain binding. Phase 11 OPEN/NOT QUALIFIED; Phase 12 inactive. Older status entries below are historical.
+
 
 **Current 2026-10-16 late Phase 11 `c11-brainstorm` authoring:** Owner-approved selected-local-model interactive brainstorming with existing ChatPanel and Roadmap; [assessment/plan/P1–P8 authored](../../tasks/c11-brainstorm/README.md) at coherent unchanged `0.11.8` / main eaaa910b1b73645c18aa55db209340c4c65581d5. **Docs only: NOT IMPLEMENTED, RUN OR QUALIFIED.** H02 Software Map Hunter separate/not run; UX-003 M1/H1/H2 source-scoped qualifications and historical Not Green unchanged; Phase 11 OPEN / NOT QUALIFIED, Phase 12 inactive.
 
@@ -68,6 +71,26 @@ The preceding approval was documentation-only at the time; subsequent implementa
 **Repeat with diverse coverage:** There is no predetermined number of loops, and P11 visual investigations and GUI qualification may recur after any repair. A clean hunt without breadth cannot end Phase 11. The initial [U1–U9 gates](usability-recovery-contract.md) qualify the known repair tranche only, not the entire IDE.
 
 **Final exit:** Confirm all actually registered Dope-owned surfaces and representative cross-panel human tasks; no unresolved P0 or material P1 without explicit owner disposition; original fixes verified on a coherent exact-source build; real keyboard, alternate-theme, narrow-pane, error/recovery, restart, no-AI and authority evidence; **two consecutive materially distinct broad hunts finding no new P0/material P1**, subject to sufficient coverage; and explicit human owner acceptance. An issue or phase remains Not Green/Evidence Gap if evidence is missing; no invented human testing or usability scores.
+
+## Four coordinated workstreams and final Phase 11 acceptance (2026-10-17)
+
+1. **Usability Foundation:** Retain all prior UX repairs, ongoing Hunt -> Triage -> Repair -> Verify loops, direct browser/native checks, issue ledger, scope-bound failure/evidence status and the **two materially different broad clean Hunts** required for product-level exit. This work can continue while independent feature stacks are built.
+2. **Interactive Brainstorming:** Existing `c11-brainstorm` P1–P8 creates approved Roadmap checkpoint output through the same saved ChatPanel. P1–P7 are committed through reviewed `3787c6c` but **P8 remains a separate manual T3 proof**; this does not imply the feature or Phase 11 is Green.
+3. **Planning Bridge:** `c11-planning-bridge` consumes approved checkpoints via **Prepare Work** and realizes ADR 0038's unchanged PB1–PB8 (Physical Map impact -> Planning Map target -> WorkItems -> task stack approval -> separate authorized Work execution -> reconciliation). PB8 owns **only** the Bridge's bounded exact-source qualification, not Phase 11 closeout. Its own `/prompt-ass -> /prompt-plan -> /prompt-write` and later explicit Run are separately authorized; no fixed eight-prompt assumption and no `/activate` gate.
+4. **Integrated Qualification:** On a coherent final-source build, complete the **D1–D8** Dope Builds Dope scenario **in addition to**, never instead of, existing human usability qualifications and owner review. Do not claim end-to-end proof from a simulated agent, unit tests alone, or model narration.
+
+| Gate | Real acceptance observation |
+| --- | --- |
+| **D1 — Brainstorm/Roadmap** | Discuss an actual Dope feature in existing saved Chat, inspect proposed visual checkpoints, explicitly approve strategic scope and linked Markdown safely. |
+| **D2 — Handoff** | Choose checkpoint **Prepare Work** and inspect source-backed Physical Map impact, current basis, freshness and supported next action. |
+| **D3 — Architecture** | Review current/target/diff and approve actual typed Planning Map transformations; canonical **Adopt Target** remains separate. |
+| **D4 — WorkItems** | Generate/review real traceable WorkItems with requirements, dependency constraints, working set and validation expectations. |
+| **D5 — Stack** | Generate, validate and explicitly approve a real runner-compatible prompt stack without triggering execution or duplicating task truth. |
+| **D6 — Execution** | Start the stack through an explicit Work Run; observe real grants, candidate validation/review, authoritative promotion and source/Git checkpoints as applicable. |
+| **D7 — Reconciliation** | Inspect real resulting implementation against fresh affected Physical Map evidence and Planning Map target; record intended vs realized outcomes. |
+| **D8 — Qualification/closeout** | Record real tests and manual gates, branch and repair an observed failure if needed, confirm exact-source scope qualification, reconcile Roadmap/Work/History, and obtain explicit owner closeout. |
+
+Qualify both **no-model/manual** and actually selected **local-model** planning routes, saved/restarted/project-switch state, independent browser/Electron evidence where required, wrong-project/stale/permission denials, provider/egress controls and user-controlled Chat placement. Missing or unrun gates remain **Evidence Gap/Not Green**, never inferred qualified. The existing Phase 11 two-broad-clean-Hunts rule, full relevant live-surface inventory and no unresolved material usability blockers still apply. Final Phase 11 owner-close occurs **after** independently dispositioned brainstorming, Bridge, D1–D8 and usability work, with exact-source evidence and preserved historical failures. Phase 12 remains inactive.
 
 ## Acceptance and risk controls
 

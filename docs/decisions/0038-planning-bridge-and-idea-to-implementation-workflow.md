@@ -1,5 +1,8 @@
 # ADR 0038 — Planning Bridge and Idea-to-Implementation Lifecycle
 
+**Phase 11 placement amendment — 2026-10-17 (owner-approved):** The existing ADR 0038 design and PB1–PB8 breakdown are now a separate **`c11-planning-bridge` workstream within Product Phase 11 — Human-Centered Development Workflow**, downstream of the independently qualified `c11-brainstorm` Roadmap handoff. Its five stages, nine states, three planning approvals, fast lane, source ownership, provider-free/local-model use and independent execution grants are **unchanged**. PB8 must retain its own scoped qualification; **final Phase 11** independently requires integrated D1–D8 journey, existing usability gates and two materially distinct clean broad Hunts, plus owner closeout. See [Phase 11 plan](../planning/p11/phase-11-plan.md). Design only: no new runnable stack, Run, version, qualification, Phase 12 activation or altered historical evidence.
+
+
 **Status:** ACCEPTED PRODUCT DESIGN / DOCS ONLY — NOT IMPLEMENTED OR QUALIFIED
 **Date:** 2026-10-16 (America/Chicago); owner-approved `/docs-review` -> `/docs-apply`.
 **Depends on:** ADR 0017, 0028–0032, 0034, 0036–0037; `docs/workflow.md`.
