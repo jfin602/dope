@@ -94,6 +94,7 @@ export class ChatBackend implements ChatService {
     }
 
     private async draftContext(root: string, chatId: string) {
+        await this.greenfield?.ensureRestored(root);
         const bound = this.greenfield?.chatDraft(root, chatId);
         if (!bound) return undefined;
         const current = await this.greenfield!.owner(root);

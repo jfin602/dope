@@ -71,6 +71,18 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         assert.ok(pending);
         assert.equal(greenfield.read(handle).revision, 0);
         assert.equal((await store.read(root)).revision, 0);
+        const restartedDrafts = new RoadmapGreenfield(new RoadmapStore());
+        await restartedDrafts.restore(root);
+        assert.equal(restartedDrafts.chatDraft(root, selected)?.handle, handle);
+        assert.equal((await new ChatRepository().read(root)).chats.some(chat => chat.id === selected), true);
+        const restartedBackend = new ChatBackend(new ChatRepository(), { notifyChatEvent() {} }, models as never,
+            composer as never, undefined, undefined, new ProjectPlanningActions(new RoadmapStore()), restartedDrafts);
+        try {
+            const reopened = await restartedBackend.attach(pathToFileURL(root).href);
+            await assert.rejects(restartedBackend.decidePlanningProposal(reopened.projectHandle, selected,
+                lease.token, pending.id, true), /Planning proposal unavailable/);
+            assert.equal(restartedDrafts.read(handle).revision, 0);
+        } finally { restartedBackend.dispose(); }
         assert.match(sent.at(-1) ?? '', /draftRevision/);
         assert.ok((sent.at(-1) ?? '').includes(proposal(projectId, 0,
             { type: 'create-phase', title: 'Example phase', objective: 'One clear objective' })));

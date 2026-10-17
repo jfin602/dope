@@ -97,10 +97,17 @@ export default new ContainerModule(bind => {
                 (root, projectId) => client.notifyLinkedDocumentChanged(root, projectId));
             const off = store.onChange(change => client.notifyRoadmapChanged(change));
             client.onDidCloseConnection(() => { off(); observer.dispose(); for (const handle of handles) actions.detach(handle);
-                for (const handle of draftHandles) greenfield.cancel(handle); dispose(); });
+                dispose(); });
             const backend: RoadmapService = {
                 beginDraft: async uri => { const result = await greenfield.begin(await context.container.get(PlanningStore).root(uri));
                     draftHandles.add(result.handle); return result; },
+                recoverDrafts: async uri => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    const restored = await greenfield.restore(root);
+                    const chats = new Set((await context.container.get(ChatRepository).read(root)).chats.map(chat => chat.id));
+                    for (const item of restored) if (!item.chatId || chats.has(item.chatId)) draftHandles.add(item.handle);
+                    return restored.filter(item => !item.chatId || chats.has(item.chatId));
+                },
                 editDraft: async (handle, revision, action) => {
                     if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.edit(handle, revision, action);
                 },
@@ -114,7 +121,7 @@ export default new ContainerModule(bind => {
                     if (!draftHandles.has(handle)) throw new Error('Unknown draft');
                     const result = await greenfield.accept(handle, preview, approved); draftHandles.delete(handle); return result;
                 },
-                cancelDraft: async handle => { if (draftHandles.delete(handle)) greenfield.cancel(handle); },
+                cancelDraft: async handle => { if (draftHandles.has(handle)) { greenfield.cancel(handle); draftHandles.delete(handle); } },
                 bindDraftChat: async (uri, handle, chatId) => {
                     if (!draftHandles.has(handle)) throw new Error('Unknown draft');
                     const root = await context.container.get(PlanningStore).root(uri);

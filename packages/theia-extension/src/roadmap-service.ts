@@ -12,6 +12,7 @@ export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): vo
 /** Roadmap reads and a thin RPC bridge to Dope-owned ProjectPlanningActions. */
 export interface RoadmapService {
     beginDraft(projectUri: string): Promise<{ handle: string; draft: GreenfieldDraft }>;
+    recoverDrafts(projectUri: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string }[]>;
     editDraft(handle: string, expectedRevision: number, action: GreenfieldEdit): Promise<GreenfieldDraft>;
     readDraft(handle: string): Promise<GreenfieldDraft>;
     previewDraft(handle: string, path: string): Promise<GreenfieldPreview>;

@@ -18,7 +18,7 @@ test('model-free draft edits, preview and approved acceptance create one linked 
     const phase = greenfield.edit(handle, 0, { type: 'create-phase', title: 'Build', objective: 'Ship it' });
     const phaseId = phase.phases[0].id;
     assert.throws(() => greenfield.preview(handle, 'ROADMAP.md'), /phase and checkpoint/);
-    assert.deepEqual(await readdir(root), []);
+    assert.deepEqual(await readdir(root), ['.dope']);
     const checkpoint = greenfield.edit(handle, 1, { type: 'create-checkpoint', phaseId, title: 'First slice' });
     const checkpointId = checkpoint.phases[0].checkpoints[0].id;
     greenfield.edit(handle, 2, { type: 'edit-checkpoint', phaseId, checkpointId,
@@ -26,9 +26,9 @@ test('model-free draft edits, preview and approved acceptance create one linked 
     greenfield.edit(handle, 3, { type: 'reorder-checkpoint', phaseId, checkpointId, order: 0 });
     const preview = greenfield.preview(handle, 'ROADMAP.md');
     assert.equal((await store.read(root)).revision, 0);
-    assert.deepEqual(await readdir(root), []);
+    assert.deepEqual(await readdir(root), ['.dope']);
     await assert.rejects(greenfield.accept(handle, preview, false), /approval/);
-    assert.deepEqual(await readdir(root), []);
+    assert.deepEqual(await readdir(root), ['.dope']);
     const accepted = await greenfield.accept(handle, preview, true);
     assert.equal(accepted.revision, 2);
     assert.equal(accepted.linkedDocument?.path, 'ROADMAP.md');
@@ -54,7 +54,7 @@ test('cancellation and duplicate headings cannot publish a Roadmap', async () =>
     assert.equal(greenfield.read(handle).revision, 2);
     greenfield.cancel(handle);
     assert.throws(() => greenfield.preview(handle, 'ROADMAP.md'), /Unknown/);
-    assert.deepEqual(await readdir(root), []);
+    assert.deepEqual(await readdir(root), ['.dope']);
     assert.equal((await store.read(root)).revision, 0);
 }));
 
@@ -87,7 +87,7 @@ test('a Roadmap revision race invalidates an approved greenfield preview', async
     const preview = greenfield.preview(handle, 'ROADMAP.md');
     await store.mutate(root, 0, { type: 'create', id: 'manual', kind: 'phase', title: 'Manual',
         objective: '', order: 0 });
-    await assert.rejects(greenfield.accept(handle, preview, true), /Stale Roadmap revision/);
+    await assert.rejects(greenfield.accept(handle, preview, true), /Stale/);
     assert.equal((await store.read(root)).checkpoints[0].id, 'manual');
     await assert.rejects(readFile(join(root, 'ROADMAP.md')), /ENOENT/);
 }));
@@ -119,5 +119,70 @@ test('pending accepted creation survives failed index finalization and restarts 
     assert.equal(recovered.revision, 2);
     assert.equal(recovered.linkedDocument?.syncState, 'synced');
     assert.equal((await new RoadmapStore().recoverGreenfield(root)).revision, 2);
-    await assert.rejects(greenfield.accept(handle, preview, true), /Stale/);
+    await assert.rejects(greenfield.accept(handle, preview, true), /Stale|preview and approval/);
+}));
+
+test('accepted draft and Chat association restore without publishing a canonical Roadmap', async () => fixture(async root => {
+    const store = new RoadmapStore();
+    const first = new RoadmapGreenfield(store);
+    const { handle } = await first.begin(root);
+    const chatId = '123e4567-e89b-42d3-a456-426614174000';
+    first.bindChat(root, handle, chatId);
+    const phase = first.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    first.edit(handle, 1, { type: 'create-checkpoint', phaseId: phase.phases[0].id, title: 'First' });
+    const oldPreview = first.previewEdit(handle, 2, { type: 'edit-phase', phaseId: phase.phases[0].id, title: 'Unapproved' });
+    const restored = new RoadmapGreenfield(new RoadmapStore());
+    assert.deepEqual((await restored.restore(root)).map(item => ({ handle: item.handle, chatId: item.chatId })), [{ handle, chatId }]);
+    assert.equal(restored.chatDraft(root, chatId)?.draft.revision, 2);
+    await assert.rejects(restored.applyEdit(handle, oldPreview, true), /preview or approval/);
+    assert.equal(restored.read(handle).phases[0].title, 'Build');
+    assert.equal((await store.read(root)).revision, 0);
+    await assert.rejects(readFile(join(root, 'ROADMAP.md')), /ENOENT/);
+    const renewed = restored.previewEdit(handle, 2, oldPreview.action);
+    assert.equal((await restored.applyEdit(handle, renewed, true)).revision, 3);
+    assert.equal((await new RoadmapGreenfield(store).restore(root))[0].draft.revision, 3);
+    restored.cancel(handle);
+    const cancelled = new RoadmapGreenfield(store);
+    assert.deepEqual(await cancelled.restore(root), []);
+    assert.equal(cancelled.chatDraft(root, chatId), undefined);
+    assert.equal((await store.read(root)).revision, 0);
+}));
+
+test('cancel, project isolation, concurrent edits, corrupt state and symlinked storage fail closed', async () => fixture(async root => {
+    const other = await mkdtemp(join(tmpdir(), 'dope-greenfield-isolation-'));
+    try {
+        const first = new RoadmapGreenfield(new RoadmapStore());
+        const { handle } = await first.begin(root);
+        const second = new RoadmapGreenfield(new RoadmapStore());
+        await second.restore(root);
+        assert.deepEqual(await second.restore(other), []);
+        assert.equal(second.read(handle).revision, 0);
+        const otherHandle = (await second.begin(other)).handle;
+        assert.throws(() => second.bindChat(root, otherHandle, '123e4567-e89b-42d3-a456-426614174000'), /Foreign/);
+        first.edit(handle, 0, { type: 'create-phase', title: 'First' });
+        assert.throws(() => second.edit(handle, 0, { type: 'create-phase', title: 'Racing' }), /Concurrent/);
+        assert.equal((await new RoadmapGreenfield(new RoadmapStore()).restore(root))[0].draft.revision, 1);
+        first.cancel(handle);
+        assert.deepEqual(await new RoadmapGreenfield(new RoadmapStore()).restore(root), []);
+        await writeFile(join(root, '.dope', 'roadmap-drafts.json'), '{bad');
+        await assert.rejects(new RoadmapGreenfield(new RoadmapStore()).restore(root), /Corrupt/);
+        await rm(join(root, '.dope', 'roadmap-drafts.json'));
+        await symlink(join(root, 'outside.json'), join(root, '.dope', 'roadmap-drafts.json'));
+        await assert.rejects(new RoadmapGreenfield(new RoadmapStore()).restore(root), /Unsafe/);
+        await rm(join(root, '.dope', 'roadmap-drafts.json'));
+        await writeFile(join(root, '.dope', 'roadmap-drafts.json'), ' '.repeat(512 * 1024 + 1));
+        await assert.rejects(new RoadmapGreenfield(new RoadmapStore()).restore(root), /oversized/);
+    } finally { await rm(other, { recursive: true, force: true }); }
+}));
+
+test('restored draft refuses a changed canonical Roadmap owner', async () => fixture(async root => {
+    const store = new RoadmapStore();
+    const greenfield = new RoadmapGreenfield(store);
+    const { handle } = await greenfield.begin(root);
+    await store.mutate(root, 0, { type: 'create', id: 'owned', kind: 'phase', title: 'Canonical',
+        objective: '', order: 0 });
+    await assert.rejects(new RoadmapGreenfield(store).restore(root), /Stale greenfield draft owner/);
+    assert.throws(() => greenfield.edit(handle, 0, { type: 'create-phase', title: 'Stale' }), /Stale/);
+    assert.equal((await store.read(root)).checkpoints[0].title, 'Canonical');
+    assert.ok(handle);
 }));
