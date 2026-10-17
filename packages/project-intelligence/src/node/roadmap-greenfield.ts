@@ -21,6 +21,9 @@ export interface GreenfieldPreview { token: string; draftRevision: number; path:
     phases: GreenfieldPhase[]; requiresApproval: true }
 export interface GreenfieldEditPreview { token: string; draftRevision: number; before: GreenfieldDraft;
     after: GreenfieldDraft; action: GreenfieldEdit; requiresApproval: true }
+/** Noncanonical presentation notification. A proposed value is a fully validated preview, never an accepted edit. */
+export interface GreenfieldChange { root: string; projectId: string; handle: string; revision: number;
+    epoch: string; sequence: number; kind: 'accepted' | 'proposed' | 'cleared' | 'cancelled'; draft?: GreenfieldDraft }
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const line = (value: unknown, max: number): value is string => typeof value === 'string' &&
@@ -76,7 +79,28 @@ export class RoadmapGreenfield {
     private readonly editPreviews = new Map<string, GreenfieldEditPreview>();
     private readonly creationPreviews = new Map<string, string>();
     private readonly accepting = new Set<string>();
+    private readonly listeners = new Set<(change: GreenfieldChange) => void>();
+    private readonly eventEpoch = randomUUID();
+    private readonly sequences = new Map<string, number>();
     constructor(private readonly store: RoadmapStore) {}
+
+    onChange(listener: (change: GreenfieldChange) => void): () => void {
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    }
+
+    private announce(handle: string, kind: GreenfieldChange['kind'], draft?: GreenfieldDraft): void {
+        const entry = this.drafts.get(handle);
+        if (!entry) return;
+        const change: GreenfieldChange = { root: entry.root, projectId: entry.projectId, handle,
+            revision: entry.value.revision, epoch: this.eventEpoch,
+            sequence: (this.sequences.get(handle) ?? 0) + 1, kind,
+            ...(draft ? { draft: copy(draft) } : {}) };
+        this.sequences.set(handle, change.sequence);
+        for (const listener of this.listeners) {
+            try { listener(change); } catch { /* Presentation delivery cannot roll back an accepted draft. */ }
+        }
+    }
 
     private paths(root: string, create = false): { directory: string; file: string } {
         if (!isAbsolute(root) || resolve(root) !== root || !lstatSync(root).isDirectory())
@@ -160,6 +184,12 @@ export class RoadmapGreenfield {
         if (!this.generations.has(root)) await this.restore(root);
     }
 
+    async list(root: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string }[]> {
+        await this.ensureRestored(root);
+        return this.entries(root).map(item => ({ handle: item.handle, draft: copy(item.value),
+            ...(item.chatId ? { chatId: item.chatId } : {}) }));
+    }
+
     private persist(root: string, entries: StoredDraft[]): void {
         const { directory, file } = this.paths(root, true);
         const lock = join(directory, 'roadmap-drafts.lock');
@@ -228,7 +258,9 @@ export class RoadmapGreenfield {
         if (this.accepting.has(handle)) throw new Error('Greenfield draft acceptance in progress');
         const entry = this.drafts.get(handle);
         if (entry) this.persist(entry.root, this.entries(entry.root).filter(item => item.handle !== handle));
+        this.announce(handle, 'cancelled');
         this.drafts.delete(handle);
+        this.sequences.delete(handle);
         this.editPreviews.delete(handle);
         this.creationPreviews.delete(handle);
         for (const [chatId, binding] of this.chats) if (binding.handle === handle) this.chats.delete(chatId);
@@ -241,7 +273,7 @@ export class RoadmapGreenfield {
         const entries = this.entries(root).map(item => ({ ...item, ...(item.handle === handle ? { chatId } : {} ) }));
         for (const item of entries) if (item.handle !== handle && item.chatId === chatId) delete item.chatId;
         this.persist(root, entries);
-        this.editPreviews.delete(handle);
+        this.clearEditPreview(handle);
         for (const [id, binding] of this.chats) if (binding.handle === handle || id === chatId) this.chats.delete(id);
         this.chats.set(chatId, { root, handle });
     }
@@ -253,7 +285,7 @@ export class RoadmapGreenfield {
         const entries = this.entries(root).map(item => ({ ...item }));
         for (const item of entries) if (item.handle === handle) delete item.chatId;
         this.persist(root, entries);
-        this.editPreviews.delete(handle);
+        this.clearEditPreview(handle);
         for (const [chatId, binding] of this.chats) if (binding.handle === handle) this.chats.delete(chatId);
     }
 
@@ -353,6 +385,7 @@ export class RoadmapGreenfield {
         this.drafts.get(handle)!.value = next;
         this.editPreviews.delete(handle);
         this.creationPreviews.delete(handle);
+        this.announce(handle, 'accepted', next);
         return copy(next);
     }
 
@@ -363,7 +396,12 @@ export class RoadmapGreenfield {
         const preview: GreenfieldEditPreview = { token, draftRevision: expectedRevision,
             before, after, action: copy(action), requiresApproval: true };
         this.editPreviews.set(handle, preview);
+        this.announce(handle, 'proposed', preview.after);
         return copy(preview);
+    }
+
+    clearEditPreview(handle: string): void {
+        if (this.editPreviews.delete(handle)) this.announce(handle, 'cleared');
     }
 
     async applyEdit(handle: string, preview: GreenfieldEditPreview, approved: boolean): Promise<GreenfieldDraft> {
@@ -385,6 +423,7 @@ export class RoadmapGreenfield {
         entry.value = copy(preview.after);
         this.editPreviews.delete(handle);
         this.creationPreviews.delete(handle);
+        this.announce(handle, 'accepted', entry.value);
         return copy(entry.value);
     }
 

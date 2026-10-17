@@ -3,11 +3,12 @@ import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roa
 import type { PlanningActionRequest, PlanningActionPreview, PlanningUndoRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
-import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 
 export const roadmapServicePath = '/services/dope/roadmap';
-export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): void; notifyLinkedDocumentChanged(root: string, projectId: string): void }
+export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): void; notifyLinkedDocumentChanged(root: string, projectId: string): void;
+    notifyDraftChanged(change: GreenfieldChange): void }
 
 /** Roadmap reads and a thin RPC bridge to Dope-owned ProjectPlanningActions. */
 export interface RoadmapService {

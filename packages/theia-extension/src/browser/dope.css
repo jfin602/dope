@@ -66,6 +66,10 @@
 .dope-roadmap-node[aria-current="true"] { box-shadow: 0 0 0 2px var(--dope-primary, var(--dope-roadmap-focus, var(--theia-focusBorder))); font-weight: 600; }
 .dope-roadmap-node { transition: box-shadow 180ms ease-out; }
 .dope-roadmap-node:disabled { cursor: default; }
+.dope-roadmap-draft-accepted .dope-roadmap-node { border-style: dashed; }
+.dope-roadmap-draft-proposed .dope-roadmap-node { border-style: dotted; border-width: 3px; }
+.dope-roadmap-edge.dope-roadmap-draft-accepted .react-flow__edge-path { stroke-dasharray: 7 5; }
+.dope-roadmap-edge.dope-roadmap-draft-proposed .react-flow__edge-path { stroke-dasharray: 2 5; stroke-width: 3; }
 .dope-roadmap-node :is(small, strong, span) { overflow-wrap: anywhere; white-space: normal; }
 .dope-roadmap-node small { color: var(--theia-descriptionForeground); font-weight: normal; }
 .dope-roadmap-status { display: inline-flex; align-items: baseline; gap: 5px; width: fit-content; max-width: 100%; font-size: 12px; font-weight: 600; color: var(--roadmap-status-color, var(--theia-descriptionForeground)); }

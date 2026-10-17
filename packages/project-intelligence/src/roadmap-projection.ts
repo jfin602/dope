@@ -19,6 +19,8 @@ export interface CheckpointNode {
     evidence: RoadmapCheckpoint['evidence'];
     source?: RoadmapCheckpoint['source'];
     readOnly: boolean;
+    /** Presentation-only draft truth; never persisted as a canonical Roadmap status. */
+    draftState?: 'accepted' | 'proposed';
     lane: 'path' | 'branch';
     phaseAssociation?: PhaseAssociation;
     taskSource?: { stackPath: string; path?: string; fingerprint: string; number?: number; version?: string;

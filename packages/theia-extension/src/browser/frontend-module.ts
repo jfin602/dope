@@ -68,6 +68,7 @@ import { ExplorerSearchWidget } from './explorer-search-widget';
 import { SearchNavigationContribution } from './search-navigation-contribution';
 import { RoadmapNavigationContribution, roadmapLauncherFactory } from './roadmap-navigation-contribution';
 import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 
 const modelInventoryChanged = new Emitter<void>();
 
@@ -321,6 +322,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind<RoadmapService>('RoadmapService').toDynamicValue(context => ServiceConnectionProvider.createProxy<RoadmapService & RpcServer<RoadmapClient>>(
         context.container, roadmapServicePath, { notifyRoadmapChanged: (change: RoadmapChange) => {
             void context.container.get(RoadmapInspectorModel).remoteChange(change);
+        }, notifyDraftChanged: (change: GreenfieldChange) => {
+            void context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)
+                .then(widget => widget?.draftChanged(change));
         }, notifyLinkedDocumentChanged: (root: string, projectId: string) => {
             void context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)
                 .then(widget => widget?.linkedSourceChanged(root, projectId));

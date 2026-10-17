@@ -1,4 +1,50 @@
 import type { CheckpointNode, CheckpointEdge, RoadmapProjection } from '@dope/project-intelligence/lib/roadmap-projection';
+import type { GreenfieldDraft, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+
+export function currentDraftChange(change: GreenfieldChange, state: { root: string; projectId: string;
+    handle: string; revision: number; sequence: number }): boolean {
+    return change.root === state.root && change.projectId === state.projectId && change.handle === state.handle &&
+        Number.isSafeInteger(change.sequence) && change.sequence > state.sequence &&
+        Number.isSafeInteger(change.revision) && change.revision >= state.revision &&
+        (change.kind === 'accepted' ? change.revision > state.revision && change.draft?.revision === change.revision :
+            change.kind === 'proposed' ? change.revision === state.revision &&
+                change.draft?.revision === state.revision + 1 :
+                (change.kind === 'cleared' || change.kind === 'cancelled') && change.revision === state.revision);
+}
+
+/** Merge noncanonical draft cards into the one existing Roadmap graph. */
+export function projectRoadmapDraft<T extends RoadmapProjection>(base: T, accepted?: GreenfieldDraft,
+    proposed?: GreenfieldDraft): T {
+    if (!accepted && !proposed) return base;
+    const before = new Map<string, string>();
+    for (const [order, phase] of (accepted?.phases ?? []).entries()) {
+        before.set(phase.id, JSON.stringify({ title: phase.title, objective: phase.objective, order }));
+        for (const [index, item] of phase.checkpoints.entries())
+            before.set(item.id, JSON.stringify({ ...item, order: index }));
+    }
+    const active = proposed ?? accepted!;
+    const nodes: CheckpointNode[] = [];
+    const edges: CheckpointEdge[] = [];
+    for (const [order, phase] of active.phases.entries()) {
+        const phaseState = proposed && before.get(phase.id) !== JSON.stringify({ title: phase.title, objective: phase.objective, order })
+            ? 'proposed' : 'accepted';
+        nodes.push({ id: phase.id, kind: 'phase', title: phase.title, order, status: 'not-implemented',
+            statusLabel: phaseState === 'proposed' ? 'Proposed · not implemented' : 'Accepted draft · not implemented',
+            evidence: [], readOnly: true, lane: 'path', draftState: phaseState });
+        for (const [index, item] of phase.checkpoints.entries()) {
+            const state = proposed && before.get(item.id) !== JSON.stringify({ ...item, order: index }) ? 'proposed' : 'accepted';
+            nodes.push({ id: item.id, kind: 'milestone', title: item.title, order: index,
+                status: 'not-implemented', statusLabel: state === 'proposed' ? 'Proposed · not implemented' :
+                    'Accepted draft · not implemented', evidence: [], readOnly: true, lane: 'branch',
+                draftState: state, phaseAssociation: { phaseId: phase.id } });
+            edges.push({ id: `draft:${phase.id}:${item.id}`, from: phase.id, to: item.id,
+                kind: 'branch', label: state === 'proposed' ? 'Proposed draft checkpoint' : 'Accepted draft checkpoint' });
+        }
+    }
+    const ids = new Set(base.nodes.map(node => node.id));
+    return { ...base, nodes: [...base.nodes, ...nodes.filter(node => !ids.has(node.id))],
+        edges: [...base.edges, ...edges.filter(edge => !ids.has(edge.to))] };
+}
 
 export type RoadmapDetail = 'world' | 'phase' | 'checkpoint';
 

@@ -96,14 +96,15 @@ export default new ContainerModule(bind => {
             const observer = new RoadmapLinkedObserver(root => store.read(root),
                 (root, projectId) => client.notifyLinkedDocumentChanged(root, projectId));
             const off = store.onChange(change => client.notifyRoadmapChanged(change));
-            client.onDidCloseConnection(() => { off(); observer.dispose(); for (const handle of handles) actions.detach(handle);
+            const offDraft = greenfield.onChange(change => client.notifyDraftChanged(change));
+            client.onDidCloseConnection(() => { off(); offDraft(); observer.dispose(); for (const handle of handles) actions.detach(handle);
                 dispose(); });
             const backend: RoadmapService = {
                 beginDraft: async uri => { const result = await greenfield.begin(await context.container.get(PlanningStore).root(uri));
                     draftHandles.add(result.handle); return result; },
                 recoverDrafts: async uri => {
                     const root = await context.container.get(PlanningStore).root(uri);
-                    const restored = await greenfield.restore(root);
+                    const restored = await greenfield.list(root);
                     const chats = new Set((await context.container.get(ChatRepository).read(root)).chats.map(chat => chat.id));
                     for (const item of restored) if (!item.chatId || chats.has(item.chatId)) draftHandles.add(item.handle);
                     return restored.filter(item => !item.chatId || chats.has(item.chatId));

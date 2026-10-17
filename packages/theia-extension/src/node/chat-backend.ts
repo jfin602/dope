@@ -221,6 +221,7 @@ export class ChatBackend implements ChatService {
     private clearProposal(chatId: string): void {
         const pending = this.proposals.get(chatId);
         if (pending?.handle) this.planning?.detach(pending.handle);
+        if (pending?.draft) this.greenfield?.clearEditPreview(pending.draft.handle);
         this.proposals.delete(chatId);
     }
 
@@ -346,7 +347,8 @@ export class ChatBackend implements ChatService {
         let appliedRevision: number | undefined;
         try {
             tracePlanning('decision-requested', chatId, pending.messageId, approve ? 'approve' : 'reject');
-            if (!approve) { await record('denied'); return undefined; }
+            if (!approve) { await record('denied'); if (pending.draft) this.greenfield?.clearEditPreview(pending.draft.handle);
+                return undefined; }
             if (pending.draft) {
                 if (!this.greenfield) throw new Error('Greenfield draft unavailable');
                 if (this.greenfield.chatDraft(root, chatId)?.handle !== pending.draft.handle)
@@ -362,6 +364,7 @@ export class ChatBackend implements ChatService {
             await record('applied', result.revision);
             return { revision: result.revision, changedIds: pending.changedIds };
         } catch (error) {
+            if (pending.draft && appliedRevision === undefined) this.greenfield?.clearEditPreview(pending.draft.handle);
             if (appliedRevision !== undefined)
                 throw new Error(`Planning write completed at revision ${appliedRevision}, but Chat activity could not be recorded; reread the Roadmap: ${String(error)}`);
             if ((await this.repository.read(root)).chats.find(chat => chat.id === chatId)?.messages
@@ -623,6 +626,7 @@ export class ChatBackend implements ChatService {
             }
             throw new Error('Model stream ended without completion');
         } catch (error) {
+            if (this.proposals.get(key)?.messageId === assistant?.id) this.clearProposal(key);
             if (assistant) {
                 if (localRoadmap && error instanceof LocalPlanningOutputFailure && error.rawText)
                     output = error.rawText;

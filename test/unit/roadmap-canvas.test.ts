@@ -37,7 +37,7 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(module, /dope\.roadmap\.open/);
     assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|split/);
     assert.match(widget, /React\.createElement\('strong', null, item\.title\)/);
-    assert.match(widget, /className: `dope-roadmap-node dope-roadmap-status-\$\{item\.status\}`/);
+    assert.match(widget, /className: `dope-roadmap-node dope-roadmap-status-\$\{item\.status\}\$\{item\.draftState/);
     assert.match(widget, /roadmapStatusMark\[item\.status\]/);
     assert.match(widget, /item\.statusLabel\)/);
     assert.doesNotMatch(widget, /innerHTML|insertAdjacentHTML/);
@@ -63,7 +63,7 @@ test('Details command and selection use one mounted inspector model in the canva
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(canvas, /this\.inspectionEditor = new RoadmapInspectorWidget\(inspector\)/);
     assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.inspection/);
-    assert.match(canvas, /this\.setInspectionView\('compact'\);\s*this\.setInspectionOpen\(true\)/);
+    assert.match(canvas, /this\.setInspectionView\('compact'\);\s*this\.setInspectionOpen\(!node\.draftState\)/);
     assert.match(canvas, /this\.details\.onclick = \(\) => this\.openDetails\(\)/);
     assert.match(module, /id: 'dope\.roadmap\.inspector'.*Show Roadmap Details/);
     assert.match(module, /widget\.openDetails\(\)/);
