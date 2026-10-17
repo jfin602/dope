@@ -96,3 +96,15 @@ For **every confirmed active surface**, capture:
 | Real UI (L8) | Browser, independently inspected Electron, narrow/keyboard/theme and movable Chat | NOT RUN |
 
 Design-only `c11-brainstorm` differs from separately unrun H02 Software Map Hunter and does not qualify earlier scoped results.
+
+## c11-phase-focus — read-only selected-phase prompt sequence (owner requested, NOT RUN)
+
+| Task | Required direct observation | Evidence |
+| --- | --- | --- |
+| Open phase overlay (F1/F8) | Same center Roadmap; correct phase, keyboard/narrow/theme/Chat layout | NOT RUN |
+| Inspect authored sequence (F2/F7) | P1→PN fixed, no reorder or prompt Run, checked source | NOT RUN |
+| Completed immutability (F3) | Original source/checkpoint/history unchanged, external source-drift denial | NOT RUN |
+| Pre-authoring draft (F4) | Only pre-P*.txt outline order may rearrange; no post-authoring reorder | NOT RUN |
+| Corrections/status (F5/F6) | Verified phase/failed-prompt relation and separate implementation/qualification evidence | NOT RUN |
+
+[Manual gate prompt](../../tasks/c11-phase-focus/P4-manual-phase-focus-closeout.txt); doesn't replace c11-brainstorm P8, H02 or wider usability evidence.

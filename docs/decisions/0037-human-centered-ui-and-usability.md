@@ -1,5 +1,7 @@
 # ADR 0037 — Human-Centered UI / Usability Qualification
 
+**2026-10-17 Phase Focus usability amendment / DOCS ONLY:** Existing Roadmap will have a responsive Phase Focus overlay for selected phase's fixed authored sequence, corrections and source-checked prompt inspection, with no reorder, Run, duplicate Chat, or invented progress. [c11-phase-focus](../tasks/c11-phase-focus/README.md) P1–P4 authored, not tested.
+
 **Forward scope amendment — 2026-10-17 (owner-approved; documentation only):** Product **Phase 11 — Human-Centered Development Workflow** now includes four coordinated workstreams: (1) original usability repairs and iterative Hunt/Triage/Repair/Verify, (2) existing `c11-brainstorm` interactive Roadmap, (3) independent `c11-planning-bridge` PB1–PB8 under [ADR 0038](0038-planning-bridge-and-idea-to-implementation-workflow.md), and (4) integrated **D1–D8** real idea-to-implementation qualification **in addition to** the original two materially distinct clean broad Hunts, surface coverage, outstanding GUI/authority gates and explicit owner closeout. This changes phase scope, not the usability filter or safety boundaries. At reviewed main `3787c6c`, `c11-brainstorm` P1–P7 are committed; P8 requires separate manual T3 qualification, and the Bridge is not implemented/prompt-written. Phase 11 remains OPEN/NOT QUALIFIED at `0.11.8`; Phase 12 inactive. Older entries are historical.
 
 

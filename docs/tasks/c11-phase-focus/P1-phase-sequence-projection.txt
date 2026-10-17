@@ -1,0 +1,21 @@
+TASK: Correction 11 / P1 — Read-only Phase Focus sequence projection
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction version remains unchanged; no manifests, pins, locks. If version changes, re-assess, never downgrade.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0036/0037/0038, the Phase 11 plan, and c11-phase-focus README/assessment/plan. Inspect actual HEAD/version/dirty tree, c11-brainstorm uncommitted P8 work, c11-planning-bridge and source/test paths before any edit. Planning ref 270ade0362 is not a safe run pin. Preserve owner work; no reset/stash/clean, self-commit, /activate, provider/permission changes, or Phase 12 activation. Future explicit owner Run authorizes implementation; runner owns checkpoint commits.
+
+SCOPE
+Reuse existing roadmap-task-discovery.ts, agent-core/sequence.ts and node/sequence-reconciliation.ts, project-intelligence/roadmap-task-projection.ts and browser/roadmap-canvas-model.ts. Implement pure selected-phase derivation of complete authored P1→P2→... stack sequence, continuations, manual closeout and verified correction branches. Project source and fingerprints, missing/unlinked/superseded/ambiguous diagnostics; only actual Work/runner/Git checkpoint evidence may establish implementation progress. Separate source presence, implementation completion, qualification Green, Not Green, waiver, blocked, manual and unknown. Correction membership must be exact phase-backed; failed prompt association only fingerprint/provenance-backed, never inferred from title. Bounded project-safe read-only selector, no second task parser/store/status writer.
+
+TESTS
+Focused projection/selector tests for no stack, stable P-order, phase/continuation/correction, wrong parent, verified failed prompt, unknown/foreign/stale, incomplete Work proof, final manual closeout, and visual Arrange independent of execution order.
+
+HANDOFF
+Focused tests, minimal affected-lib build if tests import compiled lib, git diff --check. <=8m target, 10 soft/15 hard. No repeated full check or simulated GUI. Record actual findings and blockers, no invented Green.

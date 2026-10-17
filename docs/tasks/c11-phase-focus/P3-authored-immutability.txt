@@ -1,0 +1,21 @@
+TASK: Correction 11 / P3 — Fixed authored ordering and completed work safeguards
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction version remains unchanged; no manifests, pins, locks. If version changes, re-assess, never downgrade.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0036/0037/0038, the Phase 11 plan, and c11-phase-focus README/assessment/plan. Inspect actual HEAD/version/dirty tree, c11-brainstorm uncommitted P8 work, c11-planning-bridge and source/test paths before any edit. Planning ref 270ade0362 is not a safe run pin. Preserve owner work; no reset/stash/clean, self-commit, /activate, provider/permission changes, or Phase 12 activation. Future explicit owner Run authorizes implementation; runner owns checkpoint commits.
+
+SCOPE
+Enforce at existing Work/runner/source owner boundaries: ONLY pre-authoring Planning Bridge WorkItem/sequence outlines can reorder. Once runner-compatible executable P*.txt files are **written**, P1→PN fixed, even unstarted. To change wholly unstarted authored sequence, require explicit reviewed supersession/re-authoring with NEW fingerprint, preserve old identity/provenance and invalidate approvals, not reorder in-place. Completed original prompt text/hash/number/run/checkpoint/recorded historic outcome immutable; later independent correction/continuation or append-only evidence allowed. Product software can evolve via later authorized tasks. Raw filesystem changes aren't universally preventable; detect/reject source drift via existing immutable imported snapshots, Git checkpoint prefix and runner guards. Model or Arrange must not bypass. If c11-planning-bridge P9-P13 publisher remains unimplemented, add narrow shared policy/test contracts instead of cloning publisher or editing already-authored Bridge prompt files.
+
+TESTS
+Focused sequence/reconciliation/Work/roadmap tests for pre-author outline reorder, authored order denial, completed prefix unchanged, manual gate, external drift block, foreign/stale requests, explicit unstarted supersession and separate evidence append.
+
+HANDOFF
+Focused tests, minimal affected-lib build if tests import compiled lib, git diff --check. <=8m target, 10 soft/15 hard. No repeated full check or simulated GUI. Record actual findings and blockers, no invented Green.

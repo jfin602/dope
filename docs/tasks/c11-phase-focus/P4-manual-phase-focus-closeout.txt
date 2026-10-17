@@ -1,0 +1,28 @@
+TASK: Correction 11 / P4 — Manual Phase Focus qualification closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- No manifest/pin/lock change. If different version, re-assess.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0036/0037/0038, the Phase 11 plan, and c11-phase-focus README/assessment/plan. Inspect actual HEAD/version/dirty tree, c11-brainstorm uncommitted P8 work, c11-planning-bridge and source/test paths before any edit. Planning ref 270ade0362 is not a safe run pin. Preserve owner work; no reset/stash/clean, self-commit, /activate, provider/permission changes, or Phase 12 activation. Future explicit owner Run authorizes implementation; runner owns checkpoint commits.
+
+MODE — MANUAL T3, NOT HEADLESS RUNNER
+Use actual browser GUI matching the final product source/bundle, disposable projects, actual Work evidence. Record exact HEAD/version/dirty product fingerprint/selected project, source fingerprints. Independent native Electron GUI may be owner-accepted *unobserved* for bounded browser/Linux scope, NOT a native PASS or proof of parity. c11-brainstorm P8/security disposition remains separate.
+
+F1 Open Phase in same center Roadmap without moving Chat.
+F2 Exact authored P1→PN, final manual gate; no reorder even via visual Arrange.
+F3 Completed source/hash/checkpoint/run/historical outcome read-only; external edits source-drift blocked.
+F4 Reorder only genuinely pre-authoring Bridge outline; authored fixed. If Bridge not implemented record EVIDENCE GAP, not fake PASS.
+F5 Correct verified phase/correction and failed-prompt provenance; ambiguous unresolved.
+F6 Distinct implementation, manual qualification, Green/Not Green/waived/unknown/drift.
+F7 Checked Open Prompt navigation without Work run or unauthorized write.
+F8 Keyboard/Escape/focus, narrow/theme, layout restoration/project switch/Chat placement; independent native unobserved explicitly stated.
+
+For F1-F8 record actual PASS/FAIL/BLOCKED/NOT RUN, exact source/actions/screenshots only if obtained, hashes and project isolation. Focused retest for small repairs, one final npm run check only if necessary, no duplicate nested builds. Write new docs/tasks/c11-phase-focus/closeout.md ONLY after execution, preserve historical reports, no invented qualification. Browser/security/owner rules mandatory despite owner native observation exclusion. Correction scoped Green does not close Phase 11/H02/D1-D8. No self-commit.
+
+FINAL: Exact source, gate results, browser/native distinction, tests, remaining gaps, GREEN/NOT GREEN/EVIDENCE GAP and next owner decision.

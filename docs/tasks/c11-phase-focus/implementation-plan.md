@@ -1,0 +1,9 @@
+# /prompt-plan — c11-phase-focus
+
+**Status:** P1-P4 planned/authored only. Review main `270ade0362f365779843c2b76096f850e0fbc649` at unchanged `0.11.8`; inspect live HEAD/worktree/version before execution.
+
+**Data:** Existing RoadmapIndex + strict task discovery/runner imported snapshots + projectRoadmapTasks + verified Work/sequence/Git checkpoint and qualification evidence → read-only selected-phase sequence model → existing RoadmapCanvasWidget floating panel → existing inspector selectTask / fingerprint-checked Open Prompt. Source presence != completion != Green.
+
+**P1:** Add pure bounded phase-focused sequence projection with ordered stack/continuation/corrections, verified parent/failed-prompt provenance and actual status/unknowns. Source/reconciliation tests. **P2:** Add Open Phase in same center Roadmap overlay (right, compact/expanded/minimized/close), complete numbered prompt rows, real source links, accessible responsive UI, preserve Chat/inspector/viewport, no reorder/edit/Run; canvas tests. **P3:** Enforce pre-authoring-outline-only reorder at existing Dope sanctioned APIs, authored order freeze, reviewed unstarted supersession/new fingerprint, completed immutable source/checkpoint/run/history, drift deny, append-only later evidence; reuse Work/runner, no duplicate Bridge publisher. **P4:** Manual source-bound browser F1-F8, explicit unobserved-native exclusion not parity, project/Chat/keyboard/authority negatives and one aggregate if warranted.
+
+**Run:** Only after c11-brainstorm final security disposition and deliberate owner Run. Locally validate `npm run codex:phase:validate -- c11-phase-focus`; headless runner P1-P3, manual P4 outside runner. No /activate, version downgrade, self-commit or Phase 11 product Green. Check tests importing lib against built current source; no redundant whole-suite each prompt.

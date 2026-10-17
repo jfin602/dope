@@ -1,0 +1,21 @@
+TASK: Correction 11 / P2 — Existing Roadmap Phase Focus overlay and source navigation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction version remains unchanged; no manifests, pins, locks. If version changes, re-assess, never downgrade.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0036/0037/0038, the Phase 11 plan, and c11-phase-focus README/assessment/plan. Inspect actual HEAD/version/dirty tree, c11-brainstorm uncommitted P8 work, c11-planning-bridge and source/test paths before any edit. Planning ref 270ade0362 is not a safe run pin. Preserve owner work; no reset/stash/clean, self-commit, /activate, provider/permission changes, or Phase 12 activation. Future explicit owner Run authorizes implementation; runner owns checkpoint commits.
+
+SCOPE
+Build accessible Open Phase affordance and floating right-side **in-canvas** Phase Focus within existing RoadmapCanvasWidget, not a second editor/Chat/database. Support compact/expanded/minimized/close, scrollable complete fixed authored prompt rows, correction branches, source/evidence and truthful status, clear empty state. Use existing inspector/selectTask and fingerprint-checked resolvePromptSource/Open Prompt, which **never runs Work**. Completed prompt snapshot/history read-only; if source changed externally surface drift. No drag/reorder/rename/renumber/delete/edit prompt controls after authored, even if not started. Keep main Roadmap viewport, left inspector, freely docked Chat, project/selection, focus/Escape/keyboard, dark/alternate theme and narrow/restored layout. Only link to Planning Bridge if an actual route exists.
+
+TESTS
+Roadmap canvas/inspector/open-source tests for prompt order, phase selection, corrections, source hash denial, no Run, no Chat relocation, keyboard/narrow/theme, project switch/reopen and visual position ≠ sequence.
+
+HANDOFF
+Focused tests, minimal affected-lib build if tests import compiled lib, git diff --check. <=8m target, 10 soft/15 hard. No repeated full check or simulated GUI. Record actual findings and blockers, no invented Green.
