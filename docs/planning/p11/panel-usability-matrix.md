@@ -1,6 +1,6 @@
 # Phase 11 — Preliminary panel usability matrix
 
-**Status:** PRELIMINARY INVENTORY; P8 has bounded AI-operated browser evidence for Roadmap/Chat/AI Center, but **no Phase 11 human usability audit or product qualification**. Initial tranche **NOT GREEN**; see [P8 closeout](../../tasks/p11/known-issue-closeout.md).
+**Status (2026-10-16):** PRELIMINARY INVENTORY / **FIRST SEPARATE USABILITY HUNTER NOT RUN**. The initial P8 known-issue tranche was **NOT GREEN**, and its [P8 closeout](../../tasks/p11/known-issue-closeout.md) remains historical. Subsequent [M1 supplemental recovery](../../tasks/c11-guidance/manual/m1-recovery-qualification.md) qualified UX-003 **SCOPED GREEN in the browser/local-Q4 workflow** at committed product `e69d7e5` / unchanged `0.11.8`: two selected-checkpoint repeats, unselected guidance, synced-state and Planning Map isolation, saved Chat and no-write evidence passed. This does not establish a broad Phase 11 human usability audit or product qualification. Native Electron GUI, hosted parity, untested surfaces and separate Hunter evidence remain gaps. Phase 11 is **OPEN / NOT QUALIFIED**.
 **Date:** 2026-10-12; Phase 10 predecessor updated 2026-10-16
 **Authority:** ADR 0037 and [Phase 11 `0.11.0` baseline](baseline.md). Phase 10 is owner-closed at `0.10.16` / `af2b0f0`; this matrix describes candidate **Phase 11 usability audit targets**, not directly verified current widget registrations or pass/fail outcomes. First Phase 11 step must inspect live source/GUI and retire or add rows accordingly.
 
