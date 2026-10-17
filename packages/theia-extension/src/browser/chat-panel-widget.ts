@@ -13,7 +13,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
@@ -1193,11 +1193,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             } else if (message.role === 'assistant') {
                 const activity = state.stream?.messageId === message.id ? undefined : planningActivityPresentation(message);
                 const outcome = state.stream?.messageId === message.id ? undefined : planningOutcome(message);
-                if (activity?.status === 'No change' && outcome) {
-                    const reply = document.createElement('p');
-                    reply.className = 'dope-chat-planning-reply';
-                    reply.textContent = outcome.summary;
-                    content.append(reply);
+                if (outcome) {
+                    const explanation = document.createElement('div');
+                    explanation.className = 'dope-chat-planning-outcome';
+                    const summary = document.createElement('p'); summary.textContent = outcome.summary;
+                    explanation.append(summary);
+                    if (outcome.questions.length) {
+                        const questions = document.createElement('p');
+                        questions.textContent = outcome.questions.join(' ');
+                        explanation.append(questions);
+                    }
+                    content.append(explanation);
                 }
                 if (activity) {
                     const details = document.createElement('details');
@@ -1211,11 +1217,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     summary.setAttribute('aria-label', `${activity.label}: ${activity.status}. Original JSON`);
                     const label = document.createElement('span'); label.className = 'dope-chat-activity-label';
                     label.textContent = activity.label;
-                    const preview = document.createElement('span'); preview.className = 'dope-chat-activity-preview';
-                    preview.textContent = activity.status === 'No change' ? 'Original structured response' : body.replace(/\s+/g, ' ').slice(0, 160);
                     const status = document.createElement('span'); status.className = 'dope-chat-activity-status';
                     status.textContent = activity.status;
-                    summary.append(label, preview, status);
+                    summary.append(label, status);
                     const raw = document.createElement('pre'); raw.className = 'dope-chat-activity-raw';
                     raw.textContent = body;
                     const copy = this.button('Copy JSON', () => {
@@ -1240,17 +1244,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         content.append(raw);
                     }
                 } else content.append(renderUntrustedMessageMarkdown(this.markdown, body));
-                if (outcome && activity?.status !== 'No change') {
-                    const explanation = document.createElement('div');
-                    explanation.className = 'dope-chat-planning-outcome';
-                    const summary = document.createElement('p'); summary.textContent = outcome.summary;
-                    explanation.append(summary);
-                    if (outcome.questions.length) {
-                        const questions = document.createElement('p'); questions.textContent = outcome.questions.join(' ');
-                        explanation.append(questions);
-                    }
-                    content.append(explanation);
-                }
             } else content.textContent = body;
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
@@ -1481,13 +1474,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             review.className = 'dope-chat-context-diagnostics';
             review.setAttribute('aria-label', 'Roadmap proposal review');
             const heading = document.createElement('strong');
-            heading.textContent = `Review Roadmap proposal · revision ${proposal.revision}`;
-            const change = document.createElement('p');
-            change.textContent = `${proposal.summary}\nAffected: ${proposal.changedIds.join(', ')}`;
-            change.style.whiteSpace = 'pre-wrap';
-            review.append(heading, change,
-                this.button('Apply proposal', () => void state.decidePlanningProposal(true), state.pending),
-                this.button('Reject', () => void state.decidePlanningProposal(false), state.pending));
+            const draftProposal = isDraftPlanningAction(proposal.action.type);
+            heading.textContent = `Review ${draftProposal ? 'Proposed draft' : 'Roadmap proposal'} · revision ${proposal.revision}`;
+            const affected = document.createElement('p');
+            affected.textContent = `Affected: ${proposal.changedIds.join(', ')}`;
+            const diff = document.createElement('details');
+            const diffLabel = document.createElement('summary'); diffLabel.textContent = 'Review before and after';
+            const diffText = document.createElement('pre'); diffText.textContent = proposal.summary;
+            diff.append(diffLabel, diffText);
+            review.append(heading, affected, diff,
+                this.button(draftProposal ? 'Accept into draft' : 'Apply proposal',
+                    () => void state.decidePlanningProposal(true), state.pending),
+                this.button('Reject proposal', () => void state.decidePlanningProposal(false), state.pending));
             composer.append(review);
         }
         if (state.planningProposalError) {

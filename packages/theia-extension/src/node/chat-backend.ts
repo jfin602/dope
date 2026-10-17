@@ -284,7 +284,7 @@ export class ChatBackend implements ChatService {
                 this.proposals.set(chatId, { id, messageId, leaseToken, changedIds,
                     draft: { handle: draft.handle, preview } });
                 return { proposal: { id, chatId, messageId, ownerId: draft.projectId,
-                    revision: draft.revision, changedIds, action: { type: sequence ? 'sequence' : action.type, id: changedIds[0] },
+                    revision: draft.revision, changedIds, action: { type: sequence ? 'draft-sequence' : action.type, id: changedIds[0] },
                     summary: JSON.stringify({ actions, before: preview.before.phases, after: preview.after.phases }) } };
             }
             const context = refs.filter(ref => ref.kind === 'roadmap-checkpoint');

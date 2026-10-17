@@ -78,6 +78,20 @@ test('draft notifications reject duplicate, old, foreign and malformed updates',
     assert.equal(currentDraftChange({ ...change, kind: 'accepted' }, state), false);
 });
 
+test('provisional cards name their authority and route review through existing owners', () => {
+    const source = (path: string) => readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
+    const widget = source('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    const css = source('packages/theia-extension/src/browser/dope.css');
+    assert.match(widget, /'Proposed · review in Chat'/);
+    assert.match(widget, /'Accepted draft · not yet canonical'/);
+    assert.match(widget, /'Canonical Roadmap'/);
+    assert.match(widget, /this\.setInspectionOpen\(!node\.draftState\)/);
+    assert.match(widget, /this\.service\.applyDraftEdit\(state\.handle, preview, true\)/);
+    assert.match(widget, /this\.service\.acceptDraft\(state\.handle, state\.preview, true\)/);
+    assert.match(css, /\.dope-roadmap-draft-proposed \.dope-roadmap-node \{[^}]*var\(--dope-primary, var\(--theia-focusBorder\)\)/);
+    assert.match(css, /body\.theia-light:not\(\.dope-dark\)/);
+});
+
 test('reload reattaches accepted draft and the event route targets the existing widget', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-live-draft-reload-'));
     try {

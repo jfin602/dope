@@ -67,7 +67,10 @@
 .dope-roadmap-node { transition: box-shadow 180ms ease-out; }
 .dope-roadmap-node:disabled { cursor: default; }
 .dope-roadmap-draft-accepted .dope-roadmap-node { border-style: dashed; }
-.dope-roadmap-draft-proposed .dope-roadmap-node { border-style: dotted; border-width: 3px; }
+.dope-roadmap-draft-proposed .dope-roadmap-node { border-style: dotted; border-left-color: var(--dope-primary, var(--theia-focusBorder)); }
+.dope-roadmap-node .dope-roadmap-authority { font-weight: 600; color: var(--theia-descriptionForeground); }
+.dope-roadmap-draft-proposed .dope-roadmap-authority { color: var(--dope-primary, var(--theia-focusBorder)); }
+.dope-roadmap-node[aria-current="true"] .dope-roadmap-authority { text-decoration: underline; }
 .dope-roadmap-edge.dope-roadmap-draft-accepted .react-flow__edge-path { stroke-dasharray: 7 5; }
 .dope-roadmap-edge.dope-roadmap-draft-proposed .react-flow__edge-path { stroke-dasharray: 2 5; stroke-width: 3; }
 .dope-roadmap-node :is(small, strong, span) { overflow-wrap: anywhere; white-space: normal; }
@@ -678,18 +681,16 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-message-content :last-child { margin-bottom: 0; }
 .dope-chat-message-content pre { box-sizing: border-box; max-width: 100%; overflow: auto; padding: 10px; border-radius: 6px; background: var(--theia-textCodeBlock-background, var(--theia-input-background)); }
 .dope-chat-planning-activity { min-width: 0; max-width: 100%; color: var(--theia-descriptionForeground); font-size: 12px; }
-.dope-chat-planning-reply { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dope-chat-planning-activity > summary { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; }
 .dope-chat-planning-activity > summary::before { content: '▸'; flex: none; }
 .dope-chat-planning-activity[open] > summary::before { content: '▾'; }
 .dope-chat-activity-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .dope-chat-activity-status { flex: none; }
-.dope-chat-activity-preview { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dope-chat-activity-status { margin-left: auto; }
 .dope-chat-message-alert .dope-chat-activity-status { color: var(--theia-errorForeground); font-weight: 600; }
 .dope-chat-planning-activity > .dope-chat-activity-raw { max-height: 20rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dope-chat-planning-activity > button { margin: 0 0 4px; }
-.dope-chat-planning-outcome { margin-top: 8px; max-width: 72ch; }
+.dope-chat-planning-outcome { margin: 0 0 8px; max-width: 72ch; overflow-wrap: anywhere; }
 .dope-chat-planning-outcome p { margin: 0 0 5px; }
 .dope-chat-planning-outcome p + p { color: var(--theia-descriptionForeground); font-size: 0.92em; }
 .dope-chat-planning-progress { margin: 4px 0; color: var(--theia-descriptionForeground); font-size: 12px; }

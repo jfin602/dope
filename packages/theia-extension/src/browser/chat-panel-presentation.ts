@@ -1,5 +1,11 @@
 import type { ChatAssistantMessage } from '@dope/chat';
 
+export function isDraftPlanningAction(type: string): boolean {
+    return ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint', 'reorder-phase',
+        'reorder-checkpoint', 'split-checkpoint', 'move-checkpoint', 'add-dependency',
+        'remove-dependency', 'create-correction', 'attach-correction', 'draft-sequence'].includes(type);
+}
+
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
@@ -90,12 +96,15 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         } catch { /* A damaged saved payload never grants authority or breaks the transcript. */ }
     }
     const revision = activity.appliedRevision;
-    if (activity.status === 'applied' && revision !== undefined) return {
+    if (activity.status === 'applied' && revision !== undefined) return activity.kind.startsWith('roadmap-draft') ? {
+        summary: `The approved proposal to ${change} was saved in the accepted draft at revision ${revision}. It is not yet canonical.`,
+        questions: ['Does the draft match your intent?', 'Would you like to preview the linked Markdown before publishing?'],
+    } : {
         summary: `The approved proposal to ${change} was saved at revision ${revision}.`,
         questions: ['Does the saved result match your current objective?', 'Would you like to review the linked source or next checkpoint?'],
     };
     if (activity.status === 'pending') return {
-        summary: `A proposal to ${change} was previewed and is awaiting approval; no write yet.`,
+        summary: `A proposal to ${change} was previewed and is awaiting approval; ${activity.kind.startsWith('roadmap-draft') ? 'the accepted draft and canonical Roadmap are unchanged' : 'no write yet'}.`,
         questions: ['Does the proposed change match your intent?', 'Should you review the affected source before deciding?'],
     };
     if (activity.status === 'no-action') return {

@@ -42,6 +42,7 @@ test('selected local model previews two draft phases with one approval and no ca
         const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'short' }, planningSteps: 2, content: 'Two phases' });
         assert.ok(result.proposal);
+        assert.equal(result.proposal?.action.type, 'draft-sequence');
         assert.equal(greenfield.read(handle).revision, 0);
         assert.equal((await store.read(root)).revision, 0);
         assert.equal(calls, 1);

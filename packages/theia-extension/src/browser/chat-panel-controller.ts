@@ -4,6 +4,7 @@ import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, Chat
     ChatPlanningProposal } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
+import { isDraftPlanningAction } from './chat-panel-presentation';
 
 export type ChatConnection = ChatService & { setClient(client: ChatClient | undefined): void; dispose(): void };
 export type ChatMode = 'select-chat' | 'chat';
@@ -452,7 +453,7 @@ export class ChatPanelController {
                 lease.token, proposal.id, approve);
             this.planningProposal = undefined;
             this.planningProposalError = approve && result ?
-                `${proposal.action.type.includes('phase') || proposal.action.type.includes('checkpoint') ? 'Roadmap draft' : 'Roadmap'} updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
+                `${isDraftPlanningAction(proposal.action.type) ? 'Accepted Roadmap draft' : 'Roadmap'} updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
         } catch (error) {
             this.planningProposal = undefined;
             this.planningProposalError = `Planning proposal was not applied: ${String(error)}. Refresh the selection for the next turn.`;

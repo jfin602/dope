@@ -39,11 +39,14 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement(Handle, { id: 'right-target', type: 'target', position: Position.Right, isConnectable: false }),
         React.createElement('button', { type: 'button', className: `dope-roadmap-node dope-roadmap-status-${item.status}${item.draftState ? ` dope-roadmap-draft-${item.draftState}` : ''}`,
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
-            'aria-label': `${item.kind}: ${item.title}; ${item.statusLabel}${item.phaseAssociation?.unresolvedReason ?
+            'aria-label': `${item.draftState === 'proposed' ? 'Proposed draft' : item.draftState === 'accepted' ? 'Accepted draft' : 'Canonical Roadmap'} ${item.kind}: ${item.title}; ${item.statusLabel}${item.phaseAssociation?.unresolvedReason ?
                 `; Parent unresolved: ${item.phaseAssociation.unresolvedReason}` : ''}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
             onFocus: event => data.reveal(item.id, event.currentTarget as HTMLButtonElement),
             onClick: event => { event.stopPropagation(); data.select(item.id); },
             onDoubleClick: event => { event.stopPropagation(); data.activate(item.id); } },
+        React.createElement('small', { className: 'dope-roadmap-authority' },
+            item.draftState === 'proposed' ? 'Proposed · review in Chat' :
+                item.draftState === 'accepted' ? 'Accepted draft · not yet canonical' : 'Canonical Roadmap'),
         data.detail !== 'world' ? React.createElement('small', null, item.kind) : null,
         React.createElement('strong', null, item.title),
         React.createElement('span', { className: 'dope-roadmap-status' },
@@ -649,8 +652,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const displayedCount = visible.nodes.length;
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
         this.status.textContent = projection.revision === 0 ?
-            this.proposedDraft ? 'Proposed Roadmap draft on canvas · Review in Chat before accepting. Not implemented.' :
-                this.createState ? `Accepted draft revision ${this.createState.draft.revision} on canvas · Not implemented.` :
+            this.proposedDraft ? 'Proposed draft on canvas · Review and accept or reject in the selected Chat. Nothing has been published.' :
+                this.createState ? `Accepted draft revision ${this.createState.draft.revision} on canvas · Preview and explicitly approve creation to publish linked Markdown.` :
                     'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
             `${displayedCount} displayed checkpoints · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
     }
@@ -1796,10 +1799,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.schedulePresentation();
         if (node.taskSource) this.inspector.selectTask(node);
         else if (!node.draftState) this.inspector.select(id);
-        else this.inspectionSummary.textContent = `${node.title} · ${node.statusLabel}`;
         this.setInspectionView('compact');
         this.setInspectionOpen(!node.draftState);
         this.render();
+        if (node.draftState) this.status.textContent = `${node.title} · ${node.draftState === 'proposed' ?
+            'Proposed draft; accept or reject in the selected Chat' :
+            'Accepted draft; preview and approve creation in Roadmap'} · Not canonical.`;
         if (focus) {
             requestAnimationFrame(() => requestAnimationFrame(() => {
                 if (this.selectedId === id) [...this.path.querySelectorAll<HTMLButtonElement>('button[data-checkpoint-id]')]
