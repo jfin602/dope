@@ -136,3 +136,117 @@ test('missing optional evidence is reported without making a compatible candidat
     assert.ok(preview.diagnostics.some(item => item.path === 'known-issues.md' && item.severity === 'warning' &&
         /Missing source/.test(item.message)));
 }));
+
+test('approved replacement switches the sole active owner, survives restart and leaves both Markdown files intact', async () => fixture(async (root, store) => {
+    const before = await store.read(root);
+    const oldBytes = await readFile(join(root, oldPath));
+    const newBytes = await readFile(join(root, newPath));
+    const events: { changedIds: string[] }[] = [];
+    const off = store.onChange(event => events.push(event));
+    const preview = await store.previewReplacement(root, newPath);
+    assert.deepEqual(await store.applyReplacement(root, preview, false), before);
+    assert.deepEqual(events, []);
+    const replaced = await store.applyReplacement(root, preview, true);
+    off();
+    assert.equal(replaced.projectId, before.projectId);
+    assert.equal(replaced.revision, before.revision + 1);
+    assert.deepEqual(replaced.checkpoints.map(item => item.id), preview.addedCheckpointIds);
+    assert.deepEqual(replaced.checkpoints[0].dependencies, []);
+    assert.deepEqual(replaced.checkpoints[0].links, []);
+    assert.equal(replaced.checkpoints[0].status, 'active');
+    assert.equal(replaced.linkedDocument?.path, newPath);
+    assert.equal(replaced.linkedDocument?.sourceHash, preview.sourceHash);
+    assert.equal(replaced.linkedDocument?.syncState, 'synced');
+    assert.deepEqual((await new RoadmapStore().read(root)), replaced);
+    assert.deepEqual(await readFile(join(root, oldPath)), oldBytes);
+    assert.deepEqual(await readFile(join(root, newPath)), newBytes);
+    assert.equal(events.length, 1);
+    assert.ok(events[0].changedIds.includes(before.checkpoints[0].id));
+    assert.ok(events[0].changedIds.includes(replaced.checkpoints[0].id));
+    assert.equal((await store.previewDocumentSync(root)).state, 'unchanged');
+    await assert.rejects(store.applyReplacement(root, preview, true), /Stale Roadmap revision/);
+}));
+
+test('changed candidate or old linked source rejects approval with no owner or Markdown mutation', async () => fixture(async (root, store) => {
+    const preview = await store.previewReplacement(root, newPath);
+    const before = await readFile(join(root, '.dope/roadmap.json'));
+    await writeFile(join(root, newPath), replacement.replace('New target', 'Changed target'));
+    await assert.rejects(store.applyReplacement(root, preview, true), /Stale Roadmap replacement preview/);
+    await writeFile(join(root, newPath), replacement);
+    await writeFile(join(root, oldPath), original.replace('Keep original', 'External edit'));
+    await assert.rejects(store.applyReplacement(root, preview, true), /Stale Roadmap replacement preview/);
+    assert.deepEqual(await readFile(join(root, '.dope/roadmap.json')), before);
+    assert.equal((await store.read(root)).linkedDocument?.path, oldPath);
+}));
+
+test('project identity, revision, unsafe candidate and unsynced local state fail closed', async () => fixture(async (root, store) => {
+    const preview = await store.previewReplacement(root, newPath);
+    const before = await readFile(join(root, '.dope/roadmap.json'));
+    await assert.rejects(store.applyReplacement(root, { ...preview, projectId: 'foreign' }, true), /identity changed/);
+    await assert.rejects(store.applyReplacement(root, { ...preview, revision: 0 }, true), /Stale Roadmap revision/);
+    await assert.rejects(store.applyReplacement(root, { ...preview, path: '../foreign.md' }, true), /Unsafe roadmap source path/);
+    assert.deepEqual(await readFile(join(root, '.dope/roadmap.json')), before);
+    const indexFile = join(root, '.dope/roadmap.json');
+    const changed = JSON.parse(before.toString('utf8'));
+    changed.revision++;
+    changed.checkpoints[0].objective = 'Unsynced owner edit';
+    await writeFile(indexFile, `${JSON.stringify(changed)}\n`);
+    const revised = await store.previewReplacement(root, newPath);
+    assert.equal(revised.state, 'review');
+    await assert.rejects(store.applyReplacement(root, revised, true), /safe approved preview/);
+    assert.deepEqual(await readFile(indexFile, 'utf8'), `${JSON.stringify(changed)}\n`);
+}));
+
+test('a preview from another project cannot replace this project even at the same revision', async () => fixture(async (root, store) => {
+    const preview = await store.previewReplacement(root, newPath);
+    const other = await mkdtemp(join(tmpdir(), 'dope-roadmap-replacement-foreign-'));
+    try {
+        await mkdir(join(other, 'docs/roadmap'), { recursive: true });
+        await writeFile(join(other, oldPath), original);
+        await writeFile(join(other, newPath), replacement);
+        const second = new RoadmapStore();
+        await second.acceptImport(other, 0, await previewRoadmapImport(other));
+        const before = await readFile(join(other, '.dope/roadmap.json'));
+        await assert.rejects(second.applyReplacement(other, preview, true), /identity changed/);
+        assert.deepEqual(await readFile(join(other, '.dope/roadmap.json')), before);
+    } finally { await rm(other, { recursive: true, force: true }); }
+}));
+
+test('failure before atomic index publication retains old link and moved-file relink remains separate', async () => fixture(async (root, store) => {
+    const preview = await store.previewReplacement(root, newPath);
+    const before = await readFile(join(root, '.dope/roadmap.json'));
+    (store as any).replace = async () => { throw new Error('injected replacement write failure'); };
+    await assert.rejects(store.applyReplacement(root, preview, true), /injected replacement write failure/);
+    assert.deepEqual(await readFile(join(root, '.dope/roadmap.json')), before);
+    const restarted = new RoadmapStore();
+    assert.equal((await restarted.read(root)).linkedDocument?.path, oldPath);
+    await assert.rejects(restarted.previewRelink(root, newPath), /source is still available/);
+}));
+
+test('an uncertain post-publication failure is visible by re-reading the durable owner', async () => fixture(async (root, store) => {
+    const preview = await store.previewReplacement(root, newPath);
+    const oldBytes = await readFile(join(root, oldPath));
+    const originalReplace = (store as any).replace.bind(store);
+    (store as any).replace = async (...args: unknown[]) => {
+        await originalReplace(...args);
+        throw new Error('Roadmap write outcome uncertain; re-read before retrying');
+    };
+    await assert.rejects(store.applyReplacement(root, preview, true), /outcome uncertain/);
+    const persisted = await new RoadmapStore().read(root);
+    assert.equal(persisted.linkedDocument?.path, newPath);
+    assert.equal(persisted.revision, preview.revision + 1);
+    assert.deepEqual(await readFile(join(root, oldPath)), oldBytes);
+    await assert.rejects(store.applyReplacement(root, preview, true), /Stale Roadmap revision/);
+}));
+
+test('replacement does not carry an old Green status into the new active source', async () => fixture(async (root, store) => {
+    const indexFile = join(root, '.dope/roadmap.json');
+    const old = JSON.parse(await readFile(indexFile, 'utf8'));
+    old.checkpoints[0].status = 'green';
+    await writeFile(indexFile, `${JSON.stringify(old)}\n`);
+    const preview = await store.previewReplacement(root, newPath);
+    const next = await store.applyReplacement(root, preview, true);
+    assert.deepEqual(next.checkpoints.map(item => item.status), ['active']);
+    assert.ok(next.checkpoints.every(item => item.source?.path === newPath));
+    assert.equal(next.linkedDocument?.sections.length, 1);
+}));

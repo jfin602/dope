@@ -139,6 +139,21 @@ export default new ContainerModule(bind => {
                 previewImport: async (uri, path) => previewRoadmapImport(await context.container.get(PlanningStore).root(uri), path),
                 acceptImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
                     .acceptImport(await context.container.get(PlanningStore).root(uri), revision, importPreview, projectId),
+                previewReplacement: async (uri, path) => store.previewReplacement(
+                    await context.container.get(PlanningStore).root(uri), path),
+                applyReplacement: async (uri, preview, approved) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    const result = await store.applyReplacement(root, preview, approved);
+                    if (approved) {
+                        try { await observer.rebindIfObserving(root); }
+                        catch {
+                            client.notifyLinkedDocumentChanged(root, result.projectId);
+                            throw new Error('Roadmap replacement committed, but linked observation failed; reopen the Roadmap to retry observation');
+                        }
+                        client.notifyLinkedDocumentChanged(root, result.projectId);
+                    }
+                    return result;
+                },
                 previewDocumentSync: async uri => context.container.get(RoadmapStore)
                     .previewDocumentSync(await context.container.get(PlanningStore).root(uri)),
                 applyDocumentSync: async (uri, preview) => context.container.get(RoadmapStore)

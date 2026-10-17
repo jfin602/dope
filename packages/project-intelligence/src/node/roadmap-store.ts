@@ -684,6 +684,49 @@ export class RoadmapStore {
             sections, diagnostics };
     }
 
+    /** Replace the active Roadmap only after the exact approved source and owner basis still match. */
+    async applyReplacement(root: string, expected: RoadmapReplacementPreview, approved: boolean): Promise<RoadmapIndex> {
+        if (!approved) return this.read(root);
+        if (!expected || expected.state !== 'ready' || !expected.observedPreviousHash)
+            throw new Error('Replacement requires a safe approved preview');
+        return this.commit(root, expected.revision, expected.projectId, async current => {
+            const fresh = await this.previewReplacement(root, expected.path);
+            if (fresh.state !== 'ready' || JSON.stringify(fresh) !== JSON.stringify(expected))
+                throw new Error('Stale Roadmap replacement preview');
+            const candidate = await previewRoadmapImport(root, fresh.path);
+            const selected = candidate.sources.find(source => source.path === fresh.path);
+            const supported = candidate.checkpoints.filter(item => item.source.path === fresh.path && !item.readOnly);
+            const sectionIdentity = supported.map(item => ({ sectionKey: item.sectionKey,
+                checkpointId: item.id, line: item.source.line }));
+            if (!selected || selected.sha256 !== fresh.sourceHash ||
+                JSON.stringify(sectionIdentity) !== JSON.stringify(fresh.sections) ||
+                new Set(candidate.checkpoints.map(item => item.id)).size !== candidate.checkpoints.length)
+                throw new Error('Roadmap replacement candidate changed; preview again');
+            const linkedDocument: RoadmapLinkedDocument = { projectRoot: root, projectId: current.projectId,
+                path: fresh.path, sourceHash: selected.sha256,
+                sections: supported.map(item => ({ sectionKey: item.sectionKey, checkpointId: item.id })),
+                lastSynced: { sourceHash: selected.sha256, roadmapRevision: current.revision + 1 }, syncState: 'synced' };
+            const mapped = await readRoadmapMappedSections(root, linkedDocument);
+            if (mapped.hash !== selected.sha256 || mapped.diagnostics.length ||
+                mapped.sections.length !== linkedDocument.sections.length)
+                throw new Error('Roadmap replacement mapping changed; preview again');
+            linkedDocument.lastSynced.fields = mapped.sections.map(({ line, heading, ...field }) => field);
+            const byId = new Map(mapped.sections.map(item => [item.checkpointId, item]));
+            const checkpoints: RoadmapCheckpoint[] = candidate.checkpoints.map((item, order) => {
+                const fields = byId.get(item.id);
+                return { id: item.id, kind: item.kind, title: item.title,
+                    objective: fields?.objective ?? '', order: fields?.order ?? order,
+                    dependencies: [], links: [], status: item.status, readOnly: item.readOnly,
+                    source: item.source, evidence: item.evidence };
+            });
+            const previous = await checkedRoadmapDocumentFile(root, fresh.previousPath);
+            if (createHash('sha256').update(previous.bytes).digest('hex') !== fresh.previousHash)
+                throw new Error('Previous linked Roadmap changed; preview again');
+            return { checkpoints, changedIds: [...new Set([...current.checkpoints.map(item => item.id),
+                ...checkpoints.map(item => item.id)])], linkedDocument };
+        });
+    }
+
     /** Relink changes only the accepted owner reference. A changed document needs separate reconciliation. */
     async previewRelink(root: string, path: string): Promise<RoadmapRelinkPreview> {
         const current = await this.read(root);

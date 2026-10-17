@@ -38,6 +38,12 @@ export class RoadmapLinkedObserver {
         });
     }
 
+    /** A committed owner switch closes the old watch before subscribing to the new source. */
+    async rebindIfObserving(root: string): Promise<void> {
+        if (this.root !== root) return;
+        await this.observe(root);
+    }
+
     private async recheck(serial: number): Promise<void> {
         const root = this.root;
         if (!root || serial !== this.serial) return;

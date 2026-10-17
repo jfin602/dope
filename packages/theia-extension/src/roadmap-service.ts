@@ -1,4 +1,4 @@
-import type { RoadmapIndex, RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { RoadmapIndex, RoadmapChange, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import type { PlanningActionRequest, PlanningActionPreview, PlanningUndoRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
@@ -25,6 +25,8 @@ export interface RoadmapService {
     discoverImports(projectUri: string): Promise<RoadmapCandidateDiscovery>;
     previewImport(projectUri: string, path: string): Promise<RoadmapImportPreview>;
     acceptImport(projectUri: string, expectedRevision: number, expectedProjectId: string, preview: RoadmapImportPreview): Promise<RoadmapIndex>;
+    previewReplacement(projectUri: string, path: string): Promise<RoadmapReplacementPreview>;
+    applyReplacement(projectUri: string, preview: RoadmapReplacementPreview, approved: boolean): Promise<RoadmapIndex>;
     previewDocumentSync(projectUri: string): Promise<RoadmapSyncPreview>;
     applyDocumentSync(projectUri: string, preview: RoadmapSyncPreview): Promise<RoadmapIndex>;
     previewPendingRecovery(projectUri: string): Promise<RoadmapPendingRecoveryPreview>;
