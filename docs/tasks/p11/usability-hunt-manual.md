@@ -1,6 +1,6 @@
 # Phase 11 — Reusable Manual Usability Hunter Prompt
 
-**Status:** REUSABLE MANUAL PROCEDURE; first run [H01](h01-history-usability-hunt.md) completed on clean `8990407` / `0.11.8` in the AI-operated browser. H02 is pending Software Map → Physical Map/Flow → evidence-to-code navigation. **Mode:** Manual GUI discovery, **not** a codex:phase implementation prompt. **Authority:** [Phase 11 plan](../../planning/p11/phase-11-plan.md), [coverage matrix](../../planning/p11/panel-usability-matrix.md), [issue ledger](../../planning/p11/usability-issue-ledger.md).
+**Status (2026-10-16):** REUSABLE MANUAL PROCEDURE; [H01](h01-history-usability-hunt.md) completed on clean `8990407` / `0.11.8` in the AI-operated browser. H1 UX-008/009 and H2 UX-010 are scoped browser Green and committed at `1732626` and `a73ff47`, not Phase 11 Green. Next separate [H02 Software Map/Physical Map/Flow evidence-to-code Hunter](h02-software-map-hunt.md) is **DOCUMENTED / NOT RUN**. Successful local History explanation, native Electron, completed Work review and unclassified browser backend exits remain separate gaps. **Mode:** Manual GUI discovery, **not** a codex:phase implementation prompt. **Authority:** [Phase 11 plan](../../planning/p11/phase-11-plan.md), [coverage matrix](../../planning/p11/panel-usability-matrix.md), [issue ledger](../../planning/p11/usability-issue-ledger.md).
 
 ## Prompt
 
