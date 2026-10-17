@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "e69d7e5bbe16b882939102fd8593c538d327fc6b",
+  "version": "0.11.8",
+  "fixtures": [
+    {
+      "role": "selected",
+      "path": "/tmp/dope-c11-m1-recovery-5HbJmh",
+      "projectId": "f0e71e39-1e49-46aa-bca8-6a01f12e790b",
+      "roadmapOwnerRevision": 1,
+      "linkedDocument": "docs/roadmap/wrong-roadmap.md",
+      "linkedSyncState": "synced",
+      "chatId": "e0d76bcb-6761-45d3-968d-a317fc237c2e",
+      "chatRevision": 10,
+      "turns": [
+        {
+          "question": "I linked the wrong Roadmap, how do I change it?",
+          "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"To change the linked Roadmap file, open the Roadmap, navigate to Roadmap Markdown and setup > Change linked file, select the correct Markdown file, review the preview, and explicitly confirm the replacement. The previous file remains on disk. You must perform this UI action yourself as Chat cannot directly modify the link.\"}",
+          "verifiedGuidance": {
+            "capabilityId": "roadmap-change-file",
+            "version": "0.11.8-m1",
+            "text": "Open Roadmap, then Roadmap Markdown and setup > Change linked file. Select the intended project Markdown file. Review the replacement preview and affected Roadmap content, then explicitly confirm the replacement. The previously linked Markdown file remains on disk. Chat cannot directly change the linked file. The recorded source state is synced; Refresh Roadmap to check it before acting. Nothing changed in this Chat turn."
+          },
+          "activity": {
+            "kind": "no-action",
+            "status": "no-action",
+            "refs": [
+              {
+                "schemaVersion": 1,
+                "kind": "roadmap-checkpoint",
+                "id": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+                "label": "Roadmap checkpoint: Product Phase 1 — Wrong source",
+                "estimatedTokens": 289,
+                "includedBytes": 701,
+                "contentHash": "dc55279b43f45c40c4d3e722f6e079c65bad28b68642fed8cfc88721f0e65d7c",
+                "projectId": "f0e71e39-1e49-46aa-bca8-6a01f12e790b",
+                "ownerRevision": 1,
+                "sourceHash": "8d1c698217a1f47801c0c250baff873b94995617b47bc99b2253fbdc2e3e3140"
+              },
+              {
+                "schemaVersion": 1,
+                "kind": "project-orientation",
+                "id": "project:orientation",
+                "label": "Project orientation",
+                "estimatedTokens": 45,
+                "origin": "automatic",
+                "includedBytes": 71,
+                "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+                "projectId": "c73d0dd0d02599b7bc7b616b37cc48598f3e96e36da14677edf5affa84b853c9"
+              }
+            ]
+          },
+          "execution": {
+            "status": "complete",
+            "selectedModel": {
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "actualModel": {
+              "schemaVersion": 1,
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+              "providerId": "local",
+              "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "resolutionSource": "explicit-turn",
+            "startedAt": "2026-10-17T02:42:47.101Z",
+            "finishedAt": "2026-10-17T02:42:56.279Z"
+          }
+        },
+        {
+          "question": "I linked the wrong Roadmap, how do I change it?",
+          "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"To change the linked Roadmap file, open the Roadmap, go to Roadmap Markdown and setup > Change linked file, select the correct Markdown file, review the preview, and confirm the replacement. The old file remains on disk. Ensure you have the necessary permissions and that the source is synced before proceeding.\"}",
+          "verifiedGuidance": {
+            "capabilityId": "roadmap-change-file",
+            "version": "0.11.8-m1",
+            "text": "Open Roadmap, then Roadmap Markdown and setup > Change linked file. Select the intended project Markdown file. Review the replacement preview and affected Roadmap content, then explicitly confirm the replacement. The previously linked Markdown file remains on disk. Chat cannot directly change the linked file. The recorded source state is synced; Refresh Roadmap to check it before acting. Nothing changed in this Chat turn."
+          },
+          "activity": {
+            "kind": "no-action",
+            "status": "no-action",
+            "refs": [
+              {
+                "schemaVersion": 1,
+                "kind": "roadmap-checkpoint",
+                "id": "roadmap:docs/roadmap/wrong-roadmap.md#phase-1",
+                "label": "Roadmap checkpoint: Product Phase 1 — Wrong source",
+                "estimatedTokens": 289,
+                "includedBytes": 701,
+                "contentHash": "dc55279b43f45c40c4d3e722f6e079c65bad28b68642fed8cfc88721f0e65d7c",
+                "projectId": "f0e71e39-1e49-46aa-bca8-6a01f12e790b",
+                "ownerRevision": 1,
+                "sourceHash": "8d1c698217a1f47801c0c250baff873b94995617b47bc99b2253fbdc2e3e3140"
+              },
+              {
+                "schemaVersion": 1,
+                "kind": "project-orientation",
+                "id": "project:orientation",
+                "label": "Project orientation",
+                "estimatedTokens": 45,
+                "origin": "automatic",
+                "includedBytes": 71,
+                "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+                "projectId": "c73d0dd0d02599b7bc7b616b37cc48598f3e96e36da14677edf5affa84b853c9"
+              }
+            ]
+          },
+          "execution": {
+            "status": "complete",
+            "selectedModel": {
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "actualModel": {
+              "schemaVersion": 1,
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+              "providerId": "local",
+              "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "resolutionSource": "explicit-turn",
+            "startedAt": "2026-10-17T02:43:12.755Z",
+            "finishedAt": "2026-10-17T02:43:17.194Z"
+          }
+        }
+      ]
+    },
+    {
+      "role": "unselected-controls",
+      "path": "/tmp/dope-c11-m1-control-xzmJYJ",
+      "projectId": "33f90365-ef07-4bb8-9d44-c4227a5b98a7",
+      "roadmapOwnerRevision": 1,
+      "linkedDocument": "docs/roadmap/wrong-roadmap.md",
+      "linkedSyncState": "synced",
+      "chatId": "e51dd91e-00f4-464d-b9a0-9d49d260aede",
+      "chatRevision": 15,
+      "turns": [
+        {
+          "question": "I linked the wrong Roadmap, how do I change it?",
+          "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"To change the linked Roadmap file, open the Roadmap, go to Roadmap Markdown and setup > Change linked file, select your intended Markdown file, review the preview, and explicitly confirm the replacement. The old file remains on disk. Chat cannot directly change the link - this action requires manual confirmation by the project owner.\"}",
+          "verifiedGuidance": {
+            "capabilityId": "roadmap-change-file",
+            "version": "0.11.8-m1",
+            "text": "Open Roadmap, then Roadmap Markdown and setup > Change linked file. Select the intended project Markdown file. Review the replacement preview and affected Roadmap content, then explicitly confirm the replacement. The previously linked Markdown file remains on disk. Chat cannot directly change the linked file. The recorded source state is synced; Refresh Roadmap to check it before acting. Nothing changed in this Chat turn."
+          },
+          "activity": {
+            "kind": "no-action",
+            "status": "no-action",
+            "refs": [
+              {
+                "schemaVersion": 1,
+                "kind": "project-orientation",
+                "id": "project:orientation",
+                "label": "Project orientation",
+                "estimatedTokens": 45,
+                "origin": "automatic",
+                "includedBytes": 71,
+                "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+                "projectId": "7ec905faf190f80b1a7ccde5053ce4c7a17bfc3723f883a0e8e50a8f27779f59"
+              }
+            ]
+          },
+          "execution": {
+            "status": "complete",
+            "selectedModel": {
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "actualModel": {
+              "schemaVersion": 1,
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+              "providerId": "local",
+              "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "resolutionSource": "explicit-turn",
+            "startedAt": "2026-10-17T02:45:50.034Z",
+            "finishedAt": "2026-10-17T02:45:54.960Z"
+          }
+        },
+        {
+          "question": "How do I refresh or sync the current Roadmap?",
+          "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"To refresh or sync the current Roadmap, use 'Roadmap > Refresh Roadmap > Roadmap Markdown and setup' to check the source status. Resolve any conflicts or pending sync issues in Roadmap Markdown and setup before retrying. Note that refresh does not approve source changes.\"}",
+          "verifiedGuidance": {
+            "capabilityId": "roadmap-refresh",
+            "version": "0.11.8-m1",
+            "text": "The recorded Roadmap source state is synced. Open Roadmap and use Refresh Roadmap to check the current source, then open Roadmap Markdown and setup to review the result. Refresh does not approve source changes. Nothing changed in this Chat turn."
+          },
+          "activity": {
+            "kind": "no-action",
+            "status": "no-action",
+            "refs": [
+              {
+                "schemaVersion": 1,
+                "kind": "project-orientation",
+                "id": "project:orientation",
+                "label": "Project orientation",
+                "estimatedTokens": 45,
+                "origin": "automatic",
+                "includedBytes": 71,
+                "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+                "projectId": "7ec905faf190f80b1a7ccde5053ce4c7a17bfc3723f883a0e8e50a8f27779f59"
+              }
+            ]
+          },
+          "execution": {
+            "status": "complete",
+            "selectedModel": {
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "actualModel": {
+              "schemaVersion": 1,
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+              "providerId": "local",
+              "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "resolutionSource": "explicit-turn",
+            "startedAt": "2026-10-17T02:46:00.196Z",
+            "finishedAt": "2026-10-17T02:46:07.638Z"
+          }
+        },
+        {
+          "question": "How do I change a Planning Map link?",
+          "rawModelOutput": "{\"type\":\"no-action\",\"message\":\"Chat has no verified direct procedure for changing a Planning Map link. You must manually open the relevant Planning Map and inspect its current relationship and owner before editing. The Roadmap source replacement control does not edit Planning Map links.\"}",
+          "verifiedGuidance": {
+            "capabilityId": "planning-map-link",
+            "version": "0.11.8-m1",
+            "text": "Chat has no verified direct procedure for changing a Planning Map link. Open the relevant Planning Map and inspect its relationship and owner. The Roadmap source replacement control does not edit Planning Map links. Editing a checkpoint Objective is not a prerequisite. Nothing changed."
+          },
+          "activity": {
+            "kind": "no-action",
+            "status": "no-action",
+            "refs": [
+              {
+                "schemaVersion": 1,
+                "kind": "project-orientation",
+                "id": "project:orientation",
+                "label": "Project orientation",
+                "estimatedTokens": 45,
+                "origin": "automatic",
+                "includedBytes": 71,
+                "contentHash": "9b33caeaaa12af131e62240eedf6635b8c8503b0a7fba10ef6da7697077493e3",
+                "projectId": "7ec905faf190f80b1a7ccde5053ce4c7a17bfc3723f883a0e8e50a8f27779f59"
+              }
+            ]
+          },
+          "execution": {
+            "status": "complete",
+            "selectedModel": {
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "actualModel": {
+              "schemaVersion": 1,
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+              "providerId": "local",
+              "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "resolutionSource": "explicit-turn",
+            "startedAt": "2026-10-17T02:46:11.758Z",
+            "finishedAt": "2026-10-17T02:46:17.157Z"
+          }
+        }
+      ]
+    }
+  ]
+}

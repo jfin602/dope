@@ -1,5 +1,7 @@
 # Dope Project Overview
 
+**Current Phase 11 status (2026-10-16):** [UX-003 M1 supplemental recovery](tasks/c11-guidance/manual/m1-recovery-qualification.md) is **SCOPED GREEN in browser/local Q4** at committed `e69d7e5` / `0.11.8`. Phase 11 remains OPEN / NOT QUALIFIED; native/hosted parity and wider usability remain open, and the first separate Hunter is not run. Earlier dated recovery notes below are historical.
+
 **CURRENT RECOVERY AFTER R2 (2026-10-15):** [R2](tasks/c10-green-recovery/qualification/r2-continuity/family-summary.md) is NOT GREEN at `e7f46f1`: saved Roadmap and Chat restart, revision-6 Q4/32K freshness, and canonical statuses PASS; supported live foreign-owner write denial not reached (R4) and real Q4-generated greenfield failed before proposal (R5). R3 UI next, R6 final independent audit. Product c8c41f9 / `0.10.16` unchanged; Phase 10 remains NOT GREEN / NOT OWNER-CLOSED.
 
 Status: INITIAL PRODUCT CONTRACT

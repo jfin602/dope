@@ -12,6 +12,8 @@ Dope is a fresh project. It is not George v2 and has no compatibility requiremen
 
 ## Current gate
 
+**Phase 11 remains OPEN / NOT QUALIFIED at `0.11.8`.** The [M1 supplemental recovery](docs/tasks/c11-guidance/manual/m1-recovery-qualification.md) is **SCOPED GREEN for UX-003 in browser/local Q4** at committed product `e69d7e5`; original M1/P3/P8 failures remain historical. Native/hosted and wider usability evidence remain open. The separate manual Hunter is ready but not run. The older Phase 10 gate notes below are historical.
+
 **Correction `c10-roadmap-create-sync` P19 is NOT GREEN at unchanged `0.10.16` source `71d91ef`.** The full check passed 671/671 and the browser directly showed linked import, external edit reconciliation and prompt source navigation. Valid local-model approval/persistence, greenfield/conflict recovery, full authority/egress and direct Electron GUI remain unqualified; see [correction closeout](docs/tasks/c10-roadmap-create-sync/closeout.md). The original P16 result below remains historical. Phase 10 is not owner-closed; Phases 11/12 remain inactive.
 
 **Phase 10 P16 is NOT GREEN at committed `0.10.16` source `27ab84e`.** The exact-source aggregate passes, but direct Roadmap import and local Chat planning are blocked in the real UI; see [P16 closeout](docs/tasks/p10/closeout.md). P1–P15 implementation is retained. Phase 10 awaits a separate repair and owner decision; Phase 11 and Phase 12 remain inactive. The baseline and activation account below describes the earlier entry state.

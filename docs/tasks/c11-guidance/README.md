@@ -1,5 +1,7 @@
 # c11-guidance — Dope-aware Roadmap link guidance repair
 
+**Current scoped result (2026-10-16):** [M1 supplemental recovery](manual/m1-recovery-qualification.md) is **SCOPED GREEN for browser/local-Q4 UX-003** at committed product `e69d7e5` / unchanged `0.11.8`. Two selected exact-wording turns and adjacent controls passed on new disposable fixtures. The [original M1](manual/m1-closeout.md), [P3](closeout.md) and [P8](../p11/known-issue-closeout.md) NOT GREEN records are retained. Native/hosted parity and Phase 11 product qualification remain open; first separate Hunter NOT RUN. Earlier dated execution instructions below are historical.
+
 **Status (2026-10-16 P3 handoff):** P1 `4f88101` and P2 `3acbb6e` committed at unchanged `0.11.8`; [manual P3](closeout.md) completed **NOT GREEN** in the browser/local-Q4 scope. Phase 11 remains OPEN / NOT QUALIFIED. The execution instructions below record the original owner-approved stack route.
 **Date:** 2026-10-16. **Baseline:** committed main `266720b`, coherent package `0.11.8`. **Mode:** Correction 11 at unchanged version `0.11.8`, not a product phase bump.
 **Source failure:** [P11 manual P8](../p11/known-issue-closeout.md) is **NOT GREEN**, UX-003, despite passing 738 tests and successful browser Roadmap replacement/readable no-action. The exact "I linked the wrong Roadmap, how do I change it?" fails whereas "How do I change the linked Roadmap file in Dope?" succeeds. Historical P8 result and screenshot hashes remain immutable.
