@@ -84,7 +84,8 @@ export function projectRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwne
         if (number !== undefined) phases.set(number, [...(phases.get(number) ?? []), node.id]);
     }
     for (const item of index.checkpoints) if (item.kind === 'correction') {
-        const explicit = item.dependencies.filter(id => byId.get(id)?.kind === 'phase' || /#phase-\d+$/.test(id));
+        const explicit = item.parentPhaseId ? [item.parentPhaseId] :
+            item.dependencies.filter(id => byId.get(id)?.kind === 'phase' || /#phase-\d+$/.test(id));
         const association = resolveCorrectionPhase(correctionIdentifier(item.id, item.title,
             [item.source?.path ?? '', ...item.evidence.map(citation => citation.path)]), explicit, phases);
         byId.get(item.id)!.phaseAssociation = association;

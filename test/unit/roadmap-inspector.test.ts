@@ -103,6 +103,22 @@ test('store events refresh the selected detail and keep an in-progress draft', a
     assert.equal(model.index?.revision, 3);
 });
 
+test('greenfield publication replaces the provisional identity without a manual refresh', async () => {
+    const provisional: RoadmapIndex = { schemaVersion: 1, projectId: 'uninitialized',
+        projectRoot: '/tmp/project', revision: 0, checkpoints: [] };
+    const state = { index: provisional, applied: 0, approved: false };
+    const model = new RoadmapInspectorModel(fake(state));
+    model.setSnapshot(root, provisional);
+    state.index = snapshot(2, 'Published');
+    await model.remoteChange({ root: '/tmp/project', projectId: 'project', revision: 1, changedIds: [] });
+    assert.equal(model.index?.revision, 2);
+    assert.equal(model.index?.projectId, 'project');
+    assert.equal(model.index?.checkpoints[0]?.objective, 'Published');
+    state.index = { ...snapshot(3), projectId: 'foreign' };
+    await model.remoteChange({ root: '/tmp/project', projectId: 'foreign', revision: 3, changedIds: [] });
+    assert.equal(model.index?.revision, 2);
+});
+
 test('errors stay visible, keyboard order is stable, and the canvas editor never forces Chat placement', async () => {
     const state = { index: snapshot(), applied: 0, approved: false };
     const service = fake(state);

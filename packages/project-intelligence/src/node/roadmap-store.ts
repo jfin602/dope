@@ -35,6 +35,8 @@ export interface RoadmapCheckpoint {
     objective: string;
     order: number;
     dependencies: string[];
+    /** Explicit correction membership, separate from graph dependencies. */
+    parentPhaseId?: string;
     links: RoadmapLink[];
     status: RoadmapStatus;
     readOnly: boolean;
@@ -62,14 +64,17 @@ export interface RoadmapIndex {
     linkedDocument?: RoadmapLinkedDocument;
     /** Accepted creation intent. It is not a published Roadmap or a second draft store. */
     pendingCreation?: { path: string; sourceHash: string; content: string;
-        topology?: { sectionKey: string; dependencies: string[] }[] };
+        topology?: { sectionKey: string; dependencies: string[]; parentPhaseKey?: string }[] };
 }
 export type GreenfieldTopology = NonNullable<RoadmapIndex['pendingCreation']>['topology'];
 function validGreenfieldTopology(value: unknown): value is GreenfieldTopology {
     return Array.isArray(value) && value.length <= MAX_CHECKPOINTS &&
         value.every(item => item && typeof item === 'object' && !Array.isArray(item) &&
-            Object.keys(item).sort().join(',') === 'dependencies,sectionKey' &&
+            Object.keys(item).sort().join(',') === (item.parentPhaseKey === undefined ?
+                'dependencies,sectionKey' : 'dependencies,parentPhaseKey,sectionKey') &&
             typeof item.sectionKey === 'string' && item.sectionKey.length > 0 && item.sectionKey.length <= 256 &&
+            (item.parentPhaseKey === undefined || typeof item.parentPhaseKey === 'string' &&
+                item.parentPhaseKey.length > 0 && item.parentPhaseKey.length <= 256 && item.parentPhaseKey !== item.sectionKey) &&
             Array.isArray(item.dependencies) && item.dependencies.length <= MAX_LINKS &&
             item.dependencies.every((key: unknown) => typeof key === 'string' && key.length > 0 && key.length <= 256) &&
             new Set(item.dependencies).size === item.dependencies.length) &&
@@ -218,13 +223,15 @@ export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
     for (const value of checkpoints) {
         if (!value || typeof value !== 'object' || Array.isArray(value)) fail('checkpoint');
         const item = value as Record<string, unknown>;
-        if (Object.keys(item).sort().join(',') !== (item.source === undefined ?
-            'dependencies,evidence,id,kind,links,objective,order,readOnly,status,title' :
-            'dependencies,evidence,id,kind,links,objective,order,readOnly,source,status,title') ||
+        if (Object.keys(item).sort().join(',') !== [
+            'dependencies', 'evidence', 'id', 'kind', 'links', 'objective', 'order', 'readOnly', 'status', 'title',
+            ...(item.source === undefined ? [] : ['source']),
+            ...(item.parentPhaseId === undefined ? [] : ['parentPhaseId'])].sort().join(',') ||
             !id(item.id) || seen.has(item.id) || !['phase', 'correction', 'milestone'].includes(item.kind as string) ||
             !text(item.title, 512) || !text(item.objective, 8192) || !Number.isSafeInteger(item.order) ||
             (item.order as number) < 0 || !Array.isArray(item.dependencies) || item.dependencies.length > MAX_LINKS ||
             item.dependencies.some(dep => !id(dep) || dep === item.id) || new Set(item.dependencies).size !== item.dependencies.length ||
+            (item.parentPhaseId !== undefined && (item.kind !== 'correction' || !id(item.parentPhaseId) || item.parentPhaseId === item.id)) ||
             !Array.isArray(item.links) || item.links.length > MAX_LINKS || item.links.some(ref => !link(ref)) ||
             !status(item.status) || typeof item.readOnly !== 'boolean' ||
             (item.source === undefined ? item.readOnly : !citation(item.source)) ||
@@ -232,6 +239,8 @@ export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
         seen.add(item.id as string);
     }
     const byId = new Map((checkpoints as RoadmapCheckpoint[]).map(item => [item.id, item]));
+    for (const item of checkpoints as RoadmapCheckpoint[]) if (item.parentPhaseId &&
+        byId.get(item.parentPhaseId)?.kind !== 'phase') fail('correction phase membership');
     const visiting = new Set<string>();
     const visited = new Set<string>();
     const visit = (checkpointId: string): void => {
@@ -413,6 +422,7 @@ export class RoadmapStore {
                 const imported: RoadmapCheckpoint = { id: item.id, kind: item.kind, title: item.title,
                     objective: existing?.objective ?? '',
                     order: existing?.order ?? checkpoints.length, dependencies: existing?.dependencies ?? [],
+                    ...(item.kind === 'correction' && existing?.parentPhaseId ? { parentPhaseId: existing.parentPhaseId } : {}),
                     links: existing?.links ?? [], status: item.status, readOnly: item.readOnly, source: item.source, evidence: item.evidence };
                 if (existing) {
                     if (JSON.stringify(existing) === JSON.stringify(imported)) continue;
@@ -524,9 +534,12 @@ export class RoadmapStore {
                     .map(item => [item.sectionKey, item.id]));
                 for (const item of pending.topology) {
                     const target = checkpoints.find(checkpoint => checkpoint.id === byKey.get(item.sectionKey));
-                    if (!target || item.dependencies.some(key => !byKey.has(key)))
+                    if (!target || item.dependencies.some(key => !byKey.has(key)) ||
+                        (item.parentPhaseKey !== undefined && (target.kind !== 'correction' ||
+                            checkpoints.find(checkpoint => checkpoint.id === byKey.get(item.parentPhaseKey!))?.kind !== 'phase')))
                         throw new Error('Greenfield graph mapping changed; pending creation requires review');
                     target.dependencies = item.dependencies.map(key => byKey.get(key)!);
+                    if (item.parentPhaseKey) target.parentPhaseId = byKey.get(item.parentPhaseKey)!;
                 }
             }
             const sections = checkpoints.map(item => ({ sectionKey: preview.checkpoints.find(entry => entry.id === item.id)!.sectionKey,

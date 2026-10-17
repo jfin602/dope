@@ -30,11 +30,15 @@ export class RoadmapInspectorModel {
     private emit(): void { for (const listener of this.listeners) listener(); }
     async remoteChange(change: RoadmapChange): Promise<void> {
         const uri = this.projectUri;
-        if (!uri || !this.index || change.root !== this.index.projectRoot || change.projectId !== this.index.projectId ||
+        if (!uri || !this.index || change.root !== this.index.projectRoot ||
+            (this.index.projectId !== 'uninitialized' && change.projectId !== this.index.projectId) ||
             change.revision <= this.index.revision) return;
         try {
             const next = await this.service.read(uri);
-            if (uri === this.projectUri && next.projectId === change.projectId) this.setSnapshot(uri, next);
+            if (uri === this.projectUri && next.projectRoot === change.root && next.projectId === change.projectId &&
+                next.revision >= change.revision && (!this.index || next.revision >= this.index.revision) &&
+                (!this.index || this.index.projectId === 'uninitialized' || next.projectId === this.index.projectId))
+                this.setSnapshot(uri, next);
         } catch (error) { if (uri === this.projectUri) { this.error = error instanceof Error ? error.message : String(error); this.emit(); } }
     }
     get selected(): RoadmapCheckpoint | undefined { return this.index?.checkpoints.find(item => item.id === this.selectedId); }

@@ -609,8 +609,15 @@ export class RoadmapGreenfield {
                 for (const checkpoint of phase.checkpoints)
                     keys.set(checkpoint.id, roadmapSectionKey(`Milestone ${checkpoint.title}`, true)!);
             }
+            const strategicParent = (parentId: string): GreenfieldPhase => {
+                const owner = entry.value.phases.find(candidate => candidate.id === parentId ||
+                    candidate.checkpoints.some(checkpoint => checkpoint.id === parentId));
+                if (!owner) throw new Error('Foreign correction parent');
+                return owner.kind === 'correction' ? strategicParent(owner.parentId!) : owner;
+            };
             const topology = entry.value.phases.flatMap(phase => [
-                ...(phase.parentId ? [{ sectionKey: keys.get(phase.id)!, dependencies: [keys.get(phase.parentId)!] }] : []),
+                ...(phase.parentId ? [{ sectionKey: keys.get(phase.id)!, dependencies: [keys.get(phase.parentId)!],
+                    parentPhaseKey: keys.get(strategicParent(phase.parentId).id)! }] : []),
                 ...phase.checkpoints.filter(item => item.dependencies?.length).map(item => ({
                     sectionKey: keys.get(item.id)!, dependencies: item.dependencies!.map(id => keys.get(id)!) }))
             ]);

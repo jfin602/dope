@@ -103,6 +103,21 @@ test('correction identifiers associate phases without changing canonical depende
     assert.equal(first.edges.filter(edge => corrections.some(item => item.id === edge.to)).length, 0);
 });
 
+test('explicit correction membership is distinct from dependencies and ambiguity stays unresolved', () => {
+    const phase = checkpoint('phase-11', 'phase', 0);
+    phase.title = 'Phase 11 — Usability';
+    const other = checkpoint('phase-10', 'phase', 1);
+    other.title = 'Phase 10 — Planning';
+    const correction = checkpoint('correction', 'correction', 2, [other.id]);
+    correction.parentPhaseId = phase.id;
+    const ambiguous = checkpoint('unmatched', 'correction', 3);
+    const result = projectRoadmap(index('a', [phase, other, correction, ambiguous]));
+    assert.equal(result.nodes.find(node => node.id === correction.id)?.phaseAssociation?.phaseId, phase.id);
+    assert.deepEqual(correction.dependencies, [other.id]);
+    assert.match(result.nodes.find(node => node.id === ambiguous.id)?.phaseAssociation?.unresolvedReason ?? '',
+        /No reliable correction phase identifier/);
+});
+
 test('P9 full real-roadmap import fixture keeps 31 identities and nine historical diagnostics separate', async () => {
     const fixture = JSON.parse(await readFile(
         'docs/tasks/c10-roadmap-qualify/qualification/loop-1-markdown/evidence/cycle-2-full-import-after.json', 'utf8')) as RoadmapIndex;

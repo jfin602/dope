@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
+import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
+import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
 
 const fixture = async (run: (root: string) => Promise<void>): Promise<void> => {
     const root = await mkdtemp(join(tmpdir(), 'dope-greenfield-'));
@@ -116,7 +118,37 @@ test('typed split, move, dependencies and correction branch share manual preview
     assert.equal(byTitle.get('Milestone Second')?.dependencies[0], byTitle.get('Milestone First')?.id);
     assert.equal(byTitle.get('Correction Repair')?.kind, 'correction');
     assert.equal(byTitle.get('Correction Repair')?.dependencies[0], byTitle.get('Milestone First')?.id);
+    assert.equal(byTitle.get('Correction Repair')?.parentPhaseId, byTitle.get('Phase 1 — Build')?.id);
+    const projection = projectRoadmap(canonical);
+    assert.equal(projection.nodes.find(node => node.id === byTitle.get('Correction Repair')?.id)
+        ?.phaseAssociation?.phaseId, byTitle.get('Phase 1 — Build')?.id);
+    assert.equal(projection.nodes.find(node => node.id === byTitle.get('Correction Repair')?.id)
+        ?.phaseAssociation?.unresolvedReason, undefined);
+    assert.equal((await store.previewDocumentSync(root)).state, 'unchanged');
     assert.deepEqual((await new RoadmapStore().read(root)).checkpoints, canonical.checkpoints);
+    const reimported = await store.acceptImport(root, canonical.revision,
+        await previewRoadmapImport(root, 'ROADMAP.md'), canonical.projectId);
+    assert.equal(reimported.checkpoints.find(item => item.kind === 'correction')?.parentPhaseId,
+        byTitle.get('Phase 1 — Build')?.id);
+}));
+
+test('nested correction keeps strategic phase membership while retaining its immediate branch dependency', async () => fixture(async root => {
+    const store = new RoadmapStore(), drafts = new RoadmapGreenfield(store);
+    const { handle } = await drafts.begin(root);
+    const phase = drafts.edit(handle, 0, { type: 'create-phase', title: 'Build' });
+    const phaseId = phase.phases[0].id;
+    drafts.edit(handle, 1, { type: 'create-checkpoint', phaseId, title: 'First' });
+    const first = await drafts.applyEdit(handle,
+        drafts.previewEdit(handle, 2, { type: 'create-correction', parentId: phaseId, title: 'Repair' }), true);
+    await drafts.applyEdit(handle, drafts.previewEdit(handle, 3,
+        { type: 'create-correction', parentId: first.phases[1].id, title: 'Followup' }), true);
+    const canonical = await drafts.accept(handle, drafts.preview(handle, 'ROADMAP.md'), true);
+    const strategic = canonical.checkpoints.find(item => item.kind === 'phase')!;
+    const repair = canonical.checkpoints.find(item => item.title === 'Correction Repair')!;
+    const followup = canonical.checkpoints.find(item => item.title === 'Correction Followup')!;
+    assert.equal(repair.parentPhaseId, strategic.id);
+    assert.equal(followup.parentPhaseId, strategic.id);
+    assert.deepEqual(followup.dependencies, [repair.id]);
 }));
 
 test('cancellation and duplicate headings cannot publish a Roadmap', async () => fixture(async root => {

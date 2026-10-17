@@ -1,7 +1,11 @@
 # Dope Project Overview
 
+<<<<<<< HEAD
 **Forward Phase 11 scope update (2026-10-17; docs only):** **Phase 11 — Human-Centered Development Workflow** includes existing usability/Hunts, `c11-brainstorm`, separately planned `c11-planning-bridge` PB1–PB8, and D1–D8 integrated journey in addition to the unchanged two-clean-Hunt exit. At reviewed main `3787c6c`, brainstorm P1–P7 committed; P8 remains manual/unqualified and Bridge has no executable stack. Phase 11 stays OPEN/NOT QUALIFIED, `0.11.8` unchanged, historical source-scoped results intact and Phase 12 inactive. See [Phase 11 plan](planning/p11/phase-11-plan.md). Earlier status paragraphs below retain original dates.
 
+=======
+**Current Phase 11 status (2026-10-17):** The [c11-brainstorm P8 repair](tasks/c11-brainstorm/qualification/p8-repair-loop/2026-10-17.md) is **EVIDENCE GAP** on uncommitted `0.11.8`: F1/F2 passed bounded real-browser replay, while live security negatives and independent native GUI remain incomplete. Original P8 NOT GREEN and prior UX-003 scoped Green keep their recorded scopes. Phase 11 stays OPEN / NOT QUALIFIED; H02 remains unrun and Phase 12 inactive. Older dated notes below are historical.
+>>>>>>> c98e5a5 (c11-qual-rep-loop EVIDENCE GAP)
 
 **Current Phase 11 status (2026-10-16):** [UX-003 M1 supplemental recovery](tasks/c11-guidance/manual/m1-recovery-qualification.md) is **SCOPED GREEN in browser/local Q4** at committed `e69d7e5` / `0.11.8`. Phase 11 remains OPEN / NOT QUALIFIED; native/hosted parity and wider usability remain open, and the first separate Hunter is not run. Earlier dated recovery notes below are historical.
 

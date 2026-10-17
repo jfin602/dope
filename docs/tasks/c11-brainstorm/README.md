@@ -1,5 +1,7 @@
 # c11-brainstorm — Live local-model brainstorming and visual Roadmap
 
+**Current repair status (2026-10-17):** P1–P7 are implemented on the current `0.11.8` branch. The original [manual P8 closeout](closeout.md) is **NOT GREEN**. Its [P8 repair loop](qualification/p8-repair-loop/2026-10-17.md) has local uncommitted F1/F2 fixes, bounded real-browser passes and a passing full aggregate, but ends **EVIDENCE GAP** because the required live security matrix and independent Electron GUI are incomplete. Phase 11 stays OPEN / NOT QUALIFIED; no commit or version change was made. The earlier authoring status below is historical.
+
 **Status (2026-10-16 America/Chicago):** Owner-approved /docs-apply, /prompt-ass, /prompt-plan and /prompt-write; **documentation authored only, not implemented, executed or qualified**. Inspection source main `eaaa910b1b73645c18aa55db209340c4c65581d5`, coherent `0.11.8`. Phase 11 OPEN / NOT QUALIFIED; H02 Software Map Hunter independent/not run; Phase 12 inactive.
 
 **Objective:** Discuss phase architecture, tradeoffs and dependencies through the **existing saved ChatPanel** using a selected local model; watch fully validated **provisional** Roadmap nodes/edges appear in the **existing** canvas without Refresh. Human may edit, question, undo, reject and explicitly approve. Preserving linked Markdown authority and truthful status is mandatory.
