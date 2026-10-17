@@ -61,8 +61,9 @@ async function setup(linked = false, sourceOverride?: string) {
     const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
     if (!lease.acquired) throw new Error('Chat lease missing');
     const current = () => store.read(root);
-    const turn = async (revision: number, content = 'Propose a change') => backend.runTurn({ projectHandle,
+    const turn = async (revision: number, content = 'Propose a change', planningSteps?: 2 | 3) => backend.runTurn({ projectHandle,
         chatId, leaseToken: lease.token, selectedModel: { connectionId: 'local', modelId: 'short' }, content,
+        ...(planningSteps ? { planningSteps } : {}),
         context: [{ kind: 'roadmap-checkpoint', id: (await current()).checkpoints[0].id,
             projectId: (await current()).projectId, ownerRevision: revision,
             ...(linked ? { sourceHash: (await current()).checkpoints[0].source!.sha256 } : {}) }] });
@@ -70,6 +71,49 @@ async function setup(linked = false, sourceOverride?: string) {
         setBeforeComplete: (hook?: () => Promise<void>) => { beforeComplete = hook; },
         leaseToken: lease.token, source };
 }
+
+test('opt-in two-step planning previews atomically and rejects a stale approval', async () => fixture(async f => {
+    const initial = await f.current();
+    const steps = JSON.stringify({ type: 'roadmap-sequence', projectId: initial.projectId,
+        ownerRevision: initial.revision, actions: [
+            { type: 'edit', id: 'a', objective: 'First objective' },
+            { type: 'status', id: 'a', status: 'active' }] });
+    f.outputs.push(steps);
+    const result = await f.turn(initial.revision, 'Please propose two small steps', 2);
+    assert.ok(result.proposal);
+    assert.equal((await f.current()).revision, initial.revision);
+    assert.equal((await f.current()).checkpoints[0].objective, 'Before');
+    assert.equal(f.sent.length, 1);
+    const pending = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(pending.role === 'assistant' && pending.planningActivity?.kind, 'roadmap-sequence');
+    assert.equal(pending.role === 'assistant' && pending.execution.actualModel?.modelId, 'short');
+    const checkpoint = initial.checkpoints[0];
+    await f.store.mutate(f.root, initial.revision, { type: 'update', id: 'a', title: checkpoint.title,
+        objective: 'External change', order: checkpoint.order, dependencies: checkpoint.dependencies,
+        links: checkpoint.links });
+    await assert.rejects(f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken,
+        result.proposal!.id, true), /stale|Stale/);
+    assert.equal((await f.current()).checkpoints[0].objective, 'External change');
+    assert.equal(f.sent.length, 1);
+}));
+
+test('approved unlinked step sequence applies both checked edits with one inference', async () => fixture(async f => {
+    const initial = await f.current();
+    f.outputs.push(JSON.stringify({ type: 'roadmap-sequence', projectId: initial.projectId,
+        ownerRevision: initial.revision, actions: [
+            { type: 'edit', id: 'a', objective: 'Reviewed objective' },
+            { type: 'status', id: 'a', status: 'active' }] }));
+    const pending = (await f.turn(initial.revision, 'Propose two steps', 2)).proposal!;
+    assert.ok(pending);
+    assert.equal((await f.current()).revision, initial.revision);
+    await f.backend.decidePlanningProposal(f.projectHandle, f.chatId, f.leaseToken, pending.id, true);
+    const current = await f.current();
+    assert.equal(current.checkpoints[0].objective, 'Reviewed objective');
+    assert.equal(current.checkpoints[0].status, 'active');
+    assert.equal(f.sent.length, 1);
+    const saved = (await f.backend.get(f.projectHandle, f.chatId))!.messages.at(-1)!;
+    assert.equal(saved.role === 'assistant' && saved.planningActivity?.status, 'applied');
+}));
 
 test('saved local planning outcome tracks review, denial, apply and next turn without extra inference', async () => fixture(async f => {
     const initial = await f.current();

@@ -11,6 +11,32 @@ const fixture = async (run: (root: string) => Promise<void>): Promise<void> => {
     try { await run(root); } finally { await rm(root, { recursive: true, force: true }); }
 };
 
+test('a capped draft sequence is provisional until approved and checks each projected step', async () => fixture(async root => {
+    const store = new RoadmapStore();
+    const drafts = new RoadmapGreenfield(store);
+    const { handle } = await drafts.begin(root);
+    const preview = drafts.previewEditSequence(handle, 0, [
+        { type: 'create-phase', title: 'Design' }, { type: 'create-phase', title: 'Build' }]);
+    assert.equal(preview.after.phases.length, 2);
+    assert.equal(drafts.read(handle).revision, 0);
+    assert.equal((await store.read(root)).revision, 0);
+    await assert.rejects(drafts.applyEdit(handle, preview, false), /approval/);
+    assert.throws(() => drafts.previewEditSequence(handle, 0, [
+        { type: 'create-phase', title: 'Design' },
+        { type: 'create-checkpoint', phaseId: 'missing', title: 'Unsafe' }]), /Unknown/);
+    assert.equal((await drafts.applyEdit(handle, preview, true)).revision, 2);
+    assert.deepEqual(drafts.read(handle).phases.map(phase => phase.title), ['Design', 'Build']);
+    assert.equal((await store.read(root)).revision, 0);
+    assert.throws(() => drafts.previewEditSequence(handle, 0, [
+        { type: 'create-phase', title: 'Late' }, { type: 'create-phase', title: 'Later' }]), /Stale/);
+    const stale = drafts.previewEditSequence(handle, 2, [
+        { type: 'create-phase', title: 'Verify' }, { type: 'create-phase', title: 'Release' }]);
+    drafts.edit(handle, 2, { type: 'edit-phase', phaseId: drafts.read(handle).phases[0].id,
+        objective: 'Human revision' });
+    await assert.rejects(drafts.applyEdit(handle, stale, true), /Stale/);
+    assert.equal(drafts.read(handle).phases.length, 2);
+}));
+
 test('model-free draft edits, preview and approved acceptance create one linked Markdown owner', async () => fixture(async root => {
     const store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);

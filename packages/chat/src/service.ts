@@ -33,7 +33,9 @@ export interface ChatDeltaRequest { projectHandle: string; chatId: ChatId; messa
     executionId: string; sequence: number; delta: string; leaseToken: string }
 export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseToken: string;
     selectedModel?: ChatModelSelection; hostedProjectDataAuthorized?: boolean;
-    content?: string; retryMessageId?: string; context?: ChatContextSelection[] }
+    content?: string; retryMessageId?: string; context?: ChatContextSelection[];
+    /** Explicit, capped opt-in for an atomic preview of small unlinked Roadmap edits. */
+    planningSteps?: 2 | 3 }
 /** Captured editor text is transport-only. Other IDs are resolved against current project authorities. */
 export interface ChatContextSelection { kind: ChatContextKind; id: string; projectId?: string; generation?: number;
     ownerRevision?: number; sourceHash?: string;

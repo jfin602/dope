@@ -20,7 +20,7 @@ export type GreenfieldEdit =
 export interface GreenfieldPreview { token: string; draftRevision: number; path: string; markdown: string;
     phases: GreenfieldPhase[]; requiresApproval: true }
 export interface GreenfieldEditPreview { token: string; draftRevision: number; before: GreenfieldDraft;
-    after: GreenfieldDraft; action: GreenfieldEdit; requiresApproval: true }
+    after: GreenfieldDraft; action: GreenfieldEdit; actions?: GreenfieldEdit[]; requiresApproval: true }
 /** Noncanonical presentation notification. A proposed value is a fully validated preview, never an accepted edit. */
 export interface GreenfieldChange { root: string; projectId: string; handle: string; revision: number;
     epoch: string; sequence: number; kind: 'accepted' | 'proposed' | 'cleared' | 'cancelled'; draft?: GreenfieldDraft }
@@ -310,12 +310,14 @@ export class RoadmapGreenfield {
         return copy(entry.value);
     }
 
-    private project(handle: string, expectedRevision: number, action: GreenfieldEdit): GreenfieldDraft {
+    private project(handle: string, expectedRevision: number, action: GreenfieldEdit,
+        basis?: GreenfieldDraft): GreenfieldDraft {
         const entry = this.drafts.get(handle);
         if (this.accepting.has(handle)) throw new Error('Greenfield draft acceptance in progress');
-        if (!entry || entry.value.revision !== expectedRevision) throw new Error('Stale greenfield draft');
+        if (!entry || (basis ?? entry.value).revision !== expectedRevision ||
+            basis && basis.revision < entry.value.revision) throw new Error('Stale greenfield draft');
         this.assertUninitialized(entry.root);
-        const next = copy(entry.value);
+        const next = copy(basis ?? entry.value);
         const raw = action as unknown as Record<string, unknown>;
         const required: Record<GreenfieldEdit['type'], string[]> = {
             'create-phase': ['type', 'title'], 'create-checkpoint': ['type', 'phaseId', 'title'],
@@ -400,6 +402,22 @@ export class RoadmapGreenfield {
         return copy(preview);
     }
 
+    /** One approved transaction for two or three fully checked, provisional steps. */
+    previewEditSequence(handle: string, expectedRevision: number, actions: GreenfieldEdit[]): GreenfieldEditPreview {
+        if (!Array.isArray(actions) || actions.length < 2 || actions.length > 3)
+            throw new Error('Invalid greenfield step count');
+        const before = this.read(handle);
+        if (before.revision !== expectedRevision) throw new Error('Stale greenfield draft');
+        let after = before;
+        for (const action of actions) after = this.project(handle, after.revision, action, after);
+        const token = hash(JSON.stringify({ nonce: randomUUID(), handle, before, after, actions }));
+        const preview: GreenfieldEditPreview = { token, draftRevision: expectedRevision,
+            before, after, action: copy(actions[0]), actions: copy(actions), requiresApproval: true };
+        this.editPreviews.set(handle, preview);
+        this.announce(handle, 'proposed', preview.after);
+        return copy(preview);
+    }
+
     clearEditPreview(handle: string): void {
         if (this.editPreviews.delete(handle)) this.announce(handle, 'cleared');
     }
@@ -410,7 +428,7 @@ export class RoadmapGreenfield {
             JSON.stringify(this.editPreviews.get(handle)) !== JSON.stringify(preview) ||
             entry.value.revision !== preview.draftRevision ||
             JSON.stringify(entry.value) !== JSON.stringify(preview.before) ||
-            preview.after.revision !== preview.draftRevision + 1)
+            preview.after.revision !== preview.draftRevision + (preview.actions?.length ?? 1))
             throw new Error('Stale greenfield preview or approval required');
         const current = await this.store.read(entry.root);
         if (current.projectId !== entry.projectId || current.revision || current.linkedDocument || current.pendingCreation)

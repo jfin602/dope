@@ -17,10 +17,10 @@ import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview } fr
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import { selectDopeCapabilityHelp } from './dope-capability-help';
 
-function draftInstruction(projectId: string, revision: number): string {
+function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
         action: { type: 'create-phase', title: 'Example phase', objective: 'One clear objective' } });
-    return `You are editing a noncanonical Roadmap draft. Propose exactly one small step using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. For a checkpoint, use action {"type":"create-checkpoint","phaseId":"<existing phase ID>","title":"<title>","objective":"<objective>"}; copy phaseId from the current draft. Other supported action types are edit-phase, edit-checkpoint, reorder-phase, and reorder-checkpoint. Return only one JSON object. This requires developer approval. If no safe edit is justified, return {"type":"no-action","message":"brief reason"}. Never claim an edit was applied.`;
+    return `You are discussing a noncanonical Roadmap draft. Answer questions or ask one meaningful clarifying question as {"type":"no-action","message":"your concrete answer or question"}; do not force an edit. If the user asks for an edit, ${maxSteps ? `you may propose from two to ${maxSteps} small steps in one atomic preview using {"type":"roadmap-draft-sequence","projectId":"${projectId}","draftRevision":${revision},"actions":[{"type":"create-phase","title":"First phase"},{"type":"create-phase","title":"Second phase"}]}, or propose one step` : 'propose exactly one small step'} using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. For a checkpoint, use action {"type":"create-checkpoint","phaseId":"<existing phase ID>","title":"<title>","objective":"<objective>"}; copy phaseId from the current draft. Other supported action types are edit-phase, edit-checkpoint, reorder-phase, and reorder-checkpoint. Return only one JSON object. This requires developer approval. Never claim an edit was applied.`;
 }
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
@@ -93,7 +93,7 @@ export class ChatBackend implements ChatService {
         return this.root;
     }
 
-    private async draftContext(root: string, chatId: string) {
+    private async draftContext(root: string, chatId: string, maxSteps?: 2 | 3) {
         await this.greenfield?.ensureRestored(root);
         const bound = this.greenfield?.chatDraft(root, chatId);
         if (!bound) return undefined;
@@ -102,7 +102,7 @@ export class ChatBackend implements ChatService {
             current.revision || current.linkedDocument || current.pendingCreation)
             throw new Error('Greenfield Roadmap draft is stale');
         return { handle: bound.handle, revision: bound.draft.revision, projectId: current.projectId,
-                text: `${draftInstruction(current.projectId, bound.draft.revision)}\nCurrent draft: ${JSON.stringify({ projectId: current.projectId,
+                text: `${draftInstruction(current.projectId, bound.draft.revision, maxSteps)}\nCurrent draft: ${JSON.stringify({ projectId: current.projectId,
                     draftRevision: bound.draft.revision, phases: bound.draft.phases.slice(-6).map(phase => ({
                         id: phase.id, title: phase.title, objective: phase.objective.slice(0, 200),
                         checkpoints: phase.checkpoints.slice(-5).map(item => ({ id: item.id, title: item.title,
@@ -254,21 +254,35 @@ export class ChatBackend implements ChatService {
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid planning proposal');
             const raw = value as Record<string, unknown>;
             if (raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
-                typeof raw.message === 'string' && raw.message.length <= 1000) return {};
+                typeof raw.message === 'string' && raw.message.length <= 4000) return {};
             if (draft) {
-                if (!this.greenfield || Object.keys(raw).sort().join(',') !== 'action,draftRevision,projectId,type' ||
-                    raw.type !== 'roadmap-draft-proposal' || raw.projectId !== draft.projectId ||
-                    raw.draftRevision !== draft.revision || !raw.action || typeof raw.action !== 'object' || Array.isArray(raw.action))
+                const single = raw.type === 'roadmap-draft-proposal' &&
+                    Object.keys(raw).sort().join(',') === 'action,draftRevision,projectId,type' &&
+                    raw.action && typeof raw.action === 'object' && !Array.isArray(raw.action);
+                const sequence = raw.type === 'roadmap-draft-sequence' &&
+                    Object.keys(raw).sort().join(',') === 'actions,draftRevision,projectId,type' &&
+                    Array.isArray(raw.actions) && raw.actions.length >= 2 && raw.actions.length <= 3;
+                if (!this.greenfield || (!single && !sequence) || raw.projectId !== draft.projectId ||
+                    raw.draftRevision !== draft.revision)
                     throw new Error('Stale or foreign greenfield proposal');
-                const action = raw.action as GreenfieldEdit;
-                const preview = this.greenfield.previewEdit(draft.handle, draft.revision, action);
+                const actions = (sequence ? raw.actions : [raw.action]) as GreenfieldEdit[];
+                const action = actions[0];
+                const preview = sequence ? this.greenfield.previewEditSequence(draft.handle, draft.revision, actions) :
+                    this.greenfield.previewEdit(draft.handle, draft.revision, action);
                 const id = randomUUID();
-                const changedIds = ['phaseId' in action ? action.phaseId : 'new-phase'];
+                const changedIds = sequence ? [...new Set([
+                    ...preview.after.phases.filter(phase => !preview.before.phases.some(old => old.id === phase.id)).map(phase => phase.id),
+                    ...preview.after.phases.flatMap(phase => phase.checkpoints.filter(item =>
+                        !preview.before.phases.some(old => old.checkpoints.some(checkpoint => checkpoint.id === item.id)))
+                        .map(item => item.id)),
+                    ...actions.flatMap(step => 'checkpointId' in step ? [step.phaseId, step.checkpointId] :
+                        'phaseId' in step ? [step.phaseId] : [])
+                ])] : ['phaseId' in action ? action.phaseId : 'new-phase'];
                 this.proposals.set(chatId, { id, messageId, leaseToken, changedIds,
                     draft: { handle: draft.handle, preview } });
                 return { proposal: { id, chatId, messageId, ownerId: draft.projectId,
-                    revision: draft.revision, changedIds, action: { type: action.type, id: changedIds[0] },
-                    summary: JSON.stringify({ action, before: preview.before.phases, after: preview.after.phases }) } };
+                    revision: draft.revision, changedIds, action: { type: sequence ? 'sequence' : action.type, id: changedIds[0] },
+                    summary: JSON.stringify({ actions, before: preview.before.phases, after: preview.after.phases }) } };
             }
             const context = refs.filter(ref => ref.kind === 'roadmap-checkpoint');
             if (context.length !== 1) throw new Error('Select exactly one Roadmap checkpoint');
@@ -281,7 +295,7 @@ export class ChatBackend implements ChatService {
                 throw new Error('Stale or foreign Roadmap source');
             const linked = !!attached.snapshot.linkedDocument && !!selected.source &&
                 selected.source.path === attached.snapshot.linkedDocument.path;
-            let action: PlanningAction;
+            let actions: PlanningAction[];
             if (linked) {
                 if (raw.type !== 'roadmap-intent' || Object.keys(raw).sort().join(',') !== 'intent,type,value' ||
                     raw.intent !== 'set-objective' || typeof raw.value !== 'string' ||
@@ -290,20 +304,24 @@ export class ChatBackend implements ChatService {
                 const capabilities = await readRoadmapDocumentCapabilities(root, attached.snapshot, selected.id);
                 if (!capabilities.fields.objective.editable || capabilities.sourceHash !== context[0].sourceHash)
                     throw new Error(capabilities.fields.objective.reason ?? 'Stale linked Roadmap source');
-                action = { type: 'document-edit', id: selected.id, objective: raw.value };
+                actions = [{ type: 'document-edit', id: selected.id, objective: raw.value }];
             } else {
-                if (Object.keys(raw).sort().join(',') !== 'action,ownerRevision,projectId,type' ||
-                    raw.type !== 'roadmap-proposal' || raw.projectId !== context[0].projectId ||
-                    raw.ownerRevision !== context[0].ownerRevision || !raw.action ||
-                    typeof raw.action !== 'object' || Array.isArray(raw.action))
+                const single = raw.type === 'roadmap-proposal' &&
+                    Object.keys(raw).sort().join(',') === 'action,ownerRevision,projectId,type' &&
+                    raw.action && typeof raw.action === 'object' && !Array.isArray(raw.action);
+                const sequence = raw.type === 'roadmap-sequence' &&
+                    Object.keys(raw).sort().join(',') === 'actions,ownerRevision,projectId,type' &&
+                    Array.isArray(raw.actions) && raw.actions.length >= 2 && raw.actions.length <= 3;
+                if ((!single && !sequence) || raw.projectId !== context[0].projectId ||
+                    raw.ownerRevision !== context[0].ownerRevision)
                     throw new Error('Invalid planning proposal schema');
-                action = raw.action as PlanningAction;
-                if (action.type !== 'create' && action.id !== selected.id)
+                actions = (sequence ? raw.actions : [raw.action]) as PlanningAction[];
+                if (actions.some(action => action.type !== 'create' && action.id !== selected.id))
                     throw new Error('Planning proposal targets an unselected checkpoint');
             }
             // The action is untrusted. ProjectPlanningActions validates fields, owner, source and revision.
             const request: PlanningActionRequest = { projectHandle: handle, ownerId: attached.snapshot.projectId,
-                expectedRevision: attached.snapshot.revision, actions: [action],
+                expectedRevision: attached.snapshot.revision, actions,
                 ...(context[0].sourceHash ? { sourceHashes: { [context[0].id]: context[0].sourceHash } } : {}) };
             const preview = await this.planning!.preview(request);
             const id = randomUUID();
@@ -313,9 +331,9 @@ export class ChatBackend implements ChatService {
             this.proposals.set(chatId, { id, messageId, leaseToken, handle, request,
                 token: preview.token, changedIds: preview.changedIds });
             return { proposal: { id, chatId, messageId, ownerId: preview.ownerId, revision: preview.revision,
-                changedIds: preview.changedIds, action: { type: action.type, id: action.id },
-                summary: JSON.stringify({ action, before: fields(attached.snapshot.checkpoints.find(item => item.id === action.id)),
-                    after: fields(preview.next.checkpoints.find(item => item.id === action.id)),
+                changedIds: preview.changedIds, action: { type: actions.length > 1 ? 'sequence' : actions[0].type, id: actions[0].id },
+                summary: JSON.stringify({ actions, before: actions.map(action => fields(attached.snapshot.checkpoints.find(item => item.id === action.id))),
+                    after: actions.map(action => fields(preview.next.checkpoints.find(item => item.id === action.id))),
                     ...(preview.documentDiff ? { documentDiff: preview.documentDiff } : {}) }) } };
         } catch (error) {
             if (handle) this.planning?.detach(handle);
@@ -393,8 +411,15 @@ export class ChatBackend implements ChatService {
         })() : request.content?.trim() ?? '';
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const helpTurn = !!selectDopeCapabilityHelp(content);
-        const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId);
+        const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId, request.planningSteps);
         const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn;
+        if (request.planningSteps !== undefined && (![2, 3].includes(request.planningSteps) ||
+            !roadmapTurn || helpTurn || !draft &&
+            (request.context ?? []).filter(item => item.kind === 'roadmap-checkpoint').length !== 1))
+            throw new Error('Small-step planning requires a bound draft or one unlinked Roadmap checkpoint and a cap of two or three');
+        const planningPrompt = draft ?? (request.planningSteps ? { text:
+            `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
+            'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
         const requestHard: AIRoleHardConstraints = { ...chatHard,
             minimumKnownContextTokens: Math.ceil(Buffer.byteLength(content, 'utf8') / 3) + 4 +
                 chat.settings.context.reservedOutputTokens };
@@ -436,7 +461,7 @@ export class ChatBackend implements ChatService {
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
         const composed = await this.composeTurn(root, contextChat, content, request.context ?? [],
-            model.capabilities, budget, draft, grounding);
+            model.capabilities, budget, planningPrompt, grounding);
         if ((request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
@@ -459,6 +484,8 @@ export class ChatBackend implements ChatService {
                 }
             } finally { this.planning.detach(attached.projectHandle); }
         }
+        if (request.planningSteps && (!localRoadmap || !['unlinked', 'draft'].includes(localMode)))
+            throw new Error('Small-step planning requires a selected local model and unlinked Roadmap or bound draft');
         let preview: ChatContextPreview = { refs: composed.refs, diagnostics: composed.diagnostics,
             usedTokens: composed.usedTokens, budgetTokens: composed.budgetTokens };
         if (priorRefs && JSON.stringify(preview.refs.filter(ref => ref.origin !== 'automatic')) !==
@@ -531,7 +558,7 @@ export class ChatBackend implements ChatService {
                         throw new ModelRuntimeFailure('Loaded local context or limits changed; preview this turn again',
                             'unsupported-capability');
                     const next = await this.composeTurn(root, contextChat, content, request.context ?? [],
-                        resolvedModel.capabilities, nextBudget, draft, grounding);
+                        resolvedModel.capabilities, nextBudget, planningPrompt, grounding);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');
                     if (JSON.stringify(next.refs) !== JSON.stringify(preview.refs)) {
@@ -540,11 +567,11 @@ export class ChatBackend implements ChatService {
                     }
                     preview = { refs: next.refs, diagnostics: next.diagnostics,
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
-                    return { messages: withRetryInstruction(this.withDraft(next.messages, draft), retryInstruction), controls, signal: abort.signal,
+                    return { messages: withRetryInstruction(this.withDraft(next.messages, planningPrompt), retryInstruction), controls, signal: abort.signal,
                         ...(chat.settings.context.reservedOutputTokens > 0 ?
                         { maxOutputTokens: nextBudget?.output ?? chat.settings.context.reservedOutputTokens } : {}) };
                 } }) : this.models!.generate(selectedModel!,
-                { messages: withRetryInstruction(this.withDraft(composed.messages, draft), retryInstruction), controls, signal: abort.signal,
+                { messages: withRetryInstruction(this.withDraft(composed.messages, planningPrompt), retryInstruction), controls, signal: abort.signal,
                     ...(chat.settings.context.reservedOutputTokens > 0 ?
                         { maxOutputTokens: budget?.output ?? chat.settings.context.reservedOutputTokens } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
@@ -558,6 +585,7 @@ export class ChatBackend implements ChatService {
                     preview.refs.find(ref => ref.kind === 'roadmap-checkpoint')?.ownerRevision : undefined;
                 const complete = await localPlanningJson(guardedGenerate, abort.signal, budget!.maxOutputBytes,
                     localMode, eligibleObjective, { requiredOwnerRevision: requestedRevision,
+                        maxSteps: request.planningSteps,
                         onRetry: cause => tracePlanning('retry', key, assistant!.id, cause) });
                 await backend.verifyLoadedCapacity(selectedModel!, budget!,
                     chat.settings.context.reservedOutputTokens);

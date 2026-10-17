@@ -3,10 +3,11 @@ import type { ChatAssistantMessage } from '@dope/chat';
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
-    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-draft-proposal', 'no-action'].includes(activity.kind))
+    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'no-action'].includes(activity.kind))
         return undefined;
     const label = activity.verifiedGuidance && noActionEnvelope(message) ? 'Verified Dope guidance' :
         activity.kind === 'no-action' ? 'No planning action' :
+        activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence' ? 'Roadmap steps' :
         activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
         activity.kind === 'roadmap-proposal' ? 'Roadmap proposal' : 'Roadmap intent';
     const statuses: Record<typeof activity.status, string> = {
@@ -32,7 +33,7 @@ function noActionEnvelope(message: ChatAssistantMessage): string | undefined {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
         const value = raw as Record<string, unknown>;
         if (Object.keys(value).sort().join(',') !== 'message,type' || value.type !== 'no-action' ||
-            typeof value.message !== 'string' || !value.message.trim() || value.message.length > 1000) return undefined;
+            typeof value.message !== 'string' || !value.message.trim() || value.message.length > 4000) return undefined;
         return value.message.trim();
     } catch { return undefined; }
 }
@@ -53,7 +54,7 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
     const activity = message.planningActivity;
     if (!activity) return undefined;
     const ref = activity.refs.find(item => item.kind === 'roadmap-checkpoint');
-    const target = ref ? `checkpoint ${ref.label}` : activity.kind === 'roadmap-draft-proposal' ? 'Roadmap draft' : 'Roadmap';
+    const target = ref ? `checkpoint ${ref.label}` : activity.kind.startsWith('roadmap-draft') ? 'Roadmap draft' : 'Roadmap';
     let change = `change ${target}`;
     // This detail is only displayed alongside a backend-verified preview or confirmed apply.
     if (activity.status === 'pending' || activity.status === 'applied') {
@@ -63,6 +64,8 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                 const value = raw as Record<string, unknown>;
                 const action = value.action && typeof value.action === 'object' && !Array.isArray(value.action) ?
                     value.action as Record<string, unknown> : undefined;
+                if ((activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence') && Array.isArray(value.actions))
+                    change = `review ${value.actions.length} Roadmap steps near ${target}`;
                 const objective = activity.kind === 'roadmap-intent' ? value.value : action?.objective;
                 const normalized = typeof objective === 'string' ? objective.replace(/\s+/g, ' ') : undefined;
                 const short = normalized?.slice(0, 120);

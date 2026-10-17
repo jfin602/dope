@@ -28,6 +28,7 @@ function citesOwnerRevision(answer: string, revision: number): boolean {
 
 export interface LocalPlanningAnswerCheck {
     requiredOwnerRevision?: number;
+    maxSteps?: 2 | 3;
     onRetry?: (cause: 'invalid-envelope' | 'missing-owner-revision') => void;
 }
 
@@ -96,13 +97,25 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                 Number.isSafeInteger(raw.draftRevision)) &&
                 typeof raw.projectId === 'string' &&
                 validNestedAction(raw.action, mode);
+            const sequence = raw.type === 'roadmap-sequence' && mode === 'unlinked' &&
+                check.maxSteps !== undefined &&
+                Object.keys(raw).sort().join(',') === 'actions,ownerRevision,projectId,type' &&
+                Number.isSafeInteger(raw.ownerRevision) && typeof raw.projectId === 'string' &&
+                Array.isArray(raw.actions) && raw.actions.length >= 2 && raw.actions.length <= check.maxSteps &&
+                raw.actions.every(action => validNestedAction(action, 'unlinked'));
+            const draftSequence = raw.type === 'roadmap-draft-sequence' && mode === 'draft' &&
+                check.maxSteps !== undefined &&
+                Object.keys(raw).sort().join(',') === 'actions,draftRevision,projectId,type' &&
+                Number.isSafeInteger(raw.draftRevision) && typeof raw.projectId === 'string' &&
+                Array.isArray(raw.actions) && raw.actions.length >= 2 && raw.actions.length <= check.maxSteps &&
+                raw.actions.every(action => validNestedAction(action, 'draft'));
             const intent = mode === 'linked' && eligibleObjective && raw.type === 'roadmap-intent' &&
                 Object.keys(raw).sort().join(',') === 'intent,type,value' && raw.intent === 'set-objective' &&
                 typeof raw.value === 'string' && raw.value.length <= 8192 && !/[\r\n\0]/.test(raw.value);
             const noAction = raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
-                typeof raw.message === 'string' && raw.message.trim().length > 0 && raw.message.length <= 1000 &&
+                typeof raw.message === 'string' && raw.message.trim().length > 0 && raw.message.length <= 4000 &&
                 !EMPTY_NO_ACTION_MESSAGES.has(raw.message.trim().toLowerCase());
-            if (mode !== 'help' && (proposal || intent)) return complete;
+            if (mode !== 'help' && (proposal || sequence || draftSequence || intent)) return complete;
             if (noAction) {
                 if (check.requiredOwnerRevision === undefined ||
                     citesOwnerRevision(raw.message as string, check.requiredOwnerRevision)) return complete;

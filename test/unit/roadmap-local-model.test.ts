@@ -146,12 +146,42 @@ test('strict local completion accepts only known, bounded envelopes', async () =
         '{"type":"no-action","message":"  "}',
         '{"type":"no-action","message":"okay","saved":true}',
         '{"type":"roadmap-proposal","projectId":"p","ownerRevision":1,"action":{"type":"shell","command":"pwd"}}',
-        '{"type":"no-action","message":"' + 'x'.repeat(1001) + '"}',
+        '{"type":"no-action","message":"' + 'x'.repeat(4001) + '"}',
         '{"type":"no-action","message":"unfinished"'
     ]) await assert.rejects(localPlanningJson(async function* () { yield complete(value); },
         signal, 4096, 'unlinked'), /strict JSON/);
     await assert.rejects(localPlanningJson(async function* () { yield complete(noAction); },
         signal, 8, 'unlinked'), /strict JSON/);
+});
+
+test('substantive no-action answers and questions complete without an edit', async () => {
+    const answer = JSON.stringify({ type: 'no-action', message: 'The first phase depends on the API contract. ' +
+        'Which version of that contract should the checkpoint target? '.repeat(25) });
+    let calls = 0;
+    assert.equal((await localPlanningJson(async function* () { calls++; yield complete(answer); },
+        new AbortController().signal, 4096, 'draft')).text, answer);
+    assert.equal(calls, 1);
+});
+
+test('two-step envelope requires explicit cap and rejects unsafe or incomplete output', async () => {
+    const value = JSON.stringify({ type: 'roadmap-sequence', projectId: 'project', ownerRevision: 4,
+        actions: [{ type: 'edit', id: 'checkpoint', objective: 'First step' },
+            { type: 'status', id: 'checkpoint', status: 'active' }] });
+    const signal = new AbortController().signal;
+    assert.equal((await localPlanningJson(async function* () { yield complete(value); }, signal,
+        4096, 'unlinked', true, { maxSteps: 2 })).text, value);
+    await assert.rejects(localPlanningJson(async function* () { yield complete(value); }, signal,
+        4096, 'unlinked'), /strict JSON/);
+    await assert.rejects(localPlanningJson(async function* () { yield complete(value.replace('"edit"', '"shell"')); },
+        signal, 4096, 'unlinked', true, { maxSteps: 2 }), /strict JSON/);
+    await assert.rejects(localPlanningJson(async function* () { yield { type: 'delta', text: value }; },
+        signal, 4096, 'unlinked', true, { maxSteps: 2 }), /without completion/);
+    const draft = JSON.stringify({ type: 'roadmap-draft-sequence', projectId: 'project', draftRevision: 0,
+        actions: [{ type: 'create-phase', title: 'Design' }, { type: 'create-phase', title: 'Build' }] });
+    assert.equal((await localPlanningJson(async function* () { yield complete(draft); }, signal,
+        4096, 'draft', true, { maxSteps: 2 })).text, draft);
+    await assert.rejects(localPlanningJson(async function* () { yield complete(draft); }, signal,
+        4096, 'draft'), /strict JSON/);
 });
 
 import { randomUUID } from 'node:crypto';
