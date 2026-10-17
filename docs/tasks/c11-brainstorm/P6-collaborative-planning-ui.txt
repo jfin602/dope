@@ -1,0 +1,21 @@
+TASK: Correction 11 / P6 — Human-centered Chat and Roadmap collaboration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no manifest/20 internal-pin/yarn.lock or package-lock changes.
+
+PREFLIGHT / PROTECTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036/0037, Phase 11 plan, and this stack's README/assessment/implementation plan. Reinspect actual Git HEAD, coherent version, dirty owner work, overlapping tasks, real code and tests before changing source; eaaa910b1b is a planning reference, not execution pin. Implementation requires a *later* explicit owner Run; no /activate gate. Runner owns P1-P7 commits, agent never self-commits or resets/stashes/cleans others' work. No manifest/pin/lockfile changes, forced provider/model/default, second Chat, direct model shell/file/Work/AgentRun grant, silent hosted fallback, false status Green, or Phase 12 activation.
+
+SCOPE
+Use existing ChatPanelWidget/presentation, RoadmapCanvasWidget and Software Map-style inspector. Foreground thoughtful conversational prose and next questions; collapse muted JSON/tool activity, avoid duplicate or misleading summaries. Distinguish Proposed, Accepted Draft and Canonical with restrained dark/orange styling; live node/edge update, changed-item emphasis, grounded approval/reject/undo/diff controls and factual saved/cancel/stale notifications. No fake buttons: callbacks invoke real owner methods. Keep same saved Chat identity, model, Follow/Pin, user-managed left/right/bottom/center dock, keyboard/focus/narrow panes/light theme; don't auto-open/move/create another chat or canvas.
+
+ACCEPTANCE
+Tests: presentation semantics, real callback behavior, selected context, narrow/keyboard labels, alternate theme, saved layout/no duplicated Chat. Direct visual proof reserved for P8.
+
+VALIDATION / HANDOFF
+Run only focused impacted tests; rebuild changed package `lib` first when tests import compiled output. Run `git diff --check`; no repeated whole-suite/browser test simulations. Target <=8 minutes, 10 soft/15 hard; report blocker and narrower split if scope unsafe. Record changed files, actual commands/results and remaining manual P8 gaps.

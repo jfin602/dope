@@ -1,0 +1,16 @@
+# /prompt-plan — c11-brainstorm
+
+**Status:** PLANNED / P1–P8 AUTHORED, NOT IMPLEMENTED/QUALIFIED. Source review baseline `eaaa910b1b73645c18aa55db209340c4c65581d5` / `0.11.8`; re-inspect exact execution checkout.
+
+**Producer/consumer:** Existing saved ChatPanel -> ChatBackend/ChatContextComposer -> actual selected measured local model -> **complete validated** conversational answer or narrow action proposal -> project/revision-bound noncanonical preview -> typed draft event -> same RoadmapCanvasWidget provisional graph -> human approve/reject/undo -> durable accepted draft -> separate explicit authoritative `ProjectPlanningActions` + linked Markdown roundtrip. Each new model step grounds against latest selection, neighbors and confirmed decisions. No model directly writes project files, no unvalidated stream-to-node.
+
+**P1:** Versioned project-local bounded durable RoadmapGreenfield draft and saved Chat binding, restore/cancel, no accepted source mutation; stale pending proposal requires re-review. Test restart/project isolation/corrupt/no-model.
+**P2:** Extend or reuse actual `RoadmapService` / `RoadmapClient` event seams for revision-bound draft projection to same Roadmap canvas; preserve camera and user-managed Chat placement, no Refresh needed. Test stale events/project switch.
+**P3:** ChatBackend + roadmap-local-model strict schema: natural answer/question/no-action or validated single proposal; optional capped user-invoked multi-step chain. One inference default; no new model for outcome, short reliable progress, cancel/retry/token/byte/local-only bounds. No canonical write until approval.
+**P4:** ChatContextComposer selected checkpoint/neighbors, dependency summary, verified user-confirmed decisions, recent edits, bounded typed evidence; loaded-context/token-budget capacity, Follow/Pin, project isolation, restart. No Phase 12 new knowledge engine.
+**P5:** RoadmapGreenfield/ProjectPlanningActions typed split/reorder/dependency/correction with Dope IDs, cycle/owner/revision/cross-source protection; user preview/undo, existing Markdown source fields.
+**P6:** Existing ChatPanel/ReactFlow Roadmap inspector, prose-first questions, subdued raw activity, Proposed/Accepted Draft/Canonical labels, actual review callbacks, keyboard/narrow/theme/user-defined dock.
+**P7:** Targeted end-to-end saved Chat/Q4 action -> live graph -> manual edit -> fresh context -> approval -> restart -> approved Markdown safety; malformed/stale/foreign/no-model/provider/egress and scoped historical regression. Build only changed package lib used by tests.
+**P8:** Separately manual exact-source L1–L8 real Q4/browser/Electron and Codex Markdown handoff if available/authorized, one final aggregate if needed. Record gaps, not fictional Green. H02 remains independent.
+
+**Inspection seams:** `packages/project-intelligence/src/node/{roadmap-greenfield,project-planning-actions,roadmap-store,roadmap-document-patch}.ts`; `packages/theia-extension/src/{roadmap-service.ts,node/chat-backend.ts,node/roadmap-local-model.ts,node/chat-context-composer.ts,browser/roadmap-canvas-widget.ts,browser/chat-panel-presentation.ts}`. Verify actual exports and compiled-lib tests; no assumptions about new helpers. P1–P7 runner only after owner Run, no /activate; P8 manual. Stop/re-assess on version/source/dirty owner overlap.

@@ -1,0 +1,21 @@
+TASK: Correction 11 / P4 — Compact planning context and decision memory
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no manifest/20 internal-pin/yarn.lock or package-lock changes.
+
+PREFLIGHT / PROTECTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036/0037, Phase 11 plan, and this stack's README/assessment/implementation plan. Reinspect actual Git HEAD, coherent version, dirty owner work, overlapping tasks, real code and tests before changing source; eaaa910b1b is a planning reference, not execution pin. Implementation requires a *later* explicit owner Run; no /activate gate. Runner owns P1-P7 commits, agent never self-commits or resets/stashes/cleans others' work. No manifest/pin/lockfile changes, forced provider/model/default, second Chat, direct model shell/file/Work/AgentRun grant, silent hosted fallback, false status Green, or Phase 12 activation.
+
+SCOPE
+Inspect ChatContextComposer, project grounding, ChatRepository, Roadmap selection Follow/Pin and budget. Build compact context of goal, selected phase/checkpoint+neighbors, verified dependencies, recent actual edits, user-confirmed decisions and open questions. Use existing saved Chat/project ownership; never treat model suggestions as confirmed facts, start separate Chat/memory system, dump whole repository/transcript or implement Phase 12 living knowledge synthesis. Re-resolve Follow at next step, Pin remains explicit; respect project isolation, malformed/stale selection, measured *actually loaded* local context including system/history/draft/output reserve and safe compaction. Narrow typed on-demand evidence reads only.
+
+ACCEPTANCE
+Tests: multi-turn decisions survive restart, manual edit refresh, Follow vs Pin, two projects, optional missing evidence, context overflow without dropping selected required facts, no hosted fallback.
+
+VALIDATION / HANDOFF
+Run only focused impacted tests; rebuild changed package `lib` first when tests import compiled output. Run `git diff --check`; no repeated whole-suite/browser test simulations. Target <=8 minutes, 10 soft/15 hard; report blocker and narrower split if scope unsafe. Record changed files, actual commands/results and remaining manual P8 gaps.

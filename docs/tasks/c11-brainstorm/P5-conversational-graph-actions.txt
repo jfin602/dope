@@ -1,0 +1,21 @@
+TASK: Correction 11 / P5 — Typed checkpoint and correction graph restructuring
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no manifest/20 internal-pin/yarn.lock or package-lock changes.
+
+PREFLIGHT / PROTECTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036/0037, Phase 11 plan, and this stack's README/assessment/implementation plan. Reinspect actual Git HEAD, coherent version, dirty owner work, overlapping tasks, real code and tests before changing source; eaaa910b1b is a planning reference, not execution pin. Implementation requires a *later* explicit owner Run; no /activate gate. Runner owns P1-P7 commits, agent never self-commits or resets/stashes/cleans others' work. No manifest/pin/lockfile changes, forced provider/model/default, second Chat, direct model shell/file/Work/AgentRun grant, silent hosted fallback, false status Green, or Phase 12 activation.
+
+SCOPE
+Inspect GreenfieldEdit supported create/edit/reorder, ProjectPlanningActions, RoadmapStore, linked Markdown adapter, canvas projection. Add minimal validated draft actions for split checkpoint, move/reorder, add/remove dependency, and create/attach correction branch with explicit parent provenance. Generate IDs in Dope, not model; check cycles, source/read-only, expected revision, project membership, conflicts. Provide before/after human preview plus safe undo/redo for eligible actions; broad destructive change requires explicit consent. Manual controls use the same deterministic domain validation. Canonical source-mapped fields still use existing owner preview/approval and Markdown patch/sync; do not mutate independent Planning Maps/issues or fabricate historical status.
+
+ACCEPTANCE
+Tests: split/undo, correction membership, dependency cycle rejection, stale human edit and cross-project/source/read-only denial, no-model manual parity.
+
+VALIDATION / HANDOFF
+Run only focused impacted tests; rebuild changed package `lib` first when tests import compiled output. Run `git diff --check`; no repeated whole-suite/browser test simulations. Target <=8 minutes, 10 soft/15 hard; report blocker and narrower split if scope unsafe. Record changed files, actual commands/results and remaining manual P8 gaps.

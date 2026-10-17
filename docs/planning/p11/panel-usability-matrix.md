@@ -84,3 +84,15 @@ For **every confirmed active surface**, capture:
 - Exact candidate and retest: Qualified / Not Green / Evidence Gap
 
 **End-to-end scenario:** open project -> use History -> find Roadmap objective -> inspect Map/Planning -> supervise Work -> inspect validation -> resume context. Do not manufacture project facts, authorize runs or claim human testing that did not occur.
+
+## Owner-requested c11-brainstorm visual local planning task (not tested)
+
+| Human task | Required direct observation | Evidence |
+| --- | --- | --- |
+| Brainstorm a phase (L1–L3) | Real selected Q4 asks relevant questions and creates validated provisional nodes/edges without Refresh; no-model manual path | NOT RUN |
+| Conversational + manual revision (L4) | Split/reorder/depend/correction, reject/undo/cancel, honest draft vs canonical | NOT RUN |
+| Restart/project safety (L5) | Durable accepted draft/confirmed decisions, pending re-review, two-project and Chat lease/placement | NOT RUN |
+| Publish safely (L6–L7) | Explicit Markdown approval/reconciliation, consented Codex handoff and negative owner/provider/source tests | NOT RUN |
+| Real UI (L8) | Browser, independently inspected Electron, narrow/keyboard/theme and movable Chat | NOT RUN |
+
+Design-only `c11-brainstorm` differs from separately unrun H02 Software Map Hunter and does not qualify earlier scoped results.

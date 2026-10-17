@@ -1,0 +1,26 @@
+TASK: Correction 11 / P8 — Manual live brainstorming closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- No correction-version/manifest/lockfile bump; if source has advanced, re-assess rather than roll back.
+
+PREFLIGHT / PROTECTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036/0037, Phase 11 plan, and this stack's README/assessment/implementation plan. Reinspect actual Git HEAD, coherent version, dirty owner work, overlapping tasks, real code and tests before changing source; eaaa910b1b is a planning reference, not execution pin. Implementation requires a *later* explicit owner Run; no /activate gate. Runner owns P1-P7 commits, agent never self-commits or resets/stashes/cleans others' work. No manifest/pin/lockfile changes, forced provider/model/default, second Chat, direct model shell/file/Work/AgentRun grant, silent hosted fallback, false status Green, or Phase 12 activation.
+
+MODE: T3 MANUAL BROWSER + INDEPENDENT ELECTRON QUALIFICATION, NOT A HEADLESS RUNNER TASK
+On disposable project(s), record actual final source SHA, version/dirty status, matching running bundle, saved Chat/model identity and **actually loaded** Q4_K_M model/context (32768 provisional reference, not a default). Do not claim real model/native UI from mock/unit/build.
+
+L1 — See each fully validated provisional phase/checkpoint/dependency/correction node/edge appear in **existing** Roadmap without Refresh, distinct from Accepted Draft and Canonical; no fake Green.
+L2 — Real brainstorming: user explores alternatives, changes requirements and answers insightful questions; assistant gives useful prose/no-action rather than dumping JSON.
+L3 — Selected real local model creates phase and >=3 checkpoints with bounded steps/cancellation; no-model manual route and selected-model no-hosted fallback confirmed.
+L4 — Conversational split/reorder/dependency/correction + manual node edits, reject one, accept one, undo eligible action, cancel ongoing request and refuse stale/foreign/malformed actions.
+L5 — Reopen Chat/canvas, restart backend and confirm durable accepted draft/confirmed decisions, inert pending approval after restart, project separation and one Chat lease.
+L6 — Explicit final approval writes user-approved linked Markdown; external Markdown edit reconciles safely; Codex -> Dope -> Codex read/edit/review handoff only if available and authorized, otherwise Evidence Gap.
+L7 — Verify canonical/Markdown bytes not changed before approval, injected tool payload/read-only/stale/cross-project/consent rejection, record actual egress test scope.
+L8 — Real browser and independently inspected Electron where available; left/right/bottom/center Chat, narrow, keyboard/focus/Dope Dark/alternate theme, readable activity.
+
+Write `docs/tasks/c11-brainstorm/closeout.md` **only after actual manual run** with exact source, screenshots/logs if captured, measured model/context, every L1-L8 PASS/FAIL/BLOCKED/NOT RUN and residual gaps. One final-source `npm run check` if needed; do not double-run included builds. No fake evidence or Phase 11-wide Green. Preserve H02, earlier H1/H2/UX-003 scoped qualifications, historical Not Green and Phase 12 inactivity. No self-commit.
