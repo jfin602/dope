@@ -191,3 +191,7 @@ Dope regains planning as a graph-centered product rather than restoring Phase 3.
 ## Forward amendment — ADR 0036 (2026-10-12)
 
 Roadmap checkpoints may reference existing Planning Maps/WorkItems, but Roadmap reordering never changes architectural basis, accepted target, WorkItem completion, transformation staleness or owner-controlled adoption. Manual/AI actions use the real revision-validated planning owner. Design only; Phase 5 qualification remains historical.
+
+## Forward integration — ADR 0038 Planning Bridge (2026-10-16, documentation only)
+
+The owner-approved [Planning Bridge](0038-planning-bridge-and-idea-to-implementation-workflow.md) **consumes** this ADR's existing `PlanningMap -> PlannedTransformation -> WorkItem` ontology. An approved Roadmap checkpoint may guide evidence-backed current-state analysis and open/focus a Planning Map; transformations remain target intent with explicit basis/rebase and independent `Adopt Target`. Human-reviewed WorkItems become inputs to editable generated `docs/tasks/` stacks, **not** AgentTasks, automatic architecture writes or a second plan. Stack approval and later explicit Run are separate. Reconciliation still uses freshly observed Physical Map evidence and requires developer closeout; no inferred Green. Small fixes need not create fake transformations or WorkItems when architecture planning is genuinely N/A. ADR 0017's lifecycle, persistence and historical Phase 5 qualification are unchanged. Design authority only; see [PB1–PB8](../planning/planning-bridge/plan.md).
