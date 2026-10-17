@@ -1,0 +1,92 @@
+/** Verified UI guidance for Chat grounding. This data grants no action or tool authority. */
+export const DOPE_CAPABILITY_HELP_VERSION = '0.11.5' as const;
+
+export type DopeHelpId = 'roadmap-change-file' | 'roadmap-refresh' | 'chat-follow' | 'chat-pin' |
+    'ai-center' | 'work' | 'history';
+export type DopeHelpRequirement = 'project' | 'roadmap-write' | 'planning-selection';
+
+export interface DopeHelpEntry {
+    readonly id: DopeHelpId;
+    readonly goal: string;
+    readonly uiPath: string;
+    readonly requires: readonly DopeHelpRequirement[];
+    readonly limitation: string;
+    readonly recovery: string;
+}
+
+/** Labels and paths are checked against their browser registrations in dope-capability-help.test.ts. */
+export const DOPE_CAPABILITY_HELP: readonly DopeHelpEntry[] = [
+    {
+        id: 'roadmap-change-file', goal: 'Replace the active linked Roadmap Markdown file',
+        uiPath: 'Roadmap > Roadmap Markdown and setup > Change linked file',
+        requires: ['project', 'roadmap-write'],
+        limitation: 'Chat cannot change the link. The project owner must preview and explicitly confirm a valid replacement; the old Markdown file remains on disk.',
+        recovery: 'If preview is blocked by source changes, pending sync or permissions, keep the current link, review the source state and Refresh Roadmap before retrying.'
+    },
+    {
+        id: 'roadmap-refresh', goal: 'Recheck Roadmap and linked Markdown source state',
+        uiPath: 'Roadmap > Refresh Roadmap > Roadmap Markdown and setup',
+        requires: ['project'],
+        limitation: 'Refresh reports source-changed, conflict, relink-needed and pending-sync states; it does not approve or apply source changes.',
+        recovery: 'Open Roadmap Markdown and setup to review the linked path and source status; resolve the reported conflict or pending sync before retrying.'
+    },
+    {
+        id: 'chat-follow', goal: 'Follow the active planning selection in the saved Chat',
+        uiPath: 'Chat > context menu > Follow active planning selection',
+        requires: ['project'],
+        limitation: 'Following changes Chat context selection, not the Roadmap or permission to edit it.',
+        recovery: 'Open one project and select a checkpoint or Planning Map, then check the Chat context label.'
+    },
+    {
+        id: 'chat-pin', goal: 'Keep the selected checkpoint or Planning Map in Chat context',
+        uiPath: 'Chat > context menu > Pin selected checkpoint / Planning Map',
+        requires: ['project', 'planning-selection'],
+        limitation: 'Pin is unavailable without a current planning selection and does not grant Chat write authority.',
+        recovery: 'Select a current checkpoint or Planning Map, then reopen the Chat context menu; use Follow active planning selection if the pin is stale.'
+    },
+    {
+        id: 'ai-center', goal: 'Inspect or configure AI connections and roles',
+        uiPath: 'AI Center (left sidebar bottom menu) > Open AI Center',
+        requires: [],
+        limitation: 'Opening AI Center does not select a model for this Chat, consent to hosted use or grant provider permissions.',
+        recovery: 'If a connection needs attention, open AI Center and review its status before choosing a model explicitly.'
+    },
+    {
+        id: 'work', goal: 'Open saved Work',
+        uiPath: 'Dope: Open Work',
+        requires: ['project'],
+        limitation: 'Work has separate execution and approval authority; ordinary Chat cannot invoke Work or inherit its permissions.',
+        recovery: 'Open one project folder, then use Dope: Open Work to inspect available Work and its review state.'
+    },
+    {
+        id: 'history', goal: 'Find and reopen a saved project activity target',
+        uiPath: 'Dope: Open History',
+        requires: ['project'],
+        limitation: 'History is a read-only projection; an exact target may be stale or unavailable.',
+        recovery: 'Use Refresh History and retry; if the target remains unavailable, open its owner directly.'
+    }
+] as const;
+
+export interface DopeHelpAvailability {
+    readonly projectOpen: boolean;
+    readonly canWriteRoadmap: boolean;
+    readonly hasPlanningSelection: boolean;
+    /** Current build/registration availability; omit for the verified built-in surface set. */
+    readonly features?: ReadonlySet<DopeHelpId>;
+}
+
+export interface DopeHelpProjection extends DopeHelpEntry {
+    readonly available: boolean;
+    readonly unavailableReason?: string;
+}
+
+export function projectDopeCapabilityHelp(state: DopeHelpAvailability): readonly DopeHelpProjection[] {
+    return DOPE_CAPABILITY_HELP.map(entry => {
+        const unavailableReason = state.features && !state.features.has(entry.id) ? 'This UI feature is unavailable in the current build.' :
+            entry.requires.includes('project') && !state.projectOpen ? 'Open one project folder first.' :
+            entry.requires.includes('roadmap-write') && !state.canWriteRoadmap ? 'Roadmap changes require project owner permission.' :
+            entry.requires.includes('planning-selection') && !state.hasPlanningSelection ? 'Select a current checkpoint or Planning Map first.' :
+            undefined;
+        return { ...entry, available: !unavailableReason, ...(unavailableReason ? { unavailableReason } : {}) };
+    });
+}
