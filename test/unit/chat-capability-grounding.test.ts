@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -8,7 +8,9 @@ import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { selectDopeCapabilityHelp } from '../../packages/theia-extension/lib/node/dope-capability-help.js';
-import type { RoadmapIndex, RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { RoadmapStore, type RoadmapIndex } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
 import type { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
 import type { ProjectMindStore } from '../../packages/project-intelligence/lib/node/project-mind-store.js';
 import type { SoftwareMapIndex } from '../../packages/code-analysis/lib/node/software-map-index.js';
@@ -17,6 +19,66 @@ test('file replacement help does not capture a normal Objective edit', () => {
     assert.equal(selectDopeCapabilityHelp('Unlink this wrong roadmap file'), 'roadmap-change-file');
     assert.equal(selectDopeCapabilityHelp('Change the linked file'), 'roadmap-change-file');
     assert.equal(selectDopeCapabilityHelp('Change the Objective in this Roadmap file'), undefined);
+});
+
+test('one saved local Chat gives current replacement help before and after a confirmed owner switch', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-chat-help-replacement-'));
+    const original = '# Roadmap\n\n## Product Phase 1 — Wrong\nStatus: **NOT GREEN**\nObjective: Old\n';
+    const replacement = '# Roadmap\n\n## Product Phase 2 — Intended\nStatus: **ACTIVE**\nObjective: New\n';
+    const store = new RoadmapStore();
+    let backend: ChatBackend | undefined;
+    try {
+        await writeFile(join(root, 'wrong.md'), original);
+        await writeFile(join(root, 'intended.md'), replacement);
+        const first = await store.acceptImport(root, 0, await previewRoadmapImport(root, 'wrong.md'));
+        const repository = new ChatRepository();
+        const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+            {} as SoftwareMapIndex, repository, store);
+        const observed: string[] = [];
+        const selected = { connectionId: 'local', modelId: 'selected' };
+        const models = { list: async () => ({ connections: [{ id: 'local', providerId: 'local', ready: true,
+            models: [{ id: 'selected', label: 'Selected local', usable: true,
+                capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 4096 } }] }] }),
+        async *generate(selection: typeof selected, request: { messages: { content: string }[] }) {
+            assert.deepEqual(selection, selected);
+            const help = request.messages.find(message => message.content.includes('Dope UI help'))?.content ?? '';
+            observed.push(help);
+            assert.match(help, /Chat cannot change the link/);
+            assert.match(help, /Change linked file/);
+            yield { type: 'complete' as const, text: JSON.stringify({ type: 'no-action',
+                message: 'Nothing changed. Roadmap > Roadmap Markdown and setup > Change linked file lets you review and confirm a replacement.' }) };
+        } };
+        backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer);
+        const { projectHandle } = await backend.attach(new URL(`file://${root}`).href);
+        const chatId = randomUUID();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Help' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        assert.equal(lease.acquired, true);
+        if (!lease.acquired) return;
+        const request = { projectHandle, chatId, leaseToken: lease.token, selectedModel: selected,
+            content: 'How do I change the wrong linked Roadmap file?', context: [] };
+        assert.equal((await backend.runTurn(request)).proposal, undefined);
+        const preview = await store.previewReplacement(root, 'intended.md');
+        assert.equal(preview.state, 'ready');
+        const next = await store.applyReplacement(root, preview, true);
+        assert.deepEqual(next.checkpoints.map(item => item.id), ['roadmap:intended.md#phase-2']);
+        assert.deepEqual(next.checkpoints.map(item => item.status), ['active']);
+        assert.deepEqual(await readFile(join(root, 'wrong.md'), 'utf8'), original);
+        assert.equal((await backend.runTurn(request)).proposal, undefined);
+        assert.match(observed[0], /wrong\.md \(synced\)/);
+        assert.match(observed[1], /intended\.md \(synced\)/);
+        const saved = (await new ChatRepository().read(root)).chats;
+        assert.equal(saved.length, 1);
+        assert.equal(saved[0].id, chatId);
+        assert.equal(saved[0].messages.length, 4);
+        for (const answer of saved[0].messages.filter(message => message.role === 'assistant')) {
+            assert.equal(answer.planningActivity?.status, 'no-action');
+            assert.match(planningOutcome(answer)?.summary ?? '', /Change linked file/);
+            assert.doesNotMatch(planningOutcome(answer)?.summary ?? '', /applied|saved/i);
+        }
+        assert.equal((await store.read(root)).revision, first.revision + 1);
+    } finally { backend?.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
 test('linked and unlinked Roadmap help stays no-action, project-scoped, local and within measured context', async () => {

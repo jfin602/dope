@@ -1,6 +1,6 @@
 {
   "name": "@dope/contracts",
-  "version": "0.11.6",
+  "version": "0.11.7",
   "private": true,
   "main": "lib/project-mind.js",
   "types": "lib/project-mind.d.ts",
@@ -8,7 +8,7 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@dope/ai": "0.11.6",
-    "@dope/agent-core": "0.11.6"
+    "@dope/ai": "0.11.7",
+    "@dope/agent-core": "0.11.7"
   }
 }

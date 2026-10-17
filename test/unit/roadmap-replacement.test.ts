@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
+import { RoadmapLinkedObserver } from '../../packages/project-intelligence/lib/node/roadmap-linked-observer.js';
 
 const oldPath = 'docs/roadmap/mvp-roadmap.md';
 const newPath = 'ROADMAP.md';
@@ -249,4 +250,37 @@ test('replacement does not carry an old Green status into the new active source'
     assert.deepEqual(next.checkpoints.map(item => item.status), ['active']);
     assert.ok(next.checkpoints.every(item => item.source?.path === newPath));
     assert.equal(next.linkedDocument?.sections.length, 1);
+}));
+
+test('replacement rebinds observation to the new source and restart sees only its active link', async () => fixture(async (root, store) => {
+    const notifications: string[] = [];
+    const observer = new RoadmapLinkedObserver(project => store.read(project), (project, projectId) => {
+        assert.equal(project, root);
+        notifications.push(projectId);
+    });
+    const oldBytes = await readFile(join(root, oldPath));
+    try {
+        await observer.observe(root);
+        const next = await store.applyReplacement(root, await store.previewReplacement(root, newPath), true);
+        await observer.rebindIfObserving(root);
+        assert.equal((await new RoadmapStore().read(root)).linkedDocument?.path, newPath);
+        assert.deepEqual(await readFile(join(root, oldPath)), oldBytes);
+        await writeFile(join(root, oldPath), `${original}\nOld source changed\n`);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        assert.deepEqual(notifications, []);
+        await writeFile(join(root, newPath), replacement.replace('Objective: New target', 'Objective: Updated target'));
+        for (let i = 0; i < 20 && !notifications.length; i++)
+            await new Promise(resolve => setTimeout(resolve, 50));
+        assert.deepEqual(notifications, [next.projectId]);
+        assert.equal((await new RoadmapStore().previewDocumentSync(root)).state, 'source-changed');
+        await observer.observe(undefined);
+        const restarted = new RoadmapLinkedObserver(project => new RoadmapStore().read(project),
+            (_project, projectId) => notifications.push(projectId));
+        try {
+            await restarted.observe(root);
+            const refreshed = await store.applyDocumentSync(root, await store.previewDocumentSync(root));
+            assert.equal(refreshed.checkpoints[0].objective, 'Updated target');
+            assert.equal(refreshed.linkedDocument?.path, newPath);
+        } finally { restarted.dispose(); }
+    } finally { observer.dispose(); }
 }));

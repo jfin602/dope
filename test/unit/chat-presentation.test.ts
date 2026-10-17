@@ -63,6 +63,10 @@ test('completed backend-validated no-action presents its message once without im
     assert.equal(planningOutcome({ ...message,
         content: JSON.stringify({ type: 'no-action', message: '<script>literal text</script>' }) })?.summary,
     '<script>literal text</script>'); // The widget inserts this through textContent, never HTML.
+    for (const claim of ['I applied the edit.', 'The Roadmap was updated.', 'We have saved the new source.']) {
+        assert.match(planningOutcome({ ...message, content: JSON.stringify({ type: 'no-action', message: claim }) })?.summary ?? '',
+            /Nothing was written/);
+    }
 });
 
 test('untrusted Markdown links permit web/mail destinations only', () => {

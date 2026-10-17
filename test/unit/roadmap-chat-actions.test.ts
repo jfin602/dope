@@ -110,7 +110,7 @@ test('saved local planning outcome tracks review, denial, apply and next turn wi
     const noAction = await saved();
     assert.equal(noAction.role, 'assistant');
     if (noAction.role !== 'assistant') return;
-    assert.match(planningOutcome(noAction)!.summary, /Nothing was written/);
+    assert.equal(planningOutcome(noAction)!.summary, 'No further edit');
     assert.equal(f.sent.length, 3);
 }));
 
@@ -133,8 +133,7 @@ test('model claims and suggested questions remain inert, with raw no-action text
     assert.equal(answer.planningActivity?.status, 'no-action');
     assert.match(planningOutcome(answer)!.summary, /Nothing was written/);
     assert.doesNotMatch(planningOutcome(answer)!.summary, /applied|shell/i);
-    assert.equal(planningOutcome(answer)!.questions.length, 2);
-    assert.equal(JSON.stringify(answer).includes(planningOutcome(answer)!.questions[0]), false);
+    assert.equal(planningOutcome(answer)!.questions.length, 0);
     assert.equal((await f.current()).revision, initial.revision);
     assert.equal(f.sent.length, 1);
 }));
@@ -181,7 +180,7 @@ test('a completed local planning retry receives a verified outcome', async () =>
             ownerRevision: initial.revision }] });
     const retried = (await new ChatRepository().read(f.root)).chats[0].messages.at(-1)!;
     assert.equal(retried.role, 'assistant');
-    if (retried.role === 'assistant') assert.match(planningOutcome(retried)!.summary, /Nothing was written/);
+    if (retried.role === 'assistant') assert.equal(planningOutcome(retried)!.summary, 'No safe change');
     assert.equal(f.sent.length, 3);
 }));
 

@@ -32,7 +32,13 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
         const value = raw as Record<string, unknown>;
         if (Object.keys(value).sort().join(',') !== 'message,type' || value.type !== 'no-action' ||
             typeof value.message !== 'string' || !value.message.trim() || value.message.length > 1000) return undefined;
-        return value.message.trim();
+        const reply = value.message.trim();
+        // The backend validates the no-action shape, not the truth of model prose.
+        // Keep contradictory write claims in the inspectable raw JSON, never as the main reply.
+        if (/\b(?:I|we)\s+(?:have\s+)?(?:applied|committed|saved|wrote|updated|changed|deleted|created)\b/i.test(reply) ||
+            /\b(?:was|were|has been|have been)\s+(?:applied|committed|saved|written|updated|changed|deleted|created)\b/i.test(reply))
+            return undefined;
+        return reply;
     } catch { return undefined; }
 }
 
