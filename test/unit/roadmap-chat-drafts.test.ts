@@ -55,6 +55,13 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         const projectId = (await store.read(root)).projectId;
         const turn = (content = 'Plan') => backend.runTurn({ projectHandle, chatId: selected,
             leaseToken: lease.token, selectedModel: { connectionId: 'local', modelId: 'short' }, content });
+        outputs.push(proposal(projectId, 0, { type: 'create-phase', title: 'Wrong action' }),
+            '{"type":"no-action","message":"Chat cannot relink a Roadmap; nothing changed."}');
+        const help = await turn('I linked the wrong Roadmap, how do I change it?');
+        assert.equal(help.proposal, undefined);
+        assert.doesNotMatch(sent.at(-1) ?? '', /noncanonical Roadmap draft|draftRevision/);
+        assert.equal(greenfield.read(handle).revision, 0);
+        assert.equal((await store.read(root)).revision, 0);
         await assert.rejects(backend.runTurn({ projectHandle, chatId: selected, leaseToken: lease.token,
             selectedModel: { connectionId: 'hosted', modelId: 'remote' }, hostedProjectDataAuthorized: true,
             content: 'Plan' }), /requires a local model/);

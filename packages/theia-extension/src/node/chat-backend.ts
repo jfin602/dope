@@ -173,11 +173,11 @@ export class ChatBackend implements ChatService {
         if (!model) throw new Error('Selected model unavailable');
         const grounding = await this.grounder?.ground(root, request.content);
         const connection = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId);
-        const draft = await this.draftContext(root, request.chatId);
+        const helpTurn = !!selectDopeCapabilityHelp(request.content);
+        const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId);
         if (draft && connection?.providerId !== 'local') throw new Error('Greenfield Chat planning requires a local model');
         const localRoadmap = connection?.providerId === 'local' &&
-            (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft ||
-                !!selectDopeCapabilityHelp(request.content));
+            (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn);
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
         const composed = await this.composeTurn(root, chat, request.content, request.context,
@@ -388,8 +388,8 @@ export class ChatBackend implements ChatService {
             return chat.messages[retryIndex - 1].content;
         })() : request.content?.trim() ?? '';
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
-        const draft = await this.draftContext(root, request.chatId);
         const helpTurn = !!selectDopeCapabilityHelp(content);
+        const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId);
         const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn;
         const requestHard: AIRoleHardConstraints = { ...chatHard,
             minimumKnownContextTokens: Math.ceil(Buffer.byteLength(content, 'utf8') / 3) + 4 +
@@ -604,7 +604,8 @@ export class ChatBackend implements ChatService {
                             message.role === 'assistant' && message.execution.status === 'complete'))
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted && !localRoadmap) return preview;
-                    const result = await this.proposal(root, key, assistant.id, request.leaseToken, output, preview.refs, draft);
+                    const result = helpTurn ? {} : await this.proposal(root, key, assistant.id,
+                        request.leaseToken, output, preview.refs, draft);
                     if (localRoadmap) {
                         const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
