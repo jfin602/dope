@@ -10,7 +10,7 @@ import { projectRoadmapTasks, type TaskRoadmapProjection } from '@dope/project-i
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { RoadmapService } from '../roadmap-service';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
-import type { RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { RoadmapLink, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
@@ -24,6 +24,9 @@ import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInit
     roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
     type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
+
+type RoadmapReplacementState = { uri: string; projectId: string; revision: number; path: string;
+    discovery: RoadmapCandidateDiscovery; preview?: RoadmapReplacementPreview; error?: string; busy: boolean; applying?: boolean };
 
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
     select: (id: string) => void; activate: (id: string) => void;
@@ -150,9 +153,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly modelListener;
     private request = 0;
     private importSerial = 0;
+    private replacementSerial = 0;
     private syncPreview?: RoadmapSyncPreview;
     private recovery?: { uri: string; preview?: RoadmapPendingRecoveryPreview; error?: string; busy: boolean };
     private relink?: { uri: string; path: string; preview?: RoadmapRelinkPreview; error?: string; busy: boolean };
+    private replacement?: RoadmapReplacementState;
     private importState?: { uri: string; projectId: string; revision: number; discovery: RoadmapCandidateDiscovery;
         preview?: RoadmapImportPreview; path?: string; busy: boolean; showChooser: boolean; message?: string };
     private createState?: { uri: string; projectId: string; handle: string; draft: GreenfieldDraft;
@@ -346,6 +351,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         catch (error) { this.status.textContent = `Roadmap observation unavailable: ${String(error)}. Use Refresh to retry.`; return; }
         if (this.isDisposed || request !== this.request) return;
         ++this.importSerial;
+        ++this.replacementSerial;
+        this.replacement = undefined;
         const oldDraft = this.createState;
         if (oldDraft && oldDraft.uri !== this.projectUri) void this.service.cancelDraft(oldDraft.handle);
         if (oldDraft && oldDraft.uri !== this.projectUri) this.createState = undefined;
@@ -866,7 +873,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const linkedDocument = this.inspector.index?.linkedDocument;
         const sourceState = this.syncPreview?.state ?? linkedDocument?.syncState;
         const approvalPending = !!this.importState?.preview || !!this.createState?.preview ||
-            !!this.relink?.preview || !!this.recovery?.preview;
+            !!this.relink?.preview || !!this.recovery?.preview || !!this.replacement?.preview;
         const needsReview = sourceState === 'conflict' || sourceState === 'relink-needed' || sourceState === 'source-changed' ||
             !!linkedDocument?.pending || approvalPending || !!this.sourceError || this.syncChecking;
         const sourceNotice = this.sourceError ? 'Source check failed · review' :
@@ -895,6 +902,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const ownership = document.createElement('p');
             ownership.textContent = 'The linked Markdown stays at its original path. Review external changes before applying supported title, objective, order or prose fields; status evidence is preserved.';
             this.importEntry.append(ownership);
+            const change = document.createElement('button'); change.type = 'button'; change.textContent = 'Change linked file';
+            change.className = 'dope-roadmap-change-linked';
+            change.onclick = () => void this.discoverReplacement(); this.importEntry.append(change);
+            if (this.replacement?.uri === this.projectUri && this.replacement.projectId === index.projectId &&
+                this.replacement.revision === index.revision) this.renderReplacement();
             if (sync?.sourceHash && sync.sourceHash !== sync.acceptedHash) {
                 const hashes = document.createElement('p');
                 hashes.textContent = `Accepted source SHA-256 ${sync.acceptedHash}; current source SHA-256 ${sync.sourceHash}.`;
@@ -1099,6 +1111,135 @@ export class RoadmapCanvasWidget extends BaseWidget {
         } catch (error) { if (this.relink === state) { state.preview = undefined;
             state.error = `Relink failed: ${String(error)}. Refresh and review before retrying.`; } }
         finally { if (this.relink === state) { state.busy = false; this.renderImportEntry(); } }
+    }
+
+    private renderReplacement(): void {
+        const state = this.replacement;
+        if (!state) return;
+        const heading = document.createElement('h3'); heading.textContent = 'Change linked file';
+        this.importEntry.append(heading);
+        const warning = document.createElement('p');
+        warning.textContent = 'This replaces the active project Roadmap. The previous Markdown file remains on disk. Unsynchronized changes or conflicts must be resolved before replacement.';
+        this.importEntry.append(warning);
+        const chooser = document.createElement('div'); chooser.className = 'dope-roadmap-import-chooser';
+        const label = document.createElement('label'); label.textContent = 'New project Markdown file';
+        const select = document.createElement('select'); select.setAttribute('aria-label', 'Replacement Markdown Roadmap');
+        const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Choose a different Roadmap file';
+        select.append(placeholder);
+        for (const candidate of state.discovery.candidates.filter(item => item.path !== this.inspector.index?.linkedDocument?.path)) {
+            const option = document.createElement('option'); option.value = candidate.path;
+            option.textContent = `${candidate.path} (${candidate.bytes} bytes)`; select.append(option);
+        }
+        select.value = state.path;
+        select.disabled = state.busy;
+        select.onchange = () => void this.previewReplacement(select.value);
+        label.append(select);
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel';
+        cancel.disabled = !!state.applying;
+        cancel.onclick = () => { ++this.replacementSerial; this.replacement = undefined; this.renderImportEntry();
+            this.importEntry.querySelector<HTMLButtonElement>('.dope-roadmap-change-linked')?.focus(); };
+        chooser.append(label, cancel); this.importEntry.append(chooser);
+        if (state.discovery.diagnostics.length) this.appendImportDiagnostics('Discovery diagnostics', state.discovery.diagnostics);
+        if (!state.discovery.candidates.some(item => item.path !== this.inspector.index?.linkedDocument?.path) && !state.busy) {
+            const empty = document.createElement('p'); empty.textContent = 'No other project Markdown Roadmap found. Add a file and try again.';
+            this.importEntry.append(empty);
+        }
+        if (state.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
+            error.textContent = state.error; this.importEntry.append(error); }
+        const preview = state.preview;
+        if (!preview) return;
+        const summary = document.createElement('p');
+        summary.textContent = `${preview.previousPath} → ${preview.path}. ${preview.replacementWarning} ` +
+            `${preview.removedCheckpointIds.length} active checkpoint(s) removed, ${preview.addedCheckpointIds.length} added, ` +
+            `${preview.retainedCheckpointIds.length} retained; ${preview.atRiskCheckpoints.length} existing checkpoint(s) have state or links at risk.`;
+        this.importEntry.append(summary);
+        if (preview.atRiskCheckpoints.length) this.appendImportDiagnostics('Active Roadmap state at risk',
+            preview.atRiskCheckpoints.map(item => `${item.title} (${item.status}; ${item.dependencies} dependencies, ${item.links} links)`));
+        if (preview.diagnostics.length) this.appendImportDiagnostics('Replacement diagnostics', preview.diagnostics.map(item =>
+            `${item.severity}: ${item.path}${item.line ? `:${item.line}` : ''}: ${item.message}`));
+        if (preview.state !== 'ready') {
+            const blocked = document.createElement('p'); blocked.setAttribute('role', 'alert');
+            blocked.textContent = 'Replacement cannot be confirmed. ' +
+                preview.diagnostics.filter(item => item.severity === 'blocking').slice(0, 3).map(item => item.message).join(' ') +
+                ' Resolve the listed source, conflict or unsynchronized changes and preview again.';
+            this.importEntry.append(blocked);
+            return;
+        }
+        const confirm = document.createElement('button'); confirm.type = 'button';
+        confirm.textContent = 'Confirm replacing active Roadmap'; confirm.disabled = state.busy;
+        confirm.onclick = () => void this.applyReplacement(preview);
+        this.importEntry.append(confirm);
+    }
+
+    private currentReplacement(state: RoadmapReplacementState, serial: number): boolean {
+        return !this.isDisposed && this.replacement === state && serial === this.replacementSerial &&
+            this.projectUri === state.uri && this.inspector.index?.projectId === state.projectId &&
+            this.inspector.index.revision === state.revision;
+    }
+
+    private async discoverReplacement(): Promise<void> {
+        const uri = this.projectUri, index = this.inspector.index;
+        if (!uri || !index?.linkedDocument) return;
+        const serial = ++this.replacementSerial;
+        const state: RoadmapReplacementState = { uri, projectId: index.projectId, revision: index.revision, path: '',
+            discovery: { candidates: [], diagnostics: [] }, busy: true };
+        this.replacement = state; this.renderImportEntry();
+        try {
+            const discovery = await this.service.discoverImports(uri);
+            if (!this.currentReplacement(state, serial)) return;
+            state.discovery = discovery;
+        } catch (error) {
+            if (!this.currentReplacement(state, serial)) return;
+            state.error = `Could not list Roadmaps: ${String(error)}. Retry or Cancel.`;
+        } finally {
+            if (this.currentReplacement(state, serial)) {
+                state.busy = false; this.renderImportEntry();
+                this.importEntry.querySelector<HTMLSelectElement>('select[aria-label="Replacement Markdown Roadmap"]')?.focus();
+            }
+        }
+    }
+
+    private async previewReplacement(path: string): Promise<void> {
+        const prior = this.replacement;
+        if (!prior || prior.busy) return;
+        const serial = ++this.replacementSerial;
+        const state: RoadmapReplacementState = { ...prior, path, preview: undefined, error: undefined, busy: !!path };
+        this.replacement = state; this.renderImportEntry();
+        if (!path) { this.importEntry.querySelector<HTMLSelectElement>('select[aria-label="Replacement Markdown Roadmap"]')?.focus(); return; }
+        try {
+            const preview = await this.service.previewReplacement(state.uri, path);
+            if (this.currentReplacement(state, serial)) state.preview = preview;
+        } catch (error) {
+            if (this.currentReplacement(state, serial)) state.error = `Replacement preview failed: ${String(error)}. Choose another file or retry.`;
+        } finally {
+            if (this.currentReplacement(state, serial)) { state.busy = false; this.renderImportEntry();
+                this.importEntry.querySelector<HTMLSelectElement>('select[aria-label="Replacement Markdown Roadmap"]')?.focus(); }
+        }
+    }
+
+    private async applyReplacement(preview: RoadmapReplacementPreview): Promise<void> {
+        const state = this.replacement;
+        if (!state || state.busy || state.preview !== preview || preview.state !== 'ready') return;
+        const serial = ++this.replacementSerial;
+        state.busy = true; state.applying = true; state.error = undefined; this.renderImportEntry();
+        try {
+            const result = await this.service.applyReplacement(state.uri, preview, true);
+            if (!this.currentReplacement(state, serial)) return;
+            if (result.projectId !== state.projectId || result.revision <= state.revision ||
+                result.linkedDocument?.path !== preview.path) throw new Error('Replacement acknowledgement did not match the selected source');
+            this.inspector.setSnapshot(state.uri, result);
+            await this.refresh();
+            if (this.projectUri === state.uri && this.inspector.index?.revision === result.revision)
+                this.status.textContent = `Linked ${preview.path} as the active Roadmap. Previous Markdown remains on disk.`;
+        } catch (error) {
+            if (this.currentReplacement(state, serial)) {
+                state.preview = undefined;
+                state.error = `Replacement could not be confirmed: ${String(error)}. Refresh and preview before retrying.`;
+            }
+        } finally {
+            if (this.currentReplacement(state, serial)) { state.busy = false; state.applying = false; this.renderImportEntry();
+                this.importEntry.querySelector<HTMLSelectElement>('select[aria-label="Replacement Markdown Roadmap"]')?.focus(); }
+        }
     }
 
     private appendImportDiagnostics(title: string, diagnostics: string[]): void {

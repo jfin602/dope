@@ -36,3 +36,27 @@ test('toolbar still exposes every source warning and approval while the overlay 
     assert.match(widget, /Cancel draft/);
     assert.match(widget, /this\.syncPreview !== preview \|\| this\.syncApplying/);
 });
+
+test('linked source replacement is discoverable, previewed, confirmed and kept separate from moved-file relink', () => {
+    const render = widget.slice(widget.indexOf('private renderImportEntry('), widget.indexOf('private async applySync('));
+    const replacement = widget.slice(widget.indexOf('private renderReplacement('), widget.indexOf('private appendImportDiagnostics('));
+    assert.match(render, /if \(index\.linkedDocument\) \{/);
+    assert.match(render, /change\.textContent = 'Change linked file'/);
+    assert.match(render, /this\.renderReplacement\(\)/);
+    assert.match(render, /sync\?\.state === 'relink-needed'.*Relink Markdown/s);
+    assert.match(replacement, /this\.service\.discoverImports\(uri\)/);
+    assert.match(replacement, /this\.service\.previewReplacement\(state\.uri, path\)/);
+    assert.match(replacement, /this\.service\.applyReplacement\(state\.uri, preview, true\)/);
+    assert.match(replacement, /previousPath\} → \$\{preview\.path/);
+    assert.match(replacement, /previous Markdown file remains on disk/);
+    assert.match(replacement, /Replacement diagnostics/);
+    assert.match(replacement, /preview\.state !== 'ready'/);
+    assert.match(replacement, /Confirm replacing active Roadmap/);
+    assert.match(replacement, /cancel\.onclick = .*this\.replacement = undefined/);
+    assert.match(replacement, /cancel\.disabled = !!state\.applying/);
+    assert.match(replacement, /select\.onchange = \(\) => void this\.previewReplacement\(select\.value\)/);
+    assert.match(replacement, /querySelector<HTMLSelectElement>\('select\[aria-label="Replacement Markdown Roadmap"\]'\)\?\.focus\(\)/);
+    assert.match(replacement, /result\.linkedDocument\?\.path !== preview\.path/);
+    assert.match(replacement, /this\.status\.textContent = `Linked \$\{preview\.path\}/);
+    assert.doesNotMatch(replacement, /openChatPanel|beginCreate\('chat'\)/);
+});
