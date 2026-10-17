@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { HistoryBackend } from '../../packages/theia-extension/lib/node/history-backend.js';
 import { HISTORY_PREVIEW_MAX_BYTES, HISTORY_PREVIEW_MAX_TOKENS } from '../../packages/contracts/lib/history-context-preview.js';
+import { historyPreviewDescription } from '../../packages/theia-extension/lib/browser/history-presentation.js';
 
 const source = (path: string) => readFileSync(new URL(`../../packages/theia-extension/src/${path}`, import.meta.url), 'utf8');
 
@@ -59,7 +60,44 @@ test('panel does not preview on open and has no provider or owner mutation path'
     assert.match(widget, /action\.onclick = async/);
     assert.match(widget, /Preview selected evidence/);
     assert.match(widget, /this\.connect\(\)\.preview\(handle/);
+    assert.match(widget, /historyPreviewDescription\(item\)/);
+    assert.match(widget, /Technical evidence details/);
+    assert.match(widget, /document\.createElement\('details'\)/);
+    assert.doesNotMatch(widget, /details\.open\s*=\s*true/);
     assert.doesNotMatch(backend, /readTranscript|readMessages|candidateDiff|fetch\(|model\.invoke|\.startTask\(/);
+});
+
+test('bounded preview metadata reads as activity, status, time and uncertainty without exposing IDs', () => {
+    const base = { source: 'git' as const, sourceId: 'private-source-id',
+        category: 'git-snapshot' as const, occurredAt: null, observedAt: '2026-10-12T10:00:00.000Z',
+        fingerprint: 'f'.repeat(64), summary: 'Current working tree has changes; change time and author are unknown' };
+    const dirty = historyPreviewDescription({ ...base, ownerKind: 'git-dirty' });
+    assert.equal(dirty.title, 'Working tree changes');
+    assert.match(dirty.summary, /uncommitted changes/);
+    assert.match(dirty.status, /when observed/);
+    assert.match(dirty.time!, /Observed/);
+    assert.match(dirty.uncertainty, /exact change time are unknown/);
+    assert.doesNotMatch(JSON.stringify(dirty), /private-source-id|fingerprint|[a-f]{64}/);
+
+    const run = historyPreviewDescription({ ...base, source: 'agent', ownerKind: 'agent-run',
+        category: 'observation', occurredAt: '2026-10-12T09:00:00.000Z', observedAt: null,
+        summary: 'Run completed; validation passed; review pending; promotion not-applied' });
+    assert.equal(run.status, 'Run: completed · Validation: passed · Review: pending · Promotion: not applied');
+    assert.match(run.uncertainty, /separate/);
+    assert.match(run.time!, /Recorded event/);
+
+    const planning = historyPreviewDescription({ ...base, source: 'planning', ownerKind: 'planning-map',
+        category: 'unknown-or-unavailable', occurredAt: null, observedAt: null,
+        summary: 'planning-map metadata observed' });
+    assert.equal(planning.status, 'Metadata observed');
+    assert.match(planning.uncertainty, /When this occurred is unknown/);
+    assert.doesNotMatch(`${planning.summary} ${planning.status}`, /completed development/);
+
+    const missing = historyPreviewDescription({ ...base, source: 'chat', ownerKind: 'chat',
+        category: 'unknown-or-unavailable', occurredAt: null, observedAt: null,
+        summary: 'Owner metadata missing' });
+    assert.equal(missing.status, 'Metadata missing');
+    assert.match(missing.uncertainty, /could not|does not establish/);
 });
 
 test('whole evidence package obeys caps and Git dirty evidence remains snapshot only', async () => {

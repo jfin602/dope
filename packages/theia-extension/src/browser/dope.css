@@ -130,6 +130,13 @@ body.theia-light:not(.dope-dark) {
 .dope-history-panel button { color: var(--theia-foreground); background: var(--theia-button-secondaryBackground); border: 1px solid var(--theia-widget-border); border-radius: 4px; padding: 4px 7px; cursor: pointer; }
 .dope-history-panel button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-history-panel button:disabled { opacity: .6; cursor: default; }
+.dope-history-preview-items { list-style: none; margin: 0; padding: 0; }
+.dope-history-preview-items h5 { margin: 0 0 5px; font-size: 12px; }
+.dope-history-preview-items details, .dope-history-understanding > div > details { margin-top: 7px; }
+.dope-history-preview-items summary, .dope-history-understanding > div > details > summary { cursor: pointer; }
+.dope-history-preview-items dl { margin: 6px 0; overflow-wrap: anywhere; }
+.dope-history-preview-items dt { font-weight: 600; }
+.dope-history-preview-items dd { margin: 0 0 5px; user-select: text; }
 .dope-ai-launcher:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }
 .dope-ai-launcher-warning { position: absolute; top: 0; right: 0; min-width: 12px; font-weight: 700; color: var(--theia-editor-foreground); background: var(--theia-editor-background); border: 1px solid var(--theia-focusBorder); border-radius: 50%; }
 .dope-ai-center { box-sizing: border-box; height: 100%; overflow: auto; padding: 20px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }

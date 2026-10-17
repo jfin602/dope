@@ -6,7 +6,7 @@ import { HISTORY_PREVIEW_MAX_ITEMS } from '@dope/contracts/lib/history-context-p
 import type { HistorySelection } from '@dope/contracts/lib/history-context-preview';
 import type { HistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
 import { navigateHistory, type HistoryNavigationOwners } from './history-navigation';
-import { historyFocusDescription, historyReadableTime } from './history-presentation';
+import { historyFocusDescription, historyPreviewDescription, historyReadableTime } from './history-presentation';
 
 export const HISTORY_WIDGET_ID = 'dope-history';
 const sourceNames = { chat: 'Chat', planning: 'Planning', 'project-mind': 'Project Mind',
@@ -269,17 +269,47 @@ export class HistoryWidget extends BaseWidget {
                 const currentRoots = await this.workspaces.roots;
                 if (request !== this.request || revision !== previewRevision || currentRoots.length !== 1 || currentRoots[0].resource.toString() !== uri) return;
                 const heading = document.createElement('h4'); heading.textContent = 'Local evidence preview';
-                const privacy = document.createElement('p'); privacy.textContent = preview.privacy;
-                const budget = document.createElement('p');
-                budget.textContent = `${preview.items.length} items · ${preview.bytes}/${4096} bytes · estimated ${preview.estimatedTokens}/${1024} tokens · basis ${preview.evidenceBasis}`;
-                const list = document.createElement('ul');
-                for (const item of preview.items) {
+                const privacy = document.createElement('p');
+                privacy.textContent = 'Selected project metadata only. No model call or external transfer.';
+                const list = document.createElement('ol'); list.className = 'dope-history-preview-items';
+                preview.items.forEach((item, index) => {
+                    const description = historyPreviewDescription(item);
                     const row = document.createElement('li');
-                    row.textContent = `${item.category} · ${item.ownerKind} · ${item.source}:${item.sourceId} · ${item.summary} · event ${item.occurredAt ?? 'unknown'} · observed ${item.observedAt ?? 'unknown'} · fingerprint ${item.fingerprint}`;
-                    list.append(row);
-                }
-                const omitted = document.createElement('p'); omitted.textContent = preview.omissions.join('; ');
-                output.replaceChildren(heading, privacy, budget, list, omitted);
+                    const title = document.createElement('h5'); title.textContent = `${index + 1}. ${description.title}`;
+                    const summary = document.createElement('p'); summary.textContent = description.summary;
+                    const status = document.createElement('p'); status.textContent = `Known status: ${description.status}`;
+                    const uncertainty = document.createElement('p'); uncertainty.textContent = description.uncertainty;
+                    row.append(title, summary, status);
+                    if (description.time) {
+                        const time = document.createElement('p'); time.textContent = description.time;
+                        row.append(time);
+                    }
+                    row.append(uncertainty);
+                    const details = document.createElement('details');
+                    const detailsLabel = document.createElement('summary'); detailsLabel.textContent = 'Technical evidence details';
+                    const metadata = document.createElement('dl');
+                    const fields = [
+                        ['Category', item.category], ['Owner type', item.ownerKind], ['Source', item.source],
+                        ['Source ID', item.sourceId], ['Original metadata summary', item.summary],
+                        ['Event timestamp', item.occurredAt ?? 'unknown'],
+                        ['Observation timestamp', item.observedAt ?? 'unknown'], ['Fingerprint', item.fingerprint]
+                    ];
+                    for (const [label, value] of fields) {
+                        const term = document.createElement('dt'); term.textContent = label;
+                        const definition = document.createElement('dd'); definition.textContent = value;
+                        metadata.append(term, definition);
+                    }
+                    details.append(detailsLabel, metadata); row.append(details); list.append(row);
+                });
+                const omitted = document.createElement('p');
+                omitted.textContent = preview.omissions.length ? preview.omissions.join('; ') : '';
+                const technical = document.createElement('details');
+                const technicalLabel = document.createElement('summary'); technicalLabel.textContent = 'Technical evidence details for preview';
+                const budget = document.createElement('p');
+                budget.textContent = `${preview.items.length} items · ${preview.bytes}/${4096} bytes · estimated ${preview.estimatedTokens}/${1024} tokens · basis ${preview.evidenceBasis} · project ${preview.projectId}`;
+                const privacyContract = document.createElement('p'); privacyContract.textContent = preview.privacy;
+                technical.append(technicalLabel, budget, privacyContract);
+                output.replaceChildren(heading, privacy, list, omitted, technical);
                 confirmedPreview = preview; explain.disabled = !preview.items.length;
             } catch (error) {
                 if (request === this.request && revision === previewRevision)

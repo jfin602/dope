@@ -1,4 +1,5 @@
 import type { HistoryContinuation, HistoryEntry, HistoryOwnerRef } from '@dope/contracts/lib/history';
+import type { HistoryPreviewItem } from '@dope/contracts/lib/history-context-preview';
 
 const ownerNames: Record<HistoryOwnerRef['kind'], string> = {
     chat: 'Chat', 'planning-map': 'Planning Map', 'work-item': 'Work item',
@@ -36,4 +37,46 @@ export function historyReadableTime(value: string): string {
     const date = new Date(value);
     return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(undefined,
         { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'time unavailable';
+}
+
+/** Describe only fields in the bounded preview; owner titles and contents are deliberately absent. */
+export function historyPreviewDescription(item: HistoryPreviewItem):
+    { title: string; summary: string; status: string; time?: string; uncertainty: string } {
+    const title = ownerNames[item.ownerKind];
+    const time = item.occurredAt ? `Recorded event ${historyReadableTime(item.occurredAt)}` :
+        item.observedAt ? `Observed ${historyReadableTime(item.observedAt)}` : undefined;
+    if (item.ownerKind === 'git-dirty') return {
+        title: 'Working tree changes',
+        summary: 'Dope detected uncommitted changes in this project.',
+        status: 'Changes present when observed', time,
+        uncertainty: 'Change author and exact change time are unknown. File contents and diffs are not included.'
+    };
+    if (item.category === 'unknown-or-unavailable' && item.summary.startsWith('Owner metadata ')) {
+        const availability = item.summary.slice('Owner metadata '.length);
+        return { title, summary: `Selected ${title.toLowerCase()} metadata could not be verified.`,
+            status: `Metadata ${availability}`, time,
+            uncertainty: 'The available metadata does not establish what happened. Refresh History before relying on this item.' };
+    }
+    if (item.ownerKind === 'agent-run') return {
+        title, summary: 'Dope observed the selected Work run metadata.',
+        status: item.summary.replace(/^Run ([^;]+); validation ([^;]+); review ([^;]+); promotion (.+)$/u,
+            (_full, run: string, validation: string, review: string, promotion: string) =>
+                `Run: ${run} · Validation: ${validation} · Review: ${review} · Promotion: ${promotion.replaceAll('-', ' ')}`), time,
+        uncertainty: 'Run state, validation, review, and promotion are separate. This preview does not include run contents.'
+    };
+    if (item.ownerKind === 'work-item') return {
+        title, summary: 'Dope observed the selected work item metadata.',
+        status: item.summary.replace(/^WorkItem state: /u, 'Work item: ').replaceAll('in-progress', 'in progress'), time,
+        uncertainty: 'This state alone does not verify implementation or approval.'
+    };
+    if (item.ownerKind === 'git-commit') return {
+        title, summary: 'Dope observed Git commit metadata for this project.',
+        status: 'Commit metadata observed', time,
+        uncertainty: 'This preview does not include the commit contents or establish its significance.'
+    };
+    return { title, summary: `Dope observed selected ${title.toLowerCase()} metadata in this project.`,
+        status: 'Metadata observed', time,
+        uncertainty: item.occurredAt || item.observedAt ?
+            'Metadata observation does not establish a completed development action. Contents are not included.' :
+            'When this occurred is unknown. Metadata observation does not establish a completed development action. Contents are not included.' };
 }
