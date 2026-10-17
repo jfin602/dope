@@ -132,6 +132,53 @@ test('current grounding and Roadmap instructions precede saved history in model 
   assert.match(result.messages.at(-1)!.content, /Current question/);
 });
 
+test('saved applied decisions survive reload and selected Roadmap facts outrank optional files', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-planning-memory-'));
+  try {
+    await writeFile(join(root, 'large.txt'), 'optional'.repeat(10000));
+    const active = chat();
+    active.settings.context.maxInputTokens = 1200;
+    active.settings.context.allowedSources.push('roadmap-checkpoint');
+    const applied = { schemaVersion: 1 as const, id: id(), role: 'assistant' as const,
+      createdAt: active.createdAt,
+      content: JSON.stringify({ type: 'roadmap-proposal', action: { type: 'edit', id: 'chosen', title: 'Approved title' } }),
+      execution: { schemaVersion: 1 as const, id: id(), status: 'complete' as const,
+        selectedModel: { connectionId: 'local', modelId: 'model' }, startedAt: active.createdAt,
+        finishedAt: active.createdAt },
+      planningActivity: { schemaVersion: 1 as const, kind: 'roadmap-proposal' as const,
+        status: 'applied' as const, refs: [], proposalId: id(), appliedRevision: 3 } };
+    active.messages = [applied, { ...applied, id: id(),
+      content: JSON.stringify({ type: 'roadmap-proposal', action: { type: 'edit', id: 'next', title: 'Next approved' } }),
+      planningActivity: { ...applied.planningActivity, proposalId: id(), appliedRevision: 4 } }];
+    const persisted = JSON.parse(JSON.stringify(active)) as Chat;
+    const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+      {} as SoftwareMapIndex, {} as ChatRepository,
+      { read: async () => ({ projectRoot: root, projectId: 'project-a', revision: 3,
+        checkpoints: [
+          { id: 'dependency', kind: 'phase', title: 'Base', objective: 'Base goal', order: 0,
+            status: 'green', dependencies: [], links: [], evidence: [] },
+          { id: 'chosen', kind: 'milestone', title: 'Approved title', objective: 'Current goal', order: 1,
+            status: 'active', dependencies: ['dependency'], links: [], evidence: [] },
+          { id: 'next', kind: 'milestone', title: 'Next', objective: 'Next goal', order: 2,
+            status: 'unknown', dependencies: [], links: [], evidence: [] }] }) } as never);
+    const selection = { kind: 'roadmap-checkpoint' as const, id: 'chosen', projectId: 'project-a', ownerRevision: 3 };
+    const result = await composer.compose(root, persisted, 'What next?',
+      [{ kind: 'file', id: 'large.txt' }, selection],
+      { conversationalText: true, streaming: true, contextWindowTokens: 1200 });
+    const context = result.messages.at(-1)!.content;
+    assert.match(context, /Current goal/);
+    assert.match(context, /verifiedDependencies/);
+    assert.match(context, /Next goal/);
+    assert.match(context, /Approved title/);
+    assert.match(context, /Next approved/);
+    assert.equal(result.refs[0].kind, 'roadmap-checkpoint');
+    assert.ok(result.usedTokens <= result.budgetTokens);
+    await assert.rejects(composer.compose(root, persisted, 'Question',
+      [{ ...selection, projectId: 'project-b' }],
+      { conversationalText: true, streaming: true, contextWindowTokens: 1200 }), /Stale or foreign Roadmap/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('loaded context caps preview below Chat policy and omits oversized context', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-loaded-context-'));
   try {

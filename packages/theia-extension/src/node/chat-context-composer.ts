@@ -30,6 +30,29 @@ export class ChatContextComposer {
         private readonly roadmap?: RoadmapStore,
         private readonly planningLinkCurrent?: (root: string, link: RoadmapLink) => Promise<boolean>) {}
 
+    /** Only backend-recorded applied actions are decisions; model prose is never promoted. */
+    private decisionContext(chat: Chat): string | undefined {
+        const applied = chat.messages.filter(message => message.role === 'assistant' &&
+            message.planningActivity?.status === 'applied').slice(-4);
+        const decisions = applied.map(message => {
+            if (message.role !== 'assistant') return undefined;
+            try {
+                const value: unknown = JSON.parse(message.content);
+                if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+                const action = value as Record<string, unknown>;
+                if (!['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence',
+                    'roadmap-draft-proposal', 'roadmap-draft-sequence'].includes(message.planningActivity!.kind)) return undefined;
+                return { appliedRevision: message.planningActivity!.appliedRevision,
+                    action: JSON.stringify(action).slice(0, 600) };
+            } catch { return undefined; }
+        }).filter(item => item !== undefined);
+        const question = [...chat.messages].reverse().find(message => message.role === 'assistant' &&
+            message.planningActivity?.status === 'no-action' && message.content.includes('?'));
+        if (!decisions.length && !question) return undefined;
+        return JSON.stringify({ confirmedAppliedEdits: decisions,
+            ...(question ? { openQuestionFromAssistant: question.content.slice(0, 240) } : {}) });
+    }
+
     private async helpContext(root: string, id: DopeHelpId, selections: ChatContextSelection[], strictJson: boolean):
         Promise<{ instruction: string; guidance: ComposedChatContext['verifiedGuidance'] }> {
         let linkState = '';
@@ -122,7 +145,12 @@ export class ChatContextComposer {
             throw new Error('Stale Roadmap source; select the checkpoint again');
         const related = index.checkpoints.filter(item => item.id !== checkpoint.id &&
             (checkpoint.dependencies.includes(item.id) || item.dependencies.includes(checkpoint.id)));
-        const neighbors = related.slice(0, 2);
+        const ordered = [...index.checkpoints].sort((a, b) => a.order - b.order);
+        const position = ordered.findIndex(item => item.id === checkpoint.id);
+        const neighbors = [...new Map([
+            ...related.slice(0, 2), ...ordered.slice(Math.max(0, position - 1), position),
+            ...ordered.slice(position + 1, position + 2)
+        ].map(item => [item.id, item] as const)).values()].slice(0, 4);
         // A checked linked-document edit changes its file hash without rewriting historical
         // import evidence. The current source citation is authoritative for that file.
         const currentEvidence = (item: RoadmapCheckpoint) => item.evidence.filter(citation =>
@@ -169,6 +197,8 @@ export class ChatContextComposer {
             capabilities: capabilities?.fields ?? { objective: { editable: false, reason: 'No linked editable source' } },
             allowedIntent: capabilities?.fields.objective.editable ? 'set-objective' : null,
             checkpoint: fact(checkpoint, true),
+            verifiedDependencies: related.filter(item => checkpoint.dependencies.includes(item.id))
+                .slice(0, 6).map(item => ({ id: item.id, title: item.title, status: item.status })),
             neighbors: neighbors.map(item => fact(item)), planningMaps: maps }),
             ...(index.checkpoints.length > neighbors.length + 1 || related.length > neighbors.length ||
                 checkpoint.links.length > planningLinks.length ||
@@ -311,9 +341,16 @@ export class ChatContextComposer {
         if (grounding) for (const diagnostic of grounding.diagnostics)
             diagnostics.push({ kind: diagnostic.kind === 'truncated' ? 'truncated' : 'omitted',
                 source: diagnostic.source, message: diagnostic.message });
-        const wrapperTokens = selections.length || grounding?.blocks.length ? tokens('\n\nProject context:\n') : 0;
-        remaining -= wrapperTokens;
-        for (const source of selections) {
+        const orderedSelections = [...selections.filter(source => source.kind === 'roadmap-checkpoint'),
+            ...selections.filter(source => source.kind !== 'roadmap-checkpoint')];
+        const memory = !help && (roadmapAction || chat.messages.some(message => message.role === 'assistant' &&
+            message.planningActivity?.status === 'applied')) ? this.decisionContext(chat) : undefined;
+        const wrapperTokens = selections.length || grounding?.blocks.length || memory ? tokens('\n\nProject context:\n') : 0;
+        const memoryBlock = memory ? `[Saved Chat planning decisions]\n${memory}` : undefined;
+        const memoryTokens = memoryBlock ? tokens(memoryBlock) : 0;
+        remaining -= wrapperTokens + memoryTokens;
+        if (remaining < 0) throw new Error('Confirmed planning decisions exceed selected model input budget');
+        for (const source of orderedSelections) {
             const resolved = await this.resolve(root, chat, source);
             if (resolved.omitted) diagnostics.push({ kind: 'truncated', source: `${source.kind}:${source.id}`, message: resolved.omitted });
             const prefix = `[${source.kind}: ${resolved.label}]\n`;
@@ -344,6 +381,7 @@ export class ChatContextComposer {
                 ...(source.kind === 'selection' ? { start: source.start, end: source.end } : {}),
                 ...(source.kind === 'saved-chat' ? { messageId: source.messageId } : {}) });
         }
+        if (memoryBlock) attached.push(memoryBlock);
         for (const block of grounding?.blocks ?? []) {
             const source = `${block.ref.kind}:${block.ref.id}`;
             const prefix = `[Auto ${block.ref.kind}: ${block.ref.label}]\n`;
