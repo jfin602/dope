@@ -6,11 +6,11 @@ import { HISTORY_PREVIEW_MAX_ITEMS } from '@dope/contracts/lib/history-context-p
 import type { HistorySelection } from '@dope/contracts/lib/history-context-preview';
 import type { HistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
 import { navigateHistory, type HistoryNavigationOwners } from './history-navigation';
+import { historyFocusDescription, historyReadableTime } from './history-presentation';
 
 export const HISTORY_WIDGET_ID = 'dope-history';
 const sourceNames = { chat: 'Chat', planning: 'Planning', 'project-mind': 'Project Mind',
     agent: 'Work', git: 'Git', workbench: 'Workbench' } as const;
-
 export function historyTimeLabel(entry: HistoryEntry): string {
     if (entry.kind === 'snapshot') return `Current snapshot · observed ${entry.observedAt}`;
     return entry.occurredAt ? `Event · ${entry.occurredAt}` : 'Event · time unknown';
@@ -66,7 +66,20 @@ export class HistoryWidget extends BaseWidget {
             this.render(snapshot);
         } catch (error) {
             if (this.isDisposed || request !== this.request) return;
-            this.status.textContent = `History unavailable: ${error instanceof Error ? error.message : 'Unable to read project metadata'}`;
+            this.status.textContent = 'History unavailable';
+            const panel = document.createElement('section'); panel.className = 'dope-history-diagnostics';
+            const heading = document.createElement('h2'); heading.textContent = 'History could not load';
+            const guidance = document.createElement('p');
+            guidance.textContent = 'Check this project’s metadata and read permissions, then refresh History. No source data was changed.';
+            const details = document.createElement('details');
+            const summary = document.createElement('summary'); summary.textContent = 'Technical detail';
+            const message = document.createElement('code');
+            message.textContent = error instanceof Error ? error.message : 'Unable to read project metadata';
+            details.append(summary, message);
+            const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Refresh History';
+            retry.onclick = () => { void this.refresh(); };
+            panel.append(heading, guidance, details, retry);
+            this.content.replaceChildren(panel);
         }
     }
 
@@ -100,19 +113,50 @@ export class HistoryWidget extends BaseWidget {
         refresh.setAttribute('aria-label', 'Refresh History');
         refresh.onclick = () => { void this.refresh(); };
         header.append(title, refresh);
+        const diagnosticPanel = document.createElement('section');
+        if (snapshot.diagnostics.length || snapshot.truncated) {
+            diagnosticPanel.className = 'dope-history-diagnostics';
+            const summary = document.createElement('p');
+            summary.textContent = 'Some History sources could not be read completely. Refresh after checking the source data or file access.';
+            diagnosticPanel.append(summary);
+            const list = document.createElement('ul');
+            for (const diagnostic of snapshot.diagnostics) {
+                const item = document.createElement('li');
+                const source = document.createElement('strong'); source.textContent = sourceNames[diagnostic.source];
+                const guidance = document.createElement('span');
+                guidance.textContent = diagnostic.source === 'git' ? 'Check the project Git repository, then refresh.' :
+                    diagnostic.source === 'workbench' ? 'Open a valid target and refresh; inspect History focus metadata if this persists.' :
+                        `Check this project's ${sourceNames[diagnostic.source]} metadata and read permissions, then refresh.`;
+                const details = document.createElement('details');
+                const technical = document.createElement('summary'); technical.textContent = 'Technical detail';
+                const message = document.createElement('code'); message.textContent = diagnostic.message;
+                details.append(technical, message); item.append(source, guidance, details); list.append(item);
+            }
+            if (snapshot.truncated && !snapshot.diagnostics.some(item => /truncat|limit/iu.test(item.message))) {
+                const item = document.createElement('li'); item.textContent = 'Results are limited. Refresh after reducing source records.';
+                list.append(item);
+            }
+            diagnosticPanel.append(list);
+        }
         const continueCard = document.createElement('section'); continueCard.className = 'dope-history-continue';
-        const continueTitle = document.createElement('h3'); continueTitle.textContent = 'Continue';
-        const continueText = document.createElement('p');
-        continueText.textContent = snapshot.continueWith.kind === 'verified-focus' ?
-            `Last focused ${snapshot.continueWith.owner.kind} at ${snapshot.continueWith.observedAt}.` :
-            snapshot.continueWith.kind === 'recent-activity-suggestion' ?
-            `Recent activity suggests: ${snapshot.continueWith.title}.` :
-            'No verified place to continue yet.';
-        continueCard.append(continueTitle, continueText);
-        if (snapshot.continueWith.kind !== 'none') {
+        const focus = historyFocusDescription(snapshot.continueWith, snapshot.entries);
+        const continueTitle = document.createElement('h3'); continueTitle.textContent = focus.heading;
+        continueCard.append(continueTitle);
+        if (focus.destination) {
+            const destination = document.createElement('strong'); destination.className = 'dope-history-destination';
+            destination.textContent = focus.destination; continueCard.append(destination);
+        }
+        const continueText = document.createElement('p'); continueText.textContent = focus.message;
+        continueCard.append(continueText);
+        if (focus.time) {
+            const time = document.createElement('small'); time.textContent = `Last focused ${historyReadableTime(focus.time)}`;
+            time.title = focus.time; continueCard.append(time);
+        }
+        if (snapshot.continueWith.kind === 'verified-focus' || snapshot.continueWith.kind === 'recent-activity-suggestion') {
             const choice = snapshot.continueWith;
-            const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Continue';
-            button.setAttribute('aria-label', choice.kind === 'verified-focus' ? 'Continue last verified focus' : 'Open suggested recent activity');
+            const button = document.createElement('button'); button.type = 'button';
+            button.textContent = choice.kind === 'verified-focus' ? 'Continue' : 'Open suggestion';
+            button.setAttribute('aria-label', choice.kind === 'verified-focus' ? `Continue to ${focus.destination ?? focus.heading}` : 'Open suggested recent activity');
             button.onclick = () => { void this.navigate(snapshot, choice.owner,
                 choice.kind === 'recent-activity-suggestion' ? choice.sourceId : undefined,
                 choice.kind === 'verified-focus' ? choice.observedAt : undefined); };
@@ -127,7 +171,9 @@ export class HistoryWidget extends BaseWidget {
         const recentTitle = document.createElement('h3'); recentTitle.textContent = 'Recent Activity';
         recent.append(recentTitle);
         if (!snapshot.entries.length) {
-            const empty = document.createElement('p'); empty.textContent = 'No source-backed activity is available for this project.';
+            const empty = document.createElement('p'); empty.textContent = snapshot.diagnostics.length || snapshot.truncated ?
+                'No activity could be shown from the available sources. Review the diagnostics above and refresh.' :
+                'No recent project activity yet. Open a file to set Continue, or use Chat or Work to build recent activity.';
             recent.append(empty);
         }
         if (snapshot.entries.length) {
@@ -241,7 +287,7 @@ export class HistoryWidget extends BaseWidget {
             }
         };
         understanding.append(understandingTitle, action, explanation, output, explain, cancel, result);
-        this.content.replaceChildren(header, continueCard, recent, understanding);
+        this.content.replaceChildren(header, diagnosticPanel, continueCard, recent, understanding);
     }
 
     override dispose(): void { this.cancelExplanation(); ++this.request; ++this.navigation; this.rootsListener.dispose(); super.dispose(); }

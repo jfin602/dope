@@ -62,6 +62,8 @@ export type HistoryFocusTarget = Extract<HistoryNavigableOwnerRef,
 
 export type HistoryContinuation =
     | { kind: 'verified-focus'; owner: HistoryNavigableOwnerRef; observedAt: string }
+    | { kind: 'unavailable-focus'; owner?: HistoryFocusTarget; observedAt?: string;
+        reason: 'missing' | 'stale' | 'unverified' }
     | { kind: 'recent-activity-suggestion'; owner: HistoryNavigableOwnerRef; sourceId: string; title: string }
     | { kind: 'none' };
 
@@ -102,11 +104,13 @@ export function projectHistory(entries: readonly HistoryEntry[], project: Histor
 
 /** Focus verification belongs to the owner adapter; this pure step never opens it. */
 export function proposeHistoryContinuation(
-    project: HistoryProject, entries: readonly HistoryEntry[], focus?: VerifiedHistoryFocus | null
+    project: HistoryProject, entries: readonly HistoryEntry[], focus?: VerifiedHistoryFocus | null,
+    unavailable?: Extract<HistoryContinuation, { kind: 'unavailable-focus' }>
 ): HistoryContinuation {
     if (focus?.verified === true && focus.availability === 'available' && sameProject(focus, project)) {
         return { kind: 'verified-focus', owner: focus.owner, observedAt: focus.observedAt };
     }
+    if (unavailable) return unavailable;
     for (const entry of projectHistory(entries, project)) {
         if (entry.availability === 'available' && entry.owner.kind !== 'git-dirty' && entry.owner.kind !== 'git-commit') {
             return { kind: 'recent-activity-suggestion', owner: entry.owner,

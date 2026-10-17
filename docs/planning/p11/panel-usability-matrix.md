@@ -15,7 +15,7 @@
 | Select Work / Running / History / stacks | Identify current work and its true status | H01 browser: “No Work currently running” and “No saved Work yet”; completed status/review remains Evidence Gap |
 | Work / task composer / review / validation | Safely start, track, stop or review an eligible action | H01 browser: New Work grant review visible; Start Work disabled with Coding Agent unavailable. No Work run, completed review or validation exercised |
 | AgentRun center transcript | Understand agent activity, consequential commands and errors | Not audited |
-| History / Continue | Return to exact meaningful project-bound work | H01 browser: empty state, verified editor continuation, recent-activity suggestion, stale target, reload, project isolation, keyboard entry and read-only preview exercised; UX-008–UX-010. Local explanation, native and narrow viewport Evidence Gaps |
+| History / Continue | Return to exact meaningful project-bound work | H01 discovery preserved; [H1](../../tasks/p11/h1-history-continuation-diagnostics.md) browser/local repair qualifies UX-008 and UX-009 on an uncommitted candidate: exact editor target, stale reason, normal empty state, genuine error/recovery, reload, project switch, keyboard and narrow right pane. UX-010, live Chat/Work labels, native and local explanation remain gaps. |
 | Software Map / left inspector | Understand hierarchy and navigate to evidence/code | Not audited |
 | Physical Map / Flow | Trace implementation and behavior without clutter | Not audited |
 | Edit Architecture | Change structure safely and understand acceptance | Not audited |

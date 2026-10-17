@@ -10,7 +10,7 @@ import { buildHistoryContextPreview, HISTORY_PREVIEW_MAX_BYTES } from '@dope/con
 import type { HistorySelection, HistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
 import { readHistoryOwnerMetadata } from './history-owner-metadata';
 import { readHistoryWorkGitMetadata } from './history-work-git';
-import { readHistoryFocus, writeHistoryFocus } from './history-focus';
+import { readHistoryFocusState, writeHistoryFocus } from './history-focus';
 import { explainHistoryLocally } from './history-local-understanding';
 import type { AIRoleRoutingService } from './ai-role-routing';
 import type { ModelConnectionsRegistry } from './model-connections';
@@ -57,14 +57,17 @@ export class HistoryBackend implements HistoryService {
         if ((await this.planning.read(project.projectRoot)).projectId !== project.projectId)
             throw new Error('History project identity changed during read');
         const entries = projectHistory([...owner.entries, ...work.entries], project);
-        const focus = await readHistoryFocus(project);
+        const focus = await readHistoryFocusState(project);
         if (this.disposed || generation !== this.generation || projectHandle !== this.handle)
             throw new Error('History project changed during read');
+        const diagnostics = [...owner.diagnostics, ...work.diagnostics,
+            ...(focus.diagnostic ? [{ source: 'workbench' as const, message: focus.diagnostic }] : [])];
         const evidenceBasis = this.digest({ project, entries: entries.map(entry => ({ ...entry,
             observedAt: entry.kind === 'snapshot' ? null : entry.observedAt })), dirtyPaths: work.dirtyPaths, gitBasis: work.gitBasis,
-            diagnostics: [...owner.diagnostics, ...work.diagnostics], truncated: owner.truncated || work.truncated });
-        return { project, entries, evidenceBasis, continueWith: proposeHistoryContinuation(project, entries, focus),
-            diagnostics: [...owner.diagnostics, ...work.diagnostics].slice(0, 20).map(item => ({
+            diagnostics, truncated: owner.truncated || work.truncated });
+        return { project, entries, evidenceBasis,
+            continueWith: proposeHistoryContinuation(project, entries, focus.verified, focus.unavailable),
+            diagnostics: diagnostics.slice(0, 20).map(item => ({
                 source: item.source, message: item.message.slice(0, 200)
             })), truncated: owner.truncated || work.truncated || owner.entries.length + work.entries.length > entries.length };
     }

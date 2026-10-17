@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,7 +43,9 @@ test('real owner focus is one bounded project-scoped record; History and inciden
         edited.maps[0].revision = 1;
         edited.maps[0].history.push({ revision: 1, action: 'edit', at: '2026-10-12T10:01:00Z' });
         await writeFile(planning, JSON.stringify(edited));
-        assert.notEqual((await backend.read(first)).continueWith.kind, 'verified-focus');
+        const changed = (await backend.read(first)).continueWith;
+        assert.equal(changed.kind, 'unavailable-focus');
+        if (changed.kind === 'unavailable-focus') assert.equal(changed.reason, 'stale');
 
         const second = (await backend.attach(pathToFileURL(b).href)).projectHandle;
         await assert.rejects(backend.recordFocus(first, { kind: 'planning-map', mapId: 'map-a' }), /Invalid History project handle/);
@@ -69,13 +71,24 @@ test('missing, corrupt, foreign or replaced targets are never rebound after rest
             const next = (await restarted.attach(pathToFileURL(root).href)).projectHandle;
             assert.equal((await restarted.read(next)).continueWith.kind, 'verified-focus');
             await rename(file, join(root, 'moved.ts'));
-            assert.notEqual((await restarted.read(next)).continueWith.kind, 'verified-focus');
+            assert.deepEqual((await restarted.read(next)).continueWith, {
+                kind: 'unavailable-focus', owner: { kind: 'editor', projectRelativePath: 'hello.ts' },
+                observedAt: JSON.parse(record).observedAt, reason: 'missing'
+            });
             await writeFile(file, 'different file');
-            assert.notEqual((await restarted.read(next)).continueWith.kind, 'verified-focus');
+            const replaced = (await restarted.read(next)).continueWith;
+            assert.equal(replaced.kind, 'unavailable-focus');
+            if (replaced.kind === 'unavailable-focus') assert.equal(replaced.reason, 'stale');
             await writeFile(recordPath, record.replace(root, `${root}-moved`));
-            assert.notEqual((await restarted.read(next)).continueWith.kind, 'verified-focus');
+            assert.equal((await restarted.read(next)).continueWith.kind, 'unavailable-focus');
+            assert.ok((await restarted.read(next)).diagnostics.some(item => item.source === 'workbench'));
             await writeFile(recordPath, '{bad json');
-            assert.notEqual((await restarted.read(next)).continueWith.kind, 'verified-focus');
+            assert.equal((await restarted.read(next)).continueWith.kind, 'unavailable-focus');
+            assert.ok((await restarted.read(next)).diagnostics.some(item => item.source === 'workbench'));
+            await rm(recordPath);
+            await symlink(file, recordPath);
+            assert.equal((await restarted.read(next)).continueWith.kind, 'unavailable-focus');
+            assert.ok((await restarted.read(next)).diagnostics.some(item => item.source === 'workbench'));
             await assert.rejects(restarted.recordFocus(next, { kind: 'editor', projectRelativePath: '../escape' }),
                 /Unsupported History focus target/);
         } finally { restarted.dispose(); }

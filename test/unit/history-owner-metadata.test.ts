@@ -108,3 +108,29 @@ test('bounded lists and corrupt, linked and foreign metadata give diagnostics wi
     assert.match(linked.diagnostics.map(item => item.message).join(' '), /Unsafe/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('absent optional Planning Map and Project Mind metadata is ordinary empty History', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-history-empty-'));
+  try {
+    const empty = await readHistoryOwnerMetadata(project(root), observedAt);
+    assert.deepEqual(empty.entries, []);
+    assert.deepEqual(empty.diagnostics, []);
+    assert.equal(empty.truncated, false);
+    await mkdir(join(root, '.dope'));
+    await writeFile(join(root, '.dope/project-mind.json'), '{bad json');
+    const corrupt = await readHistoryOwnerMetadata(project(root), observedAt);
+    assert.ok(corrupt.diagnostics.some(item => item.source === 'project-mind'));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('a denied metadata read remains a source diagnostic', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-history-denied-'));
+  try {
+    const denied = { peekCandidateIds: async () => {
+      throw Object.assign(new Error('Chat metadata read denied'), { code: 'EACCES' });
+    } } as unknown as ChatRepository;
+    const result = await readHistoryOwnerMetadata(project(root), observedAt, denied);
+    assert.deepEqual(result.entries, []);
+    assert.deepEqual(result.diagnostics, [{ source: 'chat', message: 'Chat metadata read denied' }]);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

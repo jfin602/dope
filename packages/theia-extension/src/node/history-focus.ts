@@ -5,7 +5,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { ChatRepository } from '@dope/chat/lib/node/chat-repository';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
-import type { HistoryFocusTarget, HistoryProject, VerifiedHistoryFocus } from '@dope/contracts/lib/history';
+import type { HistoryContinuation, HistoryFocusTarget, HistoryProject, VerifiedHistoryFocus } from '@dope/contracts/lib/history';
 
 interface FocusRecord extends HistoryProject {
     schemaVersion: 1;
@@ -127,18 +127,31 @@ export async function writeHistoryFocus(project: HistoryProject, owner: HistoryF
     } finally { await rm(temporary, { force: true }); }
 }
 
-export async function readHistoryFocus(project: HistoryProject): Promise<VerifiedHistoryFocus | undefined> {
+export interface HistoryFocusState {
+    verified?: VerifiedHistoryFocus;
+    unavailable?: Extract<HistoryContinuation, { kind: 'unavailable-focus' }>;
+    diagnostic?: string;
+}
+
+/** Display evidence is never navigation authority. Only `verified` can enable Continue. */
+export async function readHistoryFocusState(project: HistoryProject): Promise<HistoryFocusState> {
     try {
         const path = await filePath(project);
         const info = await lstat(path);
-        if (!info.isFile() || info.isSymbolicLink() || info.size > MAX_BYTES) return undefined;
+        if (!info.isFile() || info.isSymbolicLink() || info.size > MAX_BYTES)
+            return { unavailable: { kind: 'unavailable-focus', reason: 'unverified' },
+                diagnostic: 'History focus metadata is unsafe or exceeds its size limit' };
         const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
         let raw: string;
         try {
-            if ((await handle.stat()).size > MAX_BYTES) return undefined;
+            if ((await handle.stat()).size > MAX_BYTES)
+                return { unavailable: { kind: 'unavailable-focus', reason: 'unverified' },
+                    diagnostic: 'History focus metadata changed during read' };
             const bytes = Buffer.alloc(MAX_BYTES + 1);
             const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0);
-            if (bytesRead > MAX_BYTES || bytesRead !== info.size) return undefined;
+            if (bytesRead > MAX_BYTES || bytesRead !== info.size)
+                return { unavailable: { kind: 'unavailable-focus', reason: 'unverified' },
+                    diagnostic: 'History focus metadata changed during read' };
             raw = bytes.subarray(0, bytesRead).toString('utf8');
         } finally { await handle.close(); }
         const value: unknown = JSON.parse(raw);
@@ -146,8 +159,31 @@ export async function readHistoryFocus(project: HistoryProject): Promise<Verifie
             'basis,observedAt,owner,projectId,projectRoot,schemaVersion' || value.schemaVersion !== 1 ||
             value.projectId !== project.projectId || value.projectRoot !== project.projectRoot ||
             !validOwner(value.owner) || typeof value.basis !== 'string' ||
-            typeof value.observedAt !== 'string' || !Number.isFinite(Date.parse(value.observedAt))) return undefined;
-        if (await basis(project, value.owner) !== value.basis) return undefined;
-        return { ...project, owner: value.owner, observedAt: value.observedAt, availability: 'available', verified: true };
-    } catch { return undefined; }
+            typeof value.observedAt !== 'string' || !Number.isFinite(Date.parse(value.observedAt)))
+            return { unavailable: { kind: 'unavailable-focus', reason: 'unverified' },
+                diagnostic: 'History focus metadata is invalid or belongs to another project' };
+        const target = { kind: 'unavailable-focus' as const, owner: value.owner,
+            observedAt: value.observedAt };
+        let currentBasis: string | undefined;
+        try { currentBasis = await basis(project, value.owner); }
+        catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+                return { unavailable: { ...target, reason: 'missing' } };
+            return { unavailable: { ...target, reason: 'unverified' },
+                diagnostic: 'Previously focused target could not be verified safely' };
+        }
+        if (!currentBasis) return { unavailable: { ...target, reason: 'unverified' },
+            diagnostic: 'Previously focused target could not be verified safely' };
+        if (currentBasis !== value.basis) return { unavailable: { ...target, reason: 'stale' } };
+        return { verified: { ...project, owner: value.owner, observedAt: value.observedAt,
+            availability: 'available', verified: true } };
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+        return { unavailable: { kind: 'unavailable-focus', reason: 'unverified' },
+            diagnostic: 'History focus metadata could not be read or verified' };
+    }
+}
+
+export async function readHistoryFocus(project: HistoryProject): Promise<VerifiedHistoryFocus | undefined> {
+    return (await readHistoryFocusState(project)).verified;
 }

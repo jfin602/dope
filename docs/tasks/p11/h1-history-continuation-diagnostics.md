@@ -1,0 +1,36 @@
+# H1 — History continuation and diagnostics repair qualification
+
+**Run:** 2026-10-16 America/Chicago. **Disposition:** UX-008 **PASS** and UX-009 **PASS** for the bounded browser/local H1 scope. Phase 11 remains **OPEN / NOT QUALIFIED**. This report supplements, and does not alter, the [H01 discovery record](h01-history-usability-hunt.md).
+
+## Exact candidate and boundary
+
+- Git HEAD: `25c75a2059576e17f1a16c6630f74ea53833941d`; package version `0.11.8` unchanged. Product and tests are **uncommitted**. The SHA-256 of the listed-order `sha256sum` output for the 12 changed/new product and test files is `e936eff3fddaff519d269b327f52ee8a77f2189a9f3babd7e2199b60a34d10d4` (file list below). Documentation is excluded from that fingerprint. The worktree was clean before H1; no pre-existing developer changes were present.
+- Browser: rebuilt Dope at `http://127.0.0.1:3011`, served by a separate local backend so the existing `3010` process was not disturbed. Two disposable projects were created under `/tmp/dope-p11-h1-apZ1sw`. No model or provider call was made.
+- Changed product files: `packages/contracts/src/history.ts`; `packages/theia-extension/src/browser/history-presentation.ts` (new), `history-widget.ts`, `dope.css`; `packages/theia-extension/src/node/history-backend.ts`, `history-focus.ts`, `history-owner-metadata.ts`, `history-work-git.ts`.
+- Changed tests: `test/unit/history-focus.test.ts`, `history-panel.test.ts`, `history-owner-metadata.test.ts`, `history-work-git.test.ts`.
+
+## Root cause and repair
+
+History previously projected verified focus but rendered only the owner kind and ISO time. Its focus reader collapsed missing, stale, corrupt, unsafe and foreign records into the same absence, so the panel could not explain a lost target. A project-scoped, bounded focus read now returns display-only unavailable status (`missing`, `stale`, or `unverified`) while only `verified` permits Continue. Validated project-relative editor paths remain visible after a move; invalid or foreign metadata reveals no target. Existing canonical root/path, symlink, owner basis, revision, project identity and second-read navigation checks remain in place.
+
+The owner metadata reader counted missing optional Planning Map and Project Mind files as diagnostics, and a fresh non-Git project counted the absent Git repository. These now produce ordinary empty state; corrupt, unsafe, denied, inconsistent and truncated sources still report partial History. The panel names the affected source, offers source-specific recovery guidance, exposes technical detail in a disclosure, and keeps Refresh History available even when project identity metadata prevents the initial snapshot from loading. The empty message separates editor focus from source-backed recent activity. All History inspection remains read-only with respect to owner stores.
+
+## Validation actually run
+
+| Gate | Result and evidence |
+| --- | --- |
+| Focused build and regressions | **PASS.** Contracts and Theia extension built; 28 focused History tests passed across focus, panel, owner metadata, Work/Git, navigation, integration and projection. A subsequently added denied-read test passed in a focused 5-test owner-metadata run. |
+| Source-wide check | **PASS.** One `npm run check` completed: typecheck, runner/baseline/local-install/product/IDE tests, browser build and Electron build. The product suite reported 598/598 plus 28/28 initialization tests. The denied-read test was added after this aggregate, without changing product source, and was run separately. |
+| Empty and valid browser states (A–D) | **PASS.** Fresh project B showed “No place recorded yet” and ordinary recent-activity guidance with no Partial History warning. Opening `src/status.ts` in project A, then refreshing, showed “Continue File,” `src/status.ts`, a localized last-focused time and explicit exact-destination wording. Closing the editor and using Continue reopened `src/status.ts`. A first attempt after an extra editor refocus failed closed with “target or project changed”; Refresh then succeeded. A clean close-and-Continue sequence succeeded on the first click, and Enter on Continue reopened the exact file. |
+| Stale and replacement browser states (E–H) | **PASS.** Moving `src/status.ts` to `moved/status.ts` made the card say the old file was no longer available at `src/status.ts`, with no Continue button and no guessed replacement. Opening the moved file directly and refreshing established `moved/status.ts` as the new exact continuation. |
+| Reload, switch and restart (I–J) | **PASS.** Browser reload retained the verified moved-file target. Project B showed no target from A. The separate browser backend was restarted on the final build; B recovered and A still showed its project-specific continuation. Unit tests also exercised backend restart, foreign focus and stale owner revision. |
+| Real metadata failure and recovery (K–L) | **PASS.** A reversible invalid `.dope/project-mind.json` in disposable B yielded “Partial History · 1 source diagnostics,” identified Project Mind, showed guidance and an expandable JSON parse detail; removing the bad file and refreshing restored ordinary empty state. A separate invalid `planning-maps.json` prevented initial attachment and displayed “History could not load,” technical detail and Refresh History; removing it and refreshing recovered. Unit tests retain unsafe/corrupt/truncated diagnostics and injected denied-read visibility. |
+| Accessibility and width | **PASS in the browser scope.** Refresh and Continue activated with Enter; buttons and the diagnostic disclosure appeared in the accessibility tree. The normal right sidebar was approximately 165 px wide in a captured browser screenshot; the target, empty-state and controls wrapped without clipping. The screenshots were viewed during the run but were not retained as files. |
+
+## Safety observations and limits
+
+The browser did not navigate a stale file, did not recover by filename, and did not show A's target in B. The original source file bytes were preserved by a move inside the disposable fixture; no real developer project was used for negative tests. The corrupt metadata files were created only in B and removed after each check. No Chat/Work owner was mutated or duplicated; no AgentRun, model call, hosted egress or provider setting was used.
+
+**Evidence gaps:** Live Chat/Work/Planning continuation labels were covered by focused presentation tests but not by this GUI run. Permission denial and truncation were covered by focused tests, not recreated in the browser. Native Electron GUI, alternate theme, wider usability, and UX-010 preview readability were not qualified by H1. The transient fail-closed Continue result after an extra editor refocus is retained above as a usability observation; refreshing resolved it, and the required clean sequence passed.
+
+**Independent decision:** UX-008 **QUALIFIED for H1 browser/local scope** (exact destination, readable time, stale explanation, first-click clean continuation, restart and project isolation). UX-009 **QUALIFIED for H1 browser/local scope** (ordinary optional absence, genuine error visibility/detail/recovery, and load-failure recovery). Neither result marks the entire Phase 11 product Green or replaces H01's original findings.

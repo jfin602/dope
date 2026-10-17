@@ -129,7 +129,10 @@ export async function readHistoryWorkGitMetadata(project: HistoryProject, observ
         }
         if (result.truncated) diagnostic('agent', 'Agent metadata truncated at 50 records per collection');
     } catch (error) { diagnostic('agent', error); }
+    let gitMarkerAbsent = false;
     try {
+        try { await lstat(join(root, '.git')); }
+        catch (error) { if (missing(error)) gitMarkerAbsent = true; else throw error; }
         const top = (await git(root, ['rev-parse', '--show-toplevel'])).trimEnd();
         if (top !== root) throw new Error('Git repository root differs from project root');
         try {
@@ -161,6 +164,8 @@ export async function readHistoryWorkGitMetadata(project: HistoryProject, observ
             owner: { kind: 'git-dirty' }, title: `Working tree has changes (${records.length} paths)`,
             status: { kind: 'owner', label: 'Current dirty snapshot' }, availability: 'available',
             occurredAt: null, observedAt });
-    } catch (error) { diagnostic('git', error); }
+    } catch (error) {
+        if (!(gitMarkerAbsent && /not a git repository/u.test(String(error)))) diagnostic('git', error);
+    }
     return result;
 }

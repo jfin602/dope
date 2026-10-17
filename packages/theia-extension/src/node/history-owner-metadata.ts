@@ -76,8 +76,7 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
     } catch (error) { diagnostic('chat', error); }
     try {
         const raw = await ownerJson(root, 'planning-maps.json');
-        if (raw === undefined) diagnostic('planning', 'Planning Maps metadata is absent');
-        else {
+        if (raw !== undefined) {
             const planning = parsePlanningCollection(raw);
             let count = 0;
             for (const map of planning.maps) {
@@ -105,8 +104,7 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
     } catch (error) { diagnostic('planning', error); }
     try {
         const raw = await ownerJson(root, 'project-mind.json');
-        if (raw === undefined) diagnostic('project-mind', 'Project Mind metadata is absent');
-        else {
+        if (raw !== undefined) {
             const mind = parseProjectMind(raw);
             for (const artifact of mind.artifacts.slice(0, MAX_ITEMS)) {
                 result.entries.push({ ...project, kind: 'event', source: 'project-mind', sourceId: artifact.id,

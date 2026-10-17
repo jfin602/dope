@@ -120,6 +120,17 @@ test('Git root, canonical path and bounded command failures are diagnostic and r
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('a fresh non-Git project has no Git failure, while unsafe Git metadata remains visible', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-history-no-git-'));
+    try {
+        const empty = await readHistoryWorkGitMetadata(project(root), later);
+        assert.deepEqual(empty.diagnostics, []);
+        await writeFile(join(root, '.git'), 'gitdir: /missing/metadata');
+        const invalid = await readHistoryWorkGitMetadata(project(root), later);
+        assert.ok(invalid.diagnostics.some(item => item.source === 'git'));
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('Git command timeout returns a diagnostic within the fixed bound', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-history-git-timeout-'));
     const bin = join(root, 'bin');

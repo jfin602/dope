@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { HistoryBackend } from '../../packages/theia-extension/lib/node/history-backend.js';
+import { historyFocusDescription, historyReadableTime } from
+    '../../packages/theia-extension/lib/browser/history-presentation.js';
 
 const source = (path: string) => readFileSync(new URL(`../../packages/theia-extension/src/${path}`, import.meta.url), 'utf8');
 
@@ -81,4 +83,31 @@ test('History RPC is per-connection, root/handle checked, bounded and read-only'
         const backendSource = source('node/history-backend.ts');
         assert.doesNotMatch(backendSource, /\.mutate\(|\.save\(|\.start\(|\.createTask\(|\.readTranscript\(|fetch\(/);
     } finally { backend.dispose(); await rm(a, { recursive: true, force: true }); await rm(b, { recursive: true, force: true }); }
+});
+
+test('Continue labels exact files and verified owners, while unavailable focus stays explanatory', () => {
+    const at = '2026-10-12T10:00:00.000Z';
+    const editor = historyFocusDescription({ kind: 'verified-focus',
+        owner: { kind: 'editor', projectRelativePath: 'src/status.ts' }, observedAt: at }, []);
+    assert.equal(editor.destination, 'src/status.ts');
+    assert.match(editor.message, /Continue opens this exact file/);
+    assert.notEqual(historyReadableTime(at), at);
+    const project = { projectId: 'p', projectRoot: '/tmp/p' };
+    const chatEntry = { ...project, source: 'chat' as const, sourceId: 'chat-1',
+        owner: { kind: 'chat' as const, chatId: 'chat-1' }, title: 'Fix parser',
+        kind: 'event' as const, occurredAt: at, observedAt: null, availability: 'available' as const,
+        status: { kind: 'owner' as const, label: 'Chat' } };
+    assert.equal(historyFocusDescription({ kind: 'verified-focus', owner: chatEntry.owner,
+        observedAt: at }, [chatEntry]).destination, 'Fix parser');
+    const workEntry = { ...chatEntry, source: 'agent' as const, sourceId: 'task-1',
+        owner: { kind: 'agent-task' as const, taskId: 'task-1' }, title: 'Build parser' };
+    assert.equal(historyFocusDescription({ kind: 'verified-focus', owner: workEntry.owner,
+        observedAt: at }, [workEntry]).destination, 'Build parser');
+    assert.match(historyFocusDescription({ kind: 'none' }, []).message, /Open a file/);
+    const missing = historyFocusDescription({ kind: 'unavailable-focus', reason: 'missing',
+        owner: { kind: 'editor', projectRelativePath: 'src/status.ts' }, observedAt: at }, []);
+    assert.match(missing.message, /no longer available at src\/status.ts/);
+    assert.equal(historyFocusDescription({ kind: 'unavailable-focus', reason: 'stale',
+        owner: { kind: 'chat', chatId: 'chat-1' } }, []).heading, 'Previously focused Chat changed');
+    assert.equal(historyFocusDescription({ kind: 'unavailable-focus', reason: 'unverified' }, []).destination, undefined);
 });

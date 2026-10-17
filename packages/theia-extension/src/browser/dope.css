@@ -117,6 +117,11 @@ body.theia-light:not(.dope-dark) {
 .dope-history-panel h4 { margin: 10px 0 4px; font-size: 12px; }
 .dope-history-panel section { margin-top: 12px; }
 .dope-history-continue { border-left: 3px solid var(--dope-primary, var(--theia-focusBorder)); padding: 9px; background: color-mix(in srgb, var(--dope-primary, var(--theia-focusBorder)) 12%, var(--theia-sideBar-background)); }
+.dope-history-destination { display: block; overflow-wrap: anywhere; }
+.dope-history-diagnostics { border-left: 3px solid var(--theia-editorWarning-foreground); padding: 8px; background: var(--theia-sideBar-background); }
+.dope-history-diagnostics span, .dope-history-diagnostics code { display: block; overflow-wrap: anywhere; }
+.dope-history-diagnostics details { margin-top: 4px; }
+.dope-history-diagnostics summary { cursor: pointer; }
 .dope-history-panel p { margin: 5px 0; line-height: 1.4; overflow-wrap: anywhere; }
 .dope-history-panel ul { list-style: none; padding: 0; margin: 0; }
 .dope-history-panel li { border-bottom: 1px solid var(--theia-widget-border); padding: 6px 0; overflow-wrap: anywhere; }
