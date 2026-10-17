@@ -1,6 +1,6 @@
 # Phase 11 — Reusable Manual Usability Hunter Prompt
 
-**Status:** DOCUMENTED / NOT YET EXECUTED. **Mode:** Manual GUI discovery, **not** a codex:phase implementation prompt. **Authority:** [Phase 11 plan](../../planning/p11/phase-11-plan.md), [coverage matrix](../../planning/p11/panel-usability-matrix.md), [issue ledger](../../planning/p11/usability-issue-ledger.md).
+**Status:** REUSABLE MANUAL PROCEDURE; first run [H01](h01-history-usability-hunt.md) completed on clean `8990407` / `0.11.8` in the AI-operated browser. H02 is pending Software Map → Physical Map/Flow → evidence-to-code navigation. **Mode:** Manual GUI discovery, **not** a codex:phase implementation prompt. **Authority:** [Phase 11 plan](../../planning/p11/phase-11-plan.md), [coverage matrix](../../planning/p11/panel-usability-matrix.md), [issue ledger](../../planning/p11/usability-issue-ledger.md).
 
 ## Prompt
 

@@ -1,27 +1,27 @@
 # Phase 11 — Preliminary panel usability matrix
 
-**Status (2026-10-16):** PRELIMINARY INVENTORY / **FIRST SEPARATE USABILITY HUNTER NOT RUN**. The initial P8 known-issue tranche was **NOT GREEN**, and its [P8 closeout](../../tasks/p11/known-issue-closeout.md) remains historical. Subsequent [M1 supplemental recovery](../../tasks/c11-guidance/manual/m1-recovery-qualification.md) qualified UX-003 **SCOPED GREEN in the browser/local-Q4 workflow** at committed product `e69d7e5` / unchanged `0.11.8`: two selected-checkpoint repeats, unselected guidance, synced-state and Planning Map isolation, saved Chat and no-write evidence passed. This does not establish a broad Phase 11 human usability audit or product qualification. Native Electron GUI, hosted parity, untested surfaces and separate Hunter evidence remain gaps. Phase 11 is **OPEN / NOT QUALIFIED**.
+**Status (2026-10-16):** PRELIMINARY INVENTORY with first separate [manual Hunter H01](../../tasks/p11/h01-history-usability-hunt.md) recorded on clean `8990407` / `0.11.8` in the AI-operated browser. H01 covered a bounded History/Work entry flow and proposed UX-008–UX-010; it did not retest UX-001–UX-007 or complete a Work run. UX-007 is committed product at `8990407`, retaining its earlier browser-scoped check and native gaps. The initial [P8 closeout](../../tasks/p11/known-issue-closeout.md) remains historically **NOT GREEN**; [M1 supplemental recovery](../../tasks/c11-guidance/manual/m1-recovery-qualification.md) remains **SCOPED GREEN for UX-003 in browser/local Q4** at `e69d7e5` / `0.11.8`, with original M1/P3/P8 Not Green records preserved. Native Electron GUI, hosted parity and broad usability remain gaps. Phase 11 is **OPEN / NOT QUALIFIED**.
 **Date:** 2026-10-12; Phase 10 predecessor updated 2026-10-16
-**Authority:** ADR 0037 and [Phase 11 `0.11.0` baseline](baseline.md). Phase 10 is owner-closed at `0.10.16` / `af2b0f0`; this matrix describes candidate **Phase 11 usability audit targets**, not directly verified current widget registrations or pass/fail outcomes. First Phase 11 step must inspect live source/GUI and retire or add rows accordingly.
+**Authority:** ADR 0037 and [Phase 11 `0.11.0` baseline](baseline.md). Phase 10 is owner-closed at `0.10.16` / `af2b0f0`; this matrix describes candidate **Phase 11 usability audit targets**. H01 directly covered only the rows marked H01; other rows still require live registration and GUI checks.
 
 | Preliminary surface | Representative human task | Current audit |
 | --- | --- | --- |
-| Shell / navigation / tabs / activity bars | Find, open, relocate and refocus the correct tool | Not audited |
-| Explorer / Search integration | Find a file with in-panel fuzzy filtering; retain content search and keyboard paths | UX-007 implemented candidate; [browser scoped check](ux-007-implementation-check.md), native and broader states Evidence Gaps |
+| Shell / navigation / tabs / activity bars | Find, open, relocate and refocus the correct tool | H01 keyboard command entry only; broad shell navigation not audited |
+| Explorer / Search integration | Find a file with in-panel fuzzy filtering; retain content search and keyboard paths | UX-007 committed at `8990407`; earlier [browser scoped check](ux-007-implementation-check.md), native and broader states Evidence Gaps; H01 did not retest |
 | Settings / theme / Dope-Theia preferences | Understand scope and persist a preference | Not audited |
 | AI Center / model connections / roles | Configure a provider and understand model eligibility | Not audited |
 | Select Chat / folders | Find, organize and resume a conversation | Not audited |
 | Chat / composer / transcript / settings | Talk, choose context, understand output and recover | Not audited |
-| Select Work / Running / History / stacks | Identify current work and its true status | Not audited |
-| Work / task composer / review / validation | Safely start, track, stop or review an eligible action | Not audited |
+| Select Work / Running / History / stacks | Identify current work and its true status | H01 browser: “No Work currently running” and “No saved Work yet”; completed status/review remains Evidence Gap |
+| Work / task composer / review / validation | Safely start, track, stop or review an eligible action | H01 browser: New Work grant review visible; Start Work disabled with Coding Agent unavailable. No Work run, completed review or validation exercised |
 | AgentRun center transcript | Understand agent activity, consequential commands and errors | Not audited |
-| History / Continue | Return to exact meaningful project-bound work | Not audited |
+| History / Continue | Return to exact meaningful project-bound work | H01 browser: empty state, verified editor continuation, recent-activity suggestion, stale target, reload, project isolation, keyboard entry and read-only preview exercised; UX-008–UX-010. Local explanation, native and narrow viewport Evidence Gaps |
 | Software Map / left inspector | Understand hierarchy and navigate to evidence/code | Not audited |
 | Physical Map / Flow | Trace implementation and behavior without clutter | Not audited |
 | Edit Architecture | Change structure safely and understand acceptance | Not audited |
 | Planning Map / WorkItems | Create/revise a plan and hand off work | Not audited |
 | Phase 10 Roadmap / inspector / Ideas & Issues | Understand progress, priority and next checkpoint | Phase 10 implementation retained/qualified for R6 scope; **Phase 11 human usability not audited** |
-| Dialogs, overlays, empty/loading/error states | Know what occurred and how to recover | Enumerate later; not audited |
+| Dialogs, overlays, empty/loading/error states | Know what occurred and how to recover | H01 History empty/stale and Work disabled entry observed; broader states not audited |
 | Editor / SCM / terminal / Problems seams | Move naturally between Dope-owned and ordinary IDE views | Integration seam; not audited |
 | Project Mind surviving Phase 10 entry points | Locate Notes, Ideas and Decisions without a redundant launcher | **Verify actual surviving routes and retired surfaces** in first Phase 11 registration/GUI audit; not audited |
 
@@ -50,13 +50,15 @@
 | Full-text search preserved | `Ctrl+Shift+F`, command palette, content result navigation, exclusions/options/replace and restoring full-text view without duplicate Activity Bar entries | Browser content results, replace control, shortcut and reload observed; actual replace and command palette **Evidence Gap** |
 | Multi-state compatibility | Narrow/keyboard/focus/accessibility, no workspace and multiple projects, browser/Electron, alternative theme, persisted layout/restart | Browser narrow, focus, Dope Dark/Light and reload observed; native and remaining states **Evidence Gap** |
 
-The [source-bound N1–N5 check](ux-007-implementation-check.md) records the local-browser evidence and limits. This is not a human usability Hunter and does not change existing P8/P3 Not Green or Hunter progress.
+The [source-bound N1–N5 check](ux-007-implementation-check.md) records the earlier uncommitted candidate's local-browser evidence and limits. UX-007 product was subsequently committed at `8990407`; this did not add native evidence or count as H01. Existing P8/P3 Not Green remains historical.
 
 ## Living workflow/task-state coverage
 
 **P8 browser-only coverage delta (uncommitted `0.11.8` candidate, product source `8cad838`):** Roadmap manual wrong-file replacement, preview/cancel/invalid/stale/missing/confirm, external new-source edit, restart and second-project isolation were directly exercised. One saved Chat had explicit local Q4 selection, a validated no-action message, raw JSON disclosure/copy, keyboard and narrow rendering. Exact reported Roadmap help wording **failed** despite a matched “linked Roadmap file” wording passing; native Electron GUI and Codex-backed parity were not exercised. AI Center was inspected only to confirm the existing local connection/model, not to qualify provider configuration. This is scoped regression evidence, not a broad Hunter pass.
 
-**Next separate Hunter target:** History → exact continuation → Work status/review on a disposable project, with empty/stale/restart and keyboard/narrow recovery. The first Hunter remains **not yet run** and must use the reusable [manual prompt](../../tasks/p11/usability-hunt-manual.md). Other preliminary rows remain unaudited until a direct task/state record exists.
+**H01 coverage delta (clean `8990407` / `0.11.8`):** The [source-bound report](../../tasks/p11/h01-history-usability-hunt.md) records an AI-operated browser run at `127.0.0.1:3010` in two disposable projects under `/tmp/dope-p11-hunter-h01-bhklTr`. History's empty, verified editor, stale-file, reload, project isolation, keyboard entry and read-only preview paths were exercised, along with recent activity to a saved empty Chat. Work was only inspected in empty/blocked states. H01 did not run a model, hosted call or Work action, and did not retain screenshots. UX-008 and UX-009 are P2; UX-010 is P2 provisional. Completed Work status/review, AgentRun, native Electron, narrow viewport and local explanation after preview remain Evidence Gaps.
+
+**Next different Hunter target:** H02 — Software Map → Physical Map/Flow → evidence-to-code navigation, including empty and error recovery. Use the reusable [manual procedure](../../tasks/p11/usability-hunt-manual.md). Other preliminary rows remain unaudited until a direct task/state record exists.
 
 The table above is **only a preliminary UI inventory**, not a single-pass completion checklist. Each manually executed [Hunter](../../tasks/p11/usability-hunt-manual.md) selects under-tested workflow/state pairs and updates this matrix and the [issue ledger](usability-issue-ledger.md) after evidence review.
 
