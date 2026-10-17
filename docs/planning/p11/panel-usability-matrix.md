@@ -7,6 +7,7 @@
 | Preliminary surface | Representative human task | Current audit |
 | --- | --- | --- |
 | Shell / navigation / tabs / activity bars | Find, open, relocate and refocus the correct tool | Not audited |
+| Explorer / Search integration | Find a file with in-panel fuzzy filtering; retain content search and keyboard paths | UX-007 proposed; not audited |
 | Settings / theme / Dope-Theia preferences | Understand scope and persist a preference | Not audited |
 | AI Center / model connections / roles | Configure a provider and understand model eligibility | Not audited |
 | Select Chat / folders | Find, organize and resume a conversation | Not audited |
@@ -37,6 +38,19 @@
 | Follow Interactive and metadata | Composer context unclear and transcript IDs/JSON crowd response | P2 investigation | Explain context controls; use progressive disclosure |
 
 **U1–U9 direct qualification gates:** U1 relink success; U2 cancel/failure/unsynced/stale protection; U3 restart, new linked source synchronization and project isolation; U4 correct no-action user prose; U5 collapsed yet inspectable activity; U6 grounded recovery without invented UI actions; U7 real local Q4 and Codex selection/consent and response parity; U8 real loading/empty/error/overlay/accessibility states; U9 existing Phase 10 ownership/permission/Markdown/Chat regressions. For each, record exact source, tested action, expected vs observed result, and Qualified/Not Green/Evidence Gap. See [recovery contract](usability-recovery-contract.md).
+
+## Explorer/Search and Roadmap navigation amendment — UX-007 (owner request, not audited)
+
+**Human goal:** Locate a project file directly in Explorer and open the project Roadmap from the left Activity Bar without losing full project-wide content search.
+
+| Task/state | Required observation | Current evidence |
+| --- | --- | --- |
+| Explorer compact file search | Under the Explorer header, fuzzy filename/path match, matching folder ancestry, clear/reset, empty/no-results and file open in current project | Owner screenshot/design only; **Not Audited** |
+| Roadmap Activity Bar shortcut | Roadmap occupies Search's former slot and opens the already registered center-editor Roadmap (without duplicate widget, forced Chat, or sidebar Roadmap) | Source verifies existing `dope.roadmap.open` command; **new navigation not implemented/verified** |
+| Full-text search preserved | `Ctrl+Shift+F`, command palette, content result navigation, exclusions/options/replace and restoring full-text view without duplicate Activity Bar entries | Search package exists; behavior after change **Not Audited** |
+| Multi-state compatibility | Narrow/keyboard/focus/accessibility, no workspace and multiple projects, browser/Electron, alternative theme, persisted layout/restart | **Evidence Gap** |
+
+Use N1–N5 gates in [Phase 11 plan](phase-11-plan.md#bounded-navigation-correction--explorer-search-and-roadmap-shortcut) for source-bound testing. This design item is not a successful direct GUI test and does not change existing P8/P3 Not Green or Hunter progress.
 
 ## Living workflow/task-state coverage
 

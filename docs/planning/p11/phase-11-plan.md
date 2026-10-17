@@ -27,6 +27,27 @@ Make every Dope-owned panel and practical cross-panel flow **obvious, predictabl
 
 **Next:** after the initial known repairs, run repeatable discovery/triage/repair/verify loops; visual problems are investigated only after direct GUI reproduction. This document authorizes no stack execution.
 
+## Bounded navigation correction — Explorer search and Roadmap shortcut
+
+**Owner request / evidence:** Explorer screenshot and owner design request on 2026-10-16 America/Chicago (2026-10-17 UTC). **UX-007** is an owner-requested navigational improvement, not a source-reproduced failure or proof that Theia integration already supports the proposed layout without adaptation. Scope is limited to shell navigation, the existing Explorer/Search seam and reuse of the Phase 10 Roadmap canvas. Current `0.11.8` status, the approved UX-003 verified-guidance M1 contract, native/hosted evidence gaps and historical failed checks remain unchanged. Schedule this after the in-flight guidance correction unless explicitly reprioritized; do not silently expand that stack.
+
+**Intended interaction:**
+- Remove the **Search launcher icon** from the left Activity Bar and place a clearly labeled/tooltip-accessible **Roadmap icon** in that former position (normally second beneath Explorer), without removing Search commands, views, indexing or keyboard access. Opening Roadmap executes the already registered `dope.roadmap.open` command, focuses the same center-editor `RoadmapCanvasWidget`, and does not create duplicate tabs, move existing Chat, or replace the Explorer tree with the Roadmap.
+- Put a small search input **below the Explorer title/header and above the file tree**. By default, typing filters **files by fuzzy filename/path**, showing ancestor folders so matches stay navigable, with a visible clear action, appropriate no-results/empty state and restored normal tree when cleared. Respect current project boundaries, existing explorer navigation, keyboard focus and any applicable hidden/excluded-file policy.
+- Provide a compact adjacent **search-mode control / affordance** to access existing full-project **file-content search** (the Theia workspace Search view or equivalent supported UI), while preserving case/regex/glob options, exclusions, search results, navigation, replace and existing command palette and `Ctrl+Shift+F` behavior. Avoid implementing another text indexer or broad duplicative search UI within Explorer. Opening full-text search must not resurrect a second persistent Search Activity Bar icon in the saved/restored layout.
+- Maintain Theia-compatible contribution/registration boundaries and a restrained neutral input design with subtle focus styling and meaningful active Roadmap emphasis. Use accessible labels, keyboard-only operation and alternate-theme semantic variables. No dependence on AI/model or an open Roadmap document for navigation.
+
+**Implementation seams to verify, not assumptions of proven behavior:** `packages/theia-extension/src/browser/frontend-module.ts` already registers `dope.roadmap.open` and builds the existing Roadmap main-area widget; `packages/theia-extension/src/browser/roadmap-canvas-widget.ts` owns that canvas. `@theia/navigator` and `@theia/search-in-workspace` are present in the Theia 1.75 application. Verify actual native Search view registration, shell contribution ordering, supported Navigator decorator/header injection and layout-restoration rules before choosing the smallest upgrade-safe implementation. Do not make a global CSS-only hide that silently breaks Search or shortcut access.
+
+**Qualification gates (record exact source/version, direct actions and outcomes):**
+- **N1 — Navigation:** Search icon replaced at its previous slot; Roadmap icon opens/focuses the existing main editor, never a second Roadmap canvas/Chat/left-sidebar clone; behavior persists through close/reopen and restart.
+- **N2 — Explorer filter:** Fuzzy filename/path partial matches, nested folder ancestry, no results, clear/reset, project switch and regular file-opening work without editing/mutating files.
+- **N3 — Search retention:** `Ctrl+Shift+F`, command palette search, workspace content result navigation, replace/options and exclusions all work; entering/leaving Search does not leave duplicate launchers or unusable panes.
+- **N4 — Human UI:** Keyboard/focus/escape/clear, screen reader names, narrow Explorer, saved layout restoration, Dope Dark plus alternate theme, and browser **and** Electron direct real-GUI checks. Missing environment or unobserved functionality is **Evidence Gap**, not presumed Green.
+- **N5 — Regression:** No changes to project/Roadmap state, linked Markdown, model/chat ownership, authorization, history or existing Phase 11 UX-003 guidance. Prefer focused T1/T2 validations before T3 GUI; record failures without rewriting earlier closeout.
+
+This is **documentation-level approval only**. Any implementation prompt or run requires a separate explicit owner authorization. UX-007 does not qualify Phase 11 or replace its iterative broad hunts.
+
 ## Phase 11 operating model — repeatable discovery and repair
 
 **First: a bounded known-issue tranche.** After minimal verification of live registrations/ownership, reproduce and repair the owner-reported P0 Roadmap Markdown relinking, readable no-action/structured Chat messages and Dope-aware guidance problems. The previous source-bound c10-better-planning scoped Green remains historical; investigate whether today's complaint is a regression, missing path or poor presentation.
