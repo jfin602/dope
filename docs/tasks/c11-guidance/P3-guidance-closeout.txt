@@ -1,0 +1,29 @@
+TASK: Correction 11 / P3 — Manual grounded guidance closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- This is a correction stack, not a new Phase 11 patch/version checkpoint. Do not change 13 manifests, 20 internal @dope/* pins, yarn.lock or create package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036/0037, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-issue-ledger.md, docs/tasks/p11/known-issue-closeout.md and docs/tasks/c11-guidance/{README.md,prompt-assessment.md,implementation-plan.md}. Reinspect the live source and tests: planning reference main 266720b at 0.11.8 is not a fixed execution HEAD. Check actual Git HEAD/ancestry, coherent version, dirty worktree, any concurrent mutators and code ownership. Do not reset/stash/clean or overwrite owner edits. Do not require /activate, auto-run manual tests, self-commit or mark historical P8 Green. Only an explicit future developer Run of this authored stack authorizes implementation. Runner owns Git commits; implementation agents leave changes uncommitted. Preserve one Chat owner, manual Roadmap actions, local-only selected Q4 without hosted fallback and all Phase 10 R6 evidence boundaries.
+
+MODE — T3 MANUAL CORRECTION CLOSEOUT, NOT RUN BY HEADLESS PHASE RUNNER
+With actual browser GUI tools (Electron GUI only if independently available), use a disposable project and a deliberately **linked** wrong but valid Roadmap file. Verify the exact source SHA, version `0.11.8`, Git state, P1/P2 commits, and running bundle corresponds to the tested source (rebuild/restart if stale); do not claim an old UI bundle as new source evidence. Confirm an actually loaded local Q4_K_M model and selected Chat provenance; no silent global routing/default or hosted fallback.
+
+REAL QUALIFICATION — UX-003
+1. Reuse one saved Chat. Ask **"I linked the wrong Roadmap, how do I change it?"** with no selected checkpoint and again with an existing selected checkpoint. Repeat the exact phrasing at least twice in each context where practical to sample reliability; report each observed response, no fictional repetition.
+2. Try alternate human phrasings ("I selected the wrong Roadmap", "replace the linked roadmap", "switch the Roadmap document") and negative controls (edit Objective, current Roadmap status, refresh/sync, an unrelated link). Confirm capability-help route is selected only for actual source change intent.
+3. Verify the assistant names the **real** path `Roadmap > Roadmap Markdown and setup > Change linked file`, explains preview+confirmation and that the old source remains on disk, states Chat cannot directly perform this operation, and does not instruct the user to edit ROADMAP.md's Objective to relink.
+4. Inspect strict validated `no-action` reply as the primary readable assistant prose, muted collapsed raw activity/copy, correct no-write result, saved Chat replay and no unauthorized file/owner revision change. When malformed/non-JSON output occurs, confirm it is shown as *unvalidated*, not as an endorsed instruction. Do not weaken the strict JSON guard merely to make a misleading answer look successful.
+5. Test blocked/missing/conflict project state guidance and relevant stale/cross-project negatives when safely reproducible. Directly retest UX-001/UX-002 critical shared behavior only if touched; don't rerun every P8 workflow or repeat the old 738-test count as if newly executed.
+6. Native Electron UI and Codex/hosted parity are **separate, previously unqualified evidence**; do not invent, infer from builds or send project context to hosted provider without explicit user consent. State not run/blocked as appropriate. A *scoped local-Q4/browser* correction can close only its approved subset, not certify native/hosted or Phase 11 product.
+
+FINAL SOURCE PROOF
+Run targeted tests and one `npm run check` on the final coherent correction source only when necessary to support a new whole-source claim (it contains typecheck, tests, browser and Electron builds; do not double-run nested commands). Manual T3 can exceed ordinary coding prompt time; record actual time only if measured. Store closeout under `docs/tasks/c11-guidance/closeout.md` with source SHA, tested version/model/context, browser screenshots/log refs, each gate PASS/FAIL/BLOCKED/NOT RUN, original P8 failure preserved, residual native/Codex evidence gaps and next [Usability Hunter](../p11/usability-hunt-manual.md) target. If exact wording still fails or evidence is incomplete, report NOT GREEN/Evidence Gap rather than force success. No version bump.
+
+DONE
+A truthful source-bound *scoped UX-003 correction disposition*, NOT an automatic Phase 11 Green. Only later separate discovery/repair loops and owner acceptance can close Phase 11.

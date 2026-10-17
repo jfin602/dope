@@ -1,0 +1,23 @@
+TASK: Correction 11 / P2 — Prove grounded capability routing and safe no-action
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- This is a correction stack, not a new Phase 11 patch/version checkpoint. Do not change 13 manifests, 20 internal @dope/* pins, yarn.lock or create package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036/0037, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-issue-ledger.md, docs/tasks/p11/known-issue-closeout.md and docs/tasks/c11-guidance/{README.md,prompt-assessment.md,implementation-plan.md}. Reinspect the live source and tests: planning reference main 266720b at 0.11.8 is not a fixed execution HEAD. Check actual Git HEAD/ancestry, coherent version, dirty worktree, any concurrent mutators and code ownership. Do not reset/stash/clean or overwrite owner edits. Do not require /activate, auto-run manual tests, self-commit or mark historical P8 Green. Only an explicit future developer Run of this authored stack authorizes implementation. Runner owns Git commits; implementation agents leave changes uncommitted. Preserve one Chat owner, manual Roadmap actions, local-only selected Q4 without hosted fallback and all Phase 10 R6 evidence boundaries.
+
+SCOPE — T2; ONE BOUNDED CHAT/HELP INTEGRATION SEAM
+Inspect packages/theia-extension/src/node/chat-backend.ts, chat-context-composer.ts, roadmap-local-model.ts, dope-capability-help.ts and saved Chat tests. Confirm the exact user phrase and P1 variants select the SAME help ID in context preview and actual turn, independent of checkpoint selection. Ensure help mode takes precedence over ROADMAP_ACTION_INSTRUCTION / checkpoint Objective intent where the user asks how to operate Dope. Preserve real project-scoped linked-file state (linked, missing, unlinked, pending/conflicted, foreign/stale), availability and manual permission checks, token accounting and truthful no-action instruction. Do not solve source-changing actions by letting model write files or proposing Objective edits.
+
+Add targeted tests that exercise the full path via ChatContextComposer and ChatBackend/selected local model stubs: with/without selected checkpoint, saved Chat restoration, current source linked and absent, stale project rejection, unrelated editing questions. Demonstrate the composed system guidance names "Roadmap > Roadmap Markdown and setup > Change linked file" for valid linked state and says Chat cannot directly relink. Verify strict local `{ "type":"no-action","message":... }` validation, bounded retry/cancel/error behavior, no ProjectPlanningActions mutation and no additional hosted/inference fallback; unknown/invalid model prose never acquires authoritative status. If P1 classifier tests already establish source routing, do not duplicate large test suites. Fix only evidenced defects on the narrow pipeline.
+
+FOCUSED VALIDATION
+Run only relevant focused tests such as `node --test test/unit/dope-capability-help.test.ts test/unit/chat-context-composer.test.ts test/unit/roadmap-chat-context.test.ts` plus a narrowly added backend test if changed. These tests import built `lib/` in some paths: rebuild @dope/theia-extension only if the current source-to-lib dependency requires it, not the entire workspace. Run `git diff --check`; no full npm run check or browser simulation. <=8-minute target, 10 soft / 15 hard; split/report blocker if unsafe.
+
+DONE / HANDOFF
+Exact wording reaches truthful capability help in both preview and execution, no hidden read-only Objective detour, no unauthorized writes/provider changes, focused proofs pass; leave manual Q4/browser evidence to P3.

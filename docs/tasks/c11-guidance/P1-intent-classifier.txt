@@ -1,0 +1,23 @@
+TASK: Correction 11 / P1 — Repair Roadmap source-change intent matching
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- This is a correction stack, not a new Phase 11 patch/version checkpoint. Do not change 13 manifests, 20 internal @dope/* pins, yarn.lock or create package-lock.json.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0036/0037, docs/planning/p11/phase-11-plan.md, docs/planning/p11/usability-issue-ledger.md, docs/tasks/p11/known-issue-closeout.md and docs/tasks/c11-guidance/{README.md,prompt-assessment.md,implementation-plan.md}. Reinspect the live source and tests: planning reference main 266720b at 0.11.8 is not a fixed execution HEAD. Check actual Git HEAD/ancestry, coherent version, dirty worktree, any concurrent mutators and code ownership. Do not reset/stash/clean or overwrite owner edits. Do not require /activate, auto-run manual tests, self-commit or mark historical P8 Green. Only an explicit future developer Run of this authored stack authorizes implementation. Runner owns Git commits; implementation agents leave changes uncommitted. Preserve one Chat owner, manual Roadmap actions, local-only selected Q4 without hosted fallback and all Phase 10 R6 evidence boundaries.
+
+SCOPE — T1; ONE OWNER: DETERMINISTIC HELP INTENT MATCHER
+Inspect packages/theia-extension/src/node/dope-capability-help.ts, test/unit/dope-capability-help.test.ts, actual Roadmap Markdown button labels and existing matcher call sites. Repair selectDopeCapabilityHelp to treat "I linked the wrong Roadmap, how do I change it?" as roadmap-change-file: recognize "linked" as past-tense source-binding intent and natural alternatives without requiring literal "file", "source" or standalone "link". Keep matching deterministic, bounded and conservative; favor intent + Roadmap context over indiscriminate keywords. Do not add an LLM classifier, a new Chat system, a generic chatbot prompt, a separate provider call or write permissions.
+
+Tests: exact original wording, linked/switch/replace/unlink/wrong document synonyms and punctuation/casing, with/without explicit "file"; negative corpus: "change Roadmap checkpoint Objective/title/status", factual progress questions, linked issues/Planning Map links, unrelated source links, refresh/sync, work/history and ordinary Chat. Preserve precedence for roadmap-refresh and other capabilities, UI path identity, availability restrictions, permission wording and negative/no false action classification.
+
+FOCUSED VALIDATION
+Add/extend table-driven classification tests in test/unit/dope-capability-help.test.ts. Run `node --test test/unit/dope-capability-help.test.ts` (module source import; no unnecessary rebuild) plus `git diff --check`. Optional narrow compiler check only if needed; no full npm run check, browser builds or Q4 inference. Time target <=8 minutes, 10-minute soft / 15-minute hard stop: if unable to finish safely, report blocker rather than broadening.
+
+DONE / HANDOFF
+Classifier reliably returns roadmap-change-file for the original intent, does not steal checkpoint-edit/factual turns, tests pass; report code diff and exact tests, defer pipeline proof to P2 and live GUI to P3.
