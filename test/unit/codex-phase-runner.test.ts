@@ -225,6 +225,7 @@ const commitMessage = (rootDirectory: string, revision = 'HEAD') => {
 const createPhaseRepository = async (
   implementationCount = 2,
   config = 'Terra High',
+  browserRequiredNumber?: number,
 ) => {
   const rootDirectory = await mkdtemp(
     path.join(tmpdir(), 'dope-phase-git-test-'),
@@ -241,13 +242,15 @@ const createPhaseRepository = async (
     '.codex-runs/\npackage-lock.json\n.env*\n',
   );
   for (let number = 1; number <= implementationCount; number += 1) {
-    const entry = prompt(number, { config });
+    const entry = prompt(number, { config,
+      browserRequired: number === browserRequiredNumber ? 'yes' : undefined });
     await writeFile(
       path.join(rootDirectory, 'docs', 'tasks', 'p8', entry.filename),
       entry.text,
     );
   }
-  const closeout = prompt(implementationCount + 1, { closeout: true, config });
+  const closeout = prompt(implementationCount + 1, { closeout: true, config,
+    browserRequired: implementationCount + 1 === browserRequiredNumber ? 'yes' : undefined });
   await writeFile(
     path.join(rootDirectory, 'docs', 'tasks', 'p8', closeout.filename),
     closeout.text,
@@ -2236,16 +2239,9 @@ test('all completed roadmap prompts launch no Codex process and retain manual cl
 });
 
 test('browser-required implementation prompts stop before Codex and preserve the completed prefix', async () => {
-  const rootDirectory = await createPhaseRepository(2);
+  const rootDirectory = await createPhaseRepository(2, 'Terra High', 2);
   const calls: number[] = [];
   try {
-    const browserPrompt = prompt(2, { browserRequired: 'yes' });
-    await writeFile(
-      path.join(rootDirectory, 'docs', 'tasks', 'p8', browserPrompt.filename),
-      browserPrompt.text,
-    );
-    gitResult(rootDirectory, ['add', '-A']);
-    gitResult(rootDirectory, ['commit', '--quiet', '-m', 'browser metadata']);
     await assert.rejects(
       runCli(['p8'], {
         rootDirectory,
@@ -2291,17 +2287,10 @@ test('browser-required implementation prompts stop before Codex and preserve the
 });
 
 test('browser-required closeouts are blocked by --closeout without a Codex invocation', async () => {
-  const rootDirectory = await createPhaseRepository(0);
+  const rootDirectory = await createPhaseRepository(0, 'Terra High', 1);
   const calls: number[] = [];
   let launcherResolutions = 0;
   try {
-    const closeout = prompt(1, { closeout: true, browserRequired: 'yes' });
-    await writeFile(
-      path.join(rootDirectory, 'docs', 'tasks', 'p8', closeout.filename),
-      closeout.text,
-    );
-    gitResult(rootDirectory, ['add', '-A']);
-    gitResult(rootDirectory, ['commit', '--quiet', '-m', 'browser metadata']);
     await assert.rejects(
       runCli(['p8', '--closeout'], {
         rootDirectory,
@@ -2319,7 +2308,7 @@ test('browser-required closeouts are blocked by --closeout without a Codex invoc
     );
     assert.equal(launcherResolutions, 0);
     assert.deepEqual(calls, []);
-    assert.equal(gitResult(rootDirectory, ['log', '-1', '--format=%s']), 'browser metadata');
+    assert.equal(gitResult(rootDirectory, ['log', '-1', '--format=%s']), 'baseline');
     const [runName] = await readdir(path.join(rootDirectory, '.codex-runs', 'p8'));
     const run = JSON.parse(await readFile(path.join(rootDirectory, '.codex-runs', 'p8', runName!, 'run.json'), 'utf8'));
     assert.equal(run.status, 'browser_execution_required');
