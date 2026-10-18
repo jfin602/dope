@@ -1,6 +1,10 @@
 # Phase 11 Plan — Human-Centered Development Workflow
 
+<<<<<<< HEAD
 **CURRENT 2026-10-17 Phase Focus correction authoring:** Owner-approved [c11-phase-focus](../../tasks/c11-phase-focus/README.md) P1–P4 **ASSESSED / PLANNED / AUTHORED ONLY, NOT RUN OR QUALIFIED** at inspected main `270ade0362f365779843c2b76096f850e0fbc649`, unchanged `0.11.8`. This is existing Phase 11 Roadmap UX, not a new phase/pillar nor a replacement for c11-brainstorm P8 security, c11-planning-bridge, H02, D1-D8 or final owner acceptance.
+=======
+**Current 2026-10-17 correction closeout:** [`c11-brainstorm` final qualification](../../tasks/c11-brainstorm/qualification/final-closeout.md) is **GREEN FOR THE OWNER-APPROVED CORRECTION SCOPE** at committed product `270ade0` / `0.11.8`: F1/F2 fresh browser approval, S1–S10 source-bound checks, safe linked Markdown and applicable 759-test aggregate. The original P8 NOT GREEN and repair-loop EVIDENCE GAP remain historical. Independent Electron GUI is an explicit owner-accepted gap for this correction; Electron build success is separate and does not prove native parity. H02, Planning Bridge PB1–PB8, integrated D1–D8 and broad usability exit are not qualified by this result. Phase 11 OPEN / NOT QUALIFIED, Phase 12 inactive. Earlier dated entries below are historical.
+>>>>>>> 041072f (c11-brainstorm closeout green)
 
 **CURRENT PHASE 11 SCOPE / 2026-10-17 (OWNER-APPROVED, DOCS ONLY):** Phase 11 comprises original usability foundation/Hunts, `c11-brainstorm`, `c11-planning-bridge` PB1–PB8, and a separate integrated D1–D8 Dope Builds Dope qualification. At reviewed main `3787c6c` brainstorming P1–P7 are committed at unchanged `0.11.8`; P8 is manual/not qualified; Bridge design only, no prompt stack. Original usability requirements and history remain binding. Phase 11 OPEN/NOT QUALIFIED; Phase 12 inactive. Older status entries below are historical.
 
