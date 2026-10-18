@@ -108,3 +108,16 @@ Design-only `c11-brainstorm` differs from separately unrun H02 Software Map Hunt
 | Corrections/status (F5/F6) | Verified phase/failed-prompt relation and separate implementation/qualification evidence | NOT RUN |
 
 [Manual gate prompt](../../tasks/c11-phase-focus/P4-manual-phase-focus-closeout.txt); doesn't replace c11-brainstorm P8, H02 or wider usability evidence.
+
+## Current Phase Focus P4 coverage and approved recovery — 2026-10-17/18
+
+| Gate | Real P4 evidence | Next evidence needed |
+| --- | --- | --- |
+| F1/F2 | Browser PASS; overlay opens correctly and authored P-order/visual Arrange remain independent | Regress only if evidence repair affects UI |
+| F3 | FAIL overall; changed prompt source correctly blocked, but original project's verified completed Work/checkpoint records aren't displayed | R1/R3 real project-backed read-only completion + immutable snapshot, clone-negative |
+| F4 | BLOCKED / EVIDENCE GAP; genuine pre-authoring Bridge producer isn't implemented | Owner-approved **deferral to PB5/D5**, NOT PASS; maintain authored order lock now |
+| F5 | BLOCKED / EVIDENCE GAP; phase correction association passes, exact failed-prompt proof absent | R2/R3 citation-backed proof plus ambiguous/unknown negative |
+| F6 | FAIL; live overlay invokes selector without evidence inputs | R1–R3 status input + R4 browser distinct implementation vs qualification |
+| F7/F8 | Browser PASS; checked Open Prompt/no Work start, focus/keyboard/narrow/Chat | Adjacent regression only; native Electron GUI unobserved, not parity proof |
+
+[Tested P4 closeout](../../tasks/c11-phase-focus/closeout.md) is preserved. [Repair contract](../../tasks/c11-phase-focus/qualification/p4-evidence-repair/contract.md) docs only, not yet executed. The Phase Focus narrowed correction scope may defer only F4's live Bridge producer, never F3/F5/F6, source integrity, fixed authored order, or full Phase 11 D1–D8/owner qualification.
