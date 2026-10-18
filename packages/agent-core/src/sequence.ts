@@ -25,6 +25,7 @@ export interface AgentTaskSequence {
     status: SequenceStatus; currentEntryNumber: number; stack: ImportedStack;
     basis: SequenceBasis; checkpoints: SequenceCheckpoint[]; blockedReason?: SequenceBlockReason;
     taskId?: string; runIds?: string[]; acceptedDirty?: AcceptedDirtyBasis; gateMessage?: string;
+    supersession?: { sequenceId: string; priorFingerprint: string; reviewId: string };
 }
 export interface SequenceBasis { head: string; packageVersion: string; worktreeFingerprint: string; clean?: boolean }
 export interface SequenceCheckpoint { entryNumber: number; sha: string; taskId?: string; runId?: string;
@@ -216,6 +217,40 @@ export async function hasPhaseStackSourceDrift(stack: ImportedStack, sources: re
     catch { return true; }
 }
 
+/** Outlines are editable only before executable prompt source is authored. */
+export function reorderUnwrittenOutline<T extends { id: string; dependsOn: readonly string[] }>(
+    items: readonly T[], orderedIds: readonly string[], authored: boolean): T[] {
+    if (authored) throw new Error('Authored prompt order is fixed; review a new stack supersession');
+    if (items.length !== orderedIds.length || new Set(orderedIds).size !== items.length ||
+        items.some(item => !orderedIds.includes(item.id))) throw new Error('Outline order must contain each WorkItem exactly once');
+    const positions = new Map(orderedIds.map((value, index) => [value, index]));
+    const byId = new Map(items.map(item => [item.id, item]));
+    if (byId.size !== items.length || items.some(item => item.dependsOn.some(dependency =>
+        !byId.has(dependency) || positions.get(dependency)! >= positions.get(item.id)!)))
+        throw new Error('Outline order violates WorkItem dependencies');
+    return orderedIds.map(value => byId.get(value)!);
+}
+
+export interface StackSupersessionReview {
+    priorFingerprint: string; replacementFingerprint: string; reviewId: string;
+}
+
+/** A reviewed replacement is a separate source identity; no completed prefix may be rewritten. */
+export function assertUnstartedStackSupersession(prior: AgentTaskSequence, replacement: ImportedStack,
+    review: StackSupersessionReview): void {
+    if (prior.checkpoints.length || prior.currentEntryNumber !== 1 || prior.taskId || prior.runIds?.length ||
+        prior.status === 'running' || prior.status === 'completed')
+        throw new Error('Completed or started stack cannot be superseded');
+    if (prior.stack.fingerprint === replacement.fingerprint ||
+        review.priorFingerprint !== prior.stack.fingerprint ||
+        review.replacementFingerprint !== replacement.fingerprint ||
+        !/^[A-Za-z0-9][A-Za-z0-9._/-]{2,127}$/u.test(review.reviewId))
+        throw new Error('Stack supersession requires explicit review of both fingerprints');
+    if ((prior.stack.sourcePath ?? `docs/tasks/${prior.stack.folderName}`) ===
+        (replacement.sourcePath ?? `docs/tasks/${replacement.folderName}`))
+        throw new Error('Supersession requires a new stack source path; authored order is fixed');
+}
+
 export const SEQUENCE_STATUSES = freeze(['ready', 'running', 'waiting-manual', 'blocked', 'interrupted', 'completed'] as const);
 const transitions: Readonly<Record<SequenceStatus, readonly SequenceStatus[]>> = {
     ready: ['running', 'waiting-manual', 'blocked', 'interrupted'],
@@ -233,7 +268,7 @@ export function transitionSequence(from: SequenceStatus, to: SequenceStatus): Se
 }
 export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskSequence> {
     const x = record(value, ['version', 'id', 'createdAt', 'updatedAt', 'status', 'currentEntryNumber', 'stack',
-        'basis', 'checkpoints', 'blockedReason', 'taskId', 'runIds', 'acceptedDirty', 'gateMessage']);
+        'basis', 'checkpoints', 'blockedReason', 'taskId', 'runIds', 'acceptedDirty', 'gateMessage', 'supersession']);
     if (x.version !== SEQUENCE_SCHEMA_VERSION) throw new Error('Invalid sequence schema version');
     const stack = await parseImportedStack(x.stack);
     const status = select(x.status, SEQUENCE_STATUSES);
@@ -298,13 +333,24 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
     if (x.gateMessage !== undefined && (typeof x.gateMessage !== 'string' || x.gateMessage.length > 500 ||
         stack.entries[currentEntryNumber - 1]?.execution !== 'manual-gate'))
         throw new Error('Invalid manual gate message');
+    let supersession: AgentTaskSequence['supersession'];
+    if (x.supersession !== undefined) {
+        const link = record(x.supersession, ['sequenceId', 'priorFingerprint', 'reviewId']);
+        if (typeof link.priorFingerprint !== 'string' || !/^[a-f0-9]{64}$/u.test(link.priorFingerprint) ||
+            typeof link.reviewId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{2,127}$/u.test(link.reviewId) ||
+            link.priorFingerprint === stack.fingerprint)
+            throw new Error('Invalid stack supersession');
+        supersession = { sequenceId: id(link.sequenceId), priorFingerprint: link.priorFingerprint,
+            reviewId: link.reviewId };
+    }
     return freeze({ version: SEQUENCE_SCHEMA_VERSION, id: id(x.id), createdAt, updatedAt,
         status, currentEntryNumber, stack, basis: { head: basisValue.head, packageVersion: basisValue.packageVersion,
             worktreeFingerprint: basisValue.worktreeFingerprint,
             ...(basisValue.clean === undefined ? {} : { clean: basisValue.clean }) }, checkpoints,
         ...(blockedReason ? { blockedReason } : {}), ...(taskId ? { taskId } : {}),
         ...(runIds.length ? { runIds } : {}), ...(acceptedDirty ? { acceptedDirty } : {}),
-        ...(x.gateMessage ? { gateMessage: x.gateMessage } : {}) });
+        ...(x.gateMessage ? { gateMessage: x.gateMessage } : {}),
+        ...(supersession ? { supersession } : {}) });
 }
 function parseSequenceDirty(value: unknown): AcceptedDirtyBasis {
     const basis = record(value, ['head', 'paths']);

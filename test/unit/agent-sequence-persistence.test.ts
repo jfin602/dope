@@ -60,6 +60,33 @@ test('sequence store is atomic, serialized, strict and portable', async () => {
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('durable authored identity rejects in-place replacement and records reviewed unstarted supersession', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-sequence-'));
+    try {
+        const store = new AgentStore(), original = await sequence();
+        await store.createSequence(root, original);
+        const changed = await importPhaseStack('c8-revised', [
+            prompt(1, false, 'Correction', '0.8.13'),
+            prompt(2, false, 'Correction', '0.8.13'),
+            prompt(3, true, 'Correction', '0.8.13')]);
+        await assert.rejects(store.createSequence(root, { ...original, id: 'same-path', stack: await phase() }),
+            /Authored stack source already/);
+        const replacement = { ...original, id: 'replacement', stack: changed,
+            basis: { ...original.basis, packageVersion: '0.8.13' },
+            supersession: { sequenceId: original.id, priorFingerprint: original.stack.fingerprint,
+                reviewId: 'review-123' } };
+        await store.createSequence(root, replacement);
+        assert.equal((await store.readSequence(root, replacement.id))?.supersession?.sequenceId, original.id);
+        assert.equal((await store.readSequence(root, original.id))?.stack.fingerprint, original.stack.fingerprint);
+        await assert.rejects(store.createSequence(root, { ...replacement, id: 'wrong-review',
+            stack: await importPhaseStack('c8-other', [prompt(1, false, 'Correction', '0.8.13'),
+                prompt(2, false, 'Correction', '0.8.13'), prompt(3, true, 'Correction', '0.8.13')]),
+            supersession: { ...replacement.supersession, priorFingerprint: 'f'.repeat(64) } }), /explicit review/);
+        await assert.rejects(store.updateSequence(root, replacement, { ...replacement, updatedAt: '2026-10-06T12:00:01Z',
+            supersession: { ...replacement.supersession, reviewId: 'review-else' } }), /Illegal AgentTaskSequence update/);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('sequence rejects secret-shaped and private-path prompt fixtures', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-sequence-'));
     try {
@@ -90,6 +117,11 @@ test('verified manual closeout completion persists its external checkpoint', asy
         const store = new AgentStore();
         await store.createSequence(root, completed);
         assert.deepEqual(await new AgentStore().readSequence(root, completed.id), completed);
+        await assert.rejects(store.createSequence(root, { ...completed, id: 'rewritten-history',
+            stack: await phase() }), /Authored stack source already/);
+        const changedCheckpoint = { ...completed, updatedAt: '2026-10-06T12:00:01Z',
+            checkpoints: [{ ...completed.checkpoints[0], sha: a }, ...completed.checkpoints.slice(1)] };
+        await assert.rejects(store.updateSequence(root, completed, changedCheckpoint), /Illegal AgentTaskSequence update/);
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 

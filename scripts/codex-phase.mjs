@@ -67,7 +67,8 @@ export function invokeGit(
 }
 
 function successfulGit(result, action, { trim = true } = {}) {
-  if (result.error) throw new Error(`${action}: ${result.error.message}`);
+  if (result.error && result.status !== 0)
+    throw new Error(`${action}: ${result.error.message}`);
   if (result.status !== 0) {
     const detail = String(result.stderr ?? result.stdout ?? '').trim();
     throw new Error(
@@ -869,6 +870,25 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
     })),
   );
   const plan = buildPlan(entries, folderName);
+  // The first committed executable source is the authored identity. A changed
+  // P*.txt must be reviewed as a separate stack, even when no prompt has run.
+  for (const entry of entries) {
+    const relative = `docs/tasks/${folderName}/${entry.filename}`;
+    const additions = successfulGit(
+      runGit(['log', '--diff-filter=A', '--format=%H', '--', relative]),
+      `Unable to inspect authored source ${relative}`,
+    );
+    const authoredAt = additions.split(/\r?\n/u).filter(Boolean).at(-1);
+    if (authoredAt) {
+      const authored = successfulGit(
+        runGit(['show', `${authoredAt}:${relative}`]),
+        `Unable to read authored source ${relative}`,
+        { trim: false },
+      );
+      if (authored !== entry.text)
+        throw new Error(`Authored prompt source drift: ${relative}; use a reviewed new-stack supersession.`);
+    }
+  }
   const interruptionMessage =
     plan.mode === 'correction'
       ? 'Correction stack run was interrupted.'
@@ -1039,6 +1059,8 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
   let previousVersion = resume.previousVersion;
   for (const prompt of plan.implementations.slice(resume.completedCount)) {
     if (interrupted) throw new Error(interruptionMessage);
+    if (await readFile(path.join(taskDirectory, prompt.filename), 'utf8') !== prompt.text)
+      throw new Error(`Authored prompt source changed during run: ${prompt.filename}`);
     if (prompt.browserRequired) throw await stopForBrowserRequirement(prompt);
     activePrompt = prompt;
     assertVersionCompatible(
@@ -1185,6 +1207,8 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
   }
   if (closeoutAutoRun) {
     const closeout = plan.closeout;
+    if (await readFile(path.join(taskDirectory, closeout.filename), 'utf8') !== closeout.text)
+      throw new Error(`Authored prompt source changed during run: ${closeout.filename}`);
     if (closeout.browserRequired)
       throw await stopForBrowserRequirement(closeout);
     const preCloseoutStatus = successfulGit(

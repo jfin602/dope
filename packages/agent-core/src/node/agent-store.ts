@@ -5,7 +5,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AgentRun, AgentRunEvent, AgentTask, CandidateDelta, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask, projectPath } from '../contracts';
 import { canTransitionAgentRun } from '../state';
-import { AgentTaskSequence, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
+import { AgentTaskSequence, assertUnstartedStackSupersession, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
 import { ProposedAction, parseProposedAction } from '../proposed-action';
 import { AgentSteeringRequest, AgentSteeringState, parseAgentSteeringRequest, parseAgentSteeringState } from '../steering';
 import { AgentMapImpact, parseAgentMapImpact } from '../map-impact';
@@ -387,6 +387,20 @@ export class AgentStore implements AgentTranscriptStorage {
         const dir = (await this.collection(root, 'sequences', true))!;
         await this.locked(dir, async () => {
             if (await this.readSequence(root, sequence.id)) throw new Error('Agent sequence already exists');
+            const existing = await this.listSequences(root);
+            const sourcePath = (item: AgentTaskSequence) => item.stack.sourcePath ?? `docs/tasks/${item.stack.folderName}`;
+            if (existing.some(item => sourcePath(item) === sourcePath(sequence)))
+                throw new Error('Authored stack source already has a durable sequence; reorder in place is denied');
+            if (sequence.supersession) {
+                const prior = existing.find(item => item.id === sequence.supersession!.sequenceId);
+                if (!prior) throw new Error('Superseded sequence missing');
+                assertUnstartedStackSupersession(prior, sequence.stack, {
+                    priorFingerprint: sequence.supersession.priorFingerprint,
+                    replacementFingerprint: sequence.stack.fingerprint,
+                    reviewId: sequence.supersession.reviewId });
+                if (sequence.currentEntryNumber !== 1 || sequence.checkpoints.length || sequence.taskId || sequence.runIds?.length)
+                    throw new Error('Replacement stack must be unstarted');
+            }
             await this.atomic(join(dir, `${sequence.id}.json`), sequence, SEQUENCE_BYTES_LIMIT);
         });
         this.notify(root, 'sequence', sequence.id);
@@ -413,7 +427,8 @@ export class AgentStore implements AgentTranscriptStorage {
             const nextBasis = advanced && next.basis.head === next.checkpoints.at(-1)?.sha &&
                 next.basis.packageVersion === current.stack.entries[current.currentEntryNumber - 1]?.versionPolicy.version &&
                 (next.basis.clean ?? true) === true;
-            if (!same(current.stack, next.stack) || !(advanced ? nextBasis : same(current.basis, next.basis)) ||
+            if (!same(current.stack, next.stack) || !same(current.supersession, next.supersession) ||
+                !(advanced ? nextBasis : same(current.basis, next.basis)) ||
                 current.createdAt !== next.createdAt || next.updatedAt < current.updatedAt ||
                 !advanced && current.taskId && current.taskId !== next.taskId ||
                 !advanced && (current.runIds ?? []).some((runId, index) => next.runIds?.[index] !== runId) ||

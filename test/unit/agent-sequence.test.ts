@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { importPhaseStack, parseImportedStack, parseSequenceEntry, parseAgentTaskSequence, hasPhaseStackSourceDrift,
-    phaseStackTaskMetadata, SEQUENCE_STATUSES, canTransitionSequence, transitionSequence }
+    phaseStackTaskMetadata, SEQUENCE_STATUSES, canTransitionSequence, transitionSequence,
+    reorderUnwrittenOutline, assertUnstartedStackSupersession }
     from '../../packages/agent-core/lib/index.js';
 
 function prompt(number: number, options: { mode?: 'phase' | 'correction'; phase?: number; version?: string;
@@ -105,6 +106,34 @@ test('snapshot hash detects source drift and rejects tampering without modifying
     await assert.rejects(parseImportedStack({ ...stack, entries: [
         { ...stack.entries[0], promptText: edited[0].text }, stack.entries[1]] }), /snapshot or fingerprint mismatch/);
     await assert.rejects(parseImportedStack({ ...stack, token: 'private' }), /Invalid agent record fields/);
+});
+
+test('only unwritten dependency-safe outlines reorder; authored stacks require reviewed new identity', async () => {
+    const items = [{ id: 'a', dependsOn: [] }, { id: 'b', dependsOn: [] },
+        { id: 'c', dependsOn: ['a'] }];
+    assert.deepEqual(reorderUnwrittenOutline(items, ['b', 'a', 'c'], false).map(item => item.id), ['b', 'a', 'c']);
+    assert.throws(() => reorderUnwrittenOutline(items, ['b', 'a', 'c'], true), /Authored prompt order/);
+    assert.throws(() => reorderUnwrittenOutline(items, ['c', 'a', 'b'], false), /dependencies/);
+    assert.throws(() => reorderUnwrittenOutline(items, ['a', 'a', 'c'], false), /exactly once/);
+    const original = await importPhaseStack('c8-first', [
+        prompt(1, { mode: 'correction', version: '0.8.13' }),
+        prompt(2, { mode: 'correction', version: '0.8.13', closeout: true })]);
+    const changed = await importPhaseStack('c8-replacement', [
+        prompt(1, { mode: 'correction', version: '0.8.13', suffix: 'Revised task.\n' }),
+        prompt(2, { mode: 'correction', version: '0.8.13', closeout: true })]);
+    const base = { version: 1, id: 'original', createdAt: '2026-10-06T12:00:00Z',
+        updatedAt: '2026-10-06T12:00:00Z', status: 'ready', currentEntryNumber: 1,
+        stack: original, checkpoints: [], basis: { head: 'a'.repeat(40), packageVersion: '0.8.13',
+            worktreeFingerprint: 'b'.repeat(64) } } as const;
+    const review = { priorFingerprint: original.fingerprint, replacementFingerprint: changed.fingerprint,
+        reviewId: 'review-123' };
+    assert.doesNotThrow(() => assertUnstartedStackSupersession(base as any, changed, review));
+    assert.throws(() => assertUnstartedStackSupersession(base as any, changed,
+        { ...review, priorFingerprint: 'c'.repeat(64) }), /explicit review/);
+    assert.throws(() => assertUnstartedStackSupersession(base as any,
+        { ...changed, sourcePath: 'docs/tasks/c8-first', folderName: 'c8-first' }, review), /new stack source path/);
+    assert.throws(() => assertUnstartedStackSupersession({ ...base, currentEntryNumber: 2,
+        checkpoints: [{ entryNumber: 1, sha: 'c'.repeat(40) }] } as any, changed, review), /Completed or started/);
 });
 
 test('sequence status transitions and strict position are versioned', async () => {
