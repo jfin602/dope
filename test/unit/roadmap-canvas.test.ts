@@ -56,6 +56,27 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(rules, /max-width: 480px/);
 });
 
+test('Phase Focus uses the selected phase projection and existing checked source navigation', () => {
+    const canvas = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    const inspector = read('packages/theia-extension/src/browser/roadmap-inspector-model.ts');
+    const css = read('packages/theia-extension/src/browser/dope.css');
+    assert.match(canvas, /selectPhaseFocus\(index, this\.taskStacks, this\.phaseId\)/);
+    assert.match(canvas, /selected\?\.kind !== 'phase'/);
+    assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.inspection, this\.phaseFocus/);
+    assert.match(canvas, /for \(const stack of phase\.stacks\)/);
+    assert.match(canvas, /for \(const prompt of stack\.prompts\)/);
+    assert.match(canvas, /this\.inspector\.openPrompt\(node\)/);
+    assert.match(inspector, /this\.service\.resolvePromptSource\(uri, source\.path, source\.fingerprint\)/);
+    assert.match(canvas, /Prompt source unavailable: \$\{inspector\.error\}/);
+    assert.doesNotMatch(canvas, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|shell\.addWidget|runPrompt/);
+    assert.match(canvas, /this\.phaseFocus\.onkeydown = event => \{/);
+    assert.match(canvas, /this\.setPhaseOpen\(false\)/);
+    assert.match(css, /\.dope-roadmap-phase-focus \{ position: absolute; top: 8px; right: 8px/);
+    assert.match(css, /\.dope-roadmap-phase-focus\[data-state="minimized"\]/);
+    assert.match(css, /\.dope-roadmap-phase-focus.*var\(--theia-editorWidget-background/);
+    assert.match(css, /@media \(max-width: 720px\).*\.dope-roadmap-phase-focus/);
+});
+
 test('Details command and selection use one mounted inspector model in the canvas with safe overlay states', () => {
     const module = read('packages/theia-extension/src/browser/frontend-module.ts');
     const canvas = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');

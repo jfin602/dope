@@ -31,11 +31,24 @@
 .dope-roadmap-inspection-header button { min-height: 30px; padding: 4px 7px; color: var(--theia-button-secondaryForeground, var(--theia-foreground)); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 4px; cursor: pointer; }
 .dope-roadmap-inspection:focus-visible, .dope-roadmap-inspection-header button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-roadmap-inspection .dope-roadmap-inspector { height: auto; overflow: visible; padding: 6px 2px; color: var(--theia-editor-foreground); background: transparent; }
+.dope-roadmap-phase-focus { position: absolute; top: 8px; right: 8px; z-index: 5; box-sizing: border-box; width: min(26rem, calc(100% - 16px)); max-height: calc(100% - 16px); overflow: auto; padding: 8px; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 5px; box-shadow: 0 4px 16px var(--theia-widget-shadow, transparent); }
+.dope-roadmap-phase-focus[data-state="expanded"] { width: min(42rem, calc(100% - 16px)); }
+.dope-roadmap-phase-focus[data-state="minimized"] { width: min(20rem, calc(100% - 16px)); }
+.dope-roadmap-phase-focus[data-state="minimized"] > :not(.dope-roadmap-phase-header) { display: none; }
+.dope-roadmap-phase-header { position: sticky; top: -8px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-bottom: 6px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); }
+.dope-roadmap-phase-header strong { flex: 1 1 10rem; overflow-wrap: anywhere; }
+.dope-roadmap-phase-focus :is(button, a) { min-height: 30px; color: var(--theia-button-secondaryForeground, var(--theia-foreground)); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 4px; cursor: pointer; }
+.dope-roadmap-phase-focus :is(button, a):focus-visible, .dope-roadmap-phase-focus:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-roadmap-phase-focus ol { padding-left: 1.7rem; }
+.dope-roadmap-phase-focus li { margin: 5px 0; overflow-wrap: anywhere; }
+.dope-roadmap-phase-focus li button { display: block; text-align: left; }
+.dope-roadmap-phase-focus li small { display: block; color: var(--theia-descriptionForeground); }
+.dope-roadmap-phase-focus h3 { margin: 10px 0 4px; font-size: 1rem; overflow-wrap: anywhere; }
 .dope-roadmap-implementation { padding: 6px 2px; overflow-wrap: anywhere; }
 .dope-roadmap-implementation p { margin: 4px 0; color: var(--theia-descriptionForeground); }
 .dope-roadmap-implementation button { min-height: 30px; margin: 2px 6px 2px 0; padding: 4px 8px; color: var(--theia-button-secondaryForeground, var(--theia-foreground)); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 4px; cursor: pointer; }
 .dope-roadmap-implementation button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
-@media (max-width: 720px) { .dope-roadmap-import[data-state="expanded"], .dope-roadmap-inspection[data-state="expanded"] { width: calc(100% - 16px); } .dope-roadmap-inspection { top: 52px; } }
+@media (max-width: 720px) { .dope-roadmap-import[data-state="expanded"], .dope-roadmap-inspection[data-state="expanded"], .dope-roadmap-phase-focus { width: calc(100% - 16px); } .dope-roadmap-inspection, .dope-roadmap-phase-focus { top: 52px; } }
 .dope-roadmap-import select { box-sizing: border-box; width: 100%; min-width: 0; padding: 6px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-widget-border)); }
 .dope-roadmap-import :is(p, li) { overflow-wrap: anywhere; }
 .dope-roadmap-import details { margin-top: 6px; color: var(--theia-descriptionForeground); }

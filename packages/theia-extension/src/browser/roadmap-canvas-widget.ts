@@ -6,7 +6,7 @@ import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/wi
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
-import { projectRoadmapTasks, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
+import { projectRoadmapTasks, selectPhaseFocus, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { RoadmapService } from '../roadmap-service';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
@@ -136,6 +136,19 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly collapseButton = document.createElement('button');
     private readonly focusButton = document.createElement('button');
     private readonly nextPromptsButton = document.createElement('button');
+    private readonly phaseButton = document.createElement('button');
+    private readonly phaseFocus = document.createElement('section');
+    private readonly phaseHeading = document.createElement('strong');
+    private readonly phaseContent = document.createElement('div');
+    private readonly phaseFeedback = document.createElement('p');
+    private readonly phaseExpand = document.createElement('button');
+    private readonly phaseCompact = document.createElement('button');
+    private readonly phaseMinimize = document.createElement('button');
+    private readonly phaseClose = document.createElement('button');
+    private phaseOpen = false;
+    private phaseView: 'compact' | 'expanded' | 'minimized' = 'compact';
+    private phaseId?: string;
+    private phaseReturnFocus?: HTMLElement;
     private readonly detailLabel = document.createElement('span');
     private detail: RoadmapDetail = 'phase';
     private arranging = false;
@@ -242,6 +255,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.nextPromptsButton.type = 'button';
         icon(this.nextPromptsButton, 'Show next implementation prompts for selected checkpoint', 'list-ordered');
         this.nextPromptsButton.onclick = () => this.nextPrompts();
+        icon(this.phaseButton, 'Open Phase Focus for selected phase', 'list-ordered');
+        this.phaseButton.append(' Open Phase');
+        this.phaseButton.setAttribute('aria-controls', 'dope-roadmap-phase-focus');
+        this.phaseButton.onclick = () => this.openPhaseFocus();
         icon(this.sourceButton, 'Roadmap Markdown and setup', 'file-text');
         this.sourceButton.append(this.sourceLabel);
         this.sourceLabel.setAttribute('aria-live', 'polite');
@@ -252,7 +269,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.poolButton.setAttribute('aria-controls', 'dope-roadmap-pool-panel');
         this.poolButton.onclick = () => this.setPoolOpen(!this.poolOpen);
         this.toolbar.append(this.sourceButton, this.details, this.mind, this.zoomIn, this.zoomOut, this.fitButton, this.arrangeButton,
-            this.expandButton, this.collapseButton, this.focusButton, this.nextPromptsButton, this.detailLabel, this.reload);
+            this.expandButton, this.collapseButton, this.focusButton, this.nextPromptsButton, this.phaseButton, this.detailLabel, this.reload);
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.path.className = 'dope-roadmap-stage';
@@ -310,6 +327,27 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.relationshipSummary.hidden = true;
         this.inspection.append(inspectionHeader, this.relationshipSummary, this.implementation, this.inspectionEditor.node);
         this.setInspectionView('compact');
+        this.phaseFocus.id = 'dope-roadmap-phase-focus';
+        this.phaseFocus.className = 'dope-roadmap-phase-focus';
+        this.phaseFocus.setAttribute('aria-label', 'Phase Focus');
+        this.phaseFocus.tabIndex = -1;
+        this.phaseFocus.onkeydown = event => {
+            if (event.key === 'Escape') { event.stopPropagation(); this.setPhaseOpen(false); }
+        };
+        const phaseHeader = document.createElement('div');
+        phaseHeader.className = 'dope-roadmap-phase-header';
+        for (const [button, label, action] of [
+            [this.phaseExpand, 'Expand Phase Focus', () => this.setPhaseView('expanded')],
+            [this.phaseCompact, 'Compact Phase Focus', () => this.setPhaseView('compact')],
+            [this.phaseMinimize, 'Minimize Phase Focus', () => this.setPhaseView('minimized')],
+            [this.phaseClose, 'Close Phase Focus', () => this.setPhaseOpen(false)],
+        ] as const) { button.type = 'button'; button.textContent = label.split(' ')[0];
+            button.setAttribute('aria-label', label); button.onclick = action; }
+        phaseHeader.append(this.phaseHeading, this.phaseExpand, this.phaseCompact, this.phaseMinimize, this.phaseClose);
+        this.phaseFeedback.setAttribute('role', 'status');
+        this.phaseFeedback.setAttribute('aria-live', 'polite');
+        this.phaseFocus.append(phaseHeader, this.phaseFeedback, this.phaseContent);
+        this.setPhaseView('compact');
         this.sourceHeader.className = 'dope-roadmap-source-header';
         this.sourceSummary.textContent = 'Linked Markdown';
         for (const [button, label, action] of [
@@ -323,15 +361,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.setSourceView('compact');
         this.pools.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); this.setPoolOpen(false); this.poolButton.focus(); } };
         this.stage.className = 'dope-roadmap-stage-host dope-map-stage';
-        this.stage.append(this.path, this.status, this.importEntry, this.inspection, this.poolButton, this.pools);
+        this.stage.append(this.path, this.status, this.importEntry, this.inspection, this.phaseFocus, this.poolButton, this.pools);
         this.node.append(this.toolbar, this.stage);
         this.stageResize.observe(this.stage);
         this.setSourceOpen(false);
         this.setInspectionOpen(false);
+        this.setPhaseOpen(false);
         this.setPoolOpen(false);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.refresh(); });
         window.addEventListener('focus', this.focusRecheck);
         this.modelListener = inspector.onChange(() => {
+            this.phaseFeedback.textContent = inspector.error ? `Prompt source unavailable: ${inspector.error}` : '';
+            this.phaseFeedback.setAttribute('role', inspector.error ? 'alert' : 'status');
             if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
             const nextSelection = inspector.selectedPrompt?.id ?? inspector.selectedId;
             const graphChanged = this.selectedId !== nextSelection || this.projection?.revision !== inspector.index.revision;
@@ -390,6 +431,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.inspector.setSnapshot(undefined, undefined);
                 this.setSourceOpen(false);
                 this.setPoolOpen(false);
+                this.setPhaseOpen(false);
                 this.renderImportEntry();
                 return;
             }
@@ -404,6 +446,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.relationshipSummary.hidden = true;
                 this.setSourceOpen(false);
                 this.setPoolOpen(false);
+                this.setPhaseOpen(false);
                 this.flushPresentation();
                 const nextKey = roadmapViewportKey(projectUri, index.projectId);
                 this.projectUri = undefined;
@@ -635,6 +678,103 @@ export class RoadmapCanvasWidget extends BaseWidget {
         } else if (this.pools.contains(document.activeElement)) this.poolButton.focus();
     }
 
+    private openPhaseFocus(): void {
+        const selected = this.projection?.nodes.find(node => node.id === this.selectedId);
+        if (selected?.kind !== 'phase' || selected.draftState || !this.inspector.index) {
+            this.status.textContent = 'Select a canonical phase checkpoint, then choose Open Phase.';
+            return;
+        }
+        this.phaseId = selected.id;
+        this.setPhaseOpen(true);
+        this.renderPhaseFocus();
+        this.phaseFocus.focus();
+    }
+
+    private setPhaseOpen(open: boolean): void {
+        const hadFocus = this.phaseFocus.contains(document.activeElement);
+        if (open && !this.phaseOpen) {
+            const active = document.activeElement;
+            this.phaseReturnFocus = active instanceof HTMLElement ? active : this.phaseButton;
+        }
+        this.phaseOpen = open;
+        this.phaseFocus.hidden = !open;
+        this.phaseButton.setAttribute('aria-expanded', String(open));
+        if (!open && hadFocus) (this.phaseReturnFocus?.isConnected ? this.phaseReturnFocus : this.phaseButton).focus();
+        if (open && this.phaseView === 'minimized') this.setPhaseView('compact');
+    }
+
+    private setPhaseView(view: 'compact' | 'expanded' | 'minimized'): void {
+        const contentFocused = this.phaseContent.contains(document.activeElement);
+        this.phaseView = view;
+        this.phaseFocus.dataset.state = view;
+        this.phaseExpand.hidden = view === 'expanded';
+        this.phaseCompact.hidden = view !== 'expanded';
+        this.phaseMinimize.hidden = view === 'minimized';
+        if (contentFocused && view === 'minimized') this.phaseExpand.focus();
+    }
+
+    private renderPhaseFocus(): void {
+        const index = this.inspector.index;
+        const phase = index && this.phaseId && selectPhaseFocus(index, this.taskStacks, this.phaseId);
+        if (!this.phaseOpen) return;
+        if (!phase || phase.projectId !== this.projectId) {
+            this.setPhaseOpen(false);
+            return;
+        }
+        this.phaseHeading.textContent = `${phase.phaseTitle} · ${phase.qualification.replaceAll('-', ' ')}`;
+        this.phaseContent.replaceChildren();
+        const note = document.createElement('p');
+        note.textContent = 'Authored order is fixed. Source inspection does not run Work. Implementation and qualification are unknown without verified evidence.';
+        this.phaseContent.append(note);
+        if (!phase.stacks.length) {
+            const empty = document.createElement('p');
+            empty.textContent = 'No authored prompt stacks are linked to this phase. Check task discovery or select another phase.';
+            this.phaseContent.append(empty);
+        }
+        for (const stack of phase.stacks) {
+            const section = document.createElement('section');
+            const heading = document.createElement('h3');
+            heading.textContent = `${stack.segment === 'correction' ? 'Correction' : stack.segment === 'continuation' ? 'Continuation' : 'Phase'} · ${stack.path}`;
+            section.append(heading);
+            if (stack.failedPrompt) {
+                const relationship = document.createElement('p');
+                relationship.textContent = `Source-backed correction of ${stack.failedPrompt.stackPath}/P${stack.failedPrompt.number}`;
+                section.append(relationship);
+            }
+            const list = document.createElement('ol');
+            list.setAttribute('aria-label', `${stack.path} authored prompt order`);
+            for (const prompt of stack.prompts) {
+                const item = document.createElement('li');
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = `P${prompt.number} — ${prompt.title}`;
+                button.setAttribute('aria-label', `Inspect P${prompt.number} source: ${prompt.title}`);
+                button.onclick = () => {
+                    const node = this.projection?.nodes.find(candidate => candidate.kind === 'prompt' &&
+                        candidate.taskSource?.stackPath === stack.path && candidate.taskSource.number === prompt.number &&
+                        candidate.taskSource.fingerprint === prompt.fingerprint);
+                    if (!node) { this.status.textContent = 'Prompt projection is unavailable. Refresh Roadmap and retry.'; return; }
+                    this.select(node.id);
+                    if (this.inspector.selectedPrompt?.id === node.id) void this.inspector.openPrompt(node);
+                };
+                const detail = document.createElement('small');
+                detail.textContent = `${prompt.kind}${prompt.manualGate ? ' · manual gate' : ''} · implementation ${prompt.implementation} · qualification ${prompt.qualification}` +
+                    `${prompt.checkpointSha ? ` · checkpoint ${prompt.checkpointSha}` : ''} · ${prompt.path} · SHA-256 ${prompt.fingerprint}`;
+                item.append(button, detail); list.append(item);
+            }
+            section.append(list); this.phaseContent.append(section);
+        }
+        for (const diagnostic of phase.diagnostics) {
+            const warning = document.createElement('p'); warning.textContent = diagnostic;
+            this.phaseContent.append(warning);
+        }
+        if (this.taskDiscoveryError) {
+            const warning = document.createElement('p');
+            warning.textContent = `Prompt discovery unavailable: ${this.taskDiscoveryError}. Refresh Roadmap to retry.`;
+            this.phaseContent.append(warning);
+        }
+    }
+
     private render(): void {
         const projection = this.projection;
         if (!projection) return;
@@ -646,6 +786,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const visible = roadmapVisibleGraph(projection, this.detail, this.selectedId,
             this.expanded, this.collapsed, 96, this.promptWindow);
         this.renderFlow(visible);
+        this.renderPhaseFocus();
         this.renderImplementationSummary(visible);
         this.renderPools();
         this.renderImportEntry();
@@ -1796,6 +1937,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.relationshipSummary.hidden = true;
         if (this.promptWindow && this.promptWindow.stackId !== id) this.promptWindow = undefined;
         this.selectedId = id;
+        if (this.phaseOpen && node.kind === 'phase' && !node.draftState) this.phaseId = id;
         this.schedulePresentation();
         if (node.taskSource) this.inspector.selectTask(node);
         else if (!node.draftState) this.inspector.select(id);
