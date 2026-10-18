@@ -1,0 +1,168 @@
+{
+  "date": "2026-10-18",
+  "sourceHead": "11e1f761dda1dafead6f3c3ada072bedc9eeb389",
+  "version": "0.11.8",
+  "fixture": "/tmp/dope-p15-bridge-EjzkSm",
+  "fixtureBaselineCommit": "c9e5a9a7403cb8ce16ffdf1dd9441c39d6608cf3",
+  "browserBundleSha256": "9ebf47de79a5c0e353e05f621f93dd8f9a9503051b0d6e61e227df29c840d23d",
+  "electronBundleSha256": "53d5b64351700a91419c5cc3b5aafe5bd5841f010c3fae448ede93db388d2508",
+  "roadmap": {
+    "projectId": "9b7bef94-24a1-472a-846f-7fd40fc7ebb3",
+    "revision": 3,
+    "linkedMarkdownSha256": "326d3033a6f44cca55b89ca2e32cdda6c183dc82c9837ce0e412f16ed8442da7",
+    "checkpointId": "roadmap:ROADMAP.md#milestone-implement-filter-and-focused-checks",
+    "checkpointStatus": "not-implemented"
+  },
+  "planning": {
+    "projectId": "project-68b38874-31d3-4579-b30f-a7476cebfe08",
+    "collectionRevision": 3,
+    "mapId": "map-3580d99b-1b7d-45df-89e8-99d901b6ebf1",
+    "mapRevision": 2,
+    "transformations": 1,
+    "workItems": 1
+  },
+  "sourceFileSha256": "30f56312d0d1151b084cff09b075f078c0cbf25703946fd165778f22895c0cf5",
+  "chat": {
+    "title": "Planning Map Limitations Before Work Runs",
+    "modelPolicy": {
+      "type": "exact",
+      "model": {
+        "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+        "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+      }
+    },
+    "messages": [
+      {
+        "role": "user",
+        "content": "For this disposable project, explain in one sentence what the current Planning Map can and cannot prove before a Work run. Answer only; do not propose or change anything.",
+        "execution": null
+      },
+      {
+        "role": "assistant",
+        "content": "The Planning Map can prove the existence of an optional severity filter for the summary utility but cannot prove whether this filter is actually implemented, tested, or functional before a Work run.",
+        "execution": {
+          "schemaVersion": 1,
+          "id": "19e712c7-c10d-4617-95b0-118532b53a8d",
+          "status": "complete",
+          "selectedModel": {
+            "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+            "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+          },
+          "startedAt": "2026-10-18T18:26:26.620Z",
+          "actualModel": {
+            "schemaVersion": 1,
+            "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+            "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+            "providerId": "local",
+            "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+          },
+          "resolutionSource": "chat-exact-default",
+          "routingProvenance": {
+            "version": 1,
+            "source": "chat-exact-default",
+            "effectiveHard": {
+              "requiredCapabilities": [
+                "conversationalText",
+                "streaming"
+              ],
+              "locality": "any",
+              "enabledOnly": true,
+              "usableOnly": true,
+              "hostedProjectData": "requires-feature-authorization",
+              "minimumKnownContextTokens": 1085
+            },
+            "actualTarget": {
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "executionLabels": {
+              "connection": "LM Studio",
+              "provider": "local",
+              "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "attempts": [
+              {
+                "target": {
+                  "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+                  "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+                },
+                "outcome": "selected"
+              }
+            ]
+          },
+          "finishedAt": "2026-10-18T18:26:31.327Z"
+        }
+      },
+      {
+        "role": "user",
+        "content": "For the selected Planning Map, suggest one bounded WorkItem for the optional severity filter using current source evidence. Do not apply or approve any change.",
+        "execution": null
+      },
+      {
+        "role": "assistant",
+        "content": "Add the severity-filter component to the summary utility's source code in src/logSummary.ts, ensuring it selects local log entries by requested severity before summary counting while preserving existing code and ownership authority.",
+        "execution": {
+          "schemaVersion": 1,
+          "id": "3ba6d39a-02f9-4c5c-94bd-a51348cea17e",
+          "status": "complete",
+          "selectedModel": {
+            "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+            "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+          },
+          "startedAt": "2026-10-18T18:29:30.946Z",
+          "actualModel": {
+            "schemaVersion": 1,
+            "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+            "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m",
+            "providerId": "local",
+            "modelLabel": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+          },
+          "resolutionSource": "chat-exact-default",
+          "routingProvenance": {
+            "version": 1,
+            "source": "chat-exact-default",
+            "effectiveHard": {
+              "requiredCapabilities": [
+                "conversationalText",
+                "streaming"
+              ],
+              "locality": "any",
+              "enabledOnly": true,
+              "usableOnly": true,
+              "hostedProjectData": "requires-feature-authorization",
+              "minimumKnownContextTokens": 1081
+            },
+            "actualTarget": {
+              "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+              "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "executionLabels": {
+              "connection": "LM Studio",
+              "provider": "local",
+              "model": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+            },
+            "attempts": [
+              {
+                "target": {
+                  "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+                  "modelId": "qwen3-coder-30b-a3b-instruct@q4_k_m"
+                },
+                "outcome": "selected"
+              }
+            ]
+          },
+          "finishedAt": "2026-10-18T18:29:40.443Z"
+        }
+      }
+    ]
+  },
+  "aggregate": {
+    "command": "npm run check",
+    "exitCode": 1,
+    "firstStageTests": 625,
+    "passed": 623,
+    "failed": 2,
+    "logPath": "/tmp/dope-p15-check.log",
+    "logSha256": "db23402f2850d6d6254aedfd0a62001beecf6bdeb83ceca1abb68b00c714c53f"
+  }
+}
