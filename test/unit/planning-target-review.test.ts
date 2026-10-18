@@ -96,6 +96,23 @@ test('WorkItem suggestions require the exact approved target and remain proposal
     } finally { await f.dispose(); }
 });
 
+test('correction review accepts a stale Roadmap link for read-only affected WorkItem planning', async () => {
+    const f = await fixture();
+    try {
+        (f.map.workItems as unknown[]).push({ id: 'work', title: 'Work', objective: 'Work',
+            transformationIds: ['add-core'], dependsOn: [], requirements: [], constraints: [],
+            acceptanceCriteria: ['Review'], validationTargets: ['Focused test'], workingSet: [], status: 'ready' });
+        f.map.revision++;
+        f.collection.revision++;
+        const before = JSON.stringify(f.map);
+        const plan = await f.review.previewCorrectionReplan(['add-core']);
+        assert.deepEqual(plan.affectedWorkItemIds, ['work']);
+        assert.equal(plan.invalidateTargetAndStackApproval, true);
+        assert.equal(await f.review.approved(), false);
+        assert.equal(JSON.stringify(f.map), before);
+    } finally { await f.dispose(); }
+});
+
 test('typed transformation update requires explicit Roadmap relink and re-reviewed target basis', async () => {
     const f = await fixture();
     try {

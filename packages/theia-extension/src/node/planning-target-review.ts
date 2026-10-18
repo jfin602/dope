@@ -6,6 +6,8 @@ import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import type { RebaseDecision } from '@dope/visual-planning/lib/rebase';
 import type { CurrentSoftwareImpactPacket, PlanningCollection, TargetDesignReview, VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { PlanningBridgeApprovals } from './planning-bridge-approvals';
+import { planCorrectionRework } from './planning-correction';
+import type { CorrectionReplan } from './planning-correction';
 
 /** One selected checkpoint and branch scope. All reads go back to their existing owners. */
 export class PlanningTargetReview {
@@ -86,6 +88,26 @@ export class PlanningTargetReview {
         const suggestions = suggestWorkItems(reviewed.map);
         if (!await this.approved()) throw new Error('Planning target changed during WorkItem suggestion');
         return suggestions;
+    }
+    /** Review affected unexecuted WorkItems before creating a separate correction draft. */
+    async previewCorrectionReplan(changedTransformationIds: readonly string[]): Promise<CorrectionReplan> {
+        const handle = await this.attached();
+        const roadmap = await this.roadmap.read(this.root);
+        const checkpoint = roadmap.checkpoints.find(item => item.id === this.checkpointId);
+        const links = checkpoint?.links.filter(link => link.owner === 'planning-map') ?? [];
+        if (roadmap.projectRoot !== this.root || links.length !== 1)
+            throw new Error('Select one owned Planning Map for correction review');
+        const collection = await this.planning.read(handle);
+        const map = collection.maps.find(item => item.id === links[0].targetId);
+        if (!map || map.projectId !== collection.projectId || links[0].ownerProjectId !== collection.projectId)
+            throw new Error('Foreign Planning Map for correction review');
+        const result = planCorrectionRework(map, changedTransformationIds);
+        const latest = await this.planning.read(await this.attached());
+        if (latest.revision !== collection.revision ||
+            latest.maps.find(item => item.id === map.id)?.revision !== map.revision ||
+            (await this.roadmap.read(this.root)).revision !== roadmap.revision)
+            throw new Error('Planning target changed during correction review');
+        return result;
     }
     async previewTransformation(command: EditCommand, transformationId: string): Promise<PlannedTransformation> {
         const { collection, map } = await this.readSelection();
