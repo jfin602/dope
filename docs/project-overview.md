@@ -1,5 +1,8 @@
 # Dope Project Overview
 
+**Current owner-reported P15 / 2026-10-18 (documentation only):** Local `c11-planning-bridge` on `11e1f76`, `0.11.8`, is **NOT GREEN**: broken Prepare Work Planning Map handoff, two failed final aggregate tests (623 passed), independent native GUI unobserved. Original uncommitted closeout/evidence have not been read through GitHub. Separate [`c11-bridge-repair` P1–P5 manual qualification loops](tasks/c11-bridge-repair/README.md) are authored to isolate each blocker and rerun full Bridge qualification without modifying immutable P1–P15. Preserve source/permission/Phase Focus/brainstorm history. Phase 11 OPEN/NOT QUALIFIED, Phase 12 inactive.
+
+
 <<<<<<< HEAD
 **Forward Phase 11 scope update (2026-10-17; docs only):** **Phase 11 — Human-Centered Development Workflow** includes existing usability/Hunts, `c11-brainstorm`, separately planned `c11-planning-bridge` PB1–PB8, and D1–D8 integrated journey in addition to the unchanged two-clean-Hunt exit. At reviewed main `3787c6c`, brainstorm P1–P7 committed; P8 remains manual/unqualified and Bridge has no executable stack. Phase 11 stays OPEN/NOT QUALIFIED, `0.11.8` unchanged, historical source-scoped results intact and Phase 12 inactive. See [Phase 11 plan](planning/p11/phase-11-plan.md). Earlier status paragraphs below retain original dates.
 

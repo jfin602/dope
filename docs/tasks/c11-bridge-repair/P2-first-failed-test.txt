@@ -1,0 +1,33 @@
+TASK: Correction 11 / P2 — First failing aggregate test manual repair loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction scope only; do not bump root/workspace manifests, internal pins or lockfiles.
+
+PREFLIGHT / TRUST BOUNDARIES
+This is a MANUAL qualification/repair prompt, **not** a headless `codex:phase` implementation task. A **later explicit owner Run** is required. Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0038, Phase 11/PB1–PB8, the original c11-planning-bridge/P1–P15 and its P15 NOT GREEN closeout/evidence, and this correction assessment/plan/README. Confirm intended local checkout HEAD/Git history, dirty files, coherent `0.11.8`, source/test paths, model/services and competing work before any mutation. The owner-reported local P15 `11e1f76`, original uncommitted closeout/evidence and 623/2 failures were **not accessible from older GitHub main** when authored. Preserve them (and hashes) before changing source; if absent STOP and mark BLOCKED. Never reset/stash/clean/delete/overwrite other work or rewrite the original P15, completed P1–P15, checkpoints or qualification history. No agent self-commit, /activate, silent model/hosted fallback, unauthorized Git/tool/network/canonical writes or Phase 12 activation.
+
+MODE: HUMAN-OPERATED, SOURCE-BOUND OBSERVE → DIAGNOSE → (AUTHORIZED REPAIR) → FOCUSED REPLAY; UP TO THREE REPAIR CYCLES.
+Record each cycle in the designated `qualification/` folder with verified source/version/dirty snapshot, precise reproduction, changed paths, commands/results, manual GUI observations, negative security checks and honest PASS/FAIL/BLOCKED/NOT RUN. One family can have no code changes if prior repair already solved it. Do not rerun `npm run check` after each cycle; P5 owns the stable final aggregate. Manual gate/runtime duration may exceed ordinary implementation prompt budget, but keep each code patch tightly bounded (<=8-minute target, 10 soft/15 hard or split/reassess).
+
+OBJECTIVE
+Resolve or independently verify **test failure A**, exactly as identified from the preserved original P15 623-pass/2-fail aggregate.
+
+OBSERVE
+Read the original uncommitted P15 evidence and full failing test log. Record first failing test's **exact filename, name, assertion, expected/actual values, original source/test SHA and invocation** in the report before any repair. Do not guess from GitHub main or use a freshly passing test as proof the original failure was never present.
+
+DIAGNOSE
+Run the smallest isolated invocation against the actual local P15 candidate with correct compiled package output. Determine whether P1's verified owner-identity repair already resolves this assertion, whether stale `lib` caused the observed failure, or whether an independent source defect remains. Clearly distinguish an obsolete test that conflicts with accepted authority from a regression that tests real product behavior; never delete/skip/relax the latter.
+
+BOUNDED AUTHORIZED REPAIR LOOP
+Up to 3 cycles: observe -> trace exact producer/consumer -> one bounded owner-approved source/test repair if really necessary -> focused test and nearest non-regression security checks. If already fixed by P1, **no redundant code edit**; independently rerun A and document same-root cause and verified PASS. Run `git diff --check` and check source/Git basis each cycle, keep original failure evidence.
+
+ACCEPTANCE / HANDOFF
+PASS only if exact original test A (not substituted name) passes on the repaired source with its original safety intent intact, and any affected owner/authorization paths remain tested. Record `qualification/p2-first-test/cycle-N.md`, actual output, patch attribution and disposition. Missing log/unknown assertion -> BLOCKED/Evidence Gap, not invented fix.
+
+NON-GOALS
+No second Chat, Planning Map, Work/runner, Roadmap state owner, Development Session, general project ID rewrite, false Green, full Phase 11 owner closeout or Phase 12 work. Do not execute the next family as if this one passed without independently recorded evidence.

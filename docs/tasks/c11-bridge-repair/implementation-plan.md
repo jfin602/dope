@@ -1,0 +1,39 @@
+# /prompt-plan — c11-bridge-repair
+
+**Status:** MANUAL REPAIR-LOOP PLAN / P1–P5 AUTHORING ONLY / NOT RUN OR QUALIFIED.
+**Source reference:** GitHub `main` `7be9140ac22dd4ea5e9393ba0670d4e0119a8029` and owner-reported local P15 `11e1f76`, version `0.11.8`. The reported local source, `closeout.md`, `evidence.json` and exact failures are **not in this connected GitHub state**. Verify them before any repair. No source or version change authorized by authoring.
+
+## Manual loop contract (applies to P1–P4)
+
+1. **Source/basis preflight:** read BOOT, AGENTS, docs/workflow, ADR 0038, the original P15 and this assessment/plan. Verify `git status --short`, `git rev-parse HEAD`, root manifest/version, active project and tool availability. Hash/back up the **uncommitted** P15 closeout/evidence and original raw failed test log without overwriting them; record whether product source is clean, dirty or only locally committed.
+2. **Observe:** reproduce the specific failed gate from an actual original/disposable project, capturing exact arguments/IDs/log/selection/expected behavior. If unavailable, mark BLOCKED/NOT RUN and do not propose a speculative repair.
+3. **Diagnose:** trace the actual local producer/consumer and owning services to the minimal responsible line. Differentiate same-root/different-owner identifiers from genuine cross-workspace identity violations. Identify the real first and second failing test by stable log ordering.
+4. **Repair if authorized:** only the smallest owner-approved product patch addressing the observed cause; no root ID migration, test skipping/weakening, forced backend/model switch, broad refactor, checkout destruction, or uncontrolled auto-run. Test existing negative authority paths *before* claiming the positive behavior fixed.
+5. **Focused replay:** build only changed package `lib` when tests use compiled output, run changed/adjacent tests with `git diff --check`, replay the same real browser/native/user task as appropriate, and repeat up to **three** clearly recorded cycles only if the family remains not green. Preserve result of each cycle and exact source; don't rerun full aggregate for each fix.
+6. **Handoff:** create one append-only dated report `qualification/pN-<family>/cycle-K.md` and final family summary, marking PASS/FAIL/BLOCKED/NOT RUN and whether the next family may continue. Do not self-commit or erase previous logs. Only P5 performs a single final closeout.
+
+## Sequenced manual families
+
+| Prompt | Domain/producer-consumer seam | Evidence requirement and targeted tests | Exit |
+| --- | --- | --- | --- |
+| **P1** | Actual Bridge frontend Prepare Work handler -> Roadmap selected checkpoint/root -> PlanningMapController/VisualPlanningBackend project handle/snapshot | Real browser same-root with intentionally distinct Roadmap and Planning owner IDs; regression tests on valid same-root and rejected wrong-root/foreign, stale Roadmap revision, Planning revision/basis and backend attach. Validate handoff opens existing Map and carries selection/requirements. | P1 PASS only on directly observed corrected handoff; source unchanged until evidence preserved. |
+| **P2** | Exact **first failing test** from original `623 pass / 2 fail` result, not invented filename | Capture real error/assertion, isolate smallest test command, compare behavior after P1. If same root, independent rerun/evidence (no patch). If distinct, one bounded patch plus smallest adjacent unit/integration tests. | PASS for test A only with correct unchanged/rewritten assertions, source-bound green focused run and no weakened test. |
+| **P3** | Exact **second failing test**, independent of first | Repeat P2 source-aware assessment for second precise assertion. Review shared repair applicability without copying P2's PASS into P3. Add narrowly needed regression only if warranted. | PASS for test B with its own successful focused run and evidence. |
+| **P4** | Independent native Electron GUI and associated window/process evidence, not browser build | Attempt real native Electron window control/screenshot, load matching code/assets, repeat Prepare Work and affected D2–D5 with owner/isolation negatives, preserve window/runtime logs. If controller truly unavailable, record unobserved evidence gap and an explicit escalation/qualification disposition; do not quietly waive full native requirement. | PASS only for independently observed Electron GUI; otherwise Evidence Gap/BLOCKED retained. |
+| **P5** | Full Bridge D1–D8/PB1–PB8 owner-authority journey | Source-bound browser + actual selected local model and zero-model route, approve Roadmap -> Prepare Work -> Planning Map target -> WorkItems -> reorder genuine pre-authoring outline -> generate/approve fixed P*.txt -> deliberate Work execution -> physical reconciliation/corrections/closeout, with F4 pre-authoring freeze, restart/project switch, stale/foreign/egress/authority. Full final-source `npm run check` once when required; native gate separately read P4 evidence. | **One complete qualified/Not Green/Evidence Gap verdict**; never relabel original P15 or whole Phase 11 automatically. |
+
+## Identity repair invariants
+
+Roadmap `projectId` is Roadmap owner identity. Planning collection `projectId` is Planning owner identity. These do **not** need to be equal to denote a project. A stable project-root/workspace binding identifies the same workspace; each owner independently validates its own handle, revision, project ID and (for Planning Map) architectural/physical basis. This is source-grounded in the older committed `RoadmapStore`, `PlanningStore`, `RoadmapPlanningLinks` and `VisualPlanningBackend` contracts; find the real local defect before making changes. Cross-project spoofing and stale external edits must still reject. Do not rename or migrate existing owner IDs.
+
+## Qualification/evidence boundaries
+
+- P1–P4 are manual qualification/repair prompts even if they run focused `node --test`; they are intentionally marked `Browser required: yes.` so no headless runner agent consumes them as implementation prompts. Manual model recommendation is advisory, not execution.
+- P5 final full Bridge qualification must verify **both** original failing tests now pass and a stable-source full aggregate, browser journey, independent Electron GUI, no-model/local-model paths, source/permission/privacy boundaries and F4 real pre-authoring reorder. A proven gap or new failure yields NOT GREEN or EVIDENCE GAP rather than synthetic Green.
+- The originally failed P15 is never overwritten. Its `qualification/p15-manual/evidence.json` and source-bound closeout must first be saved/recovered by the operator, preserving original bytes and SHA if uncommitted.
+- Manual source repair may change product code only after a later explicit owner execution decision. The current docs authoring changes **no** product code, tests, version, prior prompt or original evidence.
+- This repair does not close Phase 11. After any scoped Bridge Green, Phase 11 still requires separate integrated acceptance/human usability clean Hunts, unobserved evidence dispositions and owner signoff; Phase 12 remains inactive.
+
+## File placement and phase runner grammar
+
+This stack uses the user-selected `docs/tasks/c11-bridge-repair/` folder, correction family **11**, contiguous **P1–P5** and a single `P5-full-qualification-closeout.txt` terminal closeout. Each has `TASK: Correction 11 / Pn — …`, `GPT-6 Sol Medium/High`, `Browser required: yes.` and `Required unchanged project version: `0.11.8`.` metadata. Since **all five are manual**, they must be operated outside `npm run codex:phase` headless loop; `npm run codex:phase:validate -- c11-bridge-repair` is only a local syntax preflight after safely integrating the docs. No activation-only step; a future explicit owner Run is still required.

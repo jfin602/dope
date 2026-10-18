@@ -1,0 +1,33 @@
+TASK: Correction 11 / P1 — Prepare Work owner-identity manual repair loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction scope only; do not bump root/workspace manifests, internal pins or lockfiles.
+
+PREFLIGHT / TRUST BOUNDARIES
+This is a MANUAL qualification/repair prompt, **not** a headless `codex:phase` implementation task. A **later explicit owner Run** is required. Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0038, Phase 11/PB1–PB8, the original c11-planning-bridge/P1–P15 and its P15 NOT GREEN closeout/evidence, and this correction assessment/plan/README. Confirm intended local checkout HEAD/Git history, dirty files, coherent `0.11.8`, source/test paths, model/services and competing work before any mutation. The owner-reported local P15 `11e1f76`, original uncommitted closeout/evidence and 623/2 failures were **not accessible from older GitHub main** when authored. Preserve them (and hashes) before changing source; if absent STOP and mark BLOCKED. Never reset/stash/clean/delete/overwrite other work or rewrite the original P15, completed P1–P15, checkpoints or qualification history. No agent self-commit, /activate, silent model/hosted fallback, unauthorized Git/tool/network/canonical writes or Phase 12 activation.
+
+MODE: HUMAN-OPERATED, SOURCE-BOUND OBSERVE → DIAGNOSE → (AUTHORIZED REPAIR) → FOCUSED REPLAY; UP TO THREE REPAIR CYCLES.
+Record each cycle in the designated `qualification/` folder with verified source/version/dirty snapshot, precise reproduction, changed paths, commands/results, manual GUI observations, negative security checks and honest PASS/FAIL/BLOCKED/NOT RUN. One family can have no code changes if prior repair already solved it. Do not rerun `npm run check` after each cycle; P5 owns the stable final aggregate. Manual gate/runtime duration may exceed ordinary implementation prompt budget, but keep each code patch tightly bounded (<=8-minute target, 10 soft/15 hard or split/reassess).
+
+OBJECTIVE
+Repair the observed real-browser Prepare Work → existing Planning Map handoff without weakening project authorization.
+
+OBSERVE
+Start by preserving/hash-recording the locally uncommitted original P15 closeout, evidence.json and exact failing run/log on reported `11e1f76`; stop if missing rather than invent evidence. In an isolated, known-root project with legitimately independent Roadmap/Planning owner IDs, reproduce Prepare Work, capture actual frontend comparison, project root, owner IDs, selected checkpoint, expected/actual navigation, backend response and browser log. Compare against a truly foreign-project and stale-basis negative.
+
+DIAGNOSE
+Inspect the **actual local** Bridge frontend (not just older GitHub sources), RoadmapCanvas/PlanningMapController/VisualPlanningBackend and `RoadmapPlanningLinks`. `RoadmapStore` and `PlanningStore` intentionally have independently generated project owner identities: do not make IDs equal, migrate storage IDs or delete all checks. A common authorized workspace root/opaque handle binds the handoff while each owner checks its own projectId/revision, selected map identity, freshness and permissions.
+
+BOUNDED AUTHORIZED REPAIR LOOP
+Within up to 3 bounded manual repair cycles, apply only an owner-authorized minimal comparison/binding fix and directly adjacent regression tests. Preserve code/architecture/Markdown and prompt authorship; do not fabricate Planning Map initialization when Physical Map/basis unavailable. Each cycle records observed input, source SHA, changed paths, exact focused commands, `git diff --check`, after-state and next action. Avoid full `npm run check` per cycle.
+
+ACCEPTANCE / HANDOFF
+PASS only after actual browser click on Prepare Work opens/focuses the **existing** Planning Map and carries selected checkpoint requirements in the same root despite differing legitimate owner IDs; wrong root/foreign owner, stale Roadmap/Planning revisions, missing architecture, and changed source basis still reject visibly. Repeat after restart and project A→B→A. Preserve Chat placement and no Run/Adopt Target/hosted egress. If BLOCKED/FAIL, stop downstream positive claims; write `qualification/p1-identity/cycle-N.md` and a family disposition.
+
+NON-GOALS
+No second Chat, Planning Map, Work/runner, Roadmap state owner, Development Session, general project ID rewrite, false Green, full Phase 11 owner closeout or Phase 12 work. Do not execute the next family as if this one passed without independently recorded evidence.

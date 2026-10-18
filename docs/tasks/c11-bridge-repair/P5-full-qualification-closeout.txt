@@ -1,0 +1,34 @@
+TASK: Correction 11 / P5 — Full Planning Bridge qualification closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: do not change version manifests, internal pins or lockfiles.
+
+PREFLIGHT / AUTHORITY
+This is the **sole FINAL MANUAL T3 qualification/closeout**, never a headless runner prompt. Execute only on a later separate explicit owner Run after P1–P4 family records exist. Read BOOT.md, AGENTS.md, workflow, ADR 0038, Phase 11 plan, PB1–PB8, original P15 `closeout.md` and `qualification/p15-manual/evidence.json`, plus repair P1–P4 reports. The original P15 source `11e1f76`, 623 passed/2 failed and uncommitted evidence were **owner-reported local** and must be preserved; do not claim inspected bytes where absent. Reconcile actual local HEAD, product version, dirty worktree, source/checkpoint ancestry, matching compiled/frontend/Electron bundles, and saved/approved state before testing. Never overwrite original P1–P15/P15 failure evidence or mutate completed prompt source. Source repair requires separate owner authorization; no auto agent self-commit, /activate, model role/default/hosted fallback, authority escalation or Phase 12 activation.
+
+SCOPE — COMPLETE BRIDGE QUALIFICATION, NOT AUTOMATIC PHASE 11 OWNER CLOSE
+On safe disposable project(s) and original project only when explicitly authorized, take the actual user through **D1–D8** and independently record PB1–PB8:
+- **D1 / PB1:** Real saved Chat/local-Q4 (only when actually selected, loaded and consented) brainstorm or no-model manual creation, reviewed Roadmap/linked Markdown acceptance, project/checkpoint IDs and revision. Preserve provisional vs canonical and no synthetic Green.
+- **D2 / PB2:** Click **Prepare Work** in actual browser; open existing Planning Map using same authorized root but independently generated owner IDs. Prove selection, requirements and impact packet; wrong project, changed owner, lost basis and missing source errors fail safely. Use P1 source-bound browser record, but replay all changed seams on final bundle.
+- **D3 / PB3:** Ground current source/Physical Map evidence; create/reuse target PlanningMap, approve typed transformations after current/target/diff, verify semantic basis, stale/rebase, and no automatic **Adopt Target**.
+- **D4 / PB4:** Propose, edit, split/merge and approve real WorkItems, dependency DAG and working-set/validation criteria; no fake WorkItem/AgentTask, no unauthorized human-reserved paths.
+- **D5 / PB5 and deferred F4:** In **real UI**, reorder a genuinely **un-authored** WorkItem/sequence outline with valid dependencies; approve generated runner-compatible P*.txt stack and stable source fingerprint; attempt post-authoring reorder and prove denial. A wholly unstarted authored stack may change only through explicitly reviewed different-path/fingerprint supersession retaining prior record; completed prompt/checkpoint/history remains immutable. Do not count existing P1–P15 as a pre-authoring demonstration.
+- **D6:** **Deliberately** start safe approved stack through existing Work/runner after grants, using correct source/Git/dirty preflight; observe real candidate validation/review/promotion and explicit manual gates, not an inferred AgentRun from generated prompt existence. No hidden Run from navigation/approval.
+- **D7 / PB6:** Fresh targeted Physical Map reconciliation versus original target: as-planned/different/missing/unexpected, accepted deviation and genuine evidence-linked correction branch when needed. Verify separate WorkItem, run, test, candidate, architecture adoption and roadmap qualification truth.
+- **D8 / PB8:** Review exact owner evidence, status rollups, source bytes/checkpoint SHA, linked Markdown reconciliation, History continuation, changes across reload/restart, project A→B→A, single Chat identity and narrow/keyboard/alternate theme. Confirm fast lane for a small issue with architecture N/A and no fabricated transforms.
+- **PB7 provider/UX authority:** Qualify no-model manual path, real local selected model/capacity (Q4_K_M 32768 only when verified), malformed/stale/cross-project/no-write/consent/cancel/egress denial and user-dockable existing Chat. Do not infer Electron parity from browser or build.
+- **Independent native:** Read P4 record and directly observe applicable *native Electron GUI* at the final source/asset when required. Missing controller/action -> **EVIDENCE GAP**, not PASS or silent owner waiver.
+
+TEST / EVIDENCE AGGREGATE
+1. Independently verify P2 exact original first failing test and P3 exact second failing test now pass on final source; record names/assertions/test commands and source hashes. Neither deletion, skipping nor weakened assertions is allowed.
+2. Revalidate only genuinely changed or invalidated focused gates, then perform **one source-stable `npm run check`** (typecheck, tests, browser/Electron builds as implemented) if no equivalent exact final-source aggregate already exists; note total counts, every failing assertion, bundles, `git diff --check`, Git SHA/worktree and why any evidence was carried forward. If code changes afterward, re-run affected checks and final aggregate as required; do not claim prior numbers still apply.
+3. Confirm browser and independent native evidence; record P1–P4 cycle dispositions, both tests, PB1–PB8, D1–D8, F4 and negative project/security/egress gates with **PASS/FAIL/BLOCKED/NOT RUN**. Do not hide the native evidence gap or reuse unrelated Phase Focus browser Green as Planning Bridge Green.
+4. When new failure emerges, **do not widen this final prompt into speculative code work**. Return to the smallest targeted repair family (new distinct supplemental cycle/authorized correction as appropriate), retain current Not Green/evidence, and repeat final proof on a stable source.
+
+CLOSEOUT LAW
+Write **new** `docs/tasks/c11-bridge-repair/closeout.md` only after executing this manual prompt, with tested commit/source/version/dirty state, origin of each observation, exact evidence paths/hashes, P1–P4 outcomes, P5 gate matrix, aggregate results and one honest **GREEN FOR APPROVED BRIDGE SCOPE / NOT GREEN / EVIDENCE GAP** decision. Preserve original `docs/tasks/c11-planning-bridge/closeout.md` NOT GREEN and local evidence bytes unmodified. Even scoped Green does **NOT** owner-close Phase 11: broader two distinct clean usability Hunts, remaining native/security evidence and explicit owner acceptance stay separate; Phase 12 inactive. No self-commit.
