@@ -609,6 +609,26 @@ export class PhysicalMapWidget extends BaseWidget {
         if (!this.planning.planningMode) { bar.hidden = true; details.hidden = true; return; }
         bar.hidden = false;
         details.hidden = false;
+        const handoff = this.planning.prepareWorkContext;
+        if (handoff && handoff.workspace === this.planning.focusWorkspace &&
+            handoff.projectId === this.planning.collection?.projectId) {
+            const context = document.createElement('section');
+            context.setAttribute('aria-label', 'Prepare Work checkpoint context');
+            const heading = document.createElement('h3'); heading.textContent = `Prepare Work: ${handoff.title}`;
+            context.append(heading);
+            for (const requirement of handoff.requirements) {
+                const line = document.createElement('p'); line.textContent = requirement; context.append(line);
+            }
+            for (const reference of handoff.impactReferences) {
+                const line = document.createElement('p'); line.textContent = `Impact reference · ${reference}`; context.append(line);
+            }
+            if (!this.planning.selected) {
+                const empty = document.createElement('p');
+                empty.textContent = 'No linked Planning Map is available. Review the requirements and current software evidence, then create a map explicitly when ready.';
+                context.append(empty);
+            }
+            details.append(context);
+        }
         const button = (label: string, action: () => void, disabled = false, parent = details) => {
             const control = document.createElement('button');
             control.type = 'button'; control.textContent = label; control.disabled = disabled;

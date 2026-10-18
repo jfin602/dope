@@ -334,7 +334,36 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         } })).inSingletonScope();
     bind(RoadmapInspectorModel).toDynamicValue(context => new RoadmapInspectorModel(
         context.container.get<RoadmapService>('RoadmapService'),
-        async uri => { await open(context.container.get(OpenerService), new URI(uri)); })).inSingletonScope();
+        async uri => { await open(context.container.get(OpenerService), new URI(uri)); },
+        async selection => {
+            const planning = context.container.get(PlanningMapController);
+            const map = context.container.get(SoftwareMapController);
+            if (map.workspace !== selection.workspace || planning.focusWorkspace !== selection.workspace ||
+                planning.collection?.projectId !== selection.projectId)
+                throw new Error('Planning Map is unavailable for this project. Open its Software Map and retry.');
+            if (selection.mapId) {
+                const exact = await planning.navigationMap(selection.mapId);
+                if (!exact || exact.revision !== selection.mapRevision)
+                    throw new Error('Linked Planning Map is missing or stale. Review the Roadmap link before preparing work.');
+            }
+            const manager = context.container.get(WidgetManager);
+            const shell = context.container.get(ApplicationShell);
+            const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID);
+            if (map.workspace !== selection.workspace || planning.focusWorkspace !== selection.workspace ||
+                planning.collection?.projectId !== selection.projectId || widget.isDisposed)
+                throw new Error('Project changed while opening Planning Map. Select the checkpoint again.');
+            if (selection.mapId) planning.select(selection.mapId);
+            else planning.clearSelection();
+            planning.setPrepareWorkContext(selection);
+            planning.setMode(true);
+            if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
+            if (map.workspace !== selection.workspace || planning.focusWorkspace !== selection.workspace ||
+                planning.collection?.projectId !== selection.projectId) {
+                planning.setPrepareWorkContext(undefined);
+                throw new Error('Project changed while opening Planning Map. Select the checkpoint again.');
+            }
+            await shell.activateWidget(widget.id);
+        })).inSingletonScope();
     bind(ChatPlanningSelection).toDynamicValue(context => new ChatPlanningSelection(context.container.get(RoadmapInspectorModel),
         context.container.get(PlanningMapController), context.container.get<RoadmapService>('RoadmapService'))).inSingletonScope();
     bind(SmapPresentationState).toDynamicValue(context => new SmapPresentationState(context.container.get(StorageService))).inSingletonScope();

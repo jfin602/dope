@@ -8,6 +8,9 @@ import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-proj
 export class RoadmapInspectorModel {
     private readonly service: RoadmapService;
     private readonly openSource: (uri: string) => Promise<void>;
+    private readonly openPlanning: (selection: { workspace: string; projectId: string; checkpointId: string;
+        title: string; objective: string; requirements: string[]; impactReferences: string[]; mapId?: string;
+        mapRevision?: number }) => Promise<void>;
     private readonly listeners = new Set<() => void>();
     private serial = 0;
     private handle?: string;
@@ -22,9 +25,11 @@ export class RoadmapInspectorModel {
     error?: string;
     undo?: { token: string; revision: number };
 
-    constructor(service: RoadmapService, openSource: (uri: string) => Promise<void> = async () => {}) {
+    constructor(service: RoadmapService, openSource: (uri: string) => Promise<void> = async () => {},
+        openPlanning: RoadmapInspectorModel['openPlanning'] = async () => {}) {
         this.service = service;
         this.openSource = openSource;
+        this.openPlanning = openPlanning;
     }
     onChange(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
     private emit(): void { for (const listener of this.listeners) listener(); }
@@ -42,6 +47,52 @@ export class RoadmapInspectorModel {
         } catch (error) { if (uri === this.projectUri) { this.error = error instanceof Error ? error.message : String(error); this.emit(); } }
     }
     get selected(): RoadmapCheckpoint | undefined { return this.index?.checkpoints.find(item => item.id === this.selectedId); }
+    get prepareWorkBlockedReason(): string | undefined {
+        const index = this.index, item = this.selected;
+        if (!index || !this.projectUri || index.projectId === 'uninitialized' || !index.revision)
+            return 'Initialize and approve a canonical Roadmap before preparing work.';
+        if (!item) return 'Select an approved canonical checkpoint first. Provisional or rejected drafts cannot prepare work.';
+        if (!item.objective.trim()) return 'Add checkpoint requirements before preparing work.';
+        if (this.busy || this.pending || this.dirty) return 'Finish or discard the pending Roadmap change first.';
+        if (index.linkedDocument && index.linkedDocument.syncState !== 'synced')
+            return 'Linked Roadmap source is stale or unresolved. Review and sync it first.';
+        if (item.links.some(link => link.ownerProjectId && link.ownerProjectId !== index.projectId))
+            return 'A checkpoint link belongs to another project. Resolve the foreign link first.';
+        return undefined;
+    }
+    async prepareWork(): Promise<void> {
+        const uri = this.projectUri, index = this.index, item = this.selected, serial = this.serial;
+        if (!uri || !index || !item || this.prepareWorkBlockedReason) return;
+        this.busy = true; this.error = undefined; this.emit();
+        try {
+            const fresh = await this.service.read(uri);
+            if (serial !== this.serial || uri !== this.projectUri || index.revision !== this.index?.revision ||
+                item.id !== this.selectedId || fresh.projectId !== index.projectId || fresh.revision !== index.revision)
+                throw new Error('Roadmap changed. Refresh and review the checkpoint before preparing work.');
+            const current = fresh.checkpoints.find(checkpoint => checkpoint.id === item.id);
+            if (!current || current.objective !== item.objective ||
+                fresh.linkedDocument?.syncState !== index.linkedDocument?.syncState ||
+                fresh.linkedDocument && fresh.linkedDocument.syncState !== 'synced')
+                throw new Error('Checkpoint source changed. Refresh and review it before preparing work.');
+            if (fresh.linkedDocument) {
+                const sync = await this.service.previewDocumentSync(uri);
+                if (sync.state !== 'unchanged' || sync.projectId !== index.projectId || sync.revision !== index.revision)
+                    throw new Error('Linked Roadmap source changed. Review and sync it before preparing work.');
+            }
+            if (serial !== this.serial || uri !== this.projectUri || this.index?.revision !== index.revision ||
+                this.selectedId !== item.id)
+                throw new Error('Selection changed while preparing work. Select the checkpoint again.');
+            const map = current.links.find(link => link.owner === 'planning-map');
+            await this.openPlanning({ workspace: uri, projectId: index.projectId, checkpointId: item.id,
+                title: current.title, objective: current.objective,
+                requirements: [current.objective, ...current.dependencies.map(id =>
+                    fresh.checkpoints.find(candidate => candidate.id === id)?.objective ?? `Unresolved dependency: ${id}`)],
+                impactReferences: current.links.filter(link => link.owner !== 'planning-map').map(link =>
+                    `${link.owner}: ${link.targetId}`), mapId: map?.targetId, mapRevision: map?.ownerRevision });
+        } catch (error) {
+            if (serial === this.serial && uri === this.projectUri) this.error = error instanceof Error ? error.message : String(error);
+        } finally { if (serial === this.serial && uri === this.projectUri) { this.busy = false; this.emit(); } }
+    }
     get requiresApproval(): boolean { return !!this.pending?.preview.requiresApproval; }
     get previewSummary(): string | undefined {
         const pending = this.pending;

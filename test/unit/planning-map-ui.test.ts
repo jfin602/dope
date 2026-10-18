@@ -160,6 +160,24 @@ test('Session navigation reads exact current Planning identity without changing 
     view: h.controller.view, collection: h.controller.collection }, before);
 });
 
+test('Prepare Work holds read-only checkpoint context and clears unrelated map selection', async () => {
+  const h = harness(); await tick();
+  h.collection = { schemaVersion: 1, projectId: 'project', revision: 1, maps: [map('plan', 'active')] };
+  await h.controller.refresh();
+  h.controller.setPrepareWorkContext({ workspace: h.controller.focusWorkspace!, projectId: 'project',
+    checkpointId: 'checkpoint', title: 'Checkpoint', objective: 'Objective',
+    requirements: ['Objective'], impactReferences: ['issue: I-1'] });
+  h.controller.clearSelection();
+  h.controller.setMode(true);
+  assert.equal(h.controller.selectedMapId, undefined);
+  assert.equal(h.controller.planningMode, true);
+  assert.deepEqual(h.controller.prepareWorkContext?.requirements, ['Objective']);
+  assert.equal(h.collection.revision, 1);
+  const widget = readFileSync(resolve(import.meta.dirname, '../../packages/theia-extension/src/browser/physical-map-widget.ts'), 'utf8');
+  assert.match(widget, /Prepare Work checkpoint context/);
+  assert.match(widget, /No linked Planning Map is available/);
+});
+
 test('Planning Work launch uses revisioned service and blocks human, stale and reserved scope', async () => {
   const launches: unknown[] = [];
   const agent = { async attach() { return { projectHandle: 'agent-handle' }; },

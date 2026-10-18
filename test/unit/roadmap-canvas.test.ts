@@ -56,6 +56,18 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(rules, /max-width: 480px/);
 });
 
+test('Prepare Work opens the registered center Planning Map with no Chat or agent launch', () => {
+    const frontend = read('packages/theia-extension/src/browser/frontend-module.ts');
+    const inspector = read('packages/theia-extension/src/browser/roadmap-inspector-widget.ts');
+    assert.match(inspector, /dope-roadmap-prepare-work/);
+    assert.match(inspector, /prepare\.disabled = !!this\.model\.prepareWorkBlockedReason/);
+    assert.match(frontend, /getOrCreateWidget<PhysicalMapWidget>\(PHYSICAL_MAP_ID\)/);
+    assert.match(frontend, /planning\.navigationMap\(selection\.mapId\)/);
+    assert.match(frontend, /planning\.setPrepareWorkContext\(selection\)/);
+    assert.match(frontend, /planning\.setMode\(true\)/);
+    assert.doesNotMatch(inspector, /openChatPanel|launchWork|AgentRuntimeService/);
+});
+
 test('Phase Focus uses the selected phase projection and existing checked source navigation', () => {
     const canvas = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
     const inspector = read('packages/theia-extension/src/browser/roadmap-inspector-model.ts');

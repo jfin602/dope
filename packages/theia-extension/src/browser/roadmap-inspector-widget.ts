@@ -31,11 +31,12 @@ export class RoadmapInspectorWidget extends BaseWidget {
         return button;
     }
     private render(): void {
-        const activeElement = this.node.contains(document.activeElement) ? document.activeElement as HTMLInputElement | HTMLTextAreaElement : undefined;
+        const activeElement = this.node.contains(document.activeElement) ? document.activeElement as HTMLElement : undefined;
         const active = activeElement?.id;
         const scrollTop = activeElement?.scrollTop;
-        const selection = activeElement && typeof activeElement.selectionStart === 'number' ?
-            [activeElement.selectionStart, activeElement.selectionEnd] : undefined;
+        const textControl = activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement ? activeElement : undefined;
+        const selection = textControl && typeof textControl.selectionStart === 'number' ?
+            [textControl.selectionStart, textControl.selectionEnd] : undefined;
         const item = this.model.selected;
         const prompt = this.model.selectedPrompt;
         this.content.replaceChildren();
@@ -75,6 +76,16 @@ export class RoadmapInspectorWidget extends BaseWidget {
         if (!item.links.length) links.append(this.element('p', 'None recorded.'));
         for (const link of item.links) links.append(this.element('p', `${link.owner} · ${link.targetId}${link.ownerRevision === undefined ? '' : ` · revision ${link.ownerRevision}`}`));
         this.content.append(heading, state, objective, evidence, dependencies, links);
+        if (this.editable) {
+            const prepare = this.button('Prepare Work', () => void this.model.prepareWork());
+            prepare.id = 'dope-roadmap-prepare-work';
+            prepare.disabled = !!this.model.prepareWorkBlockedReason;
+            prepare.setAttribute('aria-label', `Prepare Work for ${item.title}`);
+            this.content.append(prepare);
+            if (this.model.prepareWorkBlockedReason)
+                this.content.append(this.element('p', this.model.prepareWorkBlockedReason));
+            else this.content.append(this.element('p', 'Open the existing Planning Map to review requirements and impact. This does not start Chat or Work.'));
+        }
         if (this.editable && !item.readOnly && this.model.draft) this.renderEditor(item.title);
         else if (!this.editable && !item.readOnly) this.content.append(this.element('p', 'Edit this checkpoint in Roadmap Details on the canvas.'));
         else this.content.append(this.element('p', 'This source checkpoint is read only.'));
@@ -82,10 +93,10 @@ export class RoadmapInspectorWidget extends BaseWidget {
         feedback.setAttribute('role', this.model.error ? 'alert' : 'status');
         this.content.append(feedback);
         if (active) {
-            const replacement = this.content.querySelector<HTMLInputElement | HTMLTextAreaElement>(`#${active}`);
+            const replacement = this.content.querySelector<HTMLElement>(`#${active}`);
             replacement?.focus();
             if (replacement && scrollTop !== undefined) replacement.scrollTop = scrollTop;
-            if (selection && replacement && typeof replacement.setSelectionRange === 'function')
+            if (selection && (replacement instanceof HTMLInputElement || replacement instanceof HTMLTextAreaElement))
                 replacement.setSelectionRange(selection[0], selection[1]);
         }
     }

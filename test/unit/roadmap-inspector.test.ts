@@ -30,6 +30,47 @@ const fake = (state: { index: RoadmapIndex; pending?: ReturnType<typeof deferred
     undoToken: async () => 'undo-token'
 });
 
+test('Prepare Work requires a current canonical checkpoint and conveys requirements without writing', async () => {
+    const state = { index: snapshot(), applied: 0, approved: false };
+    const opened: unknown[] = [];
+    const model = new RoadmapInspectorModel(fake(state), async () => {}, async selection => { opened.push(selection); });
+    model.setSnapshot(root, state.index);
+    assert.match(model.prepareWorkBlockedReason ?? '', /Select an approved canonical checkpoint/);
+    model.select('p1');
+    await model.prepareWork();
+    assert.deepEqual(opened, [{ workspace: root, projectId: 'project', checkpointId: 'p1',
+        title: 'Phase one', objective: 'Original', requirements: ['Original'], impactReferences: [],
+        mapId: undefined, mapRevision: undefined }]);
+    assert.equal(state.applied, 0);
+    model.change('objective', 'Pending');
+    assert.match(model.prepareWorkBlockedReason ?? '', /Finish or discard/);
+    model.discardEdit();
+    state.index = { ...snapshot(), linkedDocument: { projectRoot: '/tmp/project', projectId: 'project',
+        path: 'roadmap.md', sourceHash: 'a', sections: [], lastSynced: { sourceHash: 'a', roadmapRevision: 1 },
+        syncState: 'source-changed' } };
+    model.setSnapshot(root, state.index);
+    assert.match(model.prepareWorkBlockedReason ?? '', /stale or unresolved/);
+    state.index = snapshot();
+    state.index.checkpoints[0].links.push({ owner: 'planning-map', targetId: 'foreign', ownerProjectId: 'other' });
+    model.setSnapshot(root, state.index);
+    assert.match(model.prepareWorkBlockedReason ?? '', /another project/);
+    assert.equal(opened.length, 1);
+});
+
+test('Prepare Work refuses a changed Roadmap and clears selection on project change', async () => {
+    const state = { index: snapshot(), applied: 0, approved: false };
+    const opened: unknown[] = [];
+    const model = new RoadmapInspectorModel(fake(state), async () => {}, async selection => { opened.push(selection); });
+    model.setSnapshot(root, state.index); model.select('p1');
+    state.index = snapshot(2);
+    await model.prepareWork();
+    assert.equal(opened.length, 0);
+    assert.match(model.error ?? '', /Roadmap changed/);
+    model.setSnapshot('file:///tmp/other', { ...snapshot(), projectId: 'other', projectRoot: '/tmp/other' });
+    assert.equal(model.selectedId, undefined);
+    assert.match(model.prepareWorkBlockedReason ?? '', /Select an approved/);
+});
+
 test('selection, edit, preview, approval and undo synchronize without inferred Green', async () => {
     const state = { index: snapshot(), applied: 0, approved: false };
     const model = new RoadmapInspectorModel(fake(state));

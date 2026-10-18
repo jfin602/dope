@@ -16,6 +16,11 @@ const transitions: Record<MapStatus, MapStatus[]> = {
     completed: ['archived'], superseded: ['archived'], archived: []
 };
 export class PlanningMapController {
+    prepareWorkContext?: { workspace: string; projectId: string; checkpointId: string; title: string;
+        objective: string; requirements: string[]; impactReferences: string[]; mapId?: string; mapRevision?: number };
+    setPrepareWorkContext(context: PlanningMapController['prepareWorkContext']): void {
+        this.prepareWorkContext = context; this.notify();
+    }
     private readonly listeners = new Set<() => void>();
     private readonly mapListener;
     private connection?: VisualPlanningService;
@@ -46,7 +51,9 @@ export class PlanningMapController {
 
     constructor(private readonly map: SoftwareMapController, private readonly connect: () => VisualPlanningService,
         private readonly agent?: AgentRuntimeService) {
-        this.mapListener = map.onChange(() => { if (this.workspace !== map.workspace) void this.attach(); else void this.refreshStale(); });
+        this.mapListener = map.onChange(() => { if (this.workspace !== map.workspace) {
+            this.setPrepareWorkContext(undefined); void this.attach();
+        } else void this.refreshStale(); });
         void this.attach();
     }
     onChange(listener: () => void): { dispose(): void } {
@@ -77,7 +84,13 @@ export class PlanningMapController {
         this.notify();
     }
     select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
+        if (this.prepareWorkContext?.mapId !== id) this.prepareWorkContext = undefined;
         this.selectedWorkItemId = undefined; this.linkedTasks = []; this.selectedTransformationId = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
+    clearSelection(): void {
+        this.selectedMapId = undefined; this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined;
+        this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined;
+        this.stale = undefined; this.suggestions = undefined; this.notify();
+    }
     /** Fresh owner read for exact Session navigation; leaves Planning presentation and drafts untouched. */
     async navigationMap(id: string): Promise<PlanningMap | undefined> {
         const connection = this.connection, handle = this.handle, workspace = this.workspace;
@@ -368,7 +381,9 @@ export class PlanningMapController {
             this.preview = undefined;
             this.adoptionPreview = undefined;
             this.rebasePreview = undefined;
-            if (!snapshot.maps.some(map => map.id === this.selectedMapId)) this.selectedMapId = snapshot.maps.find(map => map.status === 'active')?.id ?? snapshot.maps[0]?.id;
+            if (!snapshot.maps.some(map => map.id === this.selectedMapId)) this.selectedMapId =
+                this.prepareWorkContext && !this.prepareWorkContext.mapId ? undefined :
+                    snapshot.maps.find(map => map.status === 'active')?.id ?? snapshot.maps[0]?.id;
             if (!this.selected?.workItems.some(item => item.id === this.selectedWorkItemId)) this.selectedWorkItemId = undefined;
             void this.refreshLinkedTasks();
             if (!this.selected?.transformations.some(item => item.id === this.selectedTransformationId)) this.selectedTransformationId = undefined;
