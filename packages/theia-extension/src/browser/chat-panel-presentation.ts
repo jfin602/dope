@@ -9,15 +9,17 @@ export function isDraftPlanningAction(type: string): boolean {
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
-    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'no-action'].includes(activity.kind))
+    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'bridge-proposal', 'no-action'].includes(activity.kind))
         return undefined;
     const label = activity.verifiedGuidance && noActionEnvelope(message) ? 'Verified Dope guidance' :
         activity.kind === 'no-action' ? 'No planning action' :
+        activity.kind === 'bridge-proposal' ? 'Bridge suggestion' :
         activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence' ? 'Roadmap steps' :
         activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
         activity.kind === 'roadmap-proposal' ? 'Roadmap proposal' : 'Roadmap intent';
     const statuses: Record<typeof activity.status, string> = {
         pending: 'Pending · no write',
+        suggested: 'Suggested · review in Planning Map',
         'no-action': 'No change',
         rejected: 'Rejected · no change',
         denied: 'Denied · no change',
@@ -59,6 +61,19 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
 export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
     const activity = message.planningActivity;
     if (!activity) return undefined;
+    if (activity.kind === 'bridge-proposal' && activity.status === 'suggested') {
+        try {
+            const raw = JSON.parse(message.content) as { mapId: string; mapRevision: number;
+                suggestion: { kind: 'target' | 'work-item'; objective?: string;
+                    command?: { kind: string; id?: string } }; questions: string[] };
+            const detail = raw.suggestion.kind === 'target' ?
+                `target ${raw.suggestion.command?.kind ?? 'change'}${raw.suggestion.command?.id ? ` to ${raw.suggestion.command.id}` : ''}` :
+                `WorkItem “${raw.suggestion.objective?.slice(0, 120) ?? 'suggestion'}”`;
+            return { summary: `Suggested ${detail} for Planning Map ${raw.mapId} revision ${raw.mapRevision}. ` +
+                'Review the full suggestion in this Chat, then preview and approve any change through Planning Map. Nothing was written.',
+                questions: raw.questions };
+        } catch { return { summary: 'Bridge suggestion is unavailable for review. Nothing was written.', questions: [] }; }
+    }
     const ref = activity.refs.find(item => item.kind === 'roadmap-checkpoint');
     const target = ref ? `checkpoint ${ref.label}` : activity.kind.startsWith('roadmap-draft') ? 'Roadmap draft' : 'Roadmap';
     let change = `change ${target}`;

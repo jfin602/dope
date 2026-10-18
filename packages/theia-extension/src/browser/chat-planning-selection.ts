@@ -32,6 +32,21 @@ export class ChatPlanningSelection {
         return { dispose: () => { this.listeners.delete(listener); } };
     }
 
+    bridge(workspace: string, branchIds: string[]) {
+        const handoff = this.planning.prepareWorkContext;
+        const map = this.planning.selected;
+        const index = this.roadmap.index;
+        const checkpoint = this.roadmap.selected;
+        if (this.roadmap.projectUri !== workspace || this.planning.projectWorkspace !== workspace ||
+            !handoff || handoff.workspace !== workspace || !map || !index || !checkpoint ||
+            handoff.projectId !== index.projectId || handoff.checkpointId !== checkpoint.id ||
+            handoff.mapId !== map.id || map.projectId !== this.planning.collection?.projectId ||
+            map.revision !== handoff.mapRevision || this.roadmap.prepareWorkBlockedReason)
+            throw new Error('Prepare Work and select its current linked Planning Map first');
+        return { projectId: index.projectId, checkpointId: checkpoint.id, roadmapRevision: index.revision,
+            mapId: map.id, mapRevision: map.revision, branchIds };
+    }
+
     current(workspace: string): PlanningSelection | undefined {
         if (this.active === 'roadmap-checkpoint' && this.roadmap.projectUri === workspace && this.roadmap.selected && this.roadmap.index) {
             const item = this.roadmap.selected;

@@ -311,7 +311,7 @@ export class ChatContextComposer {
 
     async compose(root: string, chat: Chat, content: string, selections: ChatContextSelection[],
         capabilities: ConversationModelCapabilities, grounding?: GroundingResult,
-        strictHelpJson = false): Promise<ComposedChatContext> {
+        strictHelpJson = false, bridgeMode = false): Promise<ComposedChatContext> {
         if (!content.trim()) throw new Error('Enter a message before sending');
         if (!Array.isArray(selections) || selections.length > 20) throw new Error('Too many context selections');
         const policy = chat.settings.context;
@@ -334,8 +334,9 @@ export class ChatContextComposer {
         const helpId = selectDopeCapabilityHelp(content);
         const help = helpId ? await this.helpContext(root, helpId, selections, strictHelpJson) : undefined;
         const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
+        const roadmapInstruction = roadmapAction && !bridgeMode;
         let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0) -
-            (roadmapAction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) - (help ? tokens(help.instruction) : 0);
+            (roadmapInstruction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) - (help ? tokens(help.instruction) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
         if (grounding) for (const diagnostic of grounding.diagnostics)
@@ -399,7 +400,7 @@ export class ChatContextComposer {
         }
         if (!attached.length) remaining += wrapperTokens;
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];
-        if (roadmapAction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
+        if (roadmapInstruction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
         if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];
         if (policy.history === 'recent' && !help) {

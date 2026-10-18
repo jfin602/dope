@@ -35,7 +35,10 @@ export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseT
     selectedModel?: ChatModelSelection; hostedProjectDataAuthorized?: boolean;
     content?: string; retryMessageId?: string; context?: ChatContextSelection[];
     /** Explicit, capped opt-in for an atomic preview of small unlinked Roadmap edits. */
-    planningSteps?: 2 | 3 }
+    planningSteps?: 2 | 3;
+    /** Explicit selected-checkpoint, local-only Bridge suggestion; never a write grant. */
+    bridgeProposal?: { projectId: string; checkpointId: string; roadmapRevision: number;
+        mapId: string; mapRevision: number; branchIds: string[] } }
 /** Captured editor text is transport-only. Other IDs are resolved against current project authorities. */
 export interface ChatContextSelection { kind: ChatContextKind; id: string; projectId?: string; generation?: number;
     ownerRevision?: number; sourceHash?: string;

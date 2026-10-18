@@ -90,6 +90,11 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     settings.context.allowedSources = ['roadmap-checkpoint'];
     state = await backend.mutate({ projectHandle, expectedRevision: state.revision,
       operation: { type: 'set-settings', chatId, settings } });
+    const bridgeContext = await composer.compose(root, state.chats[0], 'Suggest a Bridge target', context,
+      capabilities, undefined, true, true);
+    assert.equal(bridgeContext.messages.some(message => message.role === 'system' &&
+      message.content.includes('roadmap-intent')), false);
+    assert.equal(bridgeContext.refs[0].kind, 'roadmap-checkpoint');
     const preview = await backend.previewContext({ projectHandle, chatId, selectedModel: selection,
       content: 'What next?', context });
     assert.equal(providerCalls, 0);

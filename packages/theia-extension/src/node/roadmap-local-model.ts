@@ -30,6 +30,7 @@ export interface LocalPlanningAnswerCheck {
     requiredOwnerRevision?: number;
     maxSteps?: 2 | 3;
     onRetry?: (cause: 'invalid-envelope' | 'missing-owner-revision') => void;
+    validateBridge?: (value: Record<string, unknown>) => Promise<boolean>;
 }
 
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
@@ -64,7 +65,7 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
     generate: (retryInstruction?: string) => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
-    mode: 'linked' | 'unlinked' | 'draft' | 'help' = 'unlinked', eligibleObjective = true,
+    mode: 'linked' | 'unlinked' | 'draft' | 'help' | 'bridge' = 'unlinked', eligibleObjective = true,
     check: LocalPlanningAnswerCheck = {}): Promise<T> {
     let lastInvalid = '';
     let retryInstruction: string | undefined;
@@ -115,7 +116,9 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const noAction = raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
                 typeof raw.message === 'string' && raw.message.trim().length > 0 && raw.message.length <= 4000 &&
                 !EMPTY_NO_ACTION_MESSAGES.has(raw.message.trim().toLowerCase());
-            if (mode !== 'help' && (proposal || sequence || draftSequence || intent)) return complete;
+            if (mode === 'bridge' && raw.type === 'bridge-proposal' &&
+                await check.validateBridge?.(raw)) return complete;
+            if (mode !== 'help' && mode !== 'bridge' && (proposal || sequence || draftSequence || intent)) return complete;
             if (noAction) {
                 if (check.requiredOwnerRevision === undefined ||
                     citesOwnerRevision(raw.message as string, check.requiredOwnerRevision)) return complete;

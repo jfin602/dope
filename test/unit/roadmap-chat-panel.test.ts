@@ -137,6 +137,26 @@ test('selection resolver rejects missing and foreign owner state; map views neve
     assert.match(widget, /state\.context\.length \|\| state\.activePlanning/);
 });
 
+test('Bridge request remains bound to the selected Prepare Work checkpoint and map revision', () => {
+    const workspace = 'file:///tmp/bridge-panel';
+    const index: RoadmapIndex = { schemaVersion: 1, projectId: 'project', projectRoot: '/tmp/bridge-panel', revision: 4,
+        checkpoints: [{ id: 'checkpoint', kind: 'milestone', title: 'Checkpoint', objective: 'Implement it', order: 0,
+            dependencies: [], links: [{ owner: 'planning-map', targetId: 'map', ownerProjectId: 'project', ownerRevision: 3 }],
+            status: 'active', readOnly: false, evidence: [] }] };
+    const inspector = new RoadmapInspectorModel({ read: async () => index } as RoadmapService);
+    inspector.setSnapshot(workspace, index); inspector.select('checkpoint');
+    const planning = { projectWorkspace: workspace, selected: { id: 'map', projectId: 'project', revision: 3 },
+        collection: { projectId: 'project' }, prepareWorkContext: { workspace, projectId: 'project',
+            checkpointId: 'checkpoint', title: 'Checkpoint', objective: 'Implement it', requirements: [],
+            impactReferences: [], mapId: 'map', mapRevision: 3 },
+        onChange: () => ({ dispose() {} }) } as unknown as PlanningMapController;
+    const selection = new ChatPlanningSelection(inspector, planning, {} as RoadmapService);
+    assert.deepEqual(selection.bridge(workspace, ['system']), { projectId: 'project', checkpointId: 'checkpoint',
+        roadmapRevision: 4, mapId: 'map', mapRevision: 3, branchIds: ['system'] });
+    planning.selected!.revision = 4;
+    assert.throws(() => selection.bridge(workspace, ['system']), /current linked Planning Map/);
+});
+
 test('Planning Map Follow refreshes the same map and Pin rejects a changed map revision', async () => {
     const root = 'file:///tmp/planning-panel';
     const inspector = new RoadmapInspectorModel({ read: async () => { throw new Error('Roadmap should not open'); } } as RoadmapService);

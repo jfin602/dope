@@ -1412,6 +1412,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 ['failed', 'cancelled'].includes(message.execution.status));
             const canSend = Boolean(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel);
             const confirmHosted = () => window.confirm('Send this Chat message, history and selected project context to the hosted model chosen by Interactive?');
+            if (state.activePlanning?.kind === 'roadmap-checkpoint' && state.workspace)
+                menuButton('Suggest Bridge change (local)', () => {
+                    const entered = window.prompt('Affected Architecture branch IDs, comma separated');
+                    if (entered === null) return;
+                    const branchIds = entered.split(',').map(id => id.trim()).filter(Boolean);
+                    if (!branchIds.length) { state.error = 'Select at least one affected Architecture branch'; this.update(); return; }
+                    void state.runTurn(state.turnModel, undefined, undefined, branchIds);
+                }, !canSend || state.pending || !state.draft.trim());
             if (retry) menuButton('Retry', () => { if (canSend) void state.runTurn(state.turnModel, retry.id, confirmHosted); }, !canSend);
             const submit = () => {
                 if (!canSend || state.pending || !state.draft.trim()) return;

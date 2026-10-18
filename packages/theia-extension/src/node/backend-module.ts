@@ -289,7 +289,9 @@ export default new ContainerModule(bind => {
         const backend = new ChatBackend(context.container.get(ChatRepository), client,
             context.container.get(ModelConnectionsRegistry), context.container.get(ChatContextComposer),
             context.container.get(AIRoleRoutingService), context.container.get(ChatProjectGrounder),
-            actions, context.container.get(RoadmapGreenfield));
+            actions, context.container.get(RoadmapGreenfield),
+            new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex),
+                context.container.get(RoadmapStore)));
         client.onDidCloseConnection(() => { backend.dispose(); dispose(); });
         return backend;
     })).inSingletonScope();

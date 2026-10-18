@@ -391,7 +391,7 @@ export class ChatPanelController {
         return [current, ...this.context];
     }
     async runTurn(model?: ChatModelSelection, retryMessageId?: string,
-        confirmHosted?: () => boolean): Promise<boolean> {
+        confirmHosted?: () => boolean, bridgeBranchIds?: string[]): Promise<boolean> {
         const lease = this.lease;
         if (!lease || this.running || this.pending || !this.chat || !retryMessageId && !this.draft.trim()) return false;
         const content = this.draft;
@@ -406,10 +406,12 @@ export class ChatPanelController {
         this.changed();
         try {
             const context = await this.turnContext();
+            const bridgeProposal = bridgeBranchIds ? this.planning?.bridge(this.workspace!, bridgeBranchIds) : undefined;
             if (generation !== this.generation || chatId !== this.chatId || lease !== this.lease)
                 throw new Error('Chat changed while resolving planning selection');
             const request = { projectHandle: lease.handle, chatId: lease.chatId, leaseToken: lease.token,
                 ...(model ? { selectedModel: model } : {}), context,
+                ...(bridgeProposal ? { bridgeProposal } : {}),
                 ...(retryMessageId ? { retryMessageId } : { content }) };
             let result;
             try { result = await lease.connection.runTurn(request); }

@@ -79,8 +79,8 @@ export interface ChatAssistantMessage {
 }
 export interface ChatPlanningActivity {
     schemaVersion: 1;
-    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'no-action' | 'error' | 'cancelled';
-    status: 'pending' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'applied' | 'failed' | 'cancelled';
+    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'bridge-proposal' | 'no-action' | 'error' | 'cancelled';
+    status: 'pending' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'applied' | 'failed' | 'cancelled';
     refs: ChatContextRef[];
     proposalId?: string;
     appliedRevision?: number;
@@ -308,11 +308,13 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
     const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
-    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'no-action',
+    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'bridge-proposal', 'no-action',
         'error', 'cancelled'] as const, 'planning activity kind');
-    const status = choice(v.status, ['pending', 'no-action', 'rejected', 'denied', 'stale', 'applied',
+    const status = choice(v.status, ['pending', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'applied',
         'failed', 'cancelled'] as const, 'planning activity status');
     if ((kind === 'no-action') !== (status === 'no-action') ||
+        (kind === 'bridge-proposal') !== (status === 'suggested') ||
+        (status === 'suggested' && v.proposalId !== undefined) ||
         (kind === 'error') !== (status === 'failed') || (kind === 'cancelled') !== (status === 'cancelled') ||
         (['pending', 'denied', 'stale', 'applied'].includes(status) && v.proposalId === undefined) ||
         (['no-action', 'failed', 'cancelled'].includes(status) && v.proposalId !== undefined) ||
