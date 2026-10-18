@@ -6,6 +6,7 @@ import type { PlanningMap } from '../../packages/visual-planning/src/index.ts';
 import type { RoadmapTaskStack } from '../../packages/agent-core/src/node/roadmap-task-discovery.ts';
 import type { AgentTaskSequence } from '../../packages/agent-core/src/sequence.ts';
 import type { AgentTask, AgentRun } from '../../packages/agent-core/src/contracts.ts';
+import type { HistoryEntry } from '../../packages/contracts/src/history.ts';
 
 const basis = { architectureRevision: 1, architectureFingerprint: 'a', physicalInputFingerprint: 'p', physicalGeneration: 2 };
 const map: PlanningMap = { schemaVersion: 1, id: 'map', projectId: 'project', title: 'Map', objective: 'Target',
@@ -41,6 +42,8 @@ test('one map supports several checkpoints, but completed WorkItems and runs do 
   assert.equal(result[0].links.filter(edge => edge.to.kind === 'transformation').length, 2);
   assert.equal(result[0].links.every(edge => edge.to.projectId === 'project'), true);
   assert.equal(result[0].links.some(edge => (edge.to.kind as string) === 'session'), false);
+  assert.deepEqual(result[0].reconciliation[0].checkpointStacks,
+    [{ projectId: 'project', kind: 'stack', id: stack.path }]);
   assert.equal(roadmap([link]).checkpoints[0].status, 'not-implemented');
 });
 
@@ -119,4 +122,60 @@ test('captured ideas and accepted brainstorm drafts remain source-scoped and non
     ['Captured', 'Brainstorming', 'Roadmapped', 'Roadmapped']);
   assert.equal(projectWorkflowLineage({ ...source, projectMind: { ...source.projectMind, projectId: 'foreign' },
     brainstormDraft: { ...source.brainstormDraft, projectId: 'foreign' } }).length, 2);
+});
+
+test('Bridge reconciliation carries physical outcomes with exact Work, validation and History attribution', () => {
+  const reported: PlanningMap = { ...map, reconciliation: { basis, at: '2026-10-18', results: [
+    { schemaVersion: 1, transformationId: 'change', identityId: 'component', outcome: 'implemented-differently',
+      physicalGeneration: 2, evidenceIds: ['syntax:component'], explanation: 'Changed source' },
+    { schemaVersion: 1, identityId: 'code:surprise', outcome: 'unexpected-implementation',
+      physicalGeneration: 2, evidenceIds: ['syntax:surprise'], explanation: 'Outside plan', branchIds: ['branch'] }
+  ] } };
+  const delegated = { id: 'delegated', projectId: 'project', origin: { kind: 'work-item', projectId: 'project',
+    planningMapId: 'map', workItemId: 'work', mapRevision: 3, basis } } as AgentTask;
+  const completed = { id: 'done', taskId: 'delegated', projectId: 'project', status: 'completed',
+    validationResults: [{ status: 'passed' }] } as AgentRun;
+  const history: HistoryEntry[] = [{ projectId: 'project', projectRoot: '/project', kind: 'event', source: 'agent',
+    sourceId: 'run:done', owner: { kind: 'agent-run', runId: 'done' }, title: 'Run',
+    status: { kind: 'owner', label: 'Completed' }, availability: 'available', occurredAt: '2026-10-18', observedAt: null }];
+  const view = projectWorkflowLineage({ roadmap: roadmap([link]), maps: [reported], currentBasis: basis,
+    planningLinks: [observed('first'), observed('second')], tasks: [delegated], runs: [completed], historyEntries: history });
+  assert.equal(view[0].stage, 'Validating');
+  assert.equal(view[0].ownerStatus, 'not-implemented');
+  const report = view[0].reconciliation[0];
+  assert.equal(report.sourceState, 'matches-observed-analysis');
+  assert.deepEqual(report.basis, basis);
+  assert.deepEqual(report.counts, { 'implemented-differently': 1, 'unexpected-implementation': 1 });
+  assert.equal(report.rollups?.workItems.work['implemented-differently'], 1);
+  assert.equal(report.rollups?.branches.branch['unexpected-implementation'], 1);
+  assert.deepEqual(report.outcomes[0].workItems, [{ projectId: 'project', kind: 'work-item', id: 'map/work' }]);
+  assert.deepEqual(report.outcomes[0].runs, [{ ref: { projectId: 'project', kind: 'run', id: 'done' },
+    status: 'completed', validation: ['passed'], taskMapRevision: 3, basisState: 'matches-map' }]);
+  assert.deepEqual(report.outcomes[0].history, [{ source: 'agent', sourceId: 'run:done' }]);
+  assert.match(report.outcomes[0].ambiguity!, /Manual disposition is unresolved/);
+  assert.equal(report.outcomes[1].runs.length, 0);
+  assert.match(report.outcomes[1].ambiguity!, /no planned transformation/);
+  const changed = projectWorkflowLineage({ roadmap: roadmap([link]), maps: [reported],
+    currentBasis: { ...basis, physicalInputFingerprint: 'different' }, planningLinks: [observed('first'), observed('second')] });
+  assert.equal(changed[0].reconciliation[0].sourceState, 'source-drift');
+  assert.deepEqual(changed[0].unresolved, [{ kind: 'planning-map', id: 'map', reason: 'stale' }]);
+  assert.equal(changed[0].stage, 'Prepared');
+  assert.equal(projectWorkflowLineage({ roadmap: roadmap([link]), maps: [reported], planningLinks: [observed('first')] })[0]
+    .reconciliation[0].sourceState, 'unknown');
+  assert.equal(projectWorkflowLineage({ roadmap: roadmap([link]), maps: [{ ...reported, reconciliation: undefined }],
+    planningLinks: [observed('first')] })[0].reconciliation[0].sourceState, 'not-reconciled');
+  const historical = projectWorkflowLineage({ roadmap: roadmap([link]), maps: [reported], currentBasis: basis,
+    planningLinks: [observed('first')], tasks: [{ ...delegated, origin: { ...delegated.origin, mapRevision: 2 } } as AgentTask],
+    runs: [completed] })[0].reconciliation[0].outcomes[0];
+  assert.equal(historical.runs[0].basisState, 'historical');
+  assert.match(historical.ambiguity!, /historical Planning Map/);
+  const reanalyzed = projectWorkflowLineage({ roadmap: roadmap([link]), maps: [reported],
+    currentBasis: { ...basis, physicalGeneration: 3 }, planningLinks: [observed('first')] })[0];
+  assert.equal(reanalyzed.reconciliation[0].sourceState, 'same-source-new-generation');
+  assert.deepEqual(reanalyzed.unresolved, []);
+  const manuallyResolved = { ...reported, transformations: [{ ...reported.transformations[0], resolution: 'accepted-different' as const }] };
+  const resolvedView = projectWorkflowLineage({ roadmap: roadmap([link]), maps: [manuallyResolved], currentBasis: basis,
+    planningLinks: [observed('first')] })[0].reconciliation[0].outcomes[0];
+  assert.equal(resolvedView.disposition, 'accepted-different');
+  assert.doesNotMatch(resolvedView.ambiguity ?? '', /Manual disposition is unresolved/);
 });

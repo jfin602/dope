@@ -8,8 +8,9 @@ import type { PlanningCollection, PlanningOperation, VisualPlanningService } fro
 import type { AdoptionPreview, AdoptionScope } from '@dope/visual-planning/lib/adoption';
 import type { SoftwareMapController } from './software-map-controller';
 import type { PlanningView } from './planning-map-projection';
-import type { AgentTask } from '@dope/agent-core';
+import type { AgentTask, AgentRun } from '@dope/agent-core';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
+import type { HistoryService } from '@dope/contracts/lib/history-service';
 
 const transitions: Record<MapStatus, MapStatus[]> = {
     draft: ['active', 'archived'], active: ['superseded', 'archived'],
@@ -28,6 +29,7 @@ export class PlanningMapController {
     private workspace?: string;
     private request = 0;
     private staleRequest = 0;
+    private linkedEvidenceRequest = 0;
     private launchRequest?: { basis: string; key: string };
     private disposed = false;
     collection?: PlanningCollection;
@@ -35,6 +37,9 @@ export class PlanningMapController {
     get focusWorkspace(): string | undefined { return this.workspace; }
     selectedWorkItemId?: string;
     linkedTasks: AgentTask[] = [];
+    linkedRuns: AgentRun[] = [];
+    historyReferences: { source: string; sourceId: string }[] = [];
+    historyReferenceState: 'unavailable' | 'checking' | 'observed' | 'not-observed' = 'unavailable';
     launchingWork = false;
     selectedTransformationId?: string;
     selectedSuggestionIndex?: number;
@@ -53,7 +58,7 @@ export class PlanningMapController {
     rebasePreview?: { result: RebaseResult; mapId: string; collectionRevision: number; mapRevision: number; decisions: RebaseDecision[] };
 
     constructor(private readonly map: SoftwareMapController, private readonly connect: () => VisualPlanningService,
-        private readonly agent?: AgentRuntimeService) {
+        private readonly agent?: AgentRuntimeService, private readonly history?: HistoryService) {
         this.mapListener = map.onChange(() => { if (this.workspace !== map.workspace) {
             this.setPrepareWorkContext(undefined); void this.attach();
         } else void this.refreshStale(); });
@@ -86,11 +91,14 @@ export class PlanningMapController {
         if (!value && this.selected && !this.visibleMaps.includes(this.selected)) this.selectedMapId = this.visibleMaps[0]?.id;
         this.notify();
     }
-    select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
+    select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { ++this.linkedEvidenceRequest; this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
         if (this.prepareWorkContext?.mapId !== id) this.prepareWorkContext = undefined;
-        this.selectedWorkItemId = undefined; this.linkedTasks = []; this.selectedTransformationId = undefined; this.selectedSuggestionIndex = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
+        this.selectedWorkItemId = undefined; this.linkedTasks = []; this.linkedRuns = []; this.historyReferences = [];
+        this.historyReferenceState = 'unavailable'; this.selectedTransformationId = undefined; this.selectedSuggestionIndex = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
     clearSelection(): void {
+        ++this.linkedEvidenceRequest;
         this.selectedMapId = undefined; this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined;
+        this.linkedTasks = []; this.linkedRuns = []; this.historyReferences = []; this.historyReferenceState = 'unavailable';
         this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined;
         this.stale = undefined; this.suggestions = undefined; this.selectedSuggestionIndex = undefined; this.notify();
     }
@@ -169,15 +177,43 @@ export class PlanningMapController {
     }
     async refreshLinkedTasks(): Promise<void> {
         const item = this.selectedWorkItem, map = this.selected, workspace = this.workspace;
-        this.linkedTasks = []; this.notify();
-        if (!item || !map || !workspace || !this.agent) return;
+        const request = ++this.linkedEvidenceRequest;
+        this.linkedTasks = []; this.linkedRuns = []; this.historyReferences = [];
+        this.historyReferenceState = this.history ? 'checking' : 'unavailable'; this.notify();
+        if (!item || !map || !workspace || !this.agent) {
+            this.historyReferenceState = 'unavailable'; this.notify(); return;
+        }
         try {
             const { projectHandle } = await this.agent.attach(workspace);
-            const tasks = await this.agent.listWorkItemTasks(projectHandle, map.id, item.id);
-            if (!this.disposed && this.workspace === workspace && this.selected?.id === map.id && this.selectedWorkItemId === item.id) {
-                this.linkedTasks = tasks; this.notify();
+            const tasks = (await this.agent.listWorkItemTasks(projectHandle, map.id, item.id)).filter(task =>
+                task.projectId === map.projectId && task.origin.kind === 'work-item' &&
+                task.origin.projectId === map.projectId && task.origin.planningMapId === map.id &&
+                task.origin.workItemId === item.id);
+            const taskIds = new Set(tasks.map(task => task.id));
+            const runs = (await this.agent.listRuns(projectHandle)).filter(run =>
+                run.projectId === map.projectId && taskIds.has(run.taskId));
+            let references: typeof this.historyReferences = [];
+            let referenceState: 'unavailable' | 'observed' | 'not-observed' = 'unavailable';
+            if (this.history) try {
+                const historyHandle = (await this.history.attach(workspace)).projectHandle;
+                const snapshot = await this.history.read(historyHandle);
+                if (snapshot.project.projectId === map.projectId) {
+                    const runIds = new Set(runs.map(run => run.id));
+                    references = snapshot.entries.filter(entry => entry.projectId === map.projectId &&
+                        entry.projectRoot === snapshot.project.projectRoot &&
+                        (!entry.ownerProjectId || entry.ownerProjectId === map.projectId) && entry.availability === 'available' &&
+                        (entry.owner.kind === 'work-item' && entry.owner.mapId === map.id && entry.owner.workItemId === item.id ||
+                            entry.owner.kind === 'agent-run' && runIds.has(entry.owner.runId)))
+                        .map(entry => ({ source: entry.source, sourceId: entry.sourceId }));
+                    referenceState = references.length ? 'observed' : 'not-observed';
+                }
+            } catch { referenceState = 'unavailable'; }
+            if (request === this.linkedEvidenceRequest && !this.disposed && this.workspace === workspace &&
+                this.selected?.id === map.id && this.selectedWorkItemId === item.id) {
+                this.linkedTasks = tasks; this.linkedRuns = runs; this.historyReferences = references;
+                this.historyReferenceState = referenceState; this.notify();
             }
-        } catch (error) { if (this.workspace === workspace && this.selectedWorkItemId === item.id) {
+        } catch (error) { if (request === this.linkedEvidenceRequest && this.workspace === workspace && this.selectedWorkItemId === item.id) {
             this.error = String(error); this.notify(); } }
     }
     async launchWork(validationCommand?: string, validationApproved = false): Promise<AgentTask | undefined> {
@@ -323,8 +359,10 @@ export class PlanningMapController {
         this.notify();
     }
     selectWorkItem(id?: string): void { this.selectedWorkItemId = this.selected?.workItems.some(item => item.id === id) ? id : undefined;
+        ++this.linkedEvidenceRequest;
         this.selectedSuggestionIndex = undefined;
-        this.selectedTransformationId = undefined; this.linkedTasks = []; this.notify(); void this.refreshLinkedTasks(); }
+        this.selectedTransformationId = undefined; this.linkedTasks = []; this.linkedRuns = [];
+        this.historyReferences = []; this.historyReferenceState = 'unavailable'; this.notify(); void this.refreshLinkedTasks(); }
     selectTransformation(id?: string): void { this.selectedTransformationId = this.selected?.transformations.some(item => item.id === id) ? id : undefined;
         this.selectedSuggestionIndex = undefined;
         this.selectedWorkItemId = undefined; this.notify(); }
@@ -444,6 +482,7 @@ export class PlanningMapController {
         this.mutate({ type: 'redo', mapId: map.id, expectedMapRevision: map.revision, expectedBasis: map.basis }) : Promise.resolve(); }
 
     async attach(): Promise<void> {
+        ++this.linkedEvidenceRequest;
         const workspace = this.map.workspace;
         const request = ++this.request;
         this.workspace = workspace;
@@ -456,6 +495,9 @@ export class PlanningMapController {
         this.selectedWorkItemId = undefined;
         this.launchRequest = undefined;
         this.linkedTasks = [];
+        this.linkedRuns = [];
+        this.historyReferences = [];
+        this.historyReferenceState = 'unavailable';
         this.selectedTransformationId = undefined;
         this.suggestions = undefined;
         this.selectedSuggestionIndex = undefined;

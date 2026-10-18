@@ -318,7 +318,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         context.container.get(AICredentialService), context.container.get(AIRolePolicyService))).inSingletonScope();
     bind(PlanningMapController).toDynamicValue(context => new PlanningMapController(context.container.get(SoftwareMapController),
         () => ServiceConnectionProvider.createProxy<VisualPlanningService>(context.container, visualPlanningServicePath),
-        context.container.get(AgentRuntimeService))).inSingletonScope();
+        context.container.get(AgentRuntimeService),
+        ServiceConnectionProvider.createProxy<HistoryService>(context.container, historyServicePath))).inSingletonScope();
     bind<RoadmapService>('RoadmapService').toDynamicValue(context => ServiceConnectionProvider.createProxy<RoadmapService & RpcServer<RoadmapClient>>(
         context.container, roadmapServicePath, { notifyRoadmapChanged: (change: RoadmapChange) => {
             void context.container.get(RoadmapInspectorModel).remoteChange(change);

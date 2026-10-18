@@ -765,14 +765,28 @@ export class PhysicalMapWidget extends BaseWidget {
             const report = selected.reconciliation;
             if (report) {
                 const summary = document.createElement('p');
-                summary.textContent = `Reconciliation · Physical generation ${report.basis.physicalGeneration} · input ${report.basis.physicalInputFingerprint} · ${JSON.stringify(reconciliationRollups(selected).map)}`;
+                const input = this.controller.mapInputFingerprint;
+                const sourceState = !input ? 'current source unverified' :
+                    input !== report.basis.physicalInputFingerprint ? 'latest observed analysis differs; refresh source evidence' :
+                        this.controller.mapGeneration !== report.basis.physicalGeneration ? 'same input, newer analysis generation' :
+                            'matches latest observed analysis';
+                summary.textContent = `Reconciliation · ${sourceState} · Architecture basis ${report.basis.architectureFingerprint} · Physical generation ${report.basis.physicalGeneration} · input ${report.basis.physicalInputFingerprint} · ${JSON.stringify(reconciliationRollups(selected).map)} · outcomes are Physical Map observations, not Work completion or qualification`;
                 details.append(summary);
+                const context = this.planning.prepareWorkContext;
+                if (context?.projectId === selected.projectId && context.mapId === selected.id) {
+                    const lineage = document.createElement('p');
+                    lineage.textContent = `Checkpoint ${context.checkpointId} · Planning Map ${selected.id} revision ${selected.revision}`;
+                    details.append(lineage);
+                }
                 for (const result of report.results) {
                     const row = document.createElement('p');
-                    row.textContent = projectReconciliationResult(result);
+                    const workItems = selected.workItems.filter(item => result.transformationId && item.transformationIds.includes(result.transformationId));
+                    const resolution = selected.transformations.find(item => item.id === result.transformationId)?.resolution;
+                    row.textContent = `${projectReconciliationResult(result)} · WorkItems ${workItems.map(item => item.id).join(', ') || 'none (attribution unresolved)'} · disposition ${resolution ?? 'unresolved'}`;
                     details.append(row);
                     if (!result.transformationId || selected.status !== 'active') continue;
-                    const change = selected.transformations.find(t => t.id === result.transformationId)!;
+                    const change = selected.transformations.find(t => t.id === result.transformationId);
+                    if (!change) continue; // Historical result: source changed after this report.
                     const options = result.outcome === 'implemented-as-planned' ? [['as-planned', 'Resolve as planned']] :
                         result.outcome === 'implemented-differently' ? [['accepted-different', 'Accept intentionally different']] : [];
                     for (const [resolution, label] of [...options, ['deferred', 'Defer'], ['abandoned', 'Abandon']]) button(
@@ -923,9 +937,20 @@ export class PhysicalMapWidget extends BaseWidget {
         }, !this.planning.canLaunchWork || !this.openWorkTask);
         for (const task of this.planning.linkedTasks) {
             button(`Open Work: ${task.objective}`, () => { void this.openWorkTask?.(task.id); }, !this.openWorkTask);
+            if (task.origin.kind === 'work-item') line(`Task ${task.id} · Planning Map revision ${task.origin.mapRevision} · ${task.origin.mapRevision === map.revision &&
+                task.origin.basis.physicalInputFingerprint === map.basis.physicalInputFingerprint ?
+                'same map revision and input' : 'historical map revision or source basis; inspect before attribution'}`);
             if (!task.completion.requireValidationPass || !task.completion.validation.some(target => !!target.command?.trim()))
                 line('This older task has no required validation. To review a validated candidate, launch a new task and approve its test command; this task will not be changed or started automatically.');
         }
+        for (const run of this.planning.linkedRuns) {
+            const validation = run.validationResults?.map(value => `${value.label}: ${value.status}`).join(', ') || 'none';
+            line(`AgentRun ${run.id} · task ${run.taskId} · ${run.status} · validation ${validation} · candidate promotion ${run.appliedFiles ? 'applied' : 'not observed'} · Git ${run.finalGit?.head ?? 'not recorded'}. Physical reconciliation and owner closeout remain separate.`);
+        }
+        line(`History references: ${this.planning.historyReferenceState === 'observed' ?
+            this.planning.historyReferences.map(item => `${item.source}:${item.sourceId}`).join(', ') :
+            this.planning.historyReferenceState === 'not-observed' ? 'not present in bounded History read' :
+                this.planning.historyReferenceState === 'checking' ? 'checking' : 'unavailable'}`);
         for (const field of ['title', 'objective', 'requirements', 'constraints', 'acceptanceCriteria', 'validationTargets', 'workingSet',
             'transformationIds', 'dependsOn'] as const) {
             const value = item[field];

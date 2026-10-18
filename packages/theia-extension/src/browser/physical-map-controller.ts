@@ -50,6 +50,8 @@ export class PhysicalMapController {
     get projectMatches(): boolean { return !this.workspace || this.workspace === this.map.workspace; }
     get mapWorkspace(): string | undefined { return this.map.workspace; }
     get mapGeneration(): number | undefined { return this.map.status?.generation; }
+    get mapInputFingerprint(): string | undefined { return this.projectMatches && this.map.status?.state === 'ready' ?
+        this.map.status.inputFingerprint : undefined; }
     get breadcrumbs(): GraphNode[] {
         const path: GraphNode[] = [];
         for (let node = this.map.nodes.find(item => item.id === this.focusId); node;

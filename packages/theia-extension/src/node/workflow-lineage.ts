@@ -1,12 +1,15 @@
 import type { RoadmapIndex, RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapStatus } from '@dope/project-intelligence/lib/node/roadmap-import';
-import type { PlanningBasis, PlanningMap } from '@dope/visual-planning';
+import type { PlanningBasis, PlanningMap, ReconciliationOutcome } from '@dope/visual-planning';
+import { sameSemanticBasis } from '@dope/visual-planning';
+import { reconciliationRollups } from '@dope/visual-planning/lib/reconciliation';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { AgentTaskSequence } from '@dope/agent-core/lib/sequence';
 import type { AgentTask, AgentRun } from '@dope/agent-core/lib/contracts';
 import type { RoadmapPlanningLinks } from './roadmap-planning-links';
 import type { ProjectMind } from '@dope/contracts/lib/project-mind';
 import type { GreenfieldDraft } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import type { HistoryEntry } from '@dope/contracts/lib/history';
 
 export type WorkflowStage = 'Captured' | 'Brainstorming' | 'Roadmapped' | 'Architecting' |
     'Prepared' | 'Implementing' | 'Validating' | 'Qualified' | 'Closed';
@@ -30,6 +33,8 @@ export interface WorkflowLineageInput {
     sequences?: readonly AgentTaskSequence[];
     tasks?: readonly AgentTask[];
     runs?: readonly AgentRun[];
+    /** Optional owner-sourced History observations. A Git event is never attached by proximity alone. */
+    historyEntries?: readonly HistoryEntry[];
     /** Explicit owner closeout observations; a completed run or Green Roadmap status cannot close work. */
     closeouts?: readonly { projectId: string; checkpointId: string; evidenceId: string }[];
     decisionsNeeded?: readonly { projectId: string; checkpointId: string; evidenceId: string }[];
@@ -41,6 +46,29 @@ export interface WorkflowCheckpoint {
     conditions: WorkflowCondition[];
     links: LineageEdge[];
     unresolved: { kind: LineageKind; id: string; reason: 'missing' | 'foreign' | 'stale' | 'unverified' }[];
+    reconciliation: BridgeReconciliation[];
+}
+
+export interface BridgeReconciliation {
+    mapId: string;
+    mapRevision: number;
+    /** Approved stack associations on this checkpoint; not transformation or run attribution. */
+    checkpointStacks: LineageRef[];
+    /** Compares the report to the latest supplied analysis, not to an unobserved filesystem. */
+    sourceState: 'matches-observed-analysis' | 'same-source-new-generation' | 'source-drift' |
+        'basis-changed' | 'unknown' | 'not-reconciled';
+    basis?: PlanningBasis;
+    physicalGeneration?: number;
+    physicalInputFingerprint?: string;
+    counts: Partial<Record<ReconciliationOutcome, number>>;
+    /** Map-wide rollups are shown only for an explicitly linked whole Planning Map. */
+    rollups?: ReturnType<typeof reconciliationRollups>;
+    outcomes: { transformationId?: string; identityId: string; outcome: ReconciliationOutcome;
+        evidenceIds: string[]; disposition?: PlanningMap['transformations'][number]['resolution'];
+        workItems: LineageRef[]; runs: { ref: LineageRef; status: AgentRun['status'];
+            validation: AgentRun['validationResults'][number]['status'][]; taskMapRevision: number;
+            basisState: 'matches-map' | 'historical' }[];
+        history: { source: HistoryEntry['source']; sourceId: string }[]; ambiguity?: string }[];
 }
 
 const sameBasis = (a: PlanningBasis, b: PlanningBasis): boolean =>
@@ -63,19 +91,20 @@ export function projectWorkflowLineage(input: WorkflowLineageInput): WorkflowChe
     if (input.projectMind?.projectId === projectId) for (const idea of input.projectMind.artifacts) {
         if (idea.type !== 'idea' || idea.status !== 'captured' || idea.archivedAt) continue;
         early.push({ checkpoint: ref(projectId, 'idea', idea.id), stage: 'Captured', ownerStatus: 'captured',
-            conditions: [], links: [], unresolved: [] });
+            conditions: [], links: [], unresolved: [], reconciliation: [] });
     }
     if (input.brainstormDraft?.projectId === projectId) for (const phase of input.brainstormDraft.draft.phases) {
         early.push({ checkpoint: ref(projectId, 'draft-checkpoint', phase.id), stage: 'Brainstorming', ownerStatus: 'brainstorming',
-            conditions: [], links: [], unresolved: [] });
+            conditions: [], links: [], unresolved: [], reconciliation: [] });
         for (const checkpoint of phase.checkpoints) early.push({
             checkpoint: ref(projectId, 'draft-checkpoint', checkpoint.id), stage: 'Brainstorming', ownerStatus: 'brainstorming',
-            conditions: [], links: [], unresolved: [] });
+            conditions: [], links: [], unresolved: [], reconciliation: [] });
     }
     return [...early, ...roadmap.checkpoints.map(checkpoint => {
         const checkpointRef = ref(projectId, 'checkpoint', checkpoint.id);
         const links: LineageEdge[] = [];
         const unresolved: WorkflowCheckpoint['unresolved'] = [];
+        const reconciliation: BridgeReconciliation[] = [];
         const conditions = new Set<WorkflowCondition>();
         let rank = 2; // A canonical Roadmap checkpoint is Roadmapped even when not implemented.
         const advance = (stage: WorkflowStage): void => { rank = Math.max(rank, stageRank.indexOf(stage)); };
@@ -89,15 +118,18 @@ export function projectWorkflowLineage(input: WorkflowLineageInput): WorkflowChe
             const parts = link.targetId.split('/');
             const map = maps.get(parts[0]);
             const observation = input.planningLinks?.find(item => item.checkpointId === checkpoint.id && item.link === link);
+            const sourceOnlyStale = !!(map && map.revision === link.ownerRevision && link.basis &&
+                sameBasis(map.basis, link.basis) && observation?.resolved && input.currentBasis &&
+                !sameSemanticBasis(map.basis, input.currentBasis));
             const reason = link.ownerProjectId && link.ownerProjectId !== projectId ? 'foreign' :
                 !map || (kind !== 'planning-map' && parts.length !== 2) ? 'missing' :
                     map.revision !== link.ownerRevision || !link.basis || !sameBasis(map.basis, link.basis) ||
-                    input.currentBasis && !sameBasis(map.basis, input.currentBasis) ? 'stale' :
+                    input.currentBasis && !sameSemanticBasis(map.basis, input.currentBasis) ? 'stale' :
                         !observation?.resolved ? 'unverified' : undefined;
             if (reason) {
                 unresolved.push({ kind, id: link.targetId, reason });
                 if (reason === 'stale') conditions.add('Stale');
-                continue;
+                if (!sourceOnlyStale) continue;
             }
             if (!map) continue;
             const mapRef = edge(checkpointRef, 'planning-map', map.id, 'plans');
@@ -128,6 +160,61 @@ export function projectWorkflowLineage(input: WorkflowLineageInput): WorkflowChe
                         else if (run.status !== 'pending') advance('Implementing');
                     }
                 }
+            }
+            if (!reconciliation.some(item => item.mapId === map.id)) {
+                const report = map.reconciliation;
+                const sourceState: BridgeReconciliation['sourceState'] = !report ? 'not-reconciled' :
+                    !input.currentBasis ? 'unknown' : report.basis.architectureFingerprint !== input.currentBasis.architectureFingerprint ||
+                        report.basis.architectureRevision !== input.currentBasis.architectureRevision ? 'basis-changed' :
+                        report.basis.physicalInputFingerprint !== input.currentBasis.physicalInputFingerprint ? 'source-drift' :
+                            report.basis.physicalGeneration !== input.currentBasis.physicalGeneration ?
+                                'same-source-new-generation' : 'matches-observed-analysis';
+                const scopedIds = new Set(kind === 'work-item' ? workItems.flatMap(item => item.transformationIds) :
+                    transformations.map(item => item.id));
+                const history = (input.historyEntries ?? []).filter(item => item.projectId === projectId &&
+                    item.projectRoot === roadmap.projectRoot && (!item.ownerProjectId || item.ownerProjectId === projectId) &&
+                    item.availability === 'available');
+                const outcomes = (report?.results ?? []).filter(result => result.transformationId ?
+                    scopedIds.has(result.transformationId) : kind === 'planning-map')
+                    .map(result => {
+                        const owners = map.workItems.filter(item => result.transformationId && item.transformationIds.includes(result.transformationId));
+                        const linkedRuns = (input.tasks ?? []).filter(task => task.projectId === projectId &&
+                            task.origin.kind === 'work-item' && task.origin.projectId === projectId &&
+                            task.origin.planningMapId === map.id && owners.some(item => item.id ===
+                                (task.origin.kind === 'work-item' ? task.origin.workItemId : undefined)))
+                            .flatMap(task => (input.runs ?? []).filter(run => run.projectId === projectId && run.taskId === task.id)
+                                .map(run => ({ run, task })));
+                        const ownerIds = new Set(owners.map(item => item.id));
+                        const runIds = new Set(linkedRuns.map(item => item.run.id));
+                        const disposition = map.transformations.find(item => item.id === result.transformationId)?.resolution;
+                        const ambiguity = [!result.transformationId ? 'Unexpected source change has no planned transformation or exact WorkItem/run attribution' : '',
+                            result.outcome === 'implemented-differently' && !disposition ? 'Manual disposition is unresolved' : '',
+                            !result.transformationId || linkedRuns.length ? '' : 'No WorkItem AgentRun attribution; outcome comes from Physical Map evidence',
+                            linkedRuns.some(({ task }) => task.origin.kind === 'work-item' &&
+                                (task.origin.mapRevision !== map.revision || !sameBasis(task.origin.basis, map.basis))) ?
+                                'Some linked AgentRuns use a historical Planning Map revision or basis' : ''].filter(Boolean).join('; ');
+                        return { transformationId: result.transformationId, identityId: result.identityId,
+                            outcome: result.outcome, evidenceIds: result.evidenceIds,
+                            ...(disposition ? { disposition } : {}),
+                            workItems: owners.map(item => ref(projectId, 'work-item', `${map.id}/${item.id}`)),
+                            runs: linkedRuns.map(({ run, task }) => ({ ref: ref(projectId, 'run', run.id), status: run.status,
+                                validation: run.validationResults?.map(value => value.status) ?? [],
+                                taskMapRevision: task.origin.kind === 'work-item' ? task.origin.mapRevision : -1,
+                                basisState: task.origin.kind === 'work-item' && task.origin.mapRevision === map.revision &&
+                                    sameBasis(task.origin.basis, map.basis) ? 'matches-map' as const : 'historical' as const })),
+                            history: history.filter(entry => entry.owner.kind === 'planning-map' && entry.owner.mapId === map.id ||
+                                entry.owner.kind === 'work-item' && entry.owner.mapId === map.id && ownerIds.has(entry.owner.workItemId) ||
+                                entry.owner.kind === 'agent-run' && runIds.has(entry.owner.runId))
+                                .map(entry => ({ source: entry.source, sourceId: entry.sourceId })),
+                            ...(ambiguity ? { ambiguity } : {}) };
+                    });
+                const counts = outcomes.reduce((value, item) => {
+                    value[item.outcome] = (value[item.outcome] ?? 0) + 1; return value;
+                }, {} as Partial<Record<ReconciliationOutcome, number>>);
+                reconciliation.push({ mapId: map.id, mapRevision: map.revision, checkpointStacks: [], sourceState,
+                    ...(report ? { basis: report.basis, physicalGeneration: report.basis.physicalGeneration,
+                        physicalInputFingerprint: report.basis.physicalInputFingerprint } : {}),
+                    counts, outcomes, ...(kind === 'planning-map' ? { rollups: reconciliationRollups(map) } : {}) });
             }
         }
         for (const association of input.stackAssociations ?? []) {
@@ -172,7 +259,9 @@ export function projectWorkflowLineage(input: WorkflowLineageInput): WorkflowChe
             input.closeouts?.some(item => item.projectId === projectId && item.checkpointId === checkpoint.id && item.evidenceId))
             advance('Closed');
         return { checkpoint: checkpointRef, stage: stageRank[rank], ownerStatus: checkpoint.status,
-            conditions: [...conditions], links, unresolved };
+            conditions: [...conditions], links, unresolved, reconciliation: reconciliation.map(item => ({ ...item,
+                checkpointStacks: links.filter(edge => edge.from.kind === 'checkpoint' && edge.to.kind === 'stack')
+                    .map(edge => edge.to) })) };
     })];
 }
 

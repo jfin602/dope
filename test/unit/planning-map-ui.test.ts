@@ -10,6 +10,7 @@ import type { AdoptionAcceptance, AdoptionRequest, PlanningCollection, PlanningO
 import type { AdoptionPreview } from '../../packages/visual-planning/src/adoption.ts';
 import type { SoftwareMapController } from '../../packages/theia-extension/src/browser/software-map-controller.ts';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
+import type { HistoryService } from '../../packages/contracts/src/history-service.ts';
 import type { WorkItem } from '../../packages/visual-planning/src/index.ts';
 const require = createRequire(import.meta.url);
 const { PlanningMapController } = require('../../packages/theia-extension/lib/browser/planning-map-controller.js') as
@@ -94,7 +95,7 @@ test('adopted target remains visible without claiming Physical Map realization',
   assert.match(diff.nodes.find(node => node.id === 'b')!.badge, /Adopted removal/);
 });
 
-function harness(agent?: AgentRuntimeService) {
+function harness(agent?: AgentRuntimeService, history?: HistoryService) {
   const listeners = new Set<() => void>();
   const physical = { workspace: 'file:///A', status: { state: 'ready', generation: 1, publishedGeneration: 1, inputFingerprint: 'source' },
     initialization: { declarationFingerprint: 'arch' }, async attach() {}, onChange(listener: () => void) {
@@ -137,9 +138,45 @@ function harness(agent?: AgentRuntimeService) {
       collection = { ...collection, revision: collection.revision + 1, maps };
       return collection;
     } };
-  const controller = new PlanningMapController(physical as unknown as SoftwareMapController, () => service as VisualPlanningService, agent);
+  const controller = new PlanningMapController(physical as unknown as SoftwareMapController, () => service as VisualPlanningService, agent, history);
   return { controller, physical, listeners, service, get collection() { return collection; }, set collection(value: PlanningCollection) { collection = value; } };
 }
+
+test('selected WorkItem projects exact historical runs and verified History IDs without changing owner status', async () => {
+  const work: WorkItem = { id: 'work', title: 'Implement', objective: 'Implement', transformationIds: ['modify'],
+    dependsOn: [], requirements: [], constraints: [], acceptanceCriteria: [], validationTargets: [],
+    workingSet: [], status: 'ready' };
+  const task = { id: 'task', projectId: 'project', origin: { kind: 'work-item', projectId: 'project',
+    planningMapId: 'plan', workItemId: 'work', mapRevision: 2, basis } };
+  const run = { id: 'run', taskId: 'task', projectId: 'project', status: 'completed', validationResults: [{ status: 'passed' }] };
+  const agent = { attach: async () => ({ projectHandle: 'agent' }), listWorkItemTasks: async () =>
+    [task, { ...task, id: 'foreign', projectId: 'foreign' }], listRuns: async () =>
+    [run, { ...run, id: 'foreign-run', projectId: 'foreign' }] } as unknown as AgentRuntimeService;
+  const history = { attach: async () => ({ projectHandle: 'history' }), read: async () => ({
+    project: { projectId: 'project', projectRoot: '/project' }, entries: [
+      { projectId: 'project', projectRoot: '/project', source: 'planning', sourceId: 'work:plan:work',
+        owner: { kind: 'work-item', mapId: 'plan', workItemId: 'work' }, availability: 'available' },
+      { projectId: 'project', projectRoot: '/project', source: 'agent', sourceId: 'run:run',
+        owner: { kind: 'agent-run', runId: 'run' }, availability: 'available' },
+      { projectId: 'foreign', projectRoot: '/other', source: 'agent', sourceId: 'run:foreign-run',
+        owner: { kind: 'agent-run', runId: 'foreign-run' }, availability: 'available' }
+    ] }) } as unknown as HistoryService;
+  const h = harness(agent, history); await tick();
+  h.collection = { schemaVersion: 1, projectId: 'project', revision: 1,
+    maps: [{ ...map('plan', 'active'), revision: 3, workItems: [work] }] };
+  await h.controller.refresh();
+  h.controller.selectWorkItem('work');
+  await h.controller.refreshLinkedTasks();
+  assert.deepEqual(h.controller.linkedTasks.map(item => item.id), ['task']);
+  assert.deepEqual(h.controller.linkedRuns.map(item => item.id), ['run']);
+  assert.equal(h.controller.historyReferenceState, 'observed');
+  assert.deepEqual(h.controller.historyReferences, [
+    { source: 'planning', sourceId: 'work:plan:work' }, { source: 'agent', sourceId: 'run:run' }]);
+  assert.equal(h.collection.maps[0].workItems[0].status, 'ready');
+  h.controller.clearSelection();
+  assert.deepEqual(h.controller.historyReferences, []);
+  h.controller.dispose();
+});
 
 test('Session navigation reads exact current Planning identity without changing workspace selection or owner state', async () => {
   const h = harness(); await tick();
