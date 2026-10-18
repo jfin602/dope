@@ -13,6 +13,8 @@ export interface BridgeOwnerSnapshot {
     /** Fresh current physical/architecture observation, supplied by the existing owner. */
     basis: PlanningBasis;
     planning?: { projectId: string; collectionRevision: number; map: PlanningMap };
+    /** Explicit branch selection used for the target impact review, when supplied by the live target adapter. */
+    targetBranchIds?: string[];
     /** Fingerprint of the checked prompt stack source, never proposed model text. */
     stack?: { path: string; fingerprint: string };
 }
@@ -38,7 +40,7 @@ const missing = (error: unknown): boolean => (error as NodeJS.ErrnoException).co
 const gates: BridgeGate[] = ['scope', 'target', 'stack'];
 
 async function reference(root: string, checkpointId: string, gate: BridgeGate, source: BridgeOwnerSnapshot): Promise<BridgeReference> {
-    const { roadmap, basis, planning, stack } = source;
+    const { roadmap, basis, planning, stack, targetBranchIds } = source;
     const checkpoint = roadmap.checkpoints.find(item => item.id === checkpointId);
     if (roadmap.projectRoot !== root || !name(roadmap.projectId) || !positive(roadmap.revision) ||
         !checkpoint || !name(checkpointId) || !basis || !positive(basis.architectureRevision) ||
@@ -79,7 +81,8 @@ async function reference(root: string, checkpointId: string, gate: BridgeGate, s
     const target = planning && { id: planning.map.id, revision: planning.map.revision,
         title: planning.map.title, objective: planning.map.objective, status: planning.map.status,
         transformations: planning.map.transformations, basis: planning.map.basis };
-    const approvedDigest = hash(gate === 'scope' ? scope : gate === 'target' ? { scope, target } : { scope, target, stack });
+    const approvedDigest = hash(gate === 'scope' ? scope : gate === 'target' ? { scope, target, targetBranchIds } :
+        { scope, target, targetBranchIds, stack });
     return { projectRoot: root, roadmapProjectId: roadmap.projectId, roadmapRevision: roadmap.revision,
         checkpointId, roadmapSourceHash: linked.sourceHash,
         ...(planning ? { planningProjectId: planning.projectId, collectionRevision: planning.collectionRevision,

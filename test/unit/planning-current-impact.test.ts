@@ -78,6 +78,9 @@ test('current impact is scoped, bounded, source backed and read only without a m
     const linkedRequest = { ...f.request, expectedRoadmapRevision: linked.revision };
     assert.equal((await f.backend.currentSoftwareImpact(linkedRequest)).planningMap?.id, 'plan');
     await f.index.analyze(f.root);
+    assert.equal((await f.backend.currentSoftwareImpact(linkedRequest)).status, 'ready'); // generation-only refresh
+    await writeFile(join(f.root, 'src/a/a.ts'), 'export const a = 4;\n');
+    await f.index.analyze(f.root);
     assert.equal((await f.backend.currentSoftwareImpact(linkedRequest)).status, 'stale');
     await rm(join(f.root, '.dope/smap.json'));
     assert.equal((await f.backend.currentSoftwareImpact(linkedRequest)).status, 'unavailable');

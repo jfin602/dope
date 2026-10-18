@@ -1,4 +1,4 @@
-import type { CrossMapConflict, MapStatus, PlannedTransformation, PlanningBasis, PlanningMap, Resolution, WorkItem } from './index';
+import type { CrossMapConflict, MapStatus, PlannedTransformation, PlanningBasis, PlanningMap, Resolution, TargetProjection, WorkItem } from './index';
 import type { EditCommand } from './editing';
 import type { AdoptionPreview, AdoptionScope } from './adoption';
 import type { RebaseResult, StaleResult } from './index';
@@ -45,6 +45,12 @@ export interface CurrentSoftwareImpactPacket {
   limits: { maxBranches: number; maxPaths: number; maxRelationships: number; maxBytes: number; truncated: boolean };
   action: { kind: 'analyze-software-map' | 'refocus-branches'; branchIds: string[]; explicit: true };
 }
+/** Read-only target design. `current` is canonical; `target` is only the proposed Planning Map projection. */
+export interface TargetDesignReview {
+  mapId: string; mapRevision: number; collectionRevision: number; basis: PlanningBasis;
+  current: TargetProjection; target: TargetProjection;
+  diff: { nodes: string[]; relationships: string[] };
+}
 export interface VisualPlanningService {
   attach(folderUri: string): Promise<{ projectHandle: string; snapshot: PlanningCollection }>;
   read(projectHandle: string): Promise<PlanningCollection>;
@@ -59,6 +65,12 @@ export interface VisualPlanningService {
   /** Exact current observation for cross-owner references; generation alone is not semantic staleness. */
   currentBasis(projectHandle: string): Promise<PlanningBasis>;
   currentSoftwareImpact(request: CurrentSoftwareImpactRequest): Promise<CurrentSoftwareImpactPacket>;
+  targetDesign(projectHandle: string, mapId: string, expectedRevision: number, expectedMapRevision: number): Promise<TargetDesignReview>;
+  previewTargetApproval(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<{
+    impact: CurrentSoftwareImpactPacket; design: TargetDesignReview; token: string }>;
+  approveTarget(projectHandle: string, token: string, developerAction: boolean): Promise<void>;
+  rejectTarget(projectHandle: string, token: string): Promise<void>;
+  targetApproved(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<boolean>;
   previewRebase(request: RebaseRequest): Promise<RebaseResult>;
   acceptRebase(request: RebaseAcceptance): Promise<PlanningCollection>;
   mutate(request: PlanningMutation): Promise<PlanningCollection>;

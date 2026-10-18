@@ -1,16 +1,17 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile, realpath } from 'node:fs/promises';
 import { isAbsolute, join, relative } from 'node:path';
-import type { AdoptionAcceptance, AdoptionRequest, CurrentSoftwareImpactPacket, CurrentSoftwareImpactRequest, PlanningCollection, PlanningMutation, RebaseAcceptance, RebaseRequest, VisualPlanningService } from '@dope/visual-planning/lib/service';
+import type { AdoptionAcceptance, AdoptionRequest, CurrentSoftwareImpactPacket, CurrentSoftwareImpactRequest, PlanningCollection, PlanningMutation, RebaseAcceptance, RebaseRequest, TargetDesignReview, VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { previewTransformation } from '@dope/visual-planning/lib/editing';
-import { detectActiveConflicts, sameObservation } from '@dope/visual-planning';
+import { detectActiveConflicts, projectTarget, sameObservation, sameSemanticBasis } from '@dope/visual-planning';
 import { captureReality, previewRebase, stalePlanningMap } from '@dope/visual-planning/lib/rebase';
 import { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { readInitialization, replaceArchitecture } from '@dope/code-analysis/lib/node/smap-initialization-file';
 import { readArchitecture } from '@dope/code-analysis/lib/node/architecture-file';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { PlanningTargetReview } from './planning-target-review';
 
 export class VisualPlanningBackend implements VisualPlanningService {
   private root?: string;
@@ -18,6 +19,7 @@ export class VisualPlanningBackend implements VisualPlanningService {
   private projectId?: string;
   private disposed = false;
   private attaching = 0;
+  private readonly targetReviews = new Map<string, PlanningTargetReview>();
 
   constructor(private readonly store: PlanningStore, private readonly index?: SoftwareMapIndex,
     private readonly roadmap?: RoadmapStore) {}
@@ -114,6 +116,71 @@ export class VisualPlanningBackend implements VisualPlanningService {
     return stalePlanningMap(map, await this.reality(root));
   }
   async currentBasis(projectHandle: string) { return (await this.reality(this.active(projectHandle))).basis; }
+  async targetDesign(projectHandle: string, mapId: string, expectedRevision: number,
+    expectedMapRevision: number): Promise<TargetDesignReview> {
+    const root = this.active(projectHandle), collection = await this.read(projectHandle);
+    const map = collection.maps.find(item => item.id === mapId);
+    if (collection.revision !== expectedRevision || !map || map.revision !== expectedMapRevision)
+      throw new Error('Stale planning revision');
+    if (!['draft', 'active'].includes(map.status) || !map.transformations.length)
+      throw new Error('Planning target is unavailable');
+    const observed = await this.reality(root);
+    if (!sameSemanticBasis(map.basis, observed.basis) || previewRebase(map, observed).conflicts.length)
+      throw new Error('Planning Map requires explicit rebase');
+    const touched = (item: typeof map) => new Set(item.transformations.filter(t => !t.adopted).flatMap(t =>
+      [...t.currentIds, ...t.futureNodes.map(node => node.id),
+        ...(t.redirect ? [t.redirect.from.sourceId, t.redirect.from.targetId,
+          t.redirect.to.sourceId, t.redirect.to.targetId] : [])]));
+    const selected = touched(map);
+    if (detectActiveConflicts(collection.maps).some(conflict => conflict.mapIds.includes(mapId)) ||
+      collection.maps.some(other => other.id !== mapId && ['draft', 'active'].includes(other.status) &&
+        [...touched(other)].some(id => selected.has(id))))
+      throw new Error('Overlapping Planning Map target');
+    const current = projectTarget(observed.architecture, { ...map, transformations: [] });
+    const target = projectTarget(observed.architecture, map);
+    const changed = <T extends { id: string }>(before: T[], after: T[]) => {
+      const old = new Map(before.map(item => [item.id, item]));
+      const next = new Map(after.map(item => [item.id, item]));
+      return [...new Set([...old.keys(), ...next.keys()])].sort().filter(id =>
+        JSON.stringify(old.get(id)) !== JSON.stringify(next.get(id)));
+    };
+    const edges = (value: typeof current.relationships) => value.map(item =>
+      ({ ...item, id: `${item.sourceId}/${item.targetId}/${item.policy}` }));
+    const again = await this.read(projectHandle);
+    if (again.revision !== collection.revision || !sameSemanticBasis((await this.reality(root)).basis, observed.basis))
+      throw new Error('Planning target changed during review');
+    return { mapId, mapRevision: map.revision, collectionRevision: collection.revision, basis: map.basis,
+      current, target, diff: { nodes: changed(current.nodes, target.nodes),
+        relationships: changed(edges(current.relationships), edges(target.relationships)) } };
+  }
+  async previewTargetApproval(projectHandle: string, checkpointId: string, branchIds: string[]) {
+    const root = this.active(projectHandle);
+    if (!this.roadmap) throw new Error('Roadmap evidence owner is unavailable');
+    const review = new PlanningTargetReview(root, checkpointId, branchIds, this.roadmap, this);
+    const preview = await review.preview();
+    this.targetReviews.set(preview.token, review);
+    return preview;
+  }
+  async approveTarget(projectHandle: string, token: string, developerAction: boolean): Promise<void> {
+    this.active(projectHandle);
+    const review = this.targetReviews.get(token);
+    if (!review) throw new Error('Unknown or consumed target review');
+    if (!developerAction) throw new Error('Explicit developer target approval required');
+    this.targetReviews.delete(token);
+    await review.approve(token, true);
+  }
+  async rejectTarget(projectHandle: string, token: string): Promise<void> {
+    this.active(projectHandle);
+    const review = this.targetReviews.get(token);
+    if (!review) throw new Error('Unknown or consumed target review');
+    this.targetReviews.delete(token);
+    review.reject(token);
+  }
+  async targetApproved(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<boolean> {
+    const root = this.active(projectHandle);
+    if (!this.roadmap) return false;
+    return new PlanningTargetReview(root, checkpointId, branchIds, this.roadmap, this).approved();
+  }
   async currentSoftwareImpact(request: CurrentSoftwareImpactRequest): Promise<CurrentSoftwareImpactPacket> {
     const root = this.active(request.projectHandle);
     const limits = { maxBranches: 8, maxPaths: 24, maxRelationships: 24, maxBytes: 12_000, truncated: false };
@@ -155,7 +222,7 @@ export class VisualPlanningBackend implements VisualPlanningService {
         link.ownerRevision !== map.revision || !link.basis || !sameObservation(link.basis, map.basis))
         return empty('stale', 'Checkpoint Planning Map link requires re-review', 'refocus-branches');
       const rebase = previewRebase(map, observed);
-      if (rebase.conflicts.length || !sameObservation(map.basis, observed.basis))
+      if (rebase.conflicts.length || !sameSemanticBasis(map.basis, observed.basis))
         return empty('stale', 'Linked Planning Map basis or branch changed; review rebase before impact', 'refocus-branches');
       planningMap = { id: map.id, revision: map.revision, rebaseConflicts: rebase.conflicts.length };
     }
@@ -268,5 +335,5 @@ export class VisualPlanningBackend implements VisualPlanningService {
     this.projectId = snapshot.projectId;
     return snapshot;
   }
-  dispose(): void { this.disposed = true; }
+  dispose(): void { this.disposed = true; this.targetReviews.clear(); }
 }
