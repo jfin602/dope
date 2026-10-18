@@ -60,6 +60,7 @@ import { historyOwnerNavigation } from './history-owner-navigation';
 import { RoadmapCanvasWidget, ROADMAP_CANVAS_ID } from './roadmap-canvas-widget';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
+import { verifyPrepareWorkNavigation } from './prepare-work-navigation';
 import { RoadmapInspectorWidget, ROADMAP_INSPECTOR_ID } from './roadmap-inspector-widget';
 import { FileNavigatorWidget } from '@theia/navigator/lib/browser/navigator-widget';
 import { createFileNavigatorContainer } from '@theia/navigator/lib/browser/navigator-container';
@@ -69,6 +70,7 @@ import { SearchNavigationContribution } from './search-navigation-contribution';
 import { RoadmapNavigationContribution, roadmapLauncherFactory } from './roadmap-navigation-contribution';
 import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 
 const modelInventoryChanged = new Emitter<void>();
 
@@ -339,27 +341,27 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         async selection => {
             const planning = context.container.get(PlanningMapController);
             const map = context.container.get(SoftwareMapController);
-            if (map.workspace !== selection.workspace || planning.focusWorkspace !== selection.workspace ||
-                planning.collection?.projectId !== selection.projectId)
-                throw new Error('Planning Map is unavailable for this project. Open its Software Map and retry.');
-            if (selection.mapId) {
-                const exact = await planning.navigationMap(selection.mapId);
-                if (!exact || exact.revision !== selection.mapRevision)
-                    throw new Error('Linked Planning Map is missing or stale. Review the Roadmap link before preparing work.');
-            }
+            const { projectId: planningProjectId, revision: planningRevision, existingMapId } =
+                await verifyPrepareWorkNavigation(selection, map, planning);
             const manager = context.container.get(WidgetManager);
             const shell = context.container.get(ApplicationShell);
             const widget = await manager.getOrCreateWidget<PhysicalMapWidget>(PHYSICAL_MAP_ID);
             if (map.workspace !== selection.workspace || planning.focusWorkspace !== selection.workspace ||
-                planning.collection?.projectId !== selection.projectId || widget.isDisposed)
+                planning.collection?.projectId !== planningProjectId ||
+                planning.collection?.revision !== planningRevision || widget.isDisposed)
                 throw new Error('Project changed while opening Planning Map. Select the checkpoint again.');
             if (selection.mapId) planning.select(selection.mapId);
+            else if (existingMapId) planning.select(existingMapId);
             else planning.clearSelection();
-            planning.setPrepareWorkContext(selection);
+            if (selection.mapId && planning.selectedMapId !== selection.mapId ||
+                existingMapId && planning.selectedMapId !== existingMapId)
+                throw new Error('Planning Map selection changed. Select the checkpoint again.');
+            planning.setPrepareWorkContext({ ...selection, planningProjectId });
             planning.setMode(true);
             if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
             if (map.workspace !== selection.workspace || planning.focusWorkspace !== selection.workspace ||
-                planning.collection?.projectId !== selection.projectId) {
+                planning.collection?.projectId !== planningProjectId ||
+                planning.collection?.revision !== planningRevision) {
                 planning.setPrepareWorkContext(undefined);
                 throw new Error('Project changed while opening Planning Map. Select the checkpoint again.');
             }
@@ -388,6 +390,38 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 const widget = await openChatPanel<ChatPanelWidget>('center', panelOptions => context.container.get(WidgetManager)
                     .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, panelOptions), context.container.get(ApplicationShell), 'work');
                 await widget.selectWorkLauncher({ kind: 'task', id: taskId });
+            }, async (handoff, mapId) => {
+                const planning = context.container.get(PlanningMapController);
+                const inspector = context.container.get(RoadmapInspectorModel);
+                const roadmap = context.container.get<RoadmapService>('RoadmapService');
+                if (planning.prepareWorkContext !== handoff || planning.focusWorkspace !== handoff.workspace ||
+                    planning.selectedMapId !== mapId || planning.collection?.projectId !== handoff.planningProjectId ||
+                    inspector.projectUri !== handoff.workspace || inspector.selectedId !== handoff.checkpointId)
+                    throw new Error('Checkpoint or Planning Map selection changed. Prepare Work again.');
+                const map = await planning.navigationCurrentMap(mapId);
+                if (!map || map.projectId !== handoff.planningProjectId || !['draft', 'active'].includes(map.status))
+                    throw new Error('Planning Map owner or basis changed. Refresh and review it.');
+                const attached = await roadmap.attach(handoff.workspace);
+                try {
+                    const index = attached.snapshot;
+                    const checkpoint = index.checkpoints.find(item => item.id === handoff.checkpointId);
+                    if (index.projectId !== handoff.projectId || index.projectRoot !== new URI(handoff.workspace).path.toString() ||
+                        index.revision !== inspector.index?.revision || !checkpoint || checkpoint.readOnly ||
+                        checkpoint.links.some(link => link.owner === 'planning-map') ||
+                        index.linkedDocument?.syncState !== 'synced' ||
+                        checkpoint.source?.sha256 !== index.linkedDocument.sourceHash)
+                        throw new Error('Roadmap scope or source changed. Refresh and review the checkpoint.');
+                    const request: PlanningActionRequest = { projectHandle: attached.projectHandle, ownerId: index.projectId,
+                        expectedRevision: index.revision, sourceHashes: { [checkpoint.id]: checkpoint.source.sha256 },
+                        actions: [{ type: 'link', id: checkpoint.id, link: { owner: 'planning-map', targetId: map.id,
+                            ownerProjectId: map.projectId, ownerRevision: map.revision, basis: map.basis } }] };
+                    const preview = await roadmap.preview(request);
+                    if (planning.prepareWorkContext !== handoff || planning.selectedMapId !== mapId ||
+                        !(await planning.navigationCurrentMap(mapId)) || inspector.index?.revision !== index.revision)
+                        throw new Error('Selection or source changed during link preview. Prepare Work again.');
+                    const result = await roadmap.apply(request, preview.token, true);
+                    inspector.setSnapshot(handoff.workspace, result);
+                } finally { await roadmap.detach(attached.projectHandle); }
             }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),

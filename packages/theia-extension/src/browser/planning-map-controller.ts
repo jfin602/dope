@@ -1,10 +1,10 @@
-import { canCloseOut, detectActiveConflicts, sameSemanticBasis, suggestWorkItems } from '@dope/visual-planning';
+import { canCloseOut, detectActiveConflicts, sameObservation, sameSemanticBasis, suggestWorkItems } from '@dope/visual-planning';
 import type { CrossMapConflict, MapStatus, PlanningMap, RebaseResult, StaleResult, WorkItem, WorkItemSuggestion, WorkStatus } from '@dope/visual-planning';
 import type { RebaseDecision } from '@dope/visual-planning/lib/rebase';
 import { acceptSuggestion } from '@dope/visual-planning/lib/work';
 import type { PlannedTransformation } from '@dope/visual-planning';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
-import type { PlanningCollection, PlanningOperation, VisualPlanningService } from '@dope/visual-planning/lib/service';
+import type { PlanningCollection, PlanningOperation, VisualPlanningService, CurrentSoftwareImpactPacket, TargetDesignReview } from '@dope/visual-planning/lib/service';
 import type { AdoptionPreview, AdoptionScope } from '@dope/visual-planning/lib/adoption';
 import type { SoftwareMapController } from './software-map-controller';
 import type { PlanningView } from './planning-map-projection';
@@ -17,7 +17,7 @@ const transitions: Record<MapStatus, MapStatus[]> = {
     completed: ['archived'], superseded: ['archived'], archived: []
 };
 export class PlanningMapController {
-    prepareWorkContext?: { workspace: string; projectId: string; checkpointId: string; title: string;
+    prepareWorkContext?: { workspace: string; projectId: string; planningProjectId: string; checkpointId: string; title: string;
         objective: string; requirements: string[]; impactReferences: string[]; mapId?: string; mapRevision?: number };
     setPrepareWorkContext(context: PlanningMapController['prepareWorkContext']): void {
         this.prepareWorkContext = context; this.notify();
@@ -47,6 +47,10 @@ export class PlanningMapController {
     private approvedSuggestionContext?: PlanningMapController['prepareWorkContext'];
     private suggestionMapRevision?: number;
     private acceptedSuggestionIds = new Map<number, string>();
+    targetApproval?: { token: string; context: NonNullable<PlanningMapController['prepareWorkContext']>;
+        mapId: string; mapRevision: number; collectionRevision: number; branchIds: string[];
+        impact: CurrentSoftwareImpactPacket; design: TargetDesignReview };
+    approvedTargetBranches?: { context: NonNullable<PlanningMapController['prepareWorkContext']>; ids: string[] };
     planningMode = false;
     view: PlanningView = 'diff';
     showHistory = false;
@@ -77,6 +81,55 @@ export class PlanningMapController {
     get conflicts(): CrossMapConflict[] { return detectActiveConflicts(this.collection?.maps ?? []); }
     get allowedTransitions(): MapStatus[] { return this.selected ? transitions[this.selected.status] : []; }
     get canCloseOut(): boolean { return !!this.selected && this.selected.status === 'active' && canCloseOut(this.selected); }
+    async reviewTarget(branchIds: string[]): Promise<void> {
+        const context = this.prepareWorkContext, map = this.selected, collection = this.collection;
+        const connection = this.connection, handle = this.handle;
+        if (!context?.mapId || !map || !collection || !connection || !handle ||
+            context.workspace !== this.workspace || context.planningProjectId !== collection.projectId ||
+            context.mapId !== map.id || context.mapRevision !== map.revision ||
+            !this.stale || this.stale.stale || !this.basisMatches(map)) {
+            this.error = 'Select a current linked checkpoint Planning Map before target review'; this.notify(); return;
+        }
+        if (this.targetApproval) await this.rejectTarget();
+        this.loading = true; this.error = ''; this.notify();
+        try {
+            const preview = await connection.previewTargetApproval(handle, context.checkpointId, branchIds);
+            if (this.prepareWorkContext !== context || this.selected?.id !== map.id ||
+                this.selected.revision !== map.revision || this.collection?.revision !== collection.revision ||
+                this.workspace !== context.workspace) {
+                await connection.rejectTarget(handle, preview.token);
+                throw new Error('Planning target changed during review. Prepare Work again.');
+            }
+            this.targetApproval = { token: preview.token, context, mapId: map.id, mapRevision: map.revision,
+                branchIds: [...branchIds],
+                collectionRevision: collection.revision, impact: preview.impact, design: preview.design };
+        } catch (error) { this.error = String(error); }
+        finally { this.loading = false; this.notify(); }
+    }
+    async rejectTarget(): Promise<void> {
+        const preview = this.targetApproval;
+        this.targetApproval = undefined; this.notify();
+        if (preview && this.connection && this.handle) {
+            try { await this.connection.rejectTarget(this.handle, preview.token); }
+            catch (error) { this.error = String(error); this.notify(); }
+        }
+    }
+    async approveReviewedTarget(): Promise<void> {
+        const preview = this.targetApproval, map = this.selected, collection = this.collection;
+        if (!preview || !map || !collection || this.prepareWorkContext !== preview.context ||
+            map.id !== preview.mapId || map.revision !== preview.mapRevision ||
+            collection.revision !== preview.collectionRevision || this.workspace !== preview.context.workspace ||
+            !this.connection || !this.handle || !this.stale || this.stale.stale || !this.basisMatches(map)) {
+            this.error = 'Planning target changed after review. Prepare Work again.'; this.notify(); return;
+        }
+        this.loading = true; this.error = ''; this.notify();
+        try {
+            await this.connection.approveTarget(this.handle, preview.token, true);
+            this.approvedTargetBranches = { context: preview.context, ids: [...preview.branchIds] };
+            this.targetApproval = undefined;
+        } catch (error) { this.targetApproval = undefined; this.error = String(error); }
+        finally { this.loading = false; this.notify(); }
+    }
     reconcile(): Promise<void> { const map = this.selected; return map ? this.mutate({ type: 'reconcile', mapId: map.id, expectedMapRevision: map.revision }) : Promise.resolve(); }
     disposition(transformationId: string, resolution: PlannedTransformation['resolution'], deferredToMapId?: string): Promise<void> {
         const map = this.selected;
@@ -92,10 +145,14 @@ export class PlanningMapController {
         this.notify();
     }
     select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { ++this.linkedEvidenceRequest; this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
+        this.targetApproval = undefined;
+        this.approvedTargetBranches = undefined;
         if (this.prepareWorkContext?.mapId !== id) this.prepareWorkContext = undefined;
         this.selectedWorkItemId = undefined; this.linkedTasks = []; this.linkedRuns = []; this.historyReferences = [];
         this.historyReferenceState = 'unavailable'; this.selectedTransformationId = undefined; this.selectedSuggestionIndex = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
     clearSelection(): void {
+        this.targetApproval = undefined;
+        this.approvedTargetBranches = undefined;
         ++this.linkedEvidenceRequest;
         this.selectedMapId = undefined; this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined;
         this.linkedTasks = []; this.linkedRuns = []; this.historyReferences = []; this.historyReferenceState = 'unavailable';
@@ -111,6 +168,29 @@ export class PlanningMapController {
             if (this.disposed || this.workspace !== workspace || this.map.workspace !== workspace ||
                 snapshot.projectId !== this.collection?.projectId) return;
             return snapshot.maps.find(map => map.id === id);
+        } catch { return; }
+    }
+    /** Fresh, read-only linked-map check for the Roadmap handoff. */
+    async navigationCurrentMap(id: string): Promise<PlanningMap | undefined> {
+        const connection = this.connection, handle = this.handle, workspace = this.workspace;
+        const collection = this.collection;
+        if (!connection || !handle || !workspace || !collection || this.map.workspace !== workspace) return;
+        try {
+            const before = await connection.read(handle);
+            const map = before.maps.find(item => item.id === id);
+            if (before.projectId !== collection.projectId || before.revision !== collection.revision ||
+                !map || map.projectId !== before.projectId) return;
+            const stale = await connection.staleness(handle, id);
+            const currentBasis = await connection.currentBasis(handle);
+            const after = await connection.read(handle);
+            const current = after.maps.find(item => item.id === id);
+            if (this.disposed || this.workspace !== workspace || this.map.workspace !== workspace ||
+                this.collection?.projectId !== before.projectId || after.projectId !== before.projectId ||
+                after.revision !== before.revision || !current || current.revision !== map.revision ||
+                current.projectId !== after.projectId || !sameObservation(current.basis, map.basis) ||
+                !sameSemanticBasis(map.basis, currentBasis) || stale.stale || stale.conflicts.length)
+                return;
+            return map;
         } catch { return; }
     }
     async refreshStale(): Promise<void> {
@@ -258,7 +338,7 @@ export class PlanningMapController {
     async requestApprovedSuggestions(branchIds: string[]): Promise<void> {
         const context = this.prepareWorkContext, map = this.selected, connection = this.connection, handle = this.handle;
         if (!context || !map || !connection || !handle || context.workspace !== this.workspace ||
-            context.projectId !== map.projectId || context.mapId !== map.id) { this.error = 'Select the linked checkpoint Planning Map'; this.notify(); return; }
+            context.planningProjectId !== map.projectId || context.mapId !== map.id) { this.error = 'Select the linked checkpoint Planning Map'; this.notify(); return; }
         this.loading = true; this.error = ''; this.notify();
         try {
             const suggestions = await connection.suggestApprovedWorkItems(handle, context.checkpointId, branchIds);
@@ -273,7 +353,7 @@ export class PlanningMapController {
     }
     get canReviewSuggestions(): boolean {
         const map = this.selected, context = this.prepareWorkContext;
-        return !!(map && (map.status === 'draft' || map.status === 'active') && context && context.workspace === this.workspace && context.projectId === map.projectId &&
+        return !!(map && (map.status === 'draft' || map.status === 'active') && context && context.workspace === this.workspace && context.planningProjectId === map.projectId &&
             context.mapId === map.id && !this.loading && this.stale && !this.stale.stale && this.basisMatches(map));
     }
     get suggestionBlocker(): string | undefined {
@@ -283,7 +363,7 @@ export class PlanningMapController {
         if (this.loading) return 'Planning Map is busy';
         if (!this.stale || this.stale.stale || !this.basisMatches(map)) return 'Physical Map basis is stale or unavailable; refresh or rebase';
         if (this.prepareWorkContext && (this.approvedSuggestionContext !== this.prepareWorkContext ||
-            this.prepareWorkContext.mapId !== map.id || this.prepareWorkContext.projectId !== map.projectId))
+            this.prepareWorkContext.mapId !== map.id || this.prepareWorkContext.planningProjectId !== map.projectId))
             return 'Request suggestions for the approved current checkpoint target';
         if (this.suggestionMapRevision === undefined || map.revision !== this.suggestionMapRevision)
             return 'Planning target changed; request suggestions again';
@@ -294,7 +374,7 @@ export class PlanningMapController {
         if (!map || this.loading || !this.stale || this.stale.stale || !this.basisMatches(map))
             return 'Planning Map or Physical Map basis is stale or unavailable';
         if (map.status !== 'draft' && map.status !== 'active') return 'Planning Map is closed for editing';
-        if (context && (context.workspace !== this.workspace || context.projectId !== map.projectId || context.mapId !== map.id))
+        if (context && (context.workspace !== this.workspace || context.planningProjectId !== map.projectId || context.mapId !== map.id))
             return 'Checkpoint scope changed; review the linked Planning Map';
         return undefined;
     }

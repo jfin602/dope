@@ -139,20 +139,27 @@ test('selection resolver rejects missing and foreign owner state; map views neve
 
 test('Bridge request remains bound to the selected Prepare Work checkpoint and map revision', () => {
     const workspace = 'file:///tmp/bridge-panel';
+    const basis = { architectureRevision: 1, architectureFingerprint: 'architecture',
+        physicalInputFingerprint: 'source', physicalGeneration: 1 };
     const index: RoadmapIndex = { schemaVersion: 1, projectId: 'project', projectRoot: '/tmp/bridge-panel', revision: 4,
         checkpoints: [{ id: 'checkpoint', kind: 'milestone', title: 'Checkpoint', objective: 'Implement it', order: 0,
-            dependencies: [], links: [{ owner: 'planning-map', targetId: 'map', ownerProjectId: 'project', ownerRevision: 3 }],
+            dependencies: [], links: [{ owner: 'planning-map', targetId: 'map', ownerProjectId: 'planning-project',
+                ownerRevision: 3, basis }],
             status: 'active', readOnly: false, evidence: [] }] };
     const inspector = new RoadmapInspectorModel({ read: async () => index } as RoadmapService);
     inspector.setSnapshot(workspace, index); inspector.select('checkpoint');
-    const planning = { projectWorkspace: workspace, selected: { id: 'map', projectId: 'project', revision: 3 },
-        collection: { projectId: 'project' }, prepareWorkContext: { workspace, projectId: 'project',
+    const planning = { projectWorkspace: workspace, selected: { id: 'map', projectId: 'planning-project', revision: 3 },
+        collection: { projectId: 'planning-project' }, prepareWorkContext: { workspace, projectId: 'project',
+            planningProjectId: 'planning-project',
             checkpointId: 'checkpoint', title: 'Checkpoint', objective: 'Implement it', requirements: [],
             impactReferences: [], mapId: 'map', mapRevision: 3 },
         onChange: () => ({ dispose() {} }) } as unknown as PlanningMapController;
     const selection = new ChatPlanningSelection(inspector, planning, {} as RoadmapService);
     assert.deepEqual(selection.bridge(workspace, ['system']), { projectId: 'project', checkpointId: 'checkpoint',
         roadmapRevision: 4, mapId: 'map', mapRevision: 3, branchIds: ['system'] });
+    index.checkpoints[0].links[0].basis = undefined;
+    assert.throws(() => selection.bridge(workspace, ['system']), /current linked Planning Map/);
+    index.checkpoints[0].links[0].basis = basis;
     planning.selected!.revision = 4;
     assert.throws(() => selection.bridge(workspace, ['system']), /current linked Planning Map/);
 });

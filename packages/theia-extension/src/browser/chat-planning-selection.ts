@@ -40,7 +40,8 @@ export class ChatPlanningSelection {
         if (this.roadmap.projectUri !== workspace || this.planning.projectWorkspace !== workspace ||
             !handoff || handoff.workspace !== workspace || !map || !index || !checkpoint ||
             handoff.projectId !== index.projectId || handoff.checkpointId !== checkpoint.id ||
-            handoff.mapId !== map.id || map.projectId !== this.planning.collection?.projectId ||
+            handoff.mapId !== map.id || handoff.planningProjectId !== this.planning.collection?.projectId ||
+            map.projectId !== handoff.planningProjectId ||
             map.revision !== handoff.mapRevision || this.roadmap.prepareWorkBlockedReason)
             throw new Error('Prepare Work and select its current linked Planning Map first');
         return { projectId: index.projectId, checkpointId: checkpoint.id, roadmapRevision: index.revision,

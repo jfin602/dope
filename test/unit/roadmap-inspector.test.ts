@@ -40,7 +40,7 @@ test('Prepare Work requires a current canonical checkpoint and conveys requireme
     await model.prepareWork();
     assert.deepEqual(opened, [{ workspace: root, projectId: 'project', checkpointId: 'p1',
         title: 'Phase one', objective: 'Original', requirements: ['Original'], impactReferences: [],
-        mapId: undefined, mapRevision: undefined }]);
+        mapId: undefined, mapRevision: undefined, mapOwnerProjectId: undefined, mapBasis: undefined }]);
     assert.equal(state.applied, 0);
     model.change('objective', 'Pending');
     assert.match(model.prepareWorkBlockedReason ?? '', /Finish or discard/);
@@ -63,6 +63,7 @@ test('Prepare Work requires a current canonical checkpoint and conveys requireme
     assert.equal(model.prepareWorkBlockedReason, undefined);
     await model.prepareWork();
     assert.equal((opened[1] as { mapId: string }).mapId, 'map');
+    assert.equal((opened[1] as { mapOwnerProjectId: string }).mapOwnerProjectId, 'planning');
     state.index.checkpoints[0].links.push({ ...state.index.checkpoints[0].links[0], targetId: 'other-map' });
     model.setSnapshot(root, state.index);
     assert.match(model.prepareWorkBlockedReason ?? '', /one reviewed Planning Map/);

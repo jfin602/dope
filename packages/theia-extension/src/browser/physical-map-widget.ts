@@ -109,7 +109,8 @@ export class PhysicalMapWidget extends BaseWidget {
     constructor(map: ConstructorParameters<typeof PhysicalMapController>[0],
         private readonly opener: OpenerService, private readonly openTab: (id: string) => Promise<void>,
         private readonly planning: PlanningMapController, private readonly colors: SmapPresentationState,
-        options?: PhysicalMapTabOptions, private readonly openWorkTask?: (taskId: string) => Promise<void>) {
+        options?: PhysicalMapTabOptions, private readonly openWorkTask?: (taskId: string) => Promise<void>,
+        private readonly linkCheckpointMap?: (context: NonNullable<PlanningMapController['prepareWorkContext']>, mapId: string) => Promise<void>) {
         super();
         this.focusedTab = !!options;
         this.id = options ? physicalMapTabId(options) : PHYSICAL_MAP_ID;
@@ -611,7 +612,7 @@ export class PhysicalMapWidget extends BaseWidget {
         details.hidden = false;
         const handoff = this.planning.prepareWorkContext;
         if (handoff && handoff.workspace === this.planning.focusWorkspace &&
-            handoff.projectId === this.planning.collection?.projectId) {
+            handoff.planningProjectId === this.planning.collection?.projectId) {
             const context = document.createElement('section');
             context.setAttribute('aria-label', 'Prepare Work checkpoint context');
             const heading = document.createElement('h3'); heading.textContent = `Prepare Work: ${handoff.title}`;
@@ -622,9 +623,11 @@ export class PhysicalMapWidget extends BaseWidget {
             for (const reference of handoff.impactReferences) {
                 const line = document.createElement('p'); line.textContent = `Impact reference · ${reference}`; context.append(line);
             }
-            if (!this.planning.selected) {
+            if (!handoff.mapId) {
                 const empty = document.createElement('p');
-                empty.textContent = 'No linked Planning Map is available. Review the requirements and current software evidence, then create a map explicitly when ready.';
+                empty.textContent = this.planning.selected ?
+                    'This existing Planning Map is not linked to the checkpoint. Review it and link it explicitly before approved target or WorkItem actions.' :
+                    'No linked Planning Map is available. Review the requirements and current software evidence, then create or select a map explicitly when ready.';
                 context.append(empty);
             }
             details.append(context);
@@ -658,6 +661,20 @@ export class PhysicalMapWidget extends BaseWidget {
             void this.planning.create(title.value.trim(), objective.value.trim()); this.draftTitle = ''; this.draftObjective = '';
         } },
             !this.planning.canCreate || this.planning.loading || !this.controller.projectMatches);
+        if (handoff && !handoff.mapId && this.planning.selected) button('Link this map to checkpoint', async () => {
+            const selected = this.planning.selected;
+            if (!selected || this.planning.prepareWorkContext !== handoff || !this.linkCheckpointMap) return;
+            const approved = await new ConfirmDialog({ title: 'Link Planning Map to checkpoint',
+                msg: `Link ${selected.title} (revision ${selected.revision}) to ${handoff.title}? This records a reviewed Roadmap reference. It does not approve the target, create WorkItems, run Work, or adopt architecture.`,
+                ok: 'Link map', cancel: 'Cancel' }).open();
+            if (!approved) return;
+            try {
+                await this.linkCheckpointMap(handoff, selected.id);
+                this.planning.setPrepareWorkContext(undefined);
+                this.status.textContent = 'Planning Map linked. Select the checkpoint and Prepare Work again to review its current target.';
+            } catch (error) { this.status.textContent = `Planning Map link denied: ${error instanceof Error ? error.message : String(error)}`; }
+        }, !this.linkCheckpointMap || this.planning.loading || !!this.planning.stale?.stale || !this.planning.stale ||
+            !this.controller.projectMatches || !['draft', 'active'].includes(this.planning.selected.status));
         button('Branch alternative', () => void this.planning.duplicate(), !this.planning.selected || this.planning.loading);
         const editable = !!this.planning.selected && ['draft', 'active'].includes(this.planning.selected.status) &&
             !this.planning.loading && this.controller.projectMatches;
@@ -773,7 +790,7 @@ export class PhysicalMapWidget extends BaseWidget {
                 summary.textContent = `Reconciliation · ${sourceState} · Architecture basis ${report.basis.architectureFingerprint} · Physical generation ${report.basis.physicalGeneration} · input ${report.basis.physicalInputFingerprint} · ${JSON.stringify(reconciliationRollups(selected).map)} · outcomes are Physical Map observations, not Work completion or qualification`;
                 details.append(summary);
                 const context = this.planning.prepareWorkContext;
-                if (context?.projectId === selected.projectId && context.mapId === selected.id) {
+                if (context?.planningProjectId === selected.projectId && context.mapId === selected.id) {
                     const lineage = document.createElement('p');
                     lineage.textContent = `Checkpoint ${context.checkpointId} · Planning Map ${selected.id} revision ${selected.revision}`;
                     details.append(lineage);
@@ -811,6 +828,45 @@ export class PhysicalMapWidget extends BaseWidget {
         for (const view of ['current', 'target', 'diff'] as const) button(
             view === 'current' ? 'Current only' : view === 'target' ? 'Target only' : 'Diff',
             () => this.planning.setView(view), this.planning.view === view, bar);
+        if (handoff?.mapId && handoff.mapId === this.planning.selected?.id &&
+            handoff.planningProjectId === this.planning.selected.projectId) {
+            button('Review current target', async () => {
+                const branches = this.controller.sourceNodes.filter(node =>
+                    node.kind === 'system' || node.kind === 'subsystem' || node.kind === 'component');
+                const selected = await this.ask(`Affected Architecture branch IDs (${branches.map(node =>
+                    `${node.name}: ${node.id}`).join('; ')})`, this.controller.selectedId ?? branches[0]?.id ?? '');
+                if (selected === undefined) return;
+                void this.planning.reviewTarget([...new Set(selected.split(',').map(id => id.trim()).filter(Boolean))]);
+            },
+                this.planning.loading || !this.planning.stale || this.planning.stale.stale);
+            const review = this.planning.targetApproval;
+            if (review && review.context === handoff) {
+                const impact = document.createElement('pre');
+                impact.style.whiteSpace = 'pre-wrap'; impact.style.overflowWrap = 'anywhere';
+                impact.textContent = `Current software impact · ${review.impact.status}\n` +
+                    `Branches: ${review.impact.branches.map(item => `${item.kind} ${item.id}`).join(', ') || 'none'}\n` +
+                    `Sources: ${review.impact.sources.map(item => item.path).join(', ') || 'none'}\n` +
+                    `Uncertainties: ${review.impact.uncertainties.join('; ') || 'none'}`;
+                const design = document.createElement('pre');
+                design.style.whiteSpace = 'pre-wrap'; design.style.overflowWrap = 'anywhere';
+                const describe = (projection: typeof review.design.current) =>
+                    projection.nodes.map(node => `• ${node.kind} ${node.name} (${node.id}) · ${node.purpose}`).join('\n') +
+                    (projection.relationships.length ? `\nRelationships: ${projection.relationships.map(edge =>
+                        `${edge.sourceId} → ${edge.targetId}`).join('; ')}` : '\nRelationships: none');
+                design.textContent = `Current architecture\n${describe(review.design.current)}\n\n` +
+                    `Proposed target\n${describe(review.design.target)}\n\n` +
+                    `Diff · nodes: ${review.design.diff.nodes.join(', ') || 'none'}; ` +
+                    `relationships: ${review.design.diff.relationships.join(', ') || 'none'}`;
+                details.append(impact, design);
+                button('Approve reviewed target', async () => {
+                    const approved = await new ConfirmDialog({ title: 'Approve Planning target',
+                        msg: `Approve target for ${handoff.title} at Planning Map revision ${review.mapRevision}? This permits reviewed WorkItem suggestions. It does not adopt architecture or run Work.`,
+                        ok: 'Approve target', cancel: 'Cancel' }).open();
+                    if (approved) void this.planning.approveReviewedTarget();
+                }, this.planning.loading);
+                button('Reject target review', () => void this.planning.rejectTarget(), this.planning.loading);
+            }
+        }
         for (const conflict of this.planning.conflicts) {
             const item = document.createElement('span'); item.className = 'dope-plan-conflict';
             item.textContent = `Conflict: ${conflict.identityId} (${conflict.mapIds.join(' / ')})`;
@@ -844,7 +900,9 @@ export class PhysicalMapWidget extends BaseWidget {
         if (this.planning.prepareWorkContext) {
             const context = this.planning.prepareWorkContext;
             line(`Checkpoint: ${context.title} · ${context.checkpointId} · ${context.requirements.length} requirements · ${context.impactReferences.length} impact references`);
-            button('Request approved target WorkItems', () => void this.planning.requestApprovedSuggestions([]), !this.planning.canReviewSuggestions);
+            button('Request approved target WorkItems', () => void this.planning.requestApprovedSuggestions(
+                this.planning.approvedTargetBranches?.context === context ? this.planning.approvedTargetBranches.ids : []),
+            !this.planning.canReviewSuggestions || this.planning.approvedTargetBranches?.context !== context);
         } else button('Suggest from transformations', () => this.planning.requestSuggestions(), !map.transformations.length || !this.planning.stale || this.planning.stale.stale);
         if (this.planning.suggestionBlocker && this.planning.suggestions?.length) line(`Suggestion review blocked: ${this.planning.suggestionBlocker}`);
         this.planning.suggestions?.forEach((suggestion, index) => {

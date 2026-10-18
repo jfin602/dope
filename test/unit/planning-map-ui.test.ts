@@ -106,6 +106,7 @@ function harness(agent?: AgentRuntimeService, history?: HistoryService) {
     async preview() { return changes[0]; },
     async staleness(): Promise<StaleResult> { return { schemaVersion: 1, stale: false, architectureChanged: false, physicalChanged: false,
       affectedTransformationIds: [], affectedBranchIds: [], conflicts: [] }; },
+    async currentBasis() { return basis; },
     async previewRebase(_request: RebaseRequest): Promise<RebaseResult> { throw new Error('Not configured'); },
     async acceptRebase(_request: RebaseAcceptance): Promise<PlanningCollection> { throw new Error('Not configured'); },
     async previewAdoption(_request: AdoptionRequest): Promise<AdoptionPreview> { throw new Error('Not configured'); },
@@ -188,11 +189,13 @@ test('Session navigation reads exact current Planning identity without changing 
   const before = { selected: h.controller.selectedMapId, mode: h.controller.planningMode,
     view: h.controller.view, collection: structuredClone(h.controller.collection) };
   assert.equal((await h.controller.navigationMap('plan'))?.id, 'plan');
+  assert.equal((await h.controller.navigationCurrentMap('plan'))?.id, 'plan');
   assert.equal(await h.controller.navigationMap('absent'), undefined);
   h.collection = { ...h.collection, revision: 2, maps: [{ ...original, revision: 1 }] };
   assert.equal((await h.controller.navigationMap('plan'))?.revision, 1);
   h.collection = { ...h.collection, revision: 3, maps: [] };
   assert.equal(await h.controller.navigationMap('plan'), undefined);
+  assert.equal(await h.controller.navigationCurrentMap('plan'), undefined);
   assert.deepEqual({ selected: h.controller.selectedMapId, mode: h.controller.planningMode,
     view: h.controller.view, collection: h.controller.collection }, before);
 });
@@ -201,7 +204,7 @@ test('Prepare Work holds read-only checkpoint context and clears unrelated map s
   const h = harness(); await tick();
   h.collection = { schemaVersion: 1, projectId: 'project', revision: 1, maps: [map('plan', 'active')] };
   await h.controller.refresh();
-  h.controller.setPrepareWorkContext({ workspace: h.controller.focusWorkspace!, projectId: 'project',
+  h.controller.setPrepareWorkContext({ workspace: h.controller.focusWorkspace!, projectId: 'roadmap-owner', planningProjectId: 'project',
     checkpointId: 'checkpoint', title: 'Checkpoint', objective: 'Objective',
     requirements: ['Objective'], impactReferences: ['issue: I-1'] });
   h.controller.clearSelection();

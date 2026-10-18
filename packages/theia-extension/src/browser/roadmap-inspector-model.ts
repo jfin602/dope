@@ -3,6 +3,7 @@ import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-
 import type { PlanningAction, PlanningActionPreview, PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapService } from '../roadmap-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
+import type { PlanningBasis } from '@dope/visual-planning';
 
 /** Presentation state only. All writes pass through the backend planning authority. */
 export class RoadmapInspectorModel {
@@ -10,7 +11,7 @@ export class RoadmapInspectorModel {
     private readonly openSource: (uri: string) => Promise<void>;
     private readonly openPlanning: (selection: { workspace: string; projectId: string; checkpointId: string;
         title: string; objective: string; requirements: string[]; impactReferences: string[]; mapId?: string;
-        mapRevision?: number }) => Promise<void>;
+        mapRevision?: number; mapOwnerProjectId?: string; mapBasis?: PlanningBasis }) => Promise<void>;
     private readonly listeners = new Set<() => void>();
     private serial = 0;
     private handle?: string;
@@ -90,7 +91,8 @@ export class RoadmapInspectorModel {
                 requirements: [current.objective, ...current.dependencies.map(id =>
                     fresh.checkpoints.find(candidate => candidate.id === id)?.objective ?? `Unresolved dependency: ${id}`)],
                 impactReferences: current.links.filter(link => link.owner !== 'planning-map').map(link =>
-                    `${link.owner}: ${link.targetId}`), mapId: map?.targetId, mapRevision: map?.ownerRevision });
+                    `${link.owner}: ${link.targetId}`), mapId: map?.targetId, mapRevision: map?.ownerRevision,
+                mapOwnerProjectId: map?.ownerProjectId, mapBasis: map?.basis });
         } catch (error) {
             if (serial === this.serial && uri === this.projectUri) this.error = error instanceof Error ? error.message : String(error);
         } finally { if (serial === this.serial && uri === this.projectUri) { this.busy = false; this.emit(); } }

@@ -155,7 +155,7 @@ test('checkpoint handoff only exposes reviewed suggestions and acceptance writes
     } };
   const controller = new PlanningMapController(physical as never, () => service as never);
   await tick();
-  controller.setPrepareWorkContext({ workspace: 'file:///A', projectId: 'project', checkpointId: 'checkpoint',
+  controller.setPrepareWorkContext({ workspace: 'file:///A', projectId: 'roadmap-owner', planningProjectId: 'project', checkpointId: 'checkpoint',
     title: 'Checkpoint', objective: 'Target', requirements: [], impactReferences: [], mapId: 'plan' });
   controller.requestSuggestions();
   assert.equal(controller.suggestions, undefined);

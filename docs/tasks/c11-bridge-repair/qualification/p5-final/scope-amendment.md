@@ -1,0 +1,5 @@
+# P5 owner scope amendment — 2026-10-18
+
+The owner instructed: “remove the electron native gate and run the final qualification.” This directly authorizes the separate manual P5 Run and removes independent native Electron GUI operation from **this P5 correction-scope acceptance gate**. It does not turn P4's [BLOCKED / EVIDENCE GAP](../p4-electron/disposition.md) into a PASS, qualify native parity, alter the original P15 NOT GREEN result, or close Phase 11. The authored P5 prompt was updated to reflect this instruction before execution; original c11-planning-bridge P1–P15 prompts and evidence remain untouched.
+
+All other P5 requirements remain: source-stable full aggregate, exact two original failures, real browser D1–D8/PB1–PB8 including the deferred F4 pre-authoring reorder, project/owner/stale/permission negatives, provider-free and actually selected local-model paths, and truthful no-write/egress/Chat UX evidence. Missing or failed required gates still prevent a scoped Green. The Electron build remains part of the existing `npm run check` command but is not GUI evidence.

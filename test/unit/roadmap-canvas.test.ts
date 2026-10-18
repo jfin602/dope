@@ -62,8 +62,10 @@ test('Prepare Work opens the registered center Planning Map with no Chat or agen
     assert.match(inspector, /dope-roadmap-prepare-work/);
     assert.match(inspector, /prepare\.disabled = !!this\.model\.prepareWorkBlockedReason/);
     assert.match(frontend, /getOrCreateWidget<PhysicalMapWidget>\(PHYSICAL_MAP_ID\)/);
-    assert.match(frontend, /planning\.navigationMap\(selection\.mapId\)/);
-    assert.match(frontend, /planning\.setPrepareWorkContext\(selection\)/);
+    assert.match(frontend, /verifyPrepareWorkNavigation\(selection, map, planning\)/);
+    assert.match(frontend, /if \(selection\.mapId\) planning\.select\(selection\.mapId\)/);
+    assert.match(frontend, /else if \(existingMapId\) planning\.select\(existingMapId\)/);
+    assert.match(frontend, /planning\.setPrepareWorkContext\(\{ \.\.\.selection, planningProjectId \}\)/);
     assert.match(frontend, /planning\.setMode\(true\)/);
     assert.doesNotMatch(inspector, /openChatPanel|launchWork|AgentRuntimeService/);
 });
