@@ -39,6 +39,17 @@ const correctionMatches = (node: CheckpointNode, slug: string): boolean => {
     return section === slug || [...node.title.matchAll(/`(c\d+(?:-[a-z0-9]+)*)`/g)].some(match => match[1] === slug) ||
         [node.source?.path, ...node.evidence.map(item => item.path)].some(path => path?.startsWith(`docs/tasks/${slug}/`));
 };
+const phaseStackNumber = (name: string): number | undefined => {
+    const match = /^p(?:[12]-(\d+)|(\d+)[a-z]?)$/.exec(name);
+    if (!match) return undefined;
+    const number = Number(match[1] ?? match[2]);
+    return Number.isSafeInteger(number) ? number : undefined;
+};
+const stackValid = (stack: TaskStackSource): boolean => !stack.diagnostic && !!stack.fingerprint &&
+    !!stack.mode && Number.isSafeInteger(stack.phase) && stack.phase! >= 0 &&
+    validPath(stack.path) && stack.prompts.length > 0 && stack.prompts.length <= MAX_STACK_PROMPTS &&
+    stack.prompts.every((prompt, i) => prompt.number === i + 1 && validPath(prompt.path) &&
+        prompt.path.startsWith(`${stack.path}/`) && /^[a-f0-9]{64}$/.test(prompt.fingerprint));
 
 /** Enrich canonical checkpoints without changing Roadmap, Markdown, runner or evidence ownership. */
 export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskStackSource[],
@@ -59,11 +70,6 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
     const eligible = sorted.slice(0, MAX_TASK_STACKS);
     let omittedTaskNodes = sorted.slice(MAX_TASK_STACKS).reduce((count, stack) => count + 1 + stack.prompts.length, 0);
     const knownPrompts = new Map<string, { id: string; fingerprint: string }>();
-    const stackValid = (stack: TaskStackSource): boolean => !stack.diagnostic && !!stack.fingerprint &&
-        !!stack.mode && Number.isSafeInteger(stack.phase) && stack.phase! >= 0 &&
-        validPath(stack.path) && stack.prompts.length > 0 && stack.prompts.length <= MAX_STACK_PROMPTS &&
-        stack.prompts.every((prompt, i) => prompt.number === i + 1 && validPath(prompt.path) &&
-            prompt.path.startsWith(`${stack.path}/`) && /^[a-f0-9]{64}$/.test(prompt.fingerprint));
     // Resolve all validated prompt identities before correction links, independent of scanner order.
     for (const stack of eligible) if (stackValid(stack)) for (const prompt of stack.prompts)
         knownPrompts.set(`${stack.path}\0${prompt.number}`,
@@ -88,18 +94,14 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
         const phrase = words.join(' ');
         const descriptive = stack.mode === 'correction' && direct.length === 0 && words.length >= 3 ?
             base.nodes.filter(node => node.kind === 'correction' &&
-                (node.phaseAssociation?.phaseId === parent.id ||
-                    node.phaseAssociation?.unresolvedReason === 'No reliable correction phase identifier.' &&
-                    new RegExp(`\\bPhase\\s+${stack.phase}\\b`, 'i').test(node.title)) &&
+                node.phaseAssociation?.phaseId === parent.id &&
                 node.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').includes(phrase)) : [];
-        const canonical = direct.length === 1 ? direct[0] : descriptive.length === 1 ? descriptive[0] : undefined;
-        if (canonical && association?.phaseId &&
-            canonical.phaseAssociation?.unresolvedReason === 'No reliable correction phase identifier.') {
-            const position = nodes.findIndex(node => node.id === canonical.id);
-            nodes[position] = { ...canonical, phaseAssociation: association };
-            const diagnostic = diagnostics.findIndex(message => message.startsWith(`Unresolved correction phase: ${canonical.id}:`));
-            if (diagnostic >= 0) diagnostics.splice(diagnostic, 1);
+        if (direct.length && (direct.length !== 1 || direct[0].phaseAssociation?.phaseId !== parent.id)) {
+            unlinkedTasks.push({ path: stack.path, title: stack.folderName,
+                reason: 'Correction source conflicts with its exact strategic phase parent.', diagnostic: 'ambiguous' });
+            continue;
         }
+        const canonical = direct.length === 1 ? direct[0] : descriptive.length === 1 ? descriptive[0] : undefined;
         const sourceOnly = stack.mode === 'correction' && !canonical;
         const headers = sourceOnly ? 2 : 1;
         if (nodes.length + headers > base.nodes.length + MAX_TASK_NODES) {
@@ -129,7 +131,8 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
             const proofs = failedPromptEvidence.filter(proof => proof.correctionPath === stack.path &&
                 validPath(proof.evidencePath) && /^[a-f0-9]{64}$/.test(proof.evidenceHash) &&
                 index.checkpoints.some(item => item.evidence.some(citation =>
-                    citation.path === proof.evidencePath && citation.sha256 === proof.evidenceHash)));
+                    citation.path === proof.evidencePath && citation.sha256 === proof.evidenceHash &&
+                    citation.status === 'not-green')));
             if (proofs.length === 1) {
                 const proof = proofs[0];
                 const known = knownPrompts.get(`${proof.failedPrompt.stackPath}\0${proof.failedPrompt.number}`);
@@ -171,4 +174,150 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
     } : undefined;
     return { ...base, nodes, edges, diagnostics: diagnostics.sort(compare), selection,
         unlinkedTasks, omittedTaskNodes };
+}
+
+/** An adapter may supply this only after Work, runner and Git reconciliation has checked the checkpoint. */
+export interface PhaseFocusCheckpointEvidence {
+    projectId: string; stackPath: string; stackFingerprint: string; entryNumber: number;
+    sha: string; taskId?: string; runId?: string; manualGate?: boolean; verified: boolean;
+}
+export interface PhaseFocusQualificationEvidence {
+    projectId: string; stackPath: string; promptNumber: number; promptFingerprint: string;
+    evidencePath: string; evidenceHash: string;
+    status: 'green' | 'not-green' | 'waived';
+}
+export interface PhaseFocusPrompt {
+    number: number; title: string; kind: 'implementation' | 'closeout'; path: string;
+    fingerprint: string; browserRequired: boolean; version: string;
+    source: 'present'; implementation: 'completed' | 'blocked' | 'manual' | 'unknown';
+    manualGate: boolean;
+    qualification: 'green' | 'not-green' | 'waived' | 'unknown';
+    checkpointSha?: string;
+}
+export interface PhaseFocusStack {
+    path: string; fingerprint: string; segment: 'phase' | 'continuation' | 'correction';
+    continuationSlice?: string; failedPrompt?: { stackPath: string; number: number };
+    prompts: PhaseFocusPrompt[];
+}
+export interface PhaseFocusSelection {
+    projectId: string; phaseId: string; phaseTitle: string;
+    qualification: CheckpointNode['status']; stacks: PhaseFocusStack[];
+    diagnostics: string[];
+}
+export interface PhaseFocusBlockedEvidence {
+    projectId: string; stackPath: string; stackFingerprint: string; entryNumber: number;
+    reason: string; verified: boolean;
+}
+
+/** Pure, bounded selected-phase view. Canvas placement and display order cannot change authored execution order. */
+export function selectPhaseFocus(index: RoadmapIndex, stacks: readonly TaskStackSource[], phaseId: string,
+    checkpoints: readonly PhaseFocusCheckpointEvidence[] = [],
+    qualifications: readonly PhaseFocusQualificationEvidence[] = [],
+    failedPromptEvidence: readonly FailedPromptEvidence[] = [],
+    blocked: readonly PhaseFocusBlockedEvidence[] = []): PhaseFocusSelection | undefined {
+    const phase = index.checkpoints.find(item => item.id === phaseId && item.kind === 'phase');
+    const phaseNumber = phase && roadmapPhaseNumber(phase.title);
+    if (!phase || phaseNumber === undefined) return undefined;
+    const phaseCount = index.checkpoints.filter(item => item.kind === 'phase' &&
+        roadmapPhaseNumber(item.title) === phaseNumber).length;
+    const diagnostics: string[] = [];
+    const eligible: TaskStackSource[] = [];
+    const canonicalNodes = projectRoadmap(index).nodes;
+    const ordered = [...stacks].sort((a, b) => compare(a.path, b.path));
+    for (const stack of ordered.slice(0, MAX_TASK_STACKS)) {
+        const namedPhase = phaseStackNumber(stack.folderName);
+        if (stack.phase !== phaseNumber && correctionPhaseNumber(stack.folderName) !== phaseNumber &&
+            namedPhase !== phaseNumber) continue;
+        if (!stackValid(stack) || stack.path !== `docs/tasks/${stack.folderName}`) {
+            diagnostics.push(`${stack.path}: ${stack.diagnostic?.message ?? 'Invalid task source.'}`);
+            continue;
+        }
+        if (phaseCount !== 1 || stack.phase !== phaseNumber ||
+            stack.mode === 'correction' && correctionPhaseNumber(stack.folderName) !== phaseNumber ||
+            stack.mode === 'phase' && namedPhase !== phaseNumber) {
+            diagnostics.push(`${stack.path}: No unique, matching phase parent.`);
+            continue;
+        }
+        if (stack.mode === 'correction') {
+            const canonical = canonicalNodes.filter(node => correctionMatches(node, stack.folderName));
+            if (canonical.length > 1 || canonical.length === 1 &&
+                canonical[0].phaseAssociation?.phaseId !== phaseId) {
+                diagnostics.push(`${stack.path}: Correction parent is ambiguous or conflicts with the selected phase.`);
+                continue;
+            }
+        }
+        eligible.push(stack);
+    }
+    if (ordered.length > MAX_TASK_STACKS) diagnostics.push('Task discovery exceeds Phase Focus stack limit.');
+    const byPath = new Map(eligible.map(stack => [stack.path, stack]));
+    const cited = new Set(index.checkpoints.flatMap(item => item.evidence.map(evidence =>
+        `${evidence.path}\0${evidence.sha256}\0${evidence.status ?? 'unknown'}`)));
+    const result: PhaseFocusStack[] = [];
+    let count = 0;
+    for (const stack of eligible) {
+        if (count + stack.prompts.length > 4096) {
+            diagnostics.push('Phase Focus prompt limit reached; remaining stacks omitted.');
+            break;
+        }
+        count += stack.prompts.length;
+        const proofs = failedPromptEvidence.filter(proof => proof.correctionPath === stack.path &&
+            validPath(proof.evidencePath) && /^[a-f0-9]{64}$/.test(proof.evidenceHash) &&
+            index.checkpoints.some(item => item.evidence.some(citation =>
+                citation.path === proof.evidencePath && citation.sha256 === proof.evidenceHash &&
+                citation.status === 'not-green')));
+        let failedPrompt: PhaseFocusStack['failedPrompt'];
+        if (stack.mode === 'correction' && proofs.length === 1) {
+            const proof = proofs[0];
+            const source = byPath.get(proof.failedPrompt.stackPath);
+            const prompt = source?.prompts[proof.failedPrompt.number - 1];
+            if (source?.mode === 'phase' && prompt?.number === proof.failedPrompt.number &&
+                prompt.fingerprint === proof.failedPrompt.fingerprint)
+                failedPrompt = { stackPath: source.path, number: prompt.number };
+            else diagnostics.push(`${stack.path}: Failed prompt provenance is stale or foreign.`);
+        } else if (stack.mode === 'correction' && proofs.length > 1)
+            diagnostics.push(`${stack.path}: Ambiguous failed prompt provenance.`);
+        let completedPrefix = 0;
+        const seenSha = new Set<string>();
+        const prompts = stack.prompts.map((prompt): PhaseFocusPrompt => {
+            const manualGate = prompt.kind === 'closeout' || prompt.browserRequired;
+            if (checkpoints.some(item => item.projectId === index.projectId && item.stackPath === stack.path &&
+                item.entryNumber === prompt.number && item.stackFingerprint !== stack.fingerprint))
+                diagnostics.push(`${prompt.path}: Stale implementation fingerprint.`);
+            const matching = checkpoints.filter(item => item.verified && item.projectId === index.projectId &&
+                item.stackPath === stack.path && item.stackFingerprint === stack.fingerprint &&
+                item.entryNumber === prompt.number && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(item.sha) &&
+                (manualGate ? item.manualGate === true :
+                    !!item.taskId && !!item.runId));
+            const candidate = matching.length === 1 ? matching[0] : undefined;
+            const checkpoint = candidate && prompt.number === completedPrefix + 1 && !seenSha.has(candidate.sha)
+                ? candidate : undefined;
+            if (candidate && !checkpoint) diagnostics.push(`${prompt.path}: Incomplete checkpoint prefix.`);
+            if (checkpoint) { completedPrefix++; seenSha.add(checkpoint.sha); }
+            if (matching.length > 1) diagnostics.push(`${prompt.path}: Ambiguous implementation checkpoints.`);
+            const blockedMatches = blocked.filter(item => item.verified && item.projectId === index.projectId &&
+                item.stackPath === stack.path && item.stackFingerprint === stack.fingerprint &&
+                item.entryNumber === prompt.number && !!item.reason);
+            const matchingQualification = qualifications.filter(item => item.projectId === index.projectId &&
+                item.stackPath === stack.path && item.promptNumber === prompt.number &&
+                item.promptFingerprint === prompt.fingerprint && validPath(item.evidencePath) &&
+                cited.has(`${item.evidencePath}\0${item.evidenceHash}\0${item.status}`));
+            if (matchingQualification.length > 1)
+                diagnostics.push(`${prompt.path}: Ambiguous qualification evidence.`);
+            return { ...prompt, source: 'present', manualGate,
+                implementation: checkpoint ? 'completed' : blockedMatches.length === 1 ? 'blocked' :
+                    manualGate ? 'manual' : 'unknown',
+                qualification: matchingQualification.length === 1 ? matchingQualification[0].status : 'unknown',
+                ...(checkpoint ? { checkpointSha: checkpoint.sha } : {}) };
+        });
+        result.push({ path: stack.path, fingerprint: stack.fingerprint!,
+            segment: stack.mode === 'correction' ? 'correction' : stack.continuationSlice ? 'continuation' : 'phase',
+            ...(stack.continuationSlice ? { continuationSlice: stack.continuationSlice } : {}),
+            ...(failedPrompt ? { failedPrompt } : {}), prompts });
+    }
+    const slices = (slice: string | undefined): number => slice === undefined ? 0 :
+        /^[a-z]$/.test(slice) ? slice.charCodeAt(0) - 96 : 1000;
+    result.sort((a, b) => Number(a.segment === 'correction') - Number(b.segment === 'correction') ||
+        slices(a.continuationSlice) - slices(b.continuationSlice) || compare(a.path, b.path));
+    return { projectId: index.projectId, phaseId, phaseTitle: phase.title,
+        qualification: phase.status, stacks: result, diagnostics };
 }

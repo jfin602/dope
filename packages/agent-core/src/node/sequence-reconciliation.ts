@@ -175,6 +175,34 @@ export function gitCheckpointPrefix(stack: ImportedStack, evidence: SequenceGitE
     return result;
 }
 
+/** Read-only adapter for Phase Focus; only a source-current Work prefix found in Git may report completion. */
+export function phaseFocusSequenceEvidence(projectId: string, sequence: AgentTaskSequence,
+    gitEvidence: SequenceGitEvidence, sourceDrift: boolean): {
+        checkpoints: { projectId: string; stackPath: string; stackFingerprint: string; entryNumber: number;
+            sha: string; taskId?: string; runId?: string; manualGate: boolean; verified: true }[];
+        blocked: { projectId: string; stackPath: string; stackFingerprint: string; entryNumber: number;
+            reason: string; verified: true }[];
+    } {
+    const stackPath = sequence.stack.sourcePath ?? `docs/tasks/${sequence.stack.folderName}`;
+    if (!stackPath.startsWith('docs/tasks/') || !projectId) return { checkpoints: [], blocked: [] };
+    const common = { projectId, stackPath, stackFingerprint: sequence.stack.fingerprint };
+    let prefix: SequenceCheckpoint[] = [];
+    try { if (!sourceDrift) prefix = gitCheckpointPrefix(sequence.stack, gitEvidence); }
+    catch { /* Keep uncertain checkpoint history unknown. */ }
+    const validPrefix = !sourceDrift && sequence.checkpoints.every((item, index) =>
+        prefix[index]?.entryNumber === item.entryNumber && prefix[index]?.sha === item.sha);
+    const checkpoints = validPrefix ? sequence.checkpoints.map(item => ({ ...common,
+        entryNumber: item.entryNumber, sha: item.sha, ...(item.taskId ? { taskId: item.taskId } : {}),
+        ...(item.runId ? { runId: item.runId } : {}),
+        manualGate: sequence.stack.entries[item.entryNumber - 1]?.execution === 'manual-gate',
+        verified: true as const })) : [];
+    const reason = sourceDrift ? 'source-drift' : !validPrefix ? 'checkpoint-mismatch' :
+        sequence.status === 'blocked' || sequence.status === 'interrupted' ? sequence.blockedReason : undefined;
+    const blocked = reason && sequence.currentEntryNumber <= sequence.stack.entries.length ?
+        [{ ...common, entryNumber: sequence.currentEntryNumber, reason, verified: true as const }] : [];
+    return { checkpoints, blocked };
+}
+
 export function expectedSequenceVersion(stack: ImportedStack, completed: number): string {
     if (stack.mode === 'correction') return stack.unchangedVersion!;
     if (completed) return stack.entries[completed - 1].versionPolicy.version;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { projectRoadmapTasks } from '../../packages/project-intelligence/lib/roadmap-task-projection.js';
+import { projectRoadmapTasks, selectPhaseFocus } from '../../packages/project-intelligence/lib/roadmap-task-projection.js';
 import { roadmapCanvasOrder } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import type { TaskStackSource } from '../../packages/project-intelligence/src/roadmap-task-projection.ts';
 import type { RoadmapCheckpoint, RoadmapIndex } from '../../packages/project-intelligence/src/node/roadmap-store.ts';
@@ -133,13 +133,103 @@ test('canonical correction absorbs its matching stack without a duplicate source
     assert.equal(JSON.stringify(source), original);
 });
 
-test('unique descriptive correction in the same phase absorbs its named task folder', () => {
+test('unique descriptive correction with an explicit phase parent absorbs its named task folder', () => {
     const source = index();
     source.checkpoints.push({ ...checkpoint('roadmap:docs/roadmap/mvp-roadmap.md#october-map-canvas',
-        'October 2 — Phase 10 map canvas priority correction', 11), kind: 'correction' });
+        'October 2 — Phase 10 map canvas priority correction', 11), kind: 'correction', parentPhaseId: 'p10' });
     const result = projectRoadmapTasks(source, [stack('c10-map-canvas-priority', 10, 'correction')]);
     assert.equal(result.nodes.filter(node => node.kind === 'correction').length, 1);
     assert.equal(result.nodes.find(node => node.kind === 'correction')?.phaseAssociation?.phaseId, 'p10');
     assert.equal(result.edges.find(edge => edge.id.startsWith('task-parent:'))?.from,
         'roadmap:docs/roadmap/mvp-roadmap.md#october-map-canvas');
+});
+
+test('Phase Focus preserves authored order and keeps source, Work completion, and qualification separate', () => {
+    const source = index();
+    const phase = stack('p10', 10, 'phase', 3);
+    const continuation = { ...stack('p10b', 10, 'phase'), continuationSlice: 'b' };
+    const correction = stack('c10-fix', 10, 'correction');
+    const stacks = [correction, continuation, phase];
+    const selected = selectPhaseFocus(source, stacks, 'p10');
+    assert.deepEqual(selected?.stacks.map(item => item.path),
+        ['docs/tasks/p10', 'docs/tasks/p10b', 'docs/tasks/c10-fix']);
+    assert.deepEqual(selected?.stacks[0].prompts.map(item => item.number), [1, 2, 3]);
+    assert.equal(selected?.stacks[0].prompts[0].implementation, 'unknown');
+    assert.equal(selected?.stacks[0].prompts[2].kind, 'closeout');
+    assert.equal(selected?.stacks[0].prompts[2].implementation, 'manual');
+    assert.equal(selected?.stacks[0].prompts[2].qualification, 'unknown');
+    assert.equal(selected?.qualification, 'not-green');
+    assert.deepEqual(selectPhaseFocus(source, [...stacks].reverse(), 'p10'), selected);
+    // Canvas Arrange is presentation state; it cannot reorder the authored sequence.
+    projectRoadmapTasks(source, stacks, [], { projectId: source.projectId,
+        placements: { p10: { x: 900, y: -100 } }, colors: { p10: 'green' } });
+    assert.deepEqual(selectPhaseFocus(source, stacks, 'p10'), selected);
+    assert.equal(selectPhaseFocus(source, stacks, 'missing'), undefined);
+});
+
+test('Phase Focus requires reconciled exact project, stack, Git, Work and citation proof', () => {
+    const source = index();
+    const phase = stack('p10', 10, 'phase');
+    source.checkpoints[1].evidence = [{ path: 'docs/tasks/p10/closeout.md', sha256: hash, line: 1,
+        text: 'Not Green', status: 'not-green' }];
+    const basis = { projectId: source.projectId, stackPath: phase.path, stackFingerprint: hash,
+        entryNumber: 1, sha: 'b'.repeat(40), verified: true };
+    const qualification = { projectId: source.projectId, stackPath: phase.path,
+        promptNumber: 1, promptFingerprint: hash, evidencePath: 'docs/tasks/p10/closeout.md',
+        evidenceHash: hash, status: 'not-green' as const };
+    const incomplete = selectPhaseFocus(source, [phase], 'p10', [basis], [qualification])!;
+    assert.equal(incomplete.stacks[0].prompts[0].implementation, 'unknown');
+    assert.equal(incomplete.stacks[0].prompts[0].qualification, 'not-green');
+    const completed = selectPhaseFocus(source, [phase], 'p10',
+        [{ ...basis, taskId: 'task', runId: 'run' },
+            { ...basis, entryNumber: 2, sha: 'c'.repeat(40), manualGate: true }])!;
+    assert.equal(completed.stacks[0].prompts[0].implementation, 'completed');
+    assert.equal(completed.stacks[0].prompts[1].implementation, 'completed');
+    assert.equal(completed.stacks[0].prompts[1].qualification, 'unknown');
+    const foreign = selectPhaseFocus(source, [phase], 'p10',
+        [{ ...basis, projectId: 'foreign', taskId: 'task', runId: 'run' }],
+        [{ ...qualification, evidenceHash: 'c'.repeat(64) }])!;
+    assert.equal(foreign.stacks[0].prompts[0].implementation, 'unknown');
+    assert.equal(foreign.stacks[0].prompts[0].qualification, 'unknown');
+});
+
+test('Phase Focus diagnoses malformed, missing, wrong-parent and stale failed-prompt sources', () => {
+    const source = index();
+    source.checkpoints.push({ ...checkpoint('c10-fix', 'Correction `c10-fix`', 11),
+        kind: 'correction', parentPhaseId: 'p8' });
+    const phase = stack('p10', 10, 'phase');
+    const correction = stack('c10-fix', 10, 'correction');
+    const missing = { ...stack('c10-missing', 10, 'correction'), prompts: [], fingerprint: undefined,
+        diagnostic: { code: 'missing', message: 'Source missing' } };
+    const proof = { correctionPath: correction.path, failedPrompt: { stackPath: phase.path,
+        number: 1, fingerprint: 'c'.repeat(64) }, evidencePath: 'docs/tasks/p10/closeout.md', evidenceHash: hash };
+    source.checkpoints[1].evidence = [{ path: proof.evidencePath, sha256: hash, line: 1,
+        text: 'Failure', status: 'not-green' }];
+    const result = selectPhaseFocus(source, [correction, missing, phase], 'p10', [], [], [proof])!;
+    assert.deepEqual(result.stacks.map(item => item.path), [phase.path]);
+    assert.ok(projectRoadmapTasks(source, [correction]).unlinkedTasks.some(item => item.path === correction.path));
+    assert.ok(result.diagnostics.some(item => item.includes('Source missing')));
+    assert.ok(result.diagnostics.some(item => item.includes('parent')));
+    const validSource = index();
+    validSource.checkpoints[1].evidence = source.checkpoints[1].evidence;
+    const valid = selectPhaseFocus(validSource, [phase, correction], 'p10', [], [], [proof])!;
+    assert.equal(valid.stacks[1].failedPrompt, undefined);
+    assert.ok(valid.diagnostics.some(item => item.includes('stale')));
+});
+
+test('Phase Focus has an empty state and refuses orphan checkpoints, stale source and foreign proof', () => {
+    const source = index();
+    assert.deepEqual(selectPhaseFocus(source, [], 'p10')?.stacks, []);
+    const phase = stack('p10', 10, 'phase', 3);
+    const proof = { projectId: source.projectId, stackPath: phase.path, stackFingerprint: hash,
+        entryNumber: 2, sha: 'b'.repeat(40), taskId: 'task', runId: 'run', verified: true };
+    const selected = selectPhaseFocus(source, [phase], 'p10', [proof,
+        { ...proof, entryNumber: 1, stackFingerprint: 'c'.repeat(64) },
+        { ...proof, entryNumber: 3, projectId: 'foreign', manualGate: true }], [], [],
+        [{ projectId: source.projectId, stackPath: phase.path, stackFingerprint: hash,
+            entryNumber: 1, reason: 'source-drift', verified: true }])!;
+    assert.deepEqual(selected.stacks[0].prompts.map(item => item.implementation),
+        ['blocked', 'unknown', 'manual']);
+    assert.ok(selected.diagnostics.some(item => item.includes('Stale')));
+    assert.ok(selected.diagnostics.some(item => item.includes('prefix')));
 });

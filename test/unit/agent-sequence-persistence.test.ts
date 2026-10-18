@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
 import { importPhaseStack, parseAgentTaskSequence } from '../../packages/agent-core/lib/sequence.js';
-import { expectedSequenceVersion, gitCheckpointPrefix, sequenceBlockReason } from
+import { expectedSequenceVersion, gitCheckpointPrefix, phaseFocusSequenceEvidence, sequenceBlockReason } from
     '../../packages/agent-core/lib/node/sequence-reconciliation.js';
 
 const a = 'a'.repeat(40), b = 'b'.repeat(40), c = 'c'.repeat(40), empty = 'e'.repeat(64);
@@ -114,4 +114,20 @@ test('reachable Git prefix, version and source/worktree drift block ambiguous re
     const subject = `c8-fix/P1: ${fix.entries[0].title}`;
     assert.throws(() => gitCheckpointPrefix(fix, evidence([{ sha: b, subject }, { sha: c, subject }])), /Ambiguous/);
     assert.equal(sequenceBlockReason({ ...initial, stack: fix }, evidence([], '0.8.14'), false), 'version-mismatch');
+});
+
+test('Phase Focus adapter admits only source-current, reachable sequence checkpoints', async () => {
+    const initial = await sequence();
+    const progressed = { ...initial, currentEntryNumber: 2,
+        checkpoints: [{ entryNumber: 1, sha: b, taskId: 'task', runId: 'run' }] };
+    const history = evidence([{ sha: b, subject: '0.8.1' }], '0.8.1', b);
+    const accepted = phaseFocusSequenceEvidence('project', progressed, history, false);
+    assert.equal(accepted.checkpoints[0].sha, b);
+    assert.equal(accepted.checkpoints[0].verified, true);
+    assert.equal(accepted.checkpoints[0].stackPath, 'docs/tasks/p8');
+    assert.deepEqual(accepted.blocked, []);
+    assert.equal(phaseFocusSequenceEvidence('project', progressed, history, true).checkpoints.length, 0);
+    assert.equal(phaseFocusSequenceEvidence('project', progressed, evidence(), false).checkpoints.length, 0);
+    assert.equal(phaseFocusSequenceEvidence('project', progressed, evidence(), false).blocked[0].reason,
+        'checkpoint-mismatch');
 });
