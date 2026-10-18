@@ -294,7 +294,8 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<object>(visualPlanningServicePath, client => {
-        const backend = new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex));
+        const backend = new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex),
+            context.container.get(RoadmapStore));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;
     })).inSingletonScope();

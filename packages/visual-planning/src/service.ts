@@ -30,6 +30,21 @@ export interface AdoptionAcceptance extends AdoptionRequest { acceptedChanges: A
 export interface RebaseRequest { projectHandle: string; mapId: string; expectedRevision: number; expectedMapRevision: number;
   expectedBasis: PlanningBasis; expectedCurrentBasis: PlanningBasis }
 export interface RebaseAcceptance extends RebaseRequest { decisions: RebaseDecision[] }
+/** A disposable read of a selected Roadmap checkpoint against current canonical software. */
+export interface CurrentSoftwareImpactRequest { projectHandle: string; projectId: string; checkpointId: string;
+  expectedRoadmapRevision: number; branchIds: string[] }
+export interface CurrentSoftwareImpactPacket {
+  status: 'ready' | 'unavailable' | 'stale' | 'ambiguous'; reason?: string;
+  checkpoint?: { id: string; title: string; objective: string; requirements: string[] };
+  roadmapRevision?: number; basis?: PlanningBasis;
+  planningMap?: { id: string; revision: number; rebaseConflicts: number };
+  branches: { id: string; kind: 'system' | 'subsystem' | 'component'; name: string; purpose: string }[];
+  sources: { path: string; evidenceIds: string[] }[];
+  relationships: { kind: string; sourceId: string; targetId: string }[];
+  uncertainties: string[];
+  limits: { maxBranches: number; maxPaths: number; maxRelationships: number; maxBytes: number; truncated: boolean };
+  action: { kind: 'analyze-software-map' | 'refocus-branches'; branchIds: string[]; explicit: true };
+}
 export interface VisualPlanningService {
   attach(folderUri: string): Promise<{ projectHandle: string; snapshot: PlanningCollection }>;
   read(projectHandle: string): Promise<PlanningCollection>;
@@ -43,6 +58,7 @@ export interface VisualPlanningService {
   staleness(projectHandle: string, mapId: string): Promise<StaleResult>;
   /** Exact current observation for cross-owner references; generation alone is not semantic staleness. */
   currentBasis(projectHandle: string): Promise<PlanningBasis>;
+  currentSoftwareImpact(request: CurrentSoftwareImpactRequest): Promise<CurrentSoftwareImpactPacket>;
   previewRebase(request: RebaseRequest): Promise<RebaseResult>;
   acceptRebase(request: RebaseAcceptance): Promise<PlanningCollection>;
   mutate(request: PlanningMutation): Promise<PlanningCollection>;
