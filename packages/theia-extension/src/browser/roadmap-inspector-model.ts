@@ -56,8 +56,10 @@ export class RoadmapInspectorModel {
         if (this.busy || this.pending || this.dirty) return 'Finish or discard the pending Roadmap change first.';
         if (index.linkedDocument && index.linkedDocument.syncState !== 'synced')
             return 'Linked Roadmap source is stale or unresolved. Review and sync it first.';
-        if (item.links.some(link => link.ownerProjectId && link.ownerProjectId !== index.projectId))
-            return 'A checkpoint link belongs to another project. Resolve the foreign link first.';
+        const planningLinks = item.links.filter(link => link.owner === 'planning-map');
+        if (planningLinks.length > 1) return 'Select one reviewed Planning Map link before preparing work.';
+        if (planningLinks.some(link => !link.ownerProjectId || link.ownerRevision === undefined || !link.basis))
+            return 'A Planning Map link is incomplete. Review and relink it before preparing work.';
         return undefined;
     }
     async prepareWork(): Promise<void> {

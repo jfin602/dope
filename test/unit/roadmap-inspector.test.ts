@@ -53,8 +53,20 @@ test('Prepare Work requires a current canonical checkpoint and conveys requireme
     state.index = snapshot();
     state.index.checkpoints[0].links.push({ owner: 'planning-map', targetId: 'foreign', ownerProjectId: 'other' });
     model.setSnapshot(root, state.index);
-    assert.match(model.prepareWorkBlockedReason ?? '', /another project/);
+    assert.match(model.prepareWorkBlockedReason ?? '', /incomplete/);
     assert.equal(opened.length, 1);
+    state.index = snapshot();
+    state.index.checkpoints[0].links.push({ owner: 'planning-map', targetId: 'map', ownerProjectId: 'planning',
+        ownerRevision: 2, basis: { architectureRevision: 1, architectureFingerprint: 'architecture',
+            physicalGeneration: 1, physicalInputFingerprint: 'physical' } });
+    model.setSnapshot(root, state.index);
+    assert.equal(model.prepareWorkBlockedReason, undefined);
+    await model.prepareWork();
+    assert.equal((opened[1] as { mapId: string }).mapId, 'map');
+    state.index.checkpoints[0].links.push({ ...state.index.checkpoints[0].links[0], targetId: 'other-map' });
+    model.setSnapshot(root, state.index);
+    assert.match(model.prepareWorkBlockedReason ?? '', /one reviewed Planning Map/);
+    assert.equal(opened.length, 2);
 });
 
 test('Prepare Work refuses a changed Roadmap and clears selection on project change', async () => {
