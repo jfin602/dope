@@ -53,7 +53,14 @@ export type ReconciliationOutcome = 'implemented-as-planned' | 'implemented-diff
 export interface ReconciliationResult { schemaVersion: 1; transformationId?: string; identityId: string; outcome: ReconciliationOutcome; physicalGeneration: number; evidenceIds: string[]; explanation: string; branchIds?: string[] }
 export interface PlanningReconciliation { basis: PlanningBasis; results: ReconciliationResult[]; at: string }
 export interface TargetProjection { nodes: PlannedNode[]; relationships: DependencyRelationship[] }
-export interface WorkItemSuggestion { transformationIds: string[]; dependsOn: number[]; objective: string }
+export interface WorkItemSuggestion {
+  transformationIds: string[]; dependsOn: number[]; objective: string;
+  /** Source-bound proposal; WorkItem writes remain with VisualPlanningService. */
+  projectId: string; mapId: string; basis: PlanningBasis; transformationKey: string;
+  requirements: string[]; constraints: string[]; acceptanceCriteria: string[];
+  validationTargets: string[]; workingSet: string[]; assignment: WorkAssignment;
+  delegablePaths: string[]; humanReservedPaths: string[];
+}
 
 function fail(at: string): never { throw new Error(`Invalid planning map: ${at}`); }
 function obj(v: unknown, at: string): Record<string, unknown> { if (!v || typeof v !== 'object' || Array.isArray(v)) fail(at); return v as Record<string, unknown>; }
@@ -388,6 +395,8 @@ export function detectActiveConflicts(maps: PlanningMap[]): CrossMapConflict[] {
   return result;
 }
 export function suggestWorkItems(map: PlanningMap): WorkItemSuggestion[] {
+  if (map.status !== 'active' && map.status !== 'draft') throw new Error('Planning target is closed');
+  if (!map.transformations.length || map.transformations.length > 64) throw new Error('WorkItem suggestion scope must contain 1–64 transformations');
   const items = topo(map.transformations);
   // Share an exact architecture identity to group; a common parent alone is too broad.
   const groups: PlannedTransformation[][] = [];
@@ -398,7 +407,34 @@ export function suggestWorkItems(map: PlanningMap): WorkItemSuggestion[] {
     else groups.push([t]);
   }
   const indices = new Map(groups.flatMap((group, i) => group.map(t => [t.id, i] as const)));
-  return groups.map((group, i) => ({ transformationIds: group.map(t => t.id).sort(),
+  const transformationKey = JSON.stringify({ title: map.title, objective: map.objective, status: map.status,
+    transformations: [...map.transformations].sort(byId) });
+  const acceptance = (t: PlannedTransformation): string => {
+    const source = t.currentIds.join(', '), target = t.futureNodes.map(node => node.id).join(', ');
+    switch (t.kind) {
+      case 'add': return `Target ${target} exists with the approved parent and roots`;
+      case 'remove': return `Source ${source} is absent from the target structure`;
+      case 'split': case 'merge': return `Source ${source} is replaced by target ${target} with the approved relationships`;
+      case 'redirect-relationship': return `Relationship ${t.redirect!.from.sourceId} → ${t.redirect!.from.targetId} is replaced by ${t.redirect!.to.sourceId} → ${t.redirect!.to.targetId}`;
+      default: return `Target ${target} matches the approved ${t.kind} transformation, including parent, roots and contracts`;
+    }
+  };
+  return groups.map((group, i) => {
+    const workingSet = [...new Set(group.flatMap(t => [
+      ...t.futureNodes.flatMap(node => node.roots),
+      ...(map.basisSnapshot?.physicalNodes ?? []).filter(node => t.currentIds.includes(node.id) && node.path).map(node => node.path!)
+    ]))].sort();
+    if (workingSet.length > 128) throw new Error('WorkItem suggestion working set exceeds 128 grounded paths');
+    const refs = group.map(t => t.id).sort();
+    const objective = group.map(t => `${t.kind}: ${[...new Set(touched(t))].join(', ') || t.id}`).join('; ');
+    return { transformationIds: refs,
     dependsOn: [...new Set(group.flatMap(t => t.dependsOn.map(id => indices.get(id)!).filter(index => index !== i)))].sort((a, b) => a - b),
-    objective: group.map(t => `${t.kind}: ${[...new Set(touched(t))].join(', ') || t.id}`).join('; ') }));
+    objective, projectId: map.projectId, mapId: map.id, basis: { ...map.basis }, transformationKey,
+    requirements: refs.map(id => `Implement approved transformation ${id}`),
+    constraints: ['Preserve unrelated source and existing owner authority',
+      ...(workingSet.length ? [] : ['No source path is evidenced yet; identify a bounded working set before execution'])],
+    acceptanceCriteria: group.map(acceptance),
+    validationTargets: group.map(t => `Reinspect source and Physical Map for ${t.id}: ${[...new Set(touched(t))].join(', ') || 'relationship change'}`),
+    workingSet, assignment: 'HUMAN' as const, delegablePaths: [], humanReservedPaths: workingSet };
+  });
 }

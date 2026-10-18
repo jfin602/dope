@@ -1,4 +1,4 @@
-import type { CrossMapConflict, MapStatus, PlannedTransformation, PlanningBasis, PlanningMap, Resolution, TargetProjection, WorkItem } from './index';
+import type { CrossMapConflict, MapStatus, PlannedTransformation, PlanningBasis, PlanningMap, Resolution, TargetProjection, WorkItem, WorkItemSuggestion } from './index';
 import type { EditCommand } from './editing';
 import type { AdoptionPreview, AdoptionScope } from './adoption';
 import type { RebaseResult, StaleResult } from './index';
@@ -71,6 +71,7 @@ export interface VisualPlanningService {
   approveTarget(projectHandle: string, token: string, developerAction: boolean): Promise<void>;
   rejectTarget(projectHandle: string, token: string): Promise<void>;
   targetApproved(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<boolean>;
+  suggestApprovedWorkItems(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<WorkItemSuggestion[]>;
   previewRebase(request: RebaseRequest): Promise<RebaseResult>;
   acceptRebase(request: RebaseAcceptance): Promise<PlanningCollection>;
   mutate(request: PlanningMutation): Promise<PlanningCollection>;

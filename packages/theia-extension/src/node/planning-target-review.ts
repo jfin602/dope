@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
-import type { PlannedTransformation, RebaseResult } from '@dope/visual-planning';
-import { sameSemanticBasis } from '@dope/visual-planning';
+import type { PlannedTransformation, RebaseResult, WorkItemSuggestion } from '@dope/visual-planning';
+import { sameSemanticBasis, suggestWorkItems } from '@dope/visual-planning';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import type { RebaseDecision } from '@dope/visual-planning/lib/rebase';
 import type { CurrentSoftwareImpactPacket, PlanningCollection, TargetDesignReview, VisualPlanningService } from '@dope/visual-planning/lib/service';
@@ -80,6 +80,13 @@ export class PlanningTargetReview {
         await this.approvals.approve(this.root, token, developerAction);
     }
     async approved(): Promise<boolean> { return this.approvals.approved(this.root, this.checkpointId, 'target'); }
+    async suggestApprovedWorkItems(): Promise<WorkItemSuggestion[]> {
+        if (!await this.approved()) throw new Error('Current Planning target requires explicit approval');
+        const reviewed = await this.readReview();
+        const suggestions = suggestWorkItems(reviewed.map);
+        if (!await this.approved()) throw new Error('Planning target changed during WorkItem suggestion');
+        return suggestions;
+    }
     async previewTransformation(command: EditCommand, transformationId: string): Promise<PlannedTransformation> {
         const { collection, map } = await this.readSelection();
         return this.planning.preview(await this.attached(), map.id, collection.revision,

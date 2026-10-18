@@ -38,6 +38,7 @@ export class PlanningMapController {
     launchingWork = false;
     selectedTransformationId?: string;
     suggestions?: WorkItemSuggestion[];
+    private approvedSuggestionContext?: PlanningMapController['prepareWorkContext'];
     private acceptedSuggestionIds = new Map<number, string>();
     planningMode = false;
     view: PlanningView = 'diff';
@@ -209,14 +210,39 @@ export class PlanningMapController {
         finally { this.launchingWork = false; this.notify(); }
     }
     private canLaunchBasis(map: PlanningMap): boolean { return !!(this.stale && !this.stale.stale && this.basisMatches(map)); }
-    requestSuggestions(): void { this.suggestions = this.selected ? suggestWorkItems(this.selected) : [];
+    requestSuggestions(): void { this.approvedSuggestionContext = undefined; if (this.prepareWorkContext) {
+            this.suggestions = undefined; this.error = 'Approve the current target and request its reviewed WorkItem suggestions first';
+            this.notify(); return;
+        }
+        this.suggestions = this.selected ? suggestWorkItems(this.selected) : [];
         this.acceptedSuggestionIds.clear(); this.notify(); }
+    async requestApprovedSuggestions(branchIds: string[]): Promise<void> {
+        const context = this.prepareWorkContext, map = this.selected, connection = this.connection, handle = this.handle;
+        if (!context || !map || !connection || !handle || context.workspace !== this.workspace ||
+            context.projectId !== map.projectId || context.mapId !== map.id) throw new Error('Select the linked checkpoint Planning Map');
+        const suggestions = await connection.suggestApprovedWorkItems(handle, context.checkpointId, branchIds);
+        if (this.prepareWorkContext !== context || this.selected?.id !== map.id || this.workspace !== context.workspace) return;
+        this.suggestions = suggestions; this.approvedSuggestionContext = context;
+        this.acceptedSuggestionIds.clear(); this.error = ''; this.notify();
+    }
     splitSuggestion(index: number, parts: [string[], string[]]): void {
         const suggestion = this.suggestions?.[index];
         if (!suggestion || this.acceptedSuggestionIds.has(index) || parts.some(part => !part.length || part.some(id => !suggestion.transformationIds.includes(id))) ||
             suggestion.transformationIds.some(id => !parts.some(part => part.includes(id)))) throw new Error('Invalid suggestion split');
-        const split = parts.map((refs, part) => ({ ...suggestion, transformationIds: [...new Set(refs)].sort(),
-            objective: `${suggestion.objective} (${part + 1})` }));
+        const split = parts.map((refs, part) => {
+            const selectedRefs = [...new Set(refs)].sort(), selected = this.selected!.transformations.filter(t => selectedRefs.includes(t.id));
+            const workingSet = [...new Set(selected.flatMap(t => [
+                ...t.futureNodes.flatMap(node => node.roots),
+                ...(this.selected!.basisSnapshot?.physicalNodes ?? []).filter(node => t.currentIds.includes(node.id) && node.path).map(node => node.path!)
+            ]))].sort();
+            return { ...suggestion, transformationIds: selectedRefs, objective: `${suggestion.objective} (${part + 1})`,
+                requirements: selectedRefs.map(id => `Implement approved transformation ${id}`),
+                acceptanceCriteria: selected.map(t => `Target ${t.futureNodes.map(node => node.id).join(', ') || t.currentIds.join(', ') || 'relationship'} matches approved ${t.kind} ${t.id}`),
+                validationTargets: selectedRefs.map(id => `Reinspect source and Physical Map for ${id}`),
+                workingSet, humanReservedPaths: workingSet,
+                dependsOn: [...new Set([...suggestion.dependsOn,
+                    ...selected.flatMap(t => t.dependsOn.filter(id => parts[1 - part].includes(id)).map(() => index + (1 - part)))])].sort((a, b) => a - b) };
+        });
         this.suggestions = this.suggestions!.flatMap((candidate, i) => i === index ? split : [{ ...candidate,
             dependsOn: candidate.dependsOn.flatMap(dep => dep === index ? [index, index + 1] : [dep > index ? dep + 1 : dep]) }]);
         this.acceptedSuggestionIds = new Map([...this.acceptedSuggestionIds].map(([i, id]) => [i > index ? i + 1 : i, id]));
@@ -230,6 +256,9 @@ export class PlanningMapController {
     async acceptSuggestion(index: number): Promise<void> {
         const map = this.selected, suggestion = this.suggestions?.[index];
         if (!map || !suggestion) return;
+        if (this.prepareWorkContext && this.approvedSuggestionContext !== this.prepareWorkContext) {
+            this.error = 'Approve the current target before accepting a WorkItem suggestion'; this.notify(); return;
+        }
         const dependencies = suggestion.dependsOn.map(i => this.acceptedSuggestionIds.get(i) ?? map.workItems.find(item =>
             this.suggestions?.[i] && item.transformationIds.join('|') === this.suggestions[i].transformationIds.join('|'))?.id)
             .filter((id): id is string => !!id);

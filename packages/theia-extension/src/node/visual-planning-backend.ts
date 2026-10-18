@@ -181,6 +181,11 @@ export class VisualPlanningBackend implements VisualPlanningService {
     if (!this.roadmap) return false;
     return new PlanningTargetReview(root, checkpointId, branchIds, this.roadmap, this).approved();
   }
+  async suggestApprovedWorkItems(projectHandle: string, checkpointId: string, branchIds: string[]) {
+    const root = this.active(projectHandle);
+    if (!this.roadmap) throw new Error('Roadmap evidence owner is unavailable');
+    return new PlanningTargetReview(root, checkpointId, branchIds, this.roadmap, this).suggestApprovedWorkItems();
+  }
   async currentSoftwareImpact(request: CurrentSoftwareImpactRequest): Promise<CurrentSoftwareImpactPacket> {
     const root = this.active(request.projectHandle);
     const limits = { maxBranches: 8, maxPaths: 24, maxRelationships: 24, maxBytes: 12_000, truncated: false };

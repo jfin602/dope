@@ -32,7 +32,7 @@ async function fixture(assignment: 'AI' | 'SHARED' | 'HUMAN', run: (context: {
                 futureNodes: [{ id: 'core', kind: 'system', name: 'Core', purpose: 'Core', roots: ['src'] }] } });
         const work = { id: 'work', title: 'Build core', objective: 'Implement core', transformationIds: ['change'],
             dependsOn: [], requirements: ['Keep tests green'], constraints: ['Stay in scope'],
-            acceptanceCriteria: ['Core works'], validationTargets: [], workingSet: ['src'],
+            acceptanceCriteria: ['Core works'], validationTargets: ['Run core validation'], workingSet: ['src'],
             status: 'proposed' as const, assignment,
             delegablePaths: assignment === 'HUMAN' ? [] : ['src/agent'],
             humanReservedPaths: assignment === 'SHARED' ? ['src/human'] : assignment === 'HUMAN' ? ['src'] : [] };

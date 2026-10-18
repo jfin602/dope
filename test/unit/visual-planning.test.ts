@@ -100,7 +100,7 @@ test('active incompatible overlap yields stable conflicts and suggestions remain
   const b = transitionMap(parsePlanningMap({ ...map([{ ...move, futureNodes: [node('routes', 'other', ['src/api/routes'])], dependsOn: [] }]), id: 'plan-b' }), 'active', '2026-10-01');
   assert.deepEqual(detectActiveConflicts([b, a]).map(c => [c.identityId, c.transformationIds]), [['routes', ['move-routes', 'move-routes']]]);
   assert.deepEqual(detectActiveConflicts([a, transitionMap(parsePlanningMap({ ...map([add, move]), id: 'plan-c' }), 'active', '2026-10-01')]), []);
-  assert.deepEqual(suggestWorkItems(map([move, add])), [
+  assert.deepEqual(suggestWorkItems(map([move, add])).map(({ transformationIds, dependsOn, objective }) => ({ transformationIds, dependsOn, objective })), [
     { transformationIds: ['add-worker'], dependsOn: [], objective: 'add: worker' },
     { transformationIds: ['move-routes'], dependsOn: [0], objective: 'move: routes' },
   ]);

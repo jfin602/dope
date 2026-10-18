@@ -60,6 +60,14 @@ test('suggestions are stable proposals, explicit acceptance and many-to-many ref
   assert.deepEqual(suggestions.map(s => s.transformationIds), [['add', 'change'], ['other']]);
   assert.equal(original.workItems.length, 0);
   const first = putWorkItem(original, acceptSuggestion(original, suggestions[0], 'one'));
+  assert.deepEqual(first.workItems[0].acceptanceCriteria, suggestions[0].acceptanceCriteria);
+  assert.equal(first.workItems[0].status, 'proposed');
+  assert.deepEqual(first.workItems[0].humanReservedPaths, suggestions[0].workingSet);
+  assert.throws(() => acceptSuggestion(original, { ...suggestions[0], projectId: 'foreign' }, 'foreign'), /foreign/);
+  assert.throws(() => acceptSuggestion(original, { ...suggestions[0], acceptanceCriteria: [] }, 'empty'), /acceptance/);
+  assert.throws(() => acceptSuggestion(original, { ...suggestions[0], workingSet: ['foreign/path'] }, 'outside'), /grounded/);
+  assert.throws(() => acceptSuggestion(parsePlanningMap({ ...original, transformations: original.transformations.map(t =>
+    t.id === 'add' ? { ...t, futureNodes: [{ ...t.futureNodes[0], name: 'Revised' }] } : t) }), suggestions[0], 'stale'), /Stale/);
   const second = putWorkItem(first, item('two', ['add', 'other']));
   assert.deepEqual(second.workItems.map(w => w.transformationIds), [['add', 'change'], ['add', 'other']]);
   assert.deepEqual(second.transformations, original.transformations);
@@ -75,10 +83,22 @@ test('split preserves references; merge preserves union; dependencies and transi
   assert.throws(() => splitWorkItem(initial, 'one', [item('left', ['add']), item('right', ['add'])]), /preserve/);
   const dependent = putWorkItem(split, { ...item('later', ['other']), dependsOn: ['left'] });
   assert.throws(() => mergeWorkItems(dependent, ['left', 'right'], item('both', ['add', 'change'])), /dependent/);
+  const predecessor = putWorkItem(map(), item('predecessor', ['other']));
+  const withDependency = putWorkItem(predecessor, { ...item('parent', ['add', 'change']), dependsOn: ['predecessor'],
+    workingSet: ['src/human'], humanReservedPaths: ['src/human'] });
+  assert.throws(() => splitWorkItem(withDependency, 'parent', [item('a', ['add']), item('b', ['change'])]), /predecessor/);
+  const preserved = splitWorkItem(withDependency, 'parent', [
+    { ...item('a', ['add']), dependsOn: ['predecessor'], workingSet: ['src/human'], humanReservedPaths: ['src/human'] },
+    { ...item('b', ['change']), dependsOn: ['predecessor'], workingSet: ['src/human'], humanReservedPaths: ['src/human'] }
+  ]);
+  assert.throws(() => mergeWorkItems(preserved, ['a', 'b'], { ...item('both', ['add', 'change']), dependsOn: ['predecessor'] }), /human-reserved/);
+  assert.throws(() => mergeWorkItems(preserved, ['a', 'b'], { ...item('both', ['add', 'change']), humanReservedPaths: ['src/human'], workingSet: ['src/human'] }), /predecessor/);
   const merged = mergeWorkItems(split, ['left', 'right'], item('both', ['add', 'change']));
   assert.deepEqual(merged.workItems[0].transformationIds, ['add', 'change']);
   assert.throws(() => putWorkItem(merged, { ...merged.workItems[0], status: 'completed', completionNotes: 'Done' }), /Illegal/);
-  const ready = putWorkItem(merged, { ...merged.workItems[0], status: 'ready' });
+  assert.throws(() => putWorkItem(merged, { ...merged.workItems[0], status: 'ready' }), /acceptance and validation/);
+  const ready = putWorkItem(merged, { ...merged.workItems[0], status: 'ready',
+    acceptanceCriteria: ['Merged target is implemented'], validationTargets: ['Inspect merged target'] });
   const doing = putWorkItem(ready, { ...ready.workItems[0], status: 'in-progress' });
   const done = putWorkItem(doing, { ...doing.workItems[0], status: 'completed', completionNotes: 'Implemented' });
   assert.equal(done.workItems[0].status, 'completed');
@@ -117,6 +137,32 @@ test('controller shares WorkItem identity across projections and clears it on pr
   physical.workspace = 'file:///B'; for (const listener of listeners) listener();
   assert.equal(controller.selectedWorkItemId, undefined);
   assert.equal(controller.selected, undefined);
+  controller.dispose();
+});
+
+test('checkpoint handoff only exposes reviewed suggestions and acceptance writes a proposed WorkItem', async () => {
+  const physical = { workspace: 'file:///A', onChange: () => ({ dispose() {} }) };
+  let snapshot = { schemaVersion: 1 as const, projectId: 'project', revision: 1, maps: [map()] };
+  let approved = false;
+  const service = { async attach() { return { projectHandle: 'handle', snapshot }; },
+    async suggestApprovedWorkItems() { if (!approved) throw new Error('Target approval required'); return suggestWorkItems(snapshot.maps[0]); },
+    async mutate({ operation }: { operation: { workItem: WorkItem } }) {
+      snapshot = { ...snapshot, revision: snapshot.revision + 1, maps: [putWorkItem(snapshot.maps[0], operation.workItem)] };
+      return snapshot;
+    } };
+  const controller = new PlanningMapController(physical as never, () => service as never);
+  await tick();
+  controller.setPrepareWorkContext({ workspace: 'file:///A', projectId: 'project', checkpointId: 'checkpoint',
+    title: 'Checkpoint', objective: 'Target', requirements: [], impactReferences: [], mapId: 'plan' });
+  controller.requestSuggestions();
+  assert.equal(controller.suggestions, undefined);
+  await assert.rejects(controller.requestApprovedSuggestions([]), /approval/);
+  approved = true;
+  await controller.requestApprovedSuggestions([]);
+  assert.equal(controller.suggestions?.length, 2);
+  assert.equal(snapshot.maps[0].workItems.length, 0);
+  await controller.acceptSuggestion(0);
+  assert.equal(snapshot.maps[0].workItems[0].status, 'proposed');
   controller.dispose();
 });
 

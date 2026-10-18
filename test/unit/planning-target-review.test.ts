@@ -79,6 +79,23 @@ test('target approval requires a fresh preview; reject and concurrent manual map
     } finally { await f.dispose(); }
 });
 
+test('WorkItem suggestions require the exact approved target and remain proposals', async () => {
+    const f = await fixture();
+    try {
+        await assert.rejects(f.review.suggestApprovedWorkItems(), /approval/);
+        const preview = await f.review.preview();
+        await f.review.approve(preview.token, true);
+        const suggestions = await f.review.suggestApprovedWorkItems();
+        assert.deepEqual(suggestions.map(item => item.transformationIds), [['add-core']]);
+        assert.equal(suggestions[0].assignment, 'HUMAN');
+        assert.ok(suggestions[0].acceptanceCriteria.length);
+        assert.equal(f.map.workItems.length, 0);
+        assert.equal(f.mutations, 0);
+        f.setStale(true);
+        await assert.rejects(f.review.suggestApprovedWorkItems(), /approval/);
+    } finally { await f.dispose(); }
+});
+
 test('typed transformation update requires explicit Roadmap relink and re-reviewed target basis', async () => {
     const f = await fixture();
     try {
