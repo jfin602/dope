@@ -313,6 +313,12 @@ test('reconciliation is presented through controller state and closeout is an ex
   assert.match(widget, /Close out Planning Map/);
   assert.match(widget, /projectReconciliationResult/);
   assert.match(widget, /new SingleTextInputDialog\(/);
+  assert.match(widget, /Request approved target WorkItems/);
+  assert.match(widget, /canReviewSuggestions/);
+  assert.match(widget, /canAcceptSuggestion\(index\)/);
+  assert.match(widget, /Suggestion review blocked/);
+  assert.match(widget, /WorkItem edit blocked/);
+  assert.match(widget, /aria-pressed/);
   assert.doesNotMatch(widget, /window\.prompt\(/);
   h.controller.dispose();
 });

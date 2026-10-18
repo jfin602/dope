@@ -824,10 +824,35 @@ export class PhysicalMapWidget extends BaseWidget {
             void this.planning.putWorkItem({ ...item, [field]: list ? csv(answer) : answer.trim() });
         };
         const heading = document.createElement('h3'); heading.textContent = 'Work'; panel.append(heading);
-        button('Suggest from transformations', () => this.planning.requestSuggestions(), !map.transformations.length);
+        line(`Planning source: ${map.id} revision ${map.revision} · Physical generation ${map.basis.physicalGeneration} · ${this.planning.stale?.stale ? 'stale' : this.planning.stale ? 'current' : 'freshness checking'}`);
+        const sourceHashes = Object.entries(map.basisSnapshot?.sourceHashes ?? {});
+        line(`Source evidence: ${sourceHashes.length ? sourceHashes.map(([path, hash]) => `${path} (${hash.slice(0, 12)})`).join('; ') : 'No source hashes recorded on this map'}`);
+        if (this.planning.prepareWorkContext) {
+            const context = this.planning.prepareWorkContext;
+            line(`Checkpoint: ${context.title} · ${context.checkpointId} · ${context.requirements.length} requirements · ${context.impactReferences.length} impact references`);
+            button('Request approved target WorkItems', () => void this.planning.requestApprovedSuggestions([]), !this.planning.canReviewSuggestions);
+        } else button('Suggest from transformations', () => this.planning.requestSuggestions(), !map.transformations.length || !this.planning.stale || this.planning.stale.stale);
+        if (this.planning.suggestionBlocker && this.planning.suggestions?.length) line(`Suggestion review blocked: ${this.planning.suggestionBlocker}`);
         this.planning.suggestions?.forEach((suggestion, index) => {
-            line(`Suggestion ${index + 1}: ${suggestion.objective} · ${suggestion.transformationIds.join(', ')} · ${suggestion.dependsOn.length ? `after ${suggestion.dependsOn.map(i => i + 1).join(', ')}` : 'parallel'}`);
-            button(`Accept suggestion ${index + 1}`, () => void this.planning.acceptSuggestion(index));
+            const selected = this.planning.selectedSuggestionIndex === index;
+            const row = button(`Suggestion ${index + 1}: ${suggestion.objective} · ${suggestion.dependsOn.length ? `after ${suggestion.dependsOn.map(i => i + 1).join(', ')}` : 'parallel'}`,
+                () => this.planning.selectSuggestion(index), selected);
+            row.setAttribute('aria-pressed', String(selected));
+            line(`Source transformations: ${suggestion.transformationIds.join(', ')} · ${suggestion.workingSet.join(', ') || 'no grounded paths'} · ownership ${suggestion.assignment}`);
+            if (selected) {
+                line(`Acceptance: ${suggestion.acceptanceCriteria.join('; ')}`);
+                line(`Validation: ${suggestion.validationTargets.join('; ')}`);
+                button(`Edit suggestion ${index + 1}`, async () => {
+                    const objective = await this.ask('WorkItem objective', suggestion.objective);
+                    if (objective === undefined) return;
+                    const acceptance = await this.ask('Acceptance criteria, comma separated', suggestion.acceptanceCriteria.join(', '));
+                    if (acceptance === undefined) return;
+                    const validation = await this.ask('Validation targets, comma separated', suggestion.validationTargets.join(', '));
+                    if (validation !== undefined) this.planning.editSuggestion(index, objective, csv(acceptance), csv(validation));
+                }, !!this.planning.suggestionBlocker);
+            }
+            button(`Accept suggestion ${index + 1}`, () => void this.planning.acceptSuggestion(index), !this.planning.canAcceptSuggestion(index));
+            button(`Reject suggestion ${index + 1}`, () => this.planning.rejectSuggestion(index), !!this.planning.suggestionBlocker || this.planning.isSuggestionAccepted(index));
             button(`Split suggestion ${index + 1}`, async () => {
                 const first = await this.ask('First part transformation IDs, comma separated', suggestion.transformationIds.join(', '));
                 if (first === undefined) return;
@@ -835,20 +860,27 @@ export class PhysicalMapWidget extends BaseWidget {
                 if (second === undefined) return;
                 try { this.planning.splitSuggestion(index, [csv(first), csv(second)]); }
                 catch (error) { this.status.textContent = String(error); }
-            });
+            }, !!this.planning.suggestionBlocker || this.planning.isSuggestionAccepted(index));
         });
         line(`WorkItems: ${map.workItems.length}`);
-        for (const item of map.workItems) button(`${item.title} · ${item.status}${item.dependsOn.length ? ` · after ${item.dependsOn.join(', ')}` : ' · parallel'}`,
-            () => this.planning.selectWorkItem(item.id), item.id === this.planning.selectedWorkItemId);
+        for (const item of map.workItems) {
+            const selected = item.id === this.planning.selectedWorkItemId;
+            const control = button(`${item.title} · ${item.status}${item.dependsOn.length ? ` · after ${item.dependsOn.join(', ')}` : ' · parallel'}`,
+                () => this.planning.selectWorkItem(item.id), selected);
+            control.setAttribute('aria-pressed', String(selected));
+            if (this.planning.selectedTransformationId && item.transformationIds.includes(this.planning.selectedTransformationId)) control.classList.add('dope-work-highlight');
+        }
         line(`Transformations: ${map.transformations.map(change => change.id).join(', ') || 'none'}`);
         for (const change of map.transformations) {
             const control = button(`${change.id} · ${change.adopted ? 'adopted' : 'still planned'}${map.workItems.some(item => item.transformationIds.includes(change.id)) ? ' · linked' : ''}`,
                 () => this.planning.selectTransformation(change.id), change.id === this.planning.selectedTransformationId);
-            if (this.planning.selectedWorkItem?.transformationIds.includes(change.id)) control.classList.add('dope-work-highlight');
+            if (this.planning.selectedWorkItem?.transformationIds.includes(change.id) ||
+                this.planning.suggestions?.[this.planning.selectedSuggestionIndex ?? -1]?.transformationIds.includes(change.id)) control.classList.add('dope-work-highlight');
         }
         if (this.planning.selectedTransformationId) line(`Linked WorkItems: ${this.planning.linkedWorkItems.map(item => item.title).join(', ') || 'none'}`);
         const item = this.planning.selectedWorkItem;
         if (!item) return;
+        if (this.planning.workItemBlocker) line(`WorkItem edit blocked: ${this.planning.workItemBlocker}`);
         line(`Selected ${item.id} · ${item.status} · transformations ${item.transformationIds.join(', ')}`);
         line(`Ownership: ${item.assignment ?? 'HUMAN'} · delegable: ${item.delegablePaths?.join(', ') || 'none'} · human reserved: ${item.humanReservedPaths?.join(', ') || 'none'}`);
         button('Edit ownership and scope', async () => {
@@ -863,7 +895,7 @@ export class PhysicalMapWidget extends BaseWidget {
             const reserved = assignment === 'HUMAN' ? [...item.workingSet] : csv(reservedAnswer);
             void this.planning.putWorkItem({ ...item, assignment: assignment as WorkItem['assignment'],
                 delegablePaths: delegable, humanReservedPaths: reserved });
-        });
+        }, !!this.planning.workItemBlocker);
         button('Launch Work', async () => {
             const projectId = this.planning.collection?.projectId, projectRevision = this.planning.collection?.revision;
             const mapId = this.planning.selected?.id, mapRevision = this.planning.selected?.revision;
@@ -898,7 +930,7 @@ export class PhysicalMapWidget extends BaseWidget {
             'transformationIds', 'dependsOn'] as const) {
             const value = item[field];
             line(`${field}: ${Array.isArray(value) ? value.join(', ') || 'none' : value}`);
-            button(`Edit ${field}`, () => edit(field, Array.isArray(value) ? value.join(', ') : value, Array.isArray(value)));
+            button(`Edit ${field}`, () => edit(field, Array.isArray(value) ? value.join(', ') : value, Array.isArray(value)), !!this.planning.workItemBlocker);
         }
         button('Split WorkItem', async () => {
             const first = await this.ask('First part transformation IDs, comma separated', item.transformationIds.join(', '));
@@ -909,7 +941,7 @@ export class PhysicalMapWidget extends BaseWidget {
                 id: `work-${crypto.randomUUID()}`, title: `${item.title} ${index + 1}`, transformationIds: csv(refs), status: 'proposed',
                 completionNotes: undefined })) as [WorkItem, WorkItem];
             void this.planning.splitWorkItem(item.id, parts);
-        }, item.status === 'completed' || item.status === 'cancelled');
+        }, !!this.planning.workItemBlocker || item.status === 'completed' || item.status === 'cancelled');
         button('Merge WorkItem', async () => {
             const otherId = await this.ask('Other WorkItem ID');
             const other = map.workItems.find(work => work.id === otherId);
@@ -923,9 +955,11 @@ export class PhysicalMapWidget extends BaseWidget {
                 workingSet: [...new Set([...item.workingSet, ...other.workingSet])],
                 transformationIds: [...new Set([...item.transformationIds, ...other.transformationIds])],
                 dependsOn: [...new Set([...item.dependsOn, ...other.dependsOn])].filter(id => id !== item.id && id !== other.id),
+                assignment: 'HUMAN', delegablePaths: [],
+                humanReservedPaths: [...new Set([...item.workingSet, ...other.workingSet])],
                 status: 'proposed', completionNotes: undefined };
             void this.planning.mergeWorkItems([item.id, other.id], merged);
-        }, item.status === 'completed' || item.status === 'cancelled');
+        }, !!this.planning.workItemBlocker || item.status === 'completed' || item.status === 'cancelled');
         const transitions: Record<WorkItem['status'], WorkItem['status'][]> = {
             proposed: ['ready', 'cancelled'], ready: ['in-progress', 'cancelled'],
             'in-progress': ['ready', 'completed', 'cancelled'], completed: [], cancelled: []
@@ -934,9 +968,9 @@ export class PhysicalMapWidget extends BaseWidget {
             const notes = status === 'completed' ? await this.ask('Completion notes (validation is tracked separately)') : undefined;
             if (status === 'completed' && !notes?.trim()) return;
             void this.planning.transitionWorkItem(status, notes?.trim());
-        });
+        }, !!this.planning.workItemBlocker);
         if (item.completionNotes) line(`Completion notes: ${item.completionNotes}`);
-        if (item.status === 'completed') button('Edit completion notes', () => edit('completionNotes', item.completionNotes ?? ''));
+        if (item.status === 'completed') button('Edit completion notes', () => edit('completionNotes', item.completionNotes ?? ''), !!this.planning.workItemBlocker);
     }
 
     private async openSource(edge = false): Promise<void> {

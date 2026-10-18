@@ -11,6 +11,8 @@ const { affectedArchitecture, transformationsForArchitecture } = require('../../
   typeof import('../../packages/theia-extension/src/browser/planning-work-projection.ts');
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
 const basis = { architectureRevision: 0, architectureFingerprint: 'arch', physicalInputFingerprint: 'source', physicalGeneration: 1 };
+const fresh = { schemaVersion: 1 as const, stale: false, architectureChanged: false, physicalChanged: false,
+  affectedTransformationIds: [], affectedBranchIds: [], conflicts: [] };
 const map = (): PlanningMap => parsePlanningMap({ schemaVersion: 1, id: 'plan', projectId: 'project', title: 'Plan', objective: 'Target',
   status: 'active', revision: 0, history: [], basis, transformations: [
     { id: 'add', kind: 'add', currentIds: [], futureNodes: [{ id: 'new', kind: 'component', parentId: 'sub', name: 'New', purpose: 'Do', roots: [] }], dependsOn: [] },
@@ -118,14 +120,14 @@ test('controller shares WorkItem identity across projections and clears it on pr
   const physical = { workspace: 'file:///A', status: { state: 'ready', generation: 1, inputFingerprint: 'source' },
     initialization: { declarationFingerprint: 'arch' }, onChange(listener: () => void) { listeners.add(listener); return { dispose() { listeners.delete(listener); } }; } };
   let snapshot = { schemaVersion: 1 as const, projectId: 'project', revision: 1, maps: [map()] };
-  const service = { async attach() { return { projectHandle: 'handle', snapshot }; }, async read() { return snapshot; },
+  const service = { async attach() { return { projectHandle: 'handle', snapshot }; }, async read() { return snapshot; }, async staleness() { return fresh; },
     async mutate({ operation }: { operation: { type: string; workItem?: WorkItem } }) {
       if (operation.type === 'put-work-item' && operation.workItem) snapshot = { ...snapshot, revision: snapshot.revision + 1,
         maps: [putWorkItem(snapshot.maps[0], operation.workItem)] };
       return snapshot;
     } };
   const controller = new PlanningMapController(physical as never, () => service as never);
-  await tick(); controller.requestSuggestions(); assert.equal(controller.selected?.workItems.length, 0);
+  await tick(); await controller.refreshStale(); controller.requestSuggestions(); assert.equal(controller.selected?.workItems.length, 0);
   await controller.acceptSuggestion(0);
   const selected = controller.selectedWorkItemId;
   assert.ok(selected);
@@ -141,10 +143,11 @@ test('controller shares WorkItem identity across projections and clears it on pr
 });
 
 test('checkpoint handoff only exposes reviewed suggestions and acceptance writes a proposed WorkItem', async () => {
-  const physical = { workspace: 'file:///A', onChange: () => ({ dispose() {} }) };
+  const physical = { workspace: 'file:///A', status: { state: 'ready', generation: 1, inputFingerprint: 'source' },
+    initialization: { declarationFingerprint: 'arch' }, onChange: () => ({ dispose() {} }) };
   let snapshot = { schemaVersion: 1 as const, projectId: 'project', revision: 1, maps: [map()] };
   let approved = false;
-  const service = { async attach() { return { projectHandle: 'handle', snapshot }; },
+  const service = { async attach() { return { projectHandle: 'handle', snapshot }; }, async staleness() { return fresh; },
     async suggestApprovedWorkItems() { if (!approved) throw new Error('Target approval required'); return suggestWorkItems(snapshot.maps[0]); },
     async mutate({ operation }: { operation: { workItem: WorkItem } }) {
       snapshot = { ...snapshot, revision: snapshot.revision + 1, maps: [putWorkItem(snapshot.maps[0], operation.workItem)] };
@@ -156,9 +159,11 @@ test('checkpoint handoff only exposes reviewed suggestions and acceptance writes
     title: 'Checkpoint', objective: 'Target', requirements: [], impactReferences: [], mapId: 'plan' });
   controller.requestSuggestions();
   assert.equal(controller.suggestions, undefined);
-  await assert.rejects(controller.requestApprovedSuggestions([]), /approval/);
+  await controller.requestApprovedSuggestions([]);
+  assert.match(controller.error, /approval/);
   approved = true;
   await controller.requestApprovedSuggestions([]);
+  await controller.refreshStale();
   assert.equal(controller.suggestions?.length, 2);
   assert.equal(snapshot.maps[0].workItems.length, 0);
   await controller.acceptSuggestion(0);
@@ -168,18 +173,19 @@ test('checkpoint handoff only exposes reviewed suggestions and acceptance writes
 
 test('split suggestions retain source refs and expose both predecessor dependencies', async () => {
   const listeners = new Set<() => void>();
-  const physical = { workspace: 'file:///A', onChange(listener: () => void) { listeners.add(listener); return { dispose() { listeners.delete(listener); } }; } };
+  const physical = { workspace: 'file:///A', status: { state: 'ready', generation: 1, inputFingerprint: 'source' },
+    initialization: { declarationFingerprint: 'arch' }, onChange(listener: () => void) { listeners.add(listener); return { dispose() { listeners.delete(listener); } }; } };
   let snapshot = { schemaVersion: 1 as const, projectId: 'project', revision: 1,
     maps: [parsePlanningMap({ ...map(), transformations: map().transformations.map(change =>
       change.id === 'other' ? { ...change, dependsOn: ['change'] } : change) })] };
-  const service = { async attach() { return { projectHandle: 'handle', snapshot }; },
+  const service = { async attach() { return { projectHandle: 'handle', snapshot }; }, async staleness() { return fresh; },
     async mutate({ operation }: { operation: { type: string; workItem?: WorkItem } }) {
       if (operation.workItem) snapshot = { ...snapshot, revision: snapshot.revision + 1,
         maps: [putWorkItem(snapshot.maps[0], operation.workItem)] };
       return snapshot;
     } };
   const controller = new PlanningMapController(physical as never, () => service as never);
-  await tick(); controller.requestSuggestions();
+  await tick(); await controller.refreshStale(); controller.requestSuggestions();
   controller.splitSuggestion(0, [['add'], ['change']]);
   assert.deepEqual(controller.suggestions?.map(s => s.transformationIds), [['add'], ['change'], ['other']]);
   assert.deepEqual(controller.suggestions?.[2].dependsOn, [0, 1]);
@@ -189,4 +195,49 @@ test('split suggestions retain source refs and expose both predecessor dependenc
   assert.equal(controller.selected?.workItems.length, 3);
   assert.equal(controller.selected?.workItems.find(w => w.transformationIds[0] === 'other')?.dependsOn.length, 2);
   controller.dispose();
+});
+
+test('suggestion review is editable, dependency ordered, rejectable and blocked by stale basis', async () => {
+  const physical = { workspace: 'file:///A', status: { state: 'ready', generation: 1, inputFingerprint: 'source' },
+    initialization: { declarationFingerprint: 'arch' }, onChange: () => ({ dispose() {} }) };
+  let snapshot = { schemaVersion: 1 as const, projectId: 'project', revision: 1, maps: [map()] };
+  let writes = 0;
+  const service = { async attach() { return { projectHandle: 'handle', snapshot }; }, async read() { return snapshot; },
+    async staleness() { return fresh; }, async mutate({ operation }: { operation: { workItem: WorkItem } }) {
+      writes++;
+      snapshot = { ...snapshot, revision: snapshot.revision + 1, maps: [putWorkItem(snapshot.maps[0], operation.workItem)] };
+      return snapshot;
+    } };
+  const controller = new PlanningMapController(physical as never, () => service as never);
+  await tick(); await controller.refreshStale(); controller.requestSuggestions();
+  controller.splitSuggestion(0, [['add'], ['change']]);
+  assert.equal(controller.canAcceptSuggestion(1), false);
+  await controller.acceptSuggestion(1);
+  assert.equal(writes, 0);
+  assert.match(controller.error, /predecessor/);
+  controller.editSuggestion(0, 'Reviewed objective', ['Reviewed acceptance'], ['Reviewed validation']);
+  controller.selectSuggestion(0);
+  assert.deepEqual(controller.suggestions?.[0].acceptanceCriteria, ['Reviewed acceptance']);
+  controller.rejectSuggestion(0);
+  assert.match(controller.error, /dependent/);
+  controller.stale = { ...fresh, stale: true };
+  assert.equal(controller.canAcceptSuggestion(0), false);
+  await controller.acceptSuggestion(0);
+  assert.equal(writes, 0);
+  controller.stale = fresh;
+  await controller.acceptSuggestion(0);
+  assert.equal(writes, 1);
+  assert.equal(snapshot.maps[0].workItems[0].title, 'Reviewed objective');
+  assert.equal(snapshot.maps[0].workItems[0].assignment, 'HUMAN');
+  assert.equal(controller.canLaunchWork, false);
+  controller.stale = { ...fresh, stale: true };
+  await controller.putWorkItem({ ...snapshot.maps[0].workItems[0], title: 'Blocked edit' });
+  assert.equal(writes, 1);
+  assert.match(controller.error, /stale/);
+  controller.dispose();
+  const restored = new PlanningMapController(physical as never, () => service as never);
+  await tick();
+  assert.equal(restored.selected?.workItems[0].title, 'Reviewed objective');
+  assert.equal(restored.suggestions, undefined);
+  restored.dispose();
 });

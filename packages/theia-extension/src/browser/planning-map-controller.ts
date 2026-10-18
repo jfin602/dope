@@ -37,8 +37,10 @@ export class PlanningMapController {
     linkedTasks: AgentTask[] = [];
     launchingWork = false;
     selectedTransformationId?: string;
+    selectedSuggestionIndex?: number;
     suggestions?: WorkItemSuggestion[];
     private approvedSuggestionContext?: PlanningMapController['prepareWorkContext'];
+    private suggestionMapRevision?: number;
     private acceptedSuggestionIds = new Map<number, string>();
     planningMode = false;
     view: PlanningView = 'diff';
@@ -86,11 +88,11 @@ export class PlanningMapController {
     }
     select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
         if (this.prepareWorkContext?.mapId !== id) this.prepareWorkContext = undefined;
-        this.selectedWorkItemId = undefined; this.linkedTasks = []; this.selectedTransformationId = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
+        this.selectedWorkItemId = undefined; this.linkedTasks = []; this.selectedTransformationId = undefined; this.selectedSuggestionIndex = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
     clearSelection(): void {
         this.selectedMapId = undefined; this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined;
         this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined;
-        this.stale = undefined; this.suggestions = undefined; this.notify();
+        this.stale = undefined; this.suggestions = undefined; this.selectedSuggestionIndex = undefined; this.notify();
     }
     /** Fresh owner read for exact Session navigation; leaves Planning presentation and drafts untouched. */
     async navigationMap(id: string): Promise<PlanningMap | undefined> {
@@ -149,7 +151,7 @@ export class PlanningMapController {
                 expectedMapRevision: map.revision, expectedBasis: preview.result.oldBasis,
                 expectedCurrentBasis: preview.result.currentBasis, decisions: preview.decisions });
             if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
-            this.collection = snapshot; this.rebasePreview = undefined; this.stale = undefined; this.suggestions = undefined; void this.refreshStale();
+            this.collection = snapshot; this.rebasePreview = undefined; this.stale = undefined; this.suggestions = undefined; this.selectedSuggestionIndex = undefined; void this.refreshStale();
         } catch (error) { if (request === this.request && !this.disposed) this.error = String(error); }
         finally { if (request === this.request && !this.disposed) { this.loading = false; this.notify(); } }
     }
@@ -215,19 +217,91 @@ export class PlanningMapController {
             this.notify(); return;
         }
         this.suggestions = this.selected ? suggestWorkItems(this.selected) : [];
+        this.suggestionMapRevision = this.selected?.revision; this.selectedSuggestionIndex = undefined;
         this.acceptedSuggestionIds.clear(); this.notify(); }
     async requestApprovedSuggestions(branchIds: string[]): Promise<void> {
         const context = this.prepareWorkContext, map = this.selected, connection = this.connection, handle = this.handle;
         if (!context || !map || !connection || !handle || context.workspace !== this.workspace ||
-            context.projectId !== map.projectId || context.mapId !== map.id) throw new Error('Select the linked checkpoint Planning Map');
-        const suggestions = await connection.suggestApprovedWorkItems(handle, context.checkpointId, branchIds);
-        if (this.prepareWorkContext !== context || this.selected?.id !== map.id || this.workspace !== context.workspace) return;
-        this.suggestions = suggestions; this.approvedSuggestionContext = context;
-        this.acceptedSuggestionIds.clear(); this.error = ''; this.notify();
+            context.projectId !== map.projectId || context.mapId !== map.id) { this.error = 'Select the linked checkpoint Planning Map'; this.notify(); return; }
+        this.loading = true; this.error = ''; this.notify();
+        try {
+            const suggestions = await connection.suggestApprovedWorkItems(handle, context.checkpointId, branchIds);
+            if (this.prepareWorkContext !== context || this.selected?.id !== map.id ||
+                this.selected.revision !== map.revision || this.workspace !== context.workspace) return;
+            this.suggestions = suggestions; this.approvedSuggestionContext = context;
+            this.suggestionMapRevision = map.revision;
+            this.selectedSuggestionIndex = undefined;
+            this.acceptedSuggestionIds.clear();
+        } catch (error) { this.error = String(error); this.suggestions = undefined; }
+        finally { this.loading = false; this.notify(); }
+    }
+    get canReviewSuggestions(): boolean {
+        const map = this.selected, context = this.prepareWorkContext;
+        return !!(map && (map.status === 'draft' || map.status === 'active') && context && context.workspace === this.workspace && context.projectId === map.projectId &&
+            context.mapId === map.id && !this.loading && this.stale && !this.stale.stale && this.basisMatches(map));
+    }
+    get suggestionBlocker(): string | undefined {
+        const map = this.selected;
+        if (!map) return 'Select a Planning Map';
+        if (map.status !== 'draft' && map.status !== 'active') return 'Planning Map is closed for preparation';
+        if (this.loading) return 'Planning Map is busy';
+        if (!this.stale || this.stale.stale || !this.basisMatches(map)) return 'Physical Map basis is stale or unavailable; refresh or rebase';
+        if (this.prepareWorkContext && (this.approvedSuggestionContext !== this.prepareWorkContext ||
+            this.prepareWorkContext.mapId !== map.id || this.prepareWorkContext.projectId !== map.projectId))
+            return 'Request suggestions for the approved current checkpoint target';
+        if (this.suggestionMapRevision === undefined || map.revision !== this.suggestionMapRevision)
+            return 'Planning target changed; request suggestions again';
+        return undefined;
+    }
+    get workItemBlocker(): string | undefined {
+        const map = this.selected, context = this.prepareWorkContext;
+        if (!map || this.loading || !this.stale || this.stale.stale || !this.basisMatches(map))
+            return 'Planning Map or Physical Map basis is stale or unavailable';
+        if (map.status !== 'draft' && map.status !== 'active') return 'Planning Map is closed for editing';
+        if (context && (context.workspace !== this.workspace || context.projectId !== map.projectId || context.mapId !== map.id))
+            return 'Checkpoint scope changed; review the linked Planning Map';
+        return undefined;
+    }
+    canAcceptSuggestion(index: number): boolean {
+        const suggestion = this.suggestions?.[index];
+        return !!(suggestion && !this.suggestionBlocker && !this.isSuggestionAccepted(index) &&
+            suggestion.dependsOn.every(i => !!this.suggestionWorkItemId(i)));
+    }
+    private suggestionWorkItemId(index: number): string | undefined {
+        const suggestion = this.suggestions?.[index];
+        return this.acceptedSuggestionIds.get(index) ?? (suggestion && this.selected?.workItems.find(item =>
+            item.status !== 'cancelled' && item.transformationIds.join('|') === suggestion.transformationIds.join('|'))?.id);
+    }
+    isSuggestionAccepted(index: number): boolean { return !!this.suggestionWorkItemId(index); }
+    rejectSuggestion(index: number): void {
+        if (!this.suggestions?.[index] || this.isSuggestionAccepted(index)) return;
+        if (this.suggestions.some((suggestion, i) => i !== index && suggestion.dependsOn.includes(index))) {
+            this.error = 'Reject dependent suggestions first'; this.notify(); return;
+        }
+        this.suggestions.splice(index, 1);
+        if (this.selectedSuggestionIndex === index) this.selectedSuggestionIndex = undefined;
+        else if (this.selectedSuggestionIndex !== undefined && this.selectedSuggestionIndex > index) this.selectedSuggestionIndex--;
+        this.suggestions = this.suggestions.map(suggestion => ({ ...suggestion,
+            dependsOn: suggestion.dependsOn.map(i => i > index ? i - 1 : i) }));
+        this.acceptedSuggestionIds = new Map([...this.acceptedSuggestionIds].map(([i, id]) => [i > index ? i - 1 : i, id]));
+        this.error = ''; this.notify();
+    }
+    editSuggestion(index: number, objective: string, acceptanceCriteria: string[], validationTargets: string[]): void {
+        const suggestion = this.suggestions?.[index];
+        if (!suggestion || this.isSuggestionAccepted(index) || !objective.trim() ||
+            !acceptanceCriteria.length || !validationTargets.length) {
+            this.error = 'Suggestion needs an objective, acceptance criteria and validation targets'; this.notify(); return;
+        }
+        this.suggestions![index] = { ...suggestion, objective: objective.trim(), acceptanceCriteria, validationTargets };
+        this.error = ''; this.notify();
+    }
+    selectSuggestion(index: number): void {
+        this.selectedSuggestionIndex = this.suggestions?.[index] ? index : undefined;
+        this.selectedWorkItemId = undefined; this.selectedTransformationId = undefined; this.notify();
     }
     splitSuggestion(index: number, parts: [string[], string[]]): void {
         const suggestion = this.suggestions?.[index];
-        if (!suggestion || this.acceptedSuggestionIds.has(index) || parts.some(part => !part.length || part.some(id => !suggestion.transformationIds.includes(id))) ||
+        if (!suggestion || this.isSuggestionAccepted(index) || parts.some(part => !part.length || part.some(id => !suggestion.transformationIds.includes(id))) ||
             suggestion.transformationIds.some(id => !parts.some(part => part.includes(id)))) throw new Error('Invalid suggestion split');
         const split = parts.map((refs, part) => {
             const selectedRefs = [...new Set(refs)].sort(), selected = this.selected!.transformations.filter(t => selectedRefs.includes(t.id));
@@ -249,30 +323,39 @@ export class PlanningMapController {
         this.notify();
     }
     selectWorkItem(id?: string): void { this.selectedWorkItemId = this.selected?.workItems.some(item => item.id === id) ? id : undefined;
+        this.selectedSuggestionIndex = undefined;
         this.selectedTransformationId = undefined; this.linkedTasks = []; this.notify(); void this.refreshLinkedTasks(); }
     selectTransformation(id?: string): void { this.selectedTransformationId = this.selected?.transformations.some(item => item.id === id) ? id : undefined;
+        this.selectedSuggestionIndex = undefined;
         this.selectedWorkItemId = undefined; this.notify(); }
     get linkedWorkItems(): WorkItem[] { return this.selected?.workItems.filter(item => item.transformationIds.includes(this.selectedTransformationId ?? '')) ?? []; }
     async acceptSuggestion(index: number): Promise<void> {
         const map = this.selected, suggestion = this.suggestions?.[index];
         if (!map || !suggestion) return;
-        if (this.prepareWorkContext && this.approvedSuggestionContext !== this.prepareWorkContext) {
-            this.error = 'Approve the current target before accepting a WorkItem suggestion'; this.notify(); return;
-        }
-        const dependencies = suggestion.dependsOn.map(i => this.acceptedSuggestionIds.get(i) ?? map.workItems.find(item =>
-            this.suggestions?.[i] && item.transformationIds.join('|') === this.suggestions[i].transformationIds.join('|'))?.id)
+        if (!this.canAcceptSuggestion(index)) { this.error = this.suggestionBlocker ?? 'Accept predecessor suggestions first'; this.notify(); return; }
+        const dependencies = suggestion.dependsOn.map(i => this.suggestionWorkItemId(i))
             .filter((id): id is string => !!id);
         if (dependencies.length !== suggestion.dependsOn.length) { this.error = 'Accept predecessor suggestions first'; this.notify(); return; }
-        const item = { ...acceptSuggestion(map, suggestion, `work-${crypto.randomUUID()}`), dependsOn: dependencies };
+        let item: WorkItem;
+        try { item = { ...acceptSuggestion(map, suggestion, `work-${crypto.randomUUID()}`), dependsOn: dependencies }; }
+        catch (error) { this.error = String(error); this.notify(); return; }
         await this.mutate({ type: 'put-work-item', mapId: map.id, workItem: item });
-        if (this.selected?.workItems.some(work => work.id === item.id)) { this.acceptedSuggestionIds.set(index, item.id); this.selectWorkItem(item.id); }
+        if (this.selected?.workItems.some(work => work.id === item.id)) {
+            this.suggestionMapRevision = this.selected.revision;
+            this.acceptedSuggestionIds.set(index, item.id); this.selectWorkItem(item.id);
+        }
+    }
+    private mutateWorkItem(operation: PlanningOperation): Promise<void> {
+        const blocker = this.workItemBlocker;
+        if (blocker) { this.error = blocker; this.notify(); return Promise.resolve(); }
+        return this.mutate(operation);
     }
     putWorkItem(item: WorkItem): Promise<void> { return this.selected ?
-        this.mutate({ type: 'put-work-item', mapId: this.selected.id, workItem: item }) : Promise.resolve(); }
+        this.mutateWorkItem({ type: 'put-work-item', mapId: this.selected.id, workItem: item }) : Promise.resolve(); }
     splitWorkItem(sourceId: string, parts: [WorkItem, WorkItem]): Promise<void> { return this.selected ?
-        this.mutate({ type: 'split-work-item', mapId: this.selected.id, sourceId, parts }) : Promise.resolve(); }
+        this.mutateWorkItem({ type: 'split-work-item', mapId: this.selected.id, sourceId, parts }) : Promise.resolve(); }
     mergeWorkItems(sourceIds: [string, string], merged: WorkItem): Promise<void> { return this.selected ?
-        this.mutate({ type: 'merge-work-items', mapId: this.selected.id, sourceIds, merged }) : Promise.resolve(); }
+        this.mutateWorkItem({ type: 'merge-work-items', mapId: this.selected.id, sourceIds, merged }) : Promise.resolve(); }
     transitionWorkItem(status: WorkStatus, completionNotes?: string): Promise<void> {
         const item = this.selectedWorkItem;
         return item ? this.putWorkItem({ ...item, status, ...(status === 'completed' ? { completionNotes } : { completionNotes: undefined }) }) : Promise.resolve();
@@ -375,6 +458,7 @@ export class PlanningMapController {
         this.linkedTasks = [];
         this.selectedTransformationId = undefined;
         this.suggestions = undefined;
+        this.selectedSuggestionIndex = undefined;
         this.acceptedSuggestionIds.clear();
         this.preview = undefined;
         this.adoptionPreview = undefined;
@@ -417,6 +501,7 @@ export class PlanningMapController {
             void this.refreshLinkedTasks();
             if (!this.selected?.transformations.some(item => item.id === this.selectedTransformationId)) this.selectedTransformationId = undefined;
             this.suggestions = undefined;
+            this.selectedSuggestionIndex = undefined;
             this.acceptedSuggestionIds.clear();
             if (!this.showHistory && this.selected && !this.visibleMaps.includes(this.selected)) this.selectedMapId = this.visibleMaps[0]?.id;
             this.error = '';
@@ -434,7 +519,9 @@ export class PlanningMapController {
             if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
             this.collection = snapshot;
             this.stale = undefined;
-            if (operation.type === 'put-transformation' || operation.type === 'remove-transformation' || operation.type === 'undo' || operation.type === 'redo') this.suggestions = undefined;
+            if (operation.type === 'put-transformation' || operation.type === 'remove-transformation' || operation.type === 'undo' || operation.type === 'redo') {
+                this.suggestions = undefined; this.selectedSuggestionIndex = undefined;
+            }
             if (operation.type === 'create') this.selectedMapId = operation.id;
             if (operation.type === 'duplicate') this.selectedMapId = operation.newId;
             if (!this.showHistory && this.selected && !this.visibleMaps.includes(this.selected)) this.selectedMapId = this.visibleMaps[0]?.id;
