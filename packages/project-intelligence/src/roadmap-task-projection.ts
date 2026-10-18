@@ -179,7 +179,8 @@ export function projectRoadmapTasks(index: RoadmapIndex, stacks: readonly TaskSt
 /** An adapter may supply this only after Work, runner and Git reconciliation has checked the checkpoint. */
 export interface PhaseFocusCheckpointEvidence {
     projectId: string; stackPath: string; stackFingerprint: string; entryNumber: number;
-    sha: string; taskId?: string; runId?: string; manualGate?: boolean; verified: boolean;
+    sha: string; promptFingerprint?: string; taskId?: string; runId?: string;
+    runnerReport?: string; manualGate?: boolean; verified: boolean;
 }
 export interface PhaseFocusQualificationEvidence {
     projectId: string; stackPath: string; promptNumber: number; promptFingerprint: string;
@@ -286,8 +287,9 @@ export function selectPhaseFocus(index: RoadmapIndex, stacks: readonly TaskStack
             const matching = checkpoints.filter(item => item.verified && item.projectId === index.projectId &&
                 item.stackPath === stack.path && item.stackFingerprint === stack.fingerprint &&
                 item.entryNumber === prompt.number && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(item.sha) &&
+                (item.promptFingerprint === undefined || item.promptFingerprint === prompt.fingerprint) &&
                 (manualGate ? item.manualGate === true :
-                    !!item.taskId && !!item.runId));
+                    !!item.taskId && !!item.runId || !!item.runnerReport && !item.taskId && !item.runId));
             const candidate = matching.length === 1 ? matching[0] : undefined;
             const checkpoint = candidate && prompt.number === completedPrefix + 1 && !seenSha.has(candidate.sha)
                 ? candidate : undefined;

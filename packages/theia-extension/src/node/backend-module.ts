@@ -53,6 +53,8 @@ import { discoverRoadmapCandidates, previewRoadmapImport } from '@dope/project-i
 import { discoverRoadmapTaskStacks } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import { resolveRoadmapPromptSource } from './roadmap-prompt-open';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
+import { readPhaseFocusEvidence } from './phase-focus-evidence';
+import { roadmapPhaseNumber } from '@dope/project-intelligence/lib/roadmap-phase-association';
 import { createRoadmapActionRuntime } from './roadmap-action-runtime';
 import { RoadmapPlanningLinks } from './roadmap-planning-links';
 
@@ -97,7 +99,11 @@ export default new ContainerModule(bind => {
                 (root, projectId) => client.notifyLinkedDocumentChanged(root, projectId));
             const off = store.onChange(change => client.notifyRoadmapChanged(change));
             const offDraft = greenfield.onChange(change => client.notifyDraftChanged(change));
-            client.onDidCloseConnection(() => { off(); offDraft(); observer.dispose(); for (const handle of handles) actions.detach(handle);
+            const offAgent = context.container.get(AgentStore).onChange((root, change) => {
+                if (change.kind === 'sequence' || change.kind === 'run' || change.kind === 'task')
+                    client.notifyPhaseFocusEvidenceChanged(root);
+            });
+            client.onDidCloseConnection(() => { off(); offDraft(); offAgent(); observer.dispose(); for (const handle of handles) actions.detach(handle);
                 dispose(); });
             const backend: RoadmapService = {
                 beginDraft: async uri => { const result = await greenfield.begin(await context.container.get(PlanningStore).root(uri));
@@ -152,6 +158,21 @@ export default new ContainerModule(bind => {
                         if (error instanceof Error && error.message.startsWith('Tasks folder not found:')) return [];
                         throw error;
                     }
+                },
+                phaseFocusEvidence: async (uri, expectedProjectId, phaseId) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    const index = await store.read(root);
+                    if (index.projectId !== expectedProjectId || index.projectRoot !== root)
+                        throw new Error('Phase Focus project identity changed');
+                    const phase = index.checkpoints.find(item => item.id === phaseId && item.kind === 'phase');
+                    const number = phase && roadmapPhaseNumber(phase.title);
+                    if (number === undefined) throw new Error('Phase Focus phase changed');
+                    const stacks = await discoverRoadmapTaskStacks(root).catch(error => {
+                        if (error instanceof Error && error.message.startsWith('Tasks folder not found:')) return [];
+                        throw error;
+                    });
+                    return readPhaseFocusEvidence(root, index, stacks.filter(item => item.phase === number),
+                        context.container.get(AgentStore));
                 },
                 resolvePromptSource: async (uri, path, fingerprint) => resolveRoadmapPromptSource(
                     await context.container.get(PlanningStore).root(uri), path, fingerprint),

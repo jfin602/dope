@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "projectId": "f2b6f3d2-1f40-4c9d-b7bc-cbd3cf36a4d4",
+  "projectRoot": "/home/jfin/dev/dope",
+  "revision": 2,
+  "checkpoints": [
+    {
+      "id": "roadmap:ROADMAP.md#phase-11",
+      "kind": "phase",
+      "title": "Phase 11 — Human-Centered Development Workflow",
+      "objective": "Phase Focus evidence qualification in the original project.",
+      "order": 11,
+      "dependencies": [],
+      "links": [],
+      "status": "not-implemented",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+        "line": 3,
+        "text": "## Phase 11 — Human-Centered Development Workflow"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+          "line": 3,
+          "text": "Status: NOT IMPLEMENTED",
+          "status": "not-implemented",
+          "statusText": "Status: NOT IMPLEMENTED"
+        },
+        {
+          "path": "docs/planning/p11/baseline.md",
+          "sha256": "e4f0ae7a512753679f86ce90c0449a133438fec079c389c9ef36b6868d9a9e06",
+          "line": 4,
+          "text": "**Status:** **VERSION BASELINE ESTABLISHED / DESIGN APPROVED / PHASE 11 NOT ACTIVATED OR QUALIFIED**",
+          "status": "not-implemented",
+          "statusText": "**Status:** **VERSION BASELINE ESTABLISHED / DESIGN APPROVED / PHASE 11 NOT ACTIVATED OR QUALIFIED**"
+        },
+        {
+          "path": "docs/planning/p11/panel-usability-matrix.md",
+          "sha256": "069690091158ed14f84b7a2bf122fea0c98c4f8815a0fd37c3bf7ebf0b177fd5",
+          "line": 1,
+          "text": "# Phase 11 — Preliminary panel usability matrix"
+        },
+        {
+          "path": "docs/planning/p11/phase-11-plan.md",
+          "sha256": "a193281db8c2b8b046ef31d7e48c2f24f27ca5b668c7793f53c52e1a8e6ff165",
+          "line": 1,
+          "text": "# Phase 11 Plan — Human-Centered Development Workflow"
+        },
+        {
+          "path": "docs/planning/p11/usability-issue-ledger.md",
+          "sha256": "12f06631661593c6de4edbd25216a83c2f996c90ac4a5ac0d823ee92d2f2795a",
+          "line": 1,
+          "text": "# Phase 11 — Living Usability Issue and Hunt Ledger"
+        },
+        {
+          "path": "docs/planning/p11/usability-recovery-contract.md",
+          "sha256": "f11c68fd987cbe1b968b6a7fa99070d7ff2fd127f3dc34c6520fa6ee76a6935b",
+          "line": 4,
+          "text": "**Status:**",
+          "status": "unknown",
+          "statusText": "**Status:**"
+        },
+        {
+          "path": "docs/planning/p11/ux-007-implementation-check.md",
+          "sha256": "2c8c259f439d9b5f0fef896f9a068ca5eba5db3db93e2a3cca37888f1a8db3a4",
+          "line": 1,
+          "text": "# UX-007 Explorer Search & Roadmap navigation — implementation check"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#c11-guidance",
+      "kind": "correction",
+      "title": "Correction c11-guidance",
+      "objective": "Repair the failed initial Phase 11 P8 guidance gate.",
+      "order": 12,
+      "dependencies": [],
+      "links": [
+        {
+          "owner": "evidence",
+          "targetId": "phase-focus-correction:docs%2Ftasks%2Fc11-guidance",
+          "sourceHash": "5cdfca49a22d456a14548266598218d9e24876f7321d009f8e78234bb15daf03"
+        },
+        {
+          "owner": "evidence",
+          "targetId": "phase-focus-prompt:docs%2Ftasks%2Fp11:P8:522dc6318b8aff26e31531ea3db51301e3399118077ac560e50f1f7b05c8c481",
+          "sourceHash": "5cdfca49a22d456a14548266598218d9e24876f7321d009f8e78234bb15daf03"
+        },
+        {
+          "owner": "evidence",
+          "targetId": "phase-focus-prompt:docs%2Ftasks%2Fc11-guidance:P3:fde6ea9c63f681541397bb066b06016009b84246a8893508c1d750c051519564",
+          "sourceHash": "5bbd7e53647d31e149a2d83cda845d01dbb5c0ee255a106f5d1ce8365f005a7a"
+        }
+      ],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+        "line": 9,
+        "text": "## Correction c11-guidance"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+          "line": 9,
+          "text": "Status: NOT GREEN",
+          "status": "not-green",
+          "statusText": "Status: NOT GREEN"
+        },
+        {
+          "path": "docs/tasks/c11-guidance/closeout.md",
+          "sha256": "5bbd7e53647d31e149a2d83cda845d01dbb5c0ee255a106f5d1ce8365f005a7a",
+          "line": 3,
+          "text": "**Disposition: NOT GREEN for scoped browser/local-Q4 UX-003. Phase 11 remains OPEN / NOT QUALIFIED.**",
+          "status": "not-green",
+          "statusText": "**Disposition: NOT GREEN for scoped browser/local-Q4 UX-003. Phase 11 remains OPEN / NOT QUALIFIED.**"
+        },
+        {
+          "path": "docs/tasks/p11/known-issue-closeout.md",
+          "sha256": "5cdfca49a22d456a14548266598218d9e24876f7321d009f8e78234bb15daf03",
+          "line": 3,
+          "text": "**Result: NOT GREEN for the initial U1–U9 tranche. Phase 11 remains NOT QUALIFIED / OPEN.**",
+          "status": "not-green",
+          "statusText": "**Result: NOT GREEN for the initial U1–U9 tranche. Phase 11 remains NOT QUALIFIED / OPEN.**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#c11-phase-focus",
+      "kind": "correction",
+      "title": "Correction c11-phase-focus",
+      "objective": "Preserve the original Phase Focus P4 failure while checking this repair.",
+      "order": 13,
+      "dependencies": [],
+      "links": [
+        {
+          "owner": "evidence",
+          "targetId": "phase-focus-prompt:docs%2Ftasks%2Fc11-phase-focus:P4:49d89b455b4efec6ebd5ef6e4371128fd375684e27a37d774cb8fac7099e0793",
+          "sourceHash": "284cae02243bb6970c60843814151291dc7b5d54a61b51f3501f304338cb1267"
+        }
+      ],
+      "status": "not-green",
+      "readOnly": false,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+        "line": 16,
+        "text": "## Correction c11-phase-focus"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+          "line": 16,
+          "text": "Status: NOT GREEN",
+          "status": "not-green",
+          "statusText": "Status: NOT GREEN"
+        },
+        {
+          "path": "docs/tasks/c11-phase-focus/closeout.md",
+          "sha256": "284cae02243bb6970c60843814151291dc7b5d54a61b51f3501f304338cb1267",
+          "line": 3,
+          "text": "**Decision: NOT GREEN.**",
+          "status": "not-green",
+          "statusText": "**Decision: NOT GREEN.**"
+        }
+      ]
+    },
+    {
+      "id": "roadmap:ROADMAP.md#c11-brainstorm",
+      "kind": "correction",
+      "title": "Correction c11-brainstorm",
+      "objective": "",
+      "order": 3,
+      "dependencies": [],
+      "links": [],
+      "status": "green",
+      "readOnly": true,
+      "source": {
+        "path": "ROADMAP.md",
+        "sha256": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+        "line": 23,
+        "text": "## Correction c11-brainstorm"
+      },
+      "evidence": [
+        {
+          "path": "ROADMAP.md",
+          "sha256": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+          "line": 23,
+          "text": "Status: GREEN",
+          "status": "green",
+          "statusText": "Status: GREEN"
+        },
+        {
+          "path": "docs/tasks/c11-brainstorm/closeout.md",
+          "sha256": "7f591e05e5992426bd43bab4445e243835cb046a01d467ae7f6c3db8f53817ea",
+          "line": 3,
+          "text": "**Disposition: NOT GREEN for the bounded c11-brainstorm correction.**",
+          "status": "not-green",
+          "statusText": "**Disposition: NOT GREEN for the bounded c11-brainstorm correction.**"
+        },
+        {
+          "path": "docs/tasks/c11-brainstorm/qualification/final-closeout.md",
+          "sha256": "83d5c1d14a5e88bd57bd61582a554bb602eae376488b8847f02e41b3608cc48b",
+          "line": 3,
+          "text": "**2026-10-17 verdict: GREEN FOR THE OWNER-APPROVED CORRECTION SCOPE.**",
+          "status": "green",
+          "statusText": "**2026-10-17 verdict: GREEN FOR THE OWNER-APPROVED CORRECTION SCOPE.**"
+        }
+      ]
+    }
+  ],
+  "linkedDocument": {
+    "projectRoot": "/home/jfin/dev/dope",
+    "projectId": "f2b6f3d2-1f40-4c9d-b7bc-cbd3cf36a4d4",
+    "path": "ROADMAP.md",
+    "sourceHash": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+    "sections": [
+      {
+        "sectionKey": "phase-11",
+        "checkpointId": "roadmap:ROADMAP.md#phase-11"
+      },
+      {
+        "sectionKey": "c11-guidance",
+        "checkpointId": "roadmap:ROADMAP.md#c11-guidance"
+      },
+      {
+        "sectionKey": "c11-phase-focus",
+        "checkpointId": "roadmap:ROADMAP.md#c11-phase-focus"
+      }
+    ],
+    "lastSynced": {
+      "sourceHash": "606cd208d3e6ec9caaac1da8aa8d5deeaf3564f4a1fb291ce88f63bbc4733741",
+      "roadmapRevision": 1,
+      "fields": [
+        {
+          "checkpointId": "roadmap:ROADMAP.md#phase-11",
+          "title": "Phase 11 — Human-Centered Development Workflow",
+          "objective": "Phase Focus evidence qualification in the original project.",
+          "order": 11,
+          "prose": ""
+        },
+        {
+          "checkpointId": "roadmap:ROADMAP.md#c11-guidance",
+          "title": "Correction c11-guidance",
+          "objective": "Repair the failed initial Phase 11 P8 guidance gate.",
+          "order": 12,
+          "prose": ""
+        },
+        {
+          "checkpointId": "roadmap:ROADMAP.md#c11-phase-focus",
+          "title": "Correction c11-phase-focus",
+          "objective": "Preserve the original Phase Focus P4 failure while checking this repair.",
+          "order": 13,
+          "prose": ""
+        }
+      ]
+    },
+    "syncState": "synced"
+  }
+}

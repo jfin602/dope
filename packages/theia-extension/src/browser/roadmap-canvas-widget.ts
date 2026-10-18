@@ -9,6 +9,7 @@ import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-proj
 import { projectRoadmapTasks, selectPhaseFocus, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { RoadmapService } from '../roadmap-service';
+import type { PhaseFocusEvidence } from '../node/phase-focus-evidence';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import type { RoadmapLink, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
@@ -148,6 +149,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private phaseOpen = false;
     private phaseView: 'compact' | 'expanded' | 'minimized' = 'compact';
     private phaseId?: string;
+    private phaseEvidence?: PhaseFocusEvidence;
+    private phaseEvidenceRequest = 0;
     private phaseReturnFocus?: HTMLElement;
     private readonly detailLabel = document.createElement('span');
     private detail: RoadmapDetail = 'phase';
@@ -393,6 +396,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     async refresh(): Promise<void> {
         const request = ++this.request;
+        ++this.phaseEvidenceRequest;
+        this.phaseEvidence = undefined;
         this.proposedDraft = undefined;
         this.draftSequence = 0;
         this.draftEpoch = undefined;
@@ -524,6 +529,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 if (restoredTask) this.inspector.selectTask(restoredTask);
             }
             this.render();
+            if (this.phaseOpen) void this.refreshPhaseEvidence();
             if (switched && this.viewport && this.flow) void this.flow.setViewport(this.viewport);
             this.queueInitialCamera();
             if (index.linkedDocument) {
@@ -687,7 +693,36 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.phaseId = selected.id;
         this.setPhaseOpen(true);
         this.renderPhaseFocus();
+        void this.refreshPhaseEvidence();
         this.phaseFocus.focus();
+    }
+
+    phaseEvidenceChanged(root: string): void {
+        if (this.phaseOpen && this.inspector.index?.projectRoot === root) void this.refreshPhaseEvidence();
+    }
+
+    private async refreshPhaseEvidence(): Promise<void> {
+        const index = this.inspector.index;
+        const uri = this.projectUri;
+        const serial = ++this.phaseEvidenceRequest;
+        this.phaseEvidence = undefined;
+        this.phaseFeedback.textContent = '';
+        this.phaseFeedback.removeAttribute('role');
+        if (!this.phaseOpen || !index || !uri || !this.phaseId || index.projectId !== this.projectId) return;
+        const phaseId = this.phaseId;
+        this.renderPhaseFocus();
+        try {
+            const evidence = await this.service.phaseFocusEvidence(uri, index.projectId, phaseId);
+            if (this.isDisposed || serial !== this.phaseEvidenceRequest || !this.phaseOpen ||
+                this.projectUri !== uri || this.projectId !== evidence.projectId || this.phaseId !== phaseId ||
+                this.inspector.index?.revision !== index.revision) return;
+            this.phaseEvidence = evidence;
+            this.renderPhaseFocus();
+        } catch (error) {
+            if (this.isDisposed || serial !== this.phaseEvidenceRequest || this.projectUri !== uri) return;
+            this.phaseFeedback.textContent = `Phase evidence unavailable: ${String(error)}. Refresh Roadmap to retry.`;
+            this.phaseFeedback.setAttribute('role', 'alert');
+        }
     }
 
     private setPhaseOpen(open: boolean): void {
@@ -697,6 +732,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.phaseReturnFocus = active instanceof HTMLElement ? active : this.phaseButton;
         }
         this.phaseOpen = open;
+        if (!open) { ++this.phaseEvidenceRequest; this.phaseEvidence = undefined; }
         this.phaseFocus.hidden = !open;
         this.phaseButton.setAttribute('aria-expanded', String(open));
         if (!open && hadFocus) (this.phaseReturnFocus?.isConnected ? this.phaseReturnFocus : this.phaseButton).focus();
@@ -715,7 +751,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private renderPhaseFocus(): void {
         const index = this.inspector.index;
-        const phase = index && this.phaseId && selectPhaseFocus(index, this.taskStacks, this.phaseId);
+        const evidence = this.phaseEvidence?.projectId === index?.projectId ? this.phaseEvidence : undefined;
+        const phase = index && this.phaseId && selectPhaseFocus(index, this.taskStacks, this.phaseId,
+            evidence?.checkpoints, evidence?.qualifications, evidence?.failedPromptEvidence, evidence?.blocked);
         if (!this.phaseOpen) return;
         if (!phase || phase.projectId !== this.projectId) {
             this.setPhaseOpen(false);
@@ -724,7 +762,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.phaseHeading.textContent = `${phase.phaseTitle} · ${phase.qualification.replaceAll('-', ' ')}`;
         this.phaseContent.replaceChildren();
         const note = document.createElement('p');
-        note.textContent = 'Authored order is fixed. Source inspection does not run Work. Implementation and qualification are unknown without verified evidence.';
+        note.textContent = 'Authored order is fixed. Source inspection does not run Work. Implementation and qualification require separately verified evidence.';
         this.phaseContent.append(note);
         if (!phase.stacks.length) {
             const empty = document.createElement('p');
@@ -740,6 +778,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 const relationship = document.createElement('p');
                 relationship.textContent = `Source-backed correction of ${stack.failedPrompt.stackPath}/P${stack.failedPrompt.number}`;
                 section.append(relationship);
+            } else if (stack.segment === 'correction') {
+                const relationship = document.createElement('p');
+                relationship.textContent = 'Correction belongs to this phase · exact failed prompt unknown without verified evidence.';
+                section.append(relationship);
             }
             const list = document.createElement('ol');
             list.setAttribute('aria-label', `${stack.path} authored prompt order`);
@@ -750,6 +792,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 button.textContent = `P${prompt.number} — ${prompt.title}`;
                 button.setAttribute('aria-label', `Inspect P${prompt.number} source: ${prompt.title}`);
                 button.onclick = () => {
+                    if (evidence?.blocked.some(item => item.projectId === index?.projectId &&
+                        item.stackPath === stack.path && item.stackFingerprint === stack.fingerprint &&
+                        item.entryNumber === prompt.number && item.reason === 'source-drift')) {
+                        this.phaseFeedback.textContent = 'Prompt source drift detected. Restore or review the authored source before opening it.';
+                        this.phaseFeedback.setAttribute('role', 'alert');
+                        return;
+                    }
                     const node = this.projection?.nodes.find(candidate => candidate.kind === 'prompt' &&
                         candidate.taskSource?.stackPath === stack.path && candidate.taskSource.number === prompt.number &&
                         candidate.taskSource.fingerprint === prompt.fingerprint);
@@ -765,6 +814,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
             section.append(list); this.phaseContent.append(section);
         }
         for (const diagnostic of phase.diagnostics) {
+            const warning = document.createElement('p'); warning.textContent = diagnostic;
+            this.phaseContent.append(warning);
+        }
+        for (const diagnostic of evidence?.diagnostics ?? []) {
             const warning = document.createElement('p'); warning.textContent = diagnostic;
             this.phaseContent.append(warning);
         }
@@ -1050,6 +1103,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
         super.onAfterAttach(msg);
         this.root = createRoot(this.path);
         this.renderFlow();
+    }
+
+    protected override onActivateRequest(msg: Message): void {
+        super.onActivateRequest(msg);
+        if (this.phaseOpen) void this.refreshPhaseEvidence();
     }
 
     protected override onBeforeDetach(msg: Message): void {

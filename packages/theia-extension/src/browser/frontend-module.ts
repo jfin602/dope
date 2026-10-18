@@ -328,6 +328,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         }, notifyLinkedDocumentChanged: (root: string, projectId: string) => {
             void context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)
                 .then(widget => widget?.linkedSourceChanged(root, projectId));
+        }, notifyPhaseFocusEvidenceChanged: (root: string) => {
+            void context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)
+                .then(widget => widget?.phaseEvidenceChanged(root));
         } })).inSingletonScope();
     bind(RoadmapInspectorModel).toDynamicValue(context => new RoadmapInspectorModel(
         context.container.get<RoadmapService>('RoadmapService'),

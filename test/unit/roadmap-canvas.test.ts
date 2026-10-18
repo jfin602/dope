@@ -60,7 +60,8 @@ test('Phase Focus uses the selected phase projection and existing checked source
     const canvas = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
     const inspector = read('packages/theia-extension/src/browser/roadmap-inspector-model.ts');
     const css = read('packages/theia-extension/src/browser/dope.css');
-    assert.match(canvas, /selectPhaseFocus\(index, this\.taskStacks, this\.phaseId\)/);
+    assert.match(canvas, /selectPhaseFocus\(index, this\.taskStacks, this\.phaseId,/);
+    assert.match(canvas, /this\.service\.phaseFocusEvidence\(uri, index\.projectId, phaseId\)/);
     assert.match(canvas, /selected\?\.kind !== 'phase'/);
     assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.inspection, this\.phaseFocus/);
     assert.match(canvas, /for \(const stack of phase\.stacks\)/);

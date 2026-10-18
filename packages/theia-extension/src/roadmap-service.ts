@@ -5,10 +5,11 @@ import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/proj
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
+import type { PhaseFocusEvidence } from './node/phase-focus-evidence';
 
 export const roadmapServicePath = '/services/dope/roadmap';
 export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): void; notifyLinkedDocumentChanged(root: string, projectId: string): void;
-    notifyDraftChanged(change: GreenfieldChange): void }
+    notifyDraftChanged(change: GreenfieldChange): void; notifyPhaseFocusEvidenceChanged(root: string): void }
 
 /** Roadmap reads and a thin RPC bridge to Dope-owned ProjectPlanningActions. */
 export interface RoadmapService {
@@ -27,6 +28,7 @@ export interface RoadmapService {
     read(projectUri: string): Promise<RoadmapIndex>;
     owners(projectUri: string): Promise<RoadmapOwnerRecord[]>;
     discoverTasks(projectUri: string): Promise<RoadmapTaskStack[]>;
+    phaseFocusEvidence(projectUri: string, expectedProjectId: string, phaseId: string): Promise<PhaseFocusEvidence>;
     resolvePromptSource(projectUri: string, path: string, fingerprint: string): Promise<string>;
     discoverImports(projectUri: string): Promise<RoadmapCandidateDiscovery>;
     previewImport(projectUri: string, path: string): Promise<RoadmapImportPreview>;

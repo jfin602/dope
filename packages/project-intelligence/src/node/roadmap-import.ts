@@ -155,7 +155,7 @@ function verdict(line: string): string {
 }
 function evidenceVerdict(content: string): { text: string; line: number } | undefined {
     const first = content.split(/\r?\n/).slice(0, 24);
-    const line = first.findIndex(value => /(?:^|\*\*)\s*(?:Status|Disposition|Decision):/i.test(value));
+    const line = first.findIndex(value => /(?:^|\*\*)\s*(?:(?:\d{4}-\d{2}-\d{2})\s+)?(?:Status|Disposition|Decision|Result|Verdict):/i.test(value));
     if (line >= 0) return { text: verdict(first[line].trim()), line: line + 1 };
     const heading = first.findIndex(value => /^# /.test(value) && status(value) !== 'unknown');
     return heading >= 0 ? { text: first[heading], line: heading + 1 } : undefined;
@@ -163,8 +163,9 @@ function evidenceVerdict(content: string): { text: string; line: number } | unde
 function evidencePriority(path: string, text: string): number {
     // An explicit final owner disposition supersedes an earlier evidence-only audit.
     if (/\bowner.closed for sequencing\b|\bowner approved\s*\/\s*qualified\s*\/\s*closed\b/i.test(text))
-        return /(?:\/closeout|\/final-qualification)\.md$/.test(path) ? 4 : 3;
-    if (/(?:\/closeout|\/final-qualification)\.md$/.test(path)) return 2;
+        return /(?:\/closeout|\/final-qualification|\/final-closeout)\.md$/.test(path) ? 4 : 3;
+    if (/\/final-closeout\.md$/.test(path)) return 3;
+    if (/(?:\/closeout|\/final-qualification|\/final-closeout)\.md$/.test(path)) return 2;
     if (/\bqualified\s*\/\s*closed\b/i.test(text)) return 2;
     return 1;
 }
@@ -294,7 +295,7 @@ export async function previewRoadmapImport(root: string, selectedPath = roadmapP
                 ...(evidenceStatus ? { status: status(evidenceStatus.text), statusText: evidenceStatus.text } : {}) });
         }
         const decisions = evidence.filter(ref => ref.status && ref.status !== 'unknown' &&
-            (/(?:\/closeout|\/final-qualification)\.md$/.test(ref.path) ||
+            (/(?:\/closeout|\/final-qualification|\/final-closeout)\.md$/.test(ref.path) ||
                 /\bowner.closed for sequencing\b|\bowner approved\s*\/\s*qualified\s*\/\s*closed\b/i.test(ref.statusText ?? '')));
         const priority = Math.max(0, ...decisions.map(ref => evidencePriority(ref.path, ref.statusText ?? '')));
         const latest = decisions.filter(ref => evidencePriority(ref.path, ref.statusText ?? '') === priority);
