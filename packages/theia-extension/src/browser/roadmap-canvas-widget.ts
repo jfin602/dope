@@ -103,6 +103,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly implementationText = document.createElement('p');
     private readonly implementationToggle = document.createElement('button');
     private readonly implementationNext = document.createElement('button');
+    private readonly implementationWork = document.createElement('button');
     private readonly inspectionExpand = document.createElement('button');
     private readonly inspectionCompact = document.createElement('button');
     private readonly inspectionMinimize = document.createElement('button');
@@ -199,7 +200,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         private readonly inspector: RoadmapInspectorModel,
         private readonly openMind: (id?: string, workspace?: string) => Promise<boolean> = async () => false,
         private readonly savedChats: (workspace: string) => { id: string; title: string }[] = () => [],
-        private readonly storage?: Pick<StorageService, 'getData' | 'setData'>) {
+        private readonly storage?: Pick<StorageService, 'getData' | 'setData'>,
+        private readonly openWork: () => Promise<void> = async () => {}) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -321,10 +323,17 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.implementation.className = 'dope-roadmap-implementation';
         this.implementation.setAttribute('aria-label', 'Implementation sources');
         this.implementationToggle.type = this.implementationNext.type = 'button';
+        this.implementationWork.type = 'button';
+        this.implementationWork.textContent = 'Open Prompt Stacks in Work';
+        this.implementationWork.onclick = () => {
+            if (this.projectUri && this.inspector.index?.projectId === this.projectId &&
+                !this.taskDiscoveryError) void this.openWork();
+        };
         this.implementationToggle.onclick = () => this.setExpansion(!this.expanded.has(this.selectedId ?? ''));
         this.implementationNext.textContent = 'Next prompts';
         this.implementationNext.onclick = () => this.nextPrompts();
-        this.implementation.append(this.implementationText, this.implementationToggle, this.implementationNext);
+        this.implementation.append(this.implementationText, this.implementationToggle,
+            this.implementationNext, this.implementationWork);
         this.relationshipSummary.className = 'dope-roadmap-relationship-summary';
         this.relationshipSummary.setAttribute('aria-live', 'polite');
         this.relationshipSummary.hidden = true;
@@ -764,6 +773,15 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const note = document.createElement('p');
         note.textContent = 'Authored order is fixed. Source inspection does not run Work. Implementation and qualification require separately verified evidence.';
         this.phaseContent.append(note);
+        if (phase.stacks.length && !this.taskDiscoveryError) {
+            const work = document.createElement('button');
+            work.type = 'button'; work.textContent = 'Open Prompt Stacks in Work';
+            work.onclick = () => {
+                if (this.projectUri && this.inspector.index?.projectId === phase.projectId &&
+                    this.projectId === phase.projectId) void this.openWork();
+            };
+            this.phaseContent.append(work);
+        }
         if (!phase.stacks.length) {
             const empty = document.createElement('p');
             empty.textContent = 'No authored prompt stacks are linked to this phase. Check task discovery or select another phase.';
@@ -863,6 +881,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.implementationText.textContent = `${stacks.length} implementation stack${stacks.length === 1 ? '' : 's'} · ` +
             `${count} discovered prompt${count === 1 ? '' : 's'} · ${paths}${stacks.length > 3 ? `, +${stacks.length - 3} more` : ''}. ` +
             'Source only; prompt discovery does not determine qualification status.';
+        this.implementationWork.disabled = !!this.taskDiscoveryError || !this.projectUri ||
+            this.inspector.index?.projectId !== this.projectId;
         const expanded = this.expanded.has(id!);
         this.implementationToggle.textContent = expanded ? 'Hide Prompts' : 'View Prompts';
         this.implementationToggle.setAttribute('aria-expanded', String(expanded));

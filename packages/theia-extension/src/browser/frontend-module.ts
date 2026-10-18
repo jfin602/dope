@@ -402,7 +402,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     chats.set(widget.controller.chat.id, widget.controller.chat.title);
                 }
                 return [...chats].map(([id, title]) => ({ id, title }));
-            }, context.container.get(StorageService)) })).inSingletonScope();
+            }, context.container.get(StorageService), async () => {
+                await context.container.get(CommandRegistry).executeCommand('dope.work.openPromptStack');
+            }) })).inSingletonScope();
     // Saved pre-overlay workbench layouts may restore this sidebar. It shares the model but cannot edit.
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
         new RoadmapInspectorWidget(context.container.get(RoadmapInspectorModel), false) })).inSingletonScope();
@@ -431,7 +433,15 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 await openAgentTranscript({ project, runId }, options =>
                     context.container.get(WidgetManager).getOrCreateWidget<AgentTranscriptWidget>(
                         AGENT_TRANSCRIPT_ID, options), context.container.get(ApplicationShell));
-            }, context.container.get(ChatPlanningSelection));
+            }, context.container.get(ChatPlanningSelection), async (project, path, promptText, isCurrent) => {
+                const bytes = new TextEncoder().encode(promptText);
+                const digest = await crypto.subtle.digest('SHA-256', bytes);
+                const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+                const source = await context.container.get<RoadmapService>('RoadmapService')
+                    .resolvePromptSource(project, path, fingerprint);
+                if (!isCurrent()) throw new Error('Work selection changed. Select the prompt again.');
+                await open(context.container.get(OpenerService), new URI(source));
+            });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

@@ -81,7 +81,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly aiCenter?: AICenterContribution, onModelsChanged?: Event<void>,
         runtime?: AgentRuntimeService, registry?: AIRegistryService, roles?: AIRolePolicyService,
         private readonly openTranscript?: (project: string, runId: string) => Promise<void>,
-        private readonly planningSelection?: ChatPlanningSelection) {
+        private readonly planningSelection?: ChatPlanningSelection,
+        private readonly openPromptSource?: (project: string, path: string, promptText: string,
+            isCurrent: () => boolean) => Promise<void>) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -410,6 +412,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             }
             const stacks = document.createElement('section');
             const label = document.createElement('h3'); label.textContent = 'Prompt Stacks'; stacks.append(label);
+            const sourceNote = document.createElement('p');
+            sourceNote.textContent = 'Discovered source is a preview only. Opening a stack does not approve or run it.';
+            stacks.append(sourceNote);
             const root = document.createElement('input'); root.type = 'text'; root.value = controller.phase.tasksRoot;
             root.setAttribute('aria-label', 'Tasks folder');
             root.onchange = () => controller.phase.setTasksRoot(root.value);
@@ -507,6 +512,34 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const current = entry.number === sequence.currentEntryNumber && sequence.status !== 'completed';
                     const state = checkpoint ? 'Completed' : current ? sequence.status : 'Pending';
                     item.textContent = `P${entry.number} - ${entry.title} · ${state}${checkpoint ? ` · ${checkpoint.sha}` : ''}`;
+                    const sourcePath = `${sequence.stack.sourcePath ?? `docs/tasks/${sequence.stack.folderName}`}/${entry.filename}`;
+                    const source = document.createElement('small');
+                    source.textContent = ` · ${entry.execution === 'manual-gate' ? 'Manual gate' : 'Agent task'} · ${sourcePath}`;
+                    item.append(source);
+                    const workItem = /^- Accepted WorkItem: ([^\n]+)\./mu.exec(entry.promptText)?.[1];
+                    const dependencies = /^- Depends on: ([^\n]+)\./mu.exec(entry.promptText)?.[1];
+                    if (workItem || dependencies) {
+                        const lineage = document.createElement('small');
+                        lineage.textContent = ` · ${workItem ? `WorkItem ${workItem}` : 'No WorkItem reference'} · Depends on ${dependencies ?? 'unrecorded'}`;
+                        item.append(lineage);
+                    }
+                    const workingSet = /^Working set:\n((?:- [^\n]+\n?)*)/mu.exec(entry.promptText)?.[1]
+                        .split('\n').filter(line => line.startsWith('- ')).map(line => line.slice(2)) ?? [];
+                    if (workingSet.length) {
+                        const files = document.createElement('small');
+                        files.textContent = ` · Working set: ${workingSet.join(', ')}`;
+                        item.append(files);
+                    }
+                    if (this.openPromptSource && this.panel.workspace) item.append(' ', this.button('Open Prompt', () => {
+                        const project = this.panel.workspace;
+                        if (!project || controller.phase.selected?.id !== sequence.id) return;
+                        void this.openPromptSource!(project, sourcePath, entry.promptText,
+                            () => this.panel.workspace === project && controller.phase.selected?.id === sequence.id).catch(error => {
+                            if (this.panel.workspace !== project || controller.phase.selected?.id !== sequence.id) return;
+                            controller.phase.message = error instanceof Error ? error.message : String(error);
+                            this.render();
+                        });
+                    }));
                     if (checkpoint?.runId && this.panel.workspace) item.append(' ', this.button('Open Transcript', () =>
                         void this.openTranscript?.(this.panel.workspace!, checkpoint.runId!)));
                     entries.append(item);
