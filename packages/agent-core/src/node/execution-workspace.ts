@@ -309,8 +309,8 @@ export class ExecutionWorkspace {
     /** Rebuild the held candidate on an independent clone. The saved files are checked
      * against the frozen delta before the complete workspace fingerprint is compared. */
     static async restoreReview(projectRoot: string, savedRoot: string, delta: CandidateDelta,
-        fingerprint: string): Promise<ExecutionWorkspace> {
-        const workspace = await ExecutionWorkspace.create(projectRoot);
+        fingerprint: string, acceptedDirty?: AcceptedDirtyBasis): Promise<ExecutionWorkspace> {
+        const workspace = await ExecutionWorkspace.create(projectRoot, acceptedDirty);
         try {
             for (const effect of delta.effects) {
                 if (effect.kind !== 'create' && effect.kind !== 'modify' || !effect.after)

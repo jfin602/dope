@@ -183,6 +183,40 @@ test('dirty stack acceptance persists exact basis and starts P1 in its execution
     await f.backend.stopSequence(f.handle, imported.sequence.id);
 }));
 
+test('dirty phase-stack basis survives candidate hold and rejects drift before acceptance', async () => fixture(async f => {
+    await writeFile(join(f.root, 'notes.txt'), 'accepted developer work\n');
+    const imported = await f.backend.openTaskStack(f.handle, 'docs/tasks', 'c8-lifecycle-test');
+    assert.equal(imported.kind, 'opened');
+    if (imported.kind !== 'opened') return;
+    const evidence = await f.backend.sequenceEvidence(f.handle);
+    await f.backend.acceptSequenceDirtyBasis(f.handle, imported.sequence.id, evidence.worktreeFingerprint);
+    const task = await f.backend.prepareSequenceTask(f.handle, imported.sequence.id,
+        { kind: 'follow-coding-agent' },
+        { validation: [{ kind: 'test', label: 'focused', command: 'true' }], requireValidationPass: true });
+    const accepted = createDefaultExecutionGrant({ id: 'dirty-review-grant', revision: 1,
+        taskId: task.id, acceptedAt: new Date().toISOString() });
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href,
+        imported.sequence.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'candidate.txt'), 'review me\n');
+    f.adapter.complete();
+    const held = await f.runtime.waitForRun(f.root, run.id);
+    assert.equal(held.candidateReview?.state, 'ready');
+    assert.equal((await sequenceTerminal(f.store, f.root, imported.sequence.id)).blockedReason,
+        'candidate-review-pending');
+    await assert.rejects(readFile(join(f.root, 'candidate.txt')), { code: 'ENOENT' });
+    await writeFile(join(f.root, 'notes.txt'), 'changed after hold\n');
+    await assert.rejects(f.backend.decideCandidate(f.handle, run.id, 0,
+        held.candidateReview!.candidateFingerprint, 'accept', accepted), /Dirty worktree changed/);
+    await assert.rejects(readFile(join(f.root, 'candidate.txt')), { code: 'ENOENT' });
+    await writeFile(join(f.root, 'notes.txt'), 'accepted developer work\n');
+    const promoted = await f.backend.decideCandidate(f.handle, run.id, 0,
+        held.candidateReview!.candidateFingerprint, 'accept', accepted);
+    assert.equal(promoted.status, 'completed');
+    assert.deepEqual(promoted.appliedFiles, ['candidate.txt']);
+    assert.equal(await readFile(join(f.root, 'candidate.txt'), 'utf8'), 'review me\n');
+    assert.equal(await readFile(join(f.root, 'notes.txt'), 'utf8'), 'accepted developer work\n');
+}));
+
 test('sequence retains the failed AgentRun when provider startup rejects after run creation', async () => fixture(async f => {
     const { sequence, accepted } = await preparedSequence(f);
     f.adapter.start = async () => { throw new Error('controlled startup failure'); };

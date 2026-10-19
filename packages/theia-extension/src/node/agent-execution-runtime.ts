@@ -169,11 +169,17 @@ export class AgentExecutionRuntime {
                     result.status === 'passed' && result.candidateFingerprint === candidateFingerprint)))
                 throw new Error('Required candidate validation is missing or stale');
             const authoritative = await captureGitBasis(root);
-            if (!authoritative.clean || authoritative.head !== run.basis.head)
+            const acceptedDirty = task.origin.kind === 'phase-stack' ?
+                (await this.store.listSequences(root)).find(sequence => sequence.taskId === task.id &&
+                    sequence.runIds?.includes(run.id))?.acceptedDirty : undefined;
+            if (authoritative.head !== run.basis.head ||
+                (acceptedDirty ? acceptedDirty.head !== run.basis.head : !authoritative.clean))
                 throw new Error('Authoritative Git basis changed before review decision');
+            if (acceptedDirty) await assertDirtyBasis(root, acceptedDirty);
             const savedRoot = await this.store.reviewCandidateRoot(root, run.id);
             if (!savedRoot) throw new Error('Frozen review candidate missing');
-            workspace = await ExecutionWorkspace.restoreReview(root, savedRoot, run.candidateDelta, candidateFingerprint);
+            workspace = await ExecutionWorkspace.restoreReview(root, savedRoot, run.candidateDelta,
+                candidateFingerprint, acceptedDirty);
             const within = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);
             const scope = task.origin.kind === 'work-item' ? task.origin.scope :
                 phaseStackReviewScope(task.instructions);
@@ -619,9 +625,7 @@ export class AgentExecutionRuntime {
                     if (await active.workspace.fingerprint() !== fingerprint)
                         throw new Error('Frozen candidate changed after validation');
                     if (reviewRequired) {
-                        const authoritative = await captureGitBasis(active.root);
-                        if (!authoritative.clean || authoritative.head !== active.workspace.head)
-                            throw new Error('Authoritative project changed before review hold');
+                        await active.workspace.assertActiveBasis(active.root, active.workspace.root);
                         const scope = task.origin.kind === 'work-item' ? task.origin.scope :
                             phaseStackReviewScope(task.instructions);
                         const within = (parent: string, child: string): boolean =>
@@ -643,9 +647,7 @@ export class AgentExecutionRuntime {
                         await this.store.saveReviewCandidate(active.root, active.run.id, active.workspace.root, delta);
                         if (await active.workspace.fingerprint() !== fingerprint)
                             throw new Error('Frozen candidate changed after validation');
-                        const afterSnapshot = await captureGitBasis(active.root);
-                        if (!afterSnapshot.clean || afterSnapshot.head !== active.workspace.head)
-                            throw new Error('Authoritative project changed before review hold');
+                        await active.workspace.assertActiveBasis(active.root, active.workspace.root);
                         await this.serial(active, async () => {
                             await this.update(active, run => ({ ...run, status: 'blocked',
                                 candidateReview: { state: 'ready', revision: 0, candidateFingerprint: fingerprint,
