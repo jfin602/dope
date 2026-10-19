@@ -405,15 +405,18 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 try {
                     const index = attached.snapshot;
                     const checkpoint = index.checkpoints.find(item => item.id === handoff.checkpointId);
+                    const planningLinks = checkpoint?.links.filter(link => link.owner === 'planning-map') ?? [];
                     if (index.projectId !== handoff.projectId || index.projectRoot !== new URI(handoff.workspace).path.toString() ||
                         index.revision !== inspector.index?.revision || !checkpoint || checkpoint.readOnly ||
-                        checkpoint.links.some(link => link.owner === 'planning-map') ||
+                        planningLinks.length > 1 || planningLinks.length === 1 &&
+                            (planningLinks[0].targetId !== map.id || planningLinks[0].ownerProjectId !== map.projectId) ||
                         index.linkedDocument?.syncState !== 'synced' ||
                         checkpoint.source?.sha256 !== index.linkedDocument.sourceHash)
                         throw new Error('Roadmap scope or source changed. Refresh and review the checkpoint.');
                     const request: PlanningActionRequest = { projectHandle: attached.projectHandle, ownerId: index.projectId,
                         expectedRevision: index.revision, sourceHashes: { [checkpoint.id]: checkpoint.source.sha256 },
-                        actions: [{ type: 'link', id: checkpoint.id, link: { owner: 'planning-map', targetId: map.id,
+                        actions: [...planningLinks.map(link => ({ type: 'unlink' as const, id: checkpoint.id, link })),
+                            { type: 'link' as const, id: checkpoint.id, link: { owner: 'planning-map' as const, targetId: map.id,
                             ownerProjectId: map.projectId, ownerRevision: map.revision, basis: map.basis } }] };
                     const preview = await roadmap.preview(request);
                     if (planning.prepareWorkContext !== handoff || planning.selectedMapId !== mapId ||
@@ -422,6 +425,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     const result = await roadmap.apply(request, preview.token, true);
                     inspector.setSnapshot(handoff.workspace, result);
                 } finally { await roadmap.detach(attached.projectHandle); }
+            }, async () => {
+                const widget = await openChatPanel<ChatPanelWidget>('center', panelOptions => context.container.get(WidgetManager)
+                    .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, panelOptions), context.container.get(ApplicationShell), 'work');
+                await widget.selectPromptStacks();
             }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),

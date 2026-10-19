@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile, realpath } from 'node:fs/promises';
 import { isAbsolute, join, relative } from 'node:path';
-import type { AdoptionAcceptance, AdoptionRequest, CurrentSoftwareImpactPacket, CurrentSoftwareImpactRequest, PlanningCollection, PlanningMutation, RebaseAcceptance, RebaseRequest, TargetDesignReview, VisualPlanningService } from '@dope/visual-planning/lib/service';
+import type { AdoptionAcceptance, AdoptionRequest, CurrentSoftwareImpactPacket, CurrentSoftwareImpactRequest, PlanningCollection, PlanningMutation, PlanningStackOutline, PlanningStackPreview, PlanningStackRecord, RebaseAcceptance, RebaseRequest, TargetDesignReview, VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { previewTransformation } from '@dope/visual-planning/lib/editing';
 import { detectActiveConflicts, projectTarget, sameObservation, sameSemanticBasis } from '@dope/visual-planning';
@@ -12,6 +12,10 @@ import { readArchitecture } from '@dope/code-analysis/lib/node/architecture-file
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { PlanningTargetReview } from './planning-target-review';
+import { PlanningBridgeApprovals } from './planning-bridge-approvals';
+import { PlanningStackPublication } from './planning-stack-publication';
+import { composePhaseStackDraft } from '@dope/agent-core/lib/phase-stack-composer';
+import { reorderUnwrittenOutline } from '@dope/agent-core/lib/sequence';
 
 export class VisualPlanningBackend implements VisualPlanningService {
   private root?: string;
@@ -20,9 +24,109 @@ export class VisualPlanningBackend implements VisualPlanningService {
   private disposed = false;
   private attaching = 0;
   private readonly targetReviews = new Map<string, PlanningTargetReview>();
+  private readonly scopeApprovals: PlanningBridgeApprovals;
+  private stackPublication?: PlanningStackPublication;
+  private stackPreviewToken?: string;
 
   constructor(private readonly store: PlanningStore, private readonly index?: SoftwareMapIndex,
-    private readonly roadmap?: RoadmapStore) {}
+    private readonly roadmap?: RoadmapStore) {
+    this.scopeApprovals = new PlanningBridgeApprovals(async root => {
+      if (root !== this.root || !this.roadmap || !this.handle) throw new Error('Foreign Bridge scope');
+      return { roadmap: await this.roadmap.read(root), basis: await this.currentBasis(this.handle) };
+    });
+  }
+
+  private async stackOwners(root: string, checkpointId: string, branchIds: string[]) {
+    if (root !== this.root || !this.roadmap || !this.handle) throw new Error('Foreign Bridge stack');
+    const roadmap = await this.roadmap.read(root);
+    const collection = await this.read(this.handle);
+    const checkpoint = roadmap.checkpoints.find(item => item.id === checkpointId);
+    const links = checkpoint?.links.filter(link => link.owner === 'planning-map') ?? [];
+    if (links.length !== 1) throw new Error('Select one linked Planning Map');
+    const map = collection.maps.find(item => item.id === links[0].targetId);
+    if (!map || map.projectId !== collection.projectId || links[0].ownerProjectId !== collection.projectId ||
+      links[0].ownerRevision !== map.revision) throw new Error('Planning Map link requires review');
+    return { roadmap, basis: await this.currentBasis(this.handle), targetBranchIds: branchIds,
+      planning: { projectId: collection.projectId, collectionRevision: collection.revision, map } };
+  }
+  async previewScopeApproval(projectHandle: string, checkpointId: string) {
+    this.active(projectHandle);
+    const preview = await this.scopeApprovals.preview(this.root!, checkpointId, 'scope');
+    return { token: preview.token, checkpointId, roadmapRevision: preview.reference.roadmapRevision,
+      roadmapSourceHash: preview.reference.roadmapSourceHash };
+  }
+  async approveScope(projectHandle: string, token: string, developerAction: boolean): Promise<void> {
+    await this.scopeApprovals.approve(this.active(projectHandle), token, developerAction);
+  }
+  async stackOutline(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<PlanningStackOutline> {
+    const root = this.active(projectHandle);
+    if (!this.roadmap || !branchIds.length || branchIds.length > 8 || new Set(branchIds).size !== branchIds.length)
+      throw new Error('Select reviewed target branches');
+    const owners = await this.stackOwners(root, checkpointId, branchIds);
+    const approvals = new PlanningBridgeApprovals(projectRoot => this.stackOwners(projectRoot, checkpointId, branchIds));
+    if (!await approvals.approved(root, checkpointId, 'scope') ||
+      !await new PlanningTargetReview(root, checkpointId, branchIds, this.roadmap, this).approved())
+      throw new Error('Current checkpoint scope and target require explicit approval');
+    const map = owners.planning.map;
+    if (!map.workItems.length || map.workItems.some(item => item.status !== 'ready'))
+      throw new Error('Accept and mark every selected WorkItem ready before stack authoring');
+    const fresh = await this.read(projectHandle);
+    if (fresh.revision !== owners.planning.collectionRevision ||
+      fresh.maps.find(item => item.id === map.id)?.revision !== map.revision)
+      throw new Error('WorkItems changed during outline review');
+    return { checkpointId, mapId: map.id, mapRevision: map.revision, projectId: owners.roadmap.projectId,
+      items: map.workItems.map(item => ({ id: item.id, title: item.title, objective: item.objective,
+        dependsOn: [...item.dependsOn], acceptanceCriteria: [...item.acceptanceCriteria],
+        validationTargets: [...item.validationTargets], workingSet: [...item.workingSet] })) };
+  }
+  async reorderStackOutline(projectHandle: string, checkpointId: string, branchIds: string[], orderedIds: string[]): Promise<PlanningStackOutline> {
+    const outline = await this.stackOutline(projectHandle, checkpointId, branchIds);
+    return { ...outline, items: reorderUnwrittenOutline(outline.items, orderedIds, false) };
+  }
+  async previewStackPublication(projectHandle: string, checkpointId: string, branchIds: string[],
+    folderName: string, orderedIds: string[]): Promise<PlanningStackPreview> {
+    const root = this.active(projectHandle);
+    const outline = await this.reorderStackOutline(projectHandle, checkpointId, branchIds, orderedIds);
+    const owners = await this.stackOwners(root, checkpointId, branchIds);
+    const byId = new Map(owners.planning.map.workItems.map(item => [item.id, item]));
+    const packageFile = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { version?: string };
+    if (!packageFile.version) throw new Error('Project version is unavailable');
+    const draft = await composePhaseStackDraft({ folderName, version: packageFile.version,
+      sourceVersion: packageFile.version, work: outline.items.map((item, index) => ({
+        workItem: byId.get(item.id)!, tier: index === 0 ? 'T2' as const : 'T1' as const,
+        model: 'GPT-6 Sol Medium' as const, estimatedMinutes: 8,
+        ...(index === 0 ? { integrationChecks: byId.get(item.id)!.validationTargets } : {}) })),
+      closeout: { title: 'Manual closeout', objective: `Qualify ${owners.roadmap.checkpoints.find(item => item.id === checkpointId)?.title ?? 'this checkpoint'} on exact source`,
+        manualReason: 'Real browser, Work execution and owner review are required',
+        acceptanceCriteria: ['Verify candidate validation and review', 'Reconcile Physical Map and Planning target'],
+        model: 'GPT-6 Sol High', browserRequired: true } });
+    this.stackPublication = new PlanningStackPublication(projectRoot => this.stackOwners(projectRoot, checkpointId, branchIds));
+    const preview = await this.stackPublication.preview(root, checkpointId, draft);
+    this.stackPreviewToken = preview.token;
+    return preview;
+  }
+  async publishStack(projectHandle: string, token: string, developerAction: boolean): Promise<PlanningStackRecord> {
+    const root = this.active(projectHandle);
+    if (!this.stackPublication || this.stackPreviewToken !== token) throw new Error('Unknown or consumed stack preview');
+    this.stackPreviewToken = undefined;
+    return this.stackPublication.publish(root, token, developerAction);
+  }
+  async cancelStackPreview(projectHandle: string, token: string): Promise<void> {
+    this.active(projectHandle);
+    if (!this.stackPublication || this.stackPreviewToken !== token) throw new Error('Unknown stack preview');
+    this.stackPublication.cancel(token);
+    this.stackPreviewToken = undefined;
+  }
+  async attemptAuthoredStackReorder(projectHandle: string, folderName: string, orderedIds: string[]): Promise<void> {
+    const root = this.active(projectHandle);
+    const review = await (this.stackPublication ?? new PlanningStackPublication(async () => {
+      throw new Error('Publication source unavailable');
+    })).inspect(root, folderName);
+    if (!review.record || review.record.status !== 'published' ||
+      review.files.some(file => file.status !== 'matching'))
+      throw new Error('Authored stack source requires review before any change');
+    reorderUnwrittenOutline(orderedIds.map(id => ({ id, dependsOn: [] })), orderedIds, true);
+  }
 
   private async reality(root: string) {
     const status = this.index?.status(root), snapshot = this.index?.snapshot(root);

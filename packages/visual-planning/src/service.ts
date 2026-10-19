@@ -51,6 +51,22 @@ export interface TargetDesignReview {
   current: TargetProjection; target: TargetProjection;
   diff: { nodes: string[]; relationships: string[] };
 }
+/** Unwritten, project-scoped WorkItem order. It has no prompt files or Run identity. */
+export interface PlanningStackOutline {
+  checkpointId: string; mapId: string; mapRevision: number; projectId: string;
+  items: { id: string; title: string; objective: string; dependsOn: string[];
+    acceptanceCriteria: string[]; validationTargets: string[]; workingSet: string[] }[];
+}
+export interface PlanningStackPreview {
+  token: string; folderName: string; destination: string; draftHash: string;
+  stackFingerprint: string; sourceHash: string; gitHead: string; packageVersion: string;
+  projectId: string; checkpointId: string; scope: string; dependencies: string[]; gates: string[];
+  files: { path: string; hash: string; diff: string }[];
+}
+export interface PlanningStackRecord {
+  projectId: string; checkpointId: string; folderName: string; stackFingerprint: string;
+  status: 'publishing' | 'review-required' | 'published'; files: { path: string; hash: string }[];
+}
 export interface VisualPlanningService {
   attach(folderUri: string): Promise<{ projectHandle: string; snapshot: PlanningCollection }>;
   read(projectHandle: string): Promise<PlanningCollection>;
@@ -72,6 +88,14 @@ export interface VisualPlanningService {
   rejectTarget(projectHandle: string, token: string): Promise<void>;
   targetApproved(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<boolean>;
   suggestApprovedWorkItems(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<WorkItemSuggestion[]>;
+  previewScopeApproval(projectHandle: string, checkpointId: string): Promise<{ token: string; checkpointId: string; roadmapRevision: number; roadmapSourceHash: string }>;
+  approveScope(projectHandle: string, token: string, developerAction: boolean): Promise<void>;
+  stackOutline(projectHandle: string, checkpointId: string, branchIds: string[]): Promise<PlanningStackOutline>;
+  reorderStackOutline(projectHandle: string, checkpointId: string, branchIds: string[], orderedIds: string[]): Promise<PlanningStackOutline>;
+  previewStackPublication(projectHandle: string, checkpointId: string, branchIds: string[], folderName: string, orderedIds: string[]): Promise<PlanningStackPreview>;
+  publishStack(projectHandle: string, token: string, developerAction: boolean): Promise<PlanningStackRecord>;
+  cancelStackPreview(projectHandle: string, token: string): Promise<void>;
+  attemptAuthoredStackReorder(projectHandle: string, folderName: string, orderedIds: string[]): Promise<void>;
   previewRebase(request: RebaseRequest): Promise<RebaseResult>;
   acceptRebase(request: RebaseAcceptance): Promise<PlanningCollection>;
   mutate(request: PlanningMutation): Promise<PlanningCollection>;

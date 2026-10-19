@@ -15,16 +15,17 @@ function work(id: string, dependsOn: string[] = []): WorkPromptChoice {
 }
 function fixture(folderName = 'c11-draft', version = '0.11.8'): ComposeStackInput {
     return { folderName, version, sourceVersion: folderName === 'p1-11' ? '1.11.0' : version,
-        work: [work('integration', ['core']), work('core')],
+        work: [work('core'), work('integration', ['core'])],
         closeout: { title: 'Manual closeout', objective: 'Inspect exact source and live evidence',
             manualReason: 'Browser and native observations are required', browserRequired: true,
             acceptanceCriteria: ['Observe real GUI and owner review'], model: 'GPT-6 Sol High' } };
 }
 
-test('correction draft is deterministic, dependency ordered and round trips through Work and runner validators', async () => {
+test('correction draft preserves reviewed dependency-safe order and round trips through Work and runner validators', async () => {
     const input = fixture();
     const draft = await composePhaseStackDraft(input);
-    assert.deepEqual(draft, await composePhaseStackDraft({ ...input, work: [...input.work].reverse() }));
+    assert.deepEqual(draft, await composePhaseStackDraft(input));
+    await assert.rejects(composePhaseStackDraft({ ...input, work: [...input.work].reverse() }), /dependencies/);
     assert.deepEqual(draft.files.map(file => file.filename),
         ['P1-core-task.txt', 'P2-integration-task.txt', 'P3-manual-closeout.txt']);
     assert.match(draft.files[1].text, /Depends on: P1 \(core\)/);
@@ -47,10 +48,20 @@ test('phase draft uses assigned versions and both existing validators', async ()
         ['1.11.1', '1.11.2', '1.11.3']);
 });
 
+test('two independent accepted WorkItems keep the order selected in the unpublished outline', async () => {
+    const input = { ...fixture(), work: [work('integration'), work('core')] };
+    const draft = await composePhaseStackDraft(input);
+    assert.deepEqual(draft.files.map(file => file.filename),
+        ['P1-integration-task.txt', 'P2-core-task.txt', 'P3-manual-closeout.txt']);
+    const reordered = await composePhaseStackDraft({ ...input, work: [...input.work].reverse() });
+    assert.deepEqual(reordered.files.map(file => file.filename),
+        ['P1-core-task.txt', 'P2-integration-task.txt', 'P3-manual-closeout.txt']);
+});
+
 test('draft rejects duplicate, unknown and cyclic WorkItem dependencies', async () => {
     await assert.rejects(composePhaseStackDraft({ ...fixture(), work: [work('core'), work('core')] }), /Duplicate WorkItem ID/);
-    await assert.rejects(composePhaseStackDraft({ ...fixture(), work: [work('core', ['missing'])] }), /Unknown WorkItem dependency/);
-    await assert.rejects(composePhaseStackDraft({ ...fixture(), work: [work('core', ['integration']), work('integration', ['core'])] }), /dependency cycle/);
+    await assert.rejects(composePhaseStackDraft({ ...fixture(), work: [work('core', ['missing'])] }), /dependencies/);
+    await assert.rejects(composePhaseStackDraft({ ...fixture(), work: [work('core', ['integration']), work('integration', ['core'])] }), /dependencies/);
     await assert.rejects(composePhaseStackDraft({ ...fixture(), work: [{ ...work('core'), workItem: { ...work('core').workItem, status: 'proposed' } }] }), /not accepted/);
 });
 

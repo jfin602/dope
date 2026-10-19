@@ -1,4 +1,4 @@
-import { importPhaseStack, phaseStackFolder } from './sequence';
+import { importPhaseStack, phaseStackFolder, reorderUnwrittenOutline } from './sequence';
 import type { PromptSource } from './sequence';
 
 /** The accepted Planning WorkItem fields needed to author a draft. No new task owner. */
@@ -69,18 +69,11 @@ function orderWork(choices: readonly WorkPromptChoice[]): WorkPromptChoice[] {
         if (choice.workItem.status !== 'ready') throw new Error(`WorkItem ${id} is not accepted/ready`);
         byId.set(id, choice);
     }
-    const result: WorkPromptChoice[] = [], active = new Set<string>(), done = new Set<string>();
-    const visit = (id: string) => {
-        if (active.has(id)) throw new Error(`WorkItem dependency cycle: ${id}`);
-        if (done.has(id)) return;
-        const choice = byId.get(id);
-        if (!choice) throw new Error(`Unknown WorkItem dependency: ${id}`);
-        active.add(id);
-        for (const dependency of [...choice.workItem.dependsOn].sort()) visit(dependency);
-        active.delete(id); done.add(id); result.push(choice);
-    };
-    for (const id of [...byId.keys()].sort()) visit(id);
-    return result;
+    // The reviewed outline owns presentation order. Sorting IDs here would silently undo
+    // a dependency-compatible move made before prompt authoring.
+    reorderUnwrittenOutline(choices.map(choice => choice.workItem),
+        choices.map(choice => choice.workItem.id), false);
+    return [...choices];
 }
 
 /** Pure authoring: no file, Git, provider, approval, or execution side effects. */

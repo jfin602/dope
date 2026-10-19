@@ -4,7 +4,7 @@ import type { RebaseDecision } from '@dope/visual-planning/lib/rebase';
 import { acceptSuggestion } from '@dope/visual-planning/lib/work';
 import type { PlannedTransformation } from '@dope/visual-planning';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
-import type { PlanningCollection, PlanningOperation, VisualPlanningService, CurrentSoftwareImpactPacket, TargetDesignReview } from '@dope/visual-planning/lib/service';
+import type { PlanningCollection, PlanningOperation, VisualPlanningService, CurrentSoftwareImpactPacket, TargetDesignReview, PlanningStackOutline, PlanningStackPreview, PlanningStackRecord } from '@dope/visual-planning/lib/service';
 import type { AdoptionPreview, AdoptionScope } from '@dope/visual-planning/lib/adoption';
 import type { SoftwareMapController } from './software-map-controller';
 import type { PlanningView } from './planning-map-projection';
@@ -17,9 +17,93 @@ const transitions: Record<MapStatus, MapStatus[]> = {
     completed: ['archived'], superseded: ['archived'], archived: []
 };
 export class PlanningMapController {
+    scopeReview?: { token: string; checkpointId: string; roadmapRevision: number; roadmapSourceHash: string };
+    stackOutline?: PlanningStackOutline;
+    stackPreview?: PlanningStackPreview;
+    stackRecord?: PlanningStackRecord;
+    stackFolder = '';
+    private stackBranchIds: string[] = [];
+    async reviewScope(): Promise<void> {
+        const context = this.prepareWorkContext;
+        if (!context || !this.connection || !this.handle || context.workspace !== this.workspace) return;
+        this.loading = true; this.error = ''; this.notify();
+        try { this.scopeReview = await this.connection.previewScopeApproval(this.handle, context.checkpointId); }
+        catch (error) { this.error = String(error); }
+        finally { this.loading = false; this.notify(); }
+    }
+    async approveScope(): Promise<void> {
+        const preview = this.scopeReview, context = this.prepareWorkContext;
+        if (!preview || !context || preview.checkpointId !== context.checkpointId ||
+            !this.connection || !this.handle) return;
+        this.loading = true; this.error = ''; this.notify();
+        try { await this.connection.approveScope(this.handle, preview.token, true); this.scopeReview = undefined; }
+        catch (error) { this.error = String(error); this.scopeReview = undefined; }
+        finally { this.loading = false; this.notify(); }
+    }
+    async prepareStackOutline(): Promise<void> {
+        const context = this.prepareWorkContext, branches = this.approvedTargetBranches;
+        if (!context || !branches || branches.context !== context || !this.connection || !this.handle) {
+            this.error = 'Review the current checkpoint and target branches before preparing a stack'; this.notify(); return;
+        }
+        this.loading = true; this.error = ''; this.notify();
+        try {
+            const outline = await this.connection.stackOutline(this.handle, context.checkpointId, branches.ids);
+            if (this.prepareWorkContext !== context || this.selected?.id !== outline.mapId ||
+                this.selected.revision !== outline.mapRevision) throw new Error('Planning selection changed during outline review');
+            this.stackOutline = outline; this.stackBranchIds = [...branches.ids];
+            this.stackPreview = undefined; this.stackRecord = undefined; this.stackFolder = '';
+        } catch (error) { this.error = String(error); }
+        finally { this.loading = false; this.notify(); }
+    }
+    async moveStackOutline(id: string, direction: -1 | 1): Promise<void> {
+        const outline = this.stackOutline, context = this.prepareWorkContext;
+        if (!outline || !context || !this.connection || !this.handle || this.stackRecord) return;
+        const order = outline.items.map(item => item.id), index = order.indexOf(id), next = index + direction;
+        if (index < 0 || next < 0 || next >= order.length) return;
+        [order[index], order[next]] = [order[next], order[index]];
+        try {
+            this.stackOutline = await this.connection.reorderStackOutline(this.handle, context.checkpointId,
+                this.stackBranchIds, order);
+            this.stackPreview = undefined; this.error = '';
+        } catch (error) { this.error = String(error); }
+        this.notify();
+    }
+    async reviewStack(folderName: string): Promise<void> {
+        const outline = this.stackOutline, context = this.prepareWorkContext;
+        if (!outline || !context || !this.connection || !this.handle || this.stackRecord) return;
+        this.loading = true; this.error = ''; this.notify();
+        try {
+            this.stackPreview = await this.connection.previewStackPublication(this.handle, context.checkpointId,
+                this.stackBranchIds, folderName, outline.items.map(item => item.id));
+            this.stackFolder = folderName;
+        } catch (error) { this.error = String(error); }
+        finally { this.loading = false; this.notify(); }
+    }
+    async publishStack(): Promise<void> {
+        const preview = this.stackPreview;
+        if (!preview || !this.connection || !this.handle) return;
+        this.loading = true; this.error = ''; this.notify();
+        try { this.stackRecord = await this.connection.publishStack(this.handle, preview.token, true); this.stackPreview = undefined; }
+        catch (error) { this.error = String(error); this.stackPreview = undefined; }
+        finally { this.loading = false; this.notify(); }
+    }
+    async attemptAuthoredStackReorder(): Promise<void> {
+        const record = this.stackRecord, outline = this.stackOutline;
+        if (!record || !outline || !this.connection || !this.handle) return;
+        try {
+            await this.connection.attemptAuthoredStackReorder(this.handle, record.folderName,
+                [...outline.items].reverse().map(item => item.id));
+            this.error = 'Authored reorder unexpectedly succeeded; review the stack source';
+        } catch (error) { this.error = String(error); }
+        this.notify();
+    }
     prepareWorkContext?: { workspace: string; projectId: string; planningProjectId: string; checkpointId: string; title: string;
         objective: string; requirements: string[]; impactReferences: string[]; mapId?: string; mapRevision?: number };
     setPrepareWorkContext(context: PlanningMapController['prepareWorkContext']): void {
+        if (this.prepareWorkContext !== context) {
+            this.scopeReview = undefined; this.stackOutline = undefined; this.stackPreview = undefined;
+            this.stackRecord = undefined; this.stackFolder = ''; this.stackBranchIds = [];
+        }
         this.prepareWorkContext = context; this.notify();
     }
     private readonly listeners = new Set<() => void>();
@@ -640,6 +724,7 @@ export class PlanningMapController {
             const snapshot = await connection.mutate({ projectHandle: handle, expectedRevision: collection.revision, operation });
             if (request !== this.request || this.disposed || this.map.workspace !== workspace) return;
             this.collection = snapshot;
+            this.stackOutline = undefined; this.stackPreview = undefined;
             this.stale = undefined;
             if (operation.type === 'put-transformation' || operation.type === 'remove-transformation' || operation.type === 'undo' || operation.type === 'redo') {
                 this.suggestions = undefined; this.selectedSuggestionIndex = undefined;

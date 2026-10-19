@@ -110,7 +110,8 @@ export class PhysicalMapWidget extends BaseWidget {
         private readonly opener: OpenerService, private readonly openTab: (id: string) => Promise<void>,
         private readonly planning: PlanningMapController, private readonly colors: SmapPresentationState,
         options?: PhysicalMapTabOptions, private readonly openWorkTask?: (taskId: string) => Promise<void>,
-        private readonly linkCheckpointMap?: (context: NonNullable<PlanningMapController['prepareWorkContext']>, mapId: string) => Promise<void>) {
+        private readonly linkCheckpointMap?: (context: NonNullable<PlanningMapController['prepareWorkContext']>, mapId: string) => Promise<void>,
+        private readonly openPromptStacks?: () => Promise<void>) {
         super();
         this.focusedTab = !!options;
         this.id = options ? physicalMapTabId(options) : PHYSICAL_MAP_ID;
@@ -661,12 +662,14 @@ export class PhysicalMapWidget extends BaseWidget {
             void this.planning.create(title.value.trim(), objective.value.trim()); this.draftTitle = ''; this.draftObjective = '';
         } },
             !this.planning.canCreate || this.planning.loading || !this.controller.projectMatches);
-        if (handoff && !handoff.mapId && this.planning.selected) button('Link this map to checkpoint', async () => {
+        if (handoff && this.planning.selected && (!handoff.mapId ||
+            handoff.mapId === this.planning.selected.id && handoff.mapRevision !== this.planning.selected.revision))
+            button(handoff.mapId ? 'Review and relink updated map' : 'Link this map to checkpoint', async () => {
             const selected = this.planning.selected;
             if (!selected || this.planning.prepareWorkContext !== handoff || !this.linkCheckpointMap) return;
             const approved = await new ConfirmDialog({ title: 'Link Planning Map to checkpoint',
-                msg: `Link ${selected.title} (revision ${selected.revision}) to ${handoff.title}? This records a reviewed Roadmap reference. It does not approve the target, create WorkItems, run Work, or adopt architecture.`,
-                ok: 'Link map', cancel: 'Cancel' }).open();
+                msg: `${handoff.mapId ? 'Replace the stale link with' : 'Link'} ${selected.title} (revision ${selected.revision}) for ${handoff.title}? This records a reviewed Roadmap reference. It does not approve the target, create WorkItems, run Work, or adopt architecture.`,
+                ok: handoff.mapId ? 'Relink map' : 'Link map', cancel: 'Cancel' }).open();
             if (!approved) return;
             try {
                 await this.linkCheckpointMap(handoff, selected.id);
@@ -941,6 +944,61 @@ export class PhysicalMapWidget extends BaseWidget {
                 () => this.planning.selectWorkItem(item.id), selected);
             control.setAttribute('aria-pressed', String(selected));
             if (this.planning.selectedTransformationId && item.transformationIds.includes(this.planning.selectedTransformationId)) control.classList.add('dope-work-highlight');
+        }
+        const bridge = this.planning.prepareWorkContext;
+        if (bridge?.mapId === map.id && bridge.mapRevision === map.revision) {
+            const stackHeading = document.createElement('h4'); stackHeading.textContent = 'Planning Bridge · task stack'; panel.append(stackHeading);
+            line('A stack outline is a reviewable plan. Prompt files are authored only after a separate preview and approval. Opening them does not Run Work.');
+            button('Review checkpoint scope', () => void this.planning.reviewScope());
+            const scope = this.planning.scopeReview;
+            if (scope?.checkpointId === bridge.checkpointId) {
+                line(`Scope preview · Roadmap revision ${scope.roadmapRevision} · source ${scope.roadmapSourceHash.slice(0, 12)} · ${bridge.title}`);
+                button('Approve checkpoint scope', async () => {
+                    const approved = await new ConfirmDialog({ title: 'Approve checkpoint scope',
+                        msg: `Approve ${bridge.title} against the reviewed Roadmap source? This does not approve target architecture, author prompts, or Run Work.`,
+                        ok: 'Approve scope', cancel: 'Cancel' }).open();
+                    if (approved) void this.planning.approveScope();
+                });
+            }
+            button('Prepare task stack outline', () => void this.planning.prepareStackOutline(),
+                !map.workItems.length || map.workItems.some(item => item.status !== 'ready'));
+            const outline = this.planning.stackOutline;
+            if (outline?.mapId === map.id && outline.mapRevision === map.revision) {
+                line(`Unwritten outline · ${outline.items.length} accepted WorkItems · no P*.txt files authored`);
+                outline.items.forEach((item, index) => {
+                    line(`${index + 1}. ${item.title} (${item.id}) · after ${item.dependsOn.join(', ') || 'none'} · ${item.objective}`);
+                    line(`Acceptance: ${item.acceptanceCriteria.join('; ')} · validation: ${item.validationTargets.join('; ')}`);
+                    button(`Move ${item.title} up`, () => void this.planning.moveStackOutline(item.id, -1), index === 0 || !!this.planning.stackRecord);
+                    button(`Move ${item.title} down`, () => void this.planning.moveStackOutline(item.id, 1), index === outline.items.length - 1 || !!this.planning.stackRecord);
+                });
+                if (!this.planning.stackRecord) button('Preview executable prompts', async () => {
+                    const folder = await this.ask('New correction task folder, for example c11-severity-filter');
+                    if (folder) void this.planning.reviewStack(folder);
+                });
+            }
+            const preview = this.planning.stackPreview;
+            if (preview) {
+                line(`Unpublished prompt preview · ${preview.destination} · Git ${preview.gitHead.slice(0, 12)} · version ${preview.packageVersion} · fingerprint ${preview.stackFingerprint.slice(0, 16)}`);
+                line(`Dependencies: ${preview.dependencies.join('; ') || 'parallel'} · gates: ${preview.gates.join('; ')}`);
+                for (const file of preview.files) {
+                    const details = document.createElement('details');
+                    const summary = document.createElement('summary'); summary.textContent = `${file.path} · ${file.hash.slice(0, 16)}`;
+                    const diff = document.createElement('pre'); diff.textContent = file.diff;
+                    details.append(summary, diff); panel.append(details);
+                }
+                button('Approve and author prompt files', async () => {
+                    const approved = await new ConfirmDialog({ title: 'Author reviewed task stack',
+                        msg: `Write ${preview.files.length} reviewed files under ${preview.destination}? Authored order and bytes become fixed. This does not start Work.`,
+                        ok: 'Author prompts', cancel: 'Cancel' }).open();
+                    if (approved) void this.planning.publishStack();
+                });
+            }
+            const published = this.planning.stackRecord;
+            if (published) {
+                line(`Authored stack · docs/tasks/${published.folderName} · ${published.status} · fingerprint ${published.stackFingerprint} · Open through existing Work to review its separate Run controls.`);
+                button('Try to reorder authored prompts', () => void this.planning.attemptAuthoredStackReorder());
+                button('Open prompt stacks in Work', () => void this.openPromptStacks?.(), !this.openPromptStacks);
+            }
         }
         line(`Transformations: ${map.transformations.map(change => change.id).join(', ') || 'none'}`);
         for (const change of map.transformations) {

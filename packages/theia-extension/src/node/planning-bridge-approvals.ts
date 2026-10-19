@@ -85,7 +85,7 @@ async function reference(root: string, checkpointId: string, gate: BridgeGate, s
         { scope, target, targetBranchIds, stack });
     return { projectRoot: root, roadmapProjectId: roadmap.projectId, roadmapRevision: roadmap.revision,
         checkpointId, roadmapSourceHash: linked.sourceHash,
-        ...(planning ? { planningProjectId: planning.projectId, collectionRevision: planning.collectionRevision,
+        ...(gate !== 'scope' && planning ? { planningProjectId: planning.projectId, collectionRevision: planning.collectionRevision,
             mapId: planning.map.id, mapRevision: planning.map.revision } : {}), basis,
         ...(gate === 'stack' && stack ? { stackPath: stack.path, stackFingerprint: stack.fingerprint } : {}),
         approvedDigest };
