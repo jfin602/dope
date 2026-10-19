@@ -53,6 +53,20 @@
 
 The [source-bound N1–N5 check](ux-007-implementation-check.md) records the earlier uncommitted candidate's local-browser evidence and limits. UX-007 product was subsequently committed at `8990407`; this did not add native evidence or count as H01. Existing P8/P3 Not Green remains historical.
 
+## Owner Work Experience target — 2026-10-18 (UX-013 / UX-014; docs only)
+
+The owner-provided Work detail and transcript screenshots are **design observations**, not a new manual Hunter or independently confirmed product root cause. Correction proposal and exact acceptance contract: [Work Experience](work-experience-contract.md). H01 only inspected Work empty/disabled entry and **did not** qualify real completed Work, runner validation or AgentRun formatting. Keep `c11-bridge-repair` P5 NOT GREEN and preserve native Electron unobserved evidence separately.
+
+| Gate | Representative user task and states | Current evidence |
+| --- | --- | --- |
+| W1–W2 — Work overview/truth | Discover Running/History/stacks; identify actual step, active task, completed agent vs required validation and qualification | Owner screenshot; **NOT TESTED** as redesigned product |
+| W3–W4 — Intervention/authority | Understand dirty-tree drift and required check unavailable separately; review files/grants/approval without accidental continue | Owner screenshot; **NOT TESTED**; no bypass of source/validation/authority |
+| W5 — Markdown transcript | Read headings, lists, tables, code fences, file references, agent summaries and collapsible command output in existing AgentRun center editor | Owner screenshot; **NOT TESTED** as redesigned product |
+| W6 — Safe rendering | Unsafe HTML/images/links, large logs, cross-project and secret redaction without new network or provider authority | **NOT TESTED**; preserve prior image-egress denial |
+| W7 — Durable transcript/history | Reopen after reload/restart; scroll away/Latest, current distinct Work IDs, exact History continuation | **NOT TESTED** |
+| W8 — Responsive/accessibility | Wide/narrow/docked Work, keyboard focus, screen reader labels, alternative theme, cancelled/error/empty state | **NOT TESTED** |
+| W9–W10 — Integrated real GUI | Current direct task and real Prompt Stack plus failed/blocked and successful Work; Phase Focus/Bridge D6–D8; explicit manual browser/native/source-bound report | **NOT TESTED**; native direct evidence must not be inferred from a build |
+
 ## Living workflow/task-state coverage
 
 **P8 browser-only coverage delta (uncommitted `0.11.8` candidate, product source `8cad838`):** Roadmap manual wrong-file replacement, preview/cancel/invalid/stale/missing/confirm, external new-source edit, restart and second-project isolation were directly exercised. One saved Chat had explicit local Q4 selection, a validated no-action message, raw JSON disclosure/copy, keyboard and narrow rendering. Exact reported Roadmap help wording **failed** despite a matched “linked Roadmap file” wording passing; native Electron GUI and Codex-backed parity were not exercised. AI Center was inspected only to confirm the existing local connection/model, not to qualify provider configuration. This is scoped regression evidence, not a broad Hunter pass.
