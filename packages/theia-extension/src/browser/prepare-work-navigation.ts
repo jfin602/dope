@@ -33,9 +33,13 @@ export async function verifyPrepareWorkNavigation(selection: PrepareWorkNavigati
         if (selection.mapOwnerProjectId !== planningProjectId || !selection.mapBasis)
             throw new Error('Linked Planning Map has a foreign owner or missing basis. Review the Roadmap link.');
         const exact = await planning.navigationCurrentMap(selection.mapId);
-        if (!exact || exact.projectId !== planningProjectId || exact.revision !== selection.mapRevision ||
-            !sameObservation(exact.basis, selection.mapBasis))
+        if (!exact || exact.projectId !== planningProjectId ||
+            !collection.maps.some(map => map.id === exact.id && map.projectId === planningProjectId && map.revision === exact.revision) ||
+            exact.revision < (selection.mapRevision ?? 0) ||
+            (exact.revision === selection.mapRevision && !sameObservation(exact.basis, selection.mapBasis)))
             throw new Error('Linked Planning Map is missing or stale. Review the Roadmap link before preparing work.');
+        // A newer same-owner map may be opened only for the existing explicit relink flow.
+        // The old revision remains in the handoff, so target and Work controls stay gated.
     } else {
         const candidates = collection.maps.filter(map => map.projectId === planningProjectId &&
             (map.status === 'draft' || map.status === 'active'));

@@ -26,7 +26,9 @@ test('Prepare Work accepts independent owner IDs only under the same attached wo
         software as never, planning()), /unavailable/);
     await assert.rejects(verifyPrepareWorkNavigation(selection, software as never,
         { ...planning(), collection: { schemaVersion: 1, projectId: 'foreign', revision: 1, maps: [] } }), /foreign owner/);
-    await assert.rejects(verifyPrepareWorkNavigation({ ...selection, mapRevision: 1 }, software as never, planning()), /stale/);
+    assert.deepEqual(await verifyPrepareWorkNavigation({ ...selection, mapRevision: 1 }, software as never, planning()),
+        { projectId: 'planning-owner', revision: 3, existingMapId: undefined });
+    await assert.rejects(verifyPrepareWorkNavigation({ ...selection, mapRevision: 3 }, software as never, planning()), /stale/);
     await assert.rejects(verifyPrepareWorkNavigation({ ...selection, mapBasis: { ...basis, physicalInputFingerprint: 'changed' } },
         software as never, planning()), /stale/);
     await assert.rejects(verifyPrepareWorkNavigation(selection, software as never,
