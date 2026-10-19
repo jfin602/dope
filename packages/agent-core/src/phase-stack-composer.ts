@@ -7,6 +7,7 @@ export interface ComposableWorkItem {
     requirements: readonly string[]; constraints: readonly string[];
     acceptanceCriteria: readonly string[]; validationTargets: readonly string[];
     workingSet: readonly string[]; status: string;
+    delegablePaths?: readonly string[]; humanReservedPaths?: readonly string[];
 }
 export type ComposerModel = 'GPT-6 Sol Medium' | 'GPT-6 Sol High' | 'GPT-6 Sol XHigh';
 export interface WorkPromptChoice {
@@ -105,6 +106,12 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
         if (choice.estimatedMinutes > 8) diagnostics.push(`P${number}: estimated ${choice.estimatedMinutes} minutes exceeds the 8-minute target${choice.estimatedMinutes > 10 ? ' and 10-minute soft ceiling' : ''}; split or review.`);
         const paths = lines(item.workingSet, 'working set');
         if (paths.some(path => !safePath(path))) throw new Error(`Unsafe working set path in ${item.id}`);
+        const delegable = lines(item.delegablePaths ?? paths, 'delegable paths');
+        const reserved = lines(item.humanReservedPaths ?? [], 'human reserved paths', false);
+        const within = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);
+        if ([...delegable, ...reserved].some(path => !safePath(path) || !paths.some(root => within(root, path))) ||
+            delegable.some(path => reserved.some(blocked => within(path, blocked) || within(blocked, path))))
+            throw new Error(`Invalid delegation scope in ${item.id}`);
         const checks = lines(choice.integrationChecks ?? [], 'T2 integration check', choice.tier === 'T2');
         const dependencies = [...item.dependsOn].sort().map(id => `P${ordered.findIndex(entry => entry.workItem.id === id) + 1} (${id})`);
         const version = versionFor(input, mode, number);
@@ -114,9 +121,13 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
             '', 'VERSIONING', mode === 'phase' ? `The assigned project version is \`${version}\`.` : `- Required unchanged project version: \`${version}\`.`,
             '', 'SOURCE AND AUTHORITY', `- Accepted WorkItem: ${line(item.id, 'WorkItem ID')}.`,
             `- Depends on: ${dependencies.length ? dependencies.join(', ') : 'none'}.`,
-            '- Recheck current source, project ownership, approval and version before effects; this draft grants no Run or write authority.',
+            '- Authoring, previewing, selecting or approving this prompt does not independently authorize execution.',
+            '- After the developer explicitly starts this task through Dope Work and accepts its ExecutionGrant, carry out the assigned implementation within that grant. Do not request an additional grant merely because this prompt was authored as a draft.',
+            '- Recheck current source, project ownership, approval and version before effects. The runtime\'s current permissions, source restrictions, validation requirements and developer decisions remain authoritative. Never run or write outside the accepted scope.',
             '', 'SCOPE', line(item.objective, 'objective'),
             'Working set:', bullets(paths),
+            'Delegable paths:', bullets(delegable),
+            'Human reserved paths:', reserved.length ? bullets(reserved) : '- none',
             'Requirements:', bullets(lines(item.requirements, 'requirements', false)),
             'Constraints:', bullets(lines(item.constraints, 'constraints', false)),
             '', 'ACCEPTANCE', bullets(lines(item.acceptanceCriteria, 'acceptance criteria')),

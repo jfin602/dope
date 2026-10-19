@@ -82,7 +82,8 @@ export async function composeAffectedCorrectionDraft(map: PlanningMap, changedTr
         title: item.title, objective: item.objective, dependsOn: item.dependsOn,
         requirements: item.requirements, constraints: item.constraints,
         acceptanceCriteria: item.acceptanceCriteria, validationTargets: item.validationTargets,
-        workingSet: item.workingSet, status: item.status });
+        workingSet: item.workingSet, delegablePaths: item.delegablePaths,
+        humanReservedPaths: item.humanReservedPaths, status: item.status });
     for (const choice of input.work) {
         const current = map.workItems.find(item => item.id === choice.workItem.id);
         if (!current || current.status !== 'ready' ||

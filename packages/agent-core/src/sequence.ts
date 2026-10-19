@@ -34,7 +34,7 @@ export type SequenceBlockReason = 'source-drift' | 'git-history' | 'checkpoint-m
     'version-mismatch' | 'head-drift' | 'worktree-drift' | 'interrupted' | 'completion-unsupported' |
     'dirty-acceptance-required' |
     'run-failed' | 'run-cancelled' | 'authority-denied' | 'validation-failed' |
-    'capacity-exhausted' | 'checkpoint-pending' | 'checkpoint-failed';
+    'capacity-exhausted' | 'candidate-review-pending' | 'checkpoint-pending' | 'checkpoint-failed';
 /** A dirty blocker is actionable only for a pending executable entry and a dirty repository. */
 export function sequenceNeedsDirtyAcceptance(sequence: AgentTaskSequence | undefined,
     evidence: { clean: boolean } | undefined): boolean {
@@ -319,7 +319,8 @@ export async function parseAgentTaskSequence(value: unknown): Promise<AgentTaskS
         throw new Error('Sequence position disagrees with checkpoints');
     const reasons: SequenceBlockReason[] = ['source-drift', 'git-history', 'checkpoint-mismatch',
         'version-mismatch', 'head-drift', 'worktree-drift', 'dirty-acceptance-required', 'interrupted', 'completion-unsupported',
-        'run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted', 'checkpoint-pending', 'checkpoint-failed'];
+        'run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted',
+        'candidate-review-pending', 'checkpoint-pending', 'checkpoint-failed'];
     const blockedReason = x.blockedReason === undefined ? undefined : select(x.blockedReason, reasons);
     if (blockedReason && status !== 'blocked' && status !== 'interrupted') throw new Error('Invalid sequence block reason');
     const taskId = x.taskId === undefined ? undefined : id(x.taskId);

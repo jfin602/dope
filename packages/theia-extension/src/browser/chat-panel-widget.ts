@@ -600,6 +600,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
                 if (sequence.blockedReason === 'checkpoint-pending' || sequence.blockedReason === 'checkpoint-failed')
                     scroll.append(this.button('Verify checkpoint', () => void phase.checkpoint(), phase.busy));
+                else if (sequence.blockedReason === 'candidate-review-pending' && phase.run?.candidateReview)
+                    scroll.append(this.button('Review candidate', () =>
+                        void controller.select({ kind: 'run', id: phase.run!.id }), phase.busy));
                 else if (sequence.status !== 'running' && sequence.status !== 'completed')
                     scroll.append(this.button('Reconcile repository', () => void phase.reconcile(), phase.busy));
                 if (sequence.gateMessage) detail(sequence.gateMessage, 'dope-work-warning');
@@ -648,7 +651,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     status.textContent = `${run.validationResults.length} candidate validation result${run.validationResults.length === 1 ? '' : 's'}`;
                     scroll.append(status);
                 }
-                if (run.candidateReview && controller.selectedTask?.origin.kind === 'work-item') {
+                if (run.candidateReview && controller.selectedTask?.reviewPolicy?.kind === 'required') {
                     const review = run.candidateReview;
                     const state = workReviewState(run, controller.selectedTask, controller.reviewBusy);
                     const section = document.createElement('section'); section.className = 'dope-work-review';
@@ -661,8 +664,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         state === 'rejected' ? 'Rejected · candidate not applied' : 'Review is unavailable.';
                     section.append(status);
                     const scope = document.createElement('p'); scope.className = 'dope-work-detail';
-                    scope.textContent = `Delegated paths: ${controller.selectedTask.origin.scope.delegablePaths.join(', ')} · ` +
-                        `Human reserved: ${controller.selectedTask.origin.scope.humanReservedPaths.join(', ') || 'none'}`;
+                    scope.textContent = controller.selectedTask.origin.kind === 'work-item' ?
+                        `Delegated paths: ${controller.selectedTask.origin.scope.delegablePaths.join(', ')} · ` +
+                        `Human reserved: ${controller.selectedTask.origin.scope.humanReservedPaths.join(', ') || 'none'}` :
+                        'Phase-stack candidate: inspect changed paths against the authored prompt and accepted grant.';
                     section.append(scope);
                     const paths = document.createElement('p'); paths.className = 'dope-work-detail';
                     paths.textContent = `Changed paths: ${review.changedPaths.join(', ') || 'none'}`; section.append(paths);

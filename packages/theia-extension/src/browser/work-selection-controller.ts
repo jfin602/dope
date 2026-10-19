@@ -28,8 +28,8 @@ export interface WorkRow {
 
 export function workReviewState(run?: AgentRun, task?: AgentTask, busy = false):
     'pending' | 'busy' | 'stale' | 'accepted' | 'rejected' | 'unavailable' {
-    if (!run?.candidateReview || task?.origin.kind !== 'work-item' || task.reviewPolicy?.kind !== 'required' ||
-        task.id !== run.taskId || task.projectId !== run.projectId) return 'unavailable';
+    if (!run?.candidateReview || !task || !['work-item', 'phase-stack'].includes(task.origin.kind) ||
+        task.reviewPolicy?.kind !== 'required' || task.id !== run.taskId || task.projectId !== run.projectId) return 'unavailable';
     if (run.reviewDecision) return run.reviewDecision.kind === 'accept' ? 'accepted' : 'rejected';
     if (busy) return 'busy';
     if (run.status !== 'blocked' || run.candidateReview.state !== 'ready' || !run.basis?.head ||
@@ -362,6 +362,7 @@ export class WorkSelectionController {
             this.selectedRun = await this.runtime.decideCandidate(handle, current.id, review.revision,
                 review.candidateFingerprint, decision, grant);
             await this.refresh();
+            await this.phase.refresh();
         } catch (error) {
             this.message = `Candidate ${decision} failed: ${error instanceof Error ? error.message : 'Review state could not be verified'}`;
             const current = await this.runtime.readRun(handle, shown.id).catch(() => undefined);

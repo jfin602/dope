@@ -119,6 +119,20 @@ async function sequenceTerminal(store: AgentStore, root: string, sequenceId: str
     throw new Error('Sequence did not stop');
 }
 
+async function acceptSequenceCandidate(f: { root: string; store: AgentStore; runtime: AgentExecutionRuntime;
+    backend: AgentRuntimeBackend; handle: string }, sequenceId: string, runId: string) {
+    const held = await f.runtime.waitForRun(f.root, runId);
+    assert.equal(held.status, 'blocked');
+    assert.equal(held.candidateReview?.state, 'ready');
+    assert.equal((await sequenceTerminal(f.store, f.root, sequenceId)).blockedReason, 'candidate-review-pending');
+    const grant = createDefaultExecutionGrant({ id: held.grantId, revision: held.grantRevision,
+        taskId: held.taskId, acceptedAt: new Date().toISOString() });
+    const accepted = await f.backend.decideCandidate(f.handle, runId, held.candidateReview!.revision,
+        held.candidateReview!.candidateFingerprint, 'accept', grant);
+    assert.equal(accepted.status, 'completed');
+    return accepted;
+}
+
 async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: string }) {
     const result = await f.backend.openTaskStack(f.handle, 'docs/tasks', 'c8-lifecycle-test');
     assert.equal(result.kind, 'opened');
@@ -126,7 +140,8 @@ async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: strin
     const sequence = result.sequence;
     assert.equal(sequence.currentEntryNumber, 1);
     const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
-        { kind: 'follow-coding-agent' }, { validation: [], requireValidationPass: false });
+        { kind: 'follow-coding-agent' }, { validation: [{ kind: 'test', label: 'focused', command: 'true' }],
+            requireValidationPass: true });
     const accepted = createDefaultExecutionGrant({ id: 'sequence-grant', revision: 0, taskId: task.id,
         acceptedAt: new Date().toISOString() });
     return { sequence, task, accepted };
@@ -186,6 +201,7 @@ test('sequence runs only current snapshot and retries capacity in one task/works
     assert.deepEqual(task.origin, { kind: 'phase-stack', promptId: `c8-lifecycle-test-P1-${sequence.stack.fingerprint.slice(0, 12)}` });
     assert.equal(task.phaseStack?.versionPolicy.version, sequence.basis.packageVersion);
     assert.equal(task.phaseStack?.recommendedModel, 'gpt-6-sol');
+    assert.equal(task.reviewPolicy?.kind, 'required');
     assert.equal(task.controls.reasoningEffort, 'high');
     assert.equal(task.instructions, sequence.stack.entries[0].promptText);
     await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true), /origin/);
@@ -203,7 +219,16 @@ test('sequence runs only current snapshot and retries capacity in one task/works
     assert.equal(await readFile(join(workspace, 'partial.txt'), 'utf8'), 'candidate');
     await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
     f.adapter.complete();
-    const done = await terminal(f.store, f.root, run.id);
+    const held = await f.runtime.waitForRun(f.root, run.id);
+    assert.equal(held.capacityRetries, 1);
+    assert.equal((await sequenceTerminal(f.store, f.root, sequence.id)).blockedReason, 'candidate-review-pending');
+    await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
+    const done = await acceptSequenceCandidate(f, sequence.id, run.id);
+    const replay = await f.backend.decideCandidate(f.handle, run.id, 0,
+        done.candidateReview!.candidateFingerprint, 'accept', createDefaultExecutionGrant({
+            id: done.grantId, revision: done.grantRevision, taskId: done.taskId,
+            acceptedAt: new Date().toISOString() }));
+    assert.deepEqual(replay.appliedFiles, done.appliedFiles);
     const stopped = await sequenceTerminal(f.store, f.root, sequence.id);
     assert.equal(done.status, 'completed');
     assert.equal(done.capacityRetries, 1);
@@ -216,12 +241,60 @@ test('sequence runs only current snapshot and retries capacity in one task/works
     assert.equal((await f.backend.reconcileSequence(f.handle, sequence.id)).blockedReason, 'checkpoint-pending');
 }));
 
+test('phase-stack review rejects a validated candidate without promotion or checkpoint', async () => fixture(async f => {
+    const { sequence, accepted } = await preparedSequence(f);
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'rejected.txt'), 'candidate');
+    f.adapter.complete();
+    const held = await f.runtime.waitForRun(f.root, run.id);
+    assert.equal((await sequenceTerminal(f.store, f.root, sequence.id)).blockedReason, 'candidate-review-pending');
+    await assert.rejects(readFile(join(f.root, 'rejected.txt')), { code: 'ENOENT' });
+    await assert.rejects(f.backend.checkpointSequence(f.handle, sequence.id), /no pending checkpoint/);
+    await assert.rejects(f.backend.decideCandidate(f.handle, run.id, 0, '0'.repeat(64), 'accept', accepted),
+        /fingerprint/);
+    const rejected = await f.backend.decideCandidate(f.handle, run.id, 0,
+        held.candidateReview!.candidateFingerprint, 'reject');
+    assert.equal(rejected.status, 'cancelled');
+    assert.equal(rejected.reviewDecision?.kind, 'reject');
+    assert.equal((await f.backend.reconcileSequence(f.handle, sequence.id)).blockedReason, 'run-cancelled');
+    assert.equal((await f.backend.readSequence(f.handle, sequence.id))?.checkpoints.length, 0);
+    await assert.rejects(readFile(join(f.root, 'rejected.txt')), { code: 'ENOENT' });
+}));
+
+test('phase-stack review denies a candidate outside its authored delegation scope', async () => fixture(async f => {
+    await appendFile(join(f.root, 'docs/tasks/c8-lifecycle-test/P1-lifecycle.txt'),
+        '\nDelegable paths:\n- allowed.txt\nHuman reserved paths:\n- reserved.txt\n');
+    const { sequence, accepted } = await preparedSequence(f);
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'reserved.txt'), 'candidate');
+    f.adapter.complete();
+    const denied = await terminal(f.store, f.root, run.id);
+    assert.equal(denied.outcome?.code, 'authority-denied');
+    assert.equal(denied.candidateReview, undefined);
+    await assert.rejects(readFile(join(f.root, 'reserved.txt')), { code: 'ENOENT' });
+    assert.equal((await sequenceTerminal(f.store, f.root, sequence.id)).blockedReason, 'authority-denied');
+}));
+
+test('phase-stack review denies approval after authored prompt drift', async () => fixture(async f => {
+    const { sequence, accepted } = await preparedSequence(f);
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'drift.txt'), 'candidate');
+    f.adapter.complete();
+    const held = await f.runtime.waitForRun(f.root, run.id);
+    assert.equal((await sequenceTerminal(f.store, f.root, sequence.id)).blockedReason, 'candidate-review-pending');
+    await appendFile(join(f.root, 'docs/tasks/c8-lifecycle-test/P1-lifecycle.txt'), '\nChanged outside Work\n');
+    await assert.rejects(f.backend.decideCandidate(f.handle, run.id, 0,
+        held.candidateReview!.candidateFingerprint, 'accept', accepted), /source or sequence changed/);
+    assert.equal((await f.backend.readSequence(f.handle, sequence.id))?.blockedReason, 'source-drift');
+    await assert.rejects(readFile(join(f.root, 'drift.txt')), { code: 'ENOENT' });
+}));
+
 test('checkpoint failure with unchanged HEAD can be retried once after repair', async () => fixture(async f => {
     const { sequence, accepted } = await preparedSequence(f);
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
     await writeFile(join(f.adapter.starts[0].executionRoot, 'retry-checkpoint.txt'), 'candidate');
     f.adapter.complete();
-    assert.equal((await terminal(f.store, f.root, run.id)).status, 'completed');
+    assert.equal((await acceptSequenceCandidate(f, sequence.id, run.id)).status, 'completed');
     const pending = await sequenceTerminal(f.store, f.root, sequence.id);
     assert.equal(pending.blockedReason, 'checkpoint-pending');
     await f.store.updateSequence(f.root, pending, { ...pending, blockedReason: 'checkpoint-failed',
@@ -239,7 +312,7 @@ test('reconcile adopts only the exact completed Dope checkpoint after a commit/s
     const started = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
     await writeFile(join(f.adapter.starts[0].executionRoot, 'gap-checkpoint.txt'), 'candidate');
     f.adapter.complete();
-    const run = await terminal(f.store, f.root, started.id);
+    const run = await acceptSequenceCandidate(f, sequence.id, started.id);
     const pending = await sequenceTerminal(f.store, f.root, sequence.id);
     assert.equal(pending.blockedReason, 'checkpoint-pending');
     const sha = await checkpointSequence(f.root, pending, task, run);

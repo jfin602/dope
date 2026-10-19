@@ -84,6 +84,8 @@ export async function checkpointSequence(root: string, sequence: AgentTaskSequen
         run.validationBasis !== 'execution-workspace' || !run.executionWorkspace || !run.finalGit ||
         !run.candidateFingerprint ||
         run.finalGit.headChanged || task.origin.kind !== 'phase-stack' ||
+        task.reviewPolicy?.kind === 'required' && (run.reviewDecision?.kind !== 'accept' ||
+            run.reviewDecision.candidateFingerprint !== run.candidateFingerprint) ||
         task.phaseStack?.stackFingerprint !== sequence.stack.fingerprint ||
         task.phaseStack.versionPolicy.version !== entry.versionPolicy.version ||
         run.basis?.head !== (sequence.checkpoints.at(-1)?.sha ?? sequence.basis.head) ||
@@ -176,6 +178,8 @@ export async function verifyCommittedCheckpoint(root: string, sequence: AgentTas
     if (!entry || entry.execution !== 'agent-task' || run.status !== 'completed' ||
         task.id !== sequence.taskId || run.taskId !== task.id ||
         sequence.runIds?.at(-1) !== run.id || task.origin.kind !== 'phase-stack' ||
+        task.reviewPolicy?.kind === 'required' && (run.reviewDecision?.kind !== 'accept' ||
+            run.reviewDecision.candidateFingerprint !== run.candidateFingerprint) ||
         task.phaseStack?.stackFingerprint !== sequence.stack.fingerprint ||
         run.basis?.head !== prior || run.finalGit?.head !== prior || run.finalGit.headChanged ||
         run.authorityDecision?.allowed !== true || !run.candidateFingerprint ||

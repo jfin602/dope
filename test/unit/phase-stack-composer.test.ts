@@ -30,6 +30,11 @@ test('correction draft preserves reviewed dependency-safe order and round trips 
         ['P1-core-task.txt', 'P2-integration-task.txt', 'P3-manual-closeout.txt']);
     assert.match(draft.files[1].text, /Depends on: P1 \(core\)/);
     assert.match(draft.files[1].text, /Required affected-system T2 integration/);
+    assert.match(draft.files[1].text, /Delegable paths:\n- packages\/agent-core\/src\/sequence\.ts/);
+    assert.match(draft.files[1].text, /Human reserved paths:\n- none/);
+    assert.match(draft.files[1].text, /explicitly starts this task through Dope Work and accepts its ExecutionGrant/);
+    assert.match(draft.files[1].text, /Never run or write outside the accepted scope/);
+    assert.doesNotMatch(draft.files[1].text, /this draft grants no Run or write authority/);
     const sources = draft.files.map(({ filename, text }) => ({ filename, text }));
     const imported = await importPhaseStack(input.folderName, sources, draft.sourcePath);
     const runner = buildPlan(sources, input.folderName);

@@ -225,7 +225,7 @@ export function sequenceBlockReason(sequence: AgentTaskSequence, evidence: Seque
     // P3 has applied candidate bytes but no checkpoint authority. The version and worktree may
     // reflect that successful task; the pending checkpoint remains the only safe next action.
     if (sequence.status === 'blocked' &&
-        ['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '')) return undefined;
+        ['candidate-review-pending', 'checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '')) return undefined;
     if (evidence.packageVersion !== expectedSequenceVersion(sequence.stack, prefix.length)) return 'version-mismatch';
     if (sequence.status === 'completed') return undefined;
     if (evidence.worktreeFingerprint !== sequence.basis.worktreeFingerprint ||

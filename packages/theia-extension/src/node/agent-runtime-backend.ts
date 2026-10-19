@@ -164,12 +164,36 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         if (this.execution?.activeRunId(root) !== runId) throw new Error('Agent run has no active turn');
         return this.store.requestSteering(root, taskId, runId, expectedRevision, request);
     }
-    decideCandidate(handle: string, runId: string, expectedRevision: number,
+    async decideCandidate(handle: string, runId: string, expectedRevision: number,
         candidateFingerprint: string, decision: 'accept' | 'reject', grant?: ExecutionGrant): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');
         const root = this.active(handle);
         if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
-        return this.execution.decideCandidate(root, runId, expectedRevision, candidateFingerprint, decision, grant);
+        const pending = await this.store.readRun(root, runId);
+        const task = pending && await this.store.readTask(root, pending.taskId);
+        if (task?.origin.kind === 'phase-stack' && !pending?.reviewDecision) {
+            const stored = (await this.store.listSequences(root)).find(item =>
+                item.taskId === task.id && item.runIds?.at(-1) === runId);
+            if (!stored) throw new Error('Phase-stack candidate has no current sequence');
+            const sequence = await this.sequenceState(root, stored.id);
+            const metadata = phaseStackTaskMetadata(sequence.stack, sequence.currentEntryNumber);
+            if (sequence.status !== 'blocked' || sequence.blockedReason !== 'candidate-review-pending' ||
+                task.origin.promptId !== metadata.origin.promptId ||
+                task.phaseStack?.stackFingerprint !== sequence.stack.fingerprint ||
+                task.instructions !== metadata.instructions)
+                throw new Error('Phase-stack candidate source or sequence changed before review');
+        }
+        const run = await this.execution.decideCandidate(root, runId, expectedRevision, candidateFingerprint, decision, grant);
+        if ((await this.store.readTask(root, run.taskId))?.origin.kind === 'phase-stack') {
+            const sequence = (await this.store.listSequences(root)).find(item =>
+                item.taskId === run.taskId && item.runIds?.at(-1) === run.id);
+            if (sequence?.status === 'running') await this.observeSequence(root, sequence.id, run.id);
+            else if (sequence?.status === 'blocked' && sequence.blockedReason === 'candidate-review-pending')
+                await this.setSequence(root, sequence, { blockedReason: run.status === 'completed' ?
+                    'checkpoint-pending' : run.status === 'cancelled' ? 'run-cancelled' :
+                        run.outcome?.code === 'authority-denied' ? 'authority-denied' : 'run-failed' });
+        }
+        return run;
     }
     listRuns(handle: string): Promise<AgentRun[]> { return this.store.listRuns(this.active(handle)); }
     listActions(handle: string, taskId?: string): Promise<ProposedAction[]> {
@@ -341,7 +365,8 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             return sequence;
         if (sequence.status === 'running' && sequence.runIds?.length) {
             const run = await this.store.readRun(root, sequence.runIds.at(-1)!);
-            if (run && ['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status)) {
+            if (run && (['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status) ||
+                run.status === 'blocked' && run.candidateReview?.state === 'ready')) {
                 await (this.sequenceObservers.get(sequence.id) ?? this.observeSequence(root, sequence.id, run.id));
                 return (await this.store.readSequence(root, sequence.id))!;
             }
@@ -401,10 +426,14 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             ['run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted'].includes(sequence.blockedReason ?? '')))
             throw new Error('Sequence is not ready for an executable task');
         const metadata = phaseStackTaskMetadata(sequence.stack, sequence.currentEntryNumber);
+        if (!completion.requireValidationPass || !completion.validation.length ||
+            completion.validation.some(target => !target.command?.trim()))
+            throw new Error('Phase-stack review requires nonempty Dope validation commands and requireValidationPass');
         const taskId = `${sequence.id}-P${sequence.currentEntryNumber}`;
         const candidate = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id: taskId, createdAt: sequence.createdAt,
             objective: metadata.objective, instructions: metadata.instructions, projectRoot: '.',
             modelPolicy, controls: metadata.controls, authority: { profile: 'phase-8b-project' }, completion,
+            reviewPolicy: { kind: 'required' },
             origin: metadata.origin, phaseStack: { stackFingerprint: metadata.stackFingerprint,
                 recommendedModel: metadata.recommendedModel, versionPolicy: metadata.versionPolicy } });
         const existing = await this.store.readTask(root, taskId);
@@ -475,6 +504,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         const sequence = await this.store.readSequence(root, sequenceId);
         if (!sequence || sequence.status !== 'running' || sequence.runIds?.at(-1) !== runId) return;
         const reason: SequenceBlockReason = run.status === 'completed' ? 'checkpoint-pending' :
+            run.status === 'blocked' && run.candidateReview?.state === 'ready' ? 'candidate-review-pending' :
             run.status === 'cancelled' ? 'run-cancelled' : run.status === 'interrupted' ? 'interrupted' :
                 run.outcome?.code === 'authority-denied' ? 'authority-denied' :
                     run.outcome?.code === 'validation-failed' ? 'validation-failed' :

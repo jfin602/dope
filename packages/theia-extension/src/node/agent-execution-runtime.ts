@@ -38,6 +38,28 @@ function matchesValidationCommand(observed: string, target: string): boolean {
         (!target.includes("'") && command === `/bin/bash -lc '${target}'`);
 }
 
+function phaseStackReviewScope(instructions: string): { delegablePaths: string[]; humanReservedPaths: string[] } | undefined {
+    const lines = instructions.split('\n');
+    const paths = (heading: string): string[] | undefined => {
+        const start = lines.indexOf(heading);
+        if (start < 0) return undefined;
+        const values: string[] = [];
+        for (let index = start + 1; lines[index]?.startsWith('- '); index++) values.push(lines[index].slice(2));
+        return values;
+    };
+    const delegated = paths('Delegable paths:');
+    const reserved = paths('Human reserved paths:');
+    if (!delegated && !reserved) return undefined; // Historical authored stacks had no structured scope.
+    if (!delegated?.length || !reserved?.length) throw new Error('Incomplete phase-stack delegation scope');
+    const delegablePaths = delegated.map(path => projectPath(path));
+    const humanReservedPaths = reserved.length === 1 && reserved[0] === 'none' ? [] :
+        reserved.map(path => projectPath(path));
+    if (new Set([...delegablePaths, ...humanReservedPaths]).size !==
+        delegablePaths.length + humanReservedPaths.length)
+        throw new Error('Duplicate phase-stack delegation scope');
+    return { delegablePaths, humanReservedPaths };
+}
+
 /** Owns mutation lifecycle and restart reconciliation across RPC connections. */
 export class AgentExecutionRuntime {
     private readonly active = new Map<string, Active>();
@@ -125,8 +147,9 @@ export class AgentExecutionRuntime {
                 !run.executionWorkspace || run.executionWorkspace.basisHead !== run.basis.head)
                 throw new Error('Candidate review is not ready');
             const task = await this.store.readTask(root, run.taskId);
-            if (task?.origin.kind !== 'work-item' || task.reviewPolicy?.kind !== 'required' ||
-                task.projectId !== run.projectId || task.origin.projectId !== run.projectId)
+            if (!task || !['work-item', 'phase-stack'].includes(task.origin.kind) ||
+                task.reviewPolicy?.kind !== 'required' || task.projectId !== run.projectId ||
+                task.origin.kind === 'work-item' && task.origin.projectId !== run.projectId)
                 throw new Error('Review task identity changed');
             const at = new Date().toISOString();
             const reviewDecision = { kind: decision, revision: expectedRevision + 1, at,
@@ -152,10 +175,11 @@ export class AgentExecutionRuntime {
             if (!savedRoot) throw new Error('Frozen review candidate missing');
             workspace = await ExecutionWorkspace.restoreReview(root, savedRoot, run.candidateDelta, candidateFingerprint);
             const within = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);
-            const scope = task.origin.scope;
+            const scope = task.origin.kind === 'work-item' ? task.origin.scope :
+                phaseStackReviewScope(task.instructions);
             if (run.candidateDelta.effects.some(effect => !['create', 'modify'].includes(effect.kind) ||
-                !scope.delegablePaths.some(path => within(path, effect.path)) ||
-                scope.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ||
+                scope && !scope.delegablePaths.some(path => within(path, effect.path)) ||
+                scope?.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ||
                 !checkEffect(grant, { kind: `project-${effect.kind}`, scope: 'project', path: effect.path }).allowed))
                 throw new Error('Review candidate exceeds delegation or execution authority');
             // The durable decision claim prevents a retry after a crash from applying twice.
@@ -564,12 +588,13 @@ export class AgentExecutionRuntime {
         let candidateChanged = false;
         let reviewHoldError = false;
         let reviewScopeDenied = false;
+        const reviewRequired = task?.reviewPolicy?.kind === 'required' &&
+            (task.origin.kind === 'work-item' || task.origin.kind === 'phase-stack');
         if (active.workspace && active.run) {
             try {
                 const { delta, fingerprint } = await active.workspace.freezeCandidate();
                 await this.serial(active, () => this.update(active, run => ({ ...run,
                     validationBasis: 'execution-workspace', candidateDelta: delta, candidateFingerprint: fingerprint })));
-                const reviewRequired = task?.origin.kind === 'work-item' && task.reviewPolicy?.kind === 'required';
                 if (!failed && !active.stopping && !active.denied &&
                     (task?.completion.requireValidationPass || reviewRequired)) {
                     active.validationAbort = new AbortController();
@@ -597,15 +622,16 @@ export class AgentExecutionRuntime {
                         const authoritative = await captureGitBasis(active.root);
                         if (!authoritative.clean || authoritative.head !== active.workspace.head)
                             throw new Error('Authoritative project changed before review hold');
-                        const scope = task.origin.kind === 'work-item' ? task.origin.scope : undefined;
+                        const scope = task.origin.kind === 'work-item' ? task.origin.scope :
+                            phaseStackReviewScope(task.instructions);
                         const within = (parent: string, child: string): boolean =>
                             child === parent || child.startsWith(`${parent}/`);
                         const scopeBlocked = delta.effects.filter(effect =>
                             !['create', 'modify'].includes(effect.kind) ||
                             effect.path.split('/').some(part => ['.git', '.dope', '.codex', '.ssh', '.aws', '.npmrc', '.yarnrc', '.env'].includes(part) ||
                                 part.startsWith('.env.') || part.endsWith('.pem') || part.endsWith('.key')) ||
-                            !scope?.delegablePaths.some(path => within(path, effect.path)) ||
-                            scope.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ||
+                            scope && !scope.delegablePaths.some(path => within(path, effect.path)) ||
+                            scope?.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ||
                             !checkEffect(active.grant!, { kind: `project-${effect.kind}`, scope: 'project', path: effect.path }).allowed);
                         if (scopeBlocked.length) {
                             for (const effect of scopeBlocked) await this.recordBlockedEffects(active, [effect],
@@ -646,7 +672,7 @@ export class AgentExecutionRuntime {
                 }
             } catch (error) {
                 promotionBlocked = true;
-                reviewHoldError = task?.origin.kind === 'work-item' && task.reviewPolicy?.kind === 'required';
+                reviewHoldError = reviewRequired;
                 reviewScopeDenied = reviewHoldError && error instanceof Error &&
                     error.message.includes('delegation or execution authority');
                 promotionError = !reviewScopeDenied;
