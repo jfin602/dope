@@ -1,0 +1,33 @@
+TASK: Correction 11 / P2 — Phase Focus verified checkpoint visibility loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Do not alter version manifests, internal pins or lockfiles.
+
+PREFLIGHT AND AUTHORITY
+This is a **MANUAL T3 BROWSER-REQUIRED** qualification/repair prompt to be operated by the owner or an explicitly authorized browser operator, **outside the headless phase runner**. This authored file does not constitute Run, ExecutionGrant, candidate approval, canonical architecture adoption, or owner phase closeout. No /activate prerequisite.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0038, docs/tasks/c11-bridge-final-evidence/{README.md,campaign-contract.md,prompt-assessment.md,implementation-plan.md}, and the source-bound 2026-10-19 dirty-basis final record before effects. Inspect live local git HEAD, dirty paths/fingerprint, version 0.11.8, compiled package outputs, browser/backend, selected root(s), actual recorded fixture and source hashes. Do not assume remote authoring HEAD matches runtime. Preserve all owner changes and previous P15/P5/Not Green records. Never reset/stash/clean/discard, rewrite started prompt files, change package version/lockfile, change global providers, invent screenshots/evidence, self-commit the Dope repository, or start Phase 12.
+Carry forward D6 real candidate reject/accept, exact two-file promotion and fixture checkpoint c2bce6b7012ab22405c21dc2ddc3077c3d1cb74d only when exact source/project/fixture evidence remains applicable. Original fixture may no longer exist: record that as unavailable and create a distinctly named safe disposable project only through existing reviewed controls. Automated fixture clicks must be marked automation-operated; do not claim independent human approvals. For owner-reserved target/architecture/Work decisions obtain a separate actual developer decision or record BLOCKED.
+For a genuine product defect, iterate **OBSERVE → TRACE OWNER/CAUSE → minimal specifically authorized REPAIR → focused affected tests/builds → SAME REAL BROWSER REPLAY → exact evidence**. Up to **three bounded repair iterations** for this prompt; each implementation patch aims <=8 minutes (10 soft/15 hard or split), while manual real browser evidence can take longer. No full npm run check per loop; the final P5 owns a stable aggregate. A missing UI/browser/native capability is a gap, not a substituted unit-test pass.
+
+R2 OBJECTIVE
+Make the correct Phase 1 authored stack show P1 implementation Completed from actual Work/Git checkpoint while retaining qualification Unknown unless source-cited proof exists.
+
+OBSERVE IN REAL BROWSER
+Select the actual fixture Phase 1, c1-severity-recovery-20261019 stack, saved AgentTaskSequence with P1 checkpoint c2bce6b and pending manual P2. Compare exact prompt files/hash and Work run/task/source fingerprint with phase-focus-evidence output, actual roadmapped project identity and live overlay Unknown. If fixture absent, use a separately recorded equivalent source-backed fixture without pretending its commit is c2bce6b. Preserve confirmed phase association; do not fabricate checkpoints.
+
+TRACE EXISTING SOURCE OWNER
+Inspect packages/theia-extension/src/node/phase-focus-evidence.ts, packages/project-intelligence/src/roadmap-task-projection.ts, packages/agent-core/src/node/sequence-reconciliation.ts and AgentStore, Roadmap indexed project ID, Work Task/Run IDs, historic Git prefix, source drift, local project paths, frontend Roadmap refresh. Separately distinguish Roadmap ID, Planning Map ID and Agent project identity and determine the **actual mismatched guard** before touching logic. Source validation must reject foreign, duplicate, missing, stale, changed prompt, mismatched checkpoint prefix, and ambiguous evidence.
+
+BOUNDED MANUAL REPAIR AND FOCUSED VALIDATION
+If the exact fixture proves a present checkpoint omitted by a faulty identity/provenance check or stale refresh, repair only that adapter/link/refresh seam; maintain immutable original hashes and all authority negatives. Run focused phase-focus-evidence, roadmap-task-discovery, agent-sequence, roadmap-status/projection tests; rebuild changed package lib; add one case with verified P1 and distinct Planning/Roadmap IDs plus negative clone/drift proof where applicable. Replay actual Phase Focus in browser after refresh/backend restart and A→B→A.
+
+PASS / FAIL / BLOCKED GATE AND HANDOFF
+PASS when P1 displays IMPLEMENTATION COMPLETED and the verified SHA in the selected Phase 1, P2 remains manual pending with no fake completion, and both remain QUALIFICATION UNKNOWN absent an exact owner evidence citation. Reject stale/foreign/tampered proof without making it green; record raw projected evidence, app observation, previous/next source and tests in qualification/r2-phase-focus/cycle-N.md. If no valid live fixture or unresolved proof, retain Unknown and BLOCKED, not fake progress.
+
+NON-GOALS
+No automatic independent human signoff, candidate/Work grants without supported user control, broad Work Experience redesign, full `npm run check` here, duplicate store/service, unsupported source writes, historical closeout rewrite, Phase 11 owner closeout or Phase 12 activation.

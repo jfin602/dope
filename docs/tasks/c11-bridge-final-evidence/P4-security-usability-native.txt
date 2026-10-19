@@ -1,0 +1,33 @@
+TASK: Correction 11 / P4 — Remaining Bridge security usability and native loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Do not alter version manifests, internal pins or lockfiles.
+
+PREFLIGHT AND AUTHORITY
+This is a **MANUAL T3 BROWSER-REQUIRED** qualification/repair prompt to be operated by the owner or an explicitly authorized browser operator, **outside the headless phase runner**. This authored file does not constitute Run, ExecutionGrant, candidate approval, canonical architecture adoption, or owner phase closeout. No /activate prerequisite.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0038, docs/tasks/c11-bridge-final-evidence/{README.md,campaign-contract.md,prompt-assessment.md,implementation-plan.md}, and the source-bound 2026-10-19 dirty-basis final record before effects. Inspect live local git HEAD, dirty paths/fingerprint, version 0.11.8, compiled package outputs, browser/backend, selected root(s), actual recorded fixture and source hashes. Do not assume remote authoring HEAD matches runtime. Preserve all owner changes and previous P15/P5/Not Green records. Never reset/stash/clean/discard, rewrite started prompt files, change package version/lockfile, change global providers, invent screenshots/evidence, self-commit the Dope repository, or start Phase 12.
+Carry forward D6 real candidate reject/accept, exact two-file promotion and fixture checkpoint c2bce6b7012ab22405c21dc2ddc3077c3d1cb74d only when exact source/project/fixture evidence remains applicable. Original fixture may no longer exist: record that as unavailable and create a distinctly named safe disposable project only through existing reviewed controls. Automated fixture clicks must be marked automation-operated; do not claim independent human approvals. For owner-reserved target/architecture/Work decisions obtain a separate actual developer decision or record BLOCKED.
+For a genuine product defect, iterate **OBSERVE → TRACE OWNER/CAUSE → minimal specifically authorized REPAIR → focused affected tests/builds → SAME REAL BROWSER REPLAY → exact evidence**. Up to **three bounded repair iterations** for this prompt; each implementation patch aims <=8 minutes (10 soft/15 hard or split), while manual real browser evidence can take longer. No full npm run check per loop; the final P5 owns a stable aggregate. A missing UI/browser/native capability is a gap, not a substituted unit-test pass.
+
+R4 OBJECTIVE
+Complete residual source-applicable live authority, project-isolation, browser usability, History/Phase Focus integration and native evidence decisions without retesting every previously passed D6 path.
+
+OBSERVE IN REAL BROWSER
+Read R1–R3 outcomes and the accepted 2026-10-19 dirty-basis record. Build a scope matrix with already verified and still-unobserved cases; do not claim previous automation-operated fixture review equals independent developer approval. Use actual browser fixture and a second usable safe project for A→B→A. Inspect provider/consent provenance and saved Chat beside Work/Roadmap/Planning Map; verify narrow/keyboard and failure/retry messaging on final bundle. Determine whether actual independent native Electron window/input/screenshot control exists.
+
+TRACE EXISTING SOURCE OWNER
+Use existing Work grant/review and source-drift guards, Roadmap/source hashes, planning revisions, History service, Phase Focus, ChatPanel. Run live negative samples: no grant/open prompt without Run, stale or wrong project, accepted-dirty mutation, candidate review rejection/replay, failed validation, authored prompt external changes and drift refusal, cancellation, unsupported hosted fallback. Do **not** mutate original completed source; perform tamper tests only in a disposable copy with bytes restored/verified, and distinguish focused unit coverage from live operation. Avoid duplicative full D1–D8 execution.
+
+BOUNDED MANUAL REPAIR AND FOCUSED VALIDATION
+If a real negative or usability gate fails, capture exact reproduction/owner and apply at most 3 bounded safe repairs with corresponding focused tests and browser replays. Distinguish Work Experience broad aesthetic polish (separate c11-work-experience) from actual safety/truth defects; no parallel UI/store. Native GUI: if controllable, observe the relevant independently opened Electron window; if unavailable, report Evidence Gap and request an **explicit separate owner decision** to narrow this correction's GUI scope. Never inherit another P5-only native waiver automatically, never equate build pass with GUI pass.
+
+PASS / FAIL / BLOCKED GATE AND HANDOFF
+PASS only for each directly observed negative/UX path with exact source/run/project IDs and truthful before/after. Report overall R4 PASS/PARTIAL/BLOCKED based on required-scope omissions. Keep provider connection, no secret leakage, project isolation and status truth; preserve automation-operated click attribution and unobserved native gate. Record qualification/r4-safety-usability/cycle-N.md and complete matrix; do not label Phase 11 Green.
+
+NON-GOALS
+No automatic independent human signoff, candidate/Work grants without supported user control, broad Work Experience redesign, full `npm run check` here, duplicate store/service, unsupported source writes, historical closeout rewrite, Phase 11 owner closeout or Phase 12 activation.

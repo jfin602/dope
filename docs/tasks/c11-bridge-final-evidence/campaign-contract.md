@@ -1,5 +1,8 @@
 # Remaining Planning Bridge blockers — R1–R5 acceptance and owner boundaries
 
+**Forward authoring update (2026-10-19):** The owner subsequently requested `/prompt-ass + /prompt-plan + /prompt-write c11-bridge-final-evidence`. [Assessment](prompt-assessment.md), [manual qualification plan](implementation-plan.md) and exactly five [manual browser-required P1–P5](README.md) prompts now implement the *documentation/prompt-authoring* step for this accepted contract. **They have NOT RUN**, no implementation/test/GUI result follows, and this paragraph does **not** authorize a Work Run, change model/provider roles or grant manual architecture/candidate approvals. The contract's original "no executable prompts" sentence at its end remains the dated design-state restriction, superseded **for authored-file existence only** by this later explicit request. All original R1–R5 safety and owner boundaries still apply.
+
+
 **Approved 2026-10-19; design / documentation only.** Based on the committed [dirty-basis source-bound report](../c11-bridge-execution-recovery/qualification/2026-10-19-dirty-basis-final.md), not a fresh GUI or test run. Preserve the original sequence's immutable prompt text/Git checkpoints/failed history and the exact separate disposable checkpoint `c2bce6b7012ab22405c21dc2ddc3077c3d1cb74d`.
 
 ## Carry forward, do not regress

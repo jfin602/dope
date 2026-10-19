@@ -1,0 +1,33 @@
+TASK: Correction 11 / P1 — History live-panel evidence recovery loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Do not alter version manifests, internal pins or lockfiles.
+
+PREFLIGHT AND AUTHORITY
+This is a **MANUAL T3 BROWSER-REQUIRED** qualification/repair prompt to be operated by the owner or an explicitly authorized browser operator, **outside the headless phase runner**. This authored file does not constitute Run, ExecutionGrant, candidate approval, canonical architecture adoption, or owner phase closeout. No /activate prerequisite.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0038, docs/tasks/c11-bridge-final-evidence/{README.md,campaign-contract.md,prompt-assessment.md,implementation-plan.md}, and the source-bound 2026-10-19 dirty-basis final record before effects. Inspect live local git HEAD, dirty paths/fingerprint, version 0.11.8, compiled package outputs, browser/backend, selected root(s), actual recorded fixture and source hashes. Do not assume remote authoring HEAD matches runtime. Preserve all owner changes and previous P15/P5/Not Green records. Never reset/stash/clean/discard, rewrite started prompt files, change package version/lockfile, change global providers, invent screenshots/evidence, self-commit the Dope repository, or start Phase 12.
+Carry forward D6 real candidate reject/accept, exact two-file promotion and fixture checkpoint c2bce6b7012ab22405c21dc2ddc3077c3d1cb74d only when exact source/project/fixture evidence remains applicable. Original fixture may no longer exist: record that as unavailable and create a distinctly named safe disposable project only through existing reviewed controls. Automated fixture clicks must be marked automation-operated; do not claim independent human approvals. For owner-reserved target/architecture/Work decisions obtain a separate actual developer decision or record BLOCKED.
+For a genuine product defect, iterate **OBSERVE → TRACE OWNER/CAUSE → minimal specifically authorized REPAIR → focused affected tests/builds → SAME REAL BROWSER REPLAY → exact evidence**. Up to **three bounded repair iterations** for this prompt; each implementation patch aims <=8 minutes (10 soft/15 hard or split), while manual real browser evidence can take longer. No full npm run check per loop; the final P5 owns a stable aggregate. A missing UI/browser/native capability is a gap, not a substituted unit-test pass.
+
+R1 OBJECTIVE
+Recover the existing live History panel from its indefinitely Loading History state; show true Work/candidate/checkpoint events rather than only a successful direct backend projection.
+
+OBSERVE IN REAL BROWSER
+On the exact or separately identified disposable project, launch the real Dope browser with matching compiled frontend/server. Open the right-toolbar History from Work after a saved rejected candidate, accepted candidate and verified checkpoint. Observe spinner, request and response lifecycle, workspace root and UI instance, and compare against actual HistoryBackend.attach/read returning a known 10-entry snapshot in the previously recorded fixture. Confirm whether the backend endpoint is reached at all and whether a request resolves/rejects/stales. Capture bounded console/backend/network traces without secrets. Reproduce after refresh and restart and with project A→B→A; a unit-only mock does not prove the live panel.
+
+TRACE EXISTING SOURCE OWNER
+Inspect packages/theia-extension/src/browser/{history-widget.ts,frontend-module.ts}, node/{history-backend.ts,history-work-git.ts,backend-module.ts}, packages/contracts/src/history-service.ts and relevant History tests. Audit HistoryWidget constructor refresh timing, WorkspaceService.roots, RPC proxy readiness, URI/project identity, attaching generation, concurrent refresh request counters, activation/restoration and error branch. Since direct backend read succeeded, do NOT assume the actual browser RPC is healthy or that the data store is missing. No new History service/store, polling engine, fake entries or broad Work UX redesign.
+
+BOUNDED MANUAL REPAIR AND FOCUSED VALIDATION
+If reproduced, make the smallest owner/API/lifecycle correction. Guard against superseded/foreign reads, settle loading into actual source-backed cards or an actionable visible failure with safe retry; maintain stale response suppression and current dock. Run focused history-panel/history-integration/history-work-git/history-projection tests with rebuilt changed packages as needed; test success, rejected/delayed attach, rapid refresh, root switch, backend restart, missing metadata. For each repair iteration preserve before/after source and a direct real-browser screenshot/observation.
+
+PASS / FAIL / BLOCKED GATE AND HANDOFF
+PASS only when the actual History UI stops showing a permanent spinner and displays the real saved run, candidate decisions and checkpoint, or a truthful bounded diagnostic for genuinely unavailable sources. A positive fixture must show real entries, exact one-project isolation A→B→A, refresh/restart preservation, no duplicate events and no bogus Green. Record qualification/r1-history/cycle-N.md and summary. If still blocked, return BLOCKED/NOT GREEN with precise last observed stage; do not mark R2's existing source evidence completed by implication.
+
+NON-GOALS
+No automatic independent human signoff, candidate/Work grants without supported user control, broad Work Experience redesign, full `npm run check` here, duplicate store/service, unsupported source writes, historical closeout rewrite, Phase 11 owner closeout or Phase 12 activation.

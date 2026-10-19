@@ -1,0 +1,33 @@
+TASK: Correction 11 / P3 — Structural target and generation-safe relink loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Do not alter version manifests, internal pins or lockfiles.
+
+PREFLIGHT AND AUTHORITY
+This is a **MANUAL T3 BROWSER-REQUIRED** qualification/repair prompt to be operated by the owner or an explicitly authorized browser operator, **outside the headless phase runner**. This authored file does not constitute Run, ExecutionGrant, candidate approval, canonical architecture adoption, or owner phase closeout. No /activate prerequisite.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0038, docs/tasks/c11-bridge-final-evidence/{README.md,campaign-contract.md,prompt-assessment.md,implementation-plan.md}, and the source-bound 2026-10-19 dirty-basis final record before effects. Inspect live local git HEAD, dirty paths/fingerprint, version 0.11.8, compiled package outputs, browser/backend, selected root(s), actual recorded fixture and source hashes. Do not assume remote authoring HEAD matches runtime. Preserve all owner changes and previous P15/P5/Not Green records. Never reset/stash/clean/discard, rewrite started prompt files, change package version/lockfile, change global providers, invent screenshots/evidence, self-commit the Dope repository, or start Phase 12.
+Carry forward D6 real candidate reject/accept, exact two-file promotion and fixture checkpoint c2bce6b7012ab22405c21dc2ddc3077c3d1cb74d only when exact source/project/fixture evidence remains applicable. Original fixture may no longer exist: record that as unavailable and create a distinctly named safe disposable project only through existing reviewed controls. Automated fixture clicks must be marked automation-operated; do not claim independent human approvals. For owner-reserved target/architecture/Work decisions obtain a separate actual developer decision or record BLOCKED.
+For a genuine product defect, iterate **OBSERVE → TRACE OWNER/CAUSE → minimal specifically authorized REPAIR → focused affected tests/builds → SAME REAL BROWSER REPLAY → exact evidence**. Up to **three bounded repair iterations** for this prompt; each implementation patch aims <=8 minutes (10 soft/15 hard or split), while manual real browser evidence can take longer. No full npm run check per loop; the final P5 owns a stable aggregate. A missing UI/browser/native capability is a gap, not a substituted unit-test pass.
+
+R3 OBJECTIVE
+Resolve the remaining planned-vs-implemented SeveritySelector architecture disposition and investigate generation-sensitive Roadmap→Planning Map linking without suppressing valid freshness checks.
+
+OBSERVE IN REAL BROWSER
+In a safe genuine or explicit disposable project, inspect the accepted Planning Map current/target/diff, physical snapshot and generations, source path hashes, Roadmap link revision, linked WorkItem and Work checkpoint. Reproduce the earlier 'Foreign or unresolved Roadmap link' denial for differing Physical generation and the verified recovery after restart; record exact root/owner map IDs/revision/basis/analysis generation. Distinguish expected stale-basis rejection from unexpected wrong-owner or delayed-refresh defect. Check that SeveritySelector does NOT exist as structural physical evidence; current not-implemented is factually correct.
+
+TRACE EXISTING SOURCE OWNER
+Inspect visual-planning/src/reconciliation.ts, node/planning-store.ts, theia-extension/src/node/{roadmap-planning-links.ts,visual-planning-backend.ts}, Roadmap owner links, Physical Map SoftwareMapIndex generation and PlanningMapController rebase/approve. Verify revisions and source fingerprints across analysis/restart before proposing a code change. Structural transformation realization is not equivalent to functional test pass or candidate promotion.
+
+BOUNDED MANUAL REPAIR AND FOCUSED VALIDATION
+Patch only an observed broken freshness/relink sequencing or user guidance, preserving stale, foreign and revision rejections; run roadmap-planning-links, planning-rebase, planning-reconciliation and backend/roadmap action focused tests and real browser re-link. For SeveritySelector, show the developer a reviewed decision: (A) authorize genuine separate implementation targeting actual Physical Map structure, (B) explicitly revise/replace the approved plan with source-bound diff, or (C) retain not-implemented and BLOCK the realization gate. Do NOT pick a new architecture or accept structural changes on the developer's behalf. If A/B authorized, execute only with the separately accepted Work grants/target approvals and actual source evidence, then reanalyze and reconcile; preserve old target/evidence history.
+
+PASS / FAIL / BLOCKED GATE AND HANDOFF
+PASS for relink only on consistent generation-aware reviewed authoring/rebase across refresh/restart and correct stale/foreign denial. PASS for structural target disposition only with a genuine observed implemented structure against approved target **or** a separate explicit reviewed replacement/accepted difference with clear unresolved-work accounting. Otherwise keep SeveritySelector NOT IMPLEMENTED and R3 PARTIAL/BLOCKED. Append decision provenance, source hashes, physical generation, owner revisions, tests and direct browser observations under qualification/r3-target-relink/cycle-N.md. Never auto-Adopt Target or auto-Mark Green.
+
+NON-GOALS
+No automatic independent human signoff, candidate/Work grants without supported user control, broad Work Experience redesign, full `npm run check` here, duplicate store/service, unsupported source writes, historical closeout rewrite, Phase 11 owner closeout or Phase 12 activation.
