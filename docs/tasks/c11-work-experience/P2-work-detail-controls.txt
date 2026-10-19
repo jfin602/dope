@@ -1,0 +1,24 @@
+TASK: Correction 11 / P2 — Rebuild Work detail around clear contextual actions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no version, package manifest, internal pin or lockfile bump; STOP if actual repo advanced without re-assessment.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, Work Experience contract, stack assessment/plan/README and completed P1 checkpoint/evidence. Verify local HEAD/Git/dirty state, version, source/test paths and concurrent Bridge edits before modifying. Preserve P1 immutable prompt and completed checkpoint; no reset/stash/clean/self-commit, new service, model/provider, /activate, auto-Run, fake Green or broader permission. Later explicit owner Run is the implementation authorization; runner owns checkpoints.
+
+SCOPE — T2 EXISTING WORK UI
+Refactor only the **Work-side** `renderWork()` and narrow reusable helpers in `packages/theia-extension/src/browser/chat-panel-widget.ts`, consuming P1's truthful read model. Preserve separate Chat mode, `Select Work` groups (Running/History/Prompt Stacks), existing Work selection/controller single ownership, user-chosen docking, project-bound navigation, and explicit center `Open Transcript`. Deliver:
+- Compact stable title/header, status in plain words, current P of N for sequences and lightweight authored-order progress; distinguish agent completion/checkpoint/manual qualification. Direct tasks must not get fictional stack progress. Preserve source-backed prompt links and verified immutability.
+- One visually primary **eligible action** per context; neutral supporting actions. For pending/ready, explicit Start only after separate ExecutionGrant and any required hosted consent; for running, Stop where supported; for validation/review, truthful evidence and inspect/review; for drift/dirty, actual safe Reconcile or explicit continue only when existing backend permits. Disabled/missing actions explain the blocker. Buttons must invoke only actual existing controller/service methods, never invented action or second grant owner.
+- Human explanation of separate blockers: sequence `worktree-drift` is not equivalent to required `npm run check` not run. Show actual required validation status/evidence and ability to inspect full logs. Never label missing tsc as a passed check; never offer automatic online dependency installation or bypass.
+- Progressive details for immutable prompt source, changed files, validation, authority, checkpoint/Git provenance, saved run transcripts. Keep exact raw machine data inspectable/copyable, and consequential decisions explicit. Avoid clutter, duplicated headers, and plain code pasted as primary activity.
+- Preserve WorkItem held candidate accept/reject guards `workReviewCanAccept`, revision/source/grant checks, immutable runner/Git checkpoint rules, manual-gate verification and no implicit promotion. No reordering authored P*.txt.
+- Support keyboard/screen-reader labels, narrow panes and safe empty/blocked/restart states without broad unrelated CSS changes (P4 styles later).
+
+TEST / EXIT
+Add focused UI/controller tests against the real callback paths for Start/Resume/Stop/Reconcile/Dirty Acceptance/Verify Checkpoint, frozen candidate review and hosted-project consent; test that merely opening Work/Transcript/Prompt never starts work, foreign/stale work cannot operate, and incomplete validation is not accepted. Exercise direct, sequence, WorkItem, blocked, pending, running, interrupted and terminal states. Do not weaken existing decisions. Run focused tests + affected extension build only if required + `git diff --check`. State observed results, exclusions and any unsupported action; <=8m target, 15m hard cap. P6 handles real GUI.
