@@ -1,15 +1,15 @@
 # Dope Project Overview
 
+**CURRENT 2026-10-19 PHASE 11 BRIDGE:** [Source-bound dirty-basis qualification](tasks/c11-bridge-execution-recovery/qualification/2026-10-19-dirty-basis-final.md) proves real disposable candidate reject/accept, exactly two promoted files and checkpoint `c2bce6b`; 56/56 focused and 772/772 aggregate checks passed on version `0.11.8` source now committed in `9be993c`. Bridge remains **NOT GREEN**: History browser stuck loading, Phase Focus P1 implementation Unknown despite verified checkpoint, planned `SeveritySelector` structure not implemented, generation-sensitive link/restart and remaining manual/native evidence. D6 PASS in bounded fixture, D5/D7 partial, D8 FAIL. [R1–R5 targeted next campaign](tasks/c11-bridge-final-evidence/README.md) is DOCS-ONLY design, not implemented or prompt-authored. The older dated notes below are historical. Phase 11 OPEN/NOT QUALIFIED; Phase 12 inactive.
+
+
 **Current owner-reported P15 / 2026-10-18 (documentation only):** Local `c11-planning-bridge` on `11e1f76`, `0.11.8`, is **NOT GREEN**: broken Prepare Work Planning Map handoff, two failed final aggregate tests (623 passed), independent native GUI unobserved. Original uncommitted closeout/evidence have not been read through GitHub. Separate [`c11-bridge-repair` P1–P5 manual qualification loops](tasks/c11-bridge-repair/README.md) are authored to isolate each blocker and rerun full Bridge qualification without modifying immutable P1–P15. Preserve source/permission/Phase Focus/brainstorm history. Phase 11 OPEN/NOT QUALIFIED, Phase 12 inactive.
 
 
-<<<<<<< HEAD
+<!-- Historical parallel October 17 records: both retained after resolving document merge markers. -->
 **Forward Phase 11 scope update (2026-10-17; docs only):** **Phase 11 — Human-Centered Development Workflow** includes existing usability/Hunts, `c11-brainstorm`, separately planned `c11-planning-bridge` PB1–PB8, and D1–D8 integrated journey in addition to the unchanged two-clean-Hunt exit. At reviewed main `3787c6c`, brainstorm P1–P7 committed; P8 remains manual/unqualified and Bridge has no executable stack. Phase 11 stays OPEN/NOT QUALIFIED, `0.11.8` unchanged, historical source-scoped results intact and Phase 12 inactive. See [Phase 11 plan](planning/p11/phase-11-plan.md). Earlier status paragraphs below retain original dates.
 
-=======
 **Current Phase 11 status (2026-10-17):** The [c11-brainstorm P8 repair](tasks/c11-brainstorm/qualification/p8-repair-loop/2026-10-17.md) is **EVIDENCE GAP** on uncommitted `0.11.8`: F1/F2 passed bounded real-browser replay, while live security negatives and independent native GUI remain incomplete. Original P8 NOT GREEN and prior UX-003 scoped Green keep their recorded scopes. Phase 11 stays OPEN / NOT QUALIFIED; H02 remains unrun and Phase 12 inactive. Older dated notes below are historical.
->>>>>>> c98e5a5 (c11-qual-rep-loop EVIDENCE GAP)
-
 **Current Phase 11 status (2026-10-16):** [UX-003 M1 supplemental recovery](tasks/c11-guidance/manual/m1-recovery-qualification.md) is **SCOPED GREEN in browser/local Q4** at committed `e69d7e5` / `0.11.8`. Phase 11 remains OPEN / NOT QUALIFIED; native/hosted parity and wider usability remain open, and the first separate Hunter is not run. Earlier dated recovery notes below are historical.
 
 **CURRENT RECOVERY AFTER R2 (2026-10-15):** [R2](tasks/c10-green-recovery/qualification/r2-continuity/family-summary.md) is NOT GREEN at `e7f46f1`: saved Roadmap and Chat restart, revision-6 Q4/32K freshness, and canonical statuses PASS; supported live foreign-owner write denial not reached (R4) and real Q4-generated greenfield failed before proposal (R5). R3 UI next, R6 final independent audit. Product c8c41f9 / `0.10.16` unchanged; Phase 10 remains NOT GREEN / NOT OWNER-CLOSED.

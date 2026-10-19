@@ -1,5 +1,17 @@
 # Phase 11 — Preliminary panel usability matrix
 
+## Current Bridge/Phase Focus evidence — 2026-10-19 (older P4 table remains historical)
+
+| Gate | Latest source-bound observation | Current scoped disposition |
+| --- | --- | --- |
+| F4 | [2026-10-18 live Bridge](../../tasks/c11-planning-bridge/qualification/2026-10-18-stack-authoring-execution.md) proved valid pre-authoring reorder, invalid dependency denial and authored-file immutability. Latest October 19 fixture did not reoperate F4. | **PASS for earlier Bridge browser fixture**, not retroactive original P4 qualification. |
+| F5/F6 | [Phase Focus R1–R4 scoped browser](../../tasks/c11-phase-focus/qualification/p4-evidence-repair/2026-10-17-requalification.md) passed verified correction association and separate statuses. New Phase 1 `c1-*` stack association also appears. | Association observed; latest fixture **P1 implementation Unknown despite real checkpoint**, qualification Unknown correctly unsupported. |
+| D6 | [2026-10-19 browser Work](../../tasks/c11-bridge-execution-recovery/qualification/2026-10-19-dirty-basis-final.md) rejected validated candidate without effects, accepted a fresh two-file candidate and verified checkpoint `c2bce6b`. | **PASS within disposable fixture**; controls operated by automation rather than independent owner. |
+| D7/D8 | Structural `SeveritySelector` remains NOT IMPLEMENTED, relink required generation refresh, live History Loading History despite direct backend returning 10 entries. | **D7 PARTIAL, D8 FAIL**, native Electron GUI unobserved. |
+
+The prior Phase Focus P4 gate results below are preserved verbatim as **dated initial outcomes**, not the latest Bridge-wide verdict. [Next R1–R5 campaign](../../tasks/c11-bridge-final-evidence/README.md) remains planning only.
+
+
 **Status (2026-10-16):** PRELIMINARY INVENTORY with first separate [manual Hunter H01](../../tasks/p11/h01-history-usability-hunt.md) recorded on clean `8990407` / `0.11.8` in the AI-operated browser. H01 covered a bounded History/Work entry flow and proposed UX-008–UX-010; it did not retest UX-001–UX-007 or complete a Work run. UX-007 is committed product at `8990407`, retaining its earlier browser-scoped check and native gaps. The initial [P8 closeout](../../tasks/p11/known-issue-closeout.md) remains historically **NOT GREEN**; [M1 supplemental recovery](../../tasks/c11-guidance/manual/m1-recovery-qualification.md) remains **SCOPED GREEN for UX-003 in browser/local Q4** at `e69d7e5` / `0.11.8`, with original M1/P3/P8 Not Green records preserved. Native Electron GUI, hosted parity and broad usability remain gaps. Phase 11 is **OPEN / NOT QUALIFIED**.
 **Current H1/H2 (2026-10-16):** [H1](../../tasks/p11/h1-history-continuation-diagnostics.md) UX-008/009 is scoped Green for browser/local History continuation/diagnostics, committed `1732626` after its uncommitted source-bound run. [H2](../../tasks/p11/h2-history-evidence-preview-readability.md) UX-010 is scoped Green for deterministic browser/local evidence preview, committed `a73ff47` after its uncommitted source-bound run; affected builds and 21 focused tests passed. A successful live explanation (Dope reported no eligible connected local conversational model), native GUI, H2-source full aggregate and broader Work/map coverage remain gaps. H2's three browser backend exits (code 139) during reload/build transitions remain an unclassified investigation. H02 [manual Hunter](../../tasks/p11/h02-software-map-hunt.md) is **not run**; Phase 11 OPEN / NOT QUALIFIED.
 **Date:** 2026-10-12; Phase 10 predecessor updated 2026-10-16
@@ -123,7 +135,7 @@ Design-only `c11-brainstorm` differs from separately unrun H02 Software Map Hunt
 
 [Manual gate prompt](../../tasks/c11-phase-focus/P4-manual-phase-focus-closeout.txt); doesn't replace c11-brainstorm P8, H02 or wider usability evidence.
 
-## Current Phase Focus P4 coverage and approved recovery — 2026-10-17/18
+## Historical initial Phase Focus P4 coverage and approved recovery — 2026-10-17/18
 
 | Gate | Real P4 evidence | Next evidence needed |
 | --- | --- | --- |
