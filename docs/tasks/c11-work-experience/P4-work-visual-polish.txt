@@ -1,0 +1,24 @@
+TASK: Correction 11 / P4 — Refine Work visual hierarchy and accessible navigation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no manifest, lockfile, internal pin or project version bump.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, Work Experience contract, stack assessment/plan and P1–P3 source/checkpoints. Confirm actual checkout HEAD/branch, version, dirty worktree, overlapping Bridge/Chat/Theia edits and current CSS/theme tokens. Stop on conflicting owner changes; no reset/stash/clean/self-commit, no fake GUI qualification, no model/provider/authority edits and no /activate. Later separate developer Run authorizes implementation, runner owns commits.
+
+SCOPE — T1/T2 VISUAL PRESENTATION
+Polish only relevant Work/Transcript styling and minimal semantic DOM hooks in `packages/theia-extension/src/browser/dope.css`, `chat-panel-widget.ts`, `agent-transcript-widget.ts` and related presentation utilities:
+- Clear Work header, quiet metadata, readable compact P1-of-N progress rail, state block, one intentional primary action and balanced neutral supporting controls. Group warnings/review/validation and put audit details behind accessible disclosures without hiding critical failures.
+- Neutral dark charcoal surfaces, subtle divider and focus, orange reserved for the active/high-value action; semantic success/warning/error do not misuse orange to falsely indicate Green. Consume existing theme/semantic Theia variables. Preserve explicit alternate/light themes and reduced-motion preference; avoid hardcoded broad colors and global button/input overrides.
+- Comfortable typography and width for saved AgentRun Markdown: spacing across paragraphs, lists, tables, pre/code, blockquotes; long code scrolls safely within area; tables have horizontal overflow not clipped. Preserve work commands' muted collapsed style and truthful truncation.
+- Work and transcript remain practical in wide center, narrow left/right, bottom and user-moved layouts. Long titles, paths and error messages wrap sensibly without breaking grids or overflowing buttons; activity/history rows display clear hierarchy. Keep Work vs Chat owners distinct and same-work navigation stable.
+- Visible keyboard focus, actual button text/tooltips and accessible labels, expanded/collapsed state and role=status updates; Enter/Space/Tab and Escape only where registered/supported. Do not add inert controls or a second modal that could bypass grants.
+- Preserve scroll-away/Latest, selected/restore/focus semantics and alternate theme defaults. No extra animation if reduced-motion enabled.
+
+TEST / EXIT
+Focused style/DOM behavior tests or rendered fixture checks as available; verify zero horizontally clipped safety actions in narrow layouts, keyboard order/ARIA, alternate theme token use and semantic status labels. Build changed extension only as needed and run `git diff --check`. P6 owns direct observed browser/native visual evidence and accessibility smoke checks; do not claim a unit snapshot proves polished GUI. <=8m target, 10m soft / 15m hard; defer any broad unrelated theme redesign.
