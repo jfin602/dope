@@ -1,0 +1,24 @@
+TASK: Correction 11 / P5 — Verify integrated Work truth and security regressions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; do not edit manifests, package pins or lockfiles; if local version advanced STOP for reassessment.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, workflow, owner-approved Work Experience contract, c11-work-experience README/assessment/plan, completed P1–P4 checkpoint evidence and current original c11-bridge-repair P5 NOT GREEN record. Recheck exact local HEAD, source diff, dirty tree, test packages/build artifacts and overlapping author work. Do not self-commit/reset/stash/clean/force, re-author P1–P4, rewrite prior P15/P5 failures, or promote a UI test to Phase 11 Green. No /activate; explicit owner Run only; runner owns checkpoints.
+
+SCOPE — T2 NARROW CROSS-SEAM VERIFICATION
+Run a focused real-source regression matrix and repair ONLY P1–P4 regressions, not unrelated domain/PB5 implementation gaps:
+1. **Truth:** direct AgentTask, Prompt Stack running P1 of 3, stopped/cancelled, manual gate, stale/blocked, source drift, accepted dirty basis and missing validation. Required `npm run check` unavailable ≠ pass; tests passed ≠ qualification. WorkItem held candidates remain distinct from direct/stack path, with matching validation fingerprint before accept.
+2. **Authority:** verify Start/Resume/Stop/dirty acceptance/reconcile/candidate accept/reject/Verify Checkpoint present only where backed by actual services and grants; no one-click implied approval, no unexpected network/grant, no source drift bypass, no cross-project action.
+3. **Transcript:** maintain durable historical and current `transcript.jsonl` schema, ordered messages/tool outputs, explicit truncation, safe Markdown (no untrusted remote images/HTML/javascript or unsafe links), restart/pagination, last-read scrolled-away state and correct not-recorded fallback. Preserve provider-hidden content exclusion.
+4. **Navigation:** Select Work Running/History/stacks, two different Work ids/tabs, same Work dedup/focus, Work center transcript, ordinary Chat independent selection/docking; History exact Work restoration and latest run activity read-only.
+5. **Integrations:** source-backed Phase Focus Work/runner/Git progress, immutable authored prompt order, Planning Bridge approved-stack vs explicit Work Run, WorkItem review vs architecture adoption, Roadmap linked Markdown and no false status/Green. Do not force Bridge D5–D8 into this UI correction.
+6. **Resilience:** stale/foreign project/result, interrupted run, cancelled mid-command, long output/tables, missing data, narrow/screen-reader focus as supported by focused test harness.
+
+TEST POLICY
+Use existing `test/unit` files and extension/AgentRun selectors; add only missing directly relevant tests. Find applicable commands from root package.json, build affected libs if compiled imports demand them, run concise focused tests plus `git diff --check` and relevant typecheck. A single final full `npm run check` belongs to manual P6 if warranted; do not run repeated large aggregates. Record exact source SHA + dirty fingerprint, commands, pass/fail/gap and any remaining issues. If unrelated Bridge tests fail, preserve actual failure and request separate owner disposition—do NOT turn them green or weaken checks. <=8m target / 15m hard stop; P6 alone observes live GUI.
