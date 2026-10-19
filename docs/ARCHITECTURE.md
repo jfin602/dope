@@ -746,6 +746,12 @@ Work panel detail owns execution controls, ordered Prompt Stack progress, valida
 
 Left/right toolbar Chat and Work launchers open their corresponding module; legacy Agent Run/Phase Stack commands may delegate via aliases. Prompt Stack lists default to `docs/tasks/` and do not introduce a manual import lifecycle. A New Work composer may initiate a direct task only through Coding Agent, CompletionPolicy and ExecutionGrant, never Chat Interactive model authority or unapproved mid-run steering. Work state is stored under `.dope/agent/`, while Chat remains `.dope/chats/`.
 
+### Phase 11 Work Experience presentation refinement (owner-approved design, 2026-10-18)
+
+The existing separate Chat/Work ownership and ADR 0030 Work/AgentRun transcript boundary above remain authoritative. The [Phase 11 Work Experience contract](planning/p11/work-experience-contract.md) proposes a restrained, human-centered Work detail and read-only transcript presentation **without** another Work/Chat owner, renderer state store, agent runner or approval path. Display stable title and accurate Prompt Stack progress; independently sourced run, validation, checkpoint, candidate review and qualification states; and a single contextual **authorized** primary action with machine diagnostics progressively disclosed. Dirty-tree drift, unavailable validation, failed validation and pending candidate review remain visibly distinct; source/grant/promotion requirements must never be bypassed or cosmetically marked Pass.
+
+AgentRun sanitized user-visible prose should reuse the **existing** Chat safe-Markdown rendering seam for full formatted document text (headings, lists, tables, fenced code, links and readable line spacing). Semantic tool/command events remain distinct, muted, expandable and fully auditable; source-backed raw logs, structured outcomes and durable `transcript.jsonl` still own the facts. Enforce HTML/image/network/secret/hidden-reasoning restrictions before DOM creation and preserve existing scrolled-away/latest, keyboard, narrow-viewport, project isolation and theme contracts. This design is **documentation only**; future implementation/qualification is separately approved, Phase 11 OPEN/NOT QUALIFIED and prior Planning Bridge Not Green evidence unchanged.
+
 ### Agent Runtime
 
 Introduced with Scoped Delegation.
