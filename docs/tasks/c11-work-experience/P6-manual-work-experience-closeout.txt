@@ -1,0 +1,29 @@
+TASK: Correction 11 / P6 — Manual Work Experience closeout and GUI qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no package/version/pin/lockfile bump. If actual version changed, STOP, re-assess and preserve evidence rather than downgrade.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, owner-approved `docs/planning/p11/work-experience-contract.md`, Phase 11 plan/matrix/issue ledger, this correction README/assessment/implementation plan and completed P1–P5 checkpoint/verification evidence. Preserve original `c11-planning-bridge` P15 NOT GREEN and `c11-bridge-repair` P5 NOT GREEN; the latter had 772/772 aggregate at its recorded source but did not qualify real stack/Work/reconciliation/D5–D8. Do not rewrite those records or claim that this presentation improvement closes Bridge or Phase 11. Reconcile actual local Git HEAD/branch/version/dirty state/compiled browser & Electron bundles, source-bounded prompt SHA/history, current user-owned changes and product startup. If requested GUI operations or models are unavailable, record Evidence Gap. No reset/stash/clean, no silent hosted transfer, no model or global default change, no self-commit. No /activate. This prompt is **MANUAL T3 ONLY** outside headless `codex:phase`: don't interpret its presence as Run authorization or auto-pass.
+
+PROCEDURE — DIRECT GUI, EXACT SOURCE
+On at least two safe disposable project fixtures with deliberate, explicit developer permissions and a matching launched Dope build, complete the following on the actual browser GUI; attempt independent native Electron GUI only with a real window-input/screenshot path (an Electron build alone never proves native parity). Use a real, verifiable successful Work run and a real blocked/failing run; do not substitute a static screenshot, mock, source comment or model narration. Model/network-dependent cases require explicit owner approval and correct tested scope, otherwise Evidence Gap. Record actual actions/expected/observed, screenshots/logs when available, source SHA/version/dirty fingerprint, bundle hash, grants, project IDs redacted, timestamps and status. No destructive owner-project testing.
+
+W1 — Discoverability: Select Work Running/History/Prompt Stacks and navigate two distinct real runs; same Work opens its owner without duplicate tabs or stealing user-docked Chat.
+W2 — Status truth: verify direct task, P1-of-3 stack, actual checkpoints and manual gate; agent finished != validation passed != candidate promoted != qualification Green. Missing records display Unknown/Pending, not success.
+W3 — Failure/recovery: reproduce true worktree drift and separately unavailable/missing-compiler required validation in safe fixtures; inspect exact changed file list, purpose and repository read-only evidence. Confirm safe refusal, unambiguous next steps, no auto continuation, no invented online install or validation pass. Test true failed validation separately if supported.
+W4 — Authority: explicit Start, ExecutionGrant, hosted-data consent where applicable, dirty opt-in, Reconcile, candidate accept/reject and manual Verify Gate remain independent. Verify stale, foreign project, denied permissions, source change and no run by merely opening prompt/transcript.
+W5 — Formatted transcript: real agent Markdown headings/paragraphs/lists/tables/code fences/source links rendered with readable spacing; compact expandable command start/finish/errors and stored output/exit/duration details; keep chronology intact.
+W6 — Security: untrusted image/remote URLs/unsafe HTML and link/no-egress negatives; no secrets/hidden reasoning; cross-project transcript reads denied; truncation and massive output honest. Do not fetch hostile remote resources as a side effect of rendering.
+W7 — Continuity: in a saved real run, scroll up then receive/update, verify no forced bottom jump; Latest works; reload/restart/open via History and previous Work preserves exact durable source/evidence and distinguishes historical transcript-not-recorded state.
+W8 — Human UI: wide center and narrow left/right/bottom as supported, keyboard/focus/accessibility labels, long error and long filename, dark and alternate theme, loading/empty/error/cancelled states, reduced motion behavior.
+W9 — Integration: original separate Chat, WorkItem review, Phase Focus exact prompt/evidence order, Bridge explicit approval→separate Work Run, Roadmap/Planning Map and immutable P-source remain trustworthy; no inference from one UI status.
+W10 — Exact-source proof: final candidate source SHA/version/diff fingerprint; actual browser actions and screenshots/results, independently observed Electron only if possible, focused tests/builds and ONE justified final full `npm run check`. Record sources of every observation and mark each W gate PASS/FAIL/BLOCKED/NOT RUN.
+
+CLOSEOUT
+Only after direct manual operation, write a NEW `docs/tasks/c11-work-experience/closeout.md` recording W1–W10 in a table, exact product/bundle/source identifiers, pass/fail/evidence gaps, preserved security denials, owner approvals and residual bugs, including separately documented native GUI non-observation. Do not pre-author or manufacture closeout outcome. Do not auto-commit owner evidence or alter root Roadmap linked source outside its approval path. Correction-scope Green requires actual applicable gates, not a passing aggregate alone; if a consequential W gate is missing/failed, result is NOT GREEN or EVIDENCE GAP with explicit reason. **Even a bounded correction-scope Green does not qualify Phase 11**, which still requires D1–D8, two materially distinct broad clean usability Hunts, pending Bridge work and explicit owner signoff. Phase 12 remains inactive. 
