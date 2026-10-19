@@ -99,7 +99,7 @@ test('a substituted authoritative parent path blocks promotion', async () => fix
 }));
 
 test('Dope state is a visible blocked candidate, never an authoritative write', async () => fixture(async (root, workspace) => {
-    await mkdir(join(workspace.root, '.dope'));
+    await mkdir(join(workspace.root, '.dope'), { recursive: true });
     await writeFile(join(workspace.root, '.dope/architecture.json'), '{}');
     const result = await workspace.promote(grant(), await workspace.delta());
     assert.equal(result.decision.allowed, false);

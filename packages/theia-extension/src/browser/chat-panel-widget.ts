@@ -602,7 +602,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     scroll.append(this.button('Verify checkpoint', () => void phase.checkpoint(), phase.busy));
                 else if (sequence.blockedReason === 'candidate-review-pending' && phase.run?.candidateReview)
                     scroll.append(this.button('Review candidate', () =>
-                        void controller.select({ kind: 'run', id: phase.run!.id }), phase.busy));
+                        void this.selectWork({ kind: 'run', id: phase.run!.id }), phase.busy));
                 else if (sequence.status !== 'running' && sequence.status !== 'completed')
                     scroll.append(this.button('Reconcile repository', () => void phase.reconcile(), phase.busy));
                 if (sequence.gateMessage) detail(sequence.gateMessage, 'dope-work-warning');

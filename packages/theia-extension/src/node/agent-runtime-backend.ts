@@ -182,6 +182,10 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
                 task.phaseStack?.stackFingerprint !== sequence.stack.fingerprint ||
                 task.instructions !== metadata.instructions)
                 throw new Error('Phase-stack candidate source or sequence changed before review');
+            if (decision === 'accept' && sequence.acceptedDirty)
+                await assertDirtyBasis(root, sequence.acceptedDirty).catch(() => {
+                    throw new Error('Dirty worktree changed since candidate review');
+                });
         }
         const run = await this.execution.decideCandidate(root, runId, expectedRevision, candidateFingerprint, decision, grant);
         if ((await this.store.readTask(root, run.taskId))?.origin.kind === 'phase-stack') {
@@ -381,6 +385,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             worktreeFingerprint: sequence.basis.worktreeFingerprint } : evidence;
         const reason = sequenceBlockReason(sequence, acceptedEvidence, drift) ??
             (sequence.status !== 'completed' && sequence.acceptedDirty && !acceptedValid &&
+                sequence.blockedReason !== 'candidate-review-pending' &&
                 !['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '') ?
                 'worktree-drift' : undefined);
         if (!reason) return sequence;

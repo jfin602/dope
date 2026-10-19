@@ -205,6 +205,8 @@ test('dirty phase-stack basis survives candidate hold and rejects drift before a
         'candidate-review-pending');
     await assert.rejects(readFile(join(f.root, 'candidate.txt')), { code: 'ENOENT' });
     await writeFile(join(f.root, 'notes.txt'), 'changed after hold\n');
+    assert.equal((await f.backend.reconcileSequence(f.handle, imported.sequence.id)).blockedReason,
+        'candidate-review-pending');
     await assert.rejects(f.backend.decideCandidate(f.handle, run.id, 0,
         held.candidateReview!.candidateFingerprint, 'accept', accepted), /Dirty worktree changed/);
     await assert.rejects(readFile(join(f.root, 'candidate.txt')), { code: 'ENOENT' });
