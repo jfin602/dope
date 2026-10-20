@@ -53,7 +53,7 @@ import { AICenterContribution } from './ai-center-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
 import { SidebarBottomMenuWidget } from '@theia/core/lib/browser/shell/sidebar-bottom-menu-widget';
 import { CHAT_PANEL_ID, chatAreas, chatLauncherIds, chatLauncherOptions, workLauncherIds, workLauncherOptions, openChatPanel, type ChatArea, type ChatPanelOptions } from './chat-panel-presentation';
-import { historyServicePath, historyFocusServicePath, HistoryService } from '@dope/contracts/lib/history-service';
+import { historyServicePath, historyFocusServicePath, historyPlanningServicePath, HistoryService } from '@dope/contracts/lib/history-service';
 import { HistoryWidget, HISTORY_WIDGET_ID } from './history-widget';
 import { HistoryFocusContribution } from './history-focus-contribution';
 import { historyOwnerNavigation } from './history-owner-navigation';
@@ -321,7 +321,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(PlanningMapController).toDynamicValue(context => new PlanningMapController(context.container.get(SoftwareMapController),
         () => ServiceConnectionProvider.createProxy<VisualPlanningService>(context.container, visualPlanningServicePath),
         context.container.get(AgentRuntimeService),
-        ServiceConnectionProvider.createProxy<HistoryService>(context.container, historyServicePath))).inSingletonScope();
+        ServiceConnectionProvider.createProxy<HistoryService>(context.container, historyPlanningServicePath))).inSingletonScope();
     bind<RoadmapService>('RoadmapService').toDynamicValue(context => ServiceConnectionProvider.createProxy<RoadmapService & RpcServer<RoadmapClient>>(
         context.container, roadmapServicePath, { notifyRoadmapChanged: (change: RoadmapChange) => {
             void context.container.get(RoadmapInspectorModel).remoteChange(change);

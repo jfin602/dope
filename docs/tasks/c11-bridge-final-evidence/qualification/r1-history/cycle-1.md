@@ -1,0 +1,26 @@
+# R1 History live-panel recovery — cycle 1 (2026-10-20)
+
+**Disposition: BLOCKED / NOT GREEN for the R1 qualification gate.** The live panel defect was reproduced and repaired, but the required saved rejected/accepted candidate and verified-checkpoint fixture is unavailable. No replacement Work grant or candidate decision was made. This is an automation-operated browser observation, not independent owner signoff.
+
+## Source and preflight
+
+- Dope checkout `/home/jfin/dev/dope`, `main` HEAD `331aa97685db6f6d3bba60f7cc2d330644e38356`, initially clean; version `0.11.8`. The five-file product/test diff after repair has SHA-256 `d7b8dfce796956539577bac6e26e9008bc854b62db542c2cd5c242963bca67cc` (`git diff --binary`). No manifest, pin, lockfile, prior prompt, Work record, historical closeout or Git checkpoint was changed or committed.
+- Both previously recorded fixture directories, `/tmp/dope-bridge-recovery-rzYUFj` and `/tmp/dope-bridge-qual-1VgRWq`, are absent. The 2026-10-19 direct 10-entry read and checkpoint `c2bce6b7012ab22405c21dc2ddc3077c3d1cb74d` remain historical evidence only. No substitute fixture was manufactured.
+- `npm run codex:phase:validate -- c11-bridge-final-evidence` passed as grammar validation only; it did not run a prompt.
+
+## Observe → trace → repair
+
+1. Built the unchanged source with `npm run build:browser`, launched its local backend at `http://127.0.0.1:3000`, and opened the actual Codex in-app browser on `#/home/jfin/dev/dope`. The real History panel stayed at `Loading History…`. The browser console recorded `Another channel with the id '/services/dope/history' is already open.` The backend was reachable and the rest of the workbench rendered. This was a live browser failure, not an inferred store failure.
+2. Source trace found `HistoryWidget` using its singleton `HistoryService` connection, while `PlanningMapController` independently called `ServiceConnectionProvider.createProxy` on the **same RPC channel ID**. Theia's connection provider opens one channel per path. `HistoryFocusContribution` already has a separate path and handle; Planning references also call attach/read and need an independent handle.
+3. Added `/services/dope/history-planning` as another connection to the existing `HistoryBackend`, and moved only Planning Map references to that path. The panel and focus observer retain their existing connections. Added a 15-second bound to History roots/attach/read and a visible error with retry when one does not respond. The panel rechecks the current root before rendering a result. No new store, event, polling loop or Work owner was introduced.
+
+## Focused checks and real-browser replay
+
+- Final `npm run build:browser` passed with zero browser/node build errors; final browser bundle SHA-256 `0a41259b2d181cbb132da375b15c7584cac963b564b366fc73a3c63c4824d8fa`. The served `/bundle.js` matched this final local file after the final wording adjustment, backend restart and browser replay.
+- Final focused command `node --test test/unit/history-panel.test.ts test/unit/history-integration.test.ts test/unit/history-work-git.test.ts test/unit/history-projection.test.ts test/unit/planning-map-ui.test.ts`: **29/29 passed, 0 failed**. The panel regression now checks that Planning does not reopen the panel's RPC path. `git diff --check` passed. The final test log is `/tmp/c11-r1-focused-final.log`, SHA-256 `5227dbed0143a29f391fc2e9662533806cdb04bff04203bf082e945989831484`. No full `npm run check` was run; P5 owns that aggregate.
+- On the final rebuilt app, History stopped loading and rendered **31 distinct source-backed rows** from the Dope repository, with no repeated selection IDs. A separate direct `HistoryBackend.attach/read` on that same root returned 31 entries, sources `git` and `project-mind`, zero diagnostics, and no truncation. Live Refresh again rendered 31 unique rows. A browser reload after backend restart restored the same real entries. The browser screenshot and accessibility observation were captured in this task's tool transcript; no standalone PNG was exported.
+- With the backend deliberately stopped, live Refresh displayed `Loading History…` and then a visible `History unavailable` card after 15 seconds, with a technical attach timeout and `Refresh History` control. The final wording explicitly instructs reloading Dope after a backend restart. Clicking retry on the old offline page after restart did **not** reconnect its old RPC channel; a full browser reload did. This limitation is recorded, not called a seamless reconnect.
+
+## Gate and handoff
+
+The original indefinite spinner is repaired in a source-backed live panel, and backend outage now has a bounded visible failure. **R1 remains BLOCKED / NOT GREEN** at the positive-fixture and exact project-isolation stage: the recorded 10-entry Work fixture is gone, so the real rejected and accepted candidate, run, checkpoint, A→B→A isolation, and refresh/restart event preservation were not replayed. Existing History integration tests do not substitute for those browser observations. Any new Work grant or candidate review needs an actual separate developer decision through the reviewed controls. R2 is independent and gains no implied completion; Bridge and Phase 11 remain OPEN / NOT QUALIFIED, Phase 12 inactive.

@@ -43,7 +43,7 @@ import { AgentExecutionRuntime } from './agent-execution-runtime';
 import { CodexAgentExecutionAdapter } from './codex-agent-execution';
 import { LocalAgentExecutionAdapter } from './local-agent-execution';
 import type { AgentExecutionAdapter } from '@dope/agent-core';
-import { historyServicePath, historyFocusServicePath } from '@dope/contracts/lib/history-service';
+import { historyServicePath, historyFocusServicePath, historyPlanningServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { RoadmapGreenfield } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
@@ -228,6 +228,11 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(historyFocusServicePath, client => {
+        const backend = new HistoryBackend(context.container.get(PlanningStore));
+        client.onDidCloseConnection(() => backend.dispose());
+        return backend;
+    })).inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler(historyPlanningServicePath, client => {
         const backend = new HistoryBackend(context.container.get(PlanningStore));
         client.onDidCloseConnection(() => backend.dispose());
         return backend;

@@ -10,6 +10,8 @@ export interface HistoryLocalExplanation {
 export const historyServicePath = '/services/dope/history';
 /** Focus observation uses its own RPC connection and project handle. */
 export const historyFocusServicePath = '/services/dope/history-focus';
+/** Planning references use an independent handle from the History panel and focus observer. */
+export const historyPlanningServicePath = '/services/dope/history-planning';
 export const HistoryService = Symbol('HistoryService');
 
 export interface HistorySnapshot {

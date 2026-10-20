@@ -1,6 +1,6 @@
 # c11-bridge-final-evidence — future manual qualification records
 
-**Status: not run.** This directory is an evidence-placement guide, not evidence that any cycle occurred. Five contiguous authored `P*.txt` prompts are manual T3 Browser-required gates; none may be marked Green from authoring alone.
+**Status: R1 attempted and PASS in its recorded browser/disposable-fixture scope; R2–R5 not run here.** See [R1 summary](r1-history/summary.md) and its dated cycles. The five contiguous authored `P*.txt` prompts are manual T3 browser-required gates; authoring alone qualifies none of them.
 
 When actually executed, store source-bound append-only cycle records as:
 

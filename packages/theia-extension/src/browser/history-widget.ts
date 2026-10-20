@@ -9,6 +9,13 @@ import { navigateHistory, type HistoryNavigationOwners } from './history-navigat
 import { historyFocusDescription, historyPreviewDescription, historyReadableTime } from './history-presentation';
 
 export const HISTORY_WIDGET_ID = 'dope-history';
+const HISTORY_LOAD_TIMEOUT_MS = 15_000;
+function boundedHistoryRead<T>(work: Promise<T>, stage: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`${stage} did not respond; check the backend connection and retry.`)), HISTORY_LOAD_TIMEOUT_MS);
+        work.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+    });
+}
 const sourceNames = { chat: 'Chat', planning: 'Planning', 'project-mind': 'Project Mind',
     agent: 'Work', git: 'Git', workbench: 'Workbench' } as const;
 export function historyTimeLabel(entry: HistoryEntry): string {
@@ -51,16 +58,20 @@ export class HistoryWidget extends BaseWidget {
         this.content.replaceChildren();
         this.status.textContent = 'Loading History…';
         try {
-            const roots = await this.workspaces.roots;
+            const roots = await boundedHistoryRead(this.workspaces.roots, 'Workspace roots');
             if (this.isDisposed || request !== this.request) return;
             if (roots.length !== 1 || roots[0].resource.scheme !== 'file') {
                 this.status.textContent = 'History is available for one local project folder.';
                 return;
             }
             const service = this.connect();
-            const { projectHandle } = await service.attach(roots[0].resource.toString());
-            const snapshot = await service.read(projectHandle);
+            const { projectHandle } = await boundedHistoryRead(service.attach(roots[0].resource.toString()), 'History attach');
+            const snapshot = await boundedHistoryRead(service.read(projectHandle), 'History read');
             if (this.isDisposed || request !== this.request) return;
+            const currentRoots = await boundedHistoryRead(this.workspaces.roots, 'Workspace roots');
+            if (this.isDisposed || request !== this.request) return;
+            if (currentRoots.length !== 1 || currentRoots[0].resource.toString() !== roots[0].resource.toString())
+                throw new Error('Project changed while loading History; refresh for the current project.');
             this.projectUri = roots[0].resource.toString();
             this.handle = projectHandle;
             this.render(snapshot);
@@ -70,7 +81,9 @@ export class HistoryWidget extends BaseWidget {
             const panel = document.createElement('section'); panel.className = 'dope-history-diagnostics';
             const heading = document.createElement('h2'); heading.textContent = 'History could not load';
             const guidance = document.createElement('p');
-            guidance.textContent = 'Check this project’s metadata and read permissions, then refresh History. No source data was changed.';
+            guidance.textContent = error instanceof Error && error.message.includes('did not respond') ?
+                'Check the backend connection. After restarting the backend, reload Dope and refresh History. No source data was changed.' :
+                'Check this project’s metadata and read permissions, then refresh History. No source data was changed.';
             const details = document.createElement('details');
             const summary = document.createElement('summary'); summary.textContent = 'Technical detail';
             const message = document.createElement('code');

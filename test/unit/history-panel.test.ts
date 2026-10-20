@@ -42,6 +42,10 @@ test('History uses one right activity-bar widget, a palette command, and safe in
     assert.match(contracts, /historyServicePath = '\/services\/dope\/history'/);
     assert.match(contracts, /historyFocusServicePath = '\/services\/dope\/history-focus'/);
     assert.match(module, /context\.container, historyFocusServicePath\)\)\.inSingletonScope\(\)/);
+    assert.equal((module.match(/createProxy<HistoryService>\(\s*context\.container, historyServicePath/g) ?? []).length, 1);
+    assert.match(module, /createProxy<HistoryService>\(context\.container, historyPlanningServicePath\)/);
+    assert.match(backend, /new RpcConnectionHandler\(historyPlanningServicePath/);
+    assert.match(contracts, /historyPlanningServicePath = '\/services\/dope\/history-planning'/);
     const productScript = readFileSync(new URL('../../package.json', import.meta.url), 'utf8');
     assert.equal((productScript.match(/test\/unit\/history-panel\.test\.ts/g) ?? []).length, 1);
 });
