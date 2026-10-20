@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureSequenceEvidence, phaseFocusSequenceEvidence, stackSourceDrift } from '@dope/agent-core/lib/node/sequence-reconciliation';
+import { importPhaseStack } from '@dope/agent-core/lib/sequence';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { RoadmapIndex, RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { FailedPromptEvidence, PhaseFocusBlockedEvidence, PhaseFocusCheckpointEvidence,
@@ -118,24 +119,39 @@ export async function readPhaseFocusEvidence(root: string, index: RoadmapIndex,
     for (const sequence of (await agentStore.listSequences(root)).slice(0, 256)) {
         const path = sequence.stack.sourcePath ?? `docs/tasks/${sequence.stack.folderName}`;
         const current = applicable.get(path);
-        if (!current) continue;
-        const drift = current.fingerprint !== sequence.stack.fingerprint || await stackSourceDrift(root, sequence.stack);
+        if (!current?.fingerprint) continue;
+        const currentFingerprint = current.fingerprint;
+        // Older Work stacks use the default docs/tasks root without serializing sourcePath.
+        // Discovery includes that path in its fingerprint. Rebind only an exact, still-current
+        // legacy snapshot to the discovered path; the Work task keeps its original fingerprint.
+        const discoveredFingerprint = sequence.stack.sourcePath ? sequence.stack.fingerprint :
+            (await importPhaseStack(sequence.stack.folderName, sequence.stack.entries.map(entry =>
+                ({ filename: entry.filename, text: entry.promptText })), path)).fingerprint;
+        const drift = currentFingerprint !== discoveredFingerprint || await stackSourceDrift(root, sequence.stack);
         const checked = phaseFocusSequenceEvidence(index.projectId, sequence, evidence, drift);
         for (const checkpoint of checked.checkpoints) {
             const prompt = current.prompts[checkpoint.entryNumber - 1];
             if (!prompt || checkpoint.manualGate !== (prompt.kind === 'closeout' || prompt.browserRequired)) continue;
             if (!checkpoint.manualGate) {
                 if (!checkpoint.taskId || !checkpoint.runId) continue;
-                const [task, run] = await Promise.all([agentStore.readTask(root, checkpoint.taskId),
-                    agentStore.readRun(root, checkpoint.runId)]);
+                const [taskRead, runRead] = await Promise.allSettled([
+                    agentStore.readTask(root, checkpoint.taskId), agentStore.readRun(root, checkpoint.runId)]);
+                if (taskRead.status === 'rejected' || runRead.status === 'rejected') {
+                    result.diagnostics.push(`${path}: Invalid Work task or run evidence for P${checkpoint.entryNumber}.`);
+                    continue;
+                }
+                const task = taskRead.value, run = runRead.value;
                 if (!task || !run || run.status !== 'completed' || run.taskId !== task.id ||
-                    task.phaseStack?.stackFingerprint !== current.fingerprint ||
-                    task.projectId && task.projectId !== index.projectId ||
-                    run.projectId && run.projectId !== index.projectId) continue;
+                    task.origin.kind !== 'phase-stack' ||
+                    task.origin.promptId !== `${sequence.stack.folderName}-P${checkpoint.entryNumber}-${sequence.stack.fingerprint.slice(0, 12)}` ||
+                    task.instructions !== sequence.stack.entries[checkpoint.entryNumber - 1]?.promptText ||
+                    task.phaseStack?.stackFingerprint !== sequence.stack.fingerprint ||
+                    task.projectId !== run.projectId) continue;
             }
-            result.checkpoints.push({ ...checkpoint, promptFingerprint: prompt.fingerprint });
+            result.checkpoints.push({ ...checkpoint, stackFingerprint: currentFingerprint,
+                promptFingerprint: prompt.fingerprint });
         }
-        result.blocked.push(...checked.blocked);
+        result.blocked.push(...checked.blocked.map(item => ({ ...item, stackFingerprint: currentFingerprint })));
     }
     const runsRoot = join(root, '.codex-runs');
     const rootInfo = await lstat(runsRoot).catch(() => undefined);
@@ -217,14 +233,23 @@ export async function readPhaseFocusEvidence(root: string, index: RoadmapIndex,
     const cited = await citedEvidence(root, index, stacks);
     result.qualifications = cited.qualifications;
     result.failedPromptEvidence = cited.failedPromptEvidence;
-    // One Git checkpoint may be independently known to Work and the runner; keep the richer Work identity.
-    const unique = new Map<string, PhaseFocusCheckpointEvidence>();
+    // One Git checkpoint may be independently known to Work and the runner. Two Work
+    // claims for the same prompt are ambiguous and must not become one green claim.
+    const claims = new Map<string, PhaseFocusCheckpointEvidence[]>();
     for (const checkpoint of result.checkpoints) {
         const key = `${checkpoint.stackPath}\0${checkpoint.entryNumber}\0${checkpoint.sha}`;
-        const previous = unique.get(key);
-        if (!previous || checkpoint.taskId && checkpoint.runId) unique.set(key, checkpoint);
+        claims.set(key, [...(claims.get(key) ?? []), checkpoint]);
     }
-    result.checkpoints = [...unique.values()];
+    result.checkpoints = [];
+    for (const group of claims.values()) {
+        const work = group.filter(item => item.taskId && item.runId);
+        const selected = work.length === 1 ? work[0] : work.length === 0 && group.length === 1 ? group[0] : undefined;
+        if (work.length > 1 || !selected) {
+            result.diagnostics.push(`${group[0].stackPath}: Ambiguous checkpoint evidence for P${group[0].entryNumber}.`);
+            continue;
+        }
+        result.checkpoints.push(selected);
+    }
     if ((await git(root, ['rev-parse', '--verify', 'HEAD'])).trim() !== evidence.head)
         throw new Error('Git basis changed during Phase Focus evidence read');
     return result;

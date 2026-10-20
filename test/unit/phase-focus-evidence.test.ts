@@ -98,10 +98,13 @@ test('runner checkpoints require root-local report, exact source, reachable orde
         assert.equal((await readPhaseFocusEvidence(root, index, stacks, store)).checkpoints.length, 0);
         await writeFile(reportFile, JSON.stringify(report));
 
-        const workStack = await importPhaseStack('c11-repair', await readStackSources(root, 'c11-repair'), correction.path);
+        // Work's default docs/tasks importer predates discovery's explicit source path.
+        // The immutable prompt bytes match even though those two stack fingerprints differ.
+        const workStack = await importPhaseStack('c11-repair', await readStackSources(root, 'c11-repair'));
+        assert.notEqual(workStack.fingerprint, correction.fingerprint);
         const at = '2026-10-18T04:00:00Z';
         await store.createTask(root, { version: 1, id: 'work-task', createdAt: at,
-            objective: 'Task', instructions: prompt('Correction', 1), projectRoot: '.', projectId: index.projectId,
+            objective: 'Task', instructions: prompt('Correction', 1), projectRoot: '.', projectId: 'planning-project',
             modelPolicy: { kind: 'follow-coding-agent' }, controls: { reasoningEffort: 'high' },
             authority: { profile: 'phase-8b-project' }, completion: { validation: [], requireValidationPass: false },
             origin: { kind: 'phase-stack', promptId: `c11-repair-P1-${workStack.fingerprint.slice(0, 12)}` },
@@ -109,7 +112,7 @@ test('runner checkpoints require root-local report, exact source, reachable orde
                 versionPolicy: { kind: 'unchanged', version: '0.11.8' } } });
         const pendingRun = { version: 1 as const, id: 'work-run', taskId: 'work-task', status: 'pending' as const,
             grantId: 'grant', grantRevision: 0, requestedPolicy: { kind: 'follow-coding-agent' },
-            projectRoot: '.' as const, projectId: index.projectId, createdAt: at,
+            projectRoot: '.' as const, projectId: 'planning-project', createdAt: at,
             changedFiles: [], validationResults: [] };
         await store.createRun(root, pendingRun);
         const runningRun = { ...pendingRun, status: 'running' as const, startedAt: at };
@@ -124,6 +127,23 @@ test('runner checkpoints require root-local report, exact source, reachable orde
         assert.equal(work.checkpoints[0].taskId, 'work-task');
         assert.equal(work.checkpoints[0].runId, 'work-run');
         assert.equal(work.checkpoints[0].runnerReport, undefined);
+
+        const sequence = (await store.readSequence(root, 'work-sequence'))!;
+        // A duplicated on-disk claim must stay ambiguous even though normal store writes deny it.
+        const duplicateFile = join(root, '.dope/agent/sequences/duplicate-work-sequence.json');
+        await writeFile(duplicateFile, JSON.stringify({ ...sequence, id: 'duplicate-work-sequence' }));
+        const duplicate = await readPhaseFocusEvidence(root, index, stacks, store);
+        assert.equal(duplicate.checkpoints.length, 0);
+        assert.equal(duplicate.diagnostics.some(item => item.includes('Ambiguous checkpoint evidence')), true);
+        await rm(duplicateFile);
+
+        const runFile = join(root, '.dope/agent/runs/work-run/run.json');
+        const completedRun = (await store.readRun(root, 'work-run'))!;
+        await rm(reportFile);
+        await writeFile(runFile, JSON.stringify({ ...completedRun, projectId: 'foreign-project' }));
+        assert.equal((await readPhaseFocusEvidence(root, index, stacks, store)).checkpoints.length, 0);
+        await writeFile(runFile, JSON.stringify(completedRun));
+        await writeFile(reportFile, JSON.stringify(report));
 
         await writeFile(join(root, citationPath), 'GREEN\n');
         assert.equal(await resolvePhaseFocusLink(root, index, stacks, index.checkpoints[1].links[1]), false);
