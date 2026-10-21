@@ -1,8 +1,9 @@
 import { pathToFileURL } from 'node:url';
 import type { AdoptionPreview, AdoptionScope } from '@dope/visual-planning/lib/adoption';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
-import type { PlannedTransformation, PlanningMap, WorkItem } from '@dope/visual-planning';
+import type { PlannedTransformation, PlanningBasis, PlanningMap, WorkItem } from '@dope/visual-planning';
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
+import { sameObservation, sameSemanticBasis } from '@dope/visual-planning';
 import type { RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 
 export type RoadmapPlanningRecord =
@@ -20,6 +21,28 @@ export class RoadmapPlanningLinks {
         return this.handle;
     }
 
+    /** A new analysis generation is safe only when its complete observed source graph is unchanged. */
+    private async currentObservation(handle: string, map: PlanningMap): Promise<PlanningBasis | undefined> {
+        const basis = await this.planning.currentBasis(handle);
+        if (!sameSemanticBasis(basis, map.basis)) return undefined;
+        if (basis.physicalGeneration === map.basis.physicalGeneration) return basis;
+        if (!map.basisSnapshot) return undefined;
+        const review = await this.planning.previewRebase({ projectHandle: handle, mapId: map.id,
+            expectedRevision: (await this.planning.read(handle)).revision, expectedMapRevision: map.revision,
+            expectedBasis: map.basis, expectedCurrentBasis: basis });
+        const current = review.currentReality, previous = map.basisSnapshot;
+        if (!sameSemanticBasis(current.basis, previous.basis) ||
+            current.basis.physicalGeneration !== basis.physicalGeneration || review.conflicts.length ||
+            !current.sourceHashes || !previous.sourceHashes) return undefined;
+        const ordered = <T>(items: T[]) =>
+            [...items].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+        const equivalent = JSON.stringify(current.architecture) === JSON.stringify(previous.architecture) &&
+            JSON.stringify(Object.entries(current.sourceHashes).sort()) === JSON.stringify(Object.entries(previous.sourceHashes).sort()) &&
+            JSON.stringify(ordered(current.physicalNodes)) === JSON.stringify(ordered(previous.physicalNodes)) &&
+            JSON.stringify(ordered(current.relationships)) === JSON.stringify(ordered(previous.relationships));
+        return equivalent ? basis : undefined;
+    }
+
     async resolve(root: string, link: RoadmapLink): Promise<RoadmapPlanningRecord | undefined> {
         if (root !== this.root || !['planning-map', 'transformation', 'work-item'].includes(link.owner) ||
             !link.ownerProjectId || link.ownerRevision === undefined || !link.basis) return undefined;
@@ -33,15 +56,16 @@ export class RoadmapPlanningLinks {
             JSON.stringify(map.basis) !== JSON.stringify(link.basis)) return undefined;
         const freshness = await this.planning.staleness(handle, map.id);
         if (freshness.stale || freshness.conflicts.length) return undefined;
-        const currentBasis = await this.planning.currentBasis(handle);
-        if (JSON.stringify(currentBasis) !== JSON.stringify(map.basis)) return undefined;
+        const observed = await this.currentObservation(handle, map);
+        if (!observed) return undefined;
         const conflicts = await this.planning.conflicts(handle);
         if (conflicts.some(conflict => conflict.mapIds.includes(map.id))) return undefined;
         // Owner state may move while current physical basis is inspected.
         const again = await this.planning.read(handle);
         const current = again.maps.find(item => item.id === map.id);
         if (again.projectId !== collection.projectId || again.revision !== collection.revision ||
-            !current || current.revision !== map.revision || JSON.stringify(current.basis) !== JSON.stringify(map.basis)) return undefined;
+            !current || current.revision !== map.revision || JSON.stringify(current.basis) !== JSON.stringify(map.basis) ||
+            !sameObservation(await this.planning.currentBasis(handle), observed)) return undefined;
         if (link.owner === 'planning-map') return { owner: 'planning-map', projectId: collection.projectId, map };
         if (link.owner === 'transformation') {
             const transformation = map.transformations.find(item => item.id === parts[1]);

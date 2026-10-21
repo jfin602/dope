@@ -74,9 +74,13 @@ test('accepted Roadmap and Planning owners require three approvals before a vali
     const suggestion = suggestWorkItems(collection.maps[0])[0];
     assert.deepEqual(suggestion.workingSet, ['src/core.ts']);
     const proposed = acceptSuggestion(collection.maps[0], suggestion, 'work');
+    assert.equal(proposed.assignment, 'HUMAN');
+    assert.deepEqual(proposed.delegablePaths, []);
     collection = await planning.mutate({ projectHandle: planningHandle, expectedRevision: collection.revision,
       operation: { type: 'put-work-item', mapId: 'plan', workItem: proposed } });
-    const workItem = { ...proposed, status: 'ready' as const };
+    // The suggestion is human-owned. Explicitly review delegation before testing AI stack authoring.
+    const workItem = { ...proposed, status: 'ready' as const, assignment: 'AI' as const,
+      delegablePaths: [...proposed.workingSet], humanReservedPaths: [] };
     collection = await planning.mutate({ projectHandle: planningHandle, expectedRevision: collection.revision,
       operation: { type: 'put-work-item', mapId: 'plan', workItem } });
     const actions = new ProjectPlanningActions(roadmaps, undefined, new RoadmapPlanningLinks(root, planning));
