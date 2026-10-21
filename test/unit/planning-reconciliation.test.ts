@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { canCloseOut, parsePlanningMap, transitionMap } from '../../packages/visual-planning/lib/index.js';
 import { reconcilePlanningMap, reconciliationRollups } from '../../packages/visual-planning/lib/reconciliation.js';
+import { acceptRebase, previewRebase } from '../../packages/visual-planning/lib/rebase.js';
 import { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
 import { SoftwareMapIndex } from '../../packages/code-analysis/lib/node/software-map-index.js';
 import { TypeScriptAnalyzer } from '../../packages/code-analysis-typescript/lib/index.js';
@@ -37,6 +38,61 @@ const map = (transformations: PlannedTransformation[] = [change('edit-a', 'Targe
   parsePlanningMap({ schemaVersion: 1, id: 'plan', projectId: 'project', title: 'Plan', objective: 'Change architecture',
     status: 'active', revision: 0, history: [{ revision: 0, action: 'create', at: '2026-10-01' }], basis,
     basisSnapshot: old, transformations, workItems: [] });
+
+test('reviewed rebase preserves recognition of an added component only with current source at its declared root', () => {
+  const addition: PlannedTransformation = { id: 'add-selector', kind: 'add', currentIds: [], dependsOn: [],
+    futureNodes: [{ id: 'selector', kind: 'component', parentId: 'a', name: 'Selector',
+      purpose: 'Select entries', roots: ['src/selector.ts'] }] };
+  const approved = map([addition]);
+  const sourceNode = { id: 'code:selector', kind: 'code', parentId: 'selector', name: 'selector.ts',
+    path: 'src/selector.ts', evidenceIds: ['syntax-selector'] };
+  const selectorNode = { id: 'selector', kind: 'component', parentId: 'a', name: 'Selector', evidenceIds: ['declaration'] };
+  const implemented: RebaseReality = { ...old, basis: { ...basis, physicalInputFingerprint: 'implemented', physicalGeneration: 2 },
+    physicalNodes: [...old.physicalNodes, selectorNode, sourceNode],
+    sourceHashes: { ...old.sourceHashes, 'src/selector.ts': 'c'.repeat(64) } };
+  assert.equal(reconcilePlanningMap(approved, old, 'before').results[0].outcome, 'not-implemented');
+  const preview = previewRebase(approved, implemented);
+  const rebased = acceptRebase(approved, preview,
+    preview.conflicts.map(conflict => ({ ...conflict, action: 'keep-target' as const })), 'reviewed');
+  const reanalyzed = { ...implemented, basis: { ...implemented.basis, physicalGeneration: 3 } };
+  const result = reconcilePlanningMap(rebased, reanalyzed, 'after').results[0];
+  assert.equal(result.outcome, 'implemented-as-planned');
+  assert.deepEqual(result.evidenceIds, ['syntax-selector']);
+  assert.match(result.explanation, /Current source-backed added target matches/);
+  assert.equal(reconcilePlanningMap(rebased, { ...reanalyzed, physicalNodes: old.physicalNodes }, 'missing').results[0].outcome,
+    'not-implemented');
+  assert.equal(reconcilePlanningMap(rebased, { ...reanalyzed,
+    physicalNodes: [...old.physicalNodes, selectorNode,
+      { ...sourceNode, id: 'code:similar', path: 'src/selectorSimilar.ts' }] }, 'wrong-root').results[0].outcome,
+    'not-implemented');
+  assert.equal(reconcilePlanningMap(rebased, { ...reanalyzed, sourceHashes: old.sourceHashes }, 'missing-hash').results[0].outcome,
+    'not-implemented');
+  assert.equal(reconcilePlanningMap(rebased, { ...reanalyzed, physicalNodes: [...old.physicalNodes, selectorNode] },
+    'declaration-only').results[0].outcome, 'not-implemented');
+});
+
+test('a missing planned dependency is not implemented by a matching added component or completed Work', () => {
+  const added: PlannedTransformation = { id: 'add-selector', kind: 'add', currentIds: [], dependsOn: [],
+    futureNodes: [{ id: 'selector', kind: 'component', parentId: 'a', name: 'Selector',
+      purpose: 'Select entries', roots: ['src/selector.ts'] }] };
+  const dependency: PlannedTransformation = { id: 'redirect', kind: 'redirect-relationship', currentIds: [],
+    futureNodes: [], dependsOn: ['add-selector'], redirect: {
+      from: { sourceId: 'a', targetId: 'other', policy: 'allowed' },
+      to: { sourceId: 'a', targetId: 'selector', policy: 'allowed' } } };
+  const target = map([added, dependency]);
+  target.workItems = [{ id: 'done', title: 'Done', objective: 'Done', transformationIds: ['add-selector', 'redirect'],
+    dependsOn: [], requirements: [], constraints: [], acceptanceCriteria: [], validationTargets: [], workingSet: [],
+    status: 'completed', completionNotes: 'Checkpoint' }];
+  const current: RebaseReality = { ...old, physicalNodes: [...old.physicalNodes,
+    { id: 'selector', kind: 'component', parentId: 'a', name: 'Selector', evidenceIds: ['declaration'] },
+    { id: 'code:selector', kind: 'code', parentId: 'selector', name: 'selector.ts', path: 'src/selector.ts', evidenceIds: ['syntax'] }],
+    sourceHashes: { ...old.sourceHashes, 'src/selector.ts': 'c'.repeat(64) } };
+  const report = reconcilePlanningMap(target, current, 'no-import');
+  assert.equal(report.results.find(result => result.transformationId === 'add-selector')?.outcome, 'implemented-as-planned');
+  assert.equal(report.results.find(result => result.transformationId === 'redirect')?.outcome, 'not-implemented');
+  target.reconciliation = report;
+  assert.equal(canCloseOut(target), false);
+});
 
 test('fresh source-backed comparison retains all outcomes, unexpected code, and rollups independent of WorkItem completion', () => {
   const target = map([change('edit-a', 'Target'), { id: 'add-missing', kind: 'add', currentIds: [],

@@ -34,6 +34,13 @@ export function reconcilePlanningMap(map: PlanningMap, input: RebaseReality, at:
     const evidenceIds = [...new Set(sourceEvidence)].sort();
     const relation = (sourceId: string, targetId: string, reality: RebaseReality) => reality.relationships.some(r =>
       r.kind === 'depends-on' && r.sourceId === sourceId && r.targetId === targetId && r.evidenceIds.length > 0);
+    const addedSourceMatches = change.kind === 'add' && change.futureNodes.every(node => {
+      const roots = node.roots;
+      const source = descendants(current, node.id).filter(child => child.kind === 'code' && child.path &&
+        child.evidenceIds.length > 0 && current.sourceHashes?.[child.path]);
+      return roots.length > 0 && roots.every(root => source.some(child => child.path === root ||
+        child.path!.startsWith(`${root.replace(/\/$/, '')}/`)));
+    });
     const matches = change.kind === 'remove' ? change.currentIds.every(id => !now.has(id) || physical(current, id).length === 0) :
       change.redirect ? relation(change.redirect.to.sourceId, change.redirect.to.targetId, current) &&
         !relation(change.redirect.from.sourceId, change.redirect.from.targetId, current) :
@@ -41,20 +48,24 @@ export function reconcilePlanningMap(map: PlanningMap, input: RebaseReality, at:
         const actual = now.get(node.id);
         return actual?.kind === node.kind && actual.name === node.name && actual.parentId === node.parentId &&
           physical(current, node.id).length > 0;
-      }) && (!['split', 'merge'].includes(change.kind) || change.currentIds.every(id => physical(current, id).length === 0));
+      }) && (!['split', 'merge'].includes(change.kind) || change.currentIds.every(id => physical(current, id).length === 0)) &&
+      (change.kind !== 'add' || addedSourceMatches);
     const verifiable = change.kind !== 'change-contract';
     const relationChanged = !!change.redirect &&
       (!same(old.relationships.filter(r => ids.includes(r.sourceId) || ids.includes(r.targetId)),
         current.relationships.filter(r => ids.includes(r.sourceId) || ids.includes(r.targetId))));
-    const observed = changed || relationChanged || change.kind === 'remove' &&
+    const observed = change.redirect ? relationChanged : changed || change.kind === 'remove' &&
       change.currentIds.some(id => physical(old, id).length > 0 && physical(current, id).length === 0);
-    const outcome: ReconciliationOutcome = matches && observed && verifiable ? 'implemented-as-planned' :
-      observed ? 'implemented-differently' : 'not-implemented';
+    // A reviewed rebase may have advanced the comparison snapshot after an add was implemented.
+    // The current target must still have source-backed code at every declared root.
+    const sourceBackedAdd = change.kind === 'add' && addedSourceMatches;
+    const outcome: ReconciliationOutcome = matches && (observed || sourceBackedAdd) && verifiable ? 'implemented-as-planned' :
+      observed && change.kind !== 'add' ? 'implemented-differently' : 'not-implemented';
     const relationEvidence = change.redirect ? current.relationships.filter(r => r.kind === 'depends-on' &&
       ids.includes(r.sourceId) && ids.includes(r.targetId)).flatMap(r => r.evidenceIds) : [];
     return { schemaVersion: 1 as const, transformationId: change.id, identityId, outcome,
       physicalGeneration: current.basis.physicalGeneration, evidenceIds: [...new Set([...evidenceIds, ...relationEvidence])].sort(),
-      explanation: `${observed ? 'Physical source or dependency evidence changed' : 'No physical source or dependency change observed'}; ${matches ? 'target structure matches' : 'target structure does not match'}${verifiable ? '' : '; contract meaning is not physically verifiable'}` };
+      explanation: `${observed ? 'Physical source or dependency evidence changed' : sourceBackedAdd && matches ? 'Current source-backed added target matches after basis advance' : 'No physical source or dependency change observed'}; ${matches ? 'target structure matches' : 'target structure does not match'}${verifiable ? '' : '; contract meaning is not physically verifiable'}` };
   });
   const covered = new Set(map.transformations.flatMap(change => [...change.currentIds, ...change.futureNodes.map(n => n.id),
     ...(change.redirect ? [change.redirect.from.sourceId, change.redirect.from.targetId,
