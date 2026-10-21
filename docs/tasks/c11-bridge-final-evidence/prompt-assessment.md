@@ -1,5 +1,8 @@
 # /prompt-ass — c11-bridge-final-evidence
 
+**2026-10-21 R4 owner-approved scope revision (latest):** The existing authored `P4-security-usability-native.txt` remains immutable, but its **active R4 execution instructions** are superseded by [manual/R4-usability-security-browser-only.md](manual/R4-usability-security-browser-only.md). R4 no longer requires any native Electron GUI proof. Prioritize tangible Work supervision usability and formatted transcripts (from the existing [Work Experience contract](../../planning/p11/work-experience-contract.md)) plus real browser narrow/keyboard/restart and security regressions. Preserve distinct Run/grant/review authority, source drift, project isolation and safe Markdown; no duplicate Chat/Work/History owner. Native is not R4 PASS/FAIL, but no unrelated Phase 11/P5 gate is silently waived. R3 source-scoped PASS is user-reported in this conversation with 70/70 affected tests and fixture `0307caa`; current GitHub only contains older R3 records, so the local source/diff/evidence must be inspected before R4. No new repair or qualification from this text alone.
+
+
 **Status (2026-10-19 America/Chicago): ASSESSED / documentation and manual prompt authoring only; NOT RUN, FIXED OR QUALIFIED.** Current reviewed GitHub main: `d4141f90e34d76b418a06b8d101a039657d95a50`, product `0.11.8`. Local checkout HEAD, dirty tree and test harness have **not** been inspected by this GitHub-only assessment. The `c11-bridge-final-evidence` [campaign contract](campaign-contract.md) is the scope authority. Phase 11 OPEN / NOT QUALIFIED; Phase 12 inactive.
 
 ## Evidence and exact open gates

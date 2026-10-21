@@ -1,5 +1,8 @@
 # Phase 11 — Work Experience UX and Transcript Contract
 
+**Bridge R4 usability integration / 2026-10-21:** The owner now prioritizes hands-on Work usability and safe transcript formatting in the [active R4 browser-only usability/security loop](../../tasks/c11-bridge-final-evidence/manual/R4-usability-security-browser-only.md), referencing this contract's W1–W9 acceptance and existing renderer/state owners. This is a **bounded usability-first implementation/verification opportunity**, **not** automatic qualification of the full separately approved `c11-work-experience` design/stack; track remaining W-gates explicitly and avoid duplicate implementation later. R4 native GUI requirement is explicitly removed by owner; no native parity implied and no P5/Phase 11 blanket waiver. Original status/dates below remain historic.
+
+
 **CURRENT 2026-10-19 BRIDGE BACKEND/UX OWNERSHIP:** [Verified disposable candidate review](../../tasks/c11-bridge-execution-recovery/qualification/2026-10-19-dirty-basis-final.md) now proves correct reject/accept, exact two-file promotion and Work checkpoint in the existing backend (D6 scoped PASS). Remaining [c11-bridge-final-evidence R1–R5](../../tasks/c11-bridge-final-evidence/README.md) owns live History Loading, Phase Focus verified checkpoint projection, source-truth structural/relink and remaining qualification. The independently approved c11-work-experience remains **DESIGN ONLY** for better Work layout and full safe Markdown transcript presentation, consuming the existing authoritative AgentRun/History/Phase Focus state. No parallel review owner or product implementation via this document; Phase 11 OPEN/NOT QUALIFIED.
 
 
