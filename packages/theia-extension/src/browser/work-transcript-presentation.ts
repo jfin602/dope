@@ -24,9 +24,24 @@ export function restoreWorkScroll(follow: ChatScrollFollow, previousTop: number,
     return follow.restore(previousTop, height, viewport);
 }
 
+/** Keep native Work disclosures operable with Space in the embedded browser. */
+export function workDisclosureKeydown(event: KeyboardEvent): void {
+    if (event.key !== ' ' || !(event.target instanceof HTMLElement) || event.target.tagName !== 'SUMMARY') return;
+    const details = event.target.parentElement;
+    if (!(details instanceof HTMLDetailsElement)) return;
+    event.preventDefault();
+    details.open = !details.open;
+}
+
 export function workCommandLabel(entry: Extract<AgentTranscriptEntry, { kind: 'command' }>): string {
     const status = entry.exitCode === undefined ? entry.status : `${entry.status} · exit ${entry.exitCode}`;
-    return `${entry.command}${entry.commandTruncated ? ' [truncated]' : ''} · ${status}` +
+    const shell = /^.*?\s-lc\s+(['"])/u.exec(entry.command);
+    const firstLine = (shell ? entry.command.slice(shell[0].length) : entry.command)
+        .split(/\n|&&|;/u, 1)[0].trim();
+    const summary = shell && firstLine.endsWith(shell[1]) && entry.command.endsWith(shell[1]) ?
+        firstLine.slice(0, -1).trimEnd() : firstLine;
+    const label = summary.length > 72 ? `${summary.slice(0, 69)}…` : summary;
+    return `Command · ${label || 'unnamed'}${entry.commandTruncated ? ' [truncated]' : ''} · ${status}` +
         (entry.durationMs === undefined ? '' : ` · ${entry.durationMs} ms`);
 }
 

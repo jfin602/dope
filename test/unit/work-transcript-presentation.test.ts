@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { WorkSelectionController } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
+import { WorkSelectionController, workManualGateReady, workRunOverview } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import { agentTranscriptWidgetId, openAgentTranscript, restoreWorkScroll, workCommandLabel,
     workCommandOutput } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
 import { ChatScrollFollow } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
@@ -10,12 +10,45 @@ import type { AgentRuntimeService } from '../../packages/contracts/src/agent-run
 test('command is compact and output is only claimed when recorded', () => {
     const command: any = { kind: 'command', command: 'npm test', commandTruncated: false,
         status: 'completed', exitCode: 0, durationMs: 42 };
-    assert.equal(workCommandLabel(command), 'npm test · completed · exit 0 · 42 ms');
+    assert.equal(workCommandLabel(command), 'Command · npm test · completed · exit 0 · 42 ms');
+    assert.equal(workCommandLabel({ ...command, command: '[redacted] -lc "node --test a.test.js && git status"' }),
+        'Command · node --test a.test.js · completed · exit 0 · 42 ms');
+    assert.equal(workCommandLabel({ ...command, command: "[redacted] -lc 'npm run check'" }),
+        'Command · npm run check · completed · exit 0 · 42 ms');
+    assert.match(workCommandLabel({ ...command, command: "[redacted] -lc 'find . -name '\"'\"'*.key'\"'\"'\nstatus'" }),
+        /^Command · find \. -name /u);
+    assert.match(workCommandLabel({ ...command, command: 'a'.repeat(100) }), /^Command · a{69}… · completed/u);
     assert.deepEqual(workCommandOutput(command), ['Output not recorded by adapter.']);
     assert.deepEqual(workCommandOutput({ ...command, cwd: '.', output: 'hello', outputTruncated: false }),
         ['cwd: .', 'output (combined):\nhello']);
     assert.deepEqual(workCommandOutput({ ...command, cwd: 'project', stdout: 'partial', stdoutTruncated: true,
         stderr: '', stderrTruncated: false }), ['cwd: project', 'stdout [truncated]:\npartial', 'stderr:\n']);
+});
+
+test('Work overview separates agent completion, required validation and candidate decision', () => {
+    const task: any = { id: 'task', projectId: 'project', origin: { kind: 'work-item' },
+        reviewPolicy: { kind: 'required' }, completion: { validation: [{ kind: 'command', label: 'check' }] } };
+    const run: any = { id: 'run', taskId: 'task', projectId: 'project', status: 'completed',
+        changedFiles: ['src/file.js'], validationResults: [], appliedFiles: [] };
+    assert.deepEqual(workRunOverview(run, task), {
+        state: 'Agent run completed; review and qualification remain separate',
+        validation: 'Required validation has not passed',
+        next: 'Inspect the transcript and validation before continuing.'
+    });
+    const accepted = { ...run, reviewDecision: { kind: 'accept' }, candidateReview: { state: 'ready' },
+        appliedFiles: ['src/file.js'], validationResults: [{ owner: 'dope', kind: 'command', label: 'check', status: 'passed' }] };
+    assert.equal(workRunOverview(accepted, task).state, 'Candidate accepted; 1 file applied');
+    assert.equal(workRunOverview(accepted, task).validation, 'Required validation passed');
+    const rejected = { ...accepted, reviewDecision: { kind: 'reject' }, appliedFiles: [] };
+    assert.equal(workRunOverview(rejected, task).state, 'Candidate rejected; no changes applied');
+});
+
+test('blocked Prompt Stack cannot offer manual verification', () => {
+    const sequence: any = { status: 'waiting-manual', currentEntryNumber: 2, stack: { entries: [
+        { execution: 'agent-task' }, { execution: 'manual-gate' }] } };
+    assert.equal(workManualGateReady(sequence), true);
+    assert.equal(workManualGateReady({ ...sequence, status: 'blocked', blockedReason: 'worktree-drift' }), false);
+    assert.equal(workManualGateReady({ ...sequence, currentEntryNumber: 1 }), false);
 });
 
 test('Work reads every saved page from the beginning, including truncation state', async () => {
@@ -91,6 +124,7 @@ test('Work keeps untrusted Markdown sanitized, commands collapsed and follow ind
     assert.match(widget, /document\.createElement\('details'\); details\.className = 'dope-work-command'/);
     assert.doesNotMatch(widget, /details\.open\s*=/);
     assert.match(widget, /summary\.textContent = workCommandLabel\(entry\)/);
+    assert.match(widget, /fullCommand\.textContent = `command/);
     assert.match(widget, /transcript\.append\(details\)/);
     assert.match(widget, /cursor = page\.nextSequence/);
     assert.match(widget, /let cursor = 0/);

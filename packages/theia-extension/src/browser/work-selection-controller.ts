@@ -8,11 +8,41 @@ import type { AgentTarget } from './agent-run-controller';
 
 export function workTitle(selection: WorkSelection, run?: AgentRun, task?: AgentTask,
     sequence?: AgentTaskSequence): string {
-    if (selection.kind === 'sequence') return sequence?.stack.entries[Math.min(sequence.currentEntryNumber,
-        sequence.stack.entries.length) - 1]?.title ??
-        sequence?.stack.folderName ?? 'Prompt Stack';
+    if (selection.kind === 'sequence') return sequence?.stack.folderName ?? 'Prompt Stack';
     if (run) return task?.objective ?? `Work - ${run.id.slice(0, 8)}`;
     return task?.objective ?? `Work - ${selection.id.slice(0, 8)}`;
+}
+
+/** Only saved owner state supplies these claims; agent prose is never validation evidence. */
+export function workRunOverview(run: AgentRun, task?: AgentTask): { state: string; validation: string; next: string } {
+    const review = workReviewState(run, task);
+    const required = task?.completion.validation ?? [];
+    const passed = required.length > 0 && required.every(target => run.validationResults.some(result =>
+        result.owner === 'dope' && result.kind === target.kind && result.label === target.label && result.status === 'passed'));
+    const failed = run.validationResults.some(result => result.status === 'failed');
+    const validation = failed ? 'Required validation failed' : passed ? 'Required validation passed' :
+        required.length ? 'Required validation has not passed' : 'No required validation recorded';
+    const state = review === 'pending' ? 'Candidate held for review; no changes applied' :
+        review === 'accepted' ? `Candidate accepted; ${run.appliedFiles?.length ?? 0} ` +
+            `file${run.appliedFiles?.length === 1 ? '' : 's'} applied` :
+        review === 'rejected' ? 'Candidate rejected; no changes applied' :
+        run.status === 'completed' ? 'Agent run completed; review and qualification remain separate' :
+        `Agent run ${run.status}`;
+    const next = review === 'pending' ? workReviewCanAccept(run, task) ?
+        'Review the candidate diff, then accept or reject it.' :
+        'Inspect required validation before deciding; acceptance is unavailable.' :
+        review === 'stale' ? 'Refresh Work and inspect the changed source before another decision.' :
+        review === 'accepted' ? 'Inspect the checkpoint and Planning Map; qualification is a separate decision.' :
+        review === 'rejected' ? 'Return to the Prompt Stack to revise or continue safely.' :
+        run.status === 'failed' || run.status === 'blocked' ? 'Inspect run diagnostics and the transcript before retrying.' :
+        run.status === 'running' ? 'Wait for the run or use Stop Work if available.' :
+        'Inspect the transcript and validation before continuing.';
+    return { state, validation, next };
+}
+
+export function workManualGateReady(sequence: AgentTaskSequence): boolean {
+    return sequence.status === 'waiting-manual' &&
+        sequence.stack.entries[sequence.currentEntryNumber - 1]?.execution === 'manual-gate';
 }
 
 export interface WorkRow {

@@ -17,8 +17,8 @@ import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatT
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
-import { WorkSelectionController, workReviewCanAccept, workReviewState, workRows, workTitle } from './work-selection-controller';
-import { restoreWorkScroll } from './work-transcript-presentation';
+import { WorkSelectionController, workManualGateReady, workReviewCanAccept, workReviewState, workRows, workRunOverview, workTitle } from './work-selection-controller';
+import { restoreWorkScroll, workDisclosureKeydown } from './work-transcript-presentation';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
@@ -450,6 +450,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         region.setAttribute('aria-label', 'Selected Work');
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll dope-work-scroll';
         scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'Work transcript');
+        scroll.addEventListener('keydown', workDisclosureKeydown);
         const latest = this.button('Latest', () => {
             this.workFollow.jump();
             this.workAnimationUntil = performance.now() + 200;
@@ -496,21 +497,34 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (work.kind === 'sequence') {
             const phase = controller.phase, sequence = phase.selected?.id === work.id ? phase.selected : undefined;
             if (sequence) {
-                detail(`Status: ${sequence.status}${sequence.blockedReason ? ` · ${sequence.blockedReason}` : ''}`, 'dope-work-overview');
-                detail(`Current: P${Math.min(sequence.currentEntryNumber, sequence.stack.entries.length)} of ${sequence.stack.entries.length}`, 'dope-work-overview');
+                const current = Math.min(sequence.currentEntryNumber, sequence.stack.entries.length);
+                detail(`Prompt Stack · P${current} of ${sequence.stack.entries.length} · ${sequence.status}`, 'dope-work-overview');
+                if (sequence.blockedReason) detail(`Blocked: ${sequence.blockedReason}. ${sequence.gateMessage ||
+                    'Inspect the saved run and reconcile the repository before continuing.'}`, 'dope-work-warning');
+                const executableSteps = sequence.stack.entries.filter(item => item.execution === 'agent-task').length;
+                const checkpointRunId = sequence.checkpoints.at(-1)?.runId;
+                const checkpointRun = checkpointRunId ? controller.runs.find(item => item.id === checkpointRunId) : undefined;
+                const evidenceRun = phase.run ?? checkpointRun;
+                detail(`Implementation: ${sequence.checkpoints.length} of ${executableSteps} executable steps checkpointed · ` +
+                    `Git: ${sequence.checkpoints.length} verified checkpoint${sequence.checkpoints.length === 1 ? '' : 's'} · ` +
+                    'Qualification: not recorded here', 'dope-work-detail');
+                detail(`Validation${phase.run ? ' · current run' : checkpointRun ? ' · last checkpoint' : ''}: ` +
+                    `${evidenceRun?.validationResults.map(result => `${result.label} ${result.status}`).join(', ') || 'not recorded'} · ` +
+                    `Candidate review: ${evidenceRun?.reviewDecision?.kind ??
+                    (evidenceRun?.candidateReview ? 'pending' : 'no current candidate')}`, 'dope-work-detail');
                 if (sequence.checkpoints.length) {
                     const checkpoint = document.createElement('small'); checkpoint.className = 'dope-work-system';
                     checkpoint.textContent = `${sequence.checkpoints.length} checkpoint${sequence.checkpoints.length === 1 ? '' : 's'} recorded`;
                     scroll.append(checkpoint);
                 }
-                const progress = document.createElement('details'); progress.className = 'dope-work-diagnostics';
-                const progressTitle = document.createElement('summary'); progressTitle.textContent = 'Progress'; progress.append(progressTitle);
+                const progress = document.createElement('section'); progress.className = 'dope-work-progress';
+                const progressTitle = document.createElement('h3'); progressTitle.textContent = 'Authored steps'; progress.append(progressTitle);
                 const entries = document.createElement('ol');
                 for (const entry of sequence.stack.entries) {
                     const item = document.createElement('li');
                     const checkpoint = sequence.checkpoints.find(value => value.entryNumber === entry.number);
                     const current = entry.number === sequence.currentEntryNumber && sequence.status !== 'completed';
-                    const state = checkpoint ? 'Completed' : current ? sequence.status : 'Pending';
+                    const state = checkpoint ? 'Checkpoint verified' : current ? sequence.status : 'Pending';
                     item.textContent = `P${entry.number} - ${entry.title} · ${state}${checkpoint ? ` · ${checkpoint.sha}` : ''}`;
                     const sourcePath = `${sequence.stack.sourcePath ?? `docs/tasks/${sequence.stack.folderName}`}/${entry.filename}`;
                     const source = document.createElement('small');
@@ -562,9 +576,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     scroll.append(previousRuns);
                 }
                 if (phase.run) {
-                    detail(`Current activity: ${phase.run.outcome?.summary ?? phase.run.changeSummary?.summary ?? phase.run.status}`, 'dope-work-overview');
-                    detail(`Validation: ${phase.run.validationResults.map(result => `${result.label} ${result.status}`).join(', ') || 'Pending'}`,
-                        phase.run.validationResults.some(result => result.status === 'failed') ? 'dope-work-warning' : 'dope-work-detail');
+                    detail(`Run: ${phase.run.status} · ${phase.run.changedFiles.length} changed files`, 'dope-work-detail');
                     detail(`Authority: ${phase.run.authorityDecision ? phase.run.authorityDecision.allowed ? 'Allowed' : 'Blocked' : 'Pending'}`,
                         phase.run.authorityDecision && !phase.run.authorityDecision.allowed ? 'dope-work-warning' : 'dope-work-detail');
                     if (phase.run.changedFiles.length) {
@@ -579,7 +591,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     detail(`P${entry.number} · ${entry.execution === 'manual-gate' ? 'Manual/browser gate' : 'Agent task'}`, 'dope-work-overview');
                     if (entry.execution === 'manual-gate' && sequence.status !== 'completed') {
                         const prompt = document.createElement('pre'); prompt.textContent = entry.promptText; scroll.append(prompt);
-                        scroll.append(this.button('Verify manual gate', () => void phase.reconcile(), phase.busy));
+                        if (!workManualGateReady(sequence))
+                            detail('Manual verification is unavailable until the repository block is resolved.', 'dope-work-warning');
+                        scroll.append(this.button('Verify manual gate', () => void phase.reconcile(),
+                            phase.busy || !workManualGateReady(sequence)));
                     } else if (entry.execution === 'agent-task' && sequence.status !== 'completed') {
                         const validation = document.createElement('input'); validation.type = 'text';
                         validation.value = phase.validationCommand; validation.maxLength = 160;
@@ -613,16 +628,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         } else {
             const run = work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined;
             if (run) {
-                const state = document.createElement('p'); state.className = 'dope-work-overview';
-                state.textContent = `Run · ${run.status}`; scroll.append(state);
+                const overview = workRunOverview(run, controller.selectedTask);
+                detail(overview.state, 'dope-work-overview');
+                detail(`${overview.validation} · ${run.changedFiles.length} changed files`, 'dope-work-detail');
+                detail(`Next: ${overview.next}`, 'dope-work-next');
                 const provenance = document.createElement('details'); provenance.className = 'dope-work-diagnostics';
                 const provenanceTitle = document.createElement('summary'); provenanceTitle.textContent = 'Model and provenance';
                 const provenanceText = document.createElement('p');
                 provenanceText.textContent = run.provenance ? `${run.provenance.providerId} · ${run.provenance.modelId}` : 'Coding Agent';
                 provenance.append(provenanceTitle, provenanceText); scroll.append(provenance);
-                const recent = [...controller.transcript].reverse().find(entry => entry.kind === 'message' || entry.kind === 'command');
-                detail(`Current activity: ${recent?.kind === 'message' ? recent.text.slice(0, 180) :
-                    recent?.kind === 'command' ? recent.command : run.outcome?.summary ?? run.status}`, 'dope-work-overview');
+                if (run.outcome) detail(`Run outcome: ${run.outcome.summary}`, 'dope-work-detail');
                 if (controller.selectedTask?.origin.kind === 'direct' &&
                     ['pending', 'running', 'blocked'].includes(run.status)) scroll.append(this.button('Stop Work', () => {
                     if (this.directController) { void this.directController.select(run.id).then(() => this.directController?.stop()); }

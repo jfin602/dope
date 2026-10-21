@@ -5,7 +5,7 @@ import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-serv
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { ChatScrollFollow } from './chat-panel-presentation';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
-import { agentTranscriptWidgetId, workCommandLabel, workCommandOutput,
+import { agentTranscriptWidgetId, workCommandLabel, workCommandOutput, workDisclosureKeydown,
     type AgentTranscriptOptions } from './work-transcript-presentation';
 import { workTitle } from './work-selection-controller';
 
@@ -19,6 +19,7 @@ export class AgentTranscriptWidget extends BaseWidget {
     private scrollTop = 0;
     private state: 'recorded' | 'not-recorded' = 'not-recorded';
     private incomplete = false;
+    private resizeObserver?: ResizeObserver;
     private readonly rootsListener;
 
     constructor(private readonly runtime: AgentRuntimeService, private readonly markdown: MarkdownRenderer,
@@ -79,11 +80,13 @@ export class AgentTranscriptWidget extends BaseWidget {
     }
 
     private render(): void {
+        this.resizeObserver?.disconnect();
         const previous = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
         if (previous) this.scrollTop = previous.scrollTop;
         const region = document.createElement('section'); region.className = 'dope-chat-transcript-region';
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll dope-work-scroll';
         scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'AgentRun transcript');
+        scroll.addEventListener('keydown', workDisclosureKeydown);
         const latest = document.createElement('button'); latest.textContent = 'Latest';
         latest.className = 'dope-chat-latest dope-work-latest';
         latest.onclick = () => { this.follow.jump(); scroll.scrollTop = scroll.scrollHeight; latest.hidden = true; };
@@ -110,6 +113,9 @@ export class AgentTranscriptWidget extends BaseWidget {
                 const details = document.createElement('details'); details.className = 'dope-work-command';
                 const summary = document.createElement('summary'); summary.textContent = workCommandLabel(entry);
                 details.append(summary);
+                const fullCommand = document.createElement('pre');
+                fullCommand.textContent = `command${entry.commandTruncated ? ' [truncated]' : ''}:\n${entry.command}`;
+                details.append(fullCommand);
                 for (const output of workCommandOutput(entry)) {
                     const pre = document.createElement('pre'); pre.textContent = output; details.append(pre);
                 }
@@ -131,7 +137,15 @@ export class AgentTranscriptWidget extends BaseWidget {
         this.content.replaceChildren(region);
         scroll.scrollTop = this.follow.restore(this.scrollTop, scroll.scrollHeight, scroll.clientHeight);
         latest.hidden = !this.follow.latestBelow;
+        this.resizeObserver = new ResizeObserver(() => {
+            if (this.isDisposed || !this.content.contains(region)) return;
+            if (this.follow.following) scroll.scrollTop = scroll.scrollHeight;
+            this.follow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
+            latest.hidden = !this.follow.latestBelow;
+        });
+        this.resizeObserver.observe(scroll);
+        this.resizeObserver.observe(transcript);
     }
 
-    override dispose(): void { ++this.request; this.rootsListener.dispose(); super.dispose(); }
+    override dispose(): void { ++this.request; this.resizeObserver?.disconnect(); this.rootsListener.dispose(); super.dispose(); }
 }
