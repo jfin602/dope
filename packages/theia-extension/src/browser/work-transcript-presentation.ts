@@ -46,10 +46,10 @@ export function workCommandLabel(entry: Extract<AgentTranscriptEntry, { kind: 'c
 }
 
 export function workCommandOutput(entry: Extract<AgentTranscriptEntry, { kind: 'command' }>): string[] {
-    const lines = entry.cwd ? [`cwd: ${entry.cwd}`] : [];
+    const lines = entry.cwd === undefined ? [] : [`cwd: ${entry.cwd}`];
     if (entry.stdout !== undefined) lines.push(`stdout${entry.stdoutTruncated ? ' [truncated]' : ''}:\n${entry.stdout}`);
     if (entry.stderr !== undefined) lines.push(`stderr${entry.stderrTruncated ? ' [truncated]' : ''}:\n${entry.stderr}`);
-    if (entry.stdout === undefined && entry.stderr === undefined && entry.output !== undefined)
+    if (entry.output !== undefined)
         lines.push(`output (combined)${entry.outputTruncated ? ' [truncated]' : ''}:\n${entry.output}`);
     if (entry.stdout === undefined && entry.stderr === undefined && entry.output === undefined)
         lines.push('Output not recorded by adapter.');

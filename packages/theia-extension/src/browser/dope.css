@@ -693,6 +693,30 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-scroll-dragging, .dope-chat-scroll-dragging * { cursor: grabbing; user-select: none; }
 .dope-chat-transcript { padding: 0 !important; margin: 0 auto; max-width: 900px; }
 .dope-work-transcript { box-sizing: border-box; width: 100%; }
+.dope-agent-transcript-panel .dope-work-scroll { padding: 18px clamp(12px, 4vw, 40px) 28px; touch-action: pan-y pinch-zoom; }
+.dope-agent-transcript-panel .dope-work-transcript { max-width: 78ch; }
+.dope-work-transcript-status { margin: 0; padding: 7px 14px; border-bottom: 1px solid var(--theia-widget-border); color: var(--theia-descriptionForeground); font-size: 12px; }
+.dope-agent-transcript-panel .dope-work-message { padding: 14px 0; }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content { max-width: 100%; line-height: 1.65; }
+.dope-work-message .dope-chat-message-content :is(h1, h2, h3, h4) { line-height: 1.25; margin: 1.35em 0 .5em; overflow-wrap: anywhere; }
+.dope-work-message .dope-chat-message-content h1 { font-size: 1.6em; }
+.dope-work-message .dope-chat-message-content h2 { font-size: 1.35em; }
+.dope-work-message .dope-chat-message-content h3 { font-size: 1.15em; }
+.dope-work-message .dope-chat-message-content p { margin: 0 0 1em; }
+.dope-work-message .dope-chat-message-content li { margin: .25em 0; }
+.dope-work-message .dope-chat-message-content blockquote { color: var(--theia-descriptionForeground); margin: 1em 0; }
+.dope-work-message .dope-chat-message-content table { margin: 1em 0; }
+.dope-work-message .dope-chat-message-content th { background: var(--theia-input-background); }
+.dope-message-code { position: relative; max-width: 100%; margin: 1em 0; }
+.dope-message-code-language { display: block; width: fit-content; padding: 2px 8px; border: 1px solid var(--theia-widget-border); border-bottom: 0; border-radius: 5px 5px 0 0; color: var(--theia-descriptionForeground); font: 11px var(--theia-code-font-family, monospace); }
+.dope-chat-message-content .dope-message-code pre { margin: 0; white-space: pre; overflow: auto; tab-size: 4; }
+.dope-work-command { background: var(--theia-input-background); border-radius: 4px; }
+.dope-agent-transcript-panel .dope-work-command { margin: 5px 0; padding: 6px 10px; }
+.dope-work-command-failed, .dope-work-command-cancelled, .dope-work-command-interrupted { border-left-color: var(--theia-errorForeground); }
+.dope-work-command > summary { list-style-position: outside; }
+.dope-work-command-correlation { display: block; margin: 7px 0 4px; color: var(--theia-descriptionForeground); }
+.dope-agent-transcript-panel .dope-work-command pre { box-sizing: border-box; max-width: 100%; max-height: 18rem; margin: 5px 0; padding: 7px; white-space: pre; overflow: auto; background: var(--theia-editor-background); }
+.dope-agent-transcript-panel .dope-work-system { margin: 9px 0; font-size: 12px; }
 .dope-chat-transcript .dope-chat-message { margin: 0; padding: 10px 0; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
 .dope-chat-message-user { align-items: flex-end !important; }
 .dope-chat-message-content { max-width: min(100%, 72ch); min-width: 0; line-height: 1.55; overflow-wrap: anywhere; }

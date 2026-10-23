@@ -9,6 +9,14 @@ messageMarkdown.renderer.rules.image = (tokens, index) => {
     const alt = tokens[index].content;
     return messageMarkdown.utils.escapeHtml(alt ? `[Image omitted: ${alt}]` : '[Image omitted]');
 };
+messageMarkdown.renderer.rules.fence = (tokens, index) => {
+    const token = tokens[index];
+    const language = token.info.trim().split(/\s+/u, 1)[0];
+    // A label is presentation only. Never interpolate untrusted fence info as markup.
+    const safeLanguage = /^[a-z][a-z0-9_+.#-]{0,24}$/iu.test(language) ? language : '';
+    const label = safeLanguage ? `<span class="dope-message-code-language">${messageMarkdown.utils.escapeHtml(safeLanguage)}</span>` : '';
+    return `<div class="dope-message-code">${label}<pre><code>${messageMarkdown.utils.escapeHtml(token.content)}</code></pre></div>\n`;
+};
 
 /** Image tokens become text before HTML parsing can create an image request. */
 export function renderUntrustedMessageHtml(text: string): string {

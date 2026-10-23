@@ -19,6 +19,7 @@ export class AgentTranscriptWidget extends BaseWidget {
     private scrollTop = 0;
     private state: 'recorded' | 'not-recorded' = 'not-recorded';
     private incomplete = false;
+    private readonly expandedCommands = new Set<string>();
     private resizeObserver?: ResizeObserver;
     private readonly rootsListener;
 
@@ -30,10 +31,28 @@ export class AgentTranscriptWidget extends BaseWidget {
         this.title.iconClass = codicon('output');
         this.title.closable = true;
         this.addClass('dope-chat-panel');
+        this.addClass('dope-agent-transcript-panel');
         this.content.className = 'dope-chat-content dope-chat-content-work';
         this.status.setAttribute('role', 'status');
+        this.status.className = 'dope-work-transcript-status';
+        this.follow.select(this.id);
         this.node.append(this.status, this.content);
-        this.rootsListener = workspaces.onWorkspaceChanged(() => { ++this.request; void this.refresh(); });
+        this.rootsListener = workspaces.onWorkspaceChanged(() => {
+            ++this.request;
+            const previous = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
+            if (previous) {
+                this.scrollTop = previous.scrollTop;
+                for (const details of previous.querySelectorAll<HTMLDetailsElement>('.dope-work-command')) {
+                    const key = details.dataset.commandKey;
+                    if (key) {
+                        if (details.open) this.expandedCommands.add(key);
+                        else this.expandedCommands.delete(key);
+                    }
+                }
+            }
+            this.content.replaceChildren();
+            void this.refresh();
+        });
         void this.refresh();
     }
 
@@ -46,6 +65,10 @@ export class AgentTranscriptWidget extends BaseWidget {
             if (roots.length !== 1 || roots[0].resource.toString() !== this.options.project) {
                 this.status.textContent = 'Open the original project to view this transcript.';
                 this.content.replaceChildren();
+                this.entries = [];
+                this.expandedCommands.clear();
+                this.scrollTop = 0;
+                this.follow.select(undefined);
                 return;
             }
             const { projectHandle } = await this.runtime.attach(this.options.project);
@@ -67,12 +90,13 @@ export class AgentTranscriptWidget extends BaseWidget {
             }
             if (request !== this.request || this.isDisposed) return;
             this.entries = entries; this.state = state; this.incomplete = incomplete;
+            this.follow.select(this.id);
             this.title.label = this.title.caption = workTitle({ kind: 'run', id: run.id }, run, task);
-            this.status.textContent = `Work transcript · ${run.status}`;
+            this.status.textContent = `Work transcript · Run ${run.status}`;
             this.render();
         } catch (error) {
             if (request !== this.request || this.isDisposed) return;
-            this.status.textContent = error instanceof Error ? error.message : 'Transcript could not be loaded.';
+            this.status.textContent = `Transcript could not be loaded. ${error instanceof Error ? error.message : ''}`;
             const retry = document.createElement('button'); retry.textContent = 'Retry';
             retry.onclick = () => void this.refresh();
             this.status.append(' ', retry);
@@ -82,12 +106,23 @@ export class AgentTranscriptWidget extends BaseWidget {
     private render(): void {
         this.resizeObserver?.disconnect();
         const previous = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
-        if (previous) this.scrollTop = previous.scrollTop;
+        if (previous) {
+            this.scrollTop = previous.scrollTop;
+            for (const details of previous.querySelectorAll<HTMLDetailsElement>('.dope-work-command')) {
+                const key = details.dataset.commandKey;
+                if (key) {
+                    if (details.open) this.expandedCommands.add(key);
+                    else this.expandedCommands.delete(key);
+                }
+            }
+        }
         const region = document.createElement('section'); region.className = 'dope-chat-transcript-region';
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll dope-work-scroll';
         scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'AgentRun transcript');
+        scroll.setAttribute('aria-live', 'off');
         scroll.addEventListener('keydown', workDisclosureKeydown);
         const latest = document.createElement('button'); latest.textContent = 'Latest';
+        latest.type = 'button'; latest.setAttribute('aria-label', 'Go to latest transcript entry');
         latest.className = 'dope-chat-latest dope-work-latest';
         latest.onclick = () => { this.follow.jump(); scroll.scrollTop = scroll.scrollHeight; latest.hidden = true; };
         scroll.onscroll = () => { this.scrollTop = scroll.scrollTop;
@@ -99,6 +134,10 @@ export class AgentTranscriptWidget extends BaseWidget {
             const note = document.createElement('p'); note.className = 'dope-work-system';
             note.textContent = 'Transcript not recorded for this historical run.';
             transcript.append(note);
+        } else if (this.entries.length === 0) {
+            const note = document.createElement('p'); note.className = 'dope-work-system';
+            note.textContent = 'No transcript entries have been recorded yet.';
+            transcript.append(note);
         }
         for (const entry of this.entries) {
             if (entry.kind === 'message') {
@@ -106,13 +145,29 @@ export class AgentTranscriptWidget extends BaseWidget {
                 article.className = 'dope-chat-message dope-chat-message-assistant dope-work-message';
                 const content = document.createElement('div'); content.className = 'dope-chat-message-content';
                 content.append(renderUntrustedMessageMarkdown(this.markdown, entry.text));
-                if (entry.truncated) content.append(' [Message truncated]');
+                if (entry.truncated) {
+                    const warning = document.createElement('small'); warning.className = 'dope-work-system dope-work-warning';
+                    warning.textContent = 'Message truncated in the saved transcript.';
+                    content.append(warning);
+                }
                 article.append(content);
                 transcript.append(article);
             } else if (entry.kind === 'command') {
                 const details = document.createElement('details'); details.className = 'dope-work-command';
+                details.classList.add(`dope-work-command-${entry.status}`);
+                const key = `${entry.sequence}:${entry.commandId}`;
+                details.dataset.commandKey = key;
+                details.open = this.expandedCommands.has(key);
+                details.addEventListener('toggle', () => {
+                    if (details.open) this.expandedCommands.add(key);
+                    else this.expandedCommands.delete(key);
+                });
                 const summary = document.createElement('summary'); summary.textContent = workCommandLabel(entry);
                 details.append(summary);
+                const correlation = document.createElement('small'); correlation.className = 'dope-work-command-correlation';
+                correlation.textContent = `Started at entry ${entry.sequence}` +
+                    (entry.completedSequence === undefined ? ' · finish not recorded' : ` · finished at entry ${entry.completedSequence}`);
+                details.append(correlation);
                 const fullCommand = document.createElement('pre');
                 fullCommand.textContent = `command${entry.commandTruncated ? ' [truncated]' : ''}:\n${entry.command}`;
                 details.append(fullCommand);
