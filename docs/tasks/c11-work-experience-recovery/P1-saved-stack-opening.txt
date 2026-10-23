@@ -1,0 +1,18 @@
+TASK: c11-work-experience-recovery / P1 — Open discovered and saved Prompt Stacks with canonical Work identity
+
+MODEL / EXECUTION
+- GPT-6 Sol High; T2 headless implementation.
+- Target <=8 minutes; soft 10, HARD STOP at 15 minutes. No GUI qualification claim.
+
+VERSION / PREFLIGHT
+- Authoring baseline remote main e02c32c / package 0.11.8; the actual local version/source/dirty tree MUST be inspected before execution. If version differs, stop and reassess, never downgrade or reset.
+- Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p11/work-experience-contract.md, this recovery README, prompt-assessment.md, implementation-plan.md, original c11-work-experience/closeout.md, and actual current Work code/test files.
+- Preserve uncommitted closeout/owner files. No reset, stash, clean, force push, self-commit, new runner, /activate, hosted data transfer, global model change, or unrelated Bridge edits. The separate owner Run alone authorizes this prompt.
+
+EVIDENCE / TASK
+P6 showed two independent discovered stack clicks on disposable projects creating durable saved sequences, but initially the Work detail rendered "Work unavailable"/"Prompt Stack could not be opened". History could open the exact P1-of-3 saved sequence. Reproduce or trace this accurately; neither persistence failure nor root cause has yet been established.
+
+Trace existing discovery row `stack.sequenceId ?? stack.folderName` in `chat-panel-widget.ts` through `SharedPanelState.selectWork`, `WorkSelectionController.select` and `PhaseStackController.select/selectStored` / backend `openTaskStack`. Establish a canonical real persisted sequence ID for the Work owner as soon as backend returns; reconcile panel selection, owner reservation, Work title, progress and controller selected ID atomically or with safe staged updates. Do not use a guessed folder-name ID once saved ID exists; do not mutate authored prompts or persisted schema. An open error must remain truthful and recoverable with supported navigation. Preserve invalid stack/version mismatch/source drift/foreign project/dirty-worktree denial, and do not accidentally create duplicate sequences on repeated clicks. Keep existing Chat dock independently usable.
+
+TEST / EXIT
+Focused controller/DOM/navigation regressions: two valid stacks initially without sequenceId, reopening existing saved ID via History, rapid successive opens, invalid stack and source changed, stale project/foreign ID and provider-authorization negatives. Assert success never flashes permanent "Work unavailable", and clicking to open never launches a run, accepts grant/dirty basis or checkpoints. Modify only narrow Work navigation seams; test deterministic controller state and actual action callbacks. Run focused `node --test` tests against correct compiled sources if needed, focused extension build/typecheck when required, and `git diff --check`. Report exact files, tests, fixed symptom versus unverified GUI behavior. P2 owns reload liveness and P4 owns live GUI.
