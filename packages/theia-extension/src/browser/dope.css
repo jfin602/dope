@@ -604,7 +604,7 @@ body.theia-light:not(.dope-dark) {
 .dope-work-state-cue { flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: var(--theia-descriptionForeground); }
 .dope-work-row[data-status="running"] .dope-work-state-cue { background: var(--theia-focusBorder); }
 .dope-work-row:is([data-status="failed"], [data-status="blocked"], [data-status="invalid"]) .dope-work-state-cue { background: var(--theia-errorForeground); }
-.dope-work-row:is([data-status="completed"], [data-status="ready"]) .dope-work-state-cue { background: var(--theia-charts-green, var(--theia-focusBorder)); }
+.dope-work-row:is([data-status="completed"], [data-status="ready"]) .dope-work-state-cue { background: var(--theia-descriptionForeground); }
 .dope-work-row-text { display: grid; gap: 2px; min-width: 0; }
 .dope-work-row-title { line-height: 1.35; overflow-wrap: anywhere; }
 .dope-work-row-meta, .dope-work-row-progress { color: var(--theia-descriptionForeground); font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; font-weight: 400; }
@@ -645,7 +645,7 @@ body.theia-light:not(.dope-dark) {
 .dope-work-command > summary { color: var(--theia-descriptionForeground); font-size: 12px; line-height: 1.35; }
 .dope-work-command pre { overflow: auto; max-height: 240px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dope-work-system { display: block; margin: 5px 0; color: var(--theia-descriptionForeground); }
-.dope-work-warning { color: var(--theia-errorForeground); }
+.dope-work-warning { color: var(--theia-editorWarning-foreground, var(--theia-errorForeground)); }
 @media (prefers-reduced-motion: reduce) { .dope-work-scroll { scroll-behavior: auto; } }
 .dope-chat-content-select { display: flex; flex-direction: column; overflow: hidden; }
 .dope-chat-selector-header { flex: none; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid var(--theia-widget-border); }
@@ -717,6 +717,42 @@ body.theia-light:not(.dope-dark) {
 .dope-work-command-correlation { display: block; margin: 7px 0 4px; color: var(--theia-descriptionForeground); }
 .dope-agent-transcript-panel .dope-work-command pre { box-sizing: border-box; max-width: 100%; max-height: 18rem; margin: 5px 0; padding: 7px; white-space: pre; overflow: auto; background: var(--theia-editor-background); }
 .dope-agent-transcript-panel .dope-work-system { margin: 9px 0; font-size: 12px; }
+
+/* Work presentation stays scoped to its panel so alternate themes retain their own tokens. */
+.dope-chat-content-work > header { min-width: 0; gap: 6px; }
+.dope-chat-content-work > header h2 { min-width: 0; line-height: 1.3; }
+.dope-chat-content-work > header button { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.dope-work-scroll { box-sizing: border-box; overflow-x: hidden; }
+.dope-work-scroll .dope-work-overview { margin: 0 0 4px; color: var(--theia-descriptionForeground); font-size: 12px; font-weight: 500; }
+.dope-work-scroll .dope-work-start { margin: 8px 0 14px; padding: 10px; border: 1px solid var(--theia-widget-border); border-radius: 5px; background: var(--theia-editor-background); overflow-wrap: anywhere; }
+.dope-work-start h3 { margin: 0 0 5px; font-size: 13px; }
+.dope-work-scroll .dope-work-next { margin: 0 0 8px; border-left: 0; padding: 0; background: transparent; }
+.dope-work-start button, .dope-work-progress button, .dope-work-scroll > button { box-sizing: border-box; min-width: 0; margin: 3px 5px 3px 0; white-space: normal; overflow-wrap: anywhere; }
+.dope-chat-panel .dope-work-scroll button.dope-work-primary { color: var(--dope-on-primary, var(--theia-button-foreground)); }
+.dope-chat-panel .dope-work-scroll button.dope-work-primary:hover:not(:disabled) { background: var(--dope-action-hover, var(--theia-button-hoverBackground)); }
+.dope-work-progress { min-width: 0; background: var(--theia-editor-background); }
+.dope-work-progress ol { list-style: decimal; }
+.dope-work-progress li[aria-current="step"] { border-left: 2px solid var(--theia-focusBorder); padding-left: 7px; font-weight: 600; }
+.dope-work-progress li :is(small, details) { font-weight: 400; color: var(--theia-descriptionForeground); }
+.dope-work-diagnostics { background: var(--theia-input-background); border-radius: 4px; }
+.dope-work-diagnostics > summary { color: var(--theia-foreground); font-weight: 500; }
+.dope-work-diagnostics :is(code, pre) { display: block; max-width: 100%; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dope-work-select .dope-work-row-text { flex: 1; }
+.dope-work-select .dope-work-row-title { font-weight: 600; }
+.dope-work-select .dope-work-row-meta, .dope-work-select .dope-work-row-progress { font-weight: 400; }
+.dope-agent-transcript-panel .dope-work-transcript { min-width: 0; }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content { min-width: 0; overflow-wrap: anywhere; }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content :is(ul, ol) { list-style: revert; padding-left: 1.5em; margin: .75em 0 1em; }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content li { padding-left: .15em; }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content blockquote { padding-left: 1em; border-left: 2px solid var(--theia-widget-border); }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content table { display: block; box-sizing: border-box; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content :is(th, td) { padding: 5px 8px; border: 1px solid var(--theia-widget-border); }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content :is(pre, .dope-message-code) { min-width: 0; max-width: 100%; overflow-x: auto; }
+.dope-agent-transcript-panel .dope-work-message .dope-chat-message-content pre { white-space: pre; overflow-wrap: normal; }
+.dope-agent-transcript-panel .dope-work-command { color: var(--theia-descriptionForeground); }
+.dope-agent-transcript-panel .dope-work-command[open] { color: var(--theia-foreground); }
+.dope-agent-transcript-panel :is(button, summary):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+@media (max-width: 420px) { .dope-agent-transcript-panel .dope-work-scroll { padding: 12px 10px 20px; } }
 .dope-chat-transcript .dope-chat-message { margin: 0; padding: 10px 0; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
 .dope-chat-message-user { align-items: flex-end !important; }
 .dope-chat-message-content { max-width: min(100%, 72ch); min-width: 0; line-height: 1.55; overflow-wrap: anywhere; }

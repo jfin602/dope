@@ -495,8 +495,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             paragraph.textContent = text; scroll.append(paragraph);
         };
         const view = controller.view(work);
-        detail(`${view.origin === 'prompt-stack' ? 'Prompt Stack' : view.origin === 'work-item' ? 'WorkItem' : 'Direct Work'} · ${view.status}`,
-            'dope-work-overview');
+        const overview = document.createElement('p');
+        overview.className = 'dope-work-overview';
+        overview.setAttribute('role', 'status');
+        overview.setAttribute('aria-live', 'polite');
+        overview.textContent = `${view.origin === 'prompt-stack' ? 'Prompt Stack' : view.origin === 'work-item' ? 'WorkItem' : 'Direct Work'} · ${view.status}`;
+        scroll.append(overview);
         const decision = document.createElement('section'); decision.className = 'dope-work-start';
         decision.setAttribute('aria-label', 'Next Work action');
         const decisionTitle = document.createElement('h3'); decisionTitle.textContent = 'Next action'; decision.append(decisionTitle);
@@ -560,12 +564,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     scroll.append(checkpoint);
                 }
                 const progress = document.createElement('section'); progress.className = 'dope-work-progress';
+                progress.setAttribute('aria-label', 'Authored Prompt Stack progress');
                 const progressTitle = document.createElement('h3'); progressTitle.textContent = 'Authored steps'; progress.append(progressTitle);
                 const entries = document.createElement('ol');
                 for (const entry of sequence.stack.entries) {
                     const item = document.createElement('li');
                     const checkpoint = sequence.checkpoints.find(value => value.entryNumber === entry.number);
                     const current = entry.number === sequence.currentEntryNumber && sequence.status !== 'completed';
+                    if (current) item.setAttribute('aria-current', 'step');
                     const state = checkpoint ? entry.execution === 'manual-gate' ? 'Manual verification recorded' :
                         'Checkpoint verified' : current ? view.status : 'Pending';
                     item.textContent = `P${entry.number} - ${entry.title} · ${state}${checkpoint ? ` · ${checkpoint.sha}` : ''}`;
