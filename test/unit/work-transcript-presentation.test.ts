@@ -54,10 +54,17 @@ test('Work overview separates agent completion, required validation and candidat
         validation: 'Required validation has not passed',
         next: 'Inspect the transcript and validation before continuing.'
     });
-    const accepted = { ...run, reviewDecision: { kind: 'accept' }, candidateReview: { state: 'ready' },
-        appliedFiles: ['src/file.js'], validationResults: [{ owner: 'dope', kind: 'command', label: 'check', status: 'passed' }] };
+    const accepted = { ...run, reviewDecision: { kind: 'accept' },
+        candidateReview: { state: 'ready', candidateFingerprint: 'current' },
+        appliedFiles: ['src/file.js'], validationResults: [{ owner: 'dope', kind: 'command', label: 'check', status: 'passed',
+            candidateFingerprint: 'current' }] };
     assert.equal(workRunOverview(accepted, task).state, 'Candidate accepted; 1 file applied');
     assert.equal(workRunOverview(accepted, task).validation, 'Required validation passed');
+    assert.equal(workRunOverview({ ...accepted, validationResults: [{ ...accepted.validationResults[0],
+        candidateFingerprint: 'previous' }] } as any, task).validation, 'Required validation has not passed');
+    assert.equal(workRunOverview({ ...accepted, validationResults: [{ owner: 'dope', kind: 'test', label: 'other',
+        status: 'failed', candidateFingerprint: 'current' }] } as any, task).validation,
+    'Required validation has not passed');
     const rejected = { ...accepted, reviewDecision: { kind: 'reject' }, appliedFiles: [] };
     assert.equal(workRunOverview(rejected, task).state, 'Candidate rejected; no changes applied');
 });
@@ -180,7 +187,8 @@ test('Work keeps untrusted Markdown sanitized, commands collapsed and follow ind
 test('explicit center transcript action reuses one tab for the same project and run', async () => {
     const options = { project: 'file:///project', runId: 'saved-run' };
     const widgets = new Map<string, { id: string; isAttached: boolean }>();
-    let added = 0, activated = 0;
+    let added = 0;
+    const activated: string[] = [];
     const create = async (input: typeof options) => {
         const id = agentTranscriptWidgetId(input);
         if (!widgets.has(id)) widgets.set(id, { id, isAttached: false });
@@ -188,11 +196,14 @@ test('explicit center transcript action reuses one tab for the same project and 
     };
     const shell = { async addWidget(widget: { id: string; isAttached: boolean }, location: { area: 'main' }) {
         assert.equal(location.area, 'main'); added++; widget.isAttached = true;
-    }, async activateWidget(id: string) { assert.equal(id, agentTranscriptWidgetId(options)); activated++; } };
+    }, async activateWidget(id: string) { activated.push(id); } };
     await openAgentTranscript(options, create, shell);
     await openAgentTranscript(options, create, shell);
-    assert.equal(widgets.size, 1);
-    assert.equal(added, 1);
-    assert.equal(activated, 2);
+    const otherRun = { ...options, runId: 'different-run' };
+    await openAgentTranscript(otherRun, create, shell);
+    assert.equal(widgets.size, 2);
+    assert.equal(added, 2);
+    assert.deepEqual(activated, [agentTranscriptWidgetId(options), agentTranscriptWidgetId(options),
+        agentTranscriptWidgetId(otherRun)]);
     assert.notEqual(agentTranscriptWidgetId({ ...options, project: 'file:///other' }), agentTranscriptWidgetId(options));
 });

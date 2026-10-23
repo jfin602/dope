@@ -17,9 +17,12 @@ export function workTitle(selection: WorkSelection, run?: AgentRun, task?: Agent
 export function workRunOverview(run: AgentRun, task?: AgentTask): { state: string; validation: string; next: string } {
     const review = workReviewState(run, task);
     const required = task?.completion.validation ?? [];
-    const passed = required.length > 0 && required.every(target => run.validationResults.some(result =>
-        result.owner === 'dope' && result.kind === target.kind && result.label === target.label && result.status === 'passed'));
-    const failed = run.validationResults.some(result => result.status === 'failed');
+    const results = run.candidateReview && !run.reviewDecision ? run.candidateReview.validation : run.validationResults;
+    const matching = required.map(target => results.find(result =>
+        result.owner === 'dope' && result.kind === target.kind && result.label === target.label &&
+        (!run.candidateReview || result.candidateFingerprint === run.candidateReview.candidateFingerprint)));
+    const passed = required.length > 0 && matching.every(result => result?.status === 'passed');
+    const failed = matching.some(result => result?.status === 'failed');
     const validation = failed ? 'Required validation failed' : passed ? 'Required validation passed' :
         required.length ? 'Required validation has not passed' : 'No required validation recorded';
     const state = review === 'pending' ? 'Candidate held for review; no changes applied' :

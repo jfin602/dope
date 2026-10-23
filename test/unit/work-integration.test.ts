@@ -120,7 +120,8 @@ test('Work navigation restores independent Chat and completed stack without muta
         assert.equal(controller.transcriptState, 'not-recorded');
         await controller.select({ kind: 'sequence', id: sequence.id });
         assert.equal(controller.phase.selected?.status, 'completed');
-        assert.equal(workTitle({ kind: 'sequence', id: sequence.id }, undefined, undefined, controller.phase.selected), 'Closeout 2');
+        assert.equal(workTitle({ kind: 'sequence', id: sequence.id }, undefined, undefined, controller.phase.selected),
+            stack.folderName);
         assert.equal(workTitle({ kind: 'run', id: run.id }, run as any, task as any), 'Original implementation');
         assert.deepEqual(await reopened.readSequence(root, sequence.id), sequence);
         assert.equal((await reopened.readRun(root, run.id))?.status, 'running');
