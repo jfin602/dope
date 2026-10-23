@@ -1,10 +1,15 @@
-TASK: c11-work-experience-recovery / P1 — Open discovered and saved Prompt Stacks with canonical Work identity
+TASK: Correction 11 / P1 — Open discovered and saved Prompt Stacks with canonical Work identity
 
-MODEL / EXECUTION
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
 - GPT-6 Sol High; T2 headless implementation.
 - Target <=8 minutes; soft 10, HARD STOP at 15 minutes. No GUI qualification claim.
 
-VERSION / PREFLIGHT
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
 - Authoring baseline remote main e02c32c / package 0.11.8; the actual local version/source/dirty tree MUST be inspected before execution. If version differs, stop and reassess, never downgrade or reset.
 - Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p11/work-experience-contract.md, this recovery README, prompt-assessment.md, implementation-plan.md, original c11-work-experience/closeout.md, and actual current Work code/test files.
 - Preserve uncommitted closeout/owner files. No reset, stash, clean, force push, self-commit, new runner, /activate, hosted data transfer, global model change, or unrelated Bridge edits. The separate owner Run alone authorizes this prompt.

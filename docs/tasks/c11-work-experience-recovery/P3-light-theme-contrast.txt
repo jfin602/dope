@@ -1,10 +1,15 @@
-TASK: c11-work-experience-recovery / P3 — Correct Light (Theia) Work contrast without losing Dope Dark identity
+TASK: Correction 11 / P3 — Correct Light (Theia) Work contrast without losing Dope Dark identity
 
-MODEL / EXECUTION
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
 - GPT-6 Sol Medium; T1/T2 narrowly scoped UI/CSS implementation.
 - Target <=8 minutes; soft 10, HARD STOP at 15 minutes. No GUI-qualified claim from unit tests alone.
 
-VERSION / PREFLIGHT
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
 - Inspect real checkout, package version (remote authoring baseline 0.11.8), current P1/P2 changes and owner dirty tree; read BOOT.md, AGENTS.md, this correction README/assessment/plan, original P6 closeout, Work UX contract, and `dope.css`/`dope-theme.ts`/current test conventions. Preserve source evidence; never reset/stash/clean or self-commit. No new dependency, global theme redesign, editor-wide color override, or product version bump.
 
 EVIDENCE / TASK

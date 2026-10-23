@@ -13,7 +13,7 @@ The existing [P6 NOT GREEN closeout](../c11-work-experience/closeout.md), captur
 | [P1](P1-saved-stack-opening.txt) | Saved/discovered Prompt Stack selection uses authoritative sequence identity, opens the right Work, preserves denial and independent grant | GPT-6 Sol High | Headless |
 | [P2](P2-work-restore-recovery.txt) | Reload/restoration has bounded state and retry/reopen behavior; no immortal Loading Work or duplicate owner | GPT-6 Sol High | Headless |
 | [P3](P3-light-theme-contrast.txt) | Light (Theia) Work controls/status/disabled/focus contrast corrected with theme-aware selectors | GPT-6 Sol Medium | Headless |
-| [P4](P4-manual-qualification.txt) | Real browser retest of P6 failures and safe required-validation recovery, then exact-source W1–W10 evidence; Electron independently if possible | GPT-6 Sol High | **Manual only** |
+| [P4](P4-manual-qualification-closeout.txt) | Real browser retest of P6 failures and safe required-validation recovery, then exact-source W1–W10 evidence; Electron independently if possible | GPT-6 Sol High | **Manual only** |
 
 The [assessment](prompt-assessment.md) and [plan](implementation-plan.md) specify non-goals, evidence, decisions, stop conditions, and exact gate matrix. The original P6 `closeout.md` and all historic Bridge/Phase Focus NOT GREEN records are immutable history, never rewritten or relabeled.
 

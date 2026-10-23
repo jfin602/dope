@@ -1,10 +1,15 @@
-TASK: c11-work-experience-recovery / P2 — Restore Work panels without immortal Loading Work or duplicate owner
+TASK: Correction 11 / P2 — Restore Work panels without immortal Loading Work or duplicate owner
 
-MODEL / EXECUTION
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
 - GPT-6 Sol High; T2 headless implementation.
 - Target <=8 minutes; soft 10, HARD STOP at 15 minutes. No GUI qualification claim.
 
-VERSION / PREFLIGHT
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
 - Re-read BOOT.md, AGENTS.md, docs/workflow.md, this stack README/assessment/plan, original P6 closeout, completed P1 evidence and the actual current source, clean/dirty state and version. Baseline authoring version 0.11.8, never downgrade if changed. Preserve owner data, no reset/stash/clean/self-commit.
 - No new Chat panel/store, Work store, History service, transcript store, provider, permission authority, network consent or /activate. Never silently start/restart a run during restoration.
 

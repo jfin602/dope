@@ -1,8 +1,13 @@
-TASK: c11-work-experience-recovery / P4 — MANUAL browser qualification and exact-source Work recovery closeout
+TASK: Correction 11 / P4 — MANUAL browser qualification and exact-source Work recovery closeout closeout
 
-MODEL / EXECUTION
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
 - GPT-6 Sol High; T3 **MANUAL** on real browser GUI. Never run or auto-qualify through `codex:phase`.
 - P1–P3 must be integrated first. This is a qualification pass, not permission to introduce new runtime features or change owner projects. Manual GUI is outside the headless 8-minute implementation target.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
 
 PREFLIGHT / AUTHORITY
 Read BOOT.md, AGENTS.md, docs/workflow.md, this recovery README/assessment/plan, the owner-approved Phase 11 Work UX contract and **original P6 NOT GREEN closeout**, P1–P3 implementation/checkpoint evidence, and current source. Compare exact branch/HEAD, root/internal version (authoring baseline 0.11.8), pending dirty/untracked files, expected frontend/Electron bundles and project roots. No reset, stash, clean, force push, self-commit, automatic grant/dirty acceptance, hosted-data transfer, global model change, unapproved network or destructive project mutations. The owner must separately approve every real run/grant; local-only provider scope remains the default from P6 unless newly approved. Do not rewrite old P6 or Bridge/Phase Focus qualification histories. No /activate.
