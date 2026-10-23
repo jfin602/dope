@@ -1,0 +1,22 @@
+TASK: Correction 11 / P1 — Derive trustworthy Work status and next-action hierarchy
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- This correction does not change package manifests, internal package pins, lockfiles or root version; if actual version has advanced, STOP and re-assess rather than downgrade.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p11/work-experience-contract.md, this stack README, prompt-assessment.md and implementation-plan.md. Verify actual local Git HEAD/branch/source, clean/dirty state, coherent versions, compiled build state, current tests, and overlapping uncommitted c11-bridge-repair or Work changes. Remote planning base c0b3771 is not a valid local run pin. Never reset, stash, clean, self-commit, force-push, edit the historic P15/P5 source/evidence, bypass permissions, or run another stack. A separate deliberate owner Run—not writing this prompt—authorizes implementation; no /activate. P1-P5 target ~8 minutes with hard 15-minute stop. Do not declare GUI qualified.
+
+SCOPE — T2, PURE SOURCE-TRUTH PRESENTATION
+Inspect and reuse `packages/theia-extension/src/browser/work-selection-controller.ts`, `phase-stack-controller.ts`, `chat-panel-widget.ts`, `packages/agent-core/src/sequence.ts` and AgentTask/AgentRun/AgentTaskSequence/CandidateValidation contracts. Add or refine a narrowly scoped PURE typed Work-view model/selector that existing UI can consume. Do not add persisted status, runtime RPC, new store, mutable metadata or source-of-truth. Compute a stable human-facing title, direct task vs WorkItem vs immutable Prompt Stack origin, current authored P-number/total, per-step checkpoint state, independently derived run state, pending decision, candidate-review state, verified validator outcome, blocked/reconciliation reason and available action identifiers. Derive actions solely from existing controller/backend-supported eligibility; never authorize an effect by choosing a UI action.
+
+State semantics must distinguish: (1) provider/agent text or run terminal outcome, (2) required validation passed/failed/not run/unavailable **only when backed by source evidence**, (3) source/worktree drift/dirty opt-in, (4) held candidate vs accepted promotion, (5) Git checkpoint and manual gate, (6) owner-scoped qualification or unknown. Missing validation data is UNKNOWN/PENDING, not success. Missing tsc, ENOTCACHED and worktree-drift in the owner screenshot are **two separate observed facts**, not one proven root cause; do not infer environment reason merely from an untrusted transcript phrase. No Green if source-backed proof is absent; do not relabel Bridge P5 Not Green. Preserve fixed sequence order and trust-worthy path identities.
+
+Use concise plain-language status/next-step descriptions (Ready to start, Running P1 of 3, Needs authorization, Validation not run, Validation failed, Project changed—review, Candidate ready for review, Completed with evidence) with raw machine reason accessible separately. Avoid stacked opaque runner tokens and auto-recovery wording. Do not touch actual run progression, grant/dirty acceptance, candidate decision, Markdown owner or history.
+
+TEST / EXIT
+Add focused deterministic pure selector regressions for direct / sequence / WorkItem origin, running/not-running mismatch, current/manual gate, checkpoint proof, drift vs dirty opt-in, validation absent/failed/passed, held candidate without authorization, stale/foreign identifiers and no unearned completion/qualification. Keep them in the existing node test organization and register only if necessary. Run minimal affected tests (building changed lib if required) and `git diff --check`; report exact commands/results, touched files, risk and known gaps. No full aggregate unless existing focused path demands it; P6 owns real GUI.

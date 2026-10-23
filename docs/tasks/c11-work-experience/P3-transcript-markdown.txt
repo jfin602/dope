@@ -1,0 +1,27 @@
+TASK: Correction 11 / P3 — Polish the existing safe Markdown AgentRun transcript
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no package/pin/lockfile/version bump unless separately approved after reassessment.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, Work Experience contract, stack README/assessment/plan, and P1/P2 completed checkpoints. Inspect local actual checkout, dirty/overlap, current transcript code and adjacent tests. Preserve owner data, immutable agent records and all historical failures; no reset/stash/clean/self-commit, /activate, new Chat/Work owner or unsolicited hosted fetch.
+
+IMPORTANT: THIS IS A REFINEMENT, NOT INITIAL MARKDOWN IMPLEMENTATION
+Existing `packages/theia-extension/src/browser/agent-transcript-widget.ts` ALREADY renders agent messages with `renderUntrustedMessageMarkdown`; `untrusted-message-markdown.ts` ALREADY uses markdown-it HTML-off, DOMPurify and image-token omission BEFORE DOM creation; commands ALREADY render as collapsed details and `work-transcript-presentation.ts` provides label/output/follow helpers. The screenshot indicates poor **readability and hierarchy**. Do not replace these with a second parser/transcript store or claim the renderer is absent. First reproduce specific gaps using targeted tests: headings/paragraphs, bullets/numbered lists, tables, blockquotes, inline/fenced code and language labels, link safety, long body spacing, compact event rows, truncation, chronological correlation, scroll-away/Latest.
+
+SCOPE — T2 PRESENTATION/SAFETY
+Improve the EXISTING read-only AgentRun center transcript, bounded helpers/CSS hooks and shared Markdown renderer only where needed:
+- Document-like centered width with clear prose typography, safe headings, lists/tables, easy-to-read code blocks with preserved whitespace and useful language labels; syntax highlight ONLY with an already available **safe no-network** mechanism proven in source/tests. If not available without adding a risky dependency or breaking budget, keep readable code fences and record that limitation honestly, not fabricated highlighting.
+- Compact muted start/finished/error command rows with accessible expandable exact stored stdout/stderr, exit/duration/cwd, bounded viewport height, truthful recorded-versus-not-recorded/truncated flags, and stable order. Do not invent missing output or silently discard original persisted evidence. A presentation collapse is not permanent truncation.
+- Friendly empty/loading/failed/cancelled/interrupted UI; preserve durable paged `readTranscript`, source-specific stable title, project isolation, stale-request guards and read-only nature.
+- Follow bottom only while at bottom, maintain scrolled-away reading, show usable Latest, preserve scroll on refresh, and avoid reordering entries. Make keyboard expansion/accessible summary usable.
+- Critically retain pre-DOM **no image fetch**: untrusted image tokens render as text; remote/malicious URLs, raw HTML/scripts, picture/svg/video/media, event handlers and unsafe href cannot execute or trigger egress. Keep secrets and hidden provider reasoning out, no new browser action from link.
+- Share Chat-safe renderer presentation only; do not regress ordinary Chat's linked roadmap planning prose or code output.
+
+TEST / EXIT
+Focused sanitized renderer/DOM security negatives (including remote-image receiver prohibition), Markdown features, long code/tables, command correlations, split stdout/stderr and truncation, previous historical transcript fallback, pagination, restore/reopen/follow/latest and project switch. Prefer extending existing unit tests; build only affected extension. Run `git diff --check` and targeted tests; report actual observed evidence and any syntax-highlighting limitation. No claim of direct GUI without P6. <=8m target / 15m cap.
