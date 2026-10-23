@@ -45,6 +45,139 @@ export function workManualGateReady(sequence: AgentTaskSequence): boolean {
         sequence.stack.entries[sequence.currentEntryNumber - 1]?.execution === 'manual-gate';
 }
 
+/** Read-only projection. Action flags must come from the existing controller eligibility checks;
+ * this model never grants permission or dispatches an operation. */
+export interface WorkViewInput {
+    selection: WorkSelection;
+    task?: AgentTask;
+    run?: AgentRun;
+    sequence?: AgentTaskSequence;
+    projectId?: string;
+    eligible?: Partial<Record<WorkViewAction, boolean>>;
+}
+export type WorkViewAction = 'start' | 'stop' | 'review-candidate' | 'accept-candidate' |
+    'reject-candidate' | 'continue-dirty' | 'verify-checkpoint' | 'verify-manual-gate' | 'reconcile';
+export type WorkValidationState = 'passed' | 'failed' | 'not-run' | 'unavailable' | 'unknown';
+export interface WorkViewModel {
+    title: string;
+    origin: 'direct' | 'work-item' | 'prompt-stack' | 'unknown';
+    status: string;
+    next: string;
+    current?: { number: number; total: number; execution: 'agent-task' | 'manual-gate' };
+    steps: { number: number; title: string; execution: 'agent-task' | 'manual-gate';
+        checkpoint: 'verified' | 'pending'; sha?: string }[];
+    runState: AgentRun['status'] | 'not-started' | 'unknown';
+    validation: WorkValidationState;
+    candidate: 'none' | 'held' | 'accepted' | 'rejected' | 'stale' | 'unknown';
+    promotion: 'applied' | 'held' | 'not-applicable' | 'unknown';
+    checkpoint: 'verified' | 'pending' | 'not-applicable';
+    qualification: 'unknown';
+    blockedReason?: AgentTaskSequence['blockedReason'];
+    gateMessage?: string;
+    actions: WorkViewAction[];
+}
+
+function requiredValidation(task?: AgentTask, run?: AgentRun): WorkValidationState {
+    if (!task || !run || !task.completion.requireValidationPass || !task.completion.validation.length)
+        return 'unknown';
+    const results = run.candidateReview && !run.reviewDecision ? run.candidateReview.validation : run.validationResults;
+    const relevant = task.completion.validation.map(target => results.find(result =>
+        result.owner === 'dope' && result.kind === target.kind && result.label === target.label &&
+        (!run.candidateReview || result.candidateFingerprint === run.candidateReview.candidateFingerprint)));
+    if (relevant.some(result => result?.status === 'failed')) return 'failed';
+    if (relevant.every(result => result?.status === 'passed')) return 'passed';
+    if (relevant.some(result => result && ['skipped', 'cancelled', 'not-started'].includes(result.status) && result.reason))
+        return 'unavailable';
+    return 'not-run';
+}
+
+export function selectWorkView(input: WorkViewInput): WorkViewModel {
+    const { selection, sequence } = input;
+    const sequenceIdentity = selection.kind === 'sequence' && sequence?.id === selection.id;
+    const runIdentity = input.run && (selection.kind === 'run' ? input.run.id === selection.id :
+        sequenceIdentity ? sequence.runIds?.includes(input.run.id) && sequence.taskId === input.run.taskId : false);
+    const run = runIdentity ? input.run : undefined;
+    const task = input.task && (selection.kind === 'task' ? input.task.id === selection.id :
+        run ? input.task.id === run.taskId : sequenceIdentity && sequence.taskId === input.task.id) &&
+        (!input.projectId || !input.task.projectId || input.task.projectId === input.projectId) &&
+        (!run || !run.projectId || run.projectId === input.task.projectId) ? input.task : undefined;
+    const saved = sequenceIdentity ? sequence : undefined;
+    const identityValid = selection.kind === 'sequence' ? !!saved : selection.kind === 'run' ? !!run && !!task : !!task;
+    const steps = saved?.stack.entries.map(entry => {
+        const proof = saved.checkpoints.find(checkpoint => checkpoint.entryNumber === entry.number && !!checkpoint.sha);
+        return { number: entry.number, title: entry.title, execution: entry.execution,
+            checkpoint: proof ? 'verified' as const : 'pending' as const, sha: proof?.sha };
+    }) ?? [];
+    const entry = saved?.stack.entries[saved.currentEntryNumber - 1];
+    const current = entry ? { number: entry.number, total: steps.length, execution: entry.execution } : undefined;
+    const origin = saved ? 'prompt-stack' : task?.origin.kind === 'work-item' ? 'work-item' :
+        task?.origin.kind === 'direct' ? 'direct' : 'unknown';
+    const title = saved?.stack.folderName ?? task?.objective ?? 'Work unavailable';
+    const validation = requiredValidation(task, run);
+    const review = workReviewState(run, task);
+    const candidate = review === 'pending' ? 'held' : review === 'accepted' || review === 'rejected' || review === 'stale' ? review :
+        run?.candidateDelta ? 'unknown' : 'none';
+    const promotion = candidate === 'held' || candidate === 'stale' || candidate === 'rejected' ? 'held' :
+        candidate === 'accepted' ? run?.status === 'completed' && Array.isArray(run.appliedFiles) ? 'applied' : 'unknown' :
+        'not-applicable';
+    const checkpoint = saved ? saved.checkpoints.some(proof => proof.entryNumber === saved.currentEntryNumber && !!proof.sha) ?
+        'verified' : 'pending' : 'not-applicable';
+    const actions: WorkViewAction[] = [];
+    const add = (action: WorkViewAction, allowed: boolean) => {
+        if (identityValid && allowed && input.eligible?.[action] === true) actions.push(action);
+    };
+    add('start', !!task && !run && (!saved || saved.status === 'ready' || saved.status === 'blocked'));
+    add('stop', !!run && run.status === 'running' && (!saved || saved.status === 'running'));
+    add('review-candidate', candidate === 'held');
+    add('accept-candidate', candidate === 'held' && workReviewCanAccept(run, task));
+    add('reject-candidate', candidate === 'held');
+    add('continue-dirty', !!saved && ['dirty-acceptance-required', 'worktree-drift'].includes(saved.blockedReason ?? ''));
+    add('verify-checkpoint', !!saved && ['checkpoint-pending', 'checkpoint-failed'].includes(saved.blockedReason ?? ''));
+    add('verify-manual-gate', !!saved && workManualGateReady(saved));
+    add('reconcile', !!saved && saved.status !== 'running' && saved.status !== 'completed');
+    let status = 'Ready to start';
+    let next = 'Review Work before starting.';
+    if (!identityValid) { status = 'Work unavailable'; next = 'Refresh Work and check the selected project.'; }
+    else if (saved?.blockedReason && ['source-drift', 'head-drift', 'worktree-drift', 'git-history',
+        'checkpoint-mismatch'].includes(saved.blockedReason)) {
+        status = 'Project changed—review'; next = 'Inspect the source and reconcile before continuing.';
+    } else if (saved?.blockedReason === 'dirty-acceptance-required') {
+        status = 'Needs authorization'; next = 'Review the changed files before continuing.';
+    } else if (candidate === 'held') {
+        status = 'Candidate ready for review'; next = 'Inspect the candidate and required validation before deciding.';
+    } else if (saved && ['checkpoint-pending', 'checkpoint-failed'].includes(saved.blockedReason ?? '')) {
+        status = 'Checkpoint needs verification'; next = 'Inspect the Git checkpoint evidence.';
+    } else if (validation === 'failed') {
+        status = 'Validation failed'; next = 'Inspect the failed check and preserve its evidence.';
+    } else if (run && ['blocked', 'failed', 'interrupted', 'cancelled'].includes(run.status)) {
+        status = 'Work needs review'; next = 'Inspect the run diagnostics.';
+    } else if (validation === 'unavailable' || validation === 'not-run' && run && run.status !== 'running') {
+        status = validation === 'unavailable' ? 'Validation unavailable' : 'Validation not run';
+        next = 'Inspect the required check before continuing.';
+    } else if (saved?.status === 'waiting-manual') {
+        status = 'Manual review needed'; next = 'Review the manual gate and its source evidence.';
+    } else if (run?.status === 'running' && (!saved || saved.status === 'running')) {
+        status = current ? `Running P${current.number} of ${current.total}` : 'Running';
+        next = 'Inspect current activity.';
+    } else if (run?.status === 'running' || saved?.status === 'running') {
+        status = 'Status needs review'; next = 'Refresh Work to reconcile run and sequence state.';
+    } else if (saved?.status === 'completed' && saved.stack.entries.every(step =>
+        step.execution === 'manual-gate' || steps.find(item => item.number === step.number)?.checkpoint === 'verified') &&
+        validation === 'passed') {
+        status = 'Completed with evidence'; next = 'Inspect the saved checkpoints and qualification record.';
+    } else if (!saved && run?.status === 'completed' && validation === 'passed' &&
+        (task?.reviewPolicy?.kind !== 'required' || promotion === 'applied')) {
+        status = 'Completed with evidence'; next = 'Inspect the saved validation and decision.';
+    } else if (saved?.status === 'blocked' || saved?.status === 'interrupted') {
+        status = 'Work needs review'; next = 'Inspect the saved blocker and reconcile if available.';
+    } else if (run?.status === 'completed' || saved?.status === 'completed') {
+        status = 'Agent finished'; next = 'Inspect validation, checkpoint and manual qualification separately.';
+    }
+    return { title, origin, status, next, current, steps, runState: run?.status ??
+        (saved?.status === 'running' ? 'unknown' : 'not-started'), validation, candidate, checkpoint,
+        promotion, qualification: 'unknown', blockedReason: saved?.blockedReason, gateMessage: saved?.gateMessage, actions };
+}
+
 export interface WorkRow {
     selection: WorkSelection;
     title: string;
@@ -155,6 +288,33 @@ export class WorkSelectionController {
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void,
         private readonly resolveTarget?: (policy: AgentTask['modelPolicy']) => Promise<{ target?: AgentTarget; reason: string }>) {
         this.phase = new PhaseStackController(runtime, changed);
+    }
+    /** Adapter for the UI: capture only existing controller eligibility, then project it without effects. */
+    view(selection: WorkSelection): WorkViewModel {
+        const sequence = selection.kind === 'sequence' && this.phase.selected?.id === selection.id ?
+            this.phase.selected : undefined;
+        const run = sequence ? this.phase.run : selection.kind === 'run' && this.selectedRun?.id === selection.id ?
+            this.selectedRun : undefined;
+        const task = sequence ? this.tasks.find(item => item.id === sequence.taskId) :
+            this.selectedTask;
+        const reviewPending = workReviewState(run, task, this.reviewBusy) === 'pending';
+        const phase = this.phase;
+        return selectWorkView({ selection, sequence, run, task,
+            eligible: sequence ? {
+                start: phase.canStart,
+                stop: sequence.status === 'running' && !phase.busy,
+                'review-candidate': sequence.blockedReason === 'candidate-review-pending' &&
+                    !!run?.candidateReview && !phase.busy,
+                'continue-dirty': phase.needsDirtyAcceptance && !phase.dirtyPromptDismissed && !phase.busy,
+                'verify-checkpoint': ['checkpoint-pending', 'checkpoint-failed'].includes(sequence.blockedReason ?? '') && !phase.busy,
+                'verify-manual-gate': workManualGateReady(sequence) && !phase.busy,
+                reconcile: sequence.status !== 'running' && sequence.status !== 'completed' && !phase.busy
+            } : {
+                start: selection.kind === 'task' && this.startBlockReason === '',
+                'review-candidate': reviewPending,
+                'accept-candidate': reviewPending && workReviewCanAccept(run, task),
+                'reject-candidate': reviewPending
+            } });
     }
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;

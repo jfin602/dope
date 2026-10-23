@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { WorkSelectionController, workRows, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
+import { WorkSelectionController, selectWorkView, workRows, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 
 const head = 'a'.repeat(40);
@@ -11,6 +11,112 @@ const sequence: any = { id: 'stored-sequence', status: 'completed', currentEntry
     checkpoints: [], basis: { head, packageVersion: '0.8.20' }, runIds: ['historic-run'] };
 const task: any = { id: 'historic-task', objective: 'First implementation', origin: { kind: 'phase-stack' }, completion: { validation: [] } };
 const run: any = { id: 'historic-run', taskId: task.id, status: 'completed' };
+
+test('pure Work view keeps direct, WorkItem and Prompt Stack origins and eligibility separate', () => {
+    const direct: any = { id: 'direct-task', objective: 'Repair parser', origin: { kind: 'direct' },
+        completion: { requireValidationPass: true, validation: [{ kind: 'test', label: 'check' }] } };
+    const selected = { kind: 'task' as const, id: direct.id };
+    const ready = selectWorkView({ selection: selected, task: direct, eligible: { start: true } });
+    assert.equal(ready.title, 'Repair parser');
+    assert.equal(ready.origin, 'direct');
+    assert.equal(ready.status, 'Ready to start');
+    assert.deepEqual(ready.actions, ['start']);
+    assert.equal(ready.qualification, 'unknown');
+    const workItem = { ...direct, origin: { kind: 'work-item', projectId: 'project', planningMapId: 'map',
+        workItemId: 'item' }, projectId: 'project' } as any;
+    assert.equal(selectWorkView({ selection: selected, task: workItem, projectId: 'project' }).origin, 'work-item');
+    assert.deepEqual(selectWorkView({ selection: selected, task: workItem, projectId: 'other',
+        eligible: { start: true } }).actions, []);
+    const stack: any = { ...sequence, status: 'running', currentEntryNumber: 1, taskId: direct.id,
+        runIds: ['active'], checkpoints: [{ entryNumber: 2, sha: head }] };
+    const active: any = { id: 'active', taskId: direct.id, status: 'running', validationResults: [] };
+    const view = selectWorkView({ selection: { kind: 'sequence', id: stack.id }, sequence: stack,
+        task: direct, run: active, eligible: { stop: true } });
+    assert.equal(view.origin, 'prompt-stack');
+    assert.equal(view.title, stack.stack.folderName);
+    assert.equal(view.status, 'Running P1 of 2');
+    assert.deepEqual(view.steps.map(step => step.checkpoint), ['pending', 'verified']);
+    assert.deepEqual(view.actions, ['stop']);
+    assert.equal(view.validation, 'not-run');
+    assert.equal(selectWorkView({ selection: { kind: 'sequence', id: stack.id }, sequence: stack }).status,
+        'Status needs review');
+});
+
+test('Work view requires Dope validation proof and keeps drift, dirty consent and manual gate distinct', () => {
+    const required: any = { id: 'task', objective: 'Implement', origin: { kind: 'phase-stack' },
+        completion: { requireValidationPass: true, validation: [{ kind: 'test', label: 'required' }] } };
+    const basis: any = { id: 'run', taskId: 'task', status: 'completed', validationResults: [],
+        outcome: { summary: 'all checks passed' } };
+    const selected = { kind: 'run' as const, id: basis.id };
+    assert.equal(selectWorkView({ selection: selected, task: required, run: basis }).validation, 'not-run');
+    const failed = { ...basis, validationResults: [{ owner: 'dope', kind: 'test', label: 'required', status: 'failed' }] };
+    assert.equal(selectWorkView({ selection: selected, task: required, run: failed }).validation, 'failed');
+    const unavailable = { ...basis, validationResults: [{ owner: 'dope', kind: 'test', label: 'required',
+        status: 'skipped', reason: 'compiler unavailable' }] };
+    assert.equal(selectWorkView({ selection: selected, task: required, run: unavailable }).validation, 'unavailable');
+    const passed = { ...basis, validationResults: [{ owner: 'dope', kind: 'test', label: 'required', status: 'passed' }] };
+    const passedView = selectWorkView({ selection: selected, task: required, run: passed });
+    assert.equal(passedView.validation, 'passed');
+    assert.equal(passedView.status, 'Completed with evidence');
+    assert.equal(passedView.qualification, 'unknown');
+    const stack: any = { ...sequence, taskId: 'task', runIds: ['run'], currentEntryNumber: 1,
+        status: 'blocked', blockedReason: 'worktree-drift', checkpoints: [] };
+    const drift = selectWorkView({ selection: { kind: 'sequence', id: stack.id }, sequence: stack,
+        task: required, run: unavailable, eligible: { 'continue-dirty': true, reconcile: true } });
+    assert.equal(drift.status, 'Project changed—review');
+    assert.equal(drift.validation, 'unavailable');
+    assert.deepEqual(drift.actions, ['continue-dirty', 'reconcile']);
+    const dirty = selectWorkView({ selection: { kind: 'sequence', id: stack.id },
+        sequence: { ...stack, blockedReason: 'dirty-acceptance-required' }, task: required });
+    assert.equal(dirty.status, 'Needs authorization');
+    const checkpoint = selectWorkView({ selection: { kind: 'sequence', id: stack.id },
+        sequence: { ...stack, blockedReason: 'checkpoint-pending' }, task: required, run: passed,
+        eligible: { 'verify-checkpoint': true } });
+    assert.equal(checkpoint.status, 'Checkpoint needs verification');
+    assert.deepEqual(checkpoint.actions, ['verify-checkpoint']);
+    const manual = selectWorkView({ selection: { kind: 'sequence', id: stack.id },
+        sequence: { ...stack, status: 'waiting-manual', blockedReason: undefined, currentEntryNumber: 2 },
+        eligible: { 'verify-manual-gate': true } });
+    assert.equal(manual.status, 'Manual review needed');
+    assert.deepEqual(manual.actions, ['verify-manual-gate']);
+    assert.equal(manual.qualification, 'unknown');
+});
+
+test('held candidate and stale or foreign identities never earn acceptance or completion', () => {
+    const candidateTask: any = { id: 'task', projectId: 'project', objective: 'Change file',
+        origin: { kind: 'work-item' }, reviewPolicy: { kind: 'required' },
+        completion: { requireValidationPass: true, validation: [{ kind: 'test', label: 'required' }] } };
+    const candidateRun: any = { id: 'run', taskId: 'task', projectId: 'project', status: 'blocked',
+        basis: { head }, candidateFingerprint: 'fingerprint', candidateDelta: { effects: [{ path: 'src/a.ts' }] },
+        candidateReview: { state: 'ready', candidateFingerprint: 'fingerprint', changedPaths: ['src/a.ts'],
+            validation: [] }, validationResults: [] };
+    const selected = { kind: 'run' as const, id: 'run' };
+    const held = selectWorkView({ selection: selected, task: candidateTask, run: candidateRun,
+        eligible: { 'review-candidate': true, 'accept-candidate': true, 'reject-candidate': true } });
+    assert.equal(held.status, 'Candidate ready for review');
+    assert.equal(held.promotion, 'held');
+    assert.deepEqual(held.actions, ['review-candidate', 'reject-candidate']);
+    const stale = selectWorkView({ selection: selected, task: candidateTask,
+        run: { ...candidateRun, candidateFingerprint: 'other' }, eligible: { 'accept-candidate': true } });
+    assert.equal(stale.candidate, 'stale');
+    assert.deepEqual(stale.actions, []);
+    const foreign = selectWorkView({ selection: selected, task: candidateTask,
+        run: { ...candidateRun, projectId: 'foreign' }, eligible: { 'accept-candidate': true } });
+    assert.deepEqual(foreign.actions, []);
+    assert.equal(foreign.qualification, 'unknown');
+    const acceptedWithoutPromotion = selectWorkView({ selection: selected, task: candidateTask,
+        run: { ...candidateRun, status: 'completed', reviewDecision: { kind: 'accept' },
+            validationResults: [{ owner: 'dope', kind: 'test', label: 'required', status: 'passed',
+                candidateFingerprint: 'fingerprint' }] } });
+    assert.equal(acceptedWithoutPromotion.candidate, 'accepted');
+    assert.equal(acceptedWithoutPromotion.promotion, 'unknown');
+    assert.notEqual(acceptedWithoutPromotion.status, 'Completed with evidence');
+    const stack: any = { ...sequence, status: 'completed', taskId: 'task', runIds: ['run'],
+        checkpoints: [] };
+    const incomplete = selectWorkView({ selection: { kind: 'sequence', id: stack.id }, sequence: stack,
+        task: candidateTask, run: { ...candidateRun, status: 'completed' } });
+    assert.notEqual(incomplete.status, 'Completed with evidence');
+});
 
 test('Running contains only active execution, groups stack children, and History sorts by latest activity', () => {
     const at = (minute: number) => `2026-10-08T12:${String(minute).padStart(2, '0')}:00Z`;
@@ -65,7 +171,7 @@ test('Work discovers default Prompt Stacks and reopens completed history without
     await controller.select({ kind: 'sequence', id: sequence.id });
     assert.equal(controller.phase.selected?.id, sequence.id);
     assert.equal(workTitle({ kind: 'sequence', id: sequence.id }, undefined, undefined, controller.phase.selected),
-        'Browser closeout');
+        sequence.stack.folderName);
     await controller.select({ kind: 'run', id: run.id });
     assert.equal(controller.selectedRun?.taskId, task.id);
     assert.equal(controller.selectedTask?.id, task.id);
@@ -74,10 +180,10 @@ test('Work discovers default Prompt Stacks and reopens completed history without
         'First implementation');
     sequence.currentEntryNumber = 1;
     assert.equal(workTitle({ kind: 'sequence', id: sequence.id }, undefined, undefined, sequence),
-        'First implementation');
+        sequence.stack.folderName);
     sequence.currentEntryNumber = 2;
     assert.equal(workTitle({ kind: 'sequence', id: sequence.id }, undefined, undefined, sequence),
-        'Browser closeout');
+        sequence.stack.folderName);
     assert.equal(workTitle({ kind: 'run', id: run.id }, controller.selectedRun, controller.selectedTask),
         'First implementation');
     assert.equal(workTitle({ kind: 'run', id: run.id }, run), 'Work - historic');
