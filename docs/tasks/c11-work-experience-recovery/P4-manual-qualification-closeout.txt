@@ -1,4 +1,4 @@
-TASK: Correction 11 / P4 — MANUAL browser qualification and exact-source Work recovery closeout closeout
+TASK: Correction 11 / P4 — MANUAL browser qualification and exact-source Work recovery closeout
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
