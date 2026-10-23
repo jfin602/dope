@@ -6,7 +6,7 @@ import type { AgentRuntimeService } from '../../packages/contracts/src/agent-run
 
 const sha = 'a'.repeat(40);
 function harness(status: string = 'ready', reason?: string, manual = false) {
-    let starts = 0, opens = 0, scans = 0, accepts = 0, gates = 0, checkpoints = 0;
+    let starts = 0, stops = 0, reconciles = 0, opens = 0, scans = 0, accepts = 0, gates = 0, checkpoints = 0;
     let dirty = false, agentReady = true, fingerprint = 'c'.repeat(64);
     const entry = { number: 1, execution: manual ? 'manual-gate' : 'agent-task', title: 'Work',
         promptText: 'Exact snapshotted prompt', recommendation: { label: 'GPT-6 Sol Medium', reasoning: 'medium' },
@@ -43,14 +43,15 @@ function harness(status: string = 'ready', reason?: string, manual = false) {
         },
         async startSequence() { starts++; sequence.status = 'running';
             return { id: 'run', status: 'running', validationResults: [] }; },
-        async stopSequence() { sequence.status = 'blocked'; return sequence; },
-        async reconcileManualGate() { gates++; return sequence; }, async reconcileSequence() { return sequence; },
+        async stopSequence() { stops++; sequence.status = 'blocked'; return sequence; },
+        async reconcileManualGate() { gates++; return sequence; }, async reconcileSequence() { reconciles++; return sequence; },
         async checkpointSequence() { checkpoints++; sequence.status = 'ready'; return sequence; } };
     const controller = new PhaseStackController(runtime as unknown as AgentRuntimeService, () => {});
     return { controller, sequence, setDirty(value: boolean) { dirty = value; },
         setAgentReady(value: boolean) { agentReady = value; },
         changeFingerprint(value: string) { fingerprint = value; },
-        get starts() { return starts; }, get opens() { return opens; }, get scans() { return scans; },
+        get starts() { return starts; }, get stops() { return stops; }, get reconciles() { return reconciles; },
+        get opens() { return opens; }, get scans() { return scans; },
         get accepts() { return accepts; }, get gates() { return gates; }, get checkpoints() { return checkpoints; } };
 }
 
@@ -63,6 +64,17 @@ test('Start stays disabled without an eligible Coding Agent and recovers when on
     await h.controller.start(); assert.equal(h.starts, 0);
     h.setAgentReady(true); await h.controller.refresh();
     assert.equal(h.controller.canStart, true);
+});
+
+test('running Stop and blocked Reconcile use the saved sequence callbacks without starting another run', async () => {
+    const h = harness(); await h.controller.attach('file:///project');
+    await h.controller.select('c4-dope-phase-stack-smoke');
+    h.controller.acceptedGrant = true; h.controller.validationCommand = './validate.sh';
+    await h.controller.start(); assert.equal(h.starts, 1);
+    await h.controller.stop(); assert.equal(h.stops, 1);
+    assert.equal(h.starts, 1);
+    await h.controller.reconcile(); assert.equal(h.reconciles, 1);
+    assert.equal(h.starts, 1);
 });
 
 test('default tasks folder scans on attach; selecting an existing stack opens details without running', async () => {

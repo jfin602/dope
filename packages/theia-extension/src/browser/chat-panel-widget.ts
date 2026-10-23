@@ -494,24 +494,66 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const paragraph = document.createElement('p'); paragraph.className = className;
             paragraph.textContent = text; scroll.append(paragraph);
         };
+        const view = controller.view(work);
+        detail(`${view.origin === 'prompt-stack' ? 'Prompt Stack' : view.origin === 'work-item' ? 'WorkItem' : 'Direct Work'} · ${view.status}`,
+            'dope-work-overview');
+        const decision = document.createElement('section'); decision.className = 'dope-work-start';
+        decision.setAttribute('aria-label', 'Next Work action');
+        const decisionTitle = document.createElement('h3'); decisionTitle.textContent = 'Next action'; decision.append(decisionTitle);
+        const decisionText = document.createElement('p'); decisionText.className = 'dope-work-next';
+        decisionText.textContent = work.kind === 'task' && view.origin === 'direct' ?
+            'This saved direct task has no Start control here. Use New Work to review a fresh execution grant.' : view.next;
+        decision.append(decisionText);
+        const primary = (label: string, action: () => void, enabled: boolean): HTMLButtonElement => {
+            const button = this.button(label, action, !enabled);
+            if (enabled && !decision.querySelector('.dope-work-primary')) button.className = 'dope-work-primary';
+            if (!enabled) button.title = view.gateMessage || view.next;
+            decision.append(button);
+            return button;
+        };
+        const support = (label: string, action: () => void, enabled = true): HTMLButtonElement => {
+            const button = this.button(label, action, !enabled);
+            if (!enabled) button.title = view.gateMessage || view.next;
+            decision.append(button);
+            return button;
+        };
+        const transcriptButton = (runId: string): HTMLButtonElement => {
+            const project = this.panel.workspace;
+            return this.button('Open Transcript', () => {
+                if (project && this.panel.workspace === project && controller.project === project &&
+                    this.panel.work?.kind === work.kind && this.panel.work.id === work.id)
+                    void this.openTranscript?.(project, runId);
+            }, !project || controller.project !== project || !this.openTranscript);
+        };
+        scroll.append(decision);
         if (work.kind === 'sequence') {
             const phase = controller.phase, sequence = phase.selected?.id === work.id ? phase.selected : undefined;
             if (sequence) {
-                const current = Math.min(sequence.currentEntryNumber, sequence.stack.entries.length);
-                detail(`Prompt Stack · P${current} of ${sequence.stack.entries.length} · ${sequence.status}`, 'dope-work-overview');
-                if (sequence.blockedReason) detail(`Blocked: ${sequence.blockedReason}. ${sequence.gateMessage ||
-                    'Inspect the saved run and reconcile the repository before continuing.'}`, 'dope-work-warning');
+                if (view.current) detail(`P${view.current.number} of ${view.current.total} · ${view.current.execution === 'manual-gate' ?
+                    'Manual verification' : 'Agent task'}`, 'dope-work-detail');
+                if (view.blockedReason) detail(`Repository: ${view.blockedReason}. ${view.gateMessage ||
+                    'Inspect saved evidence before continuing.'}`, 'dope-work-warning');
                 const executableSteps = sequence.stack.entries.filter(item => item.execution === 'agent-task').length;
+                const executableCheckpoints = sequence.checkpoints.filter(checkpoint => checkpoint.sha &&
+                    sequence.stack.entries.find(entry => entry.number === checkpoint.entryNumber)?.execution === 'agent-task').length;
                 const checkpointRunId = sequence.checkpoints.at(-1)?.runId;
                 const checkpointRun = checkpointRunId ? controller.runs.find(item => item.id === checkpointRunId) : undefined;
                 const evidenceRun = phase.run ?? checkpointRun;
-                detail(`Implementation: ${sequence.checkpoints.length} of ${executableSteps} executable steps checkpointed · ` +
-                    `Git: ${sequence.checkpoints.length} verified checkpoint${sequence.checkpoints.length === 1 ? '' : 's'} · ` +
-                    'Qualification: not recorded here', 'dope-work-detail');
-                detail(`Validation${phase.run ? ' · current run' : checkpointRun ? ' · last checkpoint' : ''}: ` +
-                    `${evidenceRun?.validationResults.map(result => `${result.label} ${result.status}`).join(', ') || 'not recorded'} · ` +
-                    `Candidate review: ${evidenceRun?.reviewDecision?.kind ??
-                    (evidenceRun?.candidateReview ? 'pending' : 'no current candidate')}`, 'dope-work-detail');
+                detail(`Agent: ${view.runState} · Git checkpoints: ${executableCheckpoints} of ${executableSteps} agent steps · ` +
+                    `Required validation: ${view.validation} · Owner qualification: not recorded`, 'dope-work-detail');
+                if (view.validation === 'unavailable' || view.validation === 'failed')
+                    detail(`Required check ${view.validation === 'unavailable' ? 'did not complete' : 'failed'}: ` +
+                        `${evidenceRun?.validationResults.find(result => result.reason)?.reason ?? 'inspect the saved validation and transcript.'}`,
+                        'dope-work-warning');
+                if (evidenceRun?.validationResults.length) {
+                    const checks = document.createElement('details'); checks.className = 'dope-work-diagnostics';
+                    const summary = document.createElement('summary'); summary.textContent = 'Required validation evidence'; checks.append(summary);
+                    for (const result of evidenceRun.validationResults) {
+                        const item = document.createElement('p'); item.textContent = `${result.label} · ${result.status}${result.reason ? ` · ${result.reason}` : ''}`;
+                        checks.append(item);
+                    }
+                    scroll.append(checks);
+                }
                 if (sequence.checkpoints.length) {
                     const checkpoint = document.createElement('small'); checkpoint.className = 'dope-work-system';
                     checkpoint.textContent = `${sequence.checkpoints.length} checkpoint${sequence.checkpoints.length === 1 ? '' : 's'} recorded`;
@@ -524,12 +566,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const item = document.createElement('li');
                     const checkpoint = sequence.checkpoints.find(value => value.entryNumber === entry.number);
                     const current = entry.number === sequence.currentEntryNumber && sequence.status !== 'completed';
-                    const state = checkpoint ? 'Checkpoint verified' : current ? sequence.status : 'Pending';
+                    const state = checkpoint ? entry.execution === 'manual-gate' ? 'Manual verification recorded' :
+                        'Checkpoint verified' : current ? view.status : 'Pending';
                     item.textContent = `P${entry.number} - ${entry.title} · ${state}${checkpoint ? ` · ${checkpoint.sha}` : ''}`;
                     const sourcePath = `${sequence.stack.sourcePath ?? `docs/tasks/${sequence.stack.folderName}`}/${entry.filename}`;
                     const source = document.createElement('small');
-                    source.textContent = ` · ${entry.execution === 'manual-gate' ? 'Manual gate' : 'Agent task'} · ${sourcePath}`;
+                    source.textContent = ` · ${entry.execution === 'manual-gate' ? 'Manual gate' : 'Agent task'}`;
                     item.append(source);
+                    const sourceDetail = document.createElement('details'); sourceDetail.className = 'dope-work-diagnostics';
+                    const sourceSummary = document.createElement('summary'); sourceSummary.textContent = 'Immutable prompt source';
+                    const sourceText = document.createElement('code'); sourceText.textContent = sourcePath;
+                    sourceDetail.append(sourceSummary, sourceText); item.append(sourceDetail);
                     const workItem = /^- Accepted WorkItem: ([^\n]+)\./mu.exec(entry.promptText)?.[1];
                     const dependencies = /^- Depends on: ([^\n]+)\./mu.exec(entry.promptText)?.[1];
                     if (workItem || dependencies) {
@@ -554,8 +601,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             this.render();
                         });
                     }));
-                    if (checkpoint?.runId && this.panel.workspace) item.append(' ', this.button('Open Transcript', () =>
-                        void this.openTranscript?.(this.panel.workspace!, checkpoint.runId!)));
+                    if (checkpoint?.runId && this.panel.workspace) item.append(' ', transcriptButton(checkpoint.runId));
                     entries.append(item);
                 }
                 progress.append(entries); scroll.append(progress);
@@ -570,8 +616,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     previousRuns.append(previousTitle);
                     for (const runId of sequence.runIds) {
                         const run = controller.runs.find(candidate => candidate.id === runId);
-                        previousRuns.append(this.button(`${run ? `Run · ${run.status}` : 'Saved run'} · Open Transcript`, () =>
-                            void this.openTranscript?.(this.panel.workspace!, runId)));
+                        const button = transcriptButton(runId);
+                        button.textContent = `${run ? `Run · ${run.status}` : 'Saved run'} · Open Transcript`;
+                        previousRuns.append(button);
                     }
                     scroll.append(previousRuns);
                 }
@@ -588,74 +635,101 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
                 const entry = phase.current;
                 if (entry) {
-                    detail(`P${entry.number} · ${entry.execution === 'manual-gate' ? 'Manual/browser gate' : 'Agent task'}`, 'dope-work-overview');
                     if (entry.execution === 'manual-gate' && sequence.status !== 'completed') {
-                        const prompt = document.createElement('pre'); prompt.textContent = entry.promptText; scroll.append(prompt);
+                        const promptDetail = document.createElement('details'); promptDetail.className = 'dope-work-diagnostics';
+                        const promptSummary = document.createElement('summary'); promptSummary.textContent = 'Manual gate prompt';
+                        const prompt = document.createElement('pre'); prompt.textContent = entry.promptText;
+                        promptDetail.append(promptSummary, prompt); scroll.append(promptDetail);
                         if (!workManualGateReady(sequence))
                             detail('Manual verification is unavailable until the repository block is resolved.', 'dope-work-warning');
-                        scroll.append(this.button('Verify manual gate', () => void phase.reconcile(),
-                            phase.busy || !workManualGateReady(sequence)));
+                        primary('Verify manual gate', () => void phase.reconcile(), view.actions.includes('verify-manual-gate'));
                     } else if (entry.execution === 'agent-task' && sequence.status !== 'completed') {
                         const validation = document.createElement('input'); validation.type = 'text';
                         validation.value = phase.validationCommand; validation.maxLength = 160;
                         validation.setAttribute('aria-label', 'Required validation command');
-                        validation.oninput = () => { phase.validationCommand = validation.value; start.disabled = !phase.canStart; };
-                        scroll.append(validation);
+                        validation.oninput = () => { phase.validationCommand = validation.value; syncStart(); };
+                        decision.append(validation);
                         const grant = document.createElement('label');
                         const check = document.createElement('input'); check.type = 'checkbox'; check.checked = phase.acceptedGrant;
-                        check.onchange = () => { phase.acceptedGrant = check.checked; start.disabled = !phase.canStart; };
-                        grant.append(check, ' Accept project execution grant'); scroll.append(grant);
+                        check.onchange = () => { phase.acceptedGrant = check.checked; syncStart(); };
+                        grant.append(check, ' Accept project execution grant'); decision.append(grant);
                         if (phase.needsDirtyAcceptance && !phase.dirtyPromptDismissed)
-                            scroll.append(this.button('Continue with dirty worktree', () => void phase.continueDirty(), phase.busy),
-                                this.button('Cancel dirty acceptance', () => phase.cancelDirty(), phase.busy));
-                        detail(phase.readinessMessage, phase.canStart ? 'dope-work-detail' : 'dope-work-warning');
-                        const start = this.button(sequence.status === 'ready' ? 'Start' : 'Resume', () => void phase.start(), !phase.canStart);
-                        scroll.append(start, this.button('Stop', () => void phase.stop(), phase.busy || sequence.status !== 'running'));
+                            decision.append(primary('Continue with dirty worktree', () => void phase.continueDirty(),
+                                view.actions.includes('continue-dirty')),
+                                support('Cancel dirty acceptance', () => phase.cancelDirty(), !phase.busy));
+                        const readiness = document.createElement('p'); readiness.setAttribute('role', 'status');
+                        readiness.className = phase.canStart ? 'dope-work-detail' : 'dope-work-warning';
+                        readiness.textContent = phase.readinessMessage;
+                        decision.append(readiness);
+                        const start = primary(sequence.status === 'ready' ? 'Start' : 'Resume', () => void phase.start(), phase.canStart);
+                        const syncStart = () => {
+                            start.disabled = !phase.canStart;
+                            readiness.textContent = phase.readinessMessage;
+                            readiness.className = phase.canStart ? 'dope-work-detail' : 'dope-work-warning';
+                            if (!phase.canStart) start.classList.remove('dope-work-primary');
+                            else if (!decision.querySelector('.dope-work-primary')) start.classList.add('dope-work-primary');
+                        };
+                        if (sequence.status === 'running') primary('Stop', () => void phase.stop(), view.actions.includes('stop'));
                     }
                 }
                 if (sequence.blockedReason === 'checkpoint-pending' || sequence.blockedReason === 'checkpoint-failed')
-                    scroll.append(this.button('Verify checkpoint', () => void phase.checkpoint(), phase.busy));
+                    primary('Verify checkpoint', () => void phase.checkpoint(), view.actions.includes('verify-checkpoint'));
                 else if (sequence.blockedReason === 'candidate-review-pending' && phase.run?.candidateReview)
-                    scroll.append(this.button('Review candidate', () =>
-                        void this.selectWork({ kind: 'run', id: phase.run!.id }), phase.busy));
+                    primary('Review candidate', () =>
+                        void this.selectWork({ kind: 'run', id: phase.run!.id }), view.actions.includes('review-candidate'));
                 else if (sequence.status !== 'running' && sequence.status !== 'completed')
-                    scroll.append(this.button('Reconcile repository', () => void phase.reconcile(), phase.busy));
+                    primary('Reconcile repository', () => void phase.reconcile(), view.actions.includes('reconcile'));
                 if (sequence.gateMessage) detail(sequence.gateMessage, 'dope-work-warning');
                 const transcriptRunId = phase.run?.id ?? sequence.runIds?.at(-1) ?? sequence.checkpoints.at(-1)?.runId;
-                if (transcriptRunId && this.panel.workspace) scroll.append(this.button('Open Transcript', () =>
-                    void this.openTranscript?.(this.panel.workspace!, transcriptRunId)));
+                if (transcriptRunId && this.panel.workspace) scroll.append(transcriptButton(transcriptRunId));
             } else detail('Prompt Stack could not be opened. Refresh and try again.');
         } else {
             const run = work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined;
             if (run) {
                 const overview = workRunOverview(run, controller.selectedTask);
-                detail(overview.state, 'dope-work-overview');
-                detail(`${overview.validation} · ${run.changedFiles.length} changed files`, 'dope-work-detail');
-                detail(`Next: ${overview.next}`, 'dope-work-next');
+                detail(overview.state, 'dope-work-detail');
+                detail(`Required validation: ${view.validation} · ${run.changedFiles.length} changed files · ` +
+                    'Git checkpoint and owner qualification are separate', 'dope-work-detail');
+                if (view.validation === 'unavailable' || view.validation === 'failed')
+                    detail(`Required check ${view.validation === 'unavailable' ? 'did not complete' : 'failed'}: ` +
+                        `${run.validationResults.find(result => result.reason)?.reason ?? 'inspect the saved validation and transcript.'}`,
+                        'dope-work-warning');
                 const provenance = document.createElement('details'); provenance.className = 'dope-work-diagnostics';
                 const provenanceTitle = document.createElement('summary'); provenanceTitle.textContent = 'Model and provenance';
                 const provenanceText = document.createElement('p');
                 provenanceText.textContent = run.provenance ? `${run.provenance.providerId} · ${run.provenance.modelId}` : 'Coding Agent';
                 provenance.append(provenanceTitle, provenanceText); scroll.append(provenance);
                 if (run.outcome) detail(`Run outcome: ${run.outcome.summary}`, 'dope-work-detail');
-                if (controller.selectedTask?.origin.kind === 'direct' &&
-                    ['pending', 'running', 'blocked'].includes(run.status)) scroll.append(this.button('Stop Work', () => {
-                    if (this.directController) { void this.directController.select(run.id).then(() => this.directController?.stop()); }
-                }));
-                if (this.panel.workspace) scroll.append(this.button('Open Transcript', () =>
-                    void this.openTranscript?.(this.panel.workspace!, run.id)));
+                if (controller.selectedTask?.origin.kind === 'direct' && run.status === 'running')
+                    primary('Stop Work', () => {
+                        const project = this.panel.workspace;
+                        if (!project || controller.project !== project || this.panel.work?.kind !== 'run' ||
+                            this.panel.work.id !== run.id || controller.selectedTask?.id !== run.taskId || !this.directController) return;
+                        void this.directController.select(run.id).then(() => {
+                            if (this.panel.workspace === project && controller.project === project &&
+                                this.panel.work?.kind === 'run' && this.panel.work.id === run.id &&
+                                this.directController?.selected?.id === run.id) void this.directController.stop();
+                        });
+                    }, !!this.directController && controller.project === this.panel.workspace);
+                if (this.panel.workspace) scroll.append(transcriptButton(run.id));
                 if (controller.transcriptState === 'not-recorded') detail('Transcript not recorded for this historical run.');
                 const diagnostics = document.createElement('details'); diagnostics.className = 'dope-work-diagnostics';
                 const summary = document.createElement('summary'); summary.textContent = 'Run diagnostics'; diagnostics.append(summary);
                 if (controller.selectedTask) { const instructions = document.createElement('p');
                     instructions.textContent = controller.selectedTask.instructions; diagnostics.append(instructions); }
+                for (const target of controller.selectedTask?.completion.validation ?? []) {
+                    const item = document.createElement('p');
+                    item.textContent = `Required check · ${target.label} · ${target.command ?? 'command not recorded'}`;
+                    diagnostics.append(item);
+                }
                 for (const path of run.changedFiles) {
                     const item = document.createElement('p'); item.textContent = `Changed · ${path}`; diagnostics.append(item);
                 }
                 if (run.changedFiles.length) { const status = document.createElement('small'); status.className = 'dope-work-system';
                     status.textContent = `${run.changedFiles.length} changed file${run.changedFiles.length === 1 ? '' : 's'}`; scroll.append(status); }
                 for (const result of run.validationResults) {
-                    const item = document.createElement('p'); item.textContent = `Candidate validation · ${result.label} · ${result.status}`;
+                    const item = document.createElement('p'); item.textContent = `Candidate validation · ${result.label} · ${result.status}` +
+                        `${result.reason ? ` · ${result.reason}` : ''}`;
                     diagnostics.append(item);
                     if (result.status === 'failed') { const status = document.createElement('small');
                         status.className = 'dope-work-system dope-work-warning'; status.textContent = item.textContent;
@@ -704,9 +778,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         section.append(unavailable);
                     }
                     if (state === 'pending' || state === 'busy') {
-                        section.append(this.button('Accept candidate', () => void controller.decideCandidate('accept'),
-                            state !== 'pending' || !workReviewCanAccept(run, controller.selectedTask)),
-                            this.button('Reject candidate', () => void controller.decideCandidate('reject'), state !== 'pending'));
+                        primary('Accept candidate', () => void controller.decideCandidate('accept'),
+                            view.actions.includes('accept-candidate') && workReviewCanAccept(run, controller.selectedTask));
+                        section.append(this.button('Reject candidate', () => void controller.decideCandidate('reject'),
+                            !view.actions.includes('reject-candidate')));
                     }
                     scroll.append(section);
                 }
@@ -833,12 +908,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const reason = controller.startBlockReason;
                     if (reason) { const status = document.createElement('p'); status.className = 'dope-work-warning';
                         status.setAttribute('role', 'status'); status.textContent = reason; section.append(status); }
-                    section.append(this.button('Start WorkItem task', () => {
+                    primary('Start WorkItem task', () => {
                         void controller.startSelectedWorkItemTask().then(run => {
                             if (run && this.panel.work?.kind === 'task' && this.panel.work.id === task.id)
                                 this.selectWork({ kind: 'run', id: run.id });
                         });
-                    }, Boolean(reason)));
+                    }, !reason && view.actions.includes('start'));
                     scroll.append(section);
                 }
             }

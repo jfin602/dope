@@ -48,3 +48,23 @@ test('Work controls and critical blockers remain visible; verbose evidence is di
     assert.match(css, /\.dope-work-composer textarea \{[^}]*resize: none/);
     assert.match(css, /\.dope-chat-panel button:disabled/);
 });
+
+test('Work detail uses the P1 projection and preserves guarded controller callbacks', () => {
+    assert.match(widget, /const view = controller\.view\(work\)/);
+    assert.match(widget, /view\.status/);
+    assert.match(widget, /view\.validation/);
+    assert.match(widget, /view\.current\.number/);
+    assert.match(widget, /view\.qualification|Owner qualification: not recorded/);
+    assert.match(widget, /phase\.canStart\);/);
+    assert.match(widget, /void phase\.start\(\)/);
+    assert.match(widget, /void phase\.stop\(\)/);
+    assert.match(widget, /void phase\.continueDirty\(\)/);
+    assert.match(widget, /void phase\.checkpoint\(\)/);
+    assert.match(widget, /void phase\.reconcile\(\)/);
+    assert.match(widget, /void controller\.decideCandidate\('accept'\)/);
+    assert.match(widget, /workReviewCanAccept\(run, controller\.selectedTask\)/);
+    assert.match(widget, /void controller\.startSelectedWorkItemTask\(\)/);
+    assert.match(widget, /controller\.authorizeHostedProjectData\(hosted\.checked\)/);
+    assert.match(widget, /this\.panel\.workspace === project && controller\.project === project/);
+    assert.match(css, /button\.dope-work-primary/);
+});

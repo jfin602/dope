@@ -37,7 +37,8 @@ test('Work composer submits Enter, retains Shift+Enter and never stops from navi
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.match(widget, /if \(shouldSendChatInput\(event\)\)/);
     assert.match(widget, /if \(!controller\.canStart\) return/);
-    assert.match(widget, /this\.directController\.select\(run\.id\)\.then\(\(\) => this\.directController\?\.stop\(\)\)/);
+    assert.match(widget, /this\.directController\.select\(run\.id\)\.then\(\(\) => \{/);
+    assert.match(widget, /this\.directController\?\.selected\?\.id === run\.id\) void this\.directController\.stop\(\)/);
     assert.doesNotMatch(widget.slice(widget.indexOf('private selectWork('), widget.indexOf('private renderWorkComposer')),
         /\.stop\(/);
     assert.doesNotMatch(widget.slice(widget.indexOf('override dispose(): void')), /\.stop\(/);
