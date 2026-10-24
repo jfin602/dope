@@ -138,3 +138,51 @@ test('canonical Architecture and only current Physical Map/Flow supply evidence'
     assert.equal((await wrongGeneration.ground(root, 'Physical Map')).blocks.some(block => block.ref.kind === 'physical-map'), false);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('guided investigation cites bounded source and reports unavailable evidence', async () => {
+  const root = await fixture();
+  try {
+    const grounder = new ChatProjectGrounder(emptyIndex);
+    const found = await grounder.investigateIdea(root, 'Improve ChatRepository persistence');
+    assert.ok(found.blocks.some(block => block.ref.kind === 'file' &&
+      block.ref.id === 'packages/chat/src/node/chat-repository.ts'));
+    const file = found.blocks.find(block => block.ref.kind === 'file')!;
+    assert.equal(file.ref.contentHash, createHash('sha256').update(file.text).digest('hex'));
+    await writeFile(join(root, 'packages/chat/src/node/chat-repository.ts'), 'changed source');
+    const changed = await grounder.investigate(root, { queries: [{ kind: 'read', path: file.ref.id }] });
+    assert.notEqual(changed.blocks[0].ref.contentHash, file.ref.contentHash);
+    const absent = await grounder.investigate(root, { queries: [{ kind: 'read', path: 'missing.ts' }] });
+    assert.equal(absent.blocks.some(block => block.ref.kind === 'file'), false);
+    assert.ok(absent.diagnostics.some(item => item.kind === 'unavailable'));
+    await writeFile(join(root, 'binary.dat'), Buffer.from([0, 1, 2]));
+    const binary = await grounder.investigate(root, { queries: [{ kind: 'read', path: 'binary.dat' }] });
+    assert.ok(binary.diagnostics.some(item => item.kind === 'unavailable'));
+    await assert.rejects(grounder.investigate(root, { queries: [{ kind: 'read', path: '.dope/private.txt' }] }), /Unsafe/);
+    await assert.rejects(grounder.investigate(root, { queries: [{ kind: 'read', path: 'node_modules/ignored.txt' }] }), /Unsafe/);
+    await assert.rejects(grounder.investigate(root, { queries: [{ kind: 'read', path: 'secret.key' }] }), /Unsafe/);
+    await symlink(join(root, 'package.json'), join(root, 'test', 'linked.json'));
+    const linked = await grounder.investigate(root, { queries: [{ kind: 'read', path: 'test/linked.json' }] });
+    assert.equal(linked.blocks.some(block => block.ref.kind === 'file'), false);
+    assert.ok(linked.diagnostics.some(item => item.kind === 'unavailable'));
+    const other = await fixture();
+    try {
+      const otherEvidence = await grounder.investigate(other, { queries: [{ kind: 'read', path: 'package.json' }] });
+      assert.notEqual(otherEvidence.blocks[0].ref.projectId, found.blocks[0].ref.projectId);
+    } finally { await rm(other, { recursive: true, force: true }); }
+    await assert.rejects(grounder.investigate(root, { projectId: 'other', queries: [] }), /Foreign/);
+    await assert.rejects(grounder.investigate(root, { queries: Array(7).fill({ kind: 'directory', path: '' }) }), /limit/);
+    await assert.rejects(grounder.investigate(root, { queries: Array(4).fill({ kind: 'read', path: 'package.json' }) }), /read limit/);
+    const controller = new AbortController(); controller.abort();
+    await assert.rejects(grounder.investigate(root, { signal: controller.signal, queries: [{ kind: 'read', path: 'package.json' }] }), /cancelled/);
+    await writeFile(join(root, 'large.ts'), 'x'.repeat(GROUNDING_LIMITS.fileBytes + 1));
+    const capped = await grounder.investigate(root, { queries: [{ kind: 'read', path: 'large.ts' }] });
+    assert.ok(capped.blocks[0].text.length <= 12 * 1024);
+    assert.ok(capped.diagnostics.some(item => item.kind === 'truncated'));
+    await writeFile(join(root, 'tail.ts'), 'x'.repeat(15_000) + 'old');
+    const before = await grounder.investigate(root, { queries: [{ kind: 'read', path: 'tail.ts' }] });
+    await writeFile(join(root, 'tail.ts'), 'x'.repeat(15_000) + 'new');
+    const after = await grounder.investigate(root, { queries: [{ kind: 'read', path: 'tail.ts' }] });
+    assert.equal(before.blocks[0].ref.contentHash, after.blocks[0].ref.contentHash);
+    assert.notEqual(before.blocks[0].ref.sourceHash, after.blocks[0].ref.sourceHash);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

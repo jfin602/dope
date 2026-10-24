@@ -13,6 +13,8 @@ export const GROUNDING_LIMITS = { entries: 60, visited: 2000, depth: 6, results:
     fileBytes: 64 * 1024, scannedBytes: 8 * 1024 * 1024, totalBytes: 128 * 1024, matchesPerFile: 3 } as const;
 const skip = new Set(['.git', '.dope', '.theia', 'node_modules', 'dist', 'build', 'out', 'coverage',
     'generated', 'vendor', '.next', '.cache', 'target']);
+const privateName = (name: string) => name.startsWith('.') || /^(?:secrets?|credentials?|private)(?:[._-]|$)/i.test(name) ||
+    /(?:\.pem|\.key|\.p12|\.pfx)$/i.test(name);
 const cmp = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -20,6 +22,9 @@ const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'E
 export interface GroundingDiagnostic { kind: 'unavailable' | 'omitted' | 'truncated' | 'rejected'; source: string; message: string }
 export interface GroundingBlock { text: string; ref: ChatContextRef }
 export interface GroundingResult { blocks: GroundingBlock[]; diagnostics: GroundingDiagnostic[] }
+export type InvestigationQuery = { kind: 'paths' | 'text'; query: string } |
+    { kind: 'read' | 'directory'; path: string } | { kind: 'architecture' | 'physical-map'; query: string };
+export interface InvestigationRequest { queries: InvestigationQuery[]; projectId?: string; signal?: AbortSignal }
 
 /** Public path syntax is deliberately narrower than the host filesystem's syntax. */
 function safePath(value: string): string {
@@ -27,7 +32,7 @@ function safePath(value: string): string {
         value.startsWith('/') || isAbsolute(value) || value.includes('\\') || value.includes(':') ||
         /[\p{Cc}\p{Cf}]/u.test(value) ||
         (value !== '' && value.split('/').some(part => !part || part === '.' || part === '..')) ||
-        value.split('/').includes('.dope')) throw new Error('Unsafe project-relative path');
+        value.split('/').some(part => skip.has(part) || privateName(part))) throw new Error('Unsafe project-relative path');
     return value;
 }
 function safeQuery(value: string): string {
@@ -47,6 +52,11 @@ export class ChatProjectGrounder {
     private async target(root: string, path: string): Promise<string> {
         safePath(path);
         const canonical = await this.root(root);
+        let cursor = canonical;
+        for (const part of path.split('/').filter(Boolean)) {
+            cursor = join(cursor, part);
+            if ((await lstat(cursor)).isSymbolicLink()) throw new Error('Project path escapes via symlink');
+        }
         const actual = await realpath(join(canonical, path));
         const within = relative(canonical, actual);
         if (within === '..' || within.startsWith('../') || isAbsolute(within) ||
@@ -115,7 +125,7 @@ export class ChatProjectGrounder {
         }
         if (!(await stat(actual)).isDirectory()) throw new Error('Project path is not a directory');
         const entries = (await readdir(actual, { withFileTypes: true })).sort((a, b) => cmp(a.name, b.name));
-        const visible = entries.filter(entry => entry.name !== '.dope' &&
+        const visible = entries.filter(entry => !privateName(entry.name) && !skip.has(entry.name) &&
             !/[\p{Cc}\p{Cf}]/u.test(entry.name)).slice(0, GROUNDING_LIMITS.entries);
         const lines = await Promise.all(visible.map(async entry => {
             if (entry.isSymbolicLink()) {
@@ -138,7 +148,7 @@ export class ChatProjectGrounder {
             for (const entry of entries) {
                 if (++visited > GROUNDING_LIMITS.visited) { stopped = true; break; }
                 const path = current.path ? `${current.path}/${entry.name}` : entry.name;
-                if (skip.has(entry.name) || entry.isSymbolicLink() ||
+                if (skip.has(entry.name) || privateName(entry.name) || entry.isSymbolicLink() ||
                     /[\p{Cc}\p{Cf}]/u.test(entry.name)) { omitted++; continue; }
                 if (entry.isDirectory()) {
                     if (!await visit(path, false)) { stopped = true; break; }
@@ -200,6 +210,112 @@ export class ChatProjectGrounder {
         matches.sort(cmp);
         return { blocks: [this.block(canonical, 'text-search', needle, `Text matching ${needle}`,
             `Project text search ${JSON.stringify(needle)}: ${matches.length ? matches.join('\n') : '(no matches within search bounds)'}`)], diagnostics };
+    }
+    /** A bounded, app-owned read interface. No model-supplied command or absolute path is accepted. */
+    async investigate(root: string, request: InvestigationRequest): Promise<GroundingResult> {
+        const canonical = await this.root(root);
+        if (request.projectId !== undefined && request.projectId !== digest(canonical))
+            throw new Error('Foreign investigation project');
+        if (!Array.isArray(request.queries) || request.queries.length > 6)
+            throw new Error('Investigation query limit exceeded');
+        const blocks: GroundingBlock[] = [], diagnostics: GroundingDiagnostic[] = [];
+        let reads = 0, searches = 0, remaining = 32 * 1024;
+        for (const query of request.queries) {
+            if (request.signal?.aborted) throw new Error('Investigation cancelled');
+            if (!query || typeof query !== 'object') throw new Error('Invalid investigation query');
+            if (query.kind === 'read') {
+                if (++reads > 3) throw new Error('Investigation read limit exceeded');
+                safePath(query.path);
+            } else if (query.kind === 'directory') safePath(query.path);
+            else if (query.kind === 'paths' || query.kind === 'text') {
+                if (++searches > 2) throw new Error('Investigation search limit exceeded');
+                safeQuery(query.query);
+            } else if (query.kind === 'architecture' || query.kind === 'physical-map') safeQuery(query.query);
+            else throw new Error('Invalid investigation query');
+            try {
+                const result = query.kind === 'read' ? await this.readFile(canonical, query.path) :
+                    query.kind === 'directory' ? await this.listDirectory(canonical, query.path) :
+                    query.kind === 'paths' ? await this.searchPaths(canonical, query.query) :
+                    query.kind === 'text' ? await this.searchText(canonical, query.query) :
+                    query.kind === 'architecture' ? await this.architecture(canonical, query.query) :
+                    query.kind === 'physical-map' ? await this.map(canonical, query.query, false) :
+                    { blocks: [], diagnostics: [{ kind: 'rejected' as const, source: 'query', message: 'Unsupported query' }] };
+                if (request.signal?.aborted) throw new Error('Investigation cancelled');
+                diagnostics.push(...result.diagnostics);
+                for (const block of result.blocks) {
+                    if (query.kind === 'read' && block.text === `Project file ${query.path}: absent`) {
+                        diagnostics.push({ kind: 'unavailable', source: query.path, message: 'Requested project file absent' });
+                        continue;
+                    }
+                    const maximum = Math.min(remaining, query.kind === 'read' ? 12 * 1024 : remaining);
+                    const excerpt = Buffer.from(block.text, 'utf8').subarray(0, maximum).toString('utf8').replace(/\uFFFD+$/, '');
+                    if (excerpt !== block.text) diagnostics.push({ kind: 'truncated', source: block.ref.id,
+                        message: `Only ${Buffer.byteLength(excerpt)} evidence bytes included in investigation packet` });
+                    if (!excerpt) continue;
+                    remaining -= Buffer.byteLength(excerpt);
+                    const included = this.block(canonical, block.ref.kind, block.ref.id, block.ref.label, excerpt,
+                        block.ref.generation === undefined ? undefined :
+                            { projectId: block.ref.projectId!, generation: block.ref.generation });
+                    if (query.kind === 'read' && !result.diagnostics.some(item => item.kind === 'truncated'))
+                        included.ref.sourceHash = block.ref.contentHash;
+                    blocks.push(included);
+                }
+            } catch (error) {
+                if (request.signal?.aborted) throw new Error('Investigation cancelled');
+                diagnostics.push({ kind: 'unavailable', source: query.kind,
+                    message: `Verified ${query.kind} evidence unavailable; revise the query or inspect manually` });
+            }
+        }
+        for (const diagnostic of diagnostics.filter(item => item.kind === 'unavailable' || item.kind === 'truncated')) {
+            const status = `Investigation ${diagnostic.kind}: ${diagnostic.source}: ${diagnostic.message}`;
+            if (Buffer.byteLength(status) <= remaining) {
+                blocks.push(this.block(canonical, 'grounding-status', `investigation:${blocks.length}`, 'Investigation status', status));
+                remaining -= Buffer.byteLength(status);
+            }
+        }
+        return { blocks, diagnostics };
+    }
+
+    /** Deterministic first pass for idea-first planning; callers may request narrower follow-up queries. */
+    async investigateIdea(root: string, idea: string, signal?: AbortSignal): Promise<GroundingResult> {
+        const terms = idea.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().match(/[\p{L}\p{N}_-]{4,}/gu)?.filter(term =>
+            !['with', 'from', 'that', 'this', 'should', 'would', 'could', 'have', 'make', 'using',
+                'existing', 'implement', 'feature', 'please', 'project', 'plan'].includes(term)) ?? [];
+        const candidates = [...new Set(terms)].sort((a, b) => b.length - a.length || cmp(a, b)).slice(0, 2);
+        const query = candidates[0];
+        if (!query) {
+            const canonical = await this.root(root);
+            const message = 'No focused source query could be derived; provide a module or feature term';
+            return { blocks: [this.block(canonical, 'grounding-status', 'investigation:unverified',
+                'Investigation status', message)], diagnostics: [{ kind: 'unavailable', source: 'idea', message }] };
+        }
+        if (signal?.aborted) throw new Error('Investigation cancelled');
+        let paths: GroundingResult & { matchedPaths: string[] };
+        try {
+            paths = await this.searchPaths(root, query);
+            for (const next of candidates.slice(1)) {
+                if (paths.matchedPaths.some(path => /^(?:packages|apps)\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path))) break;
+                paths = await this.searchPaths(root, next);
+            }
+        } catch {
+            if (signal?.aborted) throw new Error('Investigation cancelled');
+            const canonical = await this.root(root);
+            const message = 'Project search unavailable; retry or inspect the source manually';
+            return { blocks: [this.block(canonical, 'grounding-status', 'investigation:unavailable',
+                'Investigation status', message)], diagnostics: [{ kind: 'unavailable', source: 'search', message }] };
+        }
+        if (signal?.aborted) throw new Error('Investigation cancelled');
+        const reads = paths.matchedPaths.filter(path => /^(?:packages|apps)\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path)).slice(0, 2);
+        const detail = await this.investigate(root, { signal, queries: reads.map(path => ({ kind: 'read', path })) });
+        const result = { blocks: [...paths.blocks, ...detail.blocks], diagnostics: [...paths.diagnostics, ...detail.diagnostics] };
+        if (!reads.length) {
+            const message = 'No relevant implementation source was verified; narrow the idea or inspect manually';
+            result.diagnostics.push({ kind: 'unavailable', source: 'idea', message });
+            const canonical = await this.root(root);
+            result.blocks.push(this.block(canonical, 'grounding-status', 'investigation:unverified',
+                'Investigation status', message));
+        }
+        return result;
     }
     private async currentMap(root: string) {
         const snapshot = this.index.snapshot(root), status = this.index.status(root);

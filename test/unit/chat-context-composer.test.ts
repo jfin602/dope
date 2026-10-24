@@ -105,6 +105,22 @@ test('context and active history share selected-model budget with explicit omiss
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('automatic investigation references hash only bytes included in the measured context', async () => {
+  const active = chat(); active.settings.context.maxInputTokens = 300;
+  const source = 'verified evidence '.repeat(100);
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const result = await composer.compose('/tmp', active, 'Plan this', [], model, { blocks: [{ text: source,
+    ref: { schemaVersion: 1, kind: 'file', id: 'src/a.ts', label: 'src/a.ts', origin: 'automatic',
+      projectId: 'project-a', estimatedTokens: 1000, includedBytes: Buffer.byteLength(source),
+      contentHash: createHash('sha256').update(source).digest('hex') } }], diagnostics: [] });
+  const ref = result.refs[0];
+  assert.ok(ref.includedBytes! < Buffer.byteLength(source));
+  const excerpt = result.messages.at(-1)!.content.split('[Auto file: src/a.ts]\n')[1];
+  assert.equal(ref.contentHash, createHash('sha256').update(excerpt).digest('hex'));
+  assert.ok(result.diagnostics.some(item => item.kind === 'truncated'));
+});
+
 test('current grounding and Roadmap instructions precede saved history in model requests', async () => {
   const active = chat();
   active.settings.context.maxInputTokens = 2000;

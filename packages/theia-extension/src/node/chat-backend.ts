@@ -27,6 +27,7 @@ function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3)
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
+const PLAN_INVESTIGATION_INSTRUCTION = 'This is a read-only implementation-plan investigation. Use only cited project evidence for source claims; label missing or inferred facts unverified. Until plan proposal support is enabled, return only a no-action answer. Do not propose Roadmap writes.';
 
 function tracePlanning(stage: string, chatId: string, messageId: string, status?: string): void {
     if (process.env.DOPE_CHAT_PLANNING_TRACE !== '1') return;
@@ -34,8 +35,9 @@ function tracePlanning(stage: string, chatId: string, messageId: string, status?
         stage, chatId, messageId, ...(status ? { status } : {}) }));
 }
 
-function evidenceIdentity(ref: { kind: string; id: string; contentHash?: string; projectId?: string; generation?: number }) {
-    return [ref.kind, ref.id, ref.contentHash, ref.projectId, ref.generation];
+function evidenceIdentity(ref: { kind: string; id: string; contentHash?: string; sourceHash?: string;
+    projectId?: string; generation?: number }) {
+    return [ref.kind, ref.id, ref.contentHash, ref.sourceHash, ref.projectId, ref.generation];
 }
 function sameAutomaticEvidence(grounding: GroundingResult | undefined, saved: ChatUserMessage['contextRefs']): boolean {
     return JSON.stringify((grounding?.blocks ?? []).map(block => evidenceIdentity(block.ref))) ===
@@ -176,19 +178,27 @@ export class ChatBackend implements ChatService {
         const model = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId)
             ?.models.find(item => item.id === request.selectedModel.modelId && item.usable);
         if (!model) throw new Error('Selected model unavailable');
-        const grounding = await this.grounder?.ground(root, request.content);
+        await this.greenfield?.ensureRestored(root);
+        const planOnly = this.greenfield?.chatImplementationPlan(root, request.chatId)?.planOnly === true;
+        if (planOnly && !this.grounder) throw new Error('Project investigation unavailable');
+        const planningGrounding = planOnly ? await this.grounder?.investigateIdea(root, request.content) :
+            await this.grounder?.ground(root, request.content);
         const connection = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId);
         const helpTurn = !!selectDopeCapabilityHelp(request.content);
         const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId);
         if (draft && connection?.providerId !== 'local') throw new Error('Greenfield Chat planning requires a local model');
         const localRoadmap = connection?.providerId === 'local' &&
-            (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn);
+            (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn || planOnly);
+        if (planOnly && connection?.providerId !== 'local') throw new Error('Implementation planning requires a selected local model');
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
-            chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
+            planOnly ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
+                chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
+        if (planOnly && budget!.output < 2048) throw new Error('Selected local model has insufficient plan output capacity');
         const composed = await this.composeTurn(root, chat, request.content, request.context,
-            model.capabilities, budget, draft, grounding);
+            model.capabilities, budget, planOnly ? { text: PLAN_INVESTIGATION_INSTRUCTION } : draft, planningGrounding);
         if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
-            chat.settings.context.reservedOutputTokens);
+            planOnly ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
+                chat.settings.context.reservedOutputTokens);
         if (request.context.some(item => item.kind === 'roadmap-checkpoint') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
@@ -419,6 +429,8 @@ export class ChatBackend implements ChatService {
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const helpTurn = !!selectDopeCapabilityHelp(content);
         const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId, request.planningSteps);
+        const planOnly = !helpTurn && this.greenfield?.chatImplementationPlan(root, request.chatId)?.planOnly === true;
+        if (planOnly && !this.grounder) throw new Error('Project investigation unavailable');
         const bridgeSelection = request.bridgeProposal;
         if (bridgeSelection && (helpTurn || draft || request.planningSteps || !this.bridgePlanning ||
             (request.context ?? []).filter(item => item.kind === 'roadmap-checkpoint' &&
@@ -426,12 +438,13 @@ export class ChatBackend implements ChatService {
                 item.ownerRevision === bridgeSelection.roadmapRevision).length !== 1))
             throw new Error('Bridge proposal requires one current selected checkpoint and a Planning owner');
         const bridge = bridgeSelection ? await BridgeLocalProposal.prepare(this.bridgePlanning!, root, bridgeSelection) : undefined;
-        const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn || !!bridge;
+        const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn || !!bridge || planOnly;
         if (request.planningSteps !== undefined && (![2, 3].includes(request.planningSteps) ||
             !roadmapTurn || helpTurn || !draft &&
             (request.context ?? []).filter(item => item.kind === 'roadmap-checkpoint').length !== 1))
             throw new Error('Small-step planning requires a bound draft or one unlinked Roadmap checkpoint and a cap of two or three');
-        const planningPrompt = bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
+        const planningPrompt = planOnly ? { text: PLAN_INVESTIGATION_INSTRUCTION } :
+            bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
             `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
             'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
         const requestHard: AIRoleHardConstraints = { ...chatHard,
@@ -459,7 +472,7 @@ export class ChatBackend implements ChatService {
         const connection = (await this.models.list()).connections.find(item => item.id === selectedModel.connectionId);
         const model = connection?.ready && connection.models.find(item => item.id === selectedModel.modelId && item.usable);
         if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
-        if ((draft || bridge) && connection.providerId !== 'local') throw new Error('Bridge and greenfield Chat planning require a selected local model');
+        if ((draft || bridge || planOnly) && connection.providerId !== 'local') throw new Error('Planning requires a selected local model');
         if (roadmapTurn && connection.providerId !== 'local' && request.hostedProjectDataAuthorized !== true)
             throw new Error('Chat hosted project-data confirmation required');
         const controls = chat.settings.reasoningControls ?? {};
@@ -468,9 +481,11 @@ export class ChatBackend implements ChatService {
                 throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
         if (!this.composer) throw new Error('Context composer unavailable');
         const localRoadmap = roadmapTurn && connection.providerId === 'local';
+        const planningOutput = planOnly ? Math.max(2048, chat.settings.context.reservedOutputTokens) : chat.settings.context.reservedOutputTokens;
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
-            chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
-        const grounding = await this.grounder?.ground(root, content);
+            planningOutput, model.capabilities) : undefined;
+        if (planOnly && budget!.output < 2048) throw new Error('Selected local model has insufficient plan output capacity');
+        const grounding = planOnly ? await this.grounder?.investigateIdea(root, content) : await this.grounder?.ground(root, content);
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
@@ -480,9 +495,9 @@ export class ChatBackend implements ChatService {
         if ((request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
-        let localMode: 'linked' | 'unlinked' | 'draft' | 'help' | 'bridge' = bridge ? 'bridge' : helpTurn ? 'help' : draft ? 'draft' : 'unlinked';
+        let localMode: 'linked' | 'unlinked' | 'draft' | 'help' | 'bridge' = bridge ? 'bridge' : helpTurn || planOnly ? 'help' : draft ? 'draft' : 'unlinked';
         let eligibleObjective = true;
-        if (localRoadmap && !draft && !helpTurn && this.planning) {
+        if (localRoadmap && !draft && !helpTurn && !planOnly && this.planning) {
             const ref = composed.refs.filter(item => item.kind === 'roadmap-checkpoint');
             if (ref.length !== 1) throw new Error('Select exactly one Roadmap checkpoint');
             const attached = await this.planning.attach(root);
@@ -567,7 +582,7 @@ export class ChatBackend implements ChatService {
                         if (!resolvedModel.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
                             throw new ModelRuntimeFailure('Role target does not support the saved reasoning control', 'unsupported-capability');
                     const nextBudget = localRoadmap ? roadmapLocalBudget(resolvedModel.capabilities.contextWindowTokens,
-                        chat.settings.context.reservedOutputTokens, resolvedModel.capabilities) : undefined;
+                        planningOutput, resolvedModel.capabilities) : undefined;
                     if (nextBudget && (nextBudget.total !== budget?.total ||
                         nextBudget.inputBytes !== budget.inputBytes || nextBudget.output !== budget.output))
                         throw new ModelRuntimeFailure('Loaded local context or limits changed; preview this turn again',
@@ -584,17 +599,16 @@ export class ChatBackend implements ChatService {
                     preview = { refs: next.refs, diagnostics: next.diagnostics,
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
                     return { messages: withRetryInstruction(this.withDraft(next.messages, planningPrompt), retryInstruction), controls, signal: abort.signal,
-                        ...(chat.settings.context.reservedOutputTokens > 0 ?
-                        { maxOutputTokens: nextBudget?.output ?? chat.settings.context.reservedOutputTokens } : {}) };
+                        ...(planningOutput > 0 ?
+                        { maxOutputTokens: nextBudget?.output ?? planningOutput } : {}) };
                 } }) : this.models!.generate(selectedModel!,
                 { messages: withRetryInstruction(this.withDraft(composed.messages, planningPrompt), retryInstruction), controls, signal: abort.signal,
-                    ...(chat.settings.context.reservedOutputTokens > 0 ?
-                        { maxOutputTokens: budget?.output ?? chat.settings.context.reservedOutputTokens } : {}) },
+                    ...(planningOutput > 0 ?
+                        { maxOutputTokens: budget?.output ?? planningOutput } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
             const events = localRoadmap ? (async function* (backend: ChatBackend) {
                 const guardedGenerate = async function* (retryInstruction?: string) {
-                    if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!,
-                        chat.settings.context.reservedOutputTokens);
+                    if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                     yield* generate(retryInstruction);
                 };
                 const requestedRevision = !draft && requestsRoadmapOwnerRevision(content) ?
@@ -604,8 +618,7 @@ export class ChatBackend implements ChatService {
                         maxSteps: request.planningSteps,
                         validateBridge: bridge ? value => bridge.validate(value) : undefined,
                         onRetry: cause => tracePlanning('retry', key, assistant!.id, cause) });
-                await backend.verifyLoadedCapacity(selectedModel!, budget!,
-                    chat.settings.context.reservedOutputTokens);
+                await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                 tracePlanning('validated', key, assistant!.id);
                 yield complete;
             })(this) : generate();
@@ -653,7 +666,7 @@ export class ChatBackend implements ChatService {
                             message.role === 'assistant' && message.execution.status === 'complete'))
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted && !localRoadmap) return preview;
-                    const result = helpTurn || bridge ? {} : await this.proposal(root, key, assistant.id,
+                    const result = helpTurn || bridge || planOnly ? {} : await this.proposal(root, key, assistant.id,
                         request.leaseToken, output, preview.refs, draft);
                     if (localRoadmap) {
                         const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;

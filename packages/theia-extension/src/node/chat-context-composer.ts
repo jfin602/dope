@@ -395,8 +395,9 @@ export class ChatContextComposer {
             if (!evidence) diagnostics.push({ kind: 'omitted', source, message: 'Auto context omitted by input budget' });
             const cost = evidence ? tokens(prefix + evidence) : 0;
             if (evidence) { remaining -= cost; attached.push(prefix + evidence); }
-            // The original evidence hash and identity survive budget changes and retry.
-            refs.push({ ...block.ref, estimatedTokens: cost, includedBytes: Buffer.byteLength(evidence, 'utf8') });
+            // Cite exactly the excerpt sent to the model; a smaller budget cannot claim unseen bytes.
+            refs.push({ ...block.ref, estimatedTokens: cost, includedBytes: Buffer.byteLength(evidence, 'utf8'),
+                contentHash: createHash('sha256').update(evidence).digest('hex') });
         }
         if (!attached.length) remaining += wrapperTokens;
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];

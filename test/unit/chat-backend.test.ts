@@ -108,3 +108,26 @@ test('ownership gates turn writes and transient deltas; search reads saved Chat'
             executionId, sequence: 1, delta: 'late', leaseToken: claim.token }), /lease required/);
     } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
+
+test('plan investigation rejects unmeasured local capacity before model inference', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    let generated = false;
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [{ id: 'small', usable: true, capabilities: { conversationalText: true, streaming: true,
+            contextWindowTokens: 1024 } }] }] }), async *generate() { generated = true; yield { type: 'complete', text: '{}' }; } };
+    const greenfield = { ensureRestored: async () => {}, chatDraft: () => undefined,
+        chatImplementationPlan: () => ({ handle: 'plan', planOnly: true }) };
+    const grounder = { investigateIdea: async () => ({ blocks: [], diagnostics: [] }) };
+    const service = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        {} as never, undefined, grounder as never, undefined, greenfield as never);
+    try {
+        const { projectHandle } = await service.attach(pathToFileURL(root).href);
+        const chatId = id();
+        await service.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        await assert.rejects(service.previewContext({ projectHandle, chatId,
+            selectedModel: { connectionId: 'local', modelId: 'small' }, content: 'Plan a change', context: [] }),
+        /context is too small|capacity/);
+        assert.equal(generated, false);
+    } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
