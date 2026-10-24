@@ -31,11 +31,12 @@ test('blank Roadmap exposes model-free draft, preview, approval, cancellation an
 test('Chat entry associates an existing selected saved Chat without opening or moving a panel', () => {
     const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
     const module = read('packages/theia-extension/src/browser/frontend-module.ts');
-    assert.match(widget, /button\('Plan with Chat', \(\) => \{ void this\.beginCreate\('chat'\)/);
-    assert.match(widget, /this\.savedChats\(state\.uri\)/);
-    assert.match(widget, /await this\.service\.bindDraftChat\(state\.uri, state\.handle, chatId\)/);
-    assert.match(widget, /state\.chatId = chatId \|\| undefined/);
-    assert.match(widget, /Build the draft manually now|build the draft manually now/);
+    assert.match(widget, /button\('Plan with Chat', \(\) => \{/);
+    assert.doesNotMatch(widget, /beginCreate\('chat'\)/);
+    assert.match(widget, /this\.savedChats\(setup\.uri\)/);
+    assert.match(widget, /this\.service\.beginImplementationPlan\(setup\.uri, selectedChatId\)/);
+    assert.match(widget, /setup\.chatId = selectedChatId/);
+    assert.match(widget, /complete, reviewable implementation plan/);
     assert.match(module, /getWidgets\(CHAT_PANEL_ID\)/);
     assert.match(module, /\['left', 'right'\] as const\)\.map\(side => widgets\.tryGetWidget\(chatLauncherIds\[side\]\)\)/);
     assert.match(module, /widget\.controller\.workspace !== workspace/);

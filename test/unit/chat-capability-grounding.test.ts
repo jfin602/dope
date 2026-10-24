@@ -106,13 +106,13 @@ test('linked and unlinked Roadmap help stays no-action, project-scoped, local an
             assert.match(instructions[0].content, /Chat cannot change the link/);
             assert.doesNotMatch(instructions[0].content, /propose \{"type":"roadmap-intent"/);
             if (roadmap.linkedDocument) {
-                assert.match(instructions[0].content, /Change linked file/);
-                assert.match(instructions[0].content, /docs\/wrong\.md \(synced\)/);
+                assert.match(instructions[0].content, /Relink Markdown/);
+                assert.match(instructions[0].content, /docs\/wrong\.md \(unavailable\)/);
             }
             else if (roadmap.revision === 0) assert.match(instructions[0].content, /Import Roadmap/);
-            else assert.match(instructions[0].content, /No replacement action is supported/);
+            else assert.match(instructions[0].content, /No linked file can be changed from this existing unlinked Roadmap/);
             yield { type: 'complete' as const, text: JSON.stringify({ type: 'no-action',
-                message: roadmap.linkedDocument ? 'Nothing changed. In Roadmap, open Roadmap Markdown and setup, then Change linked file.' :
+                message: roadmap.linkedDocument ? 'Nothing changed. In Roadmap, open Roadmap Markdown and setup, then Relink Markdown.' :
                     roadmap.revision === 0 ? 'Nothing changed. Open Roadmap Markdown and setup, then Import Roadmap.' :
                     'Nothing changed. This existing unlinked Roadmap has no supported replacement action.' }),
                 usage: { tokenMeasurement: 'estimated' as const } };
