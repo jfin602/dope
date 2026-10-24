@@ -1,0 +1,23 @@
+TASK: Correction 11 / P3 — Recover saved Chat after reload without stealing ownership
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 bounded focused implementation; target <=8 minutes, soft 10, hard 15.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only, no root/workspace manifest/internal-pin or lockfile edits.
+
+PREFLIGHT / PROTECTION
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/tasks/c11-cp-recovery/README.md`, `prompt-assessment.md`, `implementation-plan.md`, original immutable `docs/tasks/c11-conversational-planning/closeout.md` and the original conversational planning contract. Inspect the **actual local** HEAD, branch, `git status --short`, manifest/version coherence, source and test paths, package compiled libs, open local model/runtime, current user modifications and concurrent Work/Bridge changes. GitHub authoring source `6f744d8` is not a local execution pin or evidence that checkout is clean. The original P8 closeout is present in remote `main`, but may differ locally; DO NOT discard, overwrite, amend, rename or reclassify it. Original P1–P8 prompt bytes, hashes, prior runs and outcomes are immutable. A separate explicit developer Run authorizes this implementation only; `/prompt-write` does not. No `/activate`, agent self-commit (runner owns commits), reset, stash, clean, force-push, new provider default or silent hosted fallback, new Chat/runner database, unauthorized shell/Work grants or canonical Roadmap/Markdown writes. Keep project version `0.11.8` unchanged, no manifests/pins/lockfile changes; if local version advanced, STOP and re-assess rather than downgrade. Scoped headless implementation should fit <=8 minutes target, 10 soft, 15 hard; if not, stop with exact blocker without fudging tests/authority.
+
+SCOPE — IMPLEMENT AND FOCUSED VERIFY
+**Trace actual same-tab reload failure**, not a presumed backend bug: P8 saved Chat was visible after browser reload, but opening it displayed "Chat is open in another window (dope-chat-panel:00000000-0000-4000-8000-000000000001)." `ChatPanelController.doSelect` calls `ChatBackend.claim`; `ChatRepository.claim` regards unexpired current-PID leases as active, with 60-second TTL. Inspect `ChatPanelController.attach/leave/select/restore/dispose`, browser widget/layout teardown and `ChatOpenOwners`, backend claim/release/renew, cancellation, cross-project identity and renew timers. Capture supported, deterministic evidence of why the original same-tab owner failed to release, including async dispose/page reload ordering, not just `pid` liveness.
+
+Implement **the minimum safe ownership lifecycle correction**: release old leases with correct token before disposing transport on ordinary panel teardown where possible; ensure a reloaded legitimate same-tab instance has bounded, clear recovery when the original tab owner truly disappeared. If a safe handoff/epoch mechanism is necessary, make it explicitly verifiable by backend and project/window identity; do **not** allow a caller to usurp any active other tab using just shared `panelId`, PID, a retry flag or a zero TTL. Preserve exclusive live writer, lease token/expiration, old-token cannot mutate/release successor, competing panel focus, owner displacements and error transparency. Visible loading/restore state must not spin indefinitely or claim that the same former tab is actively another window without a supported recovery path. Do not change Chat content or duplicate Chat backend/service owner.
+
+Avoid broad WorkPanel restoration rewrites; concurrent `c11-work-experience-recovery-v2` owns Work-specific restoration. Preserve user layout/docks and no forced Chat placement.
+
+TEST / EVIDENCE / HANDOFF
+Focused `test/unit/chat-panel.test.ts`, `chat-repository.test.ts`, possibly `chat-backend.test.ts`: same-tab reload with live backend PID and stale prior token; close/dispose with pending turn; immediate reopen (not only after manual 60s wait); genuinely active second tab blocked; simultaneous claims atomic; old token invalid after transfer; no foreign project/Chat claim, no arbitrary force-release; restart/dead PID and expiration paths; teardown race with connection disposal; cancel/retry continuity. Reuse actual service/controller in tests not only mocked promise sequences. Build touched libs, run focused suites, `git diff --check`, provide status for anything requiring P5 real browser.

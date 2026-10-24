@@ -1,0 +1,23 @@
+TASK: Correction 11 / P1 — Restore explicit file-path grounding and source truth
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 bounded focused implementation; target <=8 minutes, soft 10, hard 15.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only, no root/workspace manifest/internal-pin or lockfile edits.
+
+PREFLIGHT / PROTECTION
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/tasks/c11-cp-recovery/README.md`, `prompt-assessment.md`, `implementation-plan.md`, original immutable `docs/tasks/c11-conversational-planning/closeout.md` and the original conversational planning contract. Inspect the **actual local** HEAD, branch, `git status --short`, manifest/version coherence, source and test paths, package compiled libs, open local model/runtime, current user modifications and concurrent Work/Bridge changes. GitHub authoring source `6f744d8` is not a local execution pin or evidence that checkout is clean. The original P8 closeout is present in remote `main`, but may differ locally; DO NOT discard, overwrite, amend, rename or reclassify it. Original P1–P8 prompt bytes, hashes, prior runs and outcomes are immutable. A separate explicit developer Run authorizes this implementation only; `/prompt-write` does not. No `/activate`, agent self-commit (runner owns commits), reset, stash, clean, force-push, new provider default or silent hosted fallback, new Chat/runner database, unauthorized shell/Work grants or canonical Roadmap/Markdown writes. Keep project version `0.11.8` unchanged, no manifests/pins/lockfile changes; if local version advanced, STOP and re-assess rather than downgrade. Scoped headless implementation should fit <=8 minutes target, 10 soft, 15 hard; if not, stop with exact blocker without fudging tests/authority.
+
+SCOPE — IMPLEMENT AND FOCUSED VERIFY
+**Reproduce before fixing.** On a safe temp project with `src/diffEditor.js`, `src/history.js`, `src/toolbar.js`, `src/permissions.js`, `test/history.test.js`, pass the exact P8 wording: "Plan a visual Git history for this project. Reuse the existing read-only diff editor in src/diffEditor.js; put branch checkout and commits in the toolbar; keep checkout and commit permissions explicit. Please inspect the relevant files and give me a complete ordered implementation plan with tests before changing anything." Inspect the real `ChatProjectGrounder.ground()` lexical token extraction, `safePath`, `target`, `readFile`, `listDirectory`, `investigateIdea`, `investigate()`, `ChatContextComposer`, source refs/hash and diagnostics. The current closeout shows `src/diffEditor.js;` wrongly treated as directory from an incidental word "in" elsewhere in the question; normal `src/` is also overlooked by `investigateIdea()`'s package/apps-only source match.
+
+**Implement a narrowly scoped fix**: extract explicit project-relative paths without trailing natural-language punctuation/quotes/backticks (preserve legal path syntax and safePath validation), select file read using syntactic evidence and command intent *anchored to the path*, do not select directory listing merely because any generic word `in` appears anywhere in prose. Confirm exact normalized file exists and record its real file evidence and source hash; do not feed model a fabricated absent/directory diagnostic when the first parse was wrong. Preserve legitimate absent-file/rejected-path handling and provenance as distinct categories. In the dedicated plan investigation route, prioritize explicit user-named files before search heuristics and admit bounded conventional project-root `src/` and `test/` sources, without whole-repo scanning or new filesystem authority. Never turn model text into executable query or claim reads that did not occur.
+
+No Chat output/parser changes, new model role or Roadmap edits here; P2 will wire plan activation.
+
+TEST / EVIDENCE / HANDOFF
+Add focused `test/unit/chat-project-grounding.test.ts` and targeted investigation/context tests for literal `src/diffEditor.js;`, wrapped paths, final comma/period/parenthesis, correctly distinguished directory/listing intent, genuine missing file, ordinary root `src/`, hidden/symlink traversal, out-of-root and binary rejection, hash/current source identity, truncation, project A/B and no unauthorized host reads. Assert a real file block appears rather than an absent/directory ref. Run impacted package `lib` rebuild and focused Node tests, `git diff --check`; report exact commands/hashes and remaining P2 live plan/UI risk. Never pretend a mocked model establishes real Q4 correctness.

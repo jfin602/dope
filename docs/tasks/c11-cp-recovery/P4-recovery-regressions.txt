@@ -1,0 +1,21 @@
+TASK: Correction 11 / P4 — Close CP recovery integration and security gaps
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 bounded focused implementation; target <=8 minutes, soft 10, hard 15.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only, no root/workspace manifest/internal-pin or lockfile edits.
+
+PREFLIGHT / PROTECTION
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/tasks/c11-cp-recovery/README.md`, `prompt-assessment.md`, `implementation-plan.md`, original immutable `docs/tasks/c11-conversational-planning/closeout.md` and the original conversational planning contract. Inspect the **actual local** HEAD, branch, `git status --short`, manifest/version coherence, source and test paths, package compiled libs, open local model/runtime, current user modifications and concurrent Work/Bridge changes. GitHub authoring source `6f744d8` is not a local execution pin or evidence that checkout is clean. The original P8 closeout is present in remote `main`, but may differ locally; DO NOT discard, overwrite, amend, rename or reclassify it. Original P1–P8 prompt bytes, hashes, prior runs and outcomes are immutable. A separate explicit developer Run authorizes this implementation only; `/prompt-write` does not. No `/activate`, agent self-commit (runner owns commits), reset, stash, clean, force-push, new provider default or silent hosted fallback, new Chat/runner database, unauthorized shell/Work grants or canonical Roadmap/Markdown writes. Keep project version `0.11.8` unchanged, no manifests/pins/lockfile changes; if local version advanced, STOP and re-assess rather than downgrade. Scoped headless implementation should fit <=8 minutes target, 10 soft, 15 hard; if not, stop with exact blocker without fudging tests/authority.
+
+SCOPE — IMPLEMENT AND FOCUSED VERIFY
+Audit **actual P1–P3 checked-in source** and the immutable P8 closeout. Add a compact source-scoped integration fixture reusing `src/history.js`, `src/diffEditor.js`, `src/toolbar.js`, `src/permissions.js`, `test/history.test.js` and the *exact* P8 prompt. Prove independent outcomes across real Chat normal-plan-intent routing, validated explicit file grounding and `investigateIdea`, plan-only owner activation, strict local plan output validation, readable plan + pending review, accept/reject/undo/revise, durable saved plan revision, same-tab reload/reopen and source-safe projection to existing Roadmap. Verify exact source ref/hash, invalid/missing/foreign evidence, source drift, stale owner revision, plan budget exceeded, cancellation, malformed/partial model output, no secret/hosted egress, no shell/tools, no unexpected file writes, old Chat/Help/Bridge one-to-three Roadmap actions and user-chosen model kept. Explicitly ensure old `Plan with Chat` no longer substitutes an empty `phases: []` draft.
+
+Repair only newly proven integration faults within narrow P1–P3 seams. Do not introduce a new parser, plan store, role, syntax, source authority or Work flow. Keep runtime behavior understandable: complete user-visible plan with actionable structured review, not successful tests alone. P5 alone owns live Q4/browser end-to-end and one final aggregate qualification; this prompt must not declare corrected CP Green.
+
+TEST / EVIDENCE / HANDOFF
+Add focused integration tests at `test/unit` and rerun affected existing `chat-project-grounding`, `roadmap-chat-drafts`, `roadmap-local-model`, `chat-panel`, `chat-repository`, `roadmap-greenfield` and Roadmap UI/Chat activity cases. Build changed package lib as necessary, `git diff --check`, narrow typecheck/build to test imports. Record exact results and observed limitations. Do not claim a real browser or Q4 pass from deterministic fake models.
