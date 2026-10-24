@@ -40,6 +40,18 @@ function safeQuery(value: string): string {
         throw new Error('Invalid grounding query');
     return value.trim();
 }
+/** Extract only user-written project paths. Sentence punctuation is outside the path. */
+function explicitPaths(question: string): { path: string; directorySyntax: boolean; before: string }[] {
+    return [...question.matchAll(/(?:^|[\s'"`([{])([^\s'"`()\[\]{}]+)/gu)].flatMap(match => {
+        const raw = match[1];
+        const path = raw.replace(/[;,:!?]+$/u, '').replace(/\.$/u, '');
+        if (!path || !(path.includes('/') || /\.[a-z\d]{1,8}$/i.test(path))) return [];
+        return [{ path: path.replace(/\/$/u, ''), directorySyntax: path.endsWith('/'),
+            before: question.slice(Math.max(0, match.index! - 48), match.index!) }];
+    });
+}
+const implementationSource = (path: string) =>
+    /^(?:(?:packages|apps)\/.+\/src\/|src\/|test\/).+\.[cm]?[jt]sx?$/.test(path);
 
 export class ChatProjectGrounder {
     constructor(private readonly index: SoftwareMapIndex) {}
@@ -107,7 +119,9 @@ export class ChatProjectGrounder {
         safePath(path);
         try {
             const { text, truncated } = await this.read(canonical, path);
-            return { blocks: [this.block(canonical, 'file', path, path, text)], diagnostics: truncated ?
+            const block = this.block(canonical, 'file', path, path, text);
+            if (!truncated) block.ref.sourceHash = block.ref.contentHash;
+            return { blocks: [block], diagnostics: truncated ?
                 [{ kind: 'truncated', source: path, message: `File limited to ${GROUNDING_LIMITS.fileBytes} bytes` }] : [] };
         } catch (error) {
             if (!missing(error)) throw error;
@@ -170,6 +184,7 @@ export class ChatProjectGrounder {
         const rank = (path: string) => {
             if (hint === 'persistence' && /(?:repository|store|persistence)/i.test(path) &&
                 /^packages\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path)) return 0;
+            if (/^src\/.+\.[cm]?[jt]sx?$/.test(path)) return 1;
             if (/^(?:packages|apps)\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path)) return 1;
             if (/^(?:packages|apps)\//.test(path)) return 2;
             if (/^test\//.test(path)) return 3;
@@ -256,8 +271,8 @@ export class ChatProjectGrounder {
                     const included = this.block(canonical, block.ref.kind, block.ref.id, block.ref.label, excerpt,
                         block.ref.generation === undefined ? undefined :
                             { projectId: block.ref.projectId!, generation: block.ref.generation });
-                    if (query.kind === 'read' && !result.diagnostics.some(item => item.kind === 'truncated'))
-                        included.ref.sourceHash = block.ref.contentHash;
+                    if (query.kind === 'read' && block.ref.sourceHash)
+                        included.ref.sourceHash = block.ref.sourceHash;
                     blocks.push(included);
                 }
             } catch (error) {
@@ -278,6 +293,8 @@ export class ChatProjectGrounder {
 
     /** Deterministic first pass for idea-first planning; callers may request narrower follow-up queries. */
     async investigateIdea(root: string, idea: string, signal?: AbortSignal): Promise<GroundingResult> {
+        const named = [...new Set(explicitPaths(idea).filter(item => !item.directorySyntax).map(item => item.path))].slice(0, 3);
+        if (named.length) return this.investigate(root, { signal, queries: named.map(path => ({ kind: 'read', path })) });
         const terms = idea.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().match(/[\p{L}\p{N}_-]{4,}/gu)?.filter(term =>
             !['with', 'from', 'that', 'this', 'should', 'would', 'could', 'have', 'make', 'using',
                 'existing', 'implement', 'feature', 'please', 'project', 'plan'].includes(term)) ?? [];
@@ -294,7 +311,7 @@ export class ChatProjectGrounder {
         try {
             paths = await this.searchPaths(root, query);
             for (const next of candidates.slice(1)) {
-                if (paths.matchedPaths.some(path => /^(?:packages|apps)\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path))) break;
+                if (paths.matchedPaths.some(implementationSource)) break;
                 paths = await this.searchPaths(root, next);
             }
         } catch {
@@ -305,7 +322,7 @@ export class ChatProjectGrounder {
                 'Investigation status', message)], diagnostics: [{ kind: 'unavailable', source: 'search', message }] };
         }
         if (signal?.aborted) throw new Error('Investigation cancelled');
-        const reads = paths.matchedPaths.filter(path => /^(?:packages|apps)\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path)).slice(0, 2);
+        const reads = paths.matchedPaths.filter(implementationSource).slice(0, 2);
         const detail = await this.investigate(root, { signal, queries: reads.map(path => ({ kind: 'read', path })) });
         const result = { blocks: [...paths.blocks, ...detail.blocks], diagnostics: [...paths.diagnostics, ...detail.diagnostics] };
         if (!reads.length) {
@@ -407,19 +424,17 @@ export class ChatProjectGrounder {
         };
         const q = question.trim();
         if (!q) return finish();
-        const candidates = [...q.matchAll(/(?:^|[\s'"`(])([^\s'"`),?!]+)/gu)].map(match => match[1]);
-        const path = candidates.find(value => value.includes('/') || /\.[a-z\d]{1,8}$/i.test(value));
-        const explicit = path?.replace(/\/$/, '');
+        const named = explicitPaths(q)[0];
+        const explicit = named?.path;
         if (explicit) {
             try {
                 safePath(explicit);
-                if (/\b(?:list|inside|contents|in|under|directory|folder)\b/i.test(q) || path?.endsWith('/'))
-                    add(await this.listDirectory(canonical, explicit));
-                else if (/\b(?:exist|there)\b/i.test(q)) {
-                    try { const target = await this.target(canonical, explicit); add((await stat(target)).isDirectory() ?
-                        await this.listDirectory(canonical, explicit) : await this.readFile(canonical, explicit)); }
-                    catch (error) { if (!missing(error)) throw error; add(await this.readFile(canonical, explicit)); }
-                } else add(await this.readFile(canonical, explicit));
+                const listing = named.directorySyntax || /\b(?:list|show|browse|contents|files|directory|folder)\b(?:\s+\w+){0,4}\s+(?:in|of|under|inside)\s*$/i.test(named.before) ||
+                    /\bwhat\s+is\s+in\s*$/i.test(named.before);
+                let directory = named.directorySyntax;
+                try { directory = (await stat(await this.target(canonical, explicit))).isDirectory(); }
+                catch (error) { if (!missing(error)) throw error; directory = listing; }
+                add(directory ? await this.listDirectory(canonical, explicit) : await this.readFile(canonical, explicit));
             } catch { diagnostics.push({ kind: 'rejected', source: 'project path', message: 'Requested project path is unsafe or unavailable' }); }
         } else if (/\b(?:repository root|project root|root directory|root folder)\b/i.test(q)) add(await this.listDirectory(canonical));
         if (/\b(?:architecture|subsystem|component|system)\b/i.test(q)) {
@@ -435,7 +450,7 @@ export class ChatProjectGrounder {
             if (terms.length) {
                 const paths = await this.searchPaths(canonical, terms[0], terms.includes('persistence') ? 'persistence' : '');
                 add(paths);
-                const source = paths.matchedPaths.find(path => /^(?:packages|apps)\/.+\/src\/.+\.[cm]?[jt]sx?$/.test(path));
+                const source = paths.matchedPaths.find(implementationSource);
                 if (source) {
                     try {
                         const read = await this.read(canonical, source);

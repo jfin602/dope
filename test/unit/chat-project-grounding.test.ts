@@ -186,3 +186,71 @@ test('guided investigation cites bounded source and reports unavailable evidence
     assert.notEqual(before.blocks[0].ref.sourceHash, after.blocks[0].ref.sourceHash);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('exact planning wording reads normalized named source before bounded heuristics', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-cp-paths-'));
+  try {
+    await mkdir(join(root, 'src')); await mkdir(join(root, 'test'));
+    const paths = ['src/diffEditor.js', 'src/history.js', 'src/toolbar.js', 'src/permissions.js', 'test/history.test.js'];
+    for (const path of paths) await writeFile(join(root, path), `verified ${path}\n`);
+    const grounder = new ChatProjectGrounder(emptyIndex);
+    const question = 'Plan a visual Git history for this project. Reuse the existing read-only diff editor in src/diffEditor.js; put branch checkout and commits in the toolbar; keep checkout and commit permissions explicit. Please inspect the relevant files and give me a complete ordered implementation plan with tests before changing anything.';
+    const result = await grounder.ground(root, question);
+    const file = result.blocks.find(block => block.ref.kind === 'file');
+    assert.equal(file?.ref.id, 'src/diffEditor.js');
+    assert.equal(file?.text, 'verified src/diffEditor.js\n');
+    assert.equal(file?.ref.contentHash, createHash('sha256').update(file!.text).digest('hex'));
+    assert.equal(file?.ref.sourceHash, file?.ref.contentHash);
+    assert.equal(result.blocks.some(block => block.ref.kind === 'directory' || /absent/.test(block.text)), false);
+    assert.equal(result.diagnostics.some(item => item.kind === 'rejected'), false);
+    const investigated = await grounder.investigateIdea(root, question);
+    assert.equal(investigated.blocks.find(block => block.ref.kind === 'file')?.ref.id, 'src/diffEditor.js');
+    assert.equal(investigated.blocks.find(block => block.ref.kind === 'file')?.ref.sourceHash, file?.ref.sourceHash);
+    assert.equal(investigated.blocks.some(block => block.ref.kind === 'path-search'), false);
+    for (const wording of ['read `src/diffEditor.js`', 'read "src/diffEditor.js,"', 'read (src/diffEditor.js).', 'read src/diffEditor.js!']) {
+      assert.equal((await grounder.ground(root, wording)).blocks.find(block => block.ref.kind === 'file')?.ref.id, 'src/diffEditor.js');
+    }
+    const directory = await grounder.ground(root, 'list contents of src/');
+    assert.equal(directory.blocks.find(block => block.ref.kind === 'directory')?.ref.id, 'src');
+    assert.match(directory.blocks.find(block => block.ref.kind === 'directory')!.text, /diffEditor\.js/);
+    assert.equal((await grounder.ground(root, 'what is in test/?')).blocks.find(block => block.ref.kind === 'directory')?.ref.id, 'test');
+    const absent = await grounder.investigateIdea(root, 'read src/missing.js');
+    assert.equal(absent.blocks.some(block => block.ref.kind === 'file'), false);
+    assert.ok(absent.diagnostics.some(item => item.kind === 'unavailable'));
+    const rootSource = await grounder.investigateIdea(root, 'Find history source');
+    assert.ok(rootSource.blocks.some(block => block.ref.kind === 'file' && block.ref.id === 'src/history.js'));
+    await writeFile(join(root, 'src/diffEditor.js'), 'changed source\n');
+    assert.notEqual((await grounder.ground(root, question)).blocks.find(block => block.ref.kind === 'file')?.ref.sourceHash, file?.ref.sourceHash);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('named-source planning investigation keeps rejection, absence, binary and project boundaries separate', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-cp-safe-'));
+  const other = await mkdtemp(join(tmpdir(), 'dope-cp-other-'));
+  try {
+    await mkdir(join(root, 'src')); await mkdir(join(root, '.dope'));
+    await mkdir(join(other, 'src'));
+    await writeFile(join(root, 'src/ok.js'), 'project A');
+    await writeFile(join(other, 'src/ok.js'), 'project B');
+    await writeFile(join(root, 'src/binary.js'), Buffer.from([0, 1, 2]));
+    await writeFile(join(root, '.dope/private.js'), 'private');
+    await symlink(join(other, 'src/ok.js'), join(root, 'src/link.js'));
+    const grounder = new ChatProjectGrounder(emptyIndex);
+    for (const path of ['../src/ok.js', '/tmp/host.js', '.dope/private.js', 'src/link.js', 'src/binary.js']) {
+      const result = await grounder.ground(root, `read ${path};`);
+      assert.equal(result.blocks.some(block => block.ref.kind === 'file'), false);
+      assert.equal(result.blocks.some(block => block.ref.kind === 'directory'), false);
+      assert.ok(result.diagnostics.some(item => item.kind === 'rejected'));
+      assert.doesNotMatch(JSON.stringify(result.blocks), /project B|private/);
+    }
+    const absent = await grounder.ground(root, 'read src/nope.js;');
+    assert.match(absent.blocks.find(block => block.ref.kind === 'file')!.text, /absent/);
+    assert.equal(absent.diagnostics.some(item => item.kind === 'rejected'), false);
+    const a = await grounder.investigateIdea(root, 'inspect src/ok.js');
+    const b = await grounder.investigateIdea(other, 'inspect src/ok.js');
+    assert.notEqual(a.blocks.find(block => block.ref.kind === 'file')?.ref.projectId,
+      b.blocks.find(block => block.ref.kind === 'file')?.ref.projectId);
+    assert.equal(a.blocks.find(block => block.ref.kind === 'file')?.text, 'project A');
+    assert.equal(b.blocks.find(block => block.ref.kind === 'file')?.text, 'project B');
+  } finally { await rm(root, { recursive: true, force: true }); await rm(other, { recursive: true, force: true }); }
+});

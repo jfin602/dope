@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import type { Chat } from '../../packages/chat/lib/index.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { createSnapshot } from '../../packages/software-map/lib/index.js';
 import type { ProjectMindStore } from '../../packages/project-intelligence/lib/node/project-mind-store.js';
 import type { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
@@ -119,6 +120,28 @@ test('automatic investigation references hash only bytes included in the measure
   const excerpt = result.messages.at(-1)!.content.split('[Auto file: src/a.ts]\n')[1];
   assert.equal(ref.contentHash, createHash('sha256').update(excerpt).digest('hex'));
   assert.ok(result.diagnostics.some(item => item.kind === 'truncated'));
+});
+
+test('normalized explicit file evidence reaches model context with honest current-source reference', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-cp-context-'));
+  try {
+    await mkdir(join(root, 'src'));
+    const source = 'export const diffEditor = "read-only";\n';
+    await writeFile(join(root, 'src/diffEditor.js'), source);
+    const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+      inputsCurrent: async () => false } as unknown as SoftwareMapIndex;
+    const grounding = await new ChatProjectGrounder(index).ground(root, 'Use the editor in src/diffEditor.js; then plan.');
+    const active = chat(); active.settings.context.maxInputTokens = 1000;
+    const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, index, {} as ChatRepository);
+    const composed = await composer.compose(root, active, 'Use the editor in src/diffEditor.js; then plan.', [],
+      { ...model, contextWindowTokens: 2000, maxInputTokens: 2000 }, grounding);
+    const ref = composed.refs.find(item => item.kind === 'file');
+    assert.equal(ref?.id, 'src/diffEditor.js');
+    assert.equal(ref?.sourceHash, createHash('sha256').update(source).digest('hex'));
+    assert.equal(ref?.contentHash, ref?.sourceHash);
+    assert.match(composed.messages.at(-1)!.content, /export const diffEditor/);
+    assert.equal(composed.refs.some(item => item.kind === 'directory'), false);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('current grounding and Roadmap instructions precede saved history in model requests', async () => {
