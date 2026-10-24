@@ -1,0 +1,21 @@
+TASK: Correction 11 / P4 — Revise plan steps through Chat and reviewed diffs
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 bounded source work (UI portion T1/T2 where applicable); target <=8 minutes, soft 10, hard 15.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no package manifests, workspace/internal pins, yarn.lock or package-lock edits. If actual version advances, STOP and reassess rather than downgrade.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p11/conversational-planning-contract.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md and this stack README/assessment/implementation plan before touching implementation. Inspect **actual local** HEAD, branch, `git status --short`, owner changes, exact source paths, package/lock versions, compiled lib state, active competing c11-work-experience/Bridge work, and prior prompt checkpoints. Remote planning base `503dae3` is not a local run pin. If version differs from unchanged 0.11.8, pause and re-assess; never downgrade. Only a separate deliberate developer Run permits P1–P7; no /activate. Runner owns commits: no agent self-commit, stash, reset, clean, force-push, changing previously authored P*.txt or historical evidence. Avoid unnecessary large refactors, dependency changes or global model defaults. No silent hosted egress, direct model shell/process/network, unapproved Markdown/code/canonical writes, auto-Run, false Green or Phase 12 activation. Target <=8 minutes, soft 10, HARD STOP 15 for headless steps; report bounded incomplete work rather than falsely passing or compromising authority.
+
+TASK — BOUNDED IMPLEMENTATION
+Make ordinary saved Chat instructions ("combine steps 3 and 4", "re-use the existing editor", "move tests earlier", "expand the auth step", "make it simpler") produce a bounded **plan-level** revision proposal against the P1 accepted draft and P2 fresh source context. Dope owns step stable IDs, order/dependency validation, impact analysis and fresh revision CAS; model output never edits draft, Roadmap, linked Markdown, WorkItems or prompts directly. Preview changed/added/deleted draft steps and accepted versus newly suggested decisions, preserve unrelated approved constraints and evidence, reject stale proposals after manual edit/restart/cancel/provider handoff/project switch. Support accept/reject/undo of eligible non-destructive draft revisions using existing Chat planning activity/proposal callbacks, avoiding permanent raw tool JSON as assistant content.
+
+Add **minimal focused UI** in existing `chat-panel-widget.ts` / Chat plan presentation using current controls, safe Markdown and event wiring: readable plan in chat, concise visual diff/review and proposal state, all keyboard accessible in narrow left/right/bottom docks. Reuse existing saved Chat lease, project owner and current Roadmap draft events; don't create second chat pane/editor, planning wizard or broad CSS/Work panel rewrite. Only code + focused test work in this prompt; P5 owns canonical map projection.
+
+TEST / EVIDENCE / EXIT
+Focused `roadmap-chat-drafts.test.ts`, `roadmap-chat-panel.test.ts`, `chat-presentation.test.ts`, draft revision tests: combine/move/split with stable IDs and cycle check; inherited confirmed decisions survive; obvious irrelevant steps untouched; conflicting manual revision fail-closed; reject/undo/reset and project isolation; no implicit approval or extra provider; narrow keyboard focus and safe long prose DOM. Build/test changed package outputs and `git diff --check`. Do not conflate a browser-simulated DOM test with P8 real GUI evidence.
