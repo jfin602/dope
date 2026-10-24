@@ -69,6 +69,93 @@ test('dedicated Chat connections share project changes without crossing projects
     }
 });
 
+test('socket close releases only its token, even with a live backend PID', async () => {
+    const root = await folder(), foreign = await folder(), repository = new ChatRepository();
+    const old = new ChatBackend(repository, { notifyChatEvent() {} });
+    const active = new ChatBackend(repository, { notifyChatEvent() {} });
+    const successor = new ChatBackend(repository, { notifyChatEvent() {} });
+    const otherProject = new ChatBackend(repository, { notifyChatEvent() {} });
+    try {
+        const oldHandle = (await old.attach(pathToFileURL(root).href)).projectHandle;
+        const activeHandle = (await active.attach(pathToFileURL(root).href)).projectHandle;
+        const nextHandle = (await successor.attach(pathToFileURL(root).href)).projectHandle;
+        const foreignHandle = (await otherProject.attach(pathToFileURL(foreign).href)).projectHandle;
+        const chatId = id(), secondChat = id();
+        await old.mutate({ projectHandle: oldHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        await old.mutate({ projectHandle: oldHandle, expectedRevision: 1,
+            operation: { type: 'create-chat', id: secondChat, folderPath: '' } });
+        const first = await old.claim({ projectHandle: oldHandle, chatId, ownerId: 'same-panel-id' });
+        assert.equal(first.acquired, true);
+        if (!first.acquired) throw new Error('Expected lease');
+        const before = await old.read(oldHandle);
+        await old.mutate({ projectHandle: oldHandle, expectedRevision: before.revision, leaseToken: first.token,
+            operation: { type: 'begin-assistant', chatId, message: { schemaVersion: 1, id: id(),
+                role: 'assistant', createdAt: before.chats[0].updatedAt, content: '',
+                execution: { schemaVersion: 1, id: id(), status: 'pending',
+                    selectedModel: { connectionId: 'local', modelId: 'model' },
+                    startedAt: before.chats[0].updatedAt } } } });
+        assert.equal((await active.claim({ projectHandle: activeHandle, chatId, ownerId: 'same-panel-id' })).acquired, false);
+        await assert.rejects(otherProject.claim({ projectHandle: foreignHandle, chatId, ownerId: 'same-panel-id' }), /Chat not found/);
+        // Simulate page unload: the browser cannot send a final release RPC, but
+        // the backend observes the transport close while its process stays alive.
+        old.dispose();
+        let replacement: Awaited<ReturnType<typeof successor.claim>> | undefined;
+        for (let attempt = 0; attempt < 100; attempt++) {
+            replacement = await successor.claim({ projectHandle: nextHandle, chatId, ownerId: 'same-panel-id' });
+            if (replacement.acquired) break;
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        assert.equal(replacement?.acquired, true);
+        if (!replacement?.acquired) throw new Error('Lease was not released on socket close');
+        const recovered = await successor.read(nextHandle);
+        const pending = recovered.chats.find(chat => chat.id === chatId)?.messages[0];
+        assert.equal(pending?.role, 'assistant');
+        if (pending?.role === 'assistant') assert.equal(pending.execution.status, 'failed');
+        await assert.rejects(repository.renew(root, chatId, first.token), /lost/);
+        await assert.rejects(repository.release(root, chatId, first.token), /lost/);
+        await assert.rejects(repository.mutate(root, recovered.revision, { type: 'append-user', chatId,
+            message: { schemaVersion: 1, id: id(), role: 'user', createdAt: recovered.chats[0].updatedAt,
+                content: 'stale writer', contextRefs: [] } }, first.token), /lease required/);
+        assert.equal((await active.claim({ projectHandle: activeHandle, chatId, ownerId: 'other-tab' })).acquired, false);
+        assert.equal((await active.claim({ projectHandle: activeHandle, chatId: secondChat, ownerId: 'other-tab' })).acquired, true);
+        await successor.release(nextHandle, chatId, replacement.token);
+    } finally {
+        old.dispose(); active.dispose(); successor.dispose(); otherProject.dispose();
+        await rm(root, { recursive: true, force: true }); await rm(foreign, { recursive: true, force: true });
+    }
+});
+
+test('transport close during an in-flight claim releases the late token', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    const service = new ChatBackend(repository, { notifyChatEvent() {} });
+    let entered!: () => void, resume!: () => void;
+    const claimed = new Promise<void>(resolve => { entered = resolve; });
+    const paused = new Promise<void>(resolve => { resume = resolve; });
+    try {
+        const { projectHandle } = await service.attach(pathToFileURL(root).href);
+        const chatId = id();
+        await service.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const claim = repository.claim.bind(repository);
+        repository.claim = async (project, chat, owner) => {
+            const result = await claim(project, chat, owner);
+            if (result.acquired) { entered(); await paused; }
+            return result;
+        };
+        const pending = service.claim({ projectHandle, chatId, ownerId: 'old-tab' });
+        await claimed;
+        service.dispose();
+        resume();
+        await assert.rejects(pending, /Disposed Chat connection/);
+        repository.claim = claim;
+        assert.equal((await repository.claim(root, chatId, 'new-tab')).acquired, true);
+    } finally {
+        resume?.(); service.dispose();
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
 test('ownership gates turn writes and transient deltas; search reads saved Chat', async () => {
     const root = await folder(), repository = new ChatRepository(), events: ChatEvent[] = [];
     const service = new ChatBackend(repository, { notifyChatEvent: event => events.push(event) });

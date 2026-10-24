@@ -85,6 +85,8 @@ export class ChatBackend implements ChatService {
     private attaching = 0;
     private readonly unlisten: () => void;
     private readonly turns = new Map<string, { token: string; abort: AbortController }>();
+    /** Leases belong to this RPC connection, not to the reusable panel ID or backend PID. */
+    private readonly leases = new Map<string, { root: string; token: string }>();
     private readonly pendingCancel = new Map<string, string>();
     private readonly proposals = new Map<string, { id: string; messageId: string; leaseToken: string;
         handle?: string; request?: PlanningActionRequest; token?: string; changedIds: string[];
@@ -243,9 +245,12 @@ export class ChatBackend implements ChatService {
         const result = await this.repository.claim(root, request.chatId, request.ownerId);
         if (result.acquired) {
             try {
+                if (this.disposed) throw new Error('Disposed Chat connection');
                 // A new lease cannot approve an in-memory preview from an earlier owner/session.
                 await this.retirePending(root, request.chatId, result.token);
+                if (this.disposed) throw new Error('Disposed Chat connection');
                 this.clearProposal(request.chatId);
+                this.leases.set(request.chatId, { root, token: result.token });
             } catch (error) {
                 await this.repository.release(root, request.chatId, result.token).catch(() => {});
                 throw error;
@@ -256,8 +261,10 @@ export class ChatBackend implements ChatService {
     renew(projectHandle: string, chatId: string, token: string) {
         return this.repository.renew(this.active(projectHandle), chatId, token);
     }
-    release(projectHandle: string, chatId: string, token: string) {
-        return this.repository.release(this.active(projectHandle), chatId, token);
+    async release(projectHandle: string, chatId: string, token: string) {
+        const root = this.active(projectHandle);
+        await this.repository.release(root, chatId, token);
+        if (this.leases.get(chatId)?.token === token) this.leases.delete(chatId);
     }
     publishDelta(request: ChatDeltaRequest) {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat delta request');
@@ -919,9 +926,17 @@ export class ChatBackend implements ChatService {
         else this.pendingCancel.set(chatId, leaseToken);
     }
     dispose(): void {
+        if (this.disposed) return;
         this.disposed = true;
         for (const chatId of this.proposals.keys()) this.clearProposal(chatId);
         for (const turn of this.turns.values()) turn.abort.abort();
+        // Browser unload cannot reliably finish an RPC release. The server still has
+        // the connection's exact tokens when its socket closes. Token checks in the
+        // repository prevent a delayed release from touching a successor lease.
+        for (const [chatId, lease] of this.leases) {
+            void this.repository.release(lease.root, chatId, lease.token).catch(() => {});
+        }
+        this.leases.clear();
         this.bridgePlanning?.dispose?.();
         this.unlisten();
     }

@@ -90,6 +90,8 @@ export class ChatPanelController {
     private lease?: { workspace: string; chatId: string; connection: ChatConnection; handle: string; token: string };
     private renewal?: ReturnType<typeof setInterval>;
     private restoreRetry?: ReturnType<typeof setTimeout>;
+    private retryChatId?: string;
+    private restoreAttempts = 0;
     private restored?: { workspace: string; chatId: string };
     private restoredPlanning?: { workspace: string; selection: PlanningSelection };
     private departing?: Promise<void>;
@@ -165,6 +167,12 @@ export class ChatPanelController {
                     this.changed();
                     return;
                 }
+                if (event.kind === 'lease-changed' && event.chatId === this.retryChatId) {
+                    const chatId = this.retryChatId!;
+                    // The old connection may have closed before its browser could
+                    // finish a release RPC. Recheck through the normal atomic claim.
+                    void this.select(chatId, true);
+                }
                 this.eventRevision = Math.max(this.eventRevision, event.revision);
                 if (!this.pending && !this.running && this.handle && event.revision > (this.snapshot?.revision ?? -1)) void this.refresh();
             } });
@@ -193,6 +201,7 @@ export class ChatPanelController {
     restore(workspace: string, mode: ChatMode, chatId?: string): void {
         if (this.disposed) return;
         this.clearRestoreRetry();
+        this.restoreAttempts = 0;
         this.restored = mode === 'chat' && chatId ? { workspace, chatId } : undefined;
         if (this.restored && this.workspace === workspace && this.handle) {
             const restored = this.restored;
@@ -230,6 +239,7 @@ export class ChatPanelController {
 
     private async doSelect(chatId: string | undefined, restoring: boolean): Promise<boolean> {
         this.clearRestoreRetry();
+        if (!restoring) this.restoreAttempts = 0;
         const selection = ++this.selection;
         const previous = [...this.selections];
         if (chatId && !this.snapshot?.chats.some(chat => chat.id === chatId)) {
@@ -263,20 +273,32 @@ export class ChatPanelController {
                 return false;
             }
             if (!claim.acquired) {
-                this.error = restoring ? `Chat is open in another window (${claim.ownerId}); restore will retry after its lease expires.` :
-                    `Chat is open in another window (${claim.ownerId}).`;
+                this.error = restoring ? this.restoreAttempts >= 2 ?
+                    `Chat is still owned by ${claim.ownerId}; select it to retry.` :
+                    `Chat is currently owned by ${claim.ownerId}; restore will retry after release or lease expiry.` :
+                    `Chat is currently owned by ${claim.ownerId}.`;
                 this.owners.release(workspace, chatId, this.panelId);
                 if (restoring) {
-                    this.restoreRetry = setTimeout(() => {
-                        this.restoreRetry = undefined;
-                        if (!this.disposed && selection === this.selection && this.workspace === workspace &&
-                            this.handle === handle) void this.select(chatId, true);
-                    }, Math.max(1, Math.min(60_000, claim.retryAfterMs)));
+                    this.retryChatId = chatId;
+                    // A close event can overtake the denied claim response. One
+                    // quick recheck closes that gap. One TTL retry covers a lost
+                    // close signal; then wait for a release event or user selection.
+                    const attempt = ++this.restoreAttempts;
+                    if (attempt <= 2) {
+                        const retryAfterMs = attempt === 1 ? Math.min(100, claim.retryAfterMs) : claim.retryAfterMs;
+                        this.restoreRetry = setTimeout(() => {
+                            this.restoreRetry = undefined;
+                            this.retryChatId = undefined;
+                            if (!this.disposed && selection === this.selection && this.workspace === workspace &&
+                                this.handle === handle) void this.select(chatId, true);
+                        }, Math.max(1, Math.min(60_000, retryAfterMs)));
+                    }
                 }
                 this.changed();
                 return false;
             }
             this.lease = { workspace, chatId, connection, handle, token: claim.token };
+            this.restoreAttempts = 0;
             this.chatId = chatId; this.mode = 'chat'; this.stream = undefined; this.changed();
             this.renewal = setInterval(() => {
                 if (this.lease?.token !== claim.token) return;
@@ -302,6 +324,7 @@ export class ChatPanelController {
     private clearRestoreRetry(): void {
         if (this.restoreRetry) clearTimeout(this.restoreRetry);
         this.restoreRetry = undefined;
+        this.retryChatId = undefined;
     }
 
     async refresh(retainError = false): Promise<void> {

@@ -314,6 +314,33 @@ test('saved Chat restore reclaims an orphaned browser lease only after expiry', 
     }
 });
 
+test('saved Chat restore wakes on old transport close without a 60-second wait', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-chat-reload-'));
+    const workspace = pathToFileURL(root).href, repository = new ChatRepository(), chatId = randomUUID();
+    const old = connect(repository);
+    const restored = new ChatPanelController(() => connect(repository), () => {},
+        new ChatOpenOwners(), 'same-panel-id');
+    try {
+        await repository.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+        const { projectHandle } = await old.attach(workspace);
+        const lease = await old.claim({ projectHandle, chatId, ownerId: 'same-panel-id' });
+        assert.equal(lease.acquired, true);
+        if (!lease.acquired) throw new Error('Expected original lease');
+        restored.restore(workspace, 'chat', chatId);
+        await restored.attach(workspace);
+        await until(() => restored.error.includes('currently owned'));
+        assert.equal(restored.mode, 'select-chat');
+        old.dispose(); // Browser RPC release was lost; server connection close still runs.
+        await until(() => restored.chatId === chatId);
+        assert.equal(restored.mode, 'chat');
+        assert.equal(restored.error, '');
+        await assert.rejects(repository.renew(root, chatId, lease.token), /lost/);
+    } finally {
+        restored.dispose(); old.dispose();
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
 test('backend restart reclaims a dead owner while project switch cancels pending restore', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-chat-restart-'));
     const other = await mkdtemp(join(tmpdir(), 'dope-chat-switch-'));

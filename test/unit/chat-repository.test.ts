@@ -17,6 +17,21 @@ const model = { connectionId: 'local', modelId: 'model' };
 const provenance = { schemaVersion: 1 as const, ...model, providerId: 'test', modelLabel: 'Test' };
 const emptyAnalysis = { projects: [], nodes: [], relationships: [], evidence: [], status: { completeness: 'complete' as const, errors: [] } };
 
+test('simultaneous claims across repository instances have exactly one writer', async () => {
+  const root = await folder(), chatId = id();
+  const first = new ChatRepository(), second = new ChatRepository();
+  try {
+    await first.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const results = await Promise.all([first.claim(root, chatId, 'first-tab'), second.claim(root, chatId, 'second-tab')]);
+    assert.equal(results.filter(result => result.acquired).length, 1);
+    const winner = results.find(result => result.acquired);
+    if (!winner?.acquired) throw new Error('No writer');
+    await assert.rejects(first.release(root, chatId, 'guessed-token'), /lost/);
+    assert.equal((await second.claim(root, chatId, 'same-panel-id')).acquired, false);
+    await first.release(root, chatId, winner.token);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('nested folders and chats survive copy/reopen with stable ID, revisions and bounded search', async () => {
   const root = await folder(), copyRoot = await folder();
   const repo = new ChatRepository(), chatId = id(), messageId = id();
