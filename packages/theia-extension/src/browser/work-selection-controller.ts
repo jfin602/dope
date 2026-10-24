@@ -263,6 +263,8 @@ export class WorkSelectionController {
     readonly phase: PhaseStackController;
     project?: string;
     handle?: string;
+    attachState: 'idle' | 'loading' | 'attached' | 'unavailable' = 'idle';
+    selectionState: 'idle' | 'loading' | 'attached' | 'unavailable' | 'not-found' = 'idle';
     tasks: AgentTask[] = [];
     runs: AgentRun[] = [];
     selectedRun?: AgentRun;
@@ -289,8 +291,9 @@ export class WorkSelectionController {
     private serial = 0;
 
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void,
-        private readonly resolveTarget?: (policy: AgentTask['modelPolicy']) => Promise<{ target?: AgentTarget; reason: string }>) {
-        this.phase = new PhaseStackController(runtime, changed);
+        private readonly resolveTarget?: (policy: AgentTask['modelPolicy']) => Promise<{ target?: AgentTarget; reason: string }>,
+        private readonly attachLimitMs = 10000) {
+        this.phase = new PhaseStackController(runtime, changed, attachLimitMs);
     }
     /** Adapter for the UI: capture only existing controller eligibility, then project it without effects. */
     view(selection: WorkSelection): WorkViewModel {
@@ -322,21 +325,38 @@ export class WorkSelectionController {
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;
         ++this.startEpoch;
-        this.project = project; this.handle = undefined; this.tasks = []; this.runs = [];
+        this.project = project; this.handle = undefined; this.attachState = project ? 'loading' : 'idle';
+        this.tasks = []; this.runs = [];
         this.startBusy = false; this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false;
         this.selectedTaskId = undefined; this.startTarget = undefined;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.message = '';
+        this.selectionState = 'idle';
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.changed();
         await this.phase.attach(project);
         if (serial !== this.serial || !project) return;
         this.handle = this.phase.handle;
         if (!this.handle) {
+            this.attachState = 'unavailable';
             this.message = this.phase.message || 'Work could not attach to this project.';
             this.changed();
             return;
         }
-        await this.refresh();
+        this.attachState = 'attached';
+        this.changed();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            await Promise.race([this.refresh(), new Promise<never>((_, reject) => {
+                timer = setTimeout(() => reject(new Error('work-read-timeout')), this.attachLimitMs);
+            })]);
+        } catch {
+            if (serial === this.serial) {
+                ++this.serial;
+                this.handle = undefined; this.attachState = 'unavailable';
+                this.message = 'Work history did not respond. Retry to attach again.';
+                this.changed();
+            }
+        } finally { if (timer) clearTimeout(timer); }
     }
     async refresh(): Promise<void> {
         const handle = this.handle, serial = this.serial;
@@ -353,13 +373,19 @@ export class WorkSelectionController {
         await Promise.all([this.phase.scan(), this.refresh()]);
     }
     async select(selection: WorkSelection | undefined, navigationOnly = false): Promise<WorkSelection | undefined> {
-        const handle = this.handle, serial = ++this.serial;
+        const handle = this.handle;
+        // Back during initial attachment clears presentation without cancelling
+        // the project attach that the Select Work page still needs.
+        const serial = !selection && !handle && this.attachState === 'loading' ? this.serial : ++this.serial;
+        this.selectionState = !selection ? 'idle' : handle ? 'loading' : 'unavailable';
         this.selectedTaskId = selection?.kind === 'task' ? selection.id : undefined;
         this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startTarget = undefined;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.transcriptIncomplete = false;
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
-        if (!handle || !selection) { this.changed(); return; }
+        if (!selection && this.phase.handle) this.phase.cancelSelection();
+        this.changed();
+        if (!handle || !selection) return;
         if (selection.kind === 'sequence') {
             let sequence: AgentTaskSequence | undefined;
             const candidate = this.phase.stacks.find(item =>
@@ -371,9 +397,11 @@ export class WorkSelectionController {
             if (serial !== this.serial || handle !== this.handle) return;
             if (!sequence) {
                 if (!this.phase.message) this.phase.message = 'Prompt Stack could not be opened. Refresh and try again.';
+                this.selectionState = this.phase.message.includes('could not be read') ? 'unavailable' : 'not-found';
                 this.changed();
                 return;
             }
+            this.selectionState = 'attached';
             this.changed();
             return { kind: 'sequence', id: sequence.id };
         }
@@ -411,12 +439,16 @@ export class WorkSelectionController {
                     cursor = result.nextSequence;
                 }
             }
-            this.changed();
-            if (task && (selection.kind === 'task' || run?.taskId === task.id)) return selection;
-            this.message = 'Work detail could not be opened in this project.';
+            if (task && (selection.kind === 'task' || run?.taskId === task.id)) {
+                this.selectionState = 'attached'; this.changed(); return selection;
+            }
+            this.selectionState = 'not-found';
+            this.message = 'Work was not found in this project.';
             this.changed();
         } catch {
-            if (serial === this.serial) { this.message = 'Work detail could not be read.'; this.changed(); }
+            if (serial === this.serial) {
+                this.selectionState = 'unavailable'; this.message = 'Work detail could not be read.'; this.changed();
+            }
         }
     }
     acceptStartGrant(accepted: boolean): void { this.acceptedStartGrant = accepted; this.changed(); }

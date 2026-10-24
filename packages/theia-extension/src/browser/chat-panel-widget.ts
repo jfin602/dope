@@ -108,7 +108,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.node.append(this.status, this.content);
-        this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.attach(); });
+        this.rootsListener = workspaces.onWorkspaceChanged(() => { this.initialAttach = this.attach(); });
         this.modelsListener = onModelsChanged?.(() => { if (this.module === 'chat') void this.loadModels();
             void this.directController?.resolveTarget();
             void this.workController?.phase.refresh();
@@ -191,14 +191,32 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (this.module === 'chat') this.controller.restore(layout.workspace, layout.chatId ? 'chat' : 'select-chat', layout.chatId);
         const pin = (state as { planningContext?: PlanningSelection }).planningContext;
         if (this.module === 'chat' && pin) this.controller.restorePlanning('pin', pin, layout.workspace);
+        if (this.module === 'work') void this.initialAttach.then(() => this.restoreWorkSelection());
+    }
+
+    private async restoreWorkSelection(): Promise<void> {
+        const request = this.workspaceRequest;
+        const workspace = this.panel.workspace;
+        const selection = this.panel.work;
+        const controller = this.workController;
+        if (!workspace || !selection || !controller || controller.project !== workspace || !controller.handle) return;
+        const canonical = await controller.select(selection, true);
+        if (request !== this.workspaceRequest || this.isDisposed || this.panel.workspace !== workspace ||
+            controller.project !== workspace || this.panel.work?.kind !== selection.kind ||
+            this.panel.work.id !== selection.id) return;
+        if (canonical && (canonical.kind !== selection.kind || canonical.id !== selection.id))
+            this.panel.selectWork(canonical);
+        this.render();
     }
 
     private async attach(): Promise<void> {
         const request = ++this.workspaceRequest;
+        const previous = this.panel.layout();
         this.composingWork = false;
         this.lastWorkSelection = undefined;
         // Invalidate the old project immediately while workspace roots resolve.
         this.panel.attach(undefined);
+        if (previous.workspace) this.panel.restore(previous);
         await this.workController?.attach(undefined);
         await this.directController?.attach(undefined);
         await this.controller.attach(undefined);
@@ -210,8 +228,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const workAttached = this.workController?.attach(workspace);
         void this.directController?.attach(workspace);
         void workAttached?.then(() => {
-            if (!this.isDisposed && request === this.workspaceRequest && this.panel.work)
-                void this.workController?.select(this.panel.work);
+            if (!this.isDisposed && request === this.workspaceRequest) void this.restoreWorkSelection();
         });
         if (this.module === 'chat') await this.controller.attach(workspace);
         else await workAttached;
@@ -364,6 +381,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }));
         this.content.append(header);
         if (!controller?.handle) return;
+        if (work && controller.selectionState !== 'attached') {
+            const detail = document.createElement('p'); detail.setAttribute('role', 'status');
+            detail.textContent = controller.selectionState === 'loading' ? 'Loading Work detail…' :
+                controller.selectionState === 'not-found' ? 'Work was not found in this project.' :
+                    controller.selectionState === 'unavailable' ?
+                        controller.message || controller.phase.message || 'Work detail is unavailable.' :
+                        'Select Work to continue.';
+            this.content.append(detail);
+            if (controller.selectionState === 'unavailable' || controller.selectionState === 'not-found')
+                this.content.append(this.button('Retry', () => void this.restoreWorkSelection()));
+            return;
+        }
         if (!work && this.composingWork) { this.renderWorkComposer(); return; }
         if (controller.message || controller.phase.message) {
             const status = document.createElement('p'); status.setAttribute('role', 'status');
@@ -1209,12 +1238,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
         this.status.textContent = this.panel.mode === 'chat' ?
             state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '') :
-            !this.panel.workspace ? 'Open one project to use Work.' : !this.workController?.handle ?
-                this.workController?.message || 'Loading Work…' : '';
-        if (this.panel.mode === 'work' && this.panel.workspace && !this.workController?.handle &&
-            this.workController?.message) this.status.append(' ', this.button('Retry', () => {
-                void this.workController?.attach(this.panel.workspace).then(() => this.directController?.attach(this.panel.workspace));
-            }));
+            !this.panel.workspace ? 'Open one project to use Work.' : this.workController?.attachState === 'loading' ?
+                'Loading Work…' : this.workController?.attachState === 'unavailable' ?
+                    this.workController.message || 'Work is unavailable.' : '';
+        if (this.panel.mode === 'work' && this.panel.workspace && this.workController?.attachState === 'unavailable') {
+            this.status.append(' ', this.button('Retry', () => { this.initialAttach = this.attach(); }));
+            this.status.append(' ', this.button('Select Work', () => { this.panel.selectWork(undefined); this.render(); }));
+        }
         if (this.panel.mode === 'chat' && state.error.includes('Interactive role')) this.status.append(' ',
             this.button('Configure Interactive in Roles', () => { void this.aiCenter?.openRole('interactive'); }));
         this.content.replaceChildren();

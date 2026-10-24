@@ -11,10 +11,19 @@ export class WorkSelectionNavigator {
     select(selection?: WorkSelection, navigationOnly = false): Promise<WorkSelection | undefined> {
         const request = ++this.request;
         const workspace = this.panel.workspace;
+        if (!selection) {
+            // Back must work even if an earlier detail RPC never settles.
+            this.panel.selectWork(undefined);
+            this.pending = Promise.resolve();
+            return this.controller.select(undefined).then(() => undefined);
+        }
         const operation = this.pending.then(async () => {
             if (request !== this.request || workspace !== this.panel.workspace ||
                 workspace !== this.controller.project) return;
-            this.panel.selectWork(undefined);
+            // Keep the exact owner reserved while its detail is re-read. Releasing
+            // it here lets a concurrent History open create a second Work panel.
+            if (!selection || this.panel.work?.kind !== selection.kind || this.panel.work.id !== selection.id)
+                this.panel.selectWork(undefined);
             const canonical = await this.controller.select(selection, navigationOnly);
             if (request !== this.request || workspace !== this.panel.workspace ||
                 workspace !== this.controller.project) return;

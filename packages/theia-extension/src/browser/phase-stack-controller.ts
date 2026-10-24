@@ -25,7 +25,23 @@ export class PhaseStackController {
     private lastView = '';
     private validationTaskId?: string;
 
-    constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void) {}
+    private async bounded<T>(operation: Promise<T>): Promise<T> {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            return await Promise.race([operation, new Promise<never>((_, reject) => {
+                timer = setTimeout(() => reject(new Error('attach-timeout')), this.attachLimitMs);
+            })]);
+        } finally { if (timer) clearTimeout(timer); }
+    }
+
+    constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void,
+        private readonly attachLimitMs = 10000) {}
+    cancelSelection(): void {
+        ++this.serial;
+        this.busy = false; this.refreshing = false;
+        this.selected = undefined; this.run = undefined; this.message = '';
+        this.changed();
+    }
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;
         this.busy = false; this.refreshing = false;
@@ -36,11 +52,19 @@ export class PhaseStackController {
         this.message = ''; this.lastView = ''; this.changed();
         if (!project) return;
         try {
-            const { projectHandle } = await this.runtime.attach(project);
+            // An RPC can remain pending across a backend restart. Bound this read-only
+            // attachment and invalidate its eventual reply; Retry starts a fresh epoch.
+            const { projectHandle } = await this.bounded(this.runtime.attach(project));
             if (serial !== this.serial) return;
             this.handle = projectHandle;
-            await this.scan();
-        } catch { if (serial === this.serial) { this.message = 'Phase Stack could not attach to this project.'; this.changed(); } }
+            await this.bounded(this.scan());
+        } catch (error) { if (serial === this.serial) {
+            ++this.serial;
+            this.handle = undefined; this.busy = false; this.refreshing = false;
+            this.message = error instanceof Error && error.message === 'attach-timeout' ?
+                'Work connection did not respond. Retry to attach again.' : 'Phase Stack could not attach to this project.';
+            this.changed();
+        } }
     }
     setTasksRoot(value: string): void {
         this.tasksRoot = value; this.stacks = []; this.selected = undefined;
@@ -123,7 +147,7 @@ export class PhaseStackController {
         finally { if (serial === this.serial) { this.busy = false; this.changed(); } }
     }
     async selectStored(sequenceId: string, refresh = true): Promise<AgentTaskSequence | undefined> {
-        if (!this.handle || this.busy) return;
+        if (!this.handle) return;
         const handle = this.handle, serial = this.serial;
         let sequence = this.sequences.find(item => item.id === sequenceId);
         if (!sequence) {
