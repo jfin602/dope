@@ -54,6 +54,12 @@ test('validated plan projects substantial readable prose and distinguishes verif
     assert.match(answer, /diff\.ts \(unverified/);
     assert.match(answer, /GUI qualification/);
     assert.doesNotMatch(answer, /"type":"implementation-plan"/);
+    const hostile = { ...plan, steps: [{ ...plan.steps[0], detail:
+        '![remote pixel](https://example.invalid/pixel) <script>alert(1)</script>' }, plan.steps[1]] };
+    const html = renderUntrustedMessageHtml(implementationPlanAnswer({ ...message,
+        content: JSON.stringify(hostile) })!);
+    assert.doesNotMatch(html, /<(?:img|script|iframe)\b/i);
+    assert.match(html, /&lt;script&gt;/);
     assert.equal(implementationPlanAnswer({ ...message, planningActivity: undefined }), undefined);
 });
 
