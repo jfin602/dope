@@ -3,16 +3,17 @@ import type { ChatAssistantMessage } from '@dope/chat';
 export function isDraftPlanningAction(type: string): boolean {
     return ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint', 'reorder-phase',
         'reorder-checkpoint', 'split-checkpoint', 'move-checkpoint', 'add-dependency',
-        'remove-dependency', 'create-correction', 'attach-correction', 'draft-sequence'].includes(type);
+        'remove-dependency', 'create-correction', 'attach-correction', 'draft-sequence', 'implementation-plan'].includes(type);
 }
 
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
-    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'bridge-proposal', 'no-action'].includes(activity.kind))
+    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'bridge-proposal', 'no-action'].includes(activity.kind))
         return undefined;
     const label = activity.verifiedGuidance && noActionEnvelope(message) ? 'Verified Dope guidance' :
         activity.kind === 'no-action' ? 'No planning action' :
+        activity.kind === 'implementation-plan' ? 'Implementation plan' :
         activity.kind === 'bridge-proposal' ? 'Bridge suggestion' :
         activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence' ? 'Roadmap steps' :
         activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
@@ -30,6 +31,33 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
     };
     return { label, status: statuses[activity.status],
         alert: ['rejected', 'denied', 'stale', 'failed', 'cancelled'].includes(activity.status) };
+}
+
+/** Readable projection of a backend-validated plan; the original machine envelope stays inspectable. */
+export function implementationPlanAnswer(message: ChatAssistantMessage): string | undefined {
+    if (message.execution.status !== 'complete' || message.planningActivity?.kind !== 'implementation-plan' ||
+        !['pending', 'applied', 'denied', 'stale'].includes(message.planningActivity.status)) return undefined;
+    try {
+        const plan = JSON.parse(message.content) as { type: string; objective: string; successCriteria: string[];
+            constraints: string[]; assumptions: string[]; steps: { title: string; detail: string;
+                deliverables: string[]; dependsOn: number[]; reuse: { path: string; reason: string }[] }[];
+            tests: string[]; guiQualification: string; risks: string[]; alternatives: string[]; question: string };
+        if (plan.type !== 'implementation-plan' || !Array.isArray(plan.steps) || plan.steps.length < 2) return undefined;
+        const list = (heading: string, items: string[]) => items.length ? `\n**${heading}**\n${items.map(item => `- ${item}`).join('\n')}` : '';
+        const verified = new Set(message.planningActivity.refs.filter(ref => ref.kind === 'file' && ref.sourceHash && ref.includedBytes)
+            .map(ref => ref.id));
+        return `**Goal:** ${plan.objective}${list('Success criteria', plan.successCriteria)}` +
+            list('Developer constraints', plan.constraints) + list('Assumptions and uncertainty', plan.assumptions) +
+            `\n**Implementation steps**\n${plan.steps.map((step, index) =>
+                `${index + 1}. **${step.title}** — ${step.detail}\n   Deliverables: ${step.deliverables.join('; ')}.` +
+                (step.dependsOn.length ? ` Depends on: ${step.dependsOn.join(', ')}.` : '') +
+                (step.reuse.length ? ` Reuse: ${step.reuse.map(item =>
+                    `${item.path} (${verified.has(item.path) ? 'verified source' : 'unverified'}: ${item.reason})`).join('; ')}.` : '')).join('\n')}` +
+            list('Tests', plan.tests) + `\n**GUI qualification:** ${plan.guiQualification}` +
+            list('Risks', plan.risks) + list('Alternatives', plan.alternatives) +
+            (plan.question ? `\n**Material question:** ${plan.question}` : '') +
+            '\n\nThis plan is a proposal. Review it before accepting the noncanonical draft; no Roadmap or project files were changed.';
+    } catch { return undefined; }
 }
 
 /** A saved backend activity marker, completed turn, and intact strict payload are all required. */
@@ -61,6 +89,10 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
 export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
     const activity = message.planningActivity;
     if (!activity) return undefined;
+    if (activity.kind === 'implementation-plan') return { summary:
+        activity.status === 'pending' ? 'The plan is ready for review. The accepted draft and canonical Roadmap are unchanged.' :
+        activity.status === 'applied' ? 'The reviewed plan was saved in the noncanonical draft.' :
+        'The plan was not applied.', questions: [] };
     if (activity.kind === 'bridge-proposal' && activity.status === 'suggested') {
         try {
             const raw = JSON.parse(message.content) as { mapId: string; mapRevision: number;

@@ -112,7 +112,7 @@ test('selected saved Chat previews one noncanonical draft edit; approval, stale,
         assert.equal((await store.read(root)).revision, 0);
         await assert.rejects(backend.runTurn({ projectHandle, chatId: selected, leaseToken: lease.token,
             selectedModel: { connectionId: 'hosted', modelId: 'remote' }, hostedProjectDataAuthorized: true,
-            content: 'Plan' }), /Bridge and greenfield Chat planning require a selected local model/);
+            content: 'Plan' }), /Planning requires a selected local model/);
         assert.equal(hostedCalls, 0);
         outputs.push(proposal(projectId, 0, { type: 'create-phase', title: 'Build' }));
         const pending = (await turn()).proposal;

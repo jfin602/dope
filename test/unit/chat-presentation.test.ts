@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { implementationPlanAnswer, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -30,6 +30,31 @@ test('draft review labels only draft action types', () => {
         assert.equal(isDraftPlanningAction(type), true);
     for (const type of ['edit', 'reorder', 'document-edit', 'unknown'])
         assert.equal(isDraftPlanningAction(type), false);
+});
+
+test('validated plan projects substantial readable prose and distinguishes verified reuse', () => {
+    const plan = { type: 'implementation-plan', objective: 'Build history', successCriteria: ['Browse commits'],
+        constraints: ['Ask before checkout'], assumptions: ['Diff API shape is uncertain'],
+        steps: [{ title: 'Inspect', detail: 'Read Git integration. '.repeat(90), deliverables: ['Map'], dependsOn: [],
+            reuse: [{ path: 'packages/git/src/history.ts', reason: 'Existing history owner' }] },
+        { title: 'Build', detail: 'Wire the panel safely. '.repeat(86), deliverables: ['Panel'], dependsOn: [1],
+            reuse: [{ path: 'packages/git/src/diff.ts', reason: 'Potential diff UI' }] }],
+        tests: ['Unit test'], guiQualification: 'Open the panel', risks: ['Stale branch'],
+        alternatives: ['Read-only first'], question: '' };
+    const message = { content: JSON.stringify(plan), execution: { status: 'complete' }, planningActivity: {
+        schemaVersion: 1, kind: 'implementation-plan', status: 'pending', proposalId: 'proposal',
+        refs: [{ kind: 'file', id: 'packages/git/src/history.ts', sourceHash: 'a'.repeat(64), includedBytes: 100 }],
+    } } as ChatAssistantMessage;
+    const answer = implementationPlanAnswer(message)!;
+    assert.ok(answer.length > 4000);
+    assert.match(answer, /Goal:.*Build history/);
+    assert.match(answer, /1\. \*\*Inspect/);
+    assert.match(answer, /2\. \*\*Build/);
+    assert.match(answer, /history\.ts \(verified source/);
+    assert.match(answer, /diff\.ts \(unverified/);
+    assert.match(answer, /GUI qualification/);
+    assert.doesNotMatch(answer, /"type":"implementation-plan"/);
+    assert.equal(implementationPlanAnswer({ ...message, planningActivity: undefined }), undefined);
 });
 
 test('trusted greenfield creation is described as creation even when it has an objective', () => {

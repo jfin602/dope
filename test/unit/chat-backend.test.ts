@@ -7,6 +7,8 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
@@ -130,4 +132,65 @@ test('plan investigation rejects unmeasured local capacity before model inferenc
         /context is too small|capacity/);
         assert.equal(generated, false);
     } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('short idea previews a complete noncanonical plan on first local outcome, then requires approval', async () => {
+    const root = await folder(), repository = new ChatRepository(), store = new RoadmapStore();
+    const greenfield = new RoadmapGreenfield(store);
+    const plan = JSON.stringify({ type: 'implementation-plan', objective: 'Visual Git history',
+        successCriteria: ['Checkout and commits work from the history view'], constraints: ['Explicit permissions'],
+        assumptions: ['Diff editor integration needs confirmation'], steps: [
+            { title: 'Inspect Git and diff seams', detail: 'Read the current history and diff owners',
+                deliverables: ['Source map'], dependsOn: [], reuse: [] },
+            { title: 'Build history view', detail: 'Show commits and reuse the diff editor',
+                deliverables: ['History panel'], dependsOn: [1], reuse: [] },
+            { title: 'Add guarded checkout', detail: 'Preview branch changes and require confirmation',
+                deliverables: ['Checkout control'], dependsOn: [2], reuse: [] }],
+        tests: ['Unit history navigation'], guiQualification: 'Exercise checkout and diff in browser',
+        risks: ['Stale branch; refresh before checkout'], alternatives: ['Start with read-only history'], question: '' });
+    let calls = 0, reportedModel = 'q4';
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [{ id: 'q4', label: 'Fixture', usable: true, capabilities: { conversationalText: true,
+            streaming: true, contextWindowTokens: 8192 } }] },
+        { id: 'hosted', ready: true, providerId: 'gemini', models: [{ id: 'remote', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192 } }] }] }),
+        async *generate() { calls++; yield { type: 'delta' as const, text: plan.slice(0, 30) };
+            yield { type: 'complete' as const, text: plan, actualModelId: reportedModel }; } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user' as const, content: 'Add history' }],
+        refs: [], diagnostics: [], usedTokens: 20, budgetTokens: 1000 }) };
+    const grounder = { investigateIdea: async () => ({ blocks: [], diagnostics: [] }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
+        undefined, grounder as never, undefined, greenfield);
+    try {
+        const { handle } = await greenfield.beginImplementationPlan(root);
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        greenfield.bindChat(root, handle, chatId);
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'hosted', modelId: 'remote' }, hostedProjectDataAuthorized: true,
+            content: 'Add history' }), /selected local model/);
+        assert.equal(calls, 0);
+        const before = await store.read(root);
+        const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Add visual Git history; keep permissions explicit' });
+        assert.equal(calls, 1);
+        assert.equal(turn.proposal?.action.type, 'implementation-plan');
+        assert.equal(turn.proposal?.changedIds.length, 3);
+        assert.equal(greenfield.readImplementationPlan(handle), undefined);
+        assert.deepEqual(await store.read(root), before);
+        const message = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
+        assert.equal(message.role === 'assistant' && message.planningActivity?.status, 'pending');
+        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, turn.proposal!.id, true);
+        const accepted = greenfield.readImplementationPlan(handle)!;
+        assert.equal(accepted.steps.length, 3);
+        assert.deepEqual(accepted.steps[2].dependencies, [accepted.steps[1].id]);
+        assert.deepEqual(await store.read(root), before);
+        reportedModel = 'swapped';
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Revise the plan' }), /model changed/);
+        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 1);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

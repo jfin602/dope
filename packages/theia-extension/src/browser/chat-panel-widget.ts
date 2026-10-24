@@ -14,7 +14,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
@@ -1525,6 +1525,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     content.append(explanation);
                 }
                 if (activity) {
+                    const planAnswer = implementationPlanAnswer(message);
+                    if (planAnswer) content.append(renderUntrustedMessageMarkdown(this.markdown, planAnswer));
                     const details = document.createElement('details');
                     details.className = 'dope-chat-planning-activity';
                     details.open = this.openPlanningActivities.has(message.id);
@@ -1799,10 +1801,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const proposal = state.planningProposal;
             const review = document.createElement('section');
             review.className = 'dope-chat-context-diagnostics';
-            review.setAttribute('aria-label', 'Roadmap proposal review');
+            review.setAttribute('aria-label', proposal.action.type === 'implementation-plan' ? 'Implementation plan review' : 'Roadmap proposal review');
             const heading = document.createElement('strong');
             const draftProposal = isDraftPlanningAction(proposal.action.type);
-            heading.textContent = `Review ${draftProposal ? 'Proposed draft' : 'Roadmap proposal'} · revision ${proposal.revision}`;
+            heading.textContent = `Review ${proposal.action.type === 'implementation-plan' ? 'implementation plan' : draftProposal ? 'proposed draft' : 'Roadmap proposal'} · revision ${proposal.revision}`;
             const affected = document.createElement('p');
             affected.textContent = `Affected: ${proposal.changedIds.join(', ')}`;
             const diff = document.createElement('details');

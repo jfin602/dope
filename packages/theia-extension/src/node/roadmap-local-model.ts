@@ -33,6 +33,53 @@ export interface LocalPlanningAnswerCheck {
     validateBridge?: (value: Record<string, unknown>) => Promise<boolean>;
 }
 
+export interface LocalImplementationPlan {
+    type: 'implementation-plan'; objective: string; successCriteria: string[]; constraints: string[];
+    assumptions: string[]; steps: { title: string; detail: string; deliverables: string[];
+        dependsOn: number[]; reuse: { path: string; reason: string }[] }[];
+    tests: string[]; guiQualification: string; risks: string[]; alternatives: string[]; question: string;
+}
+const planLine = (value: unknown, limit: number): value is string =>
+    typeof value === 'string' && !!value.trim() && value.length <= limit && !/[\0-\x1f]/.test(value);
+const planLines = (value: unknown, max: number, limit: number): value is string[] =>
+    Array.isArray(value) && value.length <= max && value.every(item => planLine(item, limit));
+export function validImplementationPlan(value: unknown): value is LocalImplementationPlan {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const raw = value as Record<string, unknown>;
+    if (Object.keys(raw).sort().join(',') !==
+        'alternatives,assumptions,constraints,guiQualification,objective,question,risks,steps,successCriteria,tests,type' ||
+        raw.type !== 'implementation-plan' || !planLine(raw.objective, 2048) ||
+        !planLines(raw.successCriteria, 8, 512) || !raw.successCriteria.length ||
+        !planLines(raw.constraints, 16, 512) || !planLines(raw.assumptions, 8, 512) ||
+        !planLines(raw.tests, 12, 512) || !raw.tests.length || !planLine(raw.guiQualification, 1024) ||
+        !planLines(raw.risks, 8, 512) || !planLines(raw.alternatives, 8, 512) ||
+        typeof raw.question !== 'string' || raw.question.length > 512 || /[\0-\x1f]/.test(raw.question) ||
+        !Array.isArray(raw.steps) || raw.steps.length < 2 || raw.steps.length > 16) return false;
+    const steps = raw.steps as unknown[];
+    if (Buffer.byteLength(JSON.stringify(raw), 'utf8') > 16000 ||
+        new Set(steps.flatMap(value => value && typeof value === 'object' && !Array.isArray(value) &&
+            Array.isArray((value as Record<string, unknown>).reuse) ?
+            ((value as Record<string, unknown>).reuse as { path?: string }[]).map(item => item?.path) : [])).size > 64)
+        return false;
+    return steps.every((value, index) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+        const step = value as Record<string, unknown>;
+        return Object.keys(step).sort().join(',') === 'deliverables,dependsOn,detail,reuse,title' &&
+            planLine(step.title, 200) && !/[\r\n]/.test(step.title) && planLine(step.detail, 2048) &&
+            planLines(step.deliverables, 8, 512) && step.deliverables.length > 0 &&
+            Array.isArray(step.dependsOn) && step.dependsOn.length <= index &&
+            new Set(step.dependsOn).size === step.dependsOn.length &&
+            step.dependsOn.every(item => Number.isSafeInteger(item) && item >= 1 && item <= index) &&
+            Array.isArray(step.reuse) && step.reuse.length <= 8 && step.reuse.every(item =>
+                item && typeof item === 'object' && !Array.isArray(item) &&
+                Object.keys(item).sort().join(',') === 'path,reason' &&
+                planLine(item.path, 512) && planLine(item.reason, 512)) &&
+            (step.detail as string).length + (index === steps.length - 1 ?
+                JSON.stringify([raw.tests, raw.guiQualification, raw.risks, raw.alternatives, raw.question]).length : 0) +
+                JSON.stringify(step.reuse).length < 8192;
+    });
+}
+
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
 export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number,
     limits: Pick<ConversationModelCapabilities, 'maxInputTokens' | 'maxOutputTokens'> = {}) {
@@ -65,7 +112,7 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
     generate: (retryInstruction?: string) => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
-    mode: 'linked' | 'unlinked' | 'draft' | 'help' | 'bridge' = 'unlinked', eligibleObjective = true,
+    mode: 'linked' | 'unlinked' | 'draft' | 'help' | 'bridge' | 'plan' = 'unlinked', eligibleObjective = true,
     check: LocalPlanningAnswerCheck = {}): Promise<T> {
     let lastInvalid = '';
     let retryInstruction: string | undefined;
@@ -91,6 +138,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const value: unknown = JSON.parse(complete.text);
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object required');
             const raw = value as Record<string, unknown>;
+            if (mode === 'plan' && validImplementationPlan(raw)) return complete;
             const proposal = (raw.type === 'roadmap-proposal' && mode === 'unlinked' &&
                 Object.keys(raw).sort().join(',') === 'action,ownerRevision,projectId,type' &&
                 Number.isSafeInteger(raw.ownerRevision) || raw.type === 'roadmap-draft-proposal' && mode === 'draft' &&
@@ -119,7 +167,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             if (mode === 'bridge' && raw.type === 'bridge-proposal' &&
                 await check.validateBridge?.(raw)) return complete;
             if (mode !== 'help' && mode !== 'bridge' && (proposal || sequence || draftSequence || intent)) return complete;
-            if (noAction) {
+            if (noAction && mode !== 'plan') {
                 if (check.requiredOwnerRevision === undefined ||
                     citesOwnerRevision(raw.message as string, check.requiredOwnerRevision)) return complete;
                 incompleteOwnerRevision = true;
@@ -132,10 +180,12 @@ export async function localPlanningJson<T extends { type: string; text: string; 
         if (attempt + 1 < MAX_ATTEMPTS)
             check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
     }
-    return fail(incompleteOwnerRevision ?
+    return fail(mode === 'plan' ?
+        'Local implementation plan incomplete or invalid strict JSON after two attempts; no draft change accepted' :
+        incompleteOwnerRevision ?
         'Local planning answer omitted the requested current Roadmap owner revision after two attempts' :
         'Local planning did not return strict JSON after two attempts', lastInvalid,
-        incompleteOwnerRevision ? 'incomplete-answer' : 'invalid-json');
+        mode === 'plan' || incompleteOwnerRevision ? 'incomplete-answer' : 'invalid-json');
 }
 
 function validNestedAction(value: unknown, mode: 'linked' | 'unlinked' | 'draft'): boolean {

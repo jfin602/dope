@@ -1,10 +1,43 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { localPlanningJson, requestsRoadmapOwnerRevision, roadmapLocalBudget,
+import { localPlanningJson, requestsRoadmapOwnerRevision, roadmapLocalBudget, validImplementationPlan,
     verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
+
+const implementationPlan = { type: 'implementation-plan', objective: 'Add visual Git history',
+    successCriteria: ['Checkout and commits are usable'], constraints: ['Keep permissions explicit'],
+    assumptions: ['Existing diff editor can be reused'], steps: [
+        { title: 'Inspect history', detail: 'Identify Git and diff editor owners', deliverables: ['Source map'], dependsOn: [], reuse: [] },
+        { title: 'Implement history view', detail: 'Wire history to existing diff editor', deliverables: ['History panel'],
+            dependsOn: [1], reuse: [] }], tests: ['Unit history navigation'], guiQualification: 'Exercise checkout in GUI',
+    risks: ['Stale branch state; refresh before action'], alternatives: ['Reuse existing list first'], question: '' };
+
+test('strict plan envelope is separate from the 4000-character no-action and small Roadmap action caps', async () => {
+    const signal = new AbortController().signal;
+    const valid = JSON.stringify({ ...implementationPlan, steps: implementationPlan.steps.map((step, index) => ({
+        ...step, detail: 'Use the existing editor. '.repeat(78) + (index ? 'Wire actions safely.' : 'Inspect source first.') })) });
+    assert.ok(valid.length > 4000);
+    assert.equal(validImplementationPlan(JSON.parse(valid)), true);
+    assert.equal((await localPlanningJson(async function* () { yield complete(valid); }, signal, 16000, 'plan')).text, valid);
+    for (const bad of [
+        { ...implementationPlan, actions: [{ type: 'shell' }] },
+        { ...implementationPlan, steps: [implementationPlan.steps[0]] },
+        { ...implementationPlan, steps: [implementationPlan.steps[0], { ...implementationPlan.steps[1], dependsOn: [2] }] },
+        { ...implementationPlan, steps: Array.from({ length: 17 }, () => implementationPlan.steps[0]) }
+    ]) {
+        assert.equal(validImplementationPlan(bad), false);
+        let calls = 0;
+        await assert.rejects(localPlanningJson(async function* () { calls++; yield complete(JSON.stringify(bad)); },
+            signal, 16000, 'plan'), /strict JSON/);
+        assert.equal(calls, 2);
+    }
+    await assert.rejects(localPlanningJson(async function* () { yield complete(noAction); }, signal, 16000, 'plan'), /strict JSON/);
+    await assert.rejects(localPlanningJson(async function* () { yield complete(valid); }, signal, 1000, 'plan'), /strict JSON/);
+    await assert.rejects(localPlanningJson(async function* () { yield { type: 'delta', text: valid.slice(0, 50) }; },
+        signal, 16000, 'plan'), /without completion/);
+});
 
 test('measured 4096 narrow stress reserves serialized input, system and output', () => {
     const budget = roadmapLocalBudget(4096, 1024);

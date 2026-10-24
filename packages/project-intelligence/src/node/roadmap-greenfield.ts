@@ -464,10 +464,17 @@ export class RoadmapGreenfield {
             throw new Error('Stale implementation plan owner');
         if (!entry.planOnly) this.assertUninitialized(entry.root);
         const existingIds = new Set(entry.implementationPlan?.steps.map(step => step.id) ?? []);
-        const steps = input.steps.map(step => {
+        const assignedIds = input.steps.map(step => step?.id ?? randomUUID());
+        const steps = input.steps.map((step, index) => {
             if (!step || !fields(step, ['title', 'detail', 'expectedOutputs', 'dependencies', 'evidenceIds'], ['id']) ||
                 step.id !== undefined && !existingIds.has(step.id)) throw new Error('Foreign implementation plan step ID');
-            return { ...step, id: step.id ?? randomUUID() };
+            return { ...step, id: assignedIds[index], dependencies: origin === 'model' ? step.dependencies.map(id => {
+                const match = /^step:(\d+)$/.exec(id);
+                if (!match) return id;
+                const prior = Number(match[1]);
+                if (!Number.isSafeInteger(prior) || prior < 1 || prior > index) throw new Error('Invalid plan dependency');
+                return assignedIds[prior - 1];
+            }) : step.dependencies };
         });
         const accepted: ImplementationPlanDraft = { schemaVersion: 1, revision: expectedPlanRevision + 1,
             status: 'accepted', objective: input.objective, constraints: input.constraints, steps,
