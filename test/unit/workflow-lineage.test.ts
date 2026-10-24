@@ -124,6 +124,26 @@ test('captured ideas and accepted brainstorm drafts remain source-scoped and non
     brainstormDraft: { ...source.brainstormDraft, projectId: 'foreign' } }).length, 2);
 });
 
+test('reviewed plan lineage appears only while its canonical linked source is current', () => {
+  const sourceHash = 'f'.repeat(64);
+  const source = roadmap();
+  source.linkedDocument = { projectRoot: '/project', projectId: 'project', path: 'ROADMAP.md',
+    sourceHash, sections: [{ sectionKey: 'first', checkpointId: 'first' }],
+    lastSynced: { sourceHash, roadmapRevision: 1 }, syncState: 'synced' };
+  source.checkpoints[0].source = { path: 'ROADMAP.md', sha256: sourceHash, line: 1, text: 'first' };
+  source.planOrigin = { planRevision: 2, planHash: 'e'.repeat(64), sourceHash,
+    constraints: ['Keep permissions explicit'],
+    steps: [{ stepId: 'step-1', checkpointId: 'first', expectedOutputs: ['History view'] }] };
+  const current = projectWorkflowLineage({ roadmap: source });
+  assert.equal(current[0].links.some(edge => edge.to.kind === 'plan-step' && edge.to.id === 'step-1'), true);
+  assert.equal(current[1].links.some(edge => edge.to.kind === 'plan-step'), false);
+  assert.equal(current[0].stage, 'Roadmapped');
+  source.linkedDocument.sourceHash = 'a'.repeat(64);
+  const stale = projectWorkflowLineage({ roadmap: source });
+  assert.deepEqual(stale[0].unresolved, [{ kind: 'plan-step', id: 'step-1', reason: 'stale' }]);
+  assert.equal(stale[0].links.some(edge => edge.to.kind === 'plan-step'), false);
+});
+
 test('Bridge reconciliation carries physical outcomes with exact Work, validation and History attribution', () => {
   const reported: PlanningMap = { ...map, reconciliation: { basis, at: '2026-10-18', results: [
     { schemaVersion: 1, transformationId: 'change', identityId: 'component', outcome: 'implemented-differently',

@@ -1018,7 +1018,19 @@ export class RoadmapGreenfield {
                 ...phase.checkpoints.filter(item => item.dependencies?.length).map(item => ({
                     sectionKey: keys.get(item.id)!, dependencies: item.dependencies!.map(id => keys.get(id)!) }))
             ]);
-            const result = await this.store.acceptGreenfield(entry.root, 0, preview.path, preview.markdown, topology);
+            // Preserve only reviewed upstream provenance; the Roadmap and linked Markdown own the scope.
+            const plan = entry.implementationPlan;
+            if (plan) verifyPlanEvidence(entry.root, plan);
+            const planOrigin = plan && { planRevision: plan.revision, planHash: hash(JSON.stringify(plan)),
+                constraints: plan.constraints,
+                steps: plan.steps.map(step => {
+                    const projectedId = stableId(`plan-step:${step.id}`);
+                    const sectionKey = keys.get(projectedId);
+                    if (!sectionKey) throw new Error('Reviewed plan step lost its Roadmap projection');
+                    return { stepId: step.id, sectionKey, expectedOutputs: step.expectedOutputs };
+                }) };
+            const result = await this.store.acceptGreenfield(entry.root, 0, preview.path, preview.markdown,
+                topology, planOrigin);
             this.accepting.delete(handle);
             this.cancel(handle);
             return result;

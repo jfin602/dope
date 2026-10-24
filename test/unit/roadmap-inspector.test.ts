@@ -84,6 +84,31 @@ test('Prepare Work refuses a changed Roadmap and clears selection on project cha
     assert.match(model.prepareWorkBlockedReason ?? '', /Select an approved/);
 });
 
+test('Prepare Work carries reviewed plan constraints only from the current linked source', async () => {
+    const index = snapshot();
+    const hash = 'a'.repeat(64);
+    index.linkedDocument = { projectRoot: '/tmp/project', projectId: 'project', path: 'ROADMAP.md',
+        sourceHash: hash, sections: [{ sectionKey: 'p1', checkpointId: 'p1' }],
+        lastSynced: { sourceHash: hash, roadmapRevision: 1 }, syncState: 'synced' };
+    index.checkpoints[0].source = { path: 'ROADMAP.md', sha256: hash, line: 1, text: 'Phase one' };
+    index.planOrigin = { planRevision: 2, planHash: 'b'.repeat(64), sourceHash: hash,
+        constraints: ['Keep permissions explicit'],
+        steps: [{ stepId: 'step', checkpointId: 'p1', expectedOutputs: ['History view'] }] };
+    const state = { index, applied: 0, approved: false };
+    const opened: { requirements: string[]; impactReferences: string[] }[] = [];
+    const service = { ...fake(state), previewDocumentSync: async () => ({ state: 'unchanged',
+        projectId: 'project', revision: 1 }) } as unknown as RoadmapService;
+    const model = new RoadmapInspectorModel(service, async () => {}, async selection => { opened.push(selection); });
+    model.setSnapshot(root, index); model.select('p1');
+    await model.prepareWork();
+    assert.deepEqual(opened[0].requirements, ['Original', 'Keep permissions explicit', 'History view']);
+    assert.match(opened[0].impactReferences[0], /Reviewed plan/);
+    index.linkedDocument.sourceHash = 'c'.repeat(64);
+    model.setSnapshot(root, index);
+    assert.match(model.prepareWorkBlockedReason ?? '', /Approved plan source changed/);
+    assert.equal(opened.length, 1);
+});
+
 test('selection, edit, preview, approval and undo synchronize without inferred Green', async () => {
     const state = { index: snapshot(), applied: 0, approved: false };
     const model = new RoadmapInspectorModel(fake(state));

@@ -342,7 +342,34 @@ test('reviewed plan projects once into the existing draft and keeps Markdown beh
     const canonical = await recovered.accept(handle, document, true);
     assert.equal(canonical.linkedDocument?.path, 'ROADMAP.md');
     assert.equal(canonical.checkpoints.filter(item => item.kind === 'milestone').length, 2);
+    assert.equal(canonical.planOrigin?.planRevision, 2);
+    assert.equal(canonical.planOrigin?.sourceHash, canonical.linkedDocument?.sourceHash);
+    assert.deepEqual(canonical.planOrigin?.steps.map(step => step.stepId), accepted.steps.map(step => step.id));
+    assert.deepEqual(canonical.planOrigin?.steps.map(step => step.expectedOutputs),
+        [['Owner map'], ['History view']]);
+    assert.equal(canonical.planOrigin?.steps.every(step => canonical.checkpoints.some(item =>
+        item.id === step.checkpointId)), true);
+    assert.deepEqual((await new RoadmapStore().read(root)).planOrigin, canonical.planOrigin);
+    const withUnrelatedCheckpoint = await store.mutate(root, canonical.revision, { type: 'create',
+        id: 'unrelated', kind: 'milestone', title: 'Other work', objective: 'Separate scope', order: 99 });
+    assert.deepEqual(withUnrelatedCheckpoint.planOrigin, canonical.planOrigin);
     assert.equal((await readFile(join(root, 'ROADMAP.md'), 'utf8')), document.markdown);
+}));
+
+test('a reviewed pre-authoring Roadmap reorder keeps plan step lineage', async () => fixture(async root => {
+    const drafts = new RoadmapGreenfield(new RoadmapStore());
+    const { handle } = await drafts.beginImplementationPlan(root);
+    const plan = await drafts.applyImplementationPlan(handle,
+        await drafts.previewImplementationPlan(handle, 0, 0, projectionInput()), true);
+    const projection = await drafts.previewImplementationPlanProjection(root, handle);
+    const draft = await drafts.applyImplementationPlanProjection(root, projection, true);
+    const phase = draft.phases[0];
+    drafts.edit(handle, draft.revision, { type: 'reorder-checkpoint', phaseId: phase.id,
+        checkpointId: phase.checkpoints[1].id, order: 0 });
+    const canonical = await drafts.accept(handle, drafts.preview(handle, 'ROADMAP.md'), true);
+    assert.deepEqual(canonical.planOrigin?.steps.map(step => step.stepId), plan.steps.map(step => step.id));
+    assert.deepEqual(canonical.checkpoints.filter(item => item.kind === 'milestone').map(item => item.title),
+        ['Milestone Build history', 'Milestone Inspect history']);
 }));
 
 test('plan projection rejects stale review, foreign project and existing linked source without writing', async () => fixture(async root => {

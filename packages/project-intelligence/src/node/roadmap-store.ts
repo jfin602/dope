@@ -64,9 +64,39 @@ export interface RoadmapIndex {
     linkedDocument?: RoadmapLinkedDocument;
     /** Accepted creation intent. It is not a published Roadmap or a second draft store. */
     pendingCreation?: { path: string; sourceHash: string; content: string;
-        topology?: { sectionKey: string; dependencies: string[]; parentPhaseKey?: string }[] };
+        topology?: { sectionKey: string; dependencies: string[]; parentPhaseKey?: string }[];
+        planOrigin?: PendingPlanOrigin };
+    /** Frozen provenance from a reviewed plan. The Roadmap and its linked source remain authoritative. */
+    planOrigin?: RoadmapPlanOrigin;
 }
+export interface PendingPlanOrigin { planRevision: number; planHash: string; constraints: string[];
+    steps: { stepId: string; sectionKey: string; expectedOutputs: string[] }[] }
+export interface RoadmapPlanOrigin { planRevision: number; planHash: string; sourceHash: string; constraints: string[];
+    steps: { stepId: string; checkpointId: string; expectedOutputs: string[] }[] }
 export type GreenfieldTopology = NonNullable<RoadmapIndex['pendingCreation']>['topology'];
+function validPlanOrigin(value: unknown, pending: boolean): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const origin = value as Record<string, unknown>;
+    const keys = pending ? 'constraints,planHash,planRevision,steps' : 'constraints,planHash,planRevision,sourceHash,steps';
+    if (Object.keys(origin).sort().join(',') !== keys || !revision(origin.planRevision) ||
+        typeof origin.planHash !== 'string' || !/^[a-f0-9]{64}$/.test(origin.planHash) ||
+        !pending && (typeof origin.sourceHash !== 'string' || !/^[a-f0-9]{64}$/.test(origin.sourceHash)) ||
+        !Array.isArray(origin.constraints) || origin.constraints.length > 32 ||
+        origin.constraints.some(item => !text(item, 2048)) ||
+        !Array.isArray(origin.steps) || !origin.steps.length || origin.steps.length > 128) return false;
+    const seen = new Set<string>();
+    return origin.steps.every((value: unknown) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+        const step = value as Record<string, unknown>;
+        const key = pending ? 'sectionKey' : 'checkpointId';
+        if (Object.keys(step).sort().join(',') !== ['expectedOutputs', key, 'stepId'].sort().join(',') ||
+            !id(step.stepId) || !id(step[key]) || seen.has(step.stepId) ||
+            !Array.isArray(step.expectedOutputs) || step.expectedOutputs.length > 16 ||
+            step.expectedOutputs.some(item => !text(item, 1024))) return false;
+        seen.add(step.stepId as string);
+        return true;
+    });
+}
 function validGreenfieldTopology(value: unknown): value is GreenfieldTopology {
     return Array.isArray(value) && value.length <= MAX_CHECKPOINTS &&
         value.every(item => item && typeof item === 'object' && !Array.isArray(item) &&
@@ -198,16 +228,19 @@ export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
     const raw = value as Record<string, unknown>;
     if (Object.keys(raw).sort().join(',') !== ['checkpoints', 'projectId', 'projectRoot', 'revision', 'schemaVersion',
         ...(raw.linkedDocument === undefined ? [] : ['linkedDocument']),
-        ...(raw.pendingCreation === undefined ? [] : ['pendingCreation'])].sort().join(',') ||
+        ...(raw.pendingCreation === undefined ? [] : ['pendingCreation']),
+        ...(raw.planOrigin === undefined ? [] : ['planOrigin'])].sort().join(',') ||
         raw.schemaVersion !== 1 || !id(raw.projectId) || raw.projectId === 'uninitialized' ||
         raw.projectRoot !== root || !revision(raw.revision) || raw.revision === 0 || !Array.isArray(raw.checkpoints) ||
         raw.checkpoints.length > MAX_CHECKPOINTS) fail('schema or project root');
     if (raw.pendingCreation !== undefined) {
         const pending = raw.pendingCreation as Record<string, unknown>;
         if (!pending || typeof pending !== 'object' || Array.isArray(pending) ||
-            Object.keys(pending).sort().join(',') !== (pending.topology === undefined ?
-                'content,path,sourceHash' : 'content,path,sourceHash,topology') ||
+            Object.keys(pending).sort().join(',') !== ['content', 'path', 'sourceHash',
+                ...(pending.topology === undefined ? [] : ['topology']),
+                ...(pending.planOrigin === undefined ? [] : ['planOrigin'])].sort().join(',') ||
             (pending.topology !== undefined && !validGreenfieldTopology(pending.topology)) ||
+            (pending.planOrigin !== undefined && !validPlanOrigin(pending.planOrigin, true)) ||
             !text(pending.path, 512) || !pending.path || isAbsolute(pending.path) ||
             !/\.md$/i.test(pending.path) || pending.path.includes('\\') || pending.path.includes(':') ||
             pending.path.split('/').some(part => !part || part === '.' || part === '..') ||
@@ -239,6 +272,9 @@ export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
         seen.add(item.id as string);
     }
     const byId = new Map((checkpoints as RoadmapCheckpoint[]).map(item => [item.id, item]));
+    if (raw.planOrigin !== undefined && (!validPlanOrigin(raw.planOrigin, false) ||
+        raw.pendingCreation !== undefined || !raw.linkedDocument))
+        fail('plan provenance');
     for (const item of checkpoints as RoadmapCheckpoint[]) if (item.parentPhaseId &&
         byId.get(item.parentPhaseId)?.kind !== 'phase') fail('correction phase membership');
     const visiting = new Set<string>();
@@ -385,7 +421,9 @@ export class RoadmapStore {
             if (!changedIds.length && JSON.stringify(nextLink) === JSON.stringify(current.linkedDocument))
                 return { snapshot: current, changedIds };
             const next = parseRoadmapIndex({ schemaVersion: 1, projectId: nextProjectId,
-                projectRoot: root, revision: nextRevision, checkpoints, ...(nextLink ? { linkedDocument: nextLink } : {}) }, root);
+                projectRoot: root, revision: nextRevision, checkpoints, ...(nextLink ? { linkedDocument: nextLink } : {}),
+                ...(nextProjectId === current.projectId && current.planOrigin ?
+                    { planOrigin: current.planOrigin } : {}) }, root);
             if (proposedLink && (await readRoadmapMappedSections(root, nextLink!)).hash !== nextLink!.sourceHash)
                 throw new Error('Linked Roadmap source changed before index publication');
             await this.replace(root, next);
@@ -474,10 +512,11 @@ export class RoadmapStore {
 
     /** Approval is checked by the caller; persist intent before the first source-file effect. */
     async acceptGreenfield(root: string, expectedRevision: number, path: string, content: string,
-        topology?: GreenfieldTopology): Promise<RoadmapIndex> {
+        topology?: GreenfieldTopology, planOrigin?: PendingPlanOrigin): Promise<RoadmapIndex> {
         if (expectedRevision !== 0 || !text(content, 2 * 1024 * 1024) ||
             Buffer.byteLength(content) > 2 * 1024 * 1024 || !content.startsWith('# Roadmap\n') ||
-            (topology !== undefined && !validGreenfieldTopology(topology)))
+            (topology !== undefined && !validGreenfieldTopology(topology)) ||
+            (planOrigin !== undefined && !validPlanOrigin(planOrigin, true)))
             throw new Error('Invalid greenfield Roadmap creation');
         const result = await this.locked(root, async () => {
             const current = await this.read(root);
@@ -489,7 +528,7 @@ export class RoadmapStore {
             const marker = parseRoadmapIndex({ schemaVersion: 1, projectId: randomUUID(), projectRoot: root,
                 revision: 1, checkpoints: [], pendingCreation: { path, content,
                     sourceHash: createHash('sha256').update(content).digest('hex'),
-                    ...(topology?.length ? { topology } : {}) } }, root);
+                    ...(topology?.length ? { topology } : {}), ...(planOrigin ? { planOrigin } : {}) } }, root);
             await this.replace(root, marker);
             return marker;
         });
@@ -556,8 +595,16 @@ export class RoadmapStore {
                 target.objective = section.objective ?? '';
                 target.order = section.order ?? target.order;
             }
+            const planOrigin = pending.planOrigin && { planRevision: pending.planOrigin.planRevision,
+                planHash: pending.planOrigin.planHash, sourceHash: pending.sourceHash,
+                constraints: pending.planOrigin.constraints,
+                steps: pending.planOrigin.steps.map(step => {
+                    const checkpointId = sections.find(section => section.sectionKey === step.sectionKey)?.checkpointId;
+                    if (!checkpointId) throw new Error('Reviewed plan step lost its Roadmap source mapping');
+                    return { stepId: step.stepId, checkpointId, expectedOutputs: step.expectedOutputs };
+                }) };
             const next = parseRoadmapIndex({ schemaVersion: 1, projectId: current.projectId, projectRoot: root,
-                revision: 2, checkpoints, linkedDocument: linked }, root);
+                revision: 2, checkpoints, linkedDocument: linked, ...(planOrigin ? { planOrigin } : {}) }, root);
             await this.replace(root, next);
             return { snapshot: next, changedIds: checkpoints.map(item => item.id) };
         });

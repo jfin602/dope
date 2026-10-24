@@ -54,6 +54,9 @@ async function reference(root: string, checkpointId: string, gate: BridgeGate, s
         checkpoint.source.sha256 !== linked.sourceHash ||
         !linked.sections.some(item => item.checkpointId === checkpointId))
         throw new Error('Checkpoint is not mapped to current Roadmap source');
+    const planStep = roadmap.planOrigin?.steps.find(item => item.checkpointId === checkpointId);
+    if (planStep && roadmap.planOrigin?.sourceHash !== linked.sourceHash)
+        throw new Error('Approved plan source changed; review Roadmap scope again');
     const document = await checkedRoadmapDocumentFile(root, linked.path);
     if (createHash('sha256').update(document.bytes).digest('hex') !== linked.sourceHash)
         throw new Error('Roadmap source changed; review again');
@@ -81,8 +84,11 @@ async function reference(root: string, checkpointId: string, gate: BridgeGate, s
     const target = planning && { id: planning.map.id, revision: planning.map.revision,
         title: planning.map.title, objective: planning.map.objective, status: planning.map.status,
         transformations: planning.map.transformations, basis: planning.map.basis };
-    const approvedDigest = hash(gate === 'scope' ? scope : gate === 'target' ? { scope, target, targetBranchIds } :
-        { scope, target, targetBranchIds, stack });
+    const planSource = planStep && { planHash: roadmap.planOrigin!.planHash,
+        planRevision: roadmap.planOrigin!.planRevision, constraints: roadmap.planOrigin!.constraints, step: planStep };
+    const approvedDigest = hash(gate === 'scope' ? planSource ? { scope, planSource } : scope :
+        gate === 'target' ? { scope, target, targetBranchIds, ...(planSource ? { planSource } : {}) } :
+            { scope, target, targetBranchIds, stack, ...(planSource ? { planSource } : {}) });
     return { projectRoot: root, roadmapProjectId: roadmap.projectId, roadmapRevision: roadmap.revision,
         checkpointId, roadmapSourceHash: linked.sourceHash,
         ...(gate !== 'scope' && planning ? { planningProjectId: planning.projectId, collectionRevision: planning.collectionRevision,

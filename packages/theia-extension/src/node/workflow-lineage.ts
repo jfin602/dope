@@ -14,7 +14,7 @@ import type { HistoryEntry } from '@dope/contracts/lib/history';
 export type WorkflowStage = 'Captured' | 'Brainstorming' | 'Roadmapped' | 'Architecting' |
     'Prepared' | 'Implementing' | 'Validating' | 'Qualified' | 'Closed';
 export type WorkflowCondition = 'Blocked' | 'Stale' | 'Needs Decision' | 'Failed' | 'Not Green';
-export type LineageKind = 'idea' | 'draft-checkpoint' | 'checkpoint' | 'planning-map' | 'transformation' |
+export type LineageKind = 'idea' | 'draft-checkpoint' | 'plan' | 'plan-step' | 'checkpoint' | 'planning-map' | 'transformation' |
     'work-item' | 'stack' | 'prompt' | 'sequence' | 'task' | 'run';
 export interface LineageRef { projectId: string; kind: LineageKind; id: string }
 export interface LineageEdge { from: LineageRef; to: LineageRef; relation: 'plans' | 'contains' | 'sources' | 'executes' }
@@ -113,6 +113,19 @@ export function projectWorkflowLineage(input: WorkflowLineageInput): WorkflowChe
             links.push({ from, to, relation });
             return to;
         };
+        const origin = roadmap.planOrigin;
+        const planStep = origin?.steps.find(step => step.checkpointId === checkpoint.id);
+        if (origin && planStep) {
+            if (origin.sourceHash !== roadmap.linkedDocument?.sourceHash ||
+                roadmap.linkedDocument.syncState !== 'synced' ||
+                checkpoint.source?.sha256 !== origin.sourceHash) {
+                unresolved.push({ kind: 'plan-step', id: planStep.stepId, reason: 'stale' });
+                conditions.add('Stale');
+            } else {
+                const planRef = edge(checkpointRef, 'plan', origin.planHash, 'sources');
+                edge(planRef, 'plan-step', planStep.stepId, 'contains');
+            }
+        }
         for (const link of checkpoint.links.filter(link => ['planning-map', 'transformation', 'work-item'].includes(link.owner))) {
             const kind = link.owner as 'planning-map' | 'transformation' | 'work-item';
             const parts = link.targetId.split('/');

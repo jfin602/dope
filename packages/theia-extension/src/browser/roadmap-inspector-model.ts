@@ -57,6 +57,11 @@ export class RoadmapInspectorModel {
         if (this.busy || this.pending || this.dirty) return 'Finish or discard the pending Roadmap change first.';
         if (index.linkedDocument && index.linkedDocument.syncState !== 'synced')
             return 'Linked Roadmap source is stale or unresolved. Review and sync it first.';
+        const planOrigin = index.planOrigin;
+        const planStep = planOrigin?.steps.find(step => step.checkpointId === item.id);
+        if (planOrigin && planStep && (planOrigin.sourceHash !== index.linkedDocument?.sourceHash ||
+            item.source?.sha256 !== planOrigin.sourceHash))
+            return 'Approved plan source changed. Review the Roadmap scope before preparing work.';
         const planningLinks = item.links.filter(link => link.owner === 'planning-map');
         if (planningLinks.length > 1) return 'Select one reviewed Planning Map link before preparing work.';
         if (planningLinks.some(link => !link.ownerProjectId || link.ownerRevision === undefined || !link.basis))
@@ -86,12 +91,20 @@ export class RoadmapInspectorModel {
                 this.selectedId !== item.id)
                 throw new Error('Selection changed while preparing work. Select the checkpoint again.');
             const map = current.links.find(link => link.owner === 'planning-map');
+            const planOrigin = fresh.planOrigin;
+            const planStep = planOrigin?.steps.find(step => step.checkpointId === current.id);
+            if (planOrigin && planStep && (planOrigin.sourceHash !== fresh.linkedDocument?.sourceHash ||
+                current.source?.sha256 !== planOrigin.sourceHash))
+                throw new Error('Approved plan source changed. Review the Roadmap scope before preparing work.');
             await this.openPlanning({ workspace: uri, projectId: index.projectId, checkpointId: item.id,
                 title: current.title, objective: current.objective,
-                requirements: [current.objective, ...current.dependencies.map(id =>
+                requirements: [current.objective, ...(planStep ? planOrigin!.constraints : []),
+                    ...(planStep?.expectedOutputs ?? []), ...current.dependencies.map(id =>
                     fresh.checkpoints.find(candidate => candidate.id === id)?.objective ?? `Unresolved dependency: ${id}`)],
                 impactReferences: current.links.filter(link => link.owner !== 'planning-map').map(link =>
-                    `${link.owner}: ${link.targetId}`), mapId: map?.targetId, mapRevision: map?.ownerRevision,
+                    `${link.owner}: ${link.targetId}`).concat(planStep ?
+                    [`Reviewed plan ${planOrigin!.planHash}, step ${planStep.stepId}`] : []),
+                mapId: map?.targetId, mapRevision: map?.ownerRevision,
                 mapOwnerProjectId: map?.ownerProjectId, mapBasis: map?.basis });
         } catch (error) {
             if (serial === this.serial && uri === this.projectUri) this.error = error instanceof Error ? error.message : String(error);

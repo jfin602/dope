@@ -98,6 +98,24 @@ test('changed owner fields, revisions, basis, source, foreign identity and resta
     } finally { await f.dispose(); await other.dispose(); }
 });
 
+test('Bridge scope approval binds reviewed plan provenance without granting target or stack', async () => {
+    const f = await fixture();
+    try {
+        const hash = f.source.roadmap.linkedDocument!.sourceHash;
+        f.source.roadmap.planOrigin = { planRevision: 2, planHash: 'b'.repeat(64), sourceHash: hash,
+            constraints: ['Keep permissions explicit'],
+            steps: [{ stepId: 'step', checkpointId: 'checkpoint', expectedOutputs: ['History view'] }] };
+        await f.store.approve(f.root, (await f.store.preview(f.root, 'checkpoint', 'scope')).token, true);
+        assert.equal(await f.store.approved(f.root, 'checkpoint', 'scope'), true);
+        assert.equal(await f.store.approved(f.root, 'checkpoint', 'target'), false);
+        assert.equal(await f.store.approved(f.root, 'checkpoint', 'stack'), false);
+        f.source.roadmap.planOrigin.steps[0].expectedOutputs = ['Different view'];
+        assert.equal(await f.store.approved(f.root, 'checkpoint', 'scope'), false);
+        f.source.roadmap.planOrigin.sourceHash = 'c'.repeat(64);
+        await assert.rejects(f.store.preview(f.root, 'checkpoint', 'scope'), /Approved plan source changed/);
+    } finally { await f.dispose(); }
+});
+
 test('invalid bytes and symlinked storage or Roadmap source are rejected without owner writes', async () => {
     const f = await fixture();
     try {
