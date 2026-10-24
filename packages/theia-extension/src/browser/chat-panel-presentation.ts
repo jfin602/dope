@@ -3,17 +3,19 @@ import type { ChatAssistantMessage } from '@dope/chat';
 export function isDraftPlanningAction(type: string): boolean {
     return ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint', 'reorder-phase',
         'reorder-checkpoint', 'split-checkpoint', 'move-checkpoint', 'add-dependency',
-        'remove-dependency', 'create-correction', 'attach-correction', 'draft-sequence', 'implementation-plan'].includes(type);
+        'remove-dependency', 'create-correction', 'attach-correction', 'draft-sequence',
+        'implementation-plan', 'implementation-plan-revision'].includes(type);
 }
 
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
-    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'bridge-proposal', 'no-action'].includes(activity.kind))
+    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action'].includes(activity.kind))
         return undefined;
     const label = activity.verifiedGuidance && noActionEnvelope(message) ? 'Verified Dope guidance' :
         activity.kind === 'no-action' ? 'No planning action' :
         activity.kind === 'implementation-plan' ? 'Implementation plan' :
+        activity.kind === 'implementation-plan-revision' ? 'Plan revision' :
         activity.kind === 'bridge-proposal' ? 'Bridge suggestion' :
         activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence' ? 'Roadmap steps' :
         activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
@@ -35,6 +37,17 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
 
 /** Readable projection of a backend-validated plan; the original machine envelope stays inspectable. */
 export function implementationPlanAnswer(message: ChatAssistantMessage): string | undefined {
+    if (message.execution.status === 'complete' && message.planningActivity?.kind === 'implementation-plan-revision' &&
+        ['pending', 'applied', 'denied', 'stale'].includes(message.planningActivity.status)) {
+        try {
+            const revision = JSON.parse(message.content) as { edits: { type: string; step?: number;
+                first?: number; second?: number; title?: string; detail?: string }[]; question?: string };
+            if (!Array.isArray(revision.edits)) return undefined;
+            return `**Suggested plan revision**\n${revision.edits.map(edit =>
+                `- ${edit.type} ${edit.step ?? (edit.first ? `${edit.first} and ${edit.second}` : '')}: ${edit.title ?? ''} ${edit.detail ?? ''}`)
+                .join('\n')}\n\nReview the diff before accepting this noncanonical draft revision.`;
+        } catch { return undefined; }
+    }
     if (message.execution.status !== 'complete' || message.planningActivity?.kind !== 'implementation-plan' ||
         !['pending', 'applied', 'denied', 'stale'].includes(message.planningActivity.status)) return undefined;
     try {
@@ -57,6 +70,38 @@ export function implementationPlanAnswer(message: ChatAssistantMessage): string 
             list('Risks', plan.risks) + list('Alternatives', plan.alternatives) +
             (plan.question ? `\n**Material question:** ${plan.question}` : '') +
             '\n\nThis plan is a proposal. Review it before accepting the noncanonical draft; no Roadmap or project files were changed.';
+    } catch { return undefined; }
+}
+
+/** Trusted preview summary becomes short text rows; no model HTML enters the review controls. */
+export function implementationPlanDiff(summary: string): string[] | undefined {
+    try {
+        const value = JSON.parse(summary) as { before?: { steps: { id: string; title: string; detail: string }[];
+            decisions: { text: string; origin: string }[]; constraints: string[] };
+            after: { steps: { id: string; title: string; detail: string }[];
+            decisions: { text: string; origin: string }[]; constraints: string[] } };
+        if (!value.after?.steps || !Array.isArray(value.after.steps)) return undefined;
+        const before = value.before?.steps ?? [], after = value.after.steps;
+        const old = new Map(before.map((step, index) => [step.id, { ...step, index }]));
+        const next = new Map(after.map((step, index) => [step.id, { ...step, index }]));
+        const rows = after.flatMap((step, index) => {
+            const prior = old.get(step.id);
+            if (!prior) return [`Added ${index + 1}. ${step.title}: ${step.detail}`];
+            if (prior.title !== step.title || prior.detail !== step.detail)
+                return [`Changed ${index + 1}. ${prior.title}: ${prior.detail} → ${step.title}: ${step.detail}`];
+            return prior.index !== index ? [`Moved ${step.title} to ${index + 1}`] : [];
+        });
+        rows.push(...before.filter(step => !next.has(step.id)).map(step => `Removed ${step.title}`));
+        rows.push(...(value.after.decisions ?? []).filter(decision =>
+            !value.before?.decisions.some(oldDecision => oldDecision.text === decision.text &&
+                oldDecision.origin === decision.origin)).map(decision =>
+            `New suggestion: ${decision.text}`));
+        rows.push(...(value.after.constraints ?? []).filter(constraint =>
+            !value.before?.constraints?.includes(constraint)).map(constraint =>
+            `New suggested constraint: ${constraint}`));
+        rows.push(...(value.before?.decisions ?? []).filter(decision => decision.origin === 'developer')
+            .map(decision => `Confirmed developer decision retained: ${decision.text}`));
+        return rows;
     } catch { return undefined; }
 }
 
@@ -89,7 +134,7 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
 export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
     const activity = message.planningActivity;
     if (!activity) return undefined;
-    if (activity.kind === 'implementation-plan') return { summary:
+    if (activity.kind === 'implementation-plan' || activity.kind === 'implementation-plan-revision') return { summary:
         activity.status === 'pending' ? 'The plan is ready for review. The accepted draft and canonical Roadmap are unchanged.' :
         activity.status === 'applied' ? 'The reviewed plan was saved in the noncanonical draft.' :
         'The plan was not applied.', questions: [] };

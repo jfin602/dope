@@ -890,6 +890,9 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-selected-context { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 !important; margin: 0; }
 .dope-chat-selected-context li { display: inline-flex; gap: 4px; align-items: center; margin: 0; padding: 2px 5px; border: 1px solid var(--theia-widget-border); border-radius: 5px; }
 .dope-chat-context-diagnostics { color: var(--theia-descriptionForeground); font-size: 11px; }
+.dope-chat-plan-review { min-width: 0; overflow-wrap: anywhere; }
+.dope-chat-plan-review ul { margin: 6px 0; padding-inline-start: 20px; max-height: 18rem; overflow: auto; }
+.dope-chat-plan-review button { max-width: 100%; white-space: normal; }
 .dope-chat-panel [data-color="blue"] { --chat-color: #2860ae; --chat-ink: white; }
 .dope-chat-panel [data-color="cyan"] { --chat-color: #087f91; --chat-ink: white; }
 .dope-chat-panel [data-color="teal"] { --chat-color: #087969; --chat-ink: white; }

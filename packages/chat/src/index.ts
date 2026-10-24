@@ -79,7 +79,7 @@ export interface ChatAssistantMessage {
 }
 export interface ChatPlanningActivity {
     schemaVersion: 1;
-    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'bridge-proposal' | 'no-action' | 'error' | 'cancelled';
+    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'no-action' | 'error' | 'cancelled';
     status: 'pending' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'applied' | 'failed' | 'cancelled';
     refs: ChatContextRef[];
     proposalId?: string;
@@ -308,7 +308,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
     const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
-    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'bridge-proposal', 'no-action',
+    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action',
         'error', 'cancelled'] as const, 'planning activity kind');
     const status = choice(v.status, ['pending', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'applied',
         'failed', 'cancelled'] as const, 'planning activity status');

@@ -14,7 +14,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
@@ -1800,17 +1800,29 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (state.planningProposal) {
             const proposal = state.planningProposal;
             const review = document.createElement('section');
-            review.className = 'dope-chat-context-diagnostics';
-            review.setAttribute('aria-label', proposal.action.type === 'implementation-plan' ? 'Implementation plan review' : 'Roadmap proposal review');
+            review.className = 'dope-chat-context-diagnostics dope-chat-plan-review';
+            const planProposal = proposal.action.type === 'implementation-plan' ||
+                proposal.action.type === 'implementation-plan-revision';
+            review.setAttribute('aria-label', planProposal ? 'Implementation plan review' : 'Roadmap proposal review');
             const heading = document.createElement('strong');
             const draftProposal = isDraftPlanningAction(proposal.action.type);
-            heading.textContent = `Review ${proposal.action.type === 'implementation-plan' ? 'implementation plan' : draftProposal ? 'proposed draft' : 'Roadmap proposal'} · revision ${proposal.revision}`;
+            heading.textContent = `Review ${planProposal ? 'implementation plan' : draftProposal ? 'proposed draft' : 'Roadmap proposal'} · revision ${proposal.revision}`;
             const affected = document.createElement('p');
-            affected.textContent = `Affected: ${proposal.changedIds.join(', ')}`;
+            affected.textContent = planProposal ? 'Review each proposed change before accepting.' :
+                `Affected: ${proposal.changedIds.join(', ')}`;
             const diff = document.createElement('details');
+            diff.open = planProposal;
             const diffLabel = document.createElement('summary'); diffLabel.textContent = 'Review before and after';
-            const diffText = document.createElement('pre'); diffText.textContent = proposal.summary;
-            diff.append(diffLabel, diffText);
+            const rows = planProposal ? implementationPlanDiff(proposal.summary) : undefined;
+            if (rows) {
+                const list = document.createElement('ul');
+                list.setAttribute('aria-label', 'Plan changes');
+                for (const row of rows) { const item = document.createElement('li'); item.textContent = row; list.append(item); }
+                diff.append(diffLabel, list);
+            } else {
+                const diffText = document.createElement('pre'); diffText.textContent = proposal.summary;
+                diff.append(diffLabel, diffText);
+            }
             review.append(heading, affected, diff,
                 this.button(draftProposal ? 'Accept into draft' : 'Apply proposal',
                     () => void state.decidePlanningProposal(true), state.pending),
@@ -1822,6 +1834,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             note.setAttribute('role', 'status');
             note.textContent = state.planningProposalError;
             composer.append(note);
+        }
+        if (state.undoPlanRevision !== undefined && !state.planningProposal) {
+            composer.append(this.button('Undo accepted plan revision',
+                () => void state.undoPlanningRevision(), state.pending || state.running));
         }
         if (state.lastContext) {
             const details = document.createElement('details');

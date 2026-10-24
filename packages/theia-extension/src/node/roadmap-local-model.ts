@@ -39,6 +39,32 @@ export interface LocalImplementationPlan {
         dependsOn: number[]; reuse: { path: string; reason: string }[] }[];
     tests: string[]; guiQualification: string; risks: string[]; alternatives: string[]; question: string;
 }
+export function validImplementationPlanRevision(value: unknown): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const raw = value as Record<string, unknown>;
+    if (Object.keys(raw).sort().join(',') !== 'baseRevision,constraintsAdd,decisionsAdd,edits,question,type' ||
+        raw.type !== 'implementation-plan-revision' || !Number.isSafeInteger(raw.baseRevision) ||
+        !planLines(raw.constraintsAdd, 8, 512) || !planLines(raw.decisionsAdd, 8, 512) ||
+        typeof raw.question !== 'string' || raw.question.length > 512 || /[\0-\x1f]/.test(raw.question) ||
+        !Array.isArray(raw.edits) || !raw.edits.length || raw.edits.length > 8 ||
+        Buffer.byteLength(JSON.stringify(raw), 'utf8') > 12000) return false;
+    return raw.edits.every(value => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+        const edit = value as Record<string, unknown>;
+        const keys = Object.keys(edit).sort().join(',');
+        const number = (key: string) => Number.isSafeInteger(edit[key]) && (edit[key] as number) > 0;
+        if (edit.type === 'update') return ['step,type,title', 'detail,step,type', 'detail,step,title,type'].includes(keys) &&
+            number('step') && (edit.title === undefined || planLine(edit.title, 200)) &&
+            (edit.detail === undefined || planLine(edit.detail, 2048));
+        if (edit.type === 'merge') return keys === 'detail,first,second,title,type' &&
+            number('first') && number('second') && planLine(edit.title, 200) && planLine(edit.detail, 2048);
+        if (edit.type === 'move') return keys === 'before,step,type' && number('step') && number('before');
+        if (edit.type === 'split') return keys === 'detail,step,title,type' && number('step') &&
+            planLine(edit.title, 200) && planLine(edit.detail, 2048);
+        return edit.type === 'add' && keys === 'before,detail,title,type' && number('before') &&
+            planLine(edit.title, 200) && planLine(edit.detail, 2048);
+    });
+}
 const planLine = (value: unknown, limit: number): value is string =>
     typeof value === 'string' && !!value.trim() && value.length <= limit && !/[\0-\x1f]/.test(value);
 const planLines = (value: unknown, max: number, limit: number): value is string[] =>
@@ -112,7 +138,7 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
     generate: (retryInstruction?: string) => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
-    mode: 'linked' | 'unlinked' | 'draft' | 'help' | 'bridge' | 'plan' = 'unlinked', eligibleObjective = true,
+    mode: 'linked' | 'unlinked' | 'draft' | 'help' | 'bridge' | 'plan' | 'plan-revision' = 'unlinked', eligibleObjective = true,
     check: LocalPlanningAnswerCheck = {}): Promise<T> {
     let lastInvalid = '';
     let retryInstruction: string | undefined;
@@ -139,6 +165,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object required');
             const raw = value as Record<string, unknown>;
             if (mode === 'plan' && validImplementationPlan(raw)) return complete;
+            if (mode === 'plan-revision' && validImplementationPlanRevision(raw)) return complete;
             const proposal = (raw.type === 'roadmap-proposal' && mode === 'unlinked' &&
                 Object.keys(raw).sort().join(',') === 'action,ownerRevision,projectId,type' &&
                 Number.isSafeInteger(raw.ownerRevision) || raw.type === 'roadmap-draft-proposal' && mode === 'draft' &&

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
-import type { ImplementationPlanInput } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
+import { reviseImplementationPlan, type ImplementationPlanInput } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
 import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
 
@@ -304,6 +304,37 @@ const planInput = (): ImplementationPlanInput => ({ objective: 'Add history', co
         { title: 'Build history', detail: 'Add the view', expectedOutputs: ['History view'],
             dependencies: [], evidenceIds: [] }] });
 
+test('reviewed plan revisions preserve IDs and decisions, and reject invalid order', async () => fixture(async root => {
+    const drafts = new RoadmapGreenfield(new RoadmapStore());
+    const { handle } = await drafts.beginImplementationPlan(root);
+    const first = await drafts.previewImplementationPlan(handle, 0, 0, planInput());
+    const accepted = await drafts.applyImplementationPlan(handle, first, true);
+    const common = { type: 'implementation-plan-revision' as const, baseRevision: 1,
+        constraintsAdd: [], decisionsAdd: ['Use existing editor'], question: '' };
+    const split = reviseImplementationPlan(accepted, { ...common,
+        edits: [{ type: 'split', step: 2, title: 'Test history', detail: 'Add focused tests' }] });
+    assert.deepEqual(split.steps.slice(0, 2).map(step => step.id), accepted.steps.map(step => step.id));
+    assert.equal(split.steps[2].id, undefined);
+    assert.deepEqual(split.decisions[0], accepted.decisions[0]);
+    assert.equal(split.decisions[1].origin, 'model-assumption');
+    const preview = await drafts.previewImplementationPlan(handle, 0, 1, split, 'model');
+    assert.deepEqual(drafts.readImplementationPlan(handle), accepted);
+    assert.deepEqual(preview.after.decisions[0], accepted.decisions[0]);
+    const revised = await drafts.applyImplementationPlan(handle, preview, true);
+    assert.equal(revised.steps[2].dependencies[0], revised.steps[1].id);
+    const merge = reviseImplementationPlan(revised, { ...common, baseRevision: 2,
+        edits: [{ type: 'merge', first: 2, second: 3, title: 'Build and test', detail: 'Use existing editor' }] });
+    assert.equal(merge.steps[1].id, revised.steps[1].id);
+    assert.equal(merge.steps.length, 2);
+    assert.deepEqual(merge.decisions.slice(0, 2), revised.decisions);
+    const moved = reviseImplementationPlan(accepted, { ...common,
+        edits: [{ type: 'move', step: 2, before: 1 }] });
+    assert.deepEqual(moved.steps.map(step => step.id), [accepted.steps[1].id, accepted.steps[0].id]);
+    assert.throws(() => reviseImplementationPlan(revised, { ...common, baseRevision: 2,
+        edits: [{ type: 'move', step: 3, before: 2 }] }), /order|cycle/);
+    await assert.rejects(drafts.previewImplementationPlan(handle, 0, 1, merge, 'model'), /Stale/);
+}));
+
 test('accepted implementation plan survives restart and Chat binding without changing canonical owners', async () => fixture(async root => {
     const store = new RoadmapStore(), drafts = new RoadmapGreenfield(store);
     const { handle } = await drafts.begin(root);
@@ -346,7 +377,7 @@ test('plan validation, review, owner handoff and corrupt storage fail closed', a
     const emptyPreview = await drafts.previewImplementationPlan(handle, 0, 0, empty);
     assert.equal((await drafts.applyImplementationPlan(handle, emptyPreview, true)).steps.length, 0);
     const proposed = await drafts.previewImplementationPlan(handle, 0, 1, planInput(), 'model');
-    assert.equal(proposed.after.decisions[0].origin, 'model-assumption');
+    assert.equal(proposed.after.decisions[0].origin, 'developer');
     drafts.clearImplementationPlanPreview(handle);
     await assert.rejects(drafts.applyImplementationPlan(handle, proposed, true), /Stale/);
     const valid = await drafts.previewImplementationPlan(handle, 0, 1, planInput());

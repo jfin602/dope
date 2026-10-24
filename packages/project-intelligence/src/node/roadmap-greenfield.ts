@@ -22,6 +22,16 @@ export interface ImplementationPlanDraft { schemaVersion: 1; revision: number; s
         draftRevision: number } }
 export type ImplementationPlanInput = Pick<ImplementationPlanDraft, 'objective' | 'constraints' | 'evidence' | 'decisions'> & {
     steps: (Omit<ImplementationPlanStep, 'id'> & { id?: string })[] };
+/** Model-suggested indexes refer to the accepted plan at the start of the turn. */
+export interface ImplementationPlanRevision {
+    type: 'implementation-plan-revision'; baseRevision: number;
+    edits: ({ type: 'update'; step: number; title?: string; detail?: string } |
+        { type: 'merge'; first: number; second: number; title: string; detail: string } |
+        { type: 'move'; step: number; before: number } |
+        { type: 'split'; step: number; title: string; detail: string } |
+        { type: 'add'; before: number; title: string; detail: string })[];
+    constraintsAdd: string[]; decisionsAdd: string[]; question: string;
+}
 export interface ImplementationPlanPreview { token: string; draftRevision: number; planRevision: number;
     before?: ImplementationPlanDraft; after: Omit<ImplementationPlanDraft, 'status'> & { status: 'proposed' }; requiresApproval: true }
 export type GreenfieldEdit =
@@ -109,6 +119,67 @@ function validPlan(value: unknown, projectId: string): value is ImplementationPl
     return [...ids].every(visit);
 }
 
+/** Apply only named changes. IDs, inherited decisions, evidence and constraints stay app-owned. */
+export function reviseImplementationPlan(base: ImplementationPlanDraft,
+    revision: ImplementationPlanRevision): ImplementationPlanInput {
+    if (revision.baseRevision !== base.revision || !revision.edits.length || revision.edits.length > 8)
+        throw new Error('Stale or empty implementation plan revision');
+    const steps: ImplementationPlanInput['steps'] = copy(base.steps);
+    const ids = base.steps.map(step => step.id);
+    const at = (number: number): string => {
+        if (!Number.isSafeInteger(number) || number < 1 || number > ids.length)
+            throw new Error('Invalid implementation plan step number');
+        return ids[number - 1];
+    };
+    const position = (id: string): number => {
+        const index = steps.findIndex(step => step.id === id);
+        if (index < 0) throw new Error('Implementation plan step already changed');
+        return index;
+    };
+    const used = new Set<string>();
+    for (const edit of revision.edits) {
+        const targets = edit.type === 'merge' ? [at(edit.first), at(edit.second)] :
+            edit.type === 'add' ? [] : [at(edit.step)];
+        if (targets.some(id => used.has(id))) throw new Error('Conflicting implementation plan edits');
+        targets.forEach(id => used.add(id));
+        if (edit.type === 'add') {
+            steps.splice(position(at(edit.before)), 0, { title: edit.title, detail: edit.detail,
+                expectedOutputs: [], dependencies: [], evidenceIds: [] });
+            continue;
+        }
+        const id = targets[0], index = position(id);
+        if (edit.type === 'update') {
+            if (edit.title !== undefined) steps[index].title = edit.title;
+            if (edit.detail !== undefined) steps[index].detail = edit.detail;
+        } else if (edit.type === 'merge') {
+            const removed = targets[1];
+            if (id === removed || position(removed) !== index + 1)
+                throw new Error('Only adjacent implementation plan steps may merge');
+            const next = steps[index + 1];
+            steps[index] = { ...steps[index], title: edit.title, detail: edit.detail,
+                expectedOutputs: [...new Set([...steps[index].expectedOutputs, ...next.expectedOutputs])],
+                evidenceIds: [...new Set([...steps[index].evidenceIds, ...next.evidenceIds])],
+                dependencies: [...new Set([...steps[index].dependencies, ...next.dependencies.filter(dep => dep !== id)])] };
+            steps.splice(index + 1, 1);
+            for (const step of steps) step.dependencies = [...new Set(step.dependencies.map(dep => dep === removed ? id : dep))];
+        } else if (edit.type === 'move') {
+            const before = at(edit.before);
+            if (before === id) throw new Error('Implementation plan move has no effect');
+            const [moving] = steps.splice(index, 1);
+            steps.splice(position(before), 0, moving);
+        } else if (edit.type === 'split') {
+            steps.splice(index + 1, 0, { title: edit.title, detail: edit.detail,
+                expectedOutputs: [], dependencies: [id], evidenceIds: [] });
+        }
+    }
+    for (const [index, step] of steps.entries())
+        if (step.dependencies.some(dep => steps.findIndex(item => item.id === dep) >= index))
+            throw new Error('Implementation plan dependency order or cycle');
+    return { objective: base.objective, constraints: [...base.constraints, ...revision.constraintsAdd],
+        evidence: copy(base.evidence), decisions: [...copy(base.decisions), ...revision.decisionsAdd.map(text =>
+            ({ text, origin: 'model-assumption' as const }))], steps };
+}
+
 function validDraft(value: unknown): value is GreenfieldDraft {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const draft = value as GreenfieldDraft;
@@ -165,6 +236,7 @@ export class RoadmapGreenfield {
     private readonly generations = new Map<string, number>();
     private readonly editPreviews = new Map<string, GreenfieldEditPreview>();
     private readonly planPreviews = new Map<string, ImplementationPlanPreview>();
+    private readonly planHistory = new Map<string, { before: ImplementationPlanDraft; revision: number }>();
     private readonly creationPreviews = new Map<string, string>();
     private readonly history = new Map<string, { before: GreenfieldDraft; after: GreenfieldDraft; redo?: boolean }>();
     private readonly accepting = new Set<string>();
@@ -479,7 +551,9 @@ export class RoadmapGreenfield {
         const accepted: ImplementationPlanDraft = { schemaVersion: 1, revision: expectedPlanRevision + 1,
             status: 'accepted', objective: input.objective, constraints: input.constraints, steps,
             evidence: input.evidence, decisions: origin === 'model' ? input.decisions?.map(item =>
-                ({ ...item, origin: 'model-assumption' as const })) : input.decisions,
+                entry.implementationPlan?.decisions.some(previous => previous.origin === 'developer' &&
+                    previous.text === item.text) ? { ...item, origin: 'developer' as const } :
+                    { ...item, origin: 'model-assumption' as const }) : input.decisions,
             source: { projectId: entry.projectId, roadmapRevision: owner.revision,
                 draftRevision: entry.value.revision } };
         if (!validPlan(accepted, entry.projectId)) throw new Error('Invalid or cyclic implementation plan');
@@ -514,8 +588,30 @@ export class RoadmapGreenfield {
         this.persist(entry.root, this.entries(entry.root).map(item => item.handle === handle ?
             { ...item, implementationPlan: accepted } : item));
         entry.implementationPlan = accepted;
+        if (preview.before) this.planHistory.set(handle, { before: copy(preview.before), revision: accepted.revision });
+        else this.planHistory.delete(handle);
         this.planPreviews.delete(handle);
         return copy(accepted);
+    }
+
+    /** One explicit undo of the latest non-destructive accepted plan revision. */
+    async undoImplementationPlan(handle: string, expectedRevision: number): Promise<ImplementationPlanDraft> {
+        const entry = this.drafts.get(handle), history = this.planHistory.get(handle);
+        if (!entry || !history || history.revision !== expectedRevision ||
+            entry.implementationPlan?.revision !== expectedRevision || this.accepting.has(handle))
+            throw new Error('Stale implementation plan undo');
+        const owner = await this.store.read(entry.root);
+        if (owner.projectId !== entry.projectId || owner.revision !== (entry.ownerRevision ?? 0) ||
+            owner.pendingCreation || !entry.planOnly && !!owner.linkedDocument)
+            throw new Error('Stale implementation plan owner');
+        const restored = { ...copy(history.before), revision: expectedRevision + 1 };
+        if (!validPlan(restored, entry.projectId)) throw new Error('Invalid implementation plan undo');
+        this.persist(entry.root, this.entries(entry.root).map(item => item.handle === handle ?
+            { ...item, implementationPlan: restored } : item));
+        entry.implementationPlan = restored;
+        this.planHistory.delete(handle);
+        this.planPreviews.delete(handle);
+        return copy(restored);
     }
 
     private project(handle: string, expectedRevision: number, action: GreenfieldEdit,

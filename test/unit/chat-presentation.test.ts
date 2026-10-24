@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { implementationPlanAnswer, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -55,6 +55,28 @@ test('validated plan projects substantial readable prose and distinguishes verif
     assert.match(answer, /GUI qualification/);
     assert.doesNotMatch(answer, /"type":"implementation-plan"/);
     assert.equal(implementationPlanAnswer({ ...message, planningActivity: undefined }), undefined);
+});
+
+test('plan revision shows concise changed rows and keeps unsafe prose as text', () => {
+    const id = '123e4567-e89b-42d3-a456-426614174000';
+    const rows = implementationPlanDiff(JSON.stringify({ before: { steps: [{ id, title: 'Build', detail: 'Old' }],
+        decisions: [{ text: 'Keep permissions', origin: 'developer' }] }, after: { steps: [
+        { id, title: 'Build', detail: '<img src=https://evil.invalid/a> '.repeat(40) },
+        { id: '123e4567-e89b-42d3-a456-426614174001', title: 'Test', detail: 'Focused checks' }],
+        decisions: [{ text: 'Keep permissions', origin: 'developer' },
+            { text: 'Reuse editor', origin: 'model-assumption' }] } }))!;
+    assert.match(rows[0], /Changed 1/);
+    assert.match(rows[1], /Added 2/);
+    assert.match(rows[2], /New suggestion/);
+    assert.match(rows[3], /Confirmed developer decision retained/);
+    const message = { content: JSON.stringify({ type: 'implementation-plan-revision', baseRevision: 1,
+        edits: [{ type: 'update', step: 1, detail: '<script>alert(1)</script>' }],
+        constraintsAdd: [], decisionsAdd: [], question: '' }), execution: { status: 'complete' },
+    planningActivity: { schemaVersion: 1, kind: 'implementation-plan-revision', status: 'pending', refs: [],
+        proposalId: 'proposal' } } as ChatAssistantMessage;
+    const html = renderUntrustedMessageHtml(implementationPlanAnswer(message)!);
+    assert.doesNotMatch(html, /<script>/);
+    assert.equal(planningActivityPresentation(message)?.label, 'Plan revision');
 });
 
 test('trusted greenfield creation is described as creation even when it has an objective', () => {

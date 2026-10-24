@@ -72,6 +72,7 @@ export class ChatPanelController {
     lastContext?: ChatContextPreview;
     planningProposal?: ChatPlanningProposal;
     planningProposalError?: string;
+    undoPlanRevision?: number;
     planningMode: 'follow' | 'pin' = 'follow';
     pinnedPlanning?: PlanningSelection;
     turnModel: ChatModelSelection | undefined;
@@ -121,7 +122,8 @@ export class ChatPanelController {
         this.pending = false;
         this.error = '';
         this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
-        this.planningProposalError = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.planningProposalError = undefined; this.undoPlanRevision = undefined;
+        this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.planningProgress = undefined;
         this.planningMode = 'follow'; this.pinnedPlanning = undefined;
         if (workspace && this.restoredPlanning?.workspace === workspace) {
@@ -238,7 +240,8 @@ export class ChatPanelController {
         if (chatId === this.chatId && this.mode === 'chat' && this.lease) return true;
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
         this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
-        this.planningProposalError = undefined; this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.planningProposalError = undefined; this.undoPlanRevision = undefined;
+        this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.planningProgress = undefined;
         this.changed();
         await this.leave();
@@ -454,12 +457,27 @@ export class ChatPanelController {
             const result = await lease.connection.decidePlanningProposal(lease.handle, lease.chatId,
                 lease.token, proposal.id, approve);
             this.planningProposal = undefined;
+            if (approve && result?.revision && proposal.action.type === 'implementation-plan-revision')
+                this.undoPlanRevision = result.revision;
             this.planningProposalError = approve && result ?
-                `${isDraftPlanningAction(proposal.action.type) ? 'Accepted Roadmap draft' : 'Roadmap'} updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
+                `${proposal.action.type.startsWith('implementation-plan') ? 'Accepted plan draft' :
+                    isDraftPlanningAction(proposal.action.type) ? 'Accepted Roadmap draft' : 'Roadmap'} ` +
+                `updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
         } catch (error) {
             this.planningProposal = undefined;
             this.planningProposalError = `Planning proposal was not applied: ${String(error)}. Refresh the selection for the next turn.`;
         } finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
+    async undoPlanningRevision(): Promise<void> {
+        const lease = this.lease, revision = this.undoPlanRevision;
+        if (!lease || revision === undefined || this.pending || this.running || this.planningProposal) return;
+        this.pending = true; this.changed();
+        try {
+            const restored = await lease.connection.undoPlanningRevision(lease.handle, lease.chatId, lease.token, revision);
+            this.planningProposalError = `Plan revision undone in the noncanonical draft at revision ${restored}.`;
+        } catch (error) {
+            this.planningProposalError = `Plan undo was not applied: ${String(error)}`;
+        } finally { this.undoPlanRevision = undefined; this.pending = false; this.changed(); await this.refresh(true); }
     }
     addContext(selection: ChatContextSelection): void {
         if (this.context.length >= 20) throw new Error('Too many context selections');

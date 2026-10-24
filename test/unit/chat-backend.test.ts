@@ -137,7 +137,7 @@ test('plan investigation rejects unmeasured local capacity before model inferenc
 test('short idea previews a complete noncanonical plan on first local outcome, then requires approval', async () => {
     const root = await folder(), repository = new ChatRepository(), store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);
-    const plan = JSON.stringify({ type: 'implementation-plan', objective: 'Visual Git history',
+    let plan = JSON.stringify({ type: 'implementation-plan', objective: 'Visual Git history',
         successCriteria: ['Checkout and commits work from the history view'], constraints: ['Explicit permissions'],
         assumptions: ['Diff editor integration needs confirmation'], steps: [
             { title: 'Inspect Git and diff seams', detail: 'Read the current history and diff owners',
@@ -188,9 +188,30 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.equal(accepted.steps.length, 3);
         assert.deepEqual(accepted.steps[2].dependencies, [accepted.steps[1].id]);
         assert.deepEqual(await store.read(root), before);
+        plan = JSON.stringify({ type: 'implementation-plan-revision', baseRevision: 1,
+            edits: [{ type: 'update', step: 2, detail: 'Reuse existing diff editor' }],
+            constraintsAdd: [], decisionsAdd: [], question: '' });
+        const revision = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Reuse the existing editor' });
+        assert.equal(revision.proposal?.action.type, 'implementation-plan-revision');
+        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 1);
+        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, revision.proposal!.id, false);
+        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 1);
+        const approvedRevision = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Reuse the existing editor' });
+        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, approvedRevision.proposal!.id, true);
+        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 2);
+        assert.equal(greenfield.readImplementationPlan(handle)?.steps[1].id, accepted.steps[1].id);
+        assert.deepEqual(await store.read(root), before);
+        assert.equal(await backend.undoPlanningRevision(projectHandle, chatId, lease.token, 2), 3);
+        assert.deepEqual(greenfield.readImplementationPlan(handle)?.steps, accepted.steps);
+        await assert.rejects(backend.undoPlanningRevision(projectHandle, chatId, lease.token, 2), /Stale/);
+        plan = JSON.stringify({ type: 'implementation-plan-revision', baseRevision: 3,
+            edits: [{ type: 'update', step: 2, detail: 'Use the existing editor' }],
+            constraintsAdd: [], decisionsAdd: [], question: '' });
         reportedModel = 'swapped';
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Revise the plan' }), /model changed/);
-        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 1);
+        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 3);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

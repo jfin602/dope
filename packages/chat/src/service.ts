@@ -74,5 +74,7 @@ export interface ChatService {
     runTurn(request: ChatTurnRequest): Promise<ChatTurnResult>;
     decidePlanningProposal(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined>;
+    undoPlanningRevision(projectHandle: string, chatId: ChatId, leaseToken: string,
+        expectedRevision: number): Promise<number>;
     cancelTurn(projectHandle: string, chatId: ChatId, leaseToken: string): Promise<void>;
 }
