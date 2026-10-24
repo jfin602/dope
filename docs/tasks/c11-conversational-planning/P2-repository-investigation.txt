@@ -1,0 +1,21 @@
+TASK: Correction 11 / P2 — Bounded read-only repository investigation for planning
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 bounded source work (UI portion T1/T2 where applicable); target <=8 minutes, soft 10, hard 15.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no package manifests, workspace/internal pins, yarn.lock or package-lock edits. If actual version advances, STOP and reassess rather than downgrade.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p11/conversational-planning-contract.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md and this stack README/assessment/implementation plan before touching implementation. Inspect **actual local** HEAD, branch, `git status --short`, owner changes, exact source paths, package/lock versions, compiled lib state, active competing c11-work-experience/Bridge work, and prior prompt checkpoints. Remote planning base `503dae3` is not a local run pin. If version differs from unchanged 0.11.8, pause and re-assess; never downgrade. Only a separate deliberate developer Run permits P1–P7; no /activate. Runner owns commits: no agent self-commit, stash, reset, clean, force-push, changing previously authored P*.txt or historical evidence. Avoid unnecessary large refactors, dependency changes or global model defaults. No silent hosted egress, direct model shell/process/network, unapproved Markdown/code/canonical writes, auto-Run, false Green or Phase 12 activation. Target <=8 minutes, soft 10, HARD STOP 15 for headless steps; report bounded incomplete work rather than falsely passing or compromising authority.
+
+TASK — BOUNDED IMPLEMENTATION
+Add the **smallest project-read investigation interface** to the existing `ChatProjectGrounder` / `ChatContextComposer` / `ChatBackend` seams. First inspect actual available `readFile`, `searchPaths`, `searchText`, directory and architecture/Physical Map evidence functions. Allow the planning path to request a bounded series of verified in-project read/query operations without user having to supply file names manually. Dope validates each input/root/limit; a model MAY select from a narrow allowlist of read-only queries but does not call arbitrary filesystem commands, shell, Git writes, MCP, network or Work tools. Keep existing grounding limits (including file/search byte caps), symlink/path traversal denial, and project/source identity. Assemble concise evidence packets that distinguish seen/cited actual source from inferred/absent/truncated/older evidence, plus cancellation and read failures. Context packing respects measured selected-model capacity and reserves sufficient plan-output tokens. Do not dump the entire repository or install a new index/scheduler/Phase 12 knowledge engine.
+
+When an idea is specific enough, prefer targeted search and a handful of relevant reads; when evidence cannot be obtained, provide a truthful "unverified" diagnosis and recovery rather than asserting inspection. Keep source references suitable for P3's grounded plan claims, deterministic retry and no unauthorized persistence. No model inference requirement for manual planning; no Chat-provider default change.
+
+TEST / EVIDENCE / EXIT
+Focused `test/unit/chat-project-grounding.test.ts`, `chat-context-composer.test.ts` and a new small investigation test if needed: legitimate focused sources, nonexistent/read-error, capped reads/search breadth, symlink/root escape, binary/secrets/ignored paths, stale changed hash, owner A/B, cancellation, budget truncation and measured loaded-context rejection. Verify no shell/grant/hosted egress seam created. Build required libs; focused tests and `git diff --check`; report real diagnostics. P3 owns model prose.

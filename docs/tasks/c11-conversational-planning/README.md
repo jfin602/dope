@@ -1,6 +1,6 @@
 # c11-conversational-planning — Idea-first, repository-grounded implementation plans
 
-**Status (2026-10-24): OWNER-APPROVED DESIGN / IMPLEMENTATION NOT STARTED.** This is the approved Phase 11 planning-experience correction. The `/docs-review` finding was accepted; `/docs-apply` and `/prompt-ass` document the contract/assessment, and `/prompt-plan` defines the proposed P1–P8 split. **Writing prompt files will not start implementation**. GitHub inspection base `503dae3` / version `0.11.8`; developer local state unverified. Phase 11 OPEN / NOT QUALIFIED; Phase 12 inactive.
+**Status (2026-10-24): P1–P8 AUTHORED / IMPLEMENTATION NOT RUN OR QUALIFIED.** This is the approved Phase 11 planning-experience correction. The `/docs-review` finding was accepted; `/docs-apply` and `/prompt-ass` document the contract/assessment, and `/prompt-plan` defines the P1–P8 split; `/prompt-write` now authors the eight immutable sequential prompt files exactly once. **Writing these files does not start implementation**. GitHub inspection base `503dae3` / version `0.11.8`; developer local state unverified. Phase 11 OPEN / NOT QUALIFIED; Phase 12 inactive.
 
 ## Goal
 

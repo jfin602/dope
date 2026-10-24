@@ -1,0 +1,21 @@
+TASK: Correction 11 / P5 — Project reviewed implementation plan into the existing Roadmap
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 bounded source work (UI portion T1/T2 where applicable); target <=8 minutes, soft 10, hard 15.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no package manifests, workspace/internal pins, yarn.lock or package-lock edits. If actual version advances, STOP and reassess rather than downgrade.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p11/conversational-planning-contract.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md and this stack README/assessment/implementation plan before touching implementation. Inspect **actual local** HEAD, branch, `git status --short`, owner changes, exact source paths, package/lock versions, compiled lib state, active competing c11-work-experience/Bridge work, and prior prompt checkpoints. Remote planning base `503dae3` is not a local run pin. If version differs from unchanged 0.11.8, pause and re-assess; never downgrade. Only a separate deliberate developer Run permits P1–P7; no /activate. Runner owns commits: no agent self-commit, stash, reset, clean, force-push, changing previously authored P*.txt or historical evidence. Avoid unnecessary large refactors, dependency changes or global model defaults. No silent hosted egress, direct model shell/process/network, unapproved Markdown/code/canonical writes, auto-Run, false Green or Phase 12 activation. Target <=8 minutes, soft 10, HARD STOP 15 for headless steps; report bounded incomplete work rather than falsely passing or compromising authority.
+
+TASK — BOUNDED IMPLEMENTATION
+Translate one reviewed, accepted **noncanonical** P1/P4 plan into the **existing** `RoadmapGreenfield`/RoadmapStore/ProjectPlanningActions owner contracts and same `RoadmapCanvasWidget` provisional overlay; do not create a second Roadmap owner or persist a duplicate canonical plan. Map strategic phases and meaningful checkpoints/dependencies; keep granular technical tasks for Planning Map and WorkItems. Dope assigns/map-stabilizes IDs; present one coherent human reviewed plan transaction with bounded internal validated graph operation batches, no unsafe lift of existing Roadmap mutation cap and no fake distributed atomicity. Reuse existing revisioned draft notifications and refresh/camera/inspector; label Proposed / Accepted Draft / Canonical accurately. Existing linked Markdown remains authoritative only after separate **explicit** Roadmap document preview/approval. For existing linked Roadmap, inspect supported patch/relink capability and fail closed on unsupported bulk update or ambiguous mapping rather than silently overwriting.
+
+Preserve comments/unsupported Markdown/prose and source hash; detect external edit/relink/owner revision conflicts and show safe diff/review or recovery. No model direct filesystem save, implicit approval, auto-Run or Work grant. Keep correction branches vertical, phase flow horizontal, manual Roadmap edit/restart/project A/B consistent; no phase qualification status invented.
+
+TEST / EVIDENCE / EXIT
+Focused `roadmap-live-draft.test.ts`, `roadmap-canvas.test.ts`, `roadmap-greenfield.test.ts`, `roadmap-document-sync.test.ts`, `roadmap-create-sync-integration.test.ts` or narrower additions: source-backed approved projection, dependencies, existing linked source safety, stale revision/outside edit, repeated approval idempotency, unsupported Markdown preservation, disconnected project, partial batch failure and recoverable no-write state; old greenfield and linked import work unchanged. Build affected libs, focused tests and `git diff --check`. P8 runs real browser and linked Markdown approval.

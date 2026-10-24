@@ -1,0 +1,35 @@
+TASK: Correction 11 / P8 — Manual conversational planning qualification and source-bound closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- Manual T3 browser/local-Q4 qualification; never invoke this in headless runner.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only: no package manifests, workspace/internal pins, yarn.lock or package-lock edits. If actual version advances, STOP and reassess rather than downgrade.
+
+PREFLIGHT / AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p11/conversational-planning-contract.md, docs/decisions/0036-unified-roadmap-and-local-first-ai-planning.md, docs/decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md and this stack README/assessment/implementation plan before touching implementation. Inspect **actual local** HEAD, branch, `git status --short`, owner changes, exact source paths, package/lock versions, compiled lib state, active competing c11-work-experience/Bridge work, and prior prompt checkpoints. Remote planning base `503dae3` is not a local run pin. If version differs from unchanged 0.11.8, pause and re-assess; never downgrade. Only a separate deliberate developer Run permits P1–P7; no /activate. Runner owns commits: no agent self-commit, stash, reset, clean, force-push, changing previously authored P*.txt or historical evidence. Avoid unnecessary large refactors, dependency changes or global model defaults. No silent hosted egress, direct model shell/process/network, unapproved Markdown/code/canonical writes, auto-Run, false Green or Phase 12 activation. Target <=8 minutes, soft 10, HARD STOP 15 for headless steps; report bounded incomplete work rather than falsely passing or compromising authority.
+
+TASK — LIVE MANUAL QUALIFICATION
+This is **MANUAL T3 ONLY**, outside headless `codex:phase` execution; prompt authoring/validation or even P1–P7 passing tests does NOT authorize a Run or establish Green. First verify original authored P1–P8 source hashes, finished implementation checkpoints, actual Git HEAD/branch/version/dirty tree, browser/Electron build provenance, local selected-model connection and measured loaded context, project owner/linked Markdown freshness and disposable fixture source. Record explicit developer approvals and real observed operations. If owner model/browser not available, mark Evidence Gap; never substitute source comments/mock tests/model narration for real GUI. Avoid owner production project writes and destructive reset/stash/clean/force-push.
+
+Operate **one real idea-first journey** in browser on a fresh disposable multi-file project: a short feature idea with 2–3 pointers; have the actual selected local Qwen3-Coder 30B A3B Q4_K_M at loaded 32768 produce a complete useful ordered implementation plan from relevant *verified* files. Capture prompt, real first reply, source references, actual modules/read diagnostics, model/provider provenance, token/context limits and elapsed evidence; note whether any bounded read/inference continuations were needed. Revise naturally in the same saved Chat ("reuse existing editor", "combine steps", "reorder testing") and visually inspect only affected steps/revisions, stable ID/decision retention and undo/reject. Observe provisional same Roadmap canvas and in-place inspector **without manual assembly**; explicitly preview/approve canonical linked Markdown; independently edit source or create stale approval and verify denial/diff; reload/restart and cross-project negative.
+
+For **CP1–CP10**, record a table with **PASS / FAIL / BLOCKED / EVIDENCE GAP / NOT RUN**, expected/actual and source-bound evidence:
+- CP1 first reply is a useful coherent plan (not only question/JSON or 1–3 atomized nodes).
+- CP2 referenced project facts are real and attributable; unknown/truncated/hostile read cases are honestly reported and rejected as appropriate.
+- CP3 real Q4 model/loaded 32768 plan, revision, stop/cancel/budget negative, no implicit provider switch/hosted egress.
+- CP4 conversation combines/splits/reorders only valid draft steps while preserving stable IDs, constraints and reviewer decisions.
+- CP5 saved Chat and accepted draft survive true reload/restart; pending approval cannot silently apply; project A/B separated.
+- CP6 same-canvas provisional -> explicit owner approval -> canonical linked Markdown, source-conflict detection and old bytes safety.
+- CP7 real approved checkpoint -> Prepare Work -> existing Map/WorkItem/stack preview with separate approval; opening is never execution. If Bridge gates unavailable, record scoped blocker, do not fabricate.
+- CP8 pre-authoring order flexibility, after-P*.txt reorder refusal; completed work immutable, correction/new source properly linked.
+- CP9 actual narrow/keyboard/dark+alternate theme, readable prose/expandable tool activity; safe renderer/link/image/network/secret/permission negatives.
+- CP10 exact-source focused results, **one justified final `npm run check`**, builds, observed browser, separately report direct native Electron evidence or unobserved gap, actual owner permissions and meaningful manual regressions.
+
+Write a **new** `docs/tasks/c11-conversational-planning/closeout.md` only *after* operating gates; include sources, hashes, versions, screenshots/logs as available, all failed/unrun tests, source truth and residual blockers. Do not self-commit review evidence without owner authorization; never edit original historic NOT GREEN/Green results. If CP1/CP2/CP3 or any critical authority/Markdown gate fails, closeout NOT GREEN; unsupported independent native GUI remains an explicit evidence gap unless owner separately approves a scoped exclusion. Correction-scope result is not Phase 11 closure; preserve Bridge D1–D8, two broad usability Hunts, other Work repairs and explicit owner closeout. Phase 12 inactive.
+
+TEST / EVIDENCE / EXIT
+Only source-bound **real manual** observations qualify these gates; run focused checks as needed and one justified final aggregate, record complete commands/results, real selected Q4/context and browser bundle/source fingerprint. If lacking a tool/window for native Electron, disclose UNOBSERVED; builds are not native GUI. No synthetic Green or historical relabeling.
