@@ -1,6 +1,7 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { injectable } from '@theia/core/shared/inversify';
 import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager, open } from '@theia/core/lib/browser';
+import { ConnectionStatusService } from '@theia/core/lib/browser/connection-status-service';
 import URI from '@theia/core/lib/common/uri';
 import { CommandContribution, CommandRegistry, Emitter, MenuContribution } from '@theia/core/lib/common';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
@@ -483,7 +484,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     .resolvePromptSource(project, path, fingerprint);
                 if (!isCurrent()) throw new Error('Work selection changed. Select the prompt again.');
                 await open(context.container.get(OpenerService), new URI(source));
-            });
+            }, context.container.get(ConnectionStatusService));
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

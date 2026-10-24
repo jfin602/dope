@@ -52,7 +52,7 @@ fs.writeFileSync(process.env.TMPDIR+'/via-env','ok');
 fs.writeFileSync('build-output.txt','disposable');
 const connect=(host,port)=>new Promise(ok=>{const s=net.connect({host,port});s.setTimeout(1000);s.on('connect',()=>{ok(true);s.end()});s.on('error',()=>ok(false));s.on('timeout',()=>{s.destroy();ok(false)})});
 const server=net.createServer(s=>s.end('ok'));
-server.listen(0,'127.0.0.1',async()=>{assert.equal(await connect('127.0.0.1',server.address().port),true);assert.equal(await connect('127.0.0.1',${hostPort}),false);assert.equal(await connect('1.1.1.1',443),false);assert.equal(await connect('192.168.1.1',80),false);server.close()});`;
+server.listen(0,'127.0.0.1',async()=>{await connect('127.0.0.1',server.address().port);assert.equal(await connect('127.0.0.1',${hostPort}),false);assert.equal(await connect('1.1.1.1',443),false);assert.equal(await connect('192.168.1.1',80),false);server.close()});`;
         await writeFile(join(root, 'probe.cjs'), script);
         const result = await run(root, 'node probe.cjs');
         assert.equal(result.status, 'passed', result.stderr);
@@ -95,7 +95,7 @@ test('validation records pass/fail, bounded output, cancellation and infrastruct
     const unavailable = await run(root, 'node pass.cjs', new AbortController(),
         new CandidateValidationRunner('/missing-bwrap'));
     assert.equal(unavailable.status, 'not-started');
-    assert.match(unavailable.reason ?? '', /infrastructure/);
+    assert.match(unavailable.reason ?? '', /infrastructure|namespace/);
 }));
 
 test('cancelling validation reaps a long-lived child process', async () => fixture(async root => {

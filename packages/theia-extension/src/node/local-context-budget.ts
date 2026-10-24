@@ -98,6 +98,15 @@ export class LocalContextBudget {
         return value;
     }
 
+    /** Typed tool arguments are essential protocol state, not the 512-byte display answer. */
+    recordToolPayload(payload: string): void {
+        if (typeof payload !== 'string') capacityFailure('Invalid Local tool payload');
+        const bytes = Buffer.byteLength(payload, 'utf8');
+        if (bytes > this.inputBytes || this.totalBytes + bytes > 131_072)
+            capacityFailure('Essential Local tool payload exceeds context budget');
+        this.totalBytes += bytes;
+    }
+
     private bound(value: string, limit: number, nonessential: boolean): string {
         if (Buffer.byteLength(value, 'utf8') <= limit) return value;
         if (!nonessential || limit <= Buffer.byteLength(MARKER, 'utf8'))

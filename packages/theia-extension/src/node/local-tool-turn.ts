@@ -31,6 +31,7 @@ export interface LocalToolTurnRequest {
     signal?: AbortSignal;
     timeoutMs?: number;
     maxOutputTokens?: number;
+    processToolAvailable?: boolean;
 }
 
 const parameters = {
@@ -85,7 +86,9 @@ export class LocalToolTurnTransport {
             throw failure('Local context budget unavailable', 'nonretryable-provider');
         if (maxOutputTokens > request.budget.maxOutputTokens)
             throw failure('Local output reserve exceeded', 'nonretryable-provider');
-        const body = JSON.stringify({ model: request.modelId, messages: request.messages, tools,
+        const declaredTools = request.processToolAvailable === false ?
+            tools.filter(tool => tool.function.name !== 'process') : tools;
+        const body = JSON.stringify({ model: request.modelId, messages: request.messages, tools: declaredTools,
             tool_choice: 'auto', stream: false, temperature: 0, max_tokens: maxOutputTokens });
         if (Buffer.byteLength(body) > MAX_INPUT_BYTES) throw failure('Local turn input too large', 'nonretryable-provider');
         request.budget.prepareTurn(await request.inventory(), request.messages, 0, Buffer.byteLength(body));
@@ -153,7 +156,7 @@ export class LocalToolTurnTransport {
             try { calls = parseLocalToolRequests(JSON.stringify(normalized)); }
             catch { throw failure('Unsupported or invalid Local tool request', 'unsupported-capability'); }
             request.budget.recordToolCalls(calls.length);
-            request.budget.recordOutput(JSON.stringify(calls));
+            request.budget.recordToolPayload(JSON.stringify(calls));
             return { kind: 'tools', calls,
                 ...(typeof message.content === 'string' && message.content.trim() ? { text: message.content } : {}) };
         }

@@ -13,12 +13,14 @@ loadedLocalModels: [{ connectionId: 'local', providerModelKey: 'model', contextW
 const read = (id: string) => ({ id, name: 'read' as const, arguments: { path: 'src/a.ts', maxBytes: 100 } });
 const grant = createDefaultExecutionGrant({ id: 'grant', revision: 1, taskId: 'task',
     acceptedAt: '2026-10-10T00:00:00.000Z' });
-function harness(replies: any[], execute?: (call: any, signal: AbortSignal) => Promise<any>) {
+function harness(replies: any[], execute?: (call: any, signal: AbortSignal) => Promise<any>, commands: any[] = []) {
     const sent: any[] = [];
+    const processFlags: boolean[] = [];
     const events: any[] = [];
     let active = true;
     const transport = { turn: async (request: any) => {
         sent.push(structuredClone(request.messages));
+        processFlags.push(request.processToolAvailable);
         const reply = replies.shift();
         if (reply instanceof Error) throw reply;
         return reply;
@@ -26,14 +28,14 @@ function harness(replies: any[], execute?: (call: any, signal: AbortSignal) => P
     const broker = { assertActive: async () => { if (!active) throw new Error('secret workspace error'); },
         execute: execute ?? (async (call: any) => ({ id: call.id, name: call.name,
             status: 'completed', output: 'file contents', truncated: false })) };
-    const loop = new LocalAgentTurnLoop(transport as any, broker as any);
+    const loop = new LocalAgentTurnLoop(transport as any, broker as any, commands);
     const abort = new AbortController();
     const input: any = { request: { projectRoot: '/project', executionRoot: '/candidate', grant,
         taskId: 'task', connectionId: 'local', registrationId: 'registration', modelId: 'model',
         prompt: 'Do work', onEvent: (event: any) => events.push(event) },
         connection, loadedModelIds: ['model'], inventory: async () => inventory(),
         budget: new LocalContextBudget('local', 'model', inventory()), signal: abort.signal };
-    return { loop, input, sent, events, abort, revoke: () => { active = false; } };
+    return { loop, input, sent, processFlags, events, abort, revoke: () => { active = false; } };
 }
 const rejected = (work: Promise<unknown>, pattern: RegExp) => assert.rejects(work,
     (error: any) => pattern.test(error.message) && !/secret raw|secret workspace/.test(error.message));
@@ -52,6 +54,18 @@ test('two turns correlate tool call and result, sanitize result and final transc
     assert.doesNotMatch(JSON.stringify(h.sent[1]), /secret raw/);
     assert.deepEqual(h.events.map(event => event.kind), ['status', 'agent-message', 'status']);
     assert.doesNotMatch(JSON.stringify(h.events), /secret raw/);
+});
+
+test('unapproved model-side process is not advertised for Dope-owned validation', async () => {
+    const noProcess = harness([{ kind: 'final', text: 'Edits ready for validation.' }]);
+    await noProcess.loop.run(noProcess.input);
+    assert.deepEqual(noProcess.processFlags, [false]);
+    assert.match(noProcess.sent[0][0].content, /Dope runs the configured required validation independently/);
+    const approved = harness([{ kind: 'final', text: 'Done.' }], undefined,
+        [{ id: 'validation-1', kind: 'test', executable: 'node', argv: ['--test', 'test/math.test.js'] }]);
+    await approved.loop.run(approved.input);
+    assert.deepEqual(approved.processFlags, [true]);
+    assert.match(approved.sent[0][0].content, /Approved process command IDs: validation-1/);
 });
 
 test('repeated completed process is redirected once without duplicate execution', async () => {

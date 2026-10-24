@@ -435,9 +435,12 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             completion.validation.some(target => !target.command?.trim()))
             throw new Error('Phase-stack review requires nonempty Dope validation commands and requireValidationPass');
         const taskId = `${sequence.id}-P${sequence.currentEntryNumber}`;
+        // An exact target is the user's task-scoped override. Prompt reasoning guidance
+        // applies only when following the Coding Agent role; local adapters reject it.
+        const controls = modelPolicy.kind === 'exact' ? {} : metadata.controls;
         const candidate = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id: taskId, createdAt: sequence.createdAt,
             objective: metadata.objective, instructions: metadata.instructions, projectRoot: '.',
-            modelPolicy, controls: metadata.controls, authority: { profile: 'phase-8b-project' }, completion,
+            modelPolicy, controls, authority: { profile: 'phase-8b-project' }, completion,
             reviewPolicy: { kind: 'required' },
             origin: metadata.origin, phaseStack: { stackFingerprint: metadata.stackFingerprint,
                 recommendedModel: metadata.recommendedModel, versionPolicy: metadata.versionPolicy } });
@@ -467,7 +470,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         const metadata = phaseStackTaskMetadata(sequence.stack, sequence.currentEntryNumber);
         if (!task || task.origin.kind !== 'phase-stack' || task.origin.promptId !== metadata.origin.promptId ||
             task.instructions !== metadata.instructions || task.objective !== metadata.objective ||
-            task.controls.reasoningEffort !== metadata.controls.reasoningEffort ||
+            task.controls.reasoningEffort !== (task.modelPolicy.kind === 'exact' ? undefined : metadata.controls.reasoningEffort) ||
             JSON.stringify(task.phaseStack) !== JSON.stringify({ stackFingerprint: metadata.stackFingerprint,
                 recommendedModel: metadata.recommendedModel, versionPolicy: metadata.versionPolicy }))
             throw new Error('Prepared sequence task no longer matches snapshot');

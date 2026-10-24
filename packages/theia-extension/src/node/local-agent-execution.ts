@@ -94,7 +94,7 @@ export class LocalAgentExecutionAdapter implements AgentExecutionAdapter {
         if (this.disposed) throw fail('Local execution adapter disposed', 'cancelled');
         const abort = new AbortController();
         const broker = (this.dependencies.broker ?? localWorkspaceBroker)(request, workspace, commands);
-        const loop = new LocalAgentTurnLoop(this.dependencies.transport ?? new LocalToolTurnTransport(), broker);
+        const loop = new LocalAgentTurnLoop(this.dependencies.transport ?? new LocalToolTurnTransport(), broker, commands);
         const active = { abort, loop };
         this.active.add(active);
         const timeoutMs = this.dependencies.timeoutMs ?? 120_000;

@@ -34,6 +34,17 @@ test('one LM Studio turn declares bounded tools and returns final text', async (
     assert.equal(sent.stream, false);
 });
 
+test('process tool is omitted when no model-side command is approved', async () => {
+    let declared: string[] = [];
+    const transport = mock((_url, init) => {
+        declared = JSON.parse(init.body as string).tools.map((tool: any) => tool.function.name);
+        return completion({ content: 'Ready for Dope validation' });
+    });
+    assert.deepEqual(await transport.turn({ ...request(), processToolAvailable: false }),
+        { kind: 'final', text: 'Ready for Dope validation' });
+    assert.deepEqual(declared, ['read', 'list', 'edit']);
+});
+
 test('LM Studio empty tool-call array is a valid final response', async () => {
     const transport = mock(() => completion({ content: 'Done', tool_calls: [] }));
     assert.deepEqual(await transport.turn(request()), { kind: 'final', text: 'Done' });
@@ -44,6 +55,19 @@ test('valid call is normalized through the P1 tool parser, never executed', asyn
         function: { name: 'read', arguments: '{"path":"src/main.ts","maxBytes":100}' } }] }, 'tool_calls'));
     assert.deepEqual(await transport.turn(request()), { kind: 'tools', calls: [{ id: 'call_1', name: 'read',
         arguments: { path: 'src/main.ts', maxBytes: 100 } }] });
+});
+
+test('valid multi-line edit exceeds display reserve but remains within tool context budget', async () => {
+    const content = 'test("clamp", () => {\n  assert.equal(clamp(1, 2, 10), 2);\n});\n'.repeat(9);
+    const transport = mock(() => completion({ content: null, tool_calls: [{ id: 'call_1', type: 'function',
+        function: { name: 'edit', arguments: JSON.stringify({ operation: 'modify', path: 'test/math.test.ts', content }) } }] },
+    'tool_calls'));
+    const result = await transport.turn(request());
+    assert.equal(result.kind, 'tools');
+    if (result.kind === 'tools') {
+        assert.equal(result.calls[0].name, 'edit');
+        if (result.calls[0].name === 'edit') assert.equal(result.calls[0].arguments.content, content);
+    }
 });
 
 test('LM Studio explanatory content on a tool turn remains inert text', async () => {

@@ -53,3 +53,10 @@ test('finite turn, tool and accumulated byte limits', () => {
     for (let i = 0; i < 4; i++) large.prepareTurn(snapshot(65536), [{ content: 'x'.repeat(32000) }]);
     rejected(() => large.prepareTurn(snapshot(65536), [{ content: 'x'.repeat(32000) }]));
 });
+
+test('tool payload budget accepts essential edits beyond the final answer reserve', () => {
+    const current = budget(4096);
+    current.recordToolPayload('x'.repeat(671));
+    rejected(() => current.recordToolPayload('x'.repeat(current.inputBytes + 1)));
+    rejected(() => current.recordOutput('x'.repeat(671)));
+});

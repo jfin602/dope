@@ -185,6 +185,7 @@ test('Work detail records unsupported steering and review-only action decisions 
     const runtime = {
         async attach() { return { projectHandle: 'project-1' }; },
         async listTaskStacks() { return []; }, async listSequences() { return []; },
+        async sequenceEvidence() { return { head, packageVersion: '0.11.8', clean: true }; },
         async listTasks() { return [task]; }, async listRuns() { return [run]; },
         async readTask() { return task; }, async readRun() { return run; },
         async readTranscript() { return { state: 'recorded', entries: [], hasMore: false, incomplete: false }; },

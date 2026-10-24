@@ -20,22 +20,25 @@ const savedSequence = { id: 'saved-sequence', taskId: savedTask.id, status: 'com
 function fixture() {
     const effects: string[] = [];
     let attachFailure = false;
+    let evidenceFailure = false;
+    let historyFailure = false;
+    let delayNextAttach = false;
     let releaseAttach: (() => void) | undefined;
     let releaseTranscript: (() => void) | undefined;
     const runtime = {
         async attach(root: string) {
-            if (releaseAttach) await new Promise<void>(resolve => {
-                const release = releaseAttach!; releaseAttach = () => { releaseAttach = undefined; release(); resolve(); };
-            });
+            if (delayNextAttach) { delayNextAttach = false; await new Promise<void>(resolve => {
+                releaseAttach = () => { releaseAttach = undefined; resolve(); };
+            }); }
             if (attachFailure) throw new Error('backend unavailable');
             return { projectHandle: root };
         },
         async listTaskStacks() { return []; },
-        async listSequences() { return [savedSequence]; },
+        async listSequences() { if (evidenceFailure) throw new Error('backend unavailable'); return [savedSequence]; },
         async sequenceEvidence() { return { head: 'a'.repeat(40), packageVersion: '0.11.8', clean: true }; },
         async codingAgentReady() { return false; },
         async readSequence(_handle: string, id: string) { return id === savedSequence.id ? savedSequence : undefined; },
-        async listTasks() { return [savedTask]; },
+        async listTasks() { if (historyFailure) throw new Error('backend unavailable'); return [savedTask]; },
         async listRuns() { return [savedRun]; },
         async readTask(_handle: string, id: string) { return id === savedTask.id ? savedTask : undefined; },
         async readRun(_handle: string, id: string) { return id === savedRun.id ? savedRun : undefined; },
@@ -59,7 +62,9 @@ function fixture() {
     const controller = new WorkSelectionController(runtime, () => {}, undefined, 20);
     return { controller, owners, effects,
         failAttach(value: boolean) { attachFailure = value; },
-        delayAttach() { releaseAttach = () => {}; return () => releaseAttach?.(); },
+        failEvidence(value: boolean) { evidenceFailure = value; },
+        failHistory(value: boolean) { historyFailure = value; },
+        delayAttach() { delayNextAttach = true; return () => releaseAttach?.(); },
         delayTranscript() { releaseTranscript = () => {}; return () => releaseTranscript?.(); } };
 }
 
@@ -90,6 +95,57 @@ test('restored saved run and sequence retain exact owner and read-only transcrip
     assert.equal(h.controller.phase.selected?.id, savedSequence.id);
     assert.deepEqual(h.effects, []);
     stack.dispose(); first.dispose();
+});
+
+test('attachment requires real sequence evidence and task history before reporting ready', async () => {
+    const h = fixture();
+    h.failEvidence(true);
+    await h.controller.attach(project);
+    assert.equal(h.controller.attachState, 'unavailable');
+    assert.equal(h.controller.handle, undefined);
+    h.failEvidence(false);
+    h.failHistory(true);
+    await h.controller.attach(project);
+    assert.equal(h.controller.attachState, 'unavailable');
+    assert.equal(h.controller.handle, undefined);
+    h.failHistory(false);
+    await h.controller.attach(project);
+    assert.equal(h.controller.attachState, 'attached');
+    assert.deepEqual(h.effects, []);
+});
+
+test('stalled saved detail exposes retry and discards its late transcript', async () => {
+    const h = fixture();
+    await h.controller.attach(project);
+    const release = h.delayTranscript();
+    assert.equal(await h.controller.select(runSelection, true), undefined);
+    assert.equal(h.controller.selectionState, 'unavailable');
+    assert.match(h.controller.message, /did not respond/);
+    release(); await Promise.resolve();
+    assert.deepEqual(h.controller.transcript, []);
+    assert.deepEqual(await h.controller.select(runSelection, true), runSelection);
+    assert.equal(h.controller.selectionState, 'attached');
+    assert.equal(h.controller.transcript[0]?.text, 'Saved transcript');
+    assert.deepEqual(h.effects, []);
+});
+
+test('overlapping attachment attempts keep the latest handle and one saved owner', async () => {
+    const h = fixture();
+    const panel = new SharedPanelState(h.owners, 'work-a', () => {}, () => {});
+    panel.restore({ version: 2, workspace: project, panelMode: 'work', work: runSelection });
+    panel.attach(project);
+    const release = h.delayAttach();
+    const oldAttempt = h.controller.attach(project);
+    await Promise.resolve();
+    await h.controller.attach(project);
+    assert.equal(h.controller.attachState, 'attached');
+    assert.deepEqual(await h.controller.select(panel.work, true), runSelection);
+    release(); await oldAttempt;
+    assert.equal(h.controller.attachState, 'attached');
+    assert.deepEqual(panel.work, runSelection);
+    assert.equal(h.owners.focus(project, runSelection), true);
+    assert.deepEqual(h.effects, []);
+    panel.dispose();
 });
 
 test('failed and timed-out attach become unavailable, Retry recovers, Select Work releases ownership', async () => {

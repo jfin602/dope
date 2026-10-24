@@ -147,6 +147,18 @@ async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: strin
     return { sequence, task, accepted };
 }
 
+test('exact Prompt Stack target does not inherit hosted reasoning controls', async () => fixture(async f => {
+    const opened = await f.backend.openTaskStack(f.handle, 'docs/tasks', 'c8-lifecycle-test');
+    assert.equal(opened.kind, 'opened');
+    if (opened.kind !== 'opened') return;
+    const task = await f.backend.prepareSequenceTask(f.handle, opened.sequence.id,
+        { kind: 'exact', connectionId: 'local-1', modelId: 'local-model' },
+        { validation: [{ kind: 'test', label: 'focused', command: 'true' }], requireValidationPass: true });
+    assert.equal(task.controls.reasoningEffort, undefined);
+    assert.equal(task.phaseStack?.recommendedModel, 'gpt-6-sol');
+    assert.deepEqual(task.modelPolicy, { kind: 'exact', connectionId: 'local-1', modelId: 'local-model' });
+}));
+
 test('dirty stack acceptance persists exact basis and starts P1 in its execution workspace', async () => fixture(async f => {
     await writeFile(join(f.root, 'notes.txt'), 'developer work\n');
     const imported = await f.backend.openTaskStack(f.handle, 'docs/tasks', 'c8-lifecycle-test');

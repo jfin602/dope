@@ -1,6 +1,7 @@
 import { createDefaultExecutionGrant, sequenceNeedsDirtyAcceptance } from '@dope/agent-core';
-import type { AgentRun, AgentTaskSequence } from '@dope/agent-core';
+import type { AgentModelPolicy, AgentRun, AgentTaskSequence } from '@dope/agent-core';
 import type { AgentRuntimeService, DiscoveredTaskStack, OpenTaskStackResult } from '@dope/contracts/lib/agent-runtime-service';
+import type { AgentTarget } from './agent-run-controller';
 
 export type StackEvidence = Awaited<ReturnType<AgentRuntimeService['sequenceEvidence']>>;
 const retryable = ['run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted'];
@@ -17,6 +18,11 @@ export class PhaseStackController {
     tasksRoot = 'docs/tasks/';
     validationCommand = '';
     acceptedGrant = false;
+    hostedProjectDataAuthorized = false;
+    modelPolicy: AgentModelPolicy = { kind: 'follow-coding-agent' };
+    exactTargets: AgentTarget[] = [];
+    resolvedTarget?: AgentTarget;
+    targetReason = 'Coding Agent target is loading.';
     dirtyPromptDismissed = false;
     message = '';
     busy = false;
@@ -35,7 +41,30 @@ export class PhaseStackController {
     }
 
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void,
-        private readonly attachLimitMs = 10000) {}
+        private readonly attachLimitMs = 10000,
+        private readonly resolveTarget?: (policy: AgentModelPolicy) => Promise<{
+            target?: AgentTarget; targets?: AgentTarget[]; reason: string }>) {}
+    setModelPolicy(policy: AgentModelPolicy): void {
+        this.modelPolicy = policy; this.acceptedGrant = false; this.hostedProjectDataAuthorized = false;
+        this.resolvedTarget = undefined; this.targetReason = 'Coding Agent target is loading.';
+        void this.resolveModel(); this.changed();
+    }
+    private async resolveModel(): Promise<void> {
+        if (!this.resolveTarget) return;
+        const serial = this.serial, policy = this.modelPolicy;
+        try {
+            const result = await this.resolveTarget(policy);
+            if (serial !== this.serial || policy !== this.modelPolicy) return;
+            this.exactTargets = result.targets ?? [];
+            this.resolvedTarget = result.target;
+            this.targetReason = result.reason;
+        } catch {
+            if (serial !== this.serial || policy !== this.modelPolicy) return;
+            this.exactTargets = []; this.resolvedTarget = undefined;
+            this.targetReason = 'Coding Agent target could not be resolved.';
+        }
+        this.changed();
+    }
     cancelSelection(): void {
         ++this.serial;
         this.busy = false; this.refreshing = false;
@@ -47,6 +76,8 @@ export class PhaseStackController {
         this.busy = false; this.refreshing = false;
         this.project = project; this.handle = undefined; this.sequences = []; this.stacks = []; this.selected = undefined;
         this.evidence = undefined; this.codingAgentReady = false; this.run = undefined; this.acceptedGrant = false;
+        this.hostedProjectDataAuthorized = false; this.modelPolicy = { kind: 'follow-coding-agent' };
+        this.exactTargets = []; this.resolvedTarget = undefined; this.targetReason = 'Coding Agent target is loading.';
         this.dirtyPromptDismissed = false;
         this.validationCommand = ''; this.validationTaskId = undefined;
         this.message = ''; this.lastView = ''; this.changed();
@@ -58,6 +89,8 @@ export class PhaseStackController {
             if (serial !== this.serial) return;
             this.handle = projectHandle;
             await this.bounded(this.scan());
+            await this.bounded(this.resolveModel());
+            if (serial === this.serial && !this.evidence) throw new Error('Work evidence unavailable');
         } catch (error) { if (serial === this.serial) {
             ++this.serial;
             this.handle = undefined; this.busy = false; this.refreshing = false;
@@ -206,7 +239,11 @@ export class PhaseStackController {
         if (!this.acceptedGrant) return 'Accept the project execution grant to continue.';
         if (!this.validationCommand.trim()) return 'Enter a required validation command to continue.';
         if (this.validationCommand.trim().length > 160) return 'Validation command is too long.';
-        if (!this.codingAgentReady) return 'Configure and test an eligible Coding Agent in AI Center.';
+        if (this.resolveTarget && !this.resolvedTarget) return this.targetReason;
+        if (this.resolvedTarget?.locality === 'hosted' && !this.hostedProjectDataAuthorized)
+            return 'Authorize sending this project data to the hosted Coding Agent for this start.';
+        if (this.modelPolicy.kind === 'follow-coding-agent' && !this.codingAgentReady)
+            return 'Configure and test an eligible Coding Agent in AI Center.';
         return '';
     }
     get canStart(): boolean {
@@ -218,20 +255,33 @@ export class PhaseStackController {
             (this.evidence.clean || Boolean(s.acceptedDirty) && !this.needsDirtyAcceptance || acceptedBasisRetry) &&
             this.current?.execution === 'agent-task' &&
             (s.status === 'ready' || s.status === 'blocked' && retryable.includes(s.blockedReason ?? '')) &&
-            !this.needsDirtyAcceptance && this.acceptedGrant && this.codingAgentReady &&
+            !this.needsDirtyAcceptance && this.acceptedGrant &&
+            (!this.resolveTarget || !!this.resolvedTarget) &&
+            (this.modelPolicy.kind === 'exact' || this.codingAgentReady) &&
+            (this.resolvedTarget?.locality !== 'hosted' || this.hostedProjectDataAuthorized) &&
             this.validationCommand.trim().length > 0 && this.validationCommand.trim().length <= 160 && !this.busy);
     }
     async start(): Promise<void> {
         if (!this.canStart || !this.handle || !this.project || !this.selected) return;
         const id = this.selected.id;
+        const policy = this.modelPolicy;
         await this.perform(async () => {
+            const shown = this.resolvedTarget;
+            const fresh = await this.resolveTarget?.(policy);
+            if (policy !== this.modelPolicy || !this.acceptedGrant ||
+                this.resolveTarget && (!shown || !fresh?.target ||
+                shown.connectionId !== fresh.target.connectionId || shown.modelId !== fresh.target.modelId ||
+                shown.locality !== fresh.target.locality ||
+                (shown.locality === 'hosted' && !this.hostedProjectDataAuthorized)))
+                throw new Error('Coding Agent selection changed. Review the target and approve again.');
             const command = this.validationCommand.trim();
-            const task = await this.runtime.prepareSequenceTask(this.handle!, id, { kind: 'follow-coding-agent' },
+            const task = await this.runtime.prepareSequenceTask(this.handle!, id, policy,
                 { validation: [{ kind: 'test', label: 'phase-stack', command }], requireValidationPass: true });
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString() });
             this.acceptedGrant = false;
-            this.run = await this.runtime.startSequence(this.handle!, this.project!, id, grant, true);
+            this.run = await this.runtime.startSequence(this.handle!, this.project!, id, grant,
+                shown?.locality === 'hosted' && this.hostedProjectDataAuthorized);
             this.message = 'Sequence task started.';
         });
     }

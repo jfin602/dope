@@ -5,9 +5,11 @@ import { PhaseStackController } from '../../packages/theia-extension/lib/browser
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 
 const sha = 'a'.repeat(40);
-function harness(status: string = 'ready', reason?: string, manual = false) {
+function harness(status: string = 'ready', reason?: string, manual = false,
+    resolver?: (policy: { kind: string; connectionId?: string; modelId?: string }) => Promise<any>) {
     let starts = 0, stops = 0, reconciles = 0, opens = 0, scans = 0, accepts = 0, gates = 0, checkpoints = 0;
     let dirty = false, agentReady = true, fingerprint = 'c'.repeat(64);
+    let preparedPolicy: unknown, hostedAuthorized: boolean | undefined;
     const entry = { number: 1, execution: manual ? 'manual-gate' : 'agent-task', title: 'Work',
         promptText: 'Exact snapshotted prompt', recommendation: { label: 'GPT-6 Sol Medium', reasoning: 'medium' },
         versionPolicy: { kind: 'target', version: '0.8.19' }, browserRequired: manual };
@@ -37,23 +39,45 @@ function harness(status: string = 'ready', reason?: string, manual = false) {
         async readRun() { return undefined; }, async readTask() { return undefined; },
         async prepareSequenceTask(_h: string, _id: string, _policy: unknown, completion: any,
             dirtyAcceptance?: { worktreeFingerprint: string }) {
+            preparedPolicy = _policy;
             assert.equal(dirtyAcceptance, undefined);
             assert.deepEqual(completion, { validation: [{ kind: 'test', label: 'phase-stack', command: './validate.sh' }],
                 requireValidationPass: true }); return { id: 'task' };
         },
-        async startSequence() { starts++; sequence.status = 'running';
+        async startSequence(_h: string, _project: string, _id: string, _grant: unknown, hosted?: boolean) {
+            hostedAuthorized = hosted; starts++; sequence.status = 'running';
             return { id: 'run', status: 'running', validationResults: [] }; },
         async stopSequence() { stops++; sequence.status = 'blocked'; return sequence; },
         async reconcileManualGate() { gates++; return sequence; }, async reconcileSequence() { reconciles++; return sequence; },
         async checkpointSequence() { checkpoints++; sequence.status = 'ready'; return sequence; } };
-    const controller = new PhaseStackController(runtime as unknown as AgentRuntimeService, () => {});
+    const controller = new PhaseStackController(runtime as unknown as AgentRuntimeService, () => {}, 10000, resolver as any);
     return { controller, sequence, setDirty(value: boolean) { dirty = value; },
         setAgentReady(value: boolean) { agentReady = value; },
         changeFingerprint(value: string) { fingerprint = value; },
         get starts() { return starts; }, get stops() { return stops; }, get reconciles() { return reconciles; },
         get opens() { return opens; }, get scans() { return scans; },
-        get accepts() { return accepts; }, get gates() { return gates; }, get checkpoints() { return checkpoints; } };
+        get accepts() { return accepts; }, get gates() { return gates; }, get checkpoints() { return checkpoints; },
+        get preparedPolicy() { return preparedPolicy; }, get hostedAuthorized() { return hostedAuthorized; } };
 }
+
+test('Prompt Stack selects exact local model without changing Coding Agent role or granting hosted transfer', async () => {
+    const target = { connectionId: 'local-1', modelId: 'qwen', locality: 'local', label: 'Local Qwen' };
+    const h = harness('ready', undefined, false, async policy => ({ target: policy.kind === 'exact' ? target : undefined,
+        targets: [target], reason: policy.kind === 'exact' ? '' : 'Role unavailable' }));
+    h.setAgentReady(false);
+    await h.controller.attach('file:///project'); await h.controller.select('c4-dope-phase-stack-smoke');
+    h.controller.validationCommand = './validate.sh'; h.controller.acceptedGrant = true;
+    assert.equal(h.controller.canStart, false);
+    h.controller.setModelPolicy({ kind: 'exact', connectionId: 'local-1', modelId: 'qwen' });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.controller.acceptedGrant, false);
+    h.controller.acceptedGrant = true;
+    assert.equal(h.controller.canStart, true);
+    await h.controller.start();
+    assert.equal(h.starts, 1);
+    assert.deepEqual(h.preparedPolicy, { kind: 'exact', connectionId: 'local-1', modelId: 'qwen' });
+    assert.equal(h.hostedAuthorized, false);
+});
 
 test('Start stays disabled without an eligible Coding Agent and recovers when one is ready', async () => {
     const h = harness(); h.setAgentReady(false);

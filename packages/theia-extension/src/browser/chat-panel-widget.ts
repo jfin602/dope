@@ -3,6 +3,7 @@ import { ApplicationShell, type StatefulWidget } from '@theia/core/lib/browser';
 import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
 import type { Event } from '@theia/core/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
+import { ConnectionStatus, type ConnectionStatusService } from '@theia/core/lib/browser/connection-status-service';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import type { ChatOperation } from '@dope/chat/lib/service';
@@ -39,6 +40,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private promptStacksOnly = false;
     private lastWorkSelection?: WorkSelection;
     private readonly rootsListener;
+    private readonly connectionListener;
     private readonly modelsListener;
     private readonly planningListener;
     private readonly status = document.createElement('p');
@@ -52,6 +54,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
     private initialAttach: Promise<void> = Promise.resolve();
+    private workReconnect?: Promise<void>;
+    private backendOffline = false;
+    private workspaceAttachFailed = false;
+    private workAttachmentError = false;
+    private workAttachTimer?: ReturnType<typeof setTimeout>;
+    private reconnectProbe?: ReturnType<typeof setInterval>;
+    private probingBackend = false;
     private workNavigator?: WorkSelectionNavigator;
     private modelsRequest = 0;
     private models: ModelConnectionsSnapshot = { connections: [] };
@@ -85,7 +94,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly openTranscript?: (project: string, runId: string) => Promise<void>,
         private readonly planningSelection?: ChatPlanningSelection,
         private readonly openPromptSource?: (project: string, path: string, promptText: string,
-            isCurrent: () => boolean) => Promise<void>) {
+            isCurrent: () => boolean) => Promise<void>,
+        connectionStatus?: ConnectionStatusService) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -109,6 +119,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.status.setAttribute('aria-live', 'polite');
         this.node.append(this.status, this.content);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { this.initialAttach = this.attach(); });
+        this.backendOffline = connectionStatus?.currentStatus === ConnectionStatus.OFFLINE;
+        this.connectionListener = connectionStatus?.onStatusChange(status => {
+            this.backendOffline = status === ConnectionStatus.OFFLINE;
+            if (this.backendOffline) this.startReconnectProbe();
+            else this.stopReconnectProbe();
+            if (this.module !== 'work') { this.render(); return; }
+            if (!this.panel.workspace && !this.workspaceAttachFailed) { this.render(); return; }
+            if (this.backendOffline) this.render();
+            else void this.retryWorkConnection();
+        });
+        if (this.backendOffline) this.startReconnectProbe();
         this.modelsListener = onModelsChanged?.(() => { if (this.module === 'chat') void this.loadModels();
             void this.directController?.resolveTarget();
             void this.workController?.phase.refresh();
@@ -186,6 +207,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const layout = readSharedPanelLayout(state);
         if (!layout?.workspace) return;
         this.module = panelModule(this.options, layout);
+        if (this.module === 'work' && this.backendOffline) this.startReconnectProbe();
         layout.panelMode = this.module;
         this.panel.restore(layout);
         if (this.module === 'chat') this.controller.restore(layout.workspace, layout.chatId ? 'chat' : 'select-chat', layout.chatId);
@@ -211,6 +233,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
 
     private async attach(): Promise<void> {
         const request = ++this.workspaceRequest;
+        this.workspaceAttachFailed = false;
+        this.workAttachmentError = false;
+        if (this.workAttachTimer) clearTimeout(this.workAttachTimer);
         const previous = this.panel.layout();
         this.composingWork = false;
         this.lastWorkSelection = undefined;
@@ -220,18 +245,121 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         await this.workController?.attach(undefined);
         await this.directController?.attach(undefined);
         await this.controller.attach(undefined);
-        const roots = await this.workspaces.roots;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let roots: Awaited<WorkspaceService['roots']>;
+        try {
+            roots = await Promise.race([this.workspaces.roots, new Promise<never>((_, reject) => {
+                timer = setTimeout(() => reject(new Error('workspace-timeout')), 10000);
+            })]);
+        } catch {
+            if (!this.isDisposed && request === this.workspaceRequest) {
+                this.workspaceAttachFailed = true;
+                this.render();
+            }
+            return;
+        } finally { if (timer) clearTimeout(timer); }
         if (this.isDisposed || request !== this.workspaceRequest) return;
         const workspace = roots.length === 1 ? roots[0].resource.toString() : undefined;
         this.panel.attach(workspace);
         this.panel.setMode(this.module);
         const workAttached = this.workController?.attach(workspace);
+        if (workspace && this.module === 'work') {
+            this.workAttachTimer = setTimeout(() => {
+                if (!this.isDisposed && request === this.workspaceRequest &&
+                    this.workController?.attachState === 'loading') {
+                    this.workAttachmentError = true;
+                    this.render();
+                }
+            }, 15000);
+            void workAttached?.then(() => {
+                if (request === this.workspaceRequest && this.workAttachTimer) {
+                    clearTimeout(this.workAttachTimer);
+                    this.workAttachTimer = undefined;
+                }
+            }, () => {
+                if (request === this.workspaceRequest && this.workAttachTimer) {
+                    clearTimeout(this.workAttachTimer);
+                    this.workAttachTimer = undefined;
+                }
+            });
+        }
         void this.directController?.attach(workspace);
         void workAttached?.then(() => {
-            if (!this.isDisposed && request === this.workspaceRequest) void this.restoreWorkSelection();
+            if (!this.isDisposed && request === this.workspaceRequest && this.workController?.handle) {
+                this.workAttachmentError = false;
+                void this.restoreWorkSelection();
+            }
         });
         if (this.module === 'chat') await this.controller.attach(workspace);
         else await workAttached;
+    }
+
+    /** Reuse this panel and its saved owner; never start or approve Work during recovery. */
+    private retryWorkConnection(): Promise<void> {
+        if (this.backendOffline) return this.probeBackend(true);
+        if (this.workReconnect) return this.workReconnect;
+        if (!this.panel.workspace && this.workspaceAttachFailed && !this.backendOffline) {
+            this.initialAttach = this.attach();
+            return this.initialAttach;
+        }
+        const project = this.panel.workspace;
+        const request = this.workspaceRequest;
+        if (!project || !this.workController || this.backendOffline) return Promise.resolve();
+        this.workAttachmentError = false;
+        this.render();
+        const attempt = (async () => {
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            try {
+                await Promise.race([this.workController!.attach(project), new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => reject(new Error('work-reattach-timeout')), 15000);
+                })]);
+            } catch {
+                if (!this.isDisposed && request === this.workspaceRequest && this.panel.workspace === project) {
+                    void this.workController!.attach(undefined);
+                    this.workAttachmentError = true;
+                    this.render();
+                }
+                return;
+            } finally { if (timer) clearTimeout(timer); }
+            if (this.isDisposed || request !== this.workspaceRequest || this.panel.workspace !== project ||
+                this.workController?.project !== project || !this.workController.handle) return;
+            await this.restoreWorkSelection();
+        })();
+        this.workReconnect = attempt.finally(() => {
+            if (this.workReconnect === done) this.workReconnect = undefined;
+        });
+        const done = this.workReconnect;
+        return done;
+    }
+    private startReconnectProbe(): void {
+        if (this.reconnectProbe || this.module !== 'work') return;
+        this.reconnectProbe = setInterval(() => { void this.probeBackend(); }, 3000);
+    }
+    private stopReconnectProbe(): void {
+        if (this.reconnectProbe) clearInterval(this.reconnectProbe);
+        this.reconnectProbe = undefined;
+    }
+    private async probeBackend(manual = false): Promise<void> {
+        if (!this.backendOffline || this.probingBackend || this.isDisposed ||
+            !this.panel.workspace && !this.workspaceAttachFailed) return;
+        this.probingBackend = true;
+        try {
+            // A restarted backend can answer HTTP while Theia's old socket remains
+            // offline. Reload this same tab to negotiate a fresh backend channel;
+            // StatefulWidget restores its saved Work owner without execution.
+            const response = await fetch(window.location.origin + '/', {
+                method: 'HEAD', cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(2500)
+            });
+            if (response.ok && this.backendOffline && !this.isDisposed) {
+                const key = 'dope.work.reconnect-reload';
+                const last = Number(window.sessionStorage.getItem(key) || 0);
+                if (manual || Date.now() - last > 30000) {
+                    window.sessionStorage.setItem(key, String(Date.now()));
+                    window.location.reload();
+                }
+            }
+        } catch { /* Keep the visible disconnected state until the service returns. */ }
+        finally { this.probingBackend = false; }
     }
 
     async selectChatLauncher(): Promise<void> {
@@ -380,6 +508,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             } else void controller?.select(work);
         }));
         this.content.append(header);
+        if (this.backendOffline || this.workAttachmentError) return;
         if (!controller?.handle) return;
         if (work && controller.selectionState !== 'attached') {
             const detail = document.createElement('p'); detail.setAttribute('role', 'status');
@@ -641,7 +770,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const metadata = document.createElement('details'); metadata.className = 'dope-work-diagnostics';
                 const metadataTitle = document.createElement('summary'); metadataTitle.textContent = 'Prompt Stack details';
                 const metadataText = document.createElement('p');
-                metadataText.textContent = `${sequence.stack.mode === 'correction' ? 'Correction' : 'Phase'} ${sequence.stack.phase} · ${sequence.stack.folderName} · Model: Coding Agent`;
+                metadataText.textContent = `${sequence.stack.mode === 'correction' ? 'Correction' : 'Phase'} ${sequence.stack.phase} · ${sequence.stack.folderName} · Model: ${phase.resolvedTarget?.label ?? 'Coding Agent'}`;
                 metadata.append(metadataTitle, metadataText); scroll.append(metadata);
                 if (sequence.runIds?.length && this.panel.workspace) {
                     const previousRuns = document.createElement('details'); previousRuns.className = 'dope-work-diagnostics';
@@ -677,6 +806,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             detail('Manual verification is unavailable until the repository block is resolved.', 'dope-work-warning');
                         primary('Verify manual gate', () => void phase.reconcile(), view.actions.includes('verify-manual-gate'));
                     } else if (entry.execution === 'agent-task' && sequence.status !== 'completed') {
+                        const model = document.createElement('select'); model.setAttribute('aria-label', 'Coding Agent model');
+                        const follow = document.createElement('option'); follow.value = 'follow';
+                        follow.textContent = 'Follow Coding Agent'; model.append(follow);
+                        for (const target of phase.exactTargets) { const option = document.createElement('option');
+                            option.value = `${target.connectionId}\u0000${target.modelId}`;
+                            option.textContent = target.label; model.append(option); }
+                        model.value = phase.modelPolicy.kind === 'exact' ?
+                            `${phase.modelPolicy.connectionId}\u0000${phase.modelPolicy.modelId}` : 'follow';
+                        model.onchange = () => { const target = phase.exactTargets.find(item =>
+                            `${item.connectionId}\u0000${item.modelId}` === model.value);
+                            phase.setModelPolicy(target ? { kind: 'exact', connectionId: target.connectionId,
+                                modelId: target.modelId } : { kind: 'follow-coding-agent' }); };
+                        decision.append(model);
                         const validation = document.createElement('input'); validation.type = 'text';
                         validation.value = phase.validationCommand; validation.maxLength = 160;
                         validation.setAttribute('aria-label', 'Required validation command');
@@ -686,6 +828,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         const check = document.createElement('input'); check.type = 'checkbox'; check.checked = phase.acceptedGrant;
                         check.onchange = () => { phase.acceptedGrant = check.checked; syncStart(); };
                         grant.append(check, ' Accept project execution grant'); decision.append(grant);
+                        if (phase.resolvedTarget?.locality === 'hosted') {
+                            const hostedLabel = document.createElement('label');
+                            const hosted = document.createElement('input'); hosted.type = 'checkbox';
+                            hosted.checked = phase.hostedProjectDataAuthorized;
+                            hosted.onchange = () => { phase.hostedProjectDataAuthorized = hosted.checked; syncStart(); };
+                            hostedLabel.append(hosted, ' Authorize sending project data to the hosted Coding Agent');
+                            decision.append(hostedLabel);
+                        }
                         if (phase.needsDirtyAcceptance && !phase.dirtyPromptDismissed)
                             decision.append(primary('Continue with dirty worktree', () => void phase.continueDirty(),
                                 view.actions.includes('continue-dirty')),
@@ -1238,12 +1388,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
         this.status.textContent = this.panel.mode === 'chat' ?
             state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '') :
-            !this.panel.workspace ? 'Open one project to use Work.' : this.workController?.attachState === 'loading' ?
-                'Loading Work…' : this.workController?.attachState === 'unavailable' ?
+            this.workspaceAttachFailed ? 'Work project did not respond. Retry the connection.' :
+            !this.panel.workspace ? 'Open one project to use Work.' : this.backendOffline ?
+                'Work is temporarily disconnected. Reconnecting when the backend returns…' :
+            this.workAttachmentError ? 'Work connection did not respond. Retry connection.' :
+            this.workController?.attachState === 'loading' ?
+                this.workController.phase.handle ? 'Loading saved Work…' : 'Connecting to Work…' :
+            this.workController?.attachState === 'unavailable' ?
                     this.workController.message || 'Work is unavailable.' : '';
-        if (this.panel.mode === 'work' && this.panel.workspace && this.workController?.attachState === 'unavailable') {
-            this.status.append(' ', this.button('Retry', () => { this.initialAttach = this.attach(); }));
-            this.status.append(' ', this.button('Select Work', () => { this.panel.selectWork(undefined); this.render(); }));
+        if (this.panel.mode === 'work' && (this.workspaceAttachFailed || this.workAttachmentError || this.panel.workspace &&
+            (this.backendOffline || this.workController?.attachState === 'unavailable'))) {
+            this.status.append(' ', this.button('Retry connection', () => void this.retryWorkConnection(),
+                !!this.workReconnect || this.probingBackend));
+            if (this.panel.workspace) this.status.append(' ', this.button('Back to Select Work', () => { void this.selectWork(); }));
         }
         if (this.panel.mode === 'chat' && state.error.includes('Interactive role')) this.status.append(' ',
             this.button('Configure Interactive in Roles', () => { void this.aiCenter?.openRole('interactive'); }));
@@ -1717,6 +1874,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         ++this.workspaceRequest;
         ++this.modelsRequest;
         this.rootsListener.dispose();
+        this.connectionListener?.dispose();
+        this.stopReconnectProbe();
+        if (this.workAttachTimer) clearTimeout(this.workAttachTimer);
         this.modelsListener?.dispose();
         this.planningListener?.dispose();
         this.panel.dispose();

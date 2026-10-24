@@ -291,9 +291,10 @@ export class WorkSelectionController {
     private serial = 0;
 
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void,
-        private readonly resolveTarget?: (policy: AgentTask['modelPolicy']) => Promise<{ target?: AgentTarget; reason: string }>,
+        private readonly resolveTarget?: (policy: AgentTask['modelPolicy']) => Promise<{
+            target?: AgentTarget; targets?: AgentTarget[]; reason: string }>,
         private readonly attachLimitMs = 10000) {
-        this.phase = new PhaseStackController(runtime, changed, attachLimitMs);
+        this.phase = new PhaseStackController(runtime, changed, attachLimitMs, resolveTarget);
     }
     /** Adapter for the UI: capture only existing controller eligibility, then project it without effects. */
     view(selection: WorkSelection): WorkViewModel {
@@ -346,19 +347,21 @@ export class WorkSelectionController {
         this.changed();
         let timer: ReturnType<typeof setTimeout> | undefined;
         try {
-            await Promise.race([this.refresh(), new Promise<never>((_, reject) => {
+            await Promise.race([this.refresh(true), new Promise<never>((_, reject) => {
                 timer = setTimeout(() => reject(new Error('work-read-timeout')), this.attachLimitMs);
             })]);
-        } catch {
+        } catch (error) {
             if (serial === this.serial) {
                 ++this.serial;
                 this.handle = undefined; this.attachState = 'unavailable';
-                this.message = 'Work history did not respond. Retry to attach again.';
+                this.message = error instanceof Error && error.message === 'work-read-timeout' ?
+                    'Work history did not respond. Retry connection.' :
+                    'Work history could not be read. Retry connection.';
                 this.changed();
             }
         } finally { if (timer) clearTimeout(timer); }
     }
-    async refresh(): Promise<void> {
+    async refresh(strict = false): Promise<void> {
         const handle = this.handle, serial = this.serial;
         if (!handle) return;
         try {
@@ -367,12 +370,33 @@ export class WorkSelectionController {
             this.tasks = tasks; this.runs = runs;
             if (this.selectedRun) this.selectedRun = runs.find(run => run.id === this.selectedRun?.id) ?? this.selectedRun;
             this.changed();
-        } catch { if (serial === this.serial) { this.message = 'Work history could not be read.'; this.changed(); } }
+        } catch (error) { if (serial === this.serial) { this.message = 'Work history could not be read.'; this.changed(); }
+            if (strict) throw error; }
     }
     async scan(): Promise<void> {
         await Promise.all([this.phase.scan(), this.refresh()]);
     }
     async select(selection: WorkSelection | undefined, navigationOnly = false): Promise<WorkSelection | undefined> {
+        if (!selection) return this.selectInternal(undefined, navigationOnly);
+        const pending = this.selectInternal(selection, navigationOnly);
+        const serial = this.serial;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            return await Promise.race([pending, new Promise<undefined>(resolve => {
+                timer = setTimeout(() => {
+                    if (serial === this.serial) {
+                        ++this.serial;
+                        this.phase.cancelSelection();
+                        this.selectionState = 'unavailable';
+                        this.message = 'Work detail did not respond. Retry to load it again.';
+                        this.changed();
+                    }
+                    resolve(undefined);
+                }, this.attachLimitMs);
+            })]);
+        } finally { if (timer) clearTimeout(timer); }
+    }
+    private async selectInternal(selection: WorkSelection | undefined, navigationOnly = false): Promise<WorkSelection | undefined> {
         const handle = this.handle;
         // Back during initial attachment clears presentation without cancelling
         // the project attach that the Select Work page still needs.
