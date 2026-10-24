@@ -3,7 +3,7 @@ import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roa
 import type { PlanningActionRequest, PlanningActionPreview, PlanningUndoRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
-import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft, ImplementationPlanProjectionPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { PhaseFocusEvidence } from './node/phase-focus-evidence';
 
@@ -14,7 +14,13 @@ export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): vo
 /** Roadmap reads and a thin RPC bridge to Dope-owned ProjectPlanningActions. */
 export interface RoadmapService {
     beginDraft(projectUri: string): Promise<{ handle: string; draft: GreenfieldDraft }>;
-    recoverDrafts(projectUri: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string }[]>;
+    recoverDrafts(projectUri: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string;
+        plan?: ImplementationPlanDraft }[]>;
+    listImplementationPlans(projectUri: string): Promise<{ handle: string; plan: ImplementationPlanDraft }[]>;
+    previewImplementationPlanProjection(projectUri: string, handle: string): Promise<ImplementationPlanProjectionPreview>;
+    clearImplementationPlanProjection(projectUri: string, handle: string): Promise<void>;
+    applyImplementationPlanProjection(projectUri: string, preview: ImplementationPlanProjectionPreview,
+        approved: boolean): Promise<GreenfieldDraft>;
     editDraft(handle: string, expectedRevision: number, action: GreenfieldEdit): Promise<GreenfieldDraft>;
     previewDraftEdit(handle: string, expectedRevision: number, action: GreenfieldEdit): Promise<GreenfieldEditPreview>;
     applyDraftEdit(handle: string, preview: GreenfieldEditPreview, approved: boolean): Promise<GreenfieldDraft>;

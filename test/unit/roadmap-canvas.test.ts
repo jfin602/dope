@@ -99,7 +99,8 @@ test('Details command and selection use one mounted inspector model in the canva
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(canvas, /this\.inspectionEditor = new RoadmapInspectorWidget\(inspector\)/);
     assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.inspection/);
-    assert.match(canvas, /this\.setInspectionView\('compact'\);\s*this\.setInspectionOpen\(!node\.draftState\)/);
+    assert.match(canvas, /this\.setInspectionView\('compact'\);\s*this\.setInspectionOpen\(true\)/);
+    assert.match(canvas, /this\.inspectionEditor\.node\.hidden = !!item/);
     assert.match(canvas, /this\.details\.onclick = \(\) => this\.openDetails\(\)/);
     assert.match(module, /id: 'dope\.roadmap\.inspector'.*Show Roadmap Details/);
     assert.match(module, /widget\.openDetails\(\)/);

@@ -115,6 +115,18 @@ export default new ContainerModule(bind => {
                     for (const item of restored) if (!item.chatId || chats.has(item.chatId)) draftHandles.add(item.handle);
                     return restored.filter(item => !item.chatId || chats.has(item.chatId));
                 },
+                listImplementationPlans: async uri => greenfield.listImplementationPlans(
+                    await context.container.get(PlanningStore).root(uri)),
+                previewImplementationPlanProjection: async (uri, handle) => greenfield.previewImplementationPlanProjection(
+                    await context.container.get(PlanningStore).root(uri), handle),
+                clearImplementationPlanProjection: async (uri, handle) => greenfield.clearImplementationPlanProjection(
+                    await context.container.get(PlanningStore).root(uri), handle),
+                applyImplementationPlanProjection: async (uri, preview, approved) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    const draft = await greenfield.applyImplementationPlanProjection(root, preview, approved);
+                    draftHandles.add(preview.handle);
+                    return draft;
+                },
                 editDraft: async (handle, revision, action) => {
                     if (!draftHandles.has(handle)) throw new Error('Unknown draft'); return greenfield.edit(handle, revision, action);
                 },

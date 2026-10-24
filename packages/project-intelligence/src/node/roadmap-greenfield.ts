@@ -34,6 +34,8 @@ export interface ImplementationPlanRevision {
 }
 export interface ImplementationPlanPreview { token: string; draftRevision: number; planRevision: number;
     before?: ImplementationPlanDraft; after: Omit<ImplementationPlanDraft, 'status'> & { status: 'proposed' }; requiresApproval: true }
+export interface ImplementationPlanProjectionPreview { token: string; handle: string; planRevision: number;
+    ownerRevision: number; draft: GreenfieldDraft; requiresApproval: true }
 export type GreenfieldEdit =
     | { type: 'create-phase'; title: string; objective?: string }
     | { type: 'create-checkpoint'; phaseId: string; title: string; objective?: string }
@@ -52,7 +54,7 @@ export interface GreenfieldEditPreview { token: string; draftRevision: number; b
     after: GreenfieldDraft; action: GreenfieldEdit; actions?: GreenfieldEdit[]; requiresApproval: true }
 /** Noncanonical presentation notification. A proposed value is a fully validated preview, never an accepted edit. */
 export interface GreenfieldChange { root: string; projectId: string; handle: string; revision: number;
-    epoch: string; sequence: number; kind: 'accepted' | 'proposed' | 'cleared' | 'cancelled'; draft?: GreenfieldDraft }
+    epoch: string; sequence: number; kind: 'accepted' | 'proposed' | 'cleared' | 'cancelled' | 'plan'; draft?: GreenfieldDraft }
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const line = (value: unknown, max: number): value is string => typeof value === 'string' &&
@@ -61,6 +63,33 @@ const title = (value: unknown): value is string => line(value, 200) && !!value.t
     !/^#{1,6}\s/.test(value) && !/^\s/.test(value) && !/\s$/.test(value);
 const objective = (value: unknown): value is string => line(value, 8192);
 const hash = (value: string): string => createHash('sha256').update(value).digest('hex');
+const stableId = (value: string): string => {
+    const hex = hash(value);
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+};
+
+/** Keep engineering detail in the plan; Roadmap gets one checkpoint per reviewed outcome. */
+export function projectImplementationPlan(plan: ImplementationPlanDraft): GreenfieldDraft {
+    const levels = new Map<string, number>();
+    for (const step of plan.steps) {
+        if (step.dependencies.some(id => !levels.has(id))) throw new Error('Plan dependencies must precede their outcomes');
+        levels.set(step.id, Math.max(0, ...step.dependencies.map(id => levels.get(id)! + 1)));
+    }
+    const groups = new Map<number, ImplementationPlanStep[]>();
+    for (const step of plan.steps) groups.set(levels.get(step.id)!, [...groups.get(levels.get(step.id)!) ?? [], step]);
+    if (!groups.size || groups.size > 32) throw new Error('Plan exceeds strategic phase limit');
+    const phases: GreenfieldPhase[] = [...groups].map(([level, steps], index) => ({
+        id: stableId(`plan-phase:${plan.source.projectId}:${level}`),
+        title: `Stage ${index + 1} — ${steps[0].title}`.slice(0, 200),
+        objective: index === 0 ? plan.objective : `Reviewed implementation outcomes after stage ${index}`,
+        checkpoints: steps.map(step => ({ id: stableId(`plan-step:${step.id}`), title: step.title,
+            objective: [step.detail, ...step.expectedOutputs.map(output => `Output: ${output}`)].join(' | '),
+            dependencies: step.dependencies.map(id => stableId(`plan-step:${id}`)) }))
+    }));
+    const projected: GreenfieldDraft = { revision: 1, phases };
+    if (!validDraft(projected)) throw new Error('Plan cannot be projected to a unique Roadmap graph');
+    return projected;
+}
 const MAX_DRAFT_BYTES = 512 * 1024;
 const uuid = (value: unknown): value is string => typeof value === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -117,6 +146,25 @@ function validPlan(value: unknown, projectId: string): value is ImplementationPl
         visiting.delete(id); visited.add(id); return true;
     };
     return [...ids].every(visit);
+}
+
+function verifyPlanEvidence(root: string, plan: ImplementationPlanDraft): void {
+    for (const evidence of plan.evidence) {
+        let path = root;
+        for (const part of evidence.path.split('/')) {
+            path = join(path, part);
+            if (lstatSync(path).isSymbolicLink()) throw new Error('Plan source changed or became a symlink');
+        }
+        const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+        try {
+            const before = fstatSync(fd);
+            if (!before.isFile() || before.size > 64 * 1024) throw new Error('Plan source changed or exceeds read limit');
+            const content = readFileSync(fd, 'utf8');
+            const after = fstatSync(fd);
+            if (before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs ||
+                hash(content) !== evidence.sha256) throw new Error('Plan source changed; review the new source before projection');
+        } finally { closeSync(fd); }
+    }
 }
 
 /** Apply only named changes. IDs, inherited decisions, evidence and constraints stay app-owned. */
@@ -236,6 +284,7 @@ export class RoadmapGreenfield {
     private readonly generations = new Map<string, number>();
     private readonly editPreviews = new Map<string, GreenfieldEditPreview>();
     private readonly planPreviews = new Map<string, ImplementationPlanPreview>();
+    private readonly projectionPreviews = new Map<string, ImplementationPlanProjectionPreview>();
     private readonly planHistory = new Map<string, { before: ImplementationPlanDraft; revision: number }>();
     private readonly creationPreviews = new Map<string, string>();
     private readonly history = new Map<string, { before: GreenfieldDraft; after: GreenfieldDraft; redo?: boolean }>();
@@ -337,6 +386,7 @@ export class RoadmapGreenfield {
             this.history.delete(handle);
             this.editPreviews.delete(handle);
             this.planPreviews.delete(handle);
+            this.projectionPreviews.delete(handle);
             this.creationPreviews.delete(handle);
         }
         for (const [id, binding] of this.chats) if (binding.root === root) this.chats.delete(id);
@@ -355,10 +405,12 @@ export class RoadmapGreenfield {
         if (!this.generations.has(root)) await this.restore(root);
     }
 
-    async list(root: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string }[]> {
+    async list(root: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string;
+        plan?: ImplementationPlanDraft }[]> {
         await this.ensureRestored(root);
         return this.entries(root).filter(item => !item.planOnly).map(item => ({ handle: item.handle, draft: copy(item.value),
-            ...(item.chatId ? { chatId: item.chatId } : {}) }));
+            ...(item.chatId ? { chatId: item.chatId } : {}),
+            ...(item.implementationPlan ? { plan: copy(item.implementationPlan) } : {}) }));
     }
 
     private persist(root: string, entries: StoredDraft[]): void {
@@ -454,6 +506,7 @@ export class RoadmapGreenfield {
         this.sequences.delete(handle);
         this.editPreviews.delete(handle);
         this.planPreviews.delete(handle);
+        this.projectionPreviews.delete(handle);
         this.creationPreviews.delete(handle);
         this.history.delete(handle);
         for (const [chatId, binding] of this.chats) if (binding.handle === handle) this.chats.delete(chatId);
@@ -521,6 +574,68 @@ export class RoadmapGreenfield {
         return entry.implementationPlan ? copy(entry.implementationPlan) : undefined;
     }
 
+    async listImplementationPlans(root: string): Promise<{ handle: string; plan: ImplementationPlanDraft }[]> {
+        await this.ensureRestored(root);
+        return [...this.drafts].filter(([, entry]) => entry.root === root && entry.planOnly && !!entry.implementationPlan)
+            .map(([handle, entry]) => ({ handle, plan: copy(entry.implementationPlan!) }));
+    }
+
+    clearImplementationPlanProjection(root: string, handle: string): void {
+        if (this.drafts.get(handle)?.root !== root) throw new Error('Foreign implementation plan');
+        if (this.projectionPreviews.delete(handle)) this.announce(handle, 'cleared');
+    }
+
+    async previewImplementationPlanProjection(root: string, handle: string): Promise<ImplementationPlanProjectionPreview> {
+        await this.ensureRestored(root);
+        const entry = this.drafts.get(handle);
+        if (!entry || entry.root !== root || !entry.planOnly || !entry.implementationPlan ||
+            entry.value.revision !== 0 || entry.value.phases.length || this.accepting.has(handle))
+            throw new Error('Reviewed plan projection unavailable');
+        if (this.entries(root).some(item => item.handle !== handle && !item.planOnly))
+            throw new Error('Existing Roadmap draft needs a separate review');
+        const owner = await this.store.read(root);
+        if (owner.projectId !== entry.projectId || owner.revision !== 0 || owner.linkedDocument ||
+            owner.pendingCreation || owner.revision !== entry.ownerRevision ||
+            entry.implementationPlan.source.roadmapRevision !== owner.revision)
+            throw new Error('Existing or changed Roadmap needs a separate supported document review');
+        verifyPlanEvidence(root, entry.implementationPlan);
+        const draft = projectImplementationPlan(entry.implementationPlan);
+        const preview: ImplementationPlanProjectionPreview = { token: randomUUID(), handle,
+            planRevision: entry.implementationPlan.revision, ownerRevision: owner.revision,
+            draft, requiresApproval: true };
+        this.projectionPreviews.set(handle, preview);
+        this.announce(handle, 'proposed', draft);
+        return copy(preview);
+    }
+
+    async applyImplementationPlanProjection(root: string, preview: ImplementationPlanProjectionPreview,
+        approved: boolean): Promise<GreenfieldDraft> {
+        const entry = this.drafts.get(preview?.handle);
+        if (!approved || !entry || entry.root !== root || !entry.planOnly || this.accepting.has(preview.handle) ||
+            JSON.stringify(this.projectionPreviews.get(preview.handle)) !== JSON.stringify(preview) ||
+            entry.implementationPlan?.revision !== preview.planRevision ||
+            entry.value.revision !== 0 || entry.value.phases.length)
+            throw new Error('Stale plan projection or approval required');
+        if (this.entries(root).some(item => item.handle !== preview.handle && !item.planOnly))
+            throw new Error('Existing Roadmap draft needs a separate review');
+        const owner = await this.store.read(root);
+        if (owner.projectId !== entry.projectId || owner.revision !== 0 || owner.linkedDocument ||
+            owner.pendingCreation || owner.revision !== preview.ownerRevision ||
+            JSON.stringify(projectImplementationPlan(entry.implementationPlan!)) !== JSON.stringify(preview.draft))
+            throw new Error('Roadmap or reviewed plan changed; refresh and review again');
+        verifyPlanEvidence(root, entry.implementationPlan!);
+        this.persist(root, this.entries(root).map(item => item.handle === preview.handle ?
+            { handle: item.handle, projectId: item.projectId, value: copy(preview.draft),
+                ...(item.chatId ? { chatId: item.chatId } : {}), implementationPlan: item.implementationPlan } : item));
+        entry.value = copy(preview.draft);
+        delete entry.planOnly;
+        delete entry.ownerRevision;
+        this.projectionPreviews.delete(preview.handle);
+        this.planPreviews.delete(preview.handle);
+        this.announce(preview.handle, 'accepted', entry.value);
+        return copy(entry.value);
+    }
+
     /** No proposal is durable. Callers must distinguish manual input from model suggestions. */
     async previewImplementationPlan(handle: string, expectedDraftRevision: number, expectedPlanRevision: number,
         input: ImplementationPlanInput, origin: 'manual' | 'model' = 'manual'): Promise<ImplementationPlanPreview> {
@@ -562,6 +677,7 @@ export class RoadmapGreenfield {
             planRevision: expectedPlanRevision, ...(entry.implementationPlan ? { before: copy(entry.implementationPlan) } : {}),
             after, requiresApproval: true };
         this.planPreviews.set(handle, preview);
+        this.projectionPreviews.delete(handle);
         return copy(preview);
     }
 
@@ -591,6 +707,8 @@ export class RoadmapGreenfield {
         if (preview.before) this.planHistory.set(handle, { before: copy(preview.before), revision: accepted.revision });
         else this.planHistory.delete(handle);
         this.planPreviews.delete(handle);
+        this.projectionPreviews.delete(handle);
+        this.announce(handle, 'plan');
         return copy(accepted);
     }
 
@@ -611,6 +729,8 @@ export class RoadmapGreenfield {
         entry.implementationPlan = restored;
         this.planHistory.delete(handle);
         this.planPreviews.delete(handle);
+        this.projectionPreviews.delete(handle);
+        this.announce(handle, 'plan');
         return copy(restored);
     }
 
