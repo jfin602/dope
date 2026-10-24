@@ -718,22 +718,100 @@ body.theia-light:not(.dope-dark) {
 .dope-agent-transcript-panel .dope-work-command pre { box-sizing: border-box; max-width: 100%; max-height: 18rem; margin: 5px 0; padding: 7px; white-space: pre; overflow: auto; background: var(--theia-editor-background); }
 .dope-agent-transcript-panel .dope-work-system { margin: 9px 0; font-size: 12px; }
 
+/* Work uses matched Theia surface/text pairs in Light and other installed themes.
+   Keep these tokens local: the other Chat and dock surfaces have their own palette. */
+:is(.dope-chat-content-work, .dope-agent-transcript-panel) {
+    --dope-work-text: var(--theia-editor-foreground, var(--theia-foreground));
+    --dope-work-surface: var(--theia-editor-background);
+    --dope-work-control: var(--theia-input-background, var(--theia-editor-background));
+    --dope-work-control-text: var(--theia-input-foreground, var(--theia-editor-foreground));
+    --dope-work-border: color-mix(in srgb, var(--dope-work-text) 55%, var(--dope-work-surface));
+    --dope-work-focus: color-mix(in srgb, var(--dope-work-text) 65%, var(--dope-work-surface));
+    --dope-work-primary: var(--theia-button-background);
+    --dope-work-primary-text: var(--theia-button-foreground);
+    --dope-work-primary-hover: var(--theia-button-hoverBackground, var(--theia-button-background));
+}
+.dope-dark :is(.dope-chat-content-work, .dope-agent-transcript-panel) {
+    --dope-work-primary: var(--dope-action-background);
+    --dope-work-primary-text: var(--dope-on-primary);
+    --dope-work-primary-hover: var(--dope-action-hover);
+    --dope-work-focus: var(--dope-focus);
+}
+:is(.dope-chat-content-work, .dope-agent-transcript-panel) :is(.dope-work-next, .dope-work-progress, .dope-work-command, .dope-work-diagnostics) {
+    color: var(--dope-work-text);
+    background: var(--dope-work-surface);
+    border-color: var(--dope-work-border);
+}
+:is(.dope-chat-content-work, .dope-agent-transcript-panel) :is(.dope-work-row-meta, .dope-work-row-progress, .dope-work-detail, .dope-work-system, .dope-work-transcript-status, .dope-work-command > summary, .dope-work-command-correlation) {
+    color: var(--dope-work-text);
+}
+:is(.dope-chat-content-work, .dope-agent-transcript-panel) :is(.dope-work-select > section > h3, .dope-work-select > section > p:not(.dope-work-warning), .dope-work-message blockquote) { color: var(--dope-work-text); }
+:is(.dope-chat-content-work, .dope-agent-transcript-panel) .dope-work-warning { color: var(--dope-work-text); font-weight: 600; }
+.dope-chat-content-work .dope-work-next { border-left-width: 3px; }
+.dope-chat-content-work .dope-work-progress li + li { border-top-color: var(--dope-work-border); }
+.dope-chat-content-work .dope-work-row[aria-current="true"] { color: var(--theia-list-activeSelectionForeground, var(--dope-work-text)); border-left-color: var(--dope-work-focus); }
+.dope-chat-content-work :is(input:not([type="checkbox"]), textarea, select),
+.dope-agent-transcript-panel .dope-work-command pre {
+    color: var(--dope-work-control-text);
+    background: var(--dope-work-control);
+    border-color: var(--dope-work-border);
+}
+.dope-chat-panel .dope-chat-content-work button:not(.dope-work-primary),
+.dope-agent-transcript-panel button:not(.dope-work-primary) {
+    color: var(--dope-work-text);
+    background: var(--dope-work-surface);
+    border-color: var(--dope-work-border);
+}
+.dope-chat-panel .dope-chat-content-work button.dope-work-row { background: transparent; }
+.dope-chat-panel .dope-chat-content-work button.dope-work-row[aria-current="true"] {
+    color: var(--theia-list-activeSelectionForeground, var(--dope-work-text));
+    background: var(--theia-list-activeSelectionBackground);
+}
+.dope-chat-panel .dope-chat-content-work button:not(.dope-work-primary):hover:not(:disabled),
+.dope-agent-transcript-panel button:not(.dope-work-primary):hover:not(:disabled) {
+    color: var(--dope-work-text);
+    background: var(--theia-list-hoverBackground, var(--dope-work-control));
+}
+.dope-chat-panel .dope-chat-content-work button.dope-work-primary {
+    color: var(--dope-work-primary-text);
+    background: var(--dope-work-primary);
+    border-color: var(--dope-work-primary);
+}
+.dope-chat-panel .dope-chat-content-work button.dope-work-primary:hover:not(:disabled) { background: var(--dope-work-primary-hover); }
+.dope-dark .dope-chat-panel .dope-chat-content-work button.dope-work-primary:active:not(:disabled) {
+    color: var(--dope-on-pressed);
+    background: var(--dope-action-pressed);
+}
+.dope-chat-panel .dope-chat-content-work button:disabled,
+.dope-agent-transcript-panel button:disabled {
+    opacity: 1;
+    color: var(--dope-work-text);
+    background: var(--dope-work-surface);
+    border: 1px dashed var(--dope-work-border);
+    cursor: default;
+}
+:is(.dope-chat-content-work, .dope-agent-transcript-panel) :is(button, input, textarea, select, summary):focus-visible {
+    outline: 2px solid var(--dope-work-focus);
+    outline-offset: 2px;
+}
+.dope-chat-content-work button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+
 /* Work presentation stays scoped to its panel so alternate themes retain their own tokens. */
 .dope-chat-content-work > header { min-width: 0; gap: 6px; }
 .dope-chat-content-work > header h2 { min-width: 0; line-height: 1.3; }
 .dope-chat-content-work > header button { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .dope-work-scroll { box-sizing: border-box; overflow-x: hidden; }
-.dope-work-scroll .dope-work-overview { margin: 0 0 4px; color: var(--theia-descriptionForeground); font-size: 12px; font-weight: 500; }
-.dope-work-scroll .dope-work-start { margin: 8px 0 14px; padding: 10px; border: 1px solid var(--theia-widget-border); border-radius: 5px; background: var(--theia-editor-background); overflow-wrap: anywhere; }
+.dope-work-scroll .dope-work-overview { margin: 0 0 4px; color: var(--dope-work-text); font-size: 12px; font-weight: 500; }
+.dope-work-scroll .dope-work-start { margin: 8px 0 14px; padding: 10px; border: 1px solid var(--dope-work-border); border-radius: 5px; color: var(--dope-work-text); background: var(--dope-work-surface); overflow-wrap: anywhere; }
 .dope-work-start h3 { margin: 0 0 5px; font-size: 13px; }
-.dope-work-scroll .dope-work-next { margin: 0 0 8px; border-left: 0; padding: 0; background: transparent; }
+.dope-work-scroll .dope-work-next { margin: 0 0 8px; border-left: 3px solid var(--dope-work-border); padding: 0 0 0 8px; color: var(--dope-work-text); background: transparent; }
 .dope-work-start button, .dope-work-progress button, .dope-work-scroll > button { box-sizing: border-box; min-width: 0; margin: 3px 5px 3px 0; white-space: normal; overflow-wrap: anywhere; }
-.dope-chat-panel .dope-work-scroll button.dope-work-primary { color: var(--dope-on-primary, var(--theia-button-foreground)); }
-.dope-chat-panel .dope-work-scroll button.dope-work-primary:hover:not(:disabled) { background: var(--dope-action-hover, var(--theia-button-hoverBackground)); }
+.dope-chat-panel .dope-work-scroll button.dope-work-primary { color: var(--dope-work-primary-text); }
+.dope-chat-panel .dope-work-scroll button.dope-work-primary:hover:not(:disabled) { background: var(--dope-work-primary-hover); }
 .dope-work-progress { min-width: 0; background: var(--theia-editor-background); }
 .dope-work-progress ol { list-style: decimal; }
 .dope-work-progress li[aria-current="step"] { border-left: 2px solid var(--theia-focusBorder); padding-left: 7px; font-weight: 600; }
-.dope-work-progress li :is(small, details) { font-weight: 400; color: var(--theia-descriptionForeground); }
+.dope-work-progress li :is(small, details) { font-weight: 400; color: var(--dope-work-text); }
 .dope-work-diagnostics { background: var(--theia-input-background); border-radius: 4px; }
 .dope-work-diagnostics > summary { color: var(--theia-foreground); font-weight: 500; }
 .dope-work-diagnostics :is(code, pre) { display: block; max-width: 100%; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -749,8 +827,8 @@ body.theia-light:not(.dope-dark) {
 .dope-agent-transcript-panel .dope-work-message .dope-chat-message-content :is(th, td) { padding: 5px 8px; border: 1px solid var(--theia-widget-border); }
 .dope-agent-transcript-panel .dope-work-message .dope-chat-message-content :is(pre, .dope-message-code) { min-width: 0; max-width: 100%; overflow-x: auto; }
 .dope-agent-transcript-panel .dope-work-message .dope-chat-message-content pre { white-space: pre; overflow-wrap: normal; }
-.dope-agent-transcript-panel .dope-work-command { color: var(--theia-descriptionForeground); }
-.dope-agent-transcript-panel .dope-work-command[open] { color: var(--theia-foreground); }
+.dope-agent-transcript-panel .dope-work-command { color: var(--dope-work-text); }
+.dope-agent-transcript-panel .dope-work-command[open] { color: var(--dope-work-text); }
 .dope-agent-transcript-panel :is(button, summary):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 @media (max-width: 420px) { .dope-agent-transcript-panel .dope-work-scroll { padding: 12px 10px 20px; } }
 .dope-chat-transcript .dope-chat-message { margin: 0; padding: 10px 0; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }

@@ -137,6 +137,33 @@ test('primary, hover, pressed, link, and keyboard focus colors meet their contra
   assert.ok(contrast(mix('#484848', '#FFFFFF', 0.55), '#3C3C3C') >= 3, 'focus indicator on a dark input');
 });
 
+test('Work uses paired Light (Theia) action colors and local readable surfaces', () => {
+  const theiaColors = readFileSync(join(root, 'node_modules/@theia/core/src/browser/common-frontend-contribution.ts'), 'utf8');
+  assert.match(theiaColors, /id: 'button\.foreground',\s*defaults: Color\.white/);
+  assert.match(theiaColors, /id: 'button\.background',[\s\S]*?light: '#007ACC'/);
+  assert.match(theiaColors, /id: 'button\.hoverBackground',[\s\S]*?light: Color\.darken\('button\.background', 0\.2\)/);
+  assert.ok(contrast('#FFFFFF', '#007ACC') >= 4.5, 'Light (Theia) primary action default');
+  assert.ok(contrast('#FFFFFF', mix('#007ACC', '#000000', 0.8)) >= 4.5, 'Light (Theia) hover action');
+  assert.ok(contrast(mix('#333333', '#FFFFFF', 0.55), '#FFFFFF') >= 3, 'light surface border');
+  assert.ok(contrast(mix('#333333', '#FFFFFF', 0.65), '#FFFFFF') >= 3, 'light surface focus');
+
+  const scope = css.slice(css.indexOf('/* Work uses matched Theia surface/text pairs'));
+  assert.match(scope, /:is\(\.dope-chat-content-work, \.dope-agent-transcript-panel\) \{[^}]*--dope-work-text: var\(--theia-editor-foreground/);
+  assert.match(scope, /--dope-work-primary: var\(--theia-button-background\);\s*--dope-work-primary-text: var\(--theia-button-foreground\);/);
+  assert.match(scope, /\.dope-dark :is\(\.dope-chat-content-work, \.dope-agent-transcript-panel\) \{[^}]*--dope-work-primary: var\(--dope-action-background\);[^}]*--dope-work-primary-text: var\(--dope-on-primary\);/);
+  for (const selector of ['dope-work-next', 'dope-work-progress', 'dope-work-command', 'dope-work-diagnostics', 'dope-work-row-meta', 'dope-work-transcript-status']) {
+    assert.match(scope, new RegExp(`\\.${selector}\\b`), selector);
+  }
+  assert.match(scope, /button\.dope-work-primary \{\s*color: var\(--dope-work-primary-text\);\s*background: var\(--dope-work-primary\);/);
+  assert.match(scope, /\.dope-chat-panel \.dope-work-scroll button\.dope-work-primary \{ color: var\(--dope-work-primary-text\); \}/);
+  assert.match(scope, /\.dope-work-scroll \.dope-work-next \{[^}]*border-left: 3px solid var\(--dope-work-border\);[^}]*color: var\(--dope-work-text\);/);
+  assert.match(scope, /\.dope-work-scroll \.dope-work-start \{[^}]*border: 1px solid var\(--dope-work-border\);[^}]*color: var\(--dope-work-text\);/);
+  assert.match(scope, /button:disabled,[\s\S]*?opacity: 1;[^}]*border: 1px dashed var\(--dope-work-border\);/);
+  assert.match(scope, /:focus-visible \{\s*outline: 2px solid var\(--dope-work-focus\);/);
+  assert.match(scope, /\.dope-chat-content-work button \{ max-width: 100%; white-space: normal; overflow-wrap: anywhere; \}/);
+  assert.doesNotMatch(scope, /(?:^|\n)(?!\s*\/)[^\n{]*:root[^\n{]*\{/);
+});
+
 test('Dope Dark status bar uses a dark base, one continuous Git accent, and semantic diagnostics', () => {
   for (const token of ['statusBar-background', 'statusBar-noFolderBackground']) {
     assert.match(css, new RegExp(`--theia-${token}: var\\(--dope-background\\);`));
