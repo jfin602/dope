@@ -1,0 +1,22 @@
+TASK: Correction 11 / P2 — Restore Work panels without immortal Loading Work or duplicate owner
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- GPT-6 Sol High; T2 headless implementation.
+- Target <=8 minutes; soft 10, HARD STOP at 15 minutes. No GUI qualification claim.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+- Re-read BOOT.md, AGENTS.md, docs/workflow.md, this stack README/assessment/plan, original P6 closeout, completed P1 evidence and the actual current source, clean/dirty state and version. Baseline authoring version 0.11.8, never downgrade if changed. Preserve owner data, no reset/stash/clean/self-commit.
+- No new Chat panel/store, Work store, History service, transcript store, provider, permission authority, network consent or /activate. Never silently start/restart a run during restoration.
+
+EVIDENCE / TASK
+P6 had a saved A2 read-only completed transcript restored correctly after reload, but a previously open Work owner tab remained indefinitely at "Loading Work…" even after Back to Select Work. Reopening via History made another functional Work view while the stale owner remained. This is a restore/attach/ownership defect. P1 may have corrected a related identity transition; inspect its exact changes first.
+
+Trace `ChatPanelWidget.storeState/restoreState`, `initialAttach`, work-specific `attach` and render status, `SharedPanelState.attach/restore/selectWork`, `WorkOpenOwners`, `WorkSelectionController.attach` / `PhaseStackController.attach`, workspace change events, and History-to-Work navigation. Detect and discard stale async callbacks by stable project/selection/attach epoch; make controller/owner reflect real saved Work identity. A true loading state may show "Loading Work…" while pending, but on failed/abandoned attachment it must transition to an actionable error/empty state with visible Retry and Select Work, rather than remain indefinitely. Avoid an arbitrary timeout that merely hides a hung request; if a genuinely unresolved backend promise needs handling, implement a scoped cancellable/bounded failure strategy with tests and honest status. Do not create another owner tab for the same exact project+Work; do not steal the independent Chat dock or mix project identities. A stale generic panel should recover or cleanly relinquish ownership. Preserve transcript scroll/Latest, saved state and cross-project denials.
+
+TEST / EXIT
+Add tests exercising restored Work selection, sequence and run, concurrent History opening, reattach after reload, reject/throw/slow attach, workspace switch during async operation, Retry and Back flow, duplicate-owner avoidance, and no run/grant/candidate/dirty change due to restoration. Distinguish "loading", "attached", "unavailable" and "not found". Run targeted tests + changed-extension build and `git diff --check`. Report exact observed automated results and manual evidence gap. P4 owns actual browser/backend restart checks.
