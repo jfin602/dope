@@ -97,7 +97,7 @@ export class PhaseStackController {
         } catch { if (serial === this.serial) { this.message = 'Sequence evidence could not be read. Execution is unavailable.'; this.evidence = undefined; this.changed(); } }
         finally { if (serial === this.serial) this.refreshing = false; }
     }
-    async select(folderName: string): Promise<void> {
+    async select(folderName: string): Promise<AgentTaskSequence | undefined> {
         if (!this.handle || this.busy) return;
         const candidate = this.stacks.find(stack => stack.folderName === folderName);
         if (!candidate) return;
@@ -115,19 +115,31 @@ export class PhaseStackController {
                 this.acceptedGrant = false; this.dirtyPromptDismissed = false;
                 this.validationCommand = ''; this.validationTaskId = undefined; this.run = undefined;
                 await this.refresh();
+                if (serial !== this.serial || this.handle !== handle) return;
+                if (this.selected?.id !== result.sequence.id) this.selected = result.sequence;
+                return this.selected;
             } else this.message = this.selectionError(folderName, result);
         } catch (error) { if (serial === this.serial) this.message = this.errorMessage(error); }
         finally { if (serial === this.serial) { this.busy = false; this.changed(); } }
     }
-    async selectStored(sequenceId: string, refresh = true): Promise<void> {
+    async selectStored(sequenceId: string, refresh = true): Promise<AgentTaskSequence | undefined> {
         if (!this.handle || this.busy) return;
-        const sequence = this.sequences.find(item => item.id === sequenceId);
+        const handle = this.handle, serial = this.serial;
+        let sequence = this.sequences.find(item => item.id === sequenceId);
+        if (!sequence) {
+            try { sequence = await this.runtime.readSequence(handle, sequenceId); }
+            catch { if (serial === this.serial) { this.message = 'Saved Prompt Stack could not be read.'; this.changed(); } return; }
+        }
+        if (serial !== this.serial || handle !== this.handle) return;
         if (!sequence) return;
         this.selected = sequence;
         this.acceptedGrant = false; this.dirtyPromptDismissed = false;
         this.validationCommand = ''; this.validationTaskId = undefined; this.run = undefined;
         if (refresh) await this.refresh();
+        if (serial !== this.serial || handle !== this.handle) return;
+        if (this.selected?.id !== sequenceId) this.selected = sequence;
         this.changed();
+        return this.selected?.id === sequenceId ? this.selected : undefined;
     }
     private selectionError(folder: string, result: Exclude<OpenTaskStackResult, { kind: 'opened' }>): string {
         return ({ 'invalid-stack': `${folder} is not a valid Phase Stack. Check its prompt files.`,

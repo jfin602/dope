@@ -352,7 +352,7 @@ export class WorkSelectionController {
     async scan(): Promise<void> {
         await Promise.all([this.phase.scan(), this.refresh()]);
     }
-    async select(selection: WorkSelection | undefined, navigationOnly = false): Promise<void> {
+    async select(selection: WorkSelection | undefined, navigationOnly = false): Promise<WorkSelection | undefined> {
         const handle = this.handle, serial = ++this.serial;
         this.selectedTaskId = selection?.kind === 'task' ? selection.id : undefined;
         this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startTarget = undefined;
@@ -361,14 +361,21 @@ export class WorkSelectionController {
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
         if (!handle || !selection) { this.changed(); return; }
         if (selection.kind === 'sequence') {
-            if (this.phase.sequences.some(item => item.id === selection.id))
-                await this.phase.selectStored(selection.id, !navigationOnly);
-            else {
-                const candidate = this.phase.stacks.find(item => item.folderName === selection.id);
-                if (candidate && !navigationOnly) await this.phase.select(candidate.folderName);
+            let sequence: AgentTaskSequence | undefined;
+            const candidate = this.phase.stacks.find(item =>
+                item.folderName === selection.id || item.sequenceId === selection.id);
+            if (this.phase.sequences.some(item => item.id === selection.id) ||
+                candidate?.sequenceId === selection.id || !candidate)
+                sequence = await this.phase.selectStored(selection.id, !navigationOnly);
+            else if (!navigationOnly) sequence = await this.phase.select(candidate.folderName);
+            if (serial !== this.serial || handle !== this.handle) return;
+            if (!sequence) {
+                if (!this.phase.message) this.phase.message = 'Prompt Stack could not be opened. Refresh and try again.';
+                this.changed();
+                return;
             }
-            if (serial === this.serial) this.changed();
-            return;
+            this.changed();
+            return { kind: 'sequence', id: sequence.id };
         }
         try {
             const run = selection.kind === 'run' ? await this.runtime.readRun(handle, selection.id) : undefined;
@@ -404,6 +411,9 @@ export class WorkSelectionController {
                     cursor = result.nextSequence;
                 }
             }
+            this.changed();
+            if (task && (selection.kind === 'task' || run?.taskId === task.id)) return selection;
+            this.message = 'Work detail could not be opened in this project.';
             this.changed();
         } catch {
             if (serial === this.serial) { this.message = 'Work detail could not be read.'; this.changed(); }

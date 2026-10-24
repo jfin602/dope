@@ -18,6 +18,7 @@ import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
 import { WorkSelectionController, workManualGateReady, workReviewCanAccept, workReviewState, workRows, workRunOverview, workTitle } from './work-selection-controller';
+import { WorkSelectionNavigator } from './work-selection-navigator';
 import { restoreWorkScroll, workDisclosureKeydown } from './work-transcript-presentation';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
@@ -51,6 +52,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly content = document.createElement('div');
     private workspaceRequest = 0;
     private initialAttach: Promise<void> = Promise.resolve();
+    private workNavigator?: WorkSelectionNavigator;
     private modelsRequest = 0;
     private models: ModelConnectionsSnapshot = { connections: [] };
     private settingsOpen = false;
@@ -102,6 +104,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (runtime && registry && roles) this.directController = new AgentRunController(runtime, registry, roles, () => this.render());
         if (runtime) this.workController = new WorkSelectionController(runtime, () => this.render(),
             policy => this.directController!.resolvePolicyTarget(policy));
+        if (this.workController) this.workNavigator = new WorkSelectionNavigator(this.panel, this.workController);
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.node.append(this.status, this.content);
@@ -278,14 +281,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private async selectWork(selection?: WorkSelection, navigationOnly = false): Promise<void> {
         this.composingWork = false;
         if (selection) this.promptStacksOnly = false;
-        if (!this.panel.selectWork(selection)) return;
-        if (selection) this.lastWorkSelection = selection;
-        await this.workController?.select(selection, navigationOnly);
+        const canonical = await this.workNavigator?.select(selection, navigationOnly);
+        if (canonical) this.lastWorkSelection = canonical;
         if (!selection) await this.workController?.refresh();
-        if (selection?.kind === 'sequence' && this.panel.work?.id === selection.id) {
-            const id = this.workController?.phase.selected?.id;
-            if (id && id !== selection.id) this.panel.selectWork({ kind: 'sequence', id });
-        }
     }
     private renderWorkComposer(): void {
         const controller = this.directController;
