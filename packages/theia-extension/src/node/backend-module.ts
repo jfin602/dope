@@ -108,6 +108,30 @@ export default new ContainerModule(bind => {
             const backend: RoadmapService = {
                 beginDraft: async uri => { const result = await greenfield.begin(await context.container.get(PlanningStore).root(uri));
                     draftHandles.add(result.handle); return result; },
+                beginImplementationPlan: async (uri, chatId) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    const chat = (await context.container.get(ChatRepository).read(root)).chats.find(item => item.id === chatId);
+                    if (!chat) throw new Error('Select a saved Chat in this project');
+                    await greenfield.ensureRestored(root);
+                    const bound = greenfield.chatImplementationPlan(root, chatId);
+                    if (bound?.planOnly) {
+                        const owner = await store.read(root);
+                        if (owner.revision !== 0 || owner.linkedDocument || owner.pendingCreation ||
+                            owner.revision !== bound.ownerRevision) throw new Error('Implementation plan owner is stale');
+                        return { handle: bound.handle, ownerRevision: owner.revision };
+                    }
+                    const started = await greenfield.beginImplementationPlan(root);
+                    try { greenfield.bindChat(root, started.handle, chatId); }
+                    catch (error) { greenfield.cancel(started.handle); throw error; }
+                    return started;
+                },
+                cancelUnacceptedImplementationPlan: async (uri, chatId) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    await greenfield.ensureRestored(root);
+                    const bound = greenfield.chatImplementationPlan(root, chatId);
+                    if (!bound?.planOnly || bound.plan) throw new Error('Only an unaccepted plan setup can be discarded');
+                    greenfield.cancel(bound.handle);
+                },
                 recoverDrafts: async uri => {
                     const root = await context.container.get(PlanningStore).root(uri);
                     const restored = await greenfield.list(root);

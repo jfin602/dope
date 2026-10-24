@@ -184,6 +184,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private createState?: { uri: string; projectId: string; handle: string; draft: GreenfieldDraft;
         mode: 'manual' | 'chat' | 'plan'; chatId?: string; path: string; preview?: GreenfieldPreview;
         editPreview?: GreenfieldEditPreview; busy: boolean; error?: string };
+    private planSetup?: { uri: string; projectId: string; chatId?: string; busy: boolean; error?: string };
     private createSerial = 0;
     private draftSequence = 0;
     private draftEpoch?: string;
@@ -503,7 +504,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.owners = owners;
             this.taskStacks = tasks;
             this.projectUri = projectUri;
+            if (this.planSetup && (this.planSetup.uri !== projectUri || this.planSetup.projectId !== index.projectId))
+                this.planSetup = undefined;
             const reviewed = plans[0];
+            if (reviewed && this.planSetup?.uri === projectUri) this.planSetup = undefined;
             if (!reviewed || this.reviewedPlan?.uri !== projectUri || this.reviewedPlan.handle !== reviewed.handle ||
                 this.reviewedPlan.plan.revision !== reviewed.plan.revision || index.revision !== 0)
                 this.reviewedPlan = reviewed ? { uri: projectUri, projectId: index.projectId,
@@ -1319,14 +1323,60 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const importButton = button('Import Roadmap', () => void this.discoverImport());
         importButton.disabled = !!this.importState?.busy || !!this.createState || this.createStarting ||
             !!this.reviewedPlan?.preview || !!this.reviewedPlan?.busy;
-        const chatButton = button('Plan with Chat', () => { void this.beginCreate('chat'); });
+        const chatButton = button('Plan with Chat', () => {
+            if (this.projectUri) this.planSetup = { uri: this.projectUri, projectId: index.projectId, busy: false };
+            this.renderImportEntry();
+        });
         const manualButton = button('Create Manually', () => { void this.beginCreate('manual'); });
         chatButton.disabled = manualButton.disabled = !!this.createState || this.createStarting || !!this.importState?.busy ||
             !!this.reviewedPlan?.preview || !!this.reviewedPlan?.busy;
+        if (this.planSetup?.chatId) chatButton.disabled = true;
         actions.append(importButton,
             chatButton, manualButton);
         this.importEntry.append(heading, actions);
         if (this.createState) { this.renderCreate(); return; }
+        if (this.planSetup?.uri === this.projectUri && this.planSetup.projectId === index.projectId) {
+            const setup = this.planSetup;
+            const section = document.createElement('section'); section.className = 'dope-roadmap-create';
+            const title = document.createElement('h4'); title.textContent = 'Implementation plan with saved Chat';
+            const guidance = document.createElement('p'); guidance.textContent = setup.chatId ?
+                'Use this saved Chat where you placed it. The complete plan will require review in Chat before it appears on this Roadmap.' :
+                'Choose the saved Chat to use for a complete, reviewable implementation plan.';
+            section.append(title, guidance);
+            if (!setup.chatId) {
+                const select = document.createElement('select'); select.setAttribute('aria-label', 'Saved Chat for implementation plan');
+                const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Choose a saved Chat'; select.append(empty);
+                for (const chat of this.savedChats(setup.uri)) {
+                    const option = document.createElement('option'); option.value = chat.id; option.textContent = chat.title; select.append(option);
+                }
+                const start = document.createElement('button'); start.type = 'button'; start.textContent = 'Start plan in Chat';
+                start.disabled = setup.busy;
+                start.onclick = () => { if (setup.busy || !select.value) return;
+                    const selectedChatId = select.value; setup.busy = true; this.renderImportEntry();
+                    void this.service.beginImplementationPlan(setup.uri, selectedChatId).then(() => {
+                        if (this.planSetup === setup && this.projectUri === setup.uri) {
+                            setup.chatId = selectedChatId; setup.error = undefined;
+                        } else void this.service.cancelUnacceptedImplementationPlan(setup.uri, selectedChatId).catch(() => undefined);
+                    }, error => { if (this.planSetup === setup) setup.error = `Plan could not start: ${String(error)}. Refresh and review the Roadmap owner.`; })
+                        .finally(() => { if (this.planSetup === setup) { setup.busy = false; this.renderImportEntry(); } });
+                };
+                section.append(select, start);
+            } else {
+                const discard = document.createElement('button'); discard.type = 'button';
+                discard.textContent = 'Discard unaccepted plan setup'; discard.disabled = setup.busy;
+                discard.onclick = () => { if (!setup.chatId || setup.busy) return; setup.busy = true; this.renderImportEntry();
+                    void this.service.cancelUnacceptedImplementationPlan(setup.uri, setup.chatId).then(() => {
+                        if (this.planSetup === setup) this.planSetup = undefined;
+                    }, error => { if (this.planSetup === setup)
+                        setup.error = `Plan setup could not be discarded: ${String(error)}. Refresh and review the plan.`; })
+                        .finally(() => { setup.busy = false; this.renderImportEntry(); });
+                };
+                section.append(discard);
+            }
+            if (setup.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
+                error.textContent = setup.error; section.append(error); }
+            this.importEntry.append(section);
+        }
         if (this.reviewedPlan?.uri === this.projectUri && this.reviewedPlan.projectId === index.projectId) {
             const state = this.reviewedPlan;
             const section = document.createElement('section'); section.className = 'dope-roadmap-create';

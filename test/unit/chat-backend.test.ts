@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
-import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { ChatBackend, requestsImplementationPlan } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
@@ -17,6 +17,14 @@ import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
 const id = () => randomUUID();
+const firstPlanRequest = 'Plan a visual Git history for this project. Reuse the existing read-only diff editor in src/diffEditor.js; put branch checkout and commits in the toolbar; keep checkout and commit permissions explicit. Please inspect the relevant files and give me a complete ordered implementation plan with tests before changing anything.';
+
+test('only an explicit first-pass planning request selects plan mode', () => {
+    assert.equal(requestsImplementationPlan(firstPlanRequest), true);
+    for (const ordinary of ['Plan with Chat help', 'What is the plan?', 'Plan a trip',
+        'Please inspect src/diffEditor.js', 'Plan a checkpoint and inspect the Roadmap'])
+        assert.equal(requestsImplementationPlan(ordinary), false);
+});
 
 test('dedicated Chat connections share project changes without crossing projects', async () => {
     const first = await folder(), second = await folder(), repository = new ChatRepository();
@@ -140,9 +148,9 @@ test('plan investigation rejects unmeasured local capacity before model inferenc
 test('short idea previews a complete noncanonical plan on first local outcome, then requires approval', async () => {
     const root = await folder(), repository = new ChatRepository(), store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);
-    const sourcePath = 'packages/git/src/history.ts';
+    const sourcePath = 'src/diffEditor.js';
     const source = 'export class GitHistory { /* current history owner */ }\n';
-    await mkdir(join(root, 'packages/git/src'), { recursive: true });
+    await mkdir(join(root, 'src'), { recursive: true });
     await writeFile(join(root, sourcePath), source);
     let plan = JSON.stringify({ type: 'implementation-plan', objective: 'Visual Git history',
         successCriteria: ['Checkout and commits work from the history view'], constraints: ['Explicit permissions'],
@@ -175,23 +183,27 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         usedTokens: 20, budgetTokens: 1000 }) };
     const grounder = new ChatProjectGrounder({ status: () => ({ state: 'idle', generation: 0 }),
         snapshot: () => undefined, inputsCurrent: async () => false } as never);
+    const investigate = grounder.investigateIdea.bind(grounder);
+    let investigations = 0;
+    grounder.investigateIdea = async (...args) => { investigations++; return investigate(...args); };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
         undefined, grounder as never, undefined, greenfield);
     try {
-        const { handle } = await greenfield.beginImplementationPlan(root);
         const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
         await backend.mutate({ projectHandle, expectedRevision: 0,
             operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-        greenfield.bindChat(root, handle, chatId);
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!lease.acquired) throw new Error('Lease missing');
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'hosted', modelId: 'remote' }, hostedProjectDataAuthorized: true,
-            content: 'Add history' }), /selected local model/);
+            content: firstPlanRequest }), /selected local model/);
+        const binding = greenfield.chatImplementationPlan(root, chatId);
+        assert.equal(binding?.planOnly, true);
+        const handle = binding!.handle;
         assert.equal(calls, 0);
         interrupted = true;
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Add Git history' }), /completion|complete/i);
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest }), /completion|complete/i);
         interrupted = false;
         assert.equal(greenfield.readImplementationPlan(handle), undefined);
         assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.role, 'assistant');
@@ -199,8 +211,9 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         calls = 0;
         const before = await store.read(root);
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Add Git history' });
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest });
         assert.equal(calls, 1);
+        assert.ok(investigations > 0);
         assert.match(sent.at(-1)!, /current history owner/);
         assert.equal(turn.proposal?.action.type, 'implementation-plan');
         assert.equal(turn.proposal?.changedIds.length, 3);
@@ -250,7 +263,7 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.equal((await store.read(root)).revision, 0);
         const projected = await greenfield.applyImplementationPlanProjection(root, projection, true);
         assert.equal(projected.phases.length, 3);
-        assert.deepEqual((await readdir(root)).sort(), ['.dope', 'packages'].sort());
+        assert.deepEqual((await readdir(root)).sort(), ['.dope', 'src'].sort());
         const publication = greenfield.preview(handle, 'ROADMAP.md');
         await assert.rejects(greenfield.accept(handle, publication, false), /approval/);
         const canonical = await greenfield.accept(handle, publication, true);
@@ -275,6 +288,6 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         const lineage = projectWorkflowLineage({ roadmap: canonical });
         assert.equal(lineage.find(item => item.checkpoint.id === checkpoint.id)?.stage, 'Roadmapped');
         assert.equal(canonical.checkpoints.every(item => item.status === 'not-implemented'), true);
-        assert.deepEqual((await readdir(root)).sort(), ['.dope', 'ROADMAP.md', 'packages'].sort());
+        assert.deepEqual((await readdir(root)).sort(), ['.dope', 'ROADMAP.md', 'src'].sort());
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

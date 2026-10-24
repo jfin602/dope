@@ -31,6 +31,13 @@ function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3)
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
 const PLAN_INVESTIGATION_INSTRUCTION = `Create one complete first-pass implementation plan from the idea and supplied read-only project evidence. Return ONLY one compact strict JSON object with exactly: {"type":"implementation-plan","objective":"goal","successCriteria":["observable outcome"],"constraints":["developer constraint"],"assumptions":["uncertain assumption"],"steps":[{"title":"ordered step","detail":"objective and implementation approach","deliverables":["concrete output"],"dependsOn":[1],"reuse":[{"path":"project-relative source path","reason":"how it is reused"}]}],"tests":["test"],"guiQualification":"manual GUI check","risks":["risk and mitigation"],"alternatives":["alternative and tradeoff"],"question":"one material question only if needed, otherwise empty"}. Use 1-based earlier step numbers in dependsOn; first step has []. Give at least two substantive steps in the first answer. Cite only actual source paths supplied as verified file evidence; otherwise describe reuse as unverified in assumptions, not a fake citation. Keep output within the reserved local budget. Do not claim a write, approval or completed test. This is a noncanonical proposal awaiting developer review, never a Roadmap mutation.`;
+/** Deliberately narrow first-turn intent; ordinary mentions of a plan remain ordinary Chat. */
+export function requestsImplementationPlan(content: string): boolean {
+    const text = content.trim();
+    return /^plan\s+(?:a|an|the|my)\s+\S/i.test(text) &&
+        /\b(?:please\s+)?inspect\b/i.test(text) &&
+        /\b(?:complete|full)\s+ordered\s+implementation\s+plan\b/i.test(text);
+}
 function planRevisionInstruction(plan: NonNullable<ReturnType<RoadmapGreenfield['chatImplementationPlan']>>['plan']): string {
     if (!plan) return PLAN_INVESTIGATION_INSTRUCTION;
     return `Revise only the affected steps in the accepted noncanonical plan below, using fresh read-only source evidence. ` +
@@ -195,14 +202,22 @@ export class ChatBackend implements ChatService {
             ?.models.find(item => item.id === request.selectedModel.modelId && item.usable);
         if (!model) throw new Error('Selected model unavailable');
         await this.greenfield?.ensureRestored(root);
-        const planBinding = this.greenfield?.chatImplementationPlan(root, request.chatId);
-        const planOnly = planBinding?.planOnly === true;
+        const helpTurn = !!selectDopeCapabilityHelp(request.content);
+        const planBinding = !helpTurn ? this.greenfield?.chatImplementationPlan(root, request.chatId) : undefined;
+        const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId);
+        const explicitPlan = !helpTurn && !draft && !planBinding &&
+            !request.context.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'planning-map') &&
+            requestsImplementationPlan(request.content);
+        if (explicitPlan) {
+            const owner = await this.greenfield?.owner(root);
+            if (!owner || owner.revision !== 0 || owner.linkedDocument || owner.pendingCreation)
+                throw new Error('This Roadmap already has an owner; review it before starting a new implementation plan');
+        }
+        const planOnly = planBinding?.planOnly === true || explicitPlan;
         if (planOnly && !this.grounder) throw new Error('Project investigation unavailable');
         const planningGrounding = planOnly ? await this.grounder?.investigateIdea(root, request.content) :
             await this.grounder?.ground(root, request.content);
         const connection = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId);
-        const helpTurn = !!selectDopeCapabilityHelp(request.content);
-        const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId);
         if (draft && connection?.providerId !== 'local') throw new Error('Greenfield Chat planning requires a local model');
         const localRoadmap = connection?.providerId === 'local' &&
             (request.context.some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn || planOnly);
@@ -561,7 +576,19 @@ export class ChatBackend implements ChatService {
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const helpTurn = !!selectDopeCapabilityHelp(content);
         const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId, request.planningSteps);
-        const planBinding = !helpTurn ? this.greenfield?.chatImplementationPlan(root, request.chatId) : undefined;
+        let planBinding = !helpTurn ? this.greenfield?.chatImplementationPlan(root, request.chatId) : undefined;
+        if (!helpTurn && !draft && !planBinding && !request.bridgeProposal && !request.planningSteps &&
+            !(request.context ?? []).some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'planning-map') &&
+            requestsImplementationPlan(content)) {
+            if (!this.greenfield || !this.grounder) throw new Error('Implementation planning is unavailable');
+            const owner = await this.greenfield.owner(root);
+            if (owner.revision !== 0 || owner.linkedDocument || owner.pendingCreation)
+                throw new Error('This Roadmap already has an owner; review it before starting a new implementation plan');
+            const started = await this.greenfield.beginImplementationPlan(root);
+            try { this.greenfield.bindChat(root, started.handle, request.chatId); }
+            catch (error) { this.greenfield.cancel(started.handle); throw error; }
+            planBinding = this.greenfield.chatImplementationPlan(root, request.chatId);
+        }
         const planOnly = planBinding?.planOnly === true;
         if (planOnly && !this.grounder) throw new Error('Project investigation unavailable');
         const bridgeSelection = request.bridgeProposal;

@@ -56,6 +56,20 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(rules, /max-width: 480px/);
 });
 
+test('Plan with Chat binds the plan-only owner through the existing saved Chat RPC', () => {
+    const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    const service = read('packages/theia-extension/src/roadmap-service.ts');
+    const backend = read('packages/theia-extension/src/node/backend-module.ts');
+    assert.match(widget, /button\('Plan with Chat',/);
+    assert.doesNotMatch(widget, /beginCreate\('chat'\)/);
+    assert.match(widget, /this\.service\.beginImplementationPlan\(setup\.uri, selectedChatId\)/);
+    assert.match(service, /beginImplementationPlan\(projectUri: string, chatId: string\)/);
+    assert.match(backend, /greenfield\.beginImplementationPlan\(root\)/);
+    assert.match(backend, /greenfield\.bindChat\(root, started\.handle, chatId\)/);
+    assert.match(widget, /Discard unaccepted plan setup/);
+    assert.match(backend, /Only an unaccepted plan setup can be discarded/);
+});
+
 test('Prepare Work opens the registered center Planning Map with no Chat or agent launch', () => {
     const frontend = read('packages/theia-extension/src/browser/frontend-module.ts');
     const inspector = read('packages/theia-extension/src/browser/roadmap-inspector-widget.ts');

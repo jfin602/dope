@@ -487,7 +487,7 @@ export class RoadmapGreenfield {
         await this.ensureRestored(root);
         const fresh = await this.store.read(root);
         if (fresh.projectId !== owner.projectId || fresh.revision !== owner.revision ||
-            fresh.pendingCreation || this.entries(root).some(item => item.planOnly))
+            fresh.pendingCreation || this.entries(root).length > 0)
             throw new Error('Stale or existing implementation plan owner');
         const handle = randomUUID(), value: GreenfieldDraft = { revision: 0, phases: [] };
         this.persist(root, [...this.entries(root), { handle, projectId: owner.projectId, value,
@@ -546,11 +546,13 @@ export class RoadmapGreenfield {
         return entry?.root === root && !entry.planOnly ? { handle: binding.handle, draft: copy(entry.value) } : undefined;
     }
 
-    chatImplementationPlan(root: string, chatId: string): { handle: string; planOnly: boolean; plan?: ImplementationPlanDraft } | undefined {
+    chatImplementationPlan(root: string, chatId: string): { handle: string; planOnly: boolean;
+        ownerRevision?: number; plan?: ImplementationPlanDraft } | undefined {
         const binding = this.chats.get(chatId);
         if (!binding || binding.root !== root) return undefined;
         const entry = this.drafts.get(binding.handle);
         return entry?.root === root ? { handle: binding.handle, planOnly: !!entry.planOnly,
+            ...(entry.planOnly ? { ownerRevision: entry.ownerRevision } : {}),
             ...(entry.implementationPlan ? { plan: copy(entry.implementationPlan) } : {}) } : undefined;
     }
 
