@@ -1,0 +1,37 @@
+TASK: Correction 11 / P1 — Restore natural greenfield Chat and distinguish libraries from files
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 single bounded G1 implementation; manual selected-Q4 browser owner gate follows THIS prompt, before P2.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no manifest, workspace/internal pin or lockfile version modifications.
+
+PREFLIGHT / PROTECTION
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/planning/p11/greenfield-experience-contract.md`, `docs/decisions/0025-durable-project-chat-and-chatpanel-ai-presence.md` and the three `docs/tasks/c11-greenfield-patch` assessment/plan/README files. Inspect actual local `git status --short`, branch, HEAD, `package.json`/workspace version, relevant source, test compiled `lib`, any uncommitted earlier Checkpoint One patch, and other owner work before editing. GitHub authoring base `0320536b` is NOT a local execution pin or proof of a clean working tree. If source has materially diverged or project version advanced, STOP and request owner re-assessment; never reset/downgrade/overwrite a dirty tree.
+
+Version unchanged `0.11.8`; do not change manifests/internal pins/lockfiles, previously authored P*.txt, failed closeouts, Roadmap/Markdown/Work records or the developer's persistent tower-defense project. Separate explicit owner Run authorization required: `/prompt-write` is not Run. No `/activate`; no agent self-commit, reset, stash, clean, force-push, provider default/egress change, Chat/plan/runner new owner, shell/filesystem/network/model tool grant, Work Run, canonical artifact or test-result fabrication. Preserve project containment, symlink and hidden/`.dope` denial, source provenance, token budgets, saved Chat lease and provider consent. Headless target <=8 minutes, 10 soft / hard stop 15; report actual blocker if over scope. Use safe disposable roots for adversarial file tests; owner game is READ ONLY.
+
+USER DEFECT AND SCOPE
+Developer says EXACTLY: "Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js". Dope replied with fixed-looking "Based on the project evidence provided", "What I Can Confirm", "Missing/Unknown Information", treated `pixi.js` like an absent project file, described Architecture/Physical Map as missing requirements and did not suggest a useful first implementation direction. This is an **owner-observed** transcript; the exact saved model prompt and root attachment remain unverified. Inspect actual source first, particularly `packages/theia-extension/src/node/chat-project-grounder.ts` `explicitPaths`, `ground`, project orientation, and `packages/theia-extension/src/node/chat-context-composer.ts` `GROUNDED_CHAT_INSTRUCTION` / `compose` plus `ChatBackend.runTurn/previewContext` normal routes. Do not claim that the response sections are a literal template or that the model was definitely missing source.
+
+IMPLEMENT ONLY THE G1 SEAM
+1. **Technology names vs user-requested file paths.** Make ordinary `explicitPaths`/`ground` recognize that "with pixi.js", "using pixi.js", package/library references and a dotted library name in project-idea prose do NOT by themselves request a workspace `readFile('pixi.js')`. Do not add a fragile whitelist of libraries. Use syntactic/linguistic distinction between explicit project-relative paths and file-read existence/listing intent; accept legitimate names `src/game.ts`, `package.json` and even `pixi.js` when the developer explicitly asks to read/check that file. Keep verified missing file distinct from no attempted inspection, unsafe rejected path and empty project. Normalize punctuation without relaxing `safePath`/`target`.
+2. **Orientation for a true greenfield project.** Reduce unnecessary Architecture/Physical Map "unavailable" noise on ordinary brainstorming. Preserve existing typed Architecture/Physical Map queries and exact status when specifically relevant. An uninitialized canonical Architecture or missing index must never be described as absence of project files, and an empty root is not an invalid project.
+3. **Natural conversation instruction.** Adjust the *ordinary* bounded grounding system instruction to require evidence for claims about existing source but explicitly permit prospective design choices, architecture, tests, options and assumptions without code. Guide the model to provide a useful initial direction and one meaningful question when appropriate; avoid mandating report headings, lists of unavailable prereqs or repeated clarification. Do not hardcode a tower-defense response, suppress true uncertainty or grant hallucination permission. Preserve saved history/context precedence and selected model.
+4. **No planning-mode drift.** Normal "Lets plan the start of a new project..." must stay regular conversational Chat. Do not broaden `requestsImplementationPlan`, force plan JSON, create `RoadmapGreenfield` plans/nodes, change role routing or introduce an extra model/classifier call. Existing deliberate plan-only, Help, selected Roadmap, Work and Bridge behaviors remain independent.
+
+FOCUSED DETERMINISTIC TESTS
+Use `test/unit/chat-project-grounding.test.ts`, `chat-context-composer.test.ts` and narrowly relevant `chat-backend.test.ts`:
+- Exact G1 text + initial empty safe project returns no fake "Project file pixi.js: absent"; automatic context is genuinely project-scoped and has current provenance.
+- "Use pixi.js for graphics" / "use React" remains technology references, not missing files; this generalizes beyond PixiJS.
+- `read src/game.ts` / `inspect package.json` / `does pixi.js exist?` still correctly read or truthfully report missing when actual file lookup was requested.
+- Normal G1 Chat receives balanced system guidance and no structured plan/graph side effect. Earlier explicit `src/diffEditor.js;` remains a verified file if it exists.
+- Hidden paths, traversal, symlink/private source denial, cross-project separation, context byte limits, model selection/hosted-data consent and cancellation do not regress.
+
+Build only changed-package compiled `lib` required for focused `node --test`; run `git diff --check` and narrow typecheck/build if warranted. Record exact test numbers, paths, source hashes and any failure. Do NOT run full aggregate or claim browser/Q4 acceptance.
+
+MANUAL G1 HANDOFF — HARD STOP
+Return the patch and instruct owner to run actual Dope in the Codex browser using the selected, actually loaded local Q4 model (the `32768` profile only if currently loaded); use the exact G1 request in ordinary saved Chat, verify actual model selection, project attachment, Auto context and natural response. **Stop after this prompt**. The owner must assess usefulness, no false `pixi.js` missing-file assertion, no Architecture prerequisites, no forced JSON/Roadmap/Work. If G1 is NOT GREEN, do NOT run P2; preserve the failed output and diagnose this checkpoint. P1's deterministic PASS is not G1 Green. Never assume this runner enforces the manual pause; use individual manual prompt execution, NOT unattended `npm run codex:phase -- c11-greenfield-patch`.
