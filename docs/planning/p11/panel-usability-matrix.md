@@ -1,5 +1,19 @@
 # Phase 11 — Preliminary panel usability matrix
 
+## Greenfield-first real-project Chat gates — owner approved 2026-10-28 (NOT QUALIFIED)
+
+**Reference human project:** the developer's persistent 2D tower-defense game using PixiJS; **not** a disposable fixture and not permission to edit game files. [Experience contract](greenfield-experience-contract.md) · [UX-018 and UX-019](usability-issue-ledger.md). The two Chat responses are owner-supplied evidence, not a controlled browser replay or a verified model prompt trace. This is the immediate Phase 11 priority ahead of broader structured planning; prior workstreams and independent D1–D8/owner-close conditions remain open. Record exact tested product SHA/version, user/AI actor, selected/loaded model, attached project identity, Auto-context bytes/source hashes, browser operations, reply quality and approval state. Negative or destructive tests use disposable project copies.
+
+| Gate | Human task and observed starting state | Required real observation | Evidence / next action |
+| --- | --- | --- | --- |
+| **G1 — Empty greenfield brainstorming** | Start a new saved Chat: "Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js". | Gives a substantive provisional game architecture/first-playable-slice direction and relevant design question; does not demand files/Architecture/Physical Map, claim an absent `pixi.js` file or produce repeated missing-evidence headings. No implicit Roadmap or formal plan write. | **OWNER-REPORTED FAIL / NOT GREEN** in exact transcript; independent browser/Q4 replay and composed-context inspection required. |
+| **G2 — Created structure awareness** | Developer creates the initial source structure, then says "Okay I created our basic structure". | Existing Chat reads current **attached project** safely and responds with verified actual file/manifest changes; cannot confuse absent Architecture/Map with absent project. If no/ambiguous workspace root, show verified attachment diagnostics and recovery instead of pretending a read. | **OWNER-REPORTED FAIL / NOT GREEN** in exact transcript; direct current workspace + Auto-context/source hash evidence required. |
+| **G3 — Normal conversational continuity** | Discuss game loop, tower placement and enemy movement in subsequent Chat turns. | Builds on earlier developer decisions and current files; reasoned tradeoffs, no formulaic repetition or unnecessary formal plan operations. | NOT RUN as independent gate; verify as ongoing real project use. |
+| **G4 — Formal implementation plan on request** | Request a bounded first playable prototype plan. | Existing structured plan service gives useful, requirement-covered proposal and explicit review; no silent canonical Roadmap/Work writes. | NOT RUN in game project; older CP P8/P5 NOT GREEN evidence not superseded. |
+| **G5 — Saved Chat continuity** | Reload or reopen the actual game project and Chat. | Same project/Chat, chosen model and accepted decisions restored; safe lease ownership and no duplicate writer. | NOT RUN in game project; prior Chat restoration tests qualify only their own scopes. |
+
+**Qualifying G1/G2:** Compare exact user conversation and actual saved Chat/grounded request against browser display. Synthetic tests may verify safe root/path/provider limits but cannot establish usefulness or natural phrasing. Distinguish project facts from proposed designs. Record PASS/FAIL/BLOCKED/EVIDENCE GAP/NOT RUN without extrapolating to Phase 11 Green. No scheduled broad hunt, native GUI or Work action is claimed by this documentation entry.
+
 ## Current Bridge/Phase Focus evidence — 2026-10-19 (older P4 table remains historical)
 
 | Gate | Latest source-bound observation | Current scoped disposition |
