@@ -1,4 +1,4 @@
-import type { ChatAssistantMessage } from '@dope/chat';
+import type { Chat, ChatAssistantMessage } from '@dope/chat';
 
 export function isDraftPlanningAction(type: string): boolean {
     return ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint', 'reorder-phase',
@@ -305,8 +305,39 @@ export class ChatTranscriptDrag {
     }
     end(): boolean { const dragged = this.dragging; this.dragging = false; return dragged; }
 }
-export function canDragChatTranscript(target: Element): boolean {
-    return !target.closest('button, [role="button"], input, textarea, select, [contenteditable]');
+export function canDragChatTranscript(target: Element, spacePan = false): boolean {
+    if (target.closest('button, [role="button"], input, textarea, select, [contenteditable]')) return false;
+    return spacePan || !target.closest('.dope-chat-message-content, a, summary, pre, code');
+}
+
+/** Copy the same conversational projection shown in Chat, never its inspectable machine payload. */
+export function chatResponseCopyText(message: ChatAssistantMessage, streamingContent?: string): string {
+    if (streamingContent !== undefined) return streamingContent;
+    const activity = planningActivityPresentation(message);
+    if (activity) {
+        const outcome = planningOutcome(message);
+        const answer = implementationPlanAnswer(message);
+        return [`${activity.label} · ${activity.status}`, outcome?.summary,
+            outcome?.questions.join(' '), answer].filter(Boolean).join('\n\n');
+    }
+    if (message.planningActivity?.status === 'failed' || message.planningActivity?.status === 'cancelled') {
+        const outcome = planningOutcome(message);
+        return [outcome?.summary, outcome?.questions.join(' ')].filter(Boolean).join('\n\n');
+    }
+    return message.content;
+}
+
+export function chatTranscriptCopyText(chat: Pick<Chat, 'messages'>,
+    stream?: { messageId?: string; content: string }, transientUser?: { content: string }): string {
+    const turns = chat.messages.flatMap(message => {
+        const content = message.role === 'user' ? message.content : chatResponseCopyText(message,
+            stream?.messageId !== undefined && stream.messageId === message.id ? stream.content : undefined);
+        return content ? [`${message.role === 'user' ? 'You' : 'Assistant'}:\n${content}`] : [];
+    });
+    if (transientUser?.content) turns.push(`You:\n${transientUser.content}`);
+    if (stream?.content && !chat.messages.some(message => message.id === stream.messageId))
+        turns.push(`Assistant:\n${stream.content}`);
+    return turns.join('\n\n');
 }
 export function animateChatToLatest(element: HTMLElement, reducedMotion: boolean,
     schedule: typeof requestAnimationFrame = requestAnimationFrame, duration = 200): () => void {

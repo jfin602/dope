@@ -14,7 +14,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
@@ -80,6 +80,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private workAnimationUntil = 0;
     private dragPointerId?: number;
     private dragChatId?: string;
+    private spacePanPressed = false;
     private cancelScrollAnimation?: () => void;
     private scrollAnimationUntil = 0;
 
@@ -118,6 +119,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.node.append(this.status, this.content);
+        document.addEventListener('keydown', this.spacePanKeyDown);
+        document.addEventListener('keyup', this.spacePanKeyUp);
+        window.addEventListener('blur', this.spacePanBlur);
         this.rootsListener = workspaces.onWorkspaceChanged(() => { this.initialAttach = this.attach(); });
         this.backendOffline = connectionStatus?.currentStatus === ConnectionStatus.OFFLINE;
         this.connectionListener = connectionStatus?.onStatusChange(status => {
@@ -190,13 +194,22 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
         if (this.dragPointerId !== undefined && scroll?.hasPointerCapture(this.dragPointerId))
             scroll.releasePointerCapture(this.dragPointerId);
-        scroll?.classList.remove('dope-chat-scroll-dragging');
+        scroll?.classList.remove('dope-chat-scroll-dragging', 'dope-chat-scroll-panning');
         this.dragPointerId = undefined; this.dragChatId = undefined;
         document.removeEventListener('pointermove', this.moveTranscriptDrag);
         document.removeEventListener('pointerup', this.endTranscriptPointer);
         document.removeEventListener('pointercancel', this.endTranscriptPointer);
         return dragged;
     }
+    private readonly spacePanKeyDown = (event: KeyboardEvent): void => {
+        if (event.code === 'Space' && !event.repeat &&
+            !(event.target instanceof Element && event.target.closest('input, textarea, select, button, [contenteditable]')))
+            this.spacePanPressed = true;
+    };
+    private readonly spacePanKeyUp = (event: KeyboardEvent): void => {
+        if (event.code === 'Space') this.spacePanPressed = false;
+    };
+    private readonly spacePanBlur = (): void => { this.spacePanPressed = false; };
 
     storeState(): object {
         return { ...this.panel.layout(this.module === 'chat' ? this.controller.chatId : undefined),
@@ -626,10 +639,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (event.deltaY < 0) { this.cancelWorkAnimation?.(); this.workAnimationUntil = 0; }
         };
         scroll.onpointerdown = event => {
-            if (event.button !== 0 || !event.isPrimary || !canDragChatTranscript(event.target as Element)) return;
+            if (event.pointerType === 'touch' || event.button !== 0 || !event.isPrimary ||
+                !canDragChatTranscript(event.target as Element, this.spacePanPressed)) return;
             this.workPointerId = event.pointerId;
             this.cancelWorkAnimation?.(); this.workAnimationUntil = 0;
             this.workDrag.start(event.clientY, scroll.scrollTop, event.clientX);
+            if (this.spacePanPressed) { scroll.classList.add('dope-chat-scroll-panning'); event.preventDefault(); }
         };
         scroll.onpointermove = event => {
             if (event.pointerId !== this.workPointerId) return;
@@ -643,7 +658,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (event.pointerId !== this.workPointerId) return;
             if (scroll.hasPointerCapture(event.pointerId)) scroll.releasePointerCapture(event.pointerId);
             this.workPointerId = undefined; this.workDrag.end();
-            scroll.classList.remove('dope-chat-scroll-dragging');
+            scroll.classList.remove('dope-chat-scroll-dragging', 'dope-chat-scroll-panning');
         };
         region.append(scroll, latest);
         const detail = (text: string, className = 'dope-work-detail') => {
@@ -1479,11 +1494,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         };
         scroll.onwheel = event => { if (event.deltaY < 0) { this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0; } };
         scroll.onpointerdown = event => {
-            if (event.button !== 0 || !event.isPrimary ||
-                !canDragChatTranscript(event.target as Element)) return;
+            if (event.pointerType === 'touch' || event.button !== 0 || !event.isPrimary ||
+                !canDragChatTranscript(event.target as Element, this.spacePanPressed)) return;
             this.endTranscriptDrag();
             this.dragPointerId = event.pointerId; this.dragChatId = state.chatId;
             this.transcriptDrag.start(event.clientY, scroll.scrollTop, event.clientX);
+            if (this.spacePanPressed) { scroll.classList.add('dope-chat-scroll-panning'); event.preventDefault(); }
             document.addEventListener('pointermove', this.moveTranscriptDrag);
             document.addEventListener('pointerup', this.endTranscriptPointer);
             document.addEventListener('pointercancel', this.endTranscriptPointer);
@@ -1626,6 +1642,27 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
             }
             item.append(meta);
+            if (message.role === 'assistant') {
+                const copyText = chatResponseCopyText(message,
+                    state.stream?.messageId !== undefined && state.stream.messageId === message.id ? state.stream.content : undefined);
+                if (copyText) {
+                    const copy = this.button('', () => {
+                        void (navigator.clipboard?.writeText(copyText) ?? Promise.reject(new Error('Clipboard unavailable')))
+                            .then(() => { icon.className = codicon('check');
+                                copy.setAttribute('aria-label', 'Response copied'); copy.title = 'Copied';
+                                setTimeout(() => { icon.className = codicon('copy');
+                                    copy.setAttribute('aria-label', 'Copy Response'); copy.title = 'Copy Response'; }, 2000); },
+                                () => { copy.setAttribute('aria-label', 'Copy response failed'); copy.title = 'Copy failed'; });
+                    });
+                    copy.className = 'dope-chat-copy-response';
+                    copy.setAttribute('aria-label', 'Copy Response');
+                    copy.setAttribute('aria-live', 'polite');
+                    copy.title = 'Copy Response';
+                    const icon = document.createElement('span'); icon.className = codicon('copy');
+                    icon.setAttribute('aria-hidden', 'true'); copy.append(icon);
+                    item.append(copy);
+                }
+            }
             transcript.append(item);
         }
         if (state.transientUser?.chatId === chat.id) {
@@ -1692,6 +1729,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         for (const kind of chat.settings.context.allowedSources)
             sources.append(new Option(kind.replace(/-/g, ' '), kind));
         menu.append(sources);
+        menuButton('Copy Transcript', () => {
+            const text = chatTranscriptCopyText(chat, state.stream,
+                state.transientUser?.chatId === chat.id ? state.transientUser : undefined);
+            void (navigator.clipboard?.writeText(text) ?? Promise.reject(new Error('Clipboard unavailable')))
+                .then(() => { more.title = 'Transcript copied'; more.setAttribute('aria-label', 'Transcript copied');
+                    setTimeout(() => { more.title = 'More actions'; more.setAttribute('aria-label', 'More actions'); }, 2000); },
+                    () => { more.title = 'Copy transcript failed'; more.setAttribute('aria-label', 'Copy transcript failed'); });
+        }, !chat.messages.length);
         menuButton('Add context', () => void this.addContext(sources.value as ChatContextKind), !sources.options.length);
         for (const kind of ['Ask', 'Explain', 'Trace', 'Find Related'] as const)
             menuButton(kind, () => this.behavior(kind));
@@ -1888,6 +1933,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     override dispose(): void {
         this.endTranscriptDrag();
+        document.removeEventListener('keydown', this.spacePanKeyDown);
+        document.removeEventListener('keyup', this.spacePanKeyUp);
+        window.removeEventListener('blur', this.spacePanBlur);
         this.cancelScrollAnimation?.();
         ++this.workspaceRequest;
         ++this.modelsRequest;

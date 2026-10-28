@@ -8,7 +8,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -509,13 +509,42 @@ test('transcript drag threshold and fast latest animation respect reduced motion
     assert.equal(scroll.scrollTop, 700);
 });
 
-test('transcript drag starts on messages, links, code and disclosures but leaves controls clickable', () => {
+test('transcript drag leaves selectable text alone and Space permits deliberate panning', () => {
     const target = (tag: string) => ({ closest: (selector: string) =>
         selector.split(',').map(part => part.trim()).includes(tag) ? {} : null }) as unknown as Element;
-    for (const tag of ['p', 'a', 'pre', 'code', 'summary', 'div'])
-        assert.equal(canDragChatTranscript(target(tag)), true, tag);
-    for (const tag of ['button', '[role="button"]', 'input', 'textarea', 'select', '[contenteditable]'])
+    for (const tag of ['.dope-chat-message-content', 'a', 'pre', 'code', 'summary']) {
         assert.equal(canDragChatTranscript(target(tag)), false, tag);
+        assert.equal(canDragChatTranscript(target(tag), true), true, `Space + ${tag}`);
+    }
+    assert.equal(canDragChatTranscript(target('div')), true);
+    for (const tag of ['button', '[role="button"]', 'input', 'textarea', 'select', '[contenteditable]'])
+        assert.equal(canDragChatTranscript(target(tag), true), false, tag);
+});
+
+test('response and transcript copy use chronological conversational projections without debug payloads', () => {
+    const user = { role: 'user', content: 'Show a debug trace in my answer, please.' } as const;
+    const regular = { role: 'assistant', content: '# Result\n\n- **First**\n- [Link](https://example.com)\n\n```ts\nconst x = 1;\n```' } as const;
+    const planned = { role: 'assistant', content: '{"type":"no-action","message":"No change needed."}',
+        execution: { status: 'complete' }, planningActivity: { schemaVersion: 1, kind: 'no-action',
+            status: 'no-action', refs: [] } } as unknown as import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    const failed = { role: 'assistant', content: 'INTERNAL_DIAGNOSTIC_PAYLOAD',
+        execution: { status: 'failed' }, planningActivity: { schemaVersion: 1, kind: 'error',
+            status: 'failed', refs: [] } } as unknown as import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    assert.equal(chatResponseCopyText(regular as import('../../packages/chat/lib/index.js').ChatAssistantMessage), regular.content);
+    assert.match(chatResponseCopyText(planned), /No change needed/);
+    assert.match(chatResponseCopyText(failed), /failed before an approved change/);
+    const transcript = chatTranscriptCopyText({ messages: [user, regular, planned, failed] as
+        import('../../packages/chat/lib/index.js').ChatMessage[] });
+    assert.ok(transcript.indexOf('You:') < transcript.indexOf('Assistant:'));
+    assert.match(transcript, /Show a debug trace/);
+    assert.match(transcript, /```ts\nconst x = 1;\n```/);
+    assert.match(transcript, /No change needed/);
+    assert.match(transcript, /failed before an approved change/);
+    assert.doesNotMatch(transcript, /INTERNAL_DIAGNOSTIC_PAYLOAD|"type":"no-action"/);
+    assert.match(chatTranscriptCopyText({ messages: [user, regular] as
+        import('../../packages/chat/lib/index.js').ChatMessage[] },
+    { messageId: 'streaming-id', content: 'Streaming **answer**' }, { content: 'Pending user turn' }),
+    /You:\nPending user turn\n\nAssistant:\nStreaming \*\*answer\*\*$/);
 });
 
 test('touch drag follows vertical movement and leaves horizontal gestures to the browser', () => {
@@ -545,9 +574,9 @@ test('transcript wiring preserves manual reading and uses one centered latest ac
     assert.match(widget, /aria-label', 'Scroll to latest'/);
     assert.match(widget, /codicon\('chevron-down'\)/);
     assert.match(css, /\.dope-chat-panel \.dope-chat-latest \{[^}]*left: 50%;[^}]*border-radius: 50%/);
-    assert.doesNotMatch(widget, /event\.pointerType === 'touch' \|\| event\.button !== 0/);
-    assert.match(css, /\.dope-chat-scroll \{[^}]*touch-action: pan-x pinch-zoom/);
-    assert.match(css, /\.dope-chat-scroll-dragging, \.dope-chat-scroll-dragging \* \{[^}]*user-select: none/);
+    assert.match(widget, /event\.pointerType === 'touch' \|\| event\.button !== 0/);
+    assert.match(css, /\.dope-chat-scroll \{[^}]*touch-action: pan-y pinch-zoom/);
+    assert.match(css, /\.dope-chat-scroll-dragging, \.dope-chat-scroll-dragging \*, \.dope-chat-scroll-panning/);
 });
 
 test('each ChatPanel opens its own RPC channel on the backend Chat route', async () => {

@@ -689,8 +689,10 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-color-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--chat-color); }
 .dope-chat-settings { margin-left: auto; }
 .dope-chat-transcript-region { position: relative; flex: 1; min-height: 0; }
-.dope-chat-scroll { position: absolute; inset: 0; overflow: auto; padding: 10px 12px 18px; cursor: grab; touch-action: pan-x pinch-zoom; }
-.dope-chat-scroll-dragging, .dope-chat-scroll-dragging * { cursor: grabbing; user-select: none; }
+.dope-chat-scroll { position: absolute; inset: 0; overflow: auto; padding: 10px 12px 18px; cursor: grab; touch-action: pan-y pinch-zoom; }
+.dope-chat-scroll-dragging, .dope-chat-scroll-dragging *, .dope-chat-scroll-panning, .dope-chat-scroll-panning * { cursor: grabbing; user-select: none; }
+.dope-chat-message-content, .dope-chat-message-content * { user-select: text; }
+.dope-chat-message-content { cursor: text; }
 .dope-chat-transcript { padding: 0 !important; margin: 0 auto; max-width: 900px; }
 .dope-work-transcript { box-sizing: border-box; width: 100%; }
 .dope-agent-transcript-panel .dope-work-scroll { padding: 18px clamp(12px, 4vw, 40px) 28px; touch-action: pan-y pinch-zoom; }
@@ -862,6 +864,11 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-panel .dope-chat-message-content ul { list-style: disc outside; padding-left: 1.5em; }
 .dope-chat-panel .dope-chat-message-content ol { list-style: decimal outside; padding-left: 1.5em; }
 .dope-chat-message-meta { max-width: 72ch; color: var(--theia-descriptionForeground); font-size: 11px; margin-top: 4px; overflow-wrap: anywhere; }
+.dope-chat-message-meta, .dope-chat-planning-activity, .dope-chat-planning-activity *,
+.dope-chat-planning-invalid, .dope-chat-planning-invalid-raw { user-select: none; }
+.dope-chat-panel button.dope-chat-copy-response { align-self: flex-start; margin-top: 3px; padding: 2px 5px; color: var(--theia-descriptionForeground); background: transparent; border-color: transparent; }
+.dope-chat-panel button.dope-chat-copy-response:hover { color: var(--theia-foreground); background: var(--theia-button-secondaryHoverBackground); }
+.dope-chat-scroll-panning .dope-chat-message-content, .dope-chat-scroll-panning .dope-chat-message-content * { cursor: grabbing; user-select: none; }
 .dope-chat-message-alert .dope-chat-message-meta { color: var(--theia-errorForeground); font-weight: 600; }
 .dope-chat-provenance { margin-left: 5px; }
 .dope-chat-working { color: var(--theia-descriptionForeground); }
