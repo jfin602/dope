@@ -31,6 +31,7 @@ export interface LocalPlanningAnswerCheck {
     maxSteps?: 2 | 3;
     onRetry?: (cause: 'invalid-envelope' | 'missing-owner-revision') => void;
     validateBridge?: (value: Record<string, unknown>) => Promise<boolean>;
+    validatePlan?: (value: LocalImplementationPlan) => string[];
 }
 
 export interface LocalImplementationPlan {
@@ -143,6 +144,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
     let lastInvalid = '';
     let retryInstruction: string | undefined;
     let incompleteOwnerRevision = false;
+    let missingPlanCoverage: string[] = [];
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         let complete: T | undefined;
@@ -164,7 +166,16 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const value: unknown = JSON.parse(complete.text);
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object required');
             const raw = value as Record<string, unknown>;
-            if (mode === 'plan' && validImplementationPlan(raw)) return complete;
+            if (mode === 'plan' && validImplementationPlan(raw)) {
+                missingPlanCoverage = check.validatePlan?.(raw) ?? [];
+                if (!missingPlanCoverage.length) return complete;
+                retryInstruction = `The plan has no concrete step, deliverable, or acceptance check for: ${missingPlanCoverage.join('; ')}. ` +
+                    'Return the whole revised plan. For each gap, add or correct actionable step details and deliverables ' +
+                    'and a matching success criterion or test. Do not assume a requested view or action already exists ' +
+                    'unless the supplied source proves it. Keep explicit authorization checks and test deliverables in ' +
+                    'the implementation steps. Use the same supplied evidence; do not invent source reads.';
+                continue;
+            }
             if (mode === 'plan-revision' && validImplementationPlanRevision(raw)) return complete;
             const proposal = (raw.type === 'roadmap-proposal' && mode === 'unlinked' &&
                 Object.keys(raw).sort().join(',') === 'action,ownerRevision,projectId,type' &&
@@ -208,7 +219,8 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
     }
     return fail(mode === 'plan' ?
-        'Local implementation plan incomplete or invalid strict JSON after two attempts; no draft change accepted' :
+        `Local implementation plan incomplete or invalid strict JSON after two attempts; no draft change accepted${missingPlanCoverage.length ?
+            `. Uncovered requirements: ${missingPlanCoverage.join('; ')}` : ''}` :
         incompleteOwnerRevision ?
         'Local planning answer omitted the requested current Roadmap owner revision after two attempts' :
         'Local planning did not return strict JSON after two attempts', lastInvalid,

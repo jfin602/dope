@@ -31,17 +31,22 @@ test('P8 wording crosses source read, normal Chat plan route, review, saved revi
     const grounder = new ChatProjectGrounder({ status: () => ({ state: 'idle', generation: 0 }),
         snapshot: () => undefined, inputsCurrent: async () => false } as never);
     const plan = { type: 'implementation-plan', objective: 'Visual Git history',
-        successCriteria: ['Inspect commits and branches without editing source'],
+        successCriteria: ['Visual Git history shows commits and reuses the read-only diff editor',
+            'Branch checkout and commit toolbar controls require explicit permission'],
         constraints: ['Explicit checkout and commit permissions'], assumptions: ['Git provider needs inspection'],
         steps: [
-            { title: 'Inspect history and diff', detail: 'Read current history and reuse the read-only diff editor',
-                deliverables: ['Source map'], dependsOn: [],
+            { title: 'Inspect history and diff', detail: 'Read current Git history and reuse the read-only diff editor',
+                deliverables: ['Read-only diff editor integration map'], dependsOn: [],
                 reuse: [{ path: 'src/diffEditor.js', reason: 'Existing read-only diff renderer' }] },
-            { title: 'Add history navigation', detail: 'Show commits and branches in the history view',
-                deliverables: ['History view'], dependsOn: [1], reuse: [{ path: 'src/history.js', reason: 'History owner' }] },
-            { title: 'Guard branch and commit actions', detail: 'Use toolbar controls with explicit permission checks',
-                deliverables: ['Guarded toolbar'], dependsOn: [2], reuse: [] }],
-        tests: ['Unit history navigation and denied checkout'], guiQualification: 'Review diff and checkout in browser',
+            { title: 'Add visual Git history navigation', detail: 'Show commits and branches in the visual Git history view',
+                deliverables: ['Visual Git history view'], dependsOn: [1],
+                reuse: [{ path: 'src/history.js', reason: 'History owner' }] },
+            { title: 'Guard branch and commit actions',
+                detail: 'Call checkoutBranch and invoke repository commit creation from toolbar controls after explicit permission checks; handle failure, verify the new commit identifier and implement tests',
+                deliverables: ['Functional branch checkout and commit creation toolbar controls with explicit permissions and tests'],
+                dependsOn: [2], reuse: [] }],
+        tests: ['Unit visual Git history, diff editor reuse, branch checkout and commit permission checks'],
+        guiQualification: 'Review history, diff, checkout and commit in browser',
         risks: ['Stale branch state'], alternatives: ['Start with read-only history'], question: '' };
     let output = JSON.stringify(plan), calls = 0;
     const selected = { connectionId: 'local', modelId: 'chosen-q4' };
@@ -103,7 +108,7 @@ test('P8 wording crosses source read, normal Chat plan route, review, saved revi
         const first = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: selected, content: prompt });
         assert.equal(calls, 1);
-        assert.equal(first.proposal?.action.type, 'implementation-plan');
+        assert.equal(first.proposal?.action.type, 'implementation-plan', JSON.stringify(first.planPreview ?? first.proposalError));
         assert.equal(first.proposal?.changedIds.length, 3);
         assert.match(first.proposal?.summary ?? '', /Guard branch and commit actions/);
         assert.match(first.proposal?.summary ?? '', /explicit permission checks/);

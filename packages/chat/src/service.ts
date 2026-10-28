@@ -47,7 +47,10 @@ export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'histor
 export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
 export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: string; ownerId: string;
     revision: number; changedIds: string[]; action: { type: string; id: string }; summary: string }
-export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal; proposalError?: string }
+export interface ChatPlanPreview { coverage: { id: string; text: string;
+    status: 'covered' | 'needs-review' | 'missing'; explanation: string; stepNumbers: number[] }[] }
+export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal;
+    proposalError?: string; planPreview?: ChatPlanPreview }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;

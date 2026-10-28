@@ -171,7 +171,7 @@ test('guided investigation cites bounded source and reports unavailable evidence
     } finally { await rm(other, { recursive: true, force: true }); }
     await assert.rejects(grounder.investigate(root, { projectId: 'other', queries: [] }), /Foreign/);
     await assert.rejects(grounder.investigate(root, { queries: Array(7).fill({ kind: 'directory', path: '' }) }), /limit/);
-    await assert.rejects(grounder.investigate(root, { queries: Array(4).fill({ kind: 'read', path: 'package.json' }) }), /read limit/);
+    await assert.rejects(grounder.investigate(root, { queries: Array(6).fill({ kind: 'read', path: 'package.json' }) }), /read limit/);
     const controller = new AbortController(); controller.abort();
     await assert.rejects(grounder.investigate(root, { signal: controller.signal, queries: [{ kind: 'read', path: 'package.json' }] }), /cancelled/);
     await writeFile(join(root, 'large.ts'), 'x'.repeat(GROUNDING_LIMITS.fileBytes + 1));

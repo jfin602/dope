@@ -49,7 +49,7 @@ export function implementationPlanAnswer(message: ChatAssistantMessage): string 
         } catch { return undefined; }
     }
     if (message.execution.status !== 'complete' || message.planningActivity?.kind !== 'implementation-plan' ||
-        !['pending', 'applied', 'denied', 'stale'].includes(message.planningActivity.status)) return undefined;
+        !['pending', 'applied', 'denied', 'stale', 'rejected'].includes(message.planningActivity.status)) return undefined;
     try {
         const plan = JSON.parse(message.content) as { type: string; objective: string; successCriteria: string[];
             constraints: string[]; assumptions: string[]; steps: { title: string; detail: string;

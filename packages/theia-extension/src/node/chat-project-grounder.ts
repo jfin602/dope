@@ -239,7 +239,7 @@ export class ChatProjectGrounder {
             if (request.signal?.aborted) throw new Error('Investigation cancelled');
             if (!query || typeof query !== 'object') throw new Error('Invalid investigation query');
             if (query.kind === 'read') {
-                if (++reads > 3) throw new Error('Investigation read limit exceeded');
+                if (++reads > 5) throw new Error('Investigation read limit exceeded');
                 safePath(query.path);
             } else if (query.kind === 'directory') safePath(query.path);
             else if (query.kind === 'paths' || query.kind === 'text') {
@@ -291,40 +291,41 @@ export class ChatProjectGrounder {
         return { blocks, diagnostics };
     }
 
-    /** Deterministic first pass for idea-first planning; callers may request narrower follow-up queries. */
+    /** Deterministic first pass for idea-first planning; named files lead, related source follows. */
     async investigateIdea(root: string, idea: string, signal?: AbortSignal): Promise<GroundingResult> {
         const named = [...new Set(explicitPaths(idea).filter(item => !item.directorySyntax).map(item => item.path))].slice(0, 3);
-        if (named.length) return this.investigate(root, { signal, queries: named.map(path => ({ kind: 'read', path })) });
-        const terms = idea.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().match(/[\p{L}\p{N}_-]{4,}/gu)?.filter(term =>
-            !['with', 'from', 'that', 'this', 'should', 'would', 'could', 'have', 'make', 'using',
-                'existing', 'implement', 'feature', 'please', 'project', 'plan'].includes(term)) ?? [];
-        const candidates = [...new Set(terms)].sort((a, b) => b.length - a.length || cmp(a, b)).slice(0, 2);
-        const query = candidates[0];
-        if (!query) {
+        const withoutPaths = explicitPaths(idea).reduce((text, item) => text.replace(item.path, ' '), idea);
+        const words = withoutPaths.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
+            .match(/[\p{L}\p{N}_-]{4,}/gu)?.map(word => word.endsWith('s') ? word.slice(0, -1) : word)
+            .filter(word => !['with', 'from', 'that', 'this', 'should', 'would', 'could', 'have', 'make',
+                'using', 'existing', 'implement', 'implementation', 'feature', 'please', 'project', 'plan',
+                'complete', 'ordered', 'before', 'changing', 'anything', 'relevant', 'file', 'explicit',
+                'read-only', 'reuse'].includes(word)) ?? [];
+        const candidates = [...new Set(words)].slice(0, 12);
+        if (!named.length && !candidates.length) {
             const canonical = await this.root(root);
             const message = 'No focused source query could be derived; provide a module or feature term';
             return { blocks: [this.block(canonical, 'grounding-status', 'investigation:unverified',
                 'Investigation status', message)], diagnostics: [{ kind: 'unavailable', source: 'idea', message }] };
         }
         if (signal?.aborted) throw new Error('Investigation cancelled');
-        let paths: GroundingResult & { matchedPaths: string[] };
-        try {
-            paths = await this.searchPaths(root, query);
-            for (const next of candidates.slice(1)) {
-                if (paths.matchedPaths.some(implementationSource)) break;
-                paths = await this.searchPaths(root, next);
-            }
-        } catch {
+        const discovered = new Set<string>(), diagnostics: GroundingDiagnostic[] = [];
+        for (const query of candidates) {
             if (signal?.aborted) throw new Error('Investigation cancelled');
-            const canonical = await this.root(root);
-            const message = 'Project search unavailable; retry or inspect the source manually';
-            return { blocks: [this.block(canonical, 'grounding-status', 'investigation:unavailable',
-                'Investigation status', message)], diagnostics: [{ kind: 'unavailable', source: 'search', message }] };
+            try {
+                const paths = await this.searchPaths(root, query);
+                for (const path of paths.matchedPaths.filter(implementationSource)) discovered.add(path);
+                diagnostics.push(...paths.diagnostics);
+            } catch {
+                diagnostics.push({ kind: 'unavailable', source: 'search', message: 'Project search unavailable' });
+            }
         }
         if (signal?.aborted) throw new Error('Investigation cancelled');
-        const reads = paths.matchedPaths.filter(implementationSource).slice(0, 2);
+        const rank = (path: string) => /^src\//.test(path) ? 0 : /^test\//.test(path) ? 2 : 1;
+        const reads = [...named, ...[...discovered].filter(path => !named.includes(path))
+            .sort((a, b) => rank(a) - rank(b) || cmp(a, b))].slice(0, 5);
         const detail = await this.investigate(root, { signal, queries: reads.map(path => ({ kind: 'read', path })) });
-        const result = { blocks: [...paths.blocks, ...detail.blocks], diagnostics: [...paths.diagnostics, ...detail.diagnostics] };
+        const result = { blocks: detail.blocks, diagnostics: [...diagnostics, ...detail.diagnostics] };
         if (!reads.length) {
             const message = 'No relevant implementation source was verified; narrow the idea or inspect manually';
             result.diagnostics.push({ kind: 'unavailable', source: 'idea', message });

@@ -240,15 +240,20 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
     await mkdir(join(root, 'src'), { recursive: true });
     await writeFile(join(root, sourcePath), source);
     let plan = JSON.stringify({ type: 'implementation-plan', objective: 'Visual Git history',
-        successCriteria: ['Checkout and commits work from the history view'], constraints: ['Explicit permissions'],
+        successCriteria: ['Visual Git history shows commits and reuses the read-only diff editor',
+            'Branch checkout and commit toolbar controls require explicit permission'], constraints: ['Explicit permissions'],
         assumptions: ['Diff editor integration needs confirmation'], steps: [
-            { title: 'Inspect Git and diff seams', detail: 'Read the current history and diff owners',
-                deliverables: ['Source map'], dependsOn: [], reuse: [{ path: sourcePath, reason: 'Current history owner' }] },
-            { title: 'Build history view', detail: 'Show commits and reuse the diff editor',
-                deliverables: ['History panel'], dependsOn: [1], reuse: [] },
-            { title: 'Add guarded checkout', detail: 'Preview branch changes and require confirmation',
-                deliverables: ['Checkout control'], dependsOn: [2], reuse: [] }],
-        tests: ['Unit history navigation'], guiQualification: 'Exercise checkout and diff in browser',
+            { title: 'Inspect Git and diff seams', detail: 'Read the current history and reuse the read-only diff editor',
+                deliverables: ['Read-only diff editor integration map'], dependsOn: [],
+                reuse: [{ path: sourcePath, reason: 'Current history owner' }] },
+            { title: 'Build visual Git history view', detail: 'Show commits and integrate the existing diff editor',
+                deliverables: ['Visual Git history view'], dependsOn: [1], reuse: [] },
+            { title: 'Add branch checkout and commit toolbar controls',
+                detail: 'Call checkoutBranch and invoke repository commit creation from toolbar actions after explicit permission checks; handle failure, verify the new commit identifier and implement tests',
+                deliverables: ['Functional branch checkout and commit creation toolbar controls with explicit permissions and tests'],
+                dependsOn: [2], reuse: [] }],
+        tests: ['Unit history, diff editor reuse, checkout and commit permission checks'],
+        guiQualification: 'Exercise history, checkout, commit and diff in browser',
         risks: ['Stale branch; refresh before checkout'], alternatives: ['Start with read-only history'], question: '' });
     let calls = 0, reportedModel = 'q4', interrupted = false;
     const sent: string[] = [];
@@ -295,6 +300,16 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.equal(greenfield.readImplementationPlan(handle), undefined);
         assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.role, 'assistant');
         assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.execution?.status, 'failed');
+        const completePlan = plan;
+        plan = JSON.stringify({ ...JSON.parse(plan), steps: JSON.parse(plan).steps.slice(0, 2) });
+        const incomplete = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest });
+        assert.equal(incomplete.proposal, undefined);
+        assert.ok(incomplete.planPreview?.coverage.some(item => item.status !== 'covered'));
+        assert.match(incomplete.proposalError ?? '', /needs work/);
+        assert.equal(greenfield.readImplementationPlan(handle), undefined);
+        assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.planningActivity?.status, 'rejected');
+        plan = completePlan;
         calls = 0;
         const before = await store.read(root);
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
@@ -302,7 +317,7 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.equal(calls, 1);
         assert.ok(investigations > 0);
         assert.match(sent.at(-1)!, /current history owner/);
-        assert.equal(turn.proposal?.action.type, 'implementation-plan');
+        assert.equal(turn.proposal?.action.type, 'implementation-plan', JSON.stringify(turn.planPreview ?? turn.proposalError));
         assert.equal(turn.proposal?.changedIds.length, 3);
         assert.equal(turn.refs.some(ref => ref.kind === 'file' && ref.id === sourcePath && ref.sourceHash), true);
         assert.equal(greenfield.readImplementationPlan(handle), undefined);

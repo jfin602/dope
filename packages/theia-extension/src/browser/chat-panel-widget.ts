@@ -1890,6 +1890,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 this.button(draftProposal ? 'Accept into draft' : 'Apply proposal',
                     () => void state.decidePlanningProposal(true), state.pending),
                 this.button('Reject proposal', () => void state.decidePlanningProposal(false), state.pending));
+            if (proposal.action.type === 'implementation-plan') {
+                try {
+                    const parsed = JSON.parse(proposal.summary) as { coverage?: { requirement: { id: string; text: string };
+                        stepNumbers: number[]; deliverables: string[]; acceptanceCriteria: string[];
+                        status: string; explanation: string }[] };
+                    if (parsed.coverage?.length) {
+                        const coverage = document.createElement('details');
+                        const title = document.createElement('summary'); title.textContent = 'Requirement coverage';
+                        const list = document.createElement('ul');
+                        for (const item of parsed.coverage) {
+                            const row = document.createElement('li');
+                            row.textContent = `${item.requirement.id}: ${item.requirement.text} — ${item.status}. ` +
+                                `${item.explanation} Steps ${item.stepNumbers.join(', ')}; ` +
+                                `deliverables: ${item.deliverables.join('; ')}; checks: ${item.acceptanceCriteria.join('; ')}`;
+                            list.append(row);
+                        }
+                        coverage.append(title, list); review.append(coverage);
+                    }
+                } catch { /* The backend preview remains the decision authority. */ }
+            }
             composer.append(review);
         }
         if (state.planningProposalError) {
@@ -1897,6 +1917,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             note.setAttribute('role', 'status');
             note.textContent = state.planningProposalError;
             composer.append(note);
+        }
+        if (state.planPreview) {
+            const preview = document.createElement('section');
+            preview.className = 'dope-chat-context-diagnostics dope-chat-plan-review';
+            preview.setAttribute('aria-label', 'Incomplete implementation plan preview');
+            const heading = document.createElement('strong');
+            heading.textContent = 'Plan preview · acceptance unavailable';
+            const list = document.createElement('ul');
+            for (const item of state.planPreview.coverage) {
+                const row = document.createElement('li');
+                row.textContent = `${item.id}: ${item.text} — ${item.status}. ${item.explanation} ` +
+                    `Steps: ${item.stepNumbers.join(', ') || 'none'}.`;
+                list.append(row);
+            }
+            const recovery = document.createElement('p');
+            recovery.textContent = 'Review the plan in the conversation and ask Chat to revise the missing or unclear work. No draft was changed.';
+            preview.append(heading, list, recovery); composer.append(preview);
         }
         if (state.undoPlanRevision !== undefined && !state.planningProposal) {
             composer.append(this.button('Undo accepted plan revision',

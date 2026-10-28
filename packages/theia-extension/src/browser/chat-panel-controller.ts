@@ -1,7 +1,7 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
 import type { Chat, ChatCollection, ChatFolderPath } from '@dope/chat';
 import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
-    ChatPlanningProposal } from '@dope/chat/lib/service';
+    ChatPlanningProposal, ChatTurnResult } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 import { isDraftPlanningAction } from './chat-panel-presentation';
@@ -72,6 +72,7 @@ export class ChatPanelController {
     lastContext?: ChatContextPreview;
     planningProposal?: ChatPlanningProposal;
     planningProposalError?: string;
+    planPreview?: ChatTurnResult['planPreview'];
     undoPlanRevision?: number;
     planningMode: 'follow' | 'pin' = 'follow';
     pinnedPlanning?: PlanningSelection;
@@ -124,7 +125,7 @@ export class ChatPanelController {
         this.pending = false;
         this.error = '';
         this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
-        this.planningProposalError = undefined; this.undoPlanRevision = undefined;
+        this.planningProposalError = undefined; this.planPreview = undefined; this.undoPlanRevision = undefined;
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.planningProgress = undefined;
         this.planningMode = 'follow'; this.pinnedPlanning = undefined;
@@ -250,7 +251,7 @@ export class ChatPanelController {
         if (chatId === this.chatId && this.mode === 'chat' && this.lease) return true;
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
         this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
-        this.planningProposalError = undefined; this.undoPlanRevision = undefined;
+        this.planningProposalError = undefined; this.planPreview = undefined; this.undoPlanRevision = undefined;
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.planningProgress = undefined;
         this.changed();
@@ -424,7 +425,7 @@ export class ChatPanelController {
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
         this.running = true; this.error = ''; this.stream = undefined; this.planningProgress = undefined;
-        this.planningProposal = undefined; this.planningProposalError = undefined;
+        this.planningProposal = undefined; this.planningProposalError = undefined; this.planPreview = undefined;
         if (!retryMessageId && chatId) this.transientUser = { chatId, content,
             previousIds: new Set(this.chat?.messages.filter(message => message.role === 'user').map(message => message.id)) };
         if (!retryMessageId) this.draft = '';
@@ -451,6 +452,7 @@ export class ChatPanelController {
             this.lastContext = result;
             this.planningProposal = result.proposal;
             this.planningProposalError = result.proposalError;
+            this.planPreview = result.planPreview;
             completed = true;
             this.context = [];
             return true;
