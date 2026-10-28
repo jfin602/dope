@@ -1,5 +1,7 @@
 # Phase 11 — Conversational Planning Experience Contract
 
+**2026-10-28 greenfield-first clarification (DOCS ONLY):** Ordinary saved Chat is the natural first step before a structured implementation-plan draft. See [Greenfield Chat Experience](greenfield-experience-contract.md). A developer may brainstorm a new PixiJS game with no source code and receive provisional, substantive architectural ideas; missing Architecture/Physical Map is not a blocker to thinking. When the developer says files were created, the current workspace must be re-observed through bounded read-only project grounding and a truthful source/context trace before Chat claims what exists. `pixi.js` is a technology reference in this owner's request, not proof of a missing file. The developer decides when to create/review a formal plan: no implicit Roadmap or Work artifact from exploratory Chat. Older owner-approved contracts and all failed CP gates are retained as historical, not relabeled Green. G1/G2 have priority over further CP formal-plan qualification.
+
 **Date:** 2026-10-24 (America/Chicago)  
 **Status:** OWNER-APPROVED DESIGN / DOCS ONLY. `/docs-review` accepted in conversation; `/docs-apply` documents this scope. Product implementation, prompts, execution and qualification are separate steps.  
 **Correction:** `c11-conversational-planning`, under Phase 11 Human-Centered Development Workflow.  
