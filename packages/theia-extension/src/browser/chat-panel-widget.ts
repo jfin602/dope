@@ -1469,6 +1469,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (this.settingsChatId !== chat.id) {
             this.settingsOpen = false; this.settingsDraft = undefined; this.settingsChatId = chat.id;
         }
+        const copyTranscript = () => {
+            const text = chatTranscriptCopyText(chat, state.stream,
+                state.transientUser?.chatId === chat.id ? state.transientUser : undefined);
+            void (navigator.clipboard?.writeText(text) ?? Promise.reject(new Error('Clipboard unavailable')))
+                .then(() => {
+                    transcriptCopyIcon.className = codicon('check');
+                    transcriptCopy.setAttribute('aria-label', 'Transcript copied'); transcriptCopy.title = 'Transcript copied';
+                    setTimeout(() => {
+                        transcriptCopyIcon.className = codicon('copy');
+                        transcriptCopy.setAttribute('aria-label', 'Copy whole transcript');
+                        transcriptCopy.title = 'Copy whole transcript';
+                    }, 2000);
+                }, () => {
+                    transcriptCopy.setAttribute('aria-label', 'Copy transcript failed');
+                    transcriptCopy.title = 'Copy transcript failed';
+                });
+        };
         const header = document.createElement('header');
         const back = this.button('Back / Chats', () => state.select(undefined));
         const heading = document.createElement('h2');
@@ -1482,7 +1499,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         });
         settings.className = 'dope-chat-settings';
         settings.setAttribute('aria-label', 'Chat settings');
-        header.append(back, heading, settings);
+        const transcriptCopy = this.button('', copyTranscript, !chat.messages.length);
+        transcriptCopy.className = 'dope-chat-copy-transcript';
+        transcriptCopy.setAttribute('aria-label', 'Copy whole transcript');
+        transcriptCopy.title = 'Copy whole transcript';
+        const transcriptCopyIcon = document.createElement('span');
+        transcriptCopyIcon.className = codicon('copy');
+        transcriptCopyIcon.setAttribute('aria-hidden', 'true');
+        transcriptCopy.append(transcriptCopyIcon);
+        header.append(back, heading, transcriptCopy, settings);
         const shell = document.createElement('section'); shell.className = 'dope-chat-shell';
         const region = document.createElement('div'); region.className = 'dope-chat-transcript-region';
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll';
@@ -1729,14 +1754,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         for (const kind of chat.settings.context.allowedSources)
             sources.append(new Option(kind.replace(/-/g, ' '), kind));
         menu.append(sources);
-        menuButton('Copy Transcript', () => {
-            const text = chatTranscriptCopyText(chat, state.stream,
-                state.transientUser?.chatId === chat.id ? state.transientUser : undefined);
-            void (navigator.clipboard?.writeText(text) ?? Promise.reject(new Error('Clipboard unavailable')))
-                .then(() => { more.title = 'Transcript copied'; more.setAttribute('aria-label', 'Transcript copied');
-                    setTimeout(() => { more.title = 'More actions'; more.setAttribute('aria-label', 'More actions'); }, 2000); },
-                    () => { more.title = 'Copy transcript failed'; more.setAttribute('aria-label', 'Copy transcript failed'); });
-        }, !chat.messages.length);
+        menuButton('Copy Transcript', copyTranscript, !chat.messages.length);
         menuButton('Add context', () => void this.addContext(sources.value as ChatContextKind), !sources.options.length);
         for (const kind of ['Ask', 'Explain', 'Trace', 'Find Related'] as const)
             menuButton(kind, () => this.behavior(kind));

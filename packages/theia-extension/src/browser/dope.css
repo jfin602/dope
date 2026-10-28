@@ -687,7 +687,8 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-panel li { margin: 5px 0; }
 .dope-chat-panel summary { cursor: pointer; overflow-wrap: anywhere; }
 .dope-chat-color-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--chat-color); }
-.dope-chat-settings { margin-left: auto; }
+.dope-chat-copy-transcript { margin-left: auto; }
+.dope-chat-settings { margin-left: 0; }
 .dope-chat-transcript-region { position: relative; flex: 1; min-height: 0; }
 .dope-chat-scroll { position: absolute; inset: 0; overflow: auto; padding: 10px 12px 18px; cursor: grab; touch-action: pan-y pinch-zoom; }
 .dope-chat-scroll-dragging, .dope-chat-scroll-dragging *, .dope-chat-scroll-panning, .dope-chat-scroll-panning * { cursor: grabbing; user-select: none; }
