@@ -1,0 +1,45 @@
+TASK: Correction 11 / P3 — Manual G1 and G2 greenfield browser closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- MANUAL source-bound live GUI gate using the Codex browser; final closeout outside headless runner. Do not implement more source changes in this prompt.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no manifest, workspace/internal pin or lockfile version modifications.
+
+PREFLIGHT / PROTECTION
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/planning/p11/greenfield-experience-contract.md`, `docs/decisions/0025-durable-project-chat-and-chatpanel-ai-presence.md` and the three `docs/tasks/c11-greenfield-patch` assessment/plan/README files. Inspect actual local `git status --short`, branch, HEAD, `package.json`/workspace version, relevant source, test compiled `lib`, any uncommitted earlier Checkpoint One patch, and other owner work before editing. GitHub authoring base `0320536b` is NOT a local execution pin or proof of a clean working tree. If source has materially diverged or project version advanced, STOP and request owner re-assessment; never reset/downgrade/overwrite a dirty tree.
+
+Version unchanged `0.11.8`; do not change manifests/internal pins/lockfiles, previously authored P*.txt, failed closeouts, Roadmap/Markdown/Work records or the developer's persistent tower-defense project. Separate explicit owner Run authorization required: `/prompt-write` is not Run. No `/activate`; no agent self-commit, reset, stash, clean, force-push, provider default/egress change, Chat/plan/runner new owner, shell/filesystem/network/model tool grant, Work Run, canonical artifact or test-result fabrication. Preserve project containment, symlink and hidden/`.dope` denial, source provenance, token budgets, saved Chat lease and provider consent. Headless target <=8 minutes, 10 soft / hard stop 15; report actual blocker if over scope. Use safe disposable roots for adversarial file tests; owner game is READ ONLY.
+
+MANUAL CLOSEOUT SCOPE
+Read P1/P2 actual implementation summaries, the owner's live G1 authorization to proceed to P2, and any G2 preliminary observation. Verify actual product HEAD, dirty tree, changed-package/test source hashes, served browser bundle matching built product and current saved Chat, then inspect real app through available Codex browser controls. Inspect but do not change developer's game files or Git state. Distinguish an owner-reported two-turn transcript, focused synthetic test, model-prompt trace, actually operated browser and separate native Electron GUI evidence. Neither user game nor Dope product may be reset/stashed/cleaned; temporary disposable twins are allowed for destructive/security cases. Never claim G1/Q4 or G2/browser qualification without direct operation. Do not conflate native Electron build with native GUI proof.
+
+SELECTED LOCAL MODEL
+Inspect actual ready LM Studio connection and explicitly selected model. Reference `qwen3-coder-30b-a3b-instruct@q4_k_m` loaded at `32768` only if actually available, not a product default. Record model ID/provider, measured current context, actual execution provenance, request budget, elapsed time and any failure. Do not silently fall back to hosted service; do not copy project code to unauthorized hosted endpoints. Limit expensive inference to the bounded necessary test, not repeated "try until Green" calls.
+
+G1 — NATURAL GREENFIELD CHAT
+1. In the real Dope browser attached to the owner's game project, open a *normal* saved Chat, not Roadmap Plan with Chat. Capture accurate project attachment and any current files/Auto context. Submit exactly:
+   "Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js"
+2. Observe real output and source context. Must offer useful provisional advice (reasonable first playable slice, systems or tradeoffs, next decision) without demanding existing Architecture/Map/files or inventing inspected source. Must not treat technology `pixi.js` as an absent project file; no repeated empty evidence-report template, no compulsory questionnaire, strict JSON plan proposal or automatic Roadmap/Work.
+3. If a truly empty-project case is required and owner game already has files, test the exact prompt in an **additional disposable empty project** with an independently recorded attached root. Do not falsely label current game as empty or use the disposable result alone to qualify the real user workflow. Record actual response in each context.
+4. Compare with owner's original failed transcript and actual Auto-context/source refs. **If live G1 fails or model/browser unavailable, mark G1 NOT GREEN/BLOCKED/EVIDENCE GAP and STOP; G2 is NOT RUN.**
+
+G2 — CURRENT STRUCTURE AWARENESS
+Only after an independently observed **live G1 PASS**:
+1. In a continuation of the SAME saved game Chat, establish actual current attached workspace root via existing owner UI and inspect the source tree through read-only Dope context. The owner may have already created their structure. Do not create files inside their project to satisfy test.
+2. Submit exact follow-up:
+   "Okay I created our basic structure"
+3. Assert visible Auto context provides current verified directory/manifest/source references actually sent to model, project-relative names, included bytes/content/source hashes; response describes real available files, what their roles support and a specific next step for the 2D game. Do not claim an installed PixiJS version absent verified manifest. Check saved Chat context/human decisions survived turn.
+4. On a *separate disposable twin* only, create/modify files between two turns and repeat G2 to prove fresh retrieval and no stale file hashes, plus same-turn budget/omission diagnostics. If the game project is not attached or root ambiguous, classify as verified BLOCKED with actual actionable attachment evidence, never invent project contents or claim G2 passes from only a synthetic fixture.
+5. Check no unapproved writes to game/Roadmap/Markdown/Work and no unauthorized egress, model switch or Chat lease stealing. Source-bound inspect G1/G2 in one coherent running bundle. Native GUI remains separate unless directly operated.
+
+ADJACENT REGRESSION / FINAL CHECK
+Review source-level tests for legitimate explicit `src/game.ts`, `package.json` and `pixi.js` filename-read requests; traversal/hidden/symlink/security denies; project A/B, saved Chat, context budgets and provider permission; and ordinary Help/selected Roadmap/explicit formal plan routing unchanged. Run one justified final `npm run check` only if G1/G2 user journey passed on current exact source and the code/test basis is coherent. Record exact count, typecheck, browser/Electron builds, bundle and HEAD; if the suite wasn't run or was blocked say so, not a historic number. A passing aggregate alone is not Green. If the process segfaults, record process/timing/logs and classify crash cause unknown without speculative native fixes.
+
+REPORT / STOP
+Return a source-bound final report: starting and tested HEAD/version/dirty status, P1/P2 changed files and tests, attached project identity without exposing private path, exact G1 and G2 requests/results, model/provider/context/provenance, Auto context hashes and diagnostics, meaningful user usefulness, any unsupported source claims, stale-state/negative results, canonical/game source no-write checks, backend stability, final aggregate if actually run and independently observed browser vs Electron scope. Mark **G1 and G2 independently** PASS / FAIL / BLOCKED / EVIDENCE GAP / NOT RUN, then overall GREEN only if both truly passed, no critical safety issue and owner accepts this *narrow Chat correction*. Phase 11 OPEN/NOT QUALIFIED; G3–G5, CP P8/P5, Roadmap/Bridge/Work and native gaps retain their original evidence status.
+
+Only after actual observation, optionally write a new `docs/tasks/c11-greenfield-patch/qualification.md` with exact dated evidence; don't pre-author a passing report or overwrite owner records. No agent self-commit, no in-place authored P*.txt edits, no implementation beyond P1/P2, no new correction stack in this closeout. STOP and return the result for owner review.
