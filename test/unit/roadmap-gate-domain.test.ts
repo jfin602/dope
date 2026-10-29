@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isRoadmapGateSchemaShape, parseRoadmapGateIndex } from '../../packages/project-intelligence/lib/node/roadmap-gate-domain.js';
+import { criterionHash, isRoadmapGateSchemaShape, parseRoadmapGateIndex } from '../../packages/project-intelligence/lib/node/roadmap-gate-domain.js';
 
 const hash = 'a'.repeat(64);
 const source = { projectId: 'project-1', revision: 3, sha256: hash, path: 'src/main.ts' };
@@ -16,7 +16,9 @@ const gate = (id: string, parentPhaseId: string, order: number, dependencies: st
         expectedResult: 'Response contains the expected value', order: 0,
         evidence: [{ id: `${id}-evidence`, projectId: 'project-1', criterionId: `${id}-criterion`,
             result: 'pass', kind: 'test', summary: 'Focused assertion passed', verifiedBy: 'owner',
-            observedAt: '2026-10-29T12:00:00Z', source }] }],
+            observedAt: '2026-10-29T12:00:00Z', source,
+            criterionHash: criterionHash({ title: 'Observed response', expectedResult: 'Response contains the expected value' }),
+            review: { status: 'proposed' } }] }],
 });
 const fixture = () => ({
     schemaVersion: 2, projectId: 'project-1', projectRoot: '/tmp/roadmap-1', revision: 3,

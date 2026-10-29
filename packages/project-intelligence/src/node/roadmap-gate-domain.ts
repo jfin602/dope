@@ -1,4 +1,5 @@
-/** Schema-2 Roadmap domain. RoadmapStore remains the only persisted owner (P2). */
+/** Schema-2 Roadmap domain. RoadmapStore remains the only persisted owner. */
+import { createHash } from 'node:crypto';
 export type RoadmapImplementationStatus = 'unknown' | 'not-implemented' | 'active' | 'implemented' | 'blocked';
 export type RoadmapQualificationStatus = 'unknown' | 'not-green' | 'green' | 'blocked' | 'stale' | 'waived';
 export type RoadmapDraftAcceptance = 'proposed' | 'accepted' | 'published';
@@ -18,8 +19,17 @@ export interface GateEvidence {
     summary: string;
     verifiedBy: string;
     observedAt: string;
-    source: RoadmapSourceProof;
+    source?: RoadmapSourceProof;
+    /** A manual check without source needs an attributable reviewer and action. */
+    observedAction?: string;
+    criterionHash: string;
+    review: { status: 'proposed' } | { status: 'approved' | 'revoked'; reviewerId: string; reviewedAt: string };
+    validation?: { status: 'stale'; reason: string };
 }
+export const criterionHash = (criterion: Pick<Criterion, 'title' | 'expectedResult'>): string =>
+    createHash('sha256').update(JSON.stringify([criterion.title, criterion.expectedResult])).digest('hex');
+export const sameRoadmapSource = (a: RoadmapSourceProof, b: RoadmapSourceProof): boolean =>
+    a.projectId === b.projectId && a.revision === b.revision && a.sha256 === b.sha256 && a.path === b.path;
 export interface Criterion {
     id: string;
     projectId: string;
@@ -41,6 +51,40 @@ export interface RoadmapGate {
     implementationStatus: RoadmapImplementationStatus;
     qualificationStatus: RoadmapQualificationStatus;
     draftAcceptance: RoadmapDraftAcceptance;
+    qualificationSource?: RoadmapSourceProof;
+    qualificationBlockers?: string[];
+}
+export type GateQualification = { status: 'green' | 'not-green' | 'unknown' | 'blocked' | 'stale'; reasons: string[] };
+/** Read-only decision. A stored color or implementation status is never evidence. */
+export function evaluateGateQualification(gate: RoadmapGate, currentSource = gate.qualificationSource): GateQualification {
+    if (gate.qualificationBlockers?.length) return { status: 'blocked', reasons: [...gate.qualificationBlockers] };
+    if (gate.draftAcceptance === 'proposed') return { status: 'unknown', reasons: ['Gate definition is proposed'] };
+    if (!gate.criteria.length) return { status: 'unknown', reasons: ['Gate has no criteria'] };
+    const reasons: string[] = [];
+    let stale = false;
+    let failed = false;
+    for (const criterion of gate.criteria) {
+        const reviewed = criterion.evidence.filter(e => e.review.status === 'approved');
+        if (!reviewed.length) { reasons.push(`${criterion.id}: missing approved evidence`); continue; }
+        const current = reviewed.filter(e => {
+            const drift = e.validation?.status === 'stale' || e.criterionHash !== criterionHash(criterion) ||
+                !!e.source && (!currentSource || !sameRoadmapSource(e.source, currentSource));
+            return !drift;
+        });
+        if (!current.length) {
+            if (reviewed.length) stale = true;
+            const detail = reviewed.at(-1)!;
+            reasons.push(`${criterion.id}: ${detail.validation?.reason ??
+                (detail.criterionHash !== criterionHash(criterion) ? 'Criterion definition changed' : 'Tested source changed')}`);
+            continue;
+        }
+        const latest = current[current.length - 1];
+        if (latest.result !== 'pass') { failed = true; reasons.push(`${criterion.id}: ${latest.result}`); }
+    }
+    if (stale) return { status: 'stale', reasons };
+    if (failed) return { status: 'not-green', reasons };
+    if (reasons.length) return { status: 'unknown', reasons };
+    return { status: 'green', reasons: [] };
 }
 export interface RoadmapPhase {
     id: string;
@@ -92,6 +136,8 @@ const identifier = (v: unknown): v is string => typeof v === 'string' && v.lengt
 const prose = (v: unknown, max: number): v is string => typeof v === 'string' && v.trim().length > 0 && v.length <= max && !/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(v);
 const natural = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0;
 const hash = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
+const timestamp = (v: unknown): v is string => typeof v === 'string' &&
+    /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(v) && !Number.isNaN(Date.parse(v));
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const keys = (v: Record<string, unknown>, required: string[], optional: string[] = []): boolean =>
     required.every(k => Object.hasOwn(v, k)) && Object.keys(v).every(k => required.includes(k) || optional.includes(k));
@@ -172,11 +218,15 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     const designation = new Set<string>();
     for (const item of gates) {
         assertion(record(item) && keys(item, ['id', 'projectId', 'parentPhaseId', 'designation', 'title', 'purpose',
-            'order', 'dependencies', 'criteria', 'implementationStatus', 'qualificationStatus', 'draftAcceptance']) &&
+            'order', 'dependencies', 'criteria', 'implementationStatus', 'qualificationStatus', 'draftAcceptance'],
+            ['qualificationSource', 'qualificationBlockers']) &&
             identity(item, projectId) && identifier(item.parentPhaseId) && /^G[1-9][0-9]*$/.test(item.designation as string) &&
             prose(item.title, 512) && prose(item.purpose, 8192) && ordered(item.order) &&
             references(item.dependencies, item.id as string) && Array.isArray(item.criteria) &&
-            item.criteria.length > 0 && item.criteria.length <= MAX_NESTED && states(item), 'gate fields');
+            item.criteria.length > 0 && item.criteria.length <= MAX_NESTED && states(item) &&
+            (item.qualificationSource === undefined || source(item.qualificationSource, projectId)) &&
+            (item.qualificationBlockers === undefined || Array.isArray(item.qualificationBlockers) &&
+                item.qualificationBlockers.length <= MAX_NESTED && item.qualificationBlockers.every(v => prose(v, 1024))), 'gate fields');
         const gate = item as unknown as RoadmapGate;
         assertion(phases.some(p => (p as RoadmapPhase).id === gate.parentPhaseId), 'gate parent phase');
         const localOrder = `${gate.parentPhaseId}\0${gate.order}`;
@@ -194,13 +244,23 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
             criterionOrders.add(criterion.order); claim(criterion.id);
             for (const candidateEvidence of criterion.evidence) {
                 assertion(record(candidateEvidence) && keys(candidateEvidence, ['id', 'projectId', 'criterionId', 'result',
-                    'kind', 'summary', 'verifiedBy', 'observedAt', 'source']) && identity(candidateEvidence, projectId) &&
+                    'kind', 'summary', 'verifiedBy', 'observedAt', 'criterionHash', 'review'],
+                    ['source', 'observedAction', 'validation']) && identity(candidateEvidence, projectId) &&
                     candidateEvidence.criterionId === criterion.id && member(candidateEvidence.result, ['pass', 'fail', 'inconclusive']) &&
                     member(candidateEvidence.kind, ['test', 'observation', 'artifact', 'manual-check', 'approval']) &&
                     prose(candidateEvidence.summary, 4096) && identifier(candidateEvidence.verifiedBy) &&
-                    typeof candidateEvidence.observedAt === 'string' &&
-                    /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(candidateEvidence.observedAt) &&
-                    !Number.isNaN(Date.parse(candidateEvidence.observedAt)) && source(candidateEvidence.source, projectId),
+                    timestamp(candidateEvidence.observedAt) && hash(candidateEvidence.criterionHash) &&
+                    (candidateEvidence.source === undefined ? candidateEvidence.kind === 'manual-check' &&
+                        prose(candidateEvidence.observedAction, 4096) : source(candidateEvidence.source, projectId)) &&
+                    record(candidateEvidence.review) && (candidateEvidence.review.status === 'proposed' ?
+                        keys(candidateEvidence.review, ['status']) :
+                        member(candidateEvidence.review.status, ['approved', 'revoked']) &&
+                        keys(candidateEvidence.review, ['status', 'reviewerId', 'reviewedAt']) &&
+                        identifier(candidateEvidence.review.reviewerId) &&
+                        timestamp(candidateEvidence.review.reviewedAt)) &&
+                    (candidateEvidence.validation === undefined || record(candidateEvidence.validation) &&
+                        keys(candidateEvidence.validation, ['status', 'reason']) &&
+                        candidateEvidence.validation.status === 'stale' && prose(candidateEvidence.validation.reason, 1024)),
                     'evidence fields');
                 claim(candidateEvidence.id as string);
             }
@@ -222,6 +282,10 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     }
     cycleCheck(phases as RoadmapPhase[], 'phase');
     cycleCheck(gates as RoadmapGate[], 'gate');
+    for (const gate of gates as RoadmapGate[]) {
+        if (gate.qualificationStatus === 'green')
+            assertion(evaluateGateQualification(gate).status === 'green', 'unverified Gate Green');
+    }
     if (raw.linkedDocument !== undefined) {
         const doc = raw.linkedDocument;
         assertion(record(doc) && keys(doc, ['projectId', 'projectRoot', 'path', 'sourceHash', 'syncState', 'sections']) &&

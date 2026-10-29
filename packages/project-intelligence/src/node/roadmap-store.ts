@@ -8,8 +8,8 @@ import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPe
 import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
-import { parseRoadmapGateIndex } from './roadmap-gate-domain';
-import type { Criterion, RoadmapCorrection, RoadmapGate, RoadmapGateIndex, RoadmapPhase } from './roadmap-gate-domain';
+import { criterionHash, evaluateGateQualification, parseRoadmapGateIndex } from './roadmap-gate-domain';
+import type { Criterion, GateEvidence, RoadmapCorrection, RoadmapGate, RoadmapGateIndex, RoadmapPhase, RoadmapSourceProof } from './roadmap-gate-domain';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
@@ -160,7 +160,16 @@ export type RoadmapGateMutation =
         title: string; objective: string }
     | { type: 'correction.edit'; id: string; title: string; objective: string }
     | { type: 'correction.reparent'; id: string; parent: RoadmapCorrection['parent']; criterionId?: string }
-    | { type: 'correction.delete'; id: string };
+    | { type: 'correction.delete'; id: string }
+    | { type: 'evidence.propose'; gateId: string; criterionId: string; id: string;
+        result: GateEvidence['result']; kind: GateEvidence['kind']; summary: string; verifiedBy: string;
+        observedAt: string; source?: RoadmapSourceProof; observedAction?: string }
+    | { type: 'evidence.approve'; gateId: string; criterionId: string; id: string;
+        reviewerId: string; reviewedAt: string; currentSource?: RoadmapSourceProof }
+    | { type: 'evidence.revoke'; gateId: string; criterionId: string; id: string;
+        reviewerId: string; reviewedAt: string }
+    | { type: 'gate.source'; id: string; source: RoadmapSourceProof }
+    | { type: 'gate.blockers'; id: string; reasons: string[] };
 
 function citation(value: unknown): value is RoadmapCitation {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -425,6 +434,27 @@ export class RoadmapStore {
                 throw new Error('Roadmap identity changed; reattach');
             if (candidate.projectRoot !== root || candidate.revision !== expectedRevision + 1)
                 throw new Error('Roadmap root or revision changed');
+            // This general definition saver cannot manufacture reviewed qualification.
+            for (const previous of current.gates) {
+                for (const priorCriterion of previous.criteria) {
+                    if (!priorCriterion.evidence.length) continue;
+                    const nextEvidence = candidate.gates.find(item => item.id === previous.id)?.criteria
+                        .find(item => item.id === priorCriterion.id)?.evidence;
+                    if (JSON.stringify(nextEvidence) !== JSON.stringify(priorCriterion.evidence))
+                        throw new Error('Gate evidence and qualification require typed review operations');
+                }
+            }
+            for (const gate of candidate.gates) {
+                const previous = current.gates.find(item => item.id === gate.id);
+                if (gate.qualificationStatus === 'green' && previous?.qualificationStatus !== 'green' ||
+                    !previous && gate.criteria.some(item => item.evidence.length) ||
+                    previous && (gate.qualificationStatus !== previous.qualificationStatus ||
+                        JSON.stringify(gate.qualificationSource) !== JSON.stringify(previous.qualificationSource) ||
+                        JSON.stringify(gate.qualificationBlockers) !== JSON.stringify(previous.qualificationBlockers) ||
+                        gate.criteria.some(item => JSON.stringify(item.evidence) !==
+                            JSON.stringify(previous.criteria.find(entry => entry.id === item.id)?.evidence ?? []))))
+                    throw new Error('Gate evidence and qualification require typed review operations');
+            }
             if (current.linkedDocument && JSON.stringify(candidate.linkedDocument) !== JSON.stringify(current.linkedDocument))
                 throw new Error('Linked Roadmap source requires separate reviewed synchronization');
             parseRoadmapIndex(candidate, root);
@@ -480,6 +510,11 @@ export class RoadmapStore {
             const gate = (entityId: string): RoadmapGate => {
                 const found = candidate.gates.find(item => item.id === entityId);
                 if (!found) throw new Error('Missing Roadmap Gate');
+                return found;
+            };
+            const criterion = (gateId: string, criterionId: string): Criterion => {
+                const found = gate(gateId).criteria.find(item => item.id === criterionId);
+                if (!found) throw new Error('Missing Roadmap criterion');
                 return found;
             };
             const correction = (entityId: string): RoadmapCorrection => {
@@ -558,6 +593,8 @@ export class RoadmapStore {
                 }
                 case 'gate.delete': {
                     const item = gate(operation.id); owned(item.id);
+                    if (item.criteria.some(criterion => criterion.evidence.length))
+                        throw new Error('Gate evidence must be retained');
                     if (candidate.gates.some(entry => entry.dependencies.includes(item.id)) ||
                         candidate.corrections.some(entry => entry.parent.kind === 'gate' && entry.parent.id === item.id))
                         throw new Error('Gate still has dependent definitions');
@@ -584,11 +621,16 @@ export class RoadmapStore {
                     const item = gate(operation.gateId); owned(item.id);
                     const criterion = item.criteria.find(entry => entry.id === operation.id);
                     if (!criterion) throw new Error('Missing Roadmap criterion');
+                    if (criterion.title !== operation.title || criterion.expectedResult !== operation.expectedResult)
+                        for (const evidence of criterion.evidence)
+                            evidence.validation = { status: 'stale', reason: 'Criterion definition changed' };
                     criterion.title = operation.title; criterion.expectedResult = operation.expectedResult; break;
                 }
                 case 'criterion.remove': {
                     const item = gate(operation.gateId); owned(item.id);
-                    if (!item.criteria.some(entry => entry.id === operation.id)) throw new Error('Missing Roadmap criterion');
+                    const target = item.criteria.find(entry => entry.id === operation.id);
+                    if (!target) throw new Error('Missing Roadmap criterion');
+                    if (target.evidence.length) throw new Error('Criterion evidence must be retained');
                     if (item.criteria.length === 1 || candidate.corrections.some(entry => entry.criterionId === operation.id))
                         throw new Error('Criterion is required or owns a correction');
                     item.criteria = item.criteria.filter(entry => entry.id !== operation.id);
@@ -624,21 +666,69 @@ export class RoadmapStore {
                         item.order = order;
                     });
                     break;
+                case 'evidence.propose': {
+                    unique(operation.id);
+                    const target = criterion(operation.gateId, operation.criterionId);
+                    target.evidence.push({ id: operation.id, projectId: expectedProjectId,
+                        criterionId: target.id, result: operation.result, kind: operation.kind,
+                        summary: operation.summary, verifiedBy: operation.verifiedBy,
+                        observedAt: operation.observedAt, ...(operation.source && { source: operation.source }),
+                        ...(operation.observedAction && { observedAction: operation.observedAction }),
+                        criterionHash: criterionHash(target), review: { status: 'proposed' } });
+                    break;
+                }
+                case 'evidence.approve': {
+                    const item = criterion(operation.gateId, operation.criterionId).evidence.find(e => e.id === operation.id);
+                    if (!item) throw new Error('Missing Roadmap evidence');
+                    if (item.review.status !== 'proposed') throw new Error('Evidence is not awaiting review');
+                    if (item.source && !operation.currentSource) throw new Error('Current tested source is required');
+                    if (operation.currentSource && operation.currentSource.projectId !== expectedProjectId)
+                        throw new Error('Foreign tested source');
+                    if (!item.source && operation.currentSource) throw new Error('Source-free manual evidence has no tested source');
+                    item.review = { status: 'approved', reviewerId: operation.reviewerId, reviewedAt: operation.reviewedAt };
+                    if (operation.currentSource) gate(operation.gateId).qualificationSource = operation.currentSource;
+                    break;
+                }
+                case 'evidence.revoke': {
+                    const item = criterion(operation.gateId, operation.criterionId).evidence.find(e => e.id === operation.id);
+                    if (!item) throw new Error('Missing Roadmap evidence');
+                    if (item.review.status !== 'approved') throw new Error('Only approved evidence can be revoked');
+                    item.review = { status: 'revoked', reviewerId: operation.reviewerId, reviewedAt: operation.reviewedAt };
+                    break;
+                }
+                case 'gate.source':
+                    if (operation.source.projectId !== expectedProjectId) throw new Error('Foreign tested source');
+                    gate(operation.id).qualificationSource = operation.source;
+                    break;
+                case 'gate.blockers':
+                    gate(operation.id).qualificationBlockers = operation.reasons;
+                    break;
                 default: throw new Error('Unknown Roadmap Gate mutation');
             }
-            // A definition change cannot retain an earlier Green or approved completeness claim.
+            if (operation.type === 'evidence.propose' || operation.type === 'evidence.approve' ||
+                operation.type === 'evidence.revoke' || operation.type === 'gate.source' || operation.type === 'gate.blockers') {
+                const changedGate = gate(operation.type === 'gate.source' || operation.type === 'gate.blockers' ?
+                    operation.id : operation.gateId);
+                changedGate.qualificationStatus = evaluateGateQualification(changedGate).status;
+            }
+            // Definition changes invalidate prior qualification. Evidence review alone does not
+            // invalidate the phase's approved gate-set definition.
+            const definitionChange = !operation.type.startsWith('evidence.') &&
+                operation.type !== 'gate.source' && operation.type !== 'gate.blockers';
             const affectedPhases = new Set<string>();
-            for (const item of candidate.gates) {
+            for (const item of definitionChange ? candidate.gates : []) {
                 const previous = current.gates.find(entry => entry.id === item.id);
                 if (!previous || JSON.stringify(previous) !== JSON.stringify(item)) {
                     affectedPhases.add(item.parentPhaseId);
-                    if (item.qualificationStatus === 'green') item.qualificationStatus = 'stale';
+                    if (item.qualificationStatus === 'green' || item.criteria.some(criterion =>
+                        criterion.evidence.some(evidence => evidence.review.status === 'approved' &&
+                            evidence.validation?.status === 'stale'))) item.qualificationStatus = 'stale';
                 }
             }
-            for (const item of current.gates) {
+            for (const item of definitionChange ? current.gates : []) {
                 if (!candidate.gates.some(entry => entry.id === item.id)) affectedPhases.add(item.parentPhaseId);
             }
-            for (const item of candidate.corrections) {
+            for (const item of definitionChange ? candidate.corrections : []) {
                 const previous = current.corrections.find(entry => entry.id === item.id);
                 if (!previous || JSON.stringify(previous) !== JSON.stringify(item)) {
                     const owner = item.parent.kind === 'phase' ? item.parent.id : gate(item.parent.id).parentPhaseId;
@@ -647,7 +737,7 @@ export class RoadmapStore {
                         current.gates.find(entry => entry.id === previous.parent.id)!.parentPhaseId);
                 }
             }
-            for (const item of current.corrections) {
+            for (const item of definitionChange ? current.corrections : []) {
                 if (!candidate.corrections.some(entry => entry.id === item.id))
                     affectedPhases.add(item.parent.kind === 'phase' ? item.parent.id :
                         current.gates.find(entry => entry.id === item.parent.id)!.parentPhaseId);

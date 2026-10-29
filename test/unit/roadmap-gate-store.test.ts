@@ -174,29 +174,35 @@ test('dependency cycle and foreign reference cannot write; changed criteria inva
     const store = new RoadmapStore();
     const base = index(root, digest('unused'));
     delete (base as Partial<typeof base>).linkedDocument;
-    base.gates[0].qualificationStatus = 'green';
     base.phases[0].qualificationStatus = 'green';
     await store.saveGateIndex(root, 0, 'uninitialized', base);
+    const source = { projectId: 'owner-1', revision: 1, sha256: digest('tested source') };
+    await store.mutateGateIndex(root, 1, 'owner-1', { type: 'evidence.propose', gateId: 'gate-1',
+        criterionId: 'criterion-1', id: 'evidence-1', result: 'pass', kind: 'test', summary: 'Observed response',
+        verifiedBy: 'focused-test', observedAt: '2026-10-29T12:00:00Z', source });
+    await store.mutateGateIndex(root, 2, 'owner-1', { type: 'evidence.approve', gateId: 'gate-1',
+        criterionId: 'criterion-1', id: 'evidence-1', reviewerId: 'owner-1',
+        reviewedAt: '2026-10-29T12:05:00Z', currentSource: source });
     const initialHash = digest(await readFile(file));
-    await assert.rejects(store.mutateGateIndex(root, 1, 'owner-1', { type: 'gate.create', id: 'bad-gate',
+    await assert.rejects(store.mutateGateIndex(root, 3, 'owner-1', { type: 'gate.create', id: 'bad-gate',
         parentPhaseId: 'phase-1', designation: 'G2', title: 'Bad', purpose: 'Invalid',
         criteria: [{ id: 'bad', title: 'Bad', expectedResult: '' }] }), /criterion fields/);
     assert.equal(digest(await readFile(file)), initialHash);
-    let current = await store.mutateGateIndex(root, 1, 'owner-1', { type: 'gate.create', id: 'gate-2',
+    let current = await store.mutateGateIndex(root, 3, 'owner-1', { type: 'gate.create', id: 'gate-2',
         parentPhaseId: 'phase-1', designation: 'G2', title: 'Second', purpose: 'Verify second',
         criteria: [{ id: 'criterion-2', title: 'Observe second', expectedResult: 'Second is visible' }] });
     assert.equal(current.phases[0].qualificationStatus, 'stale');
     const before = digest(await readFile(file));
-    await assert.rejects(store.mutateGateIndex(root, 2, 'owner-1', { type: 'gate.dependencies', id: 'gate-1',
+    await assert.rejects(store.mutateGateIndex(root, 4, 'owner-1', { type: 'gate.dependencies', id: 'gate-1',
         dependencies: ['foreign-gate'] }), /dependency parent/);
     assert.equal(digest(await readFile(file)), before);
-    current = await store.mutateGateIndex(root, 2, 'owner-1', { type: 'gate.dependencies', id: 'gate-2', dependencies: ['gate-1'] });
+    current = await store.mutateGateIndex(root, 4, 'owner-1', { type: 'gate.dependencies', id: 'gate-2', dependencies: ['gate-1'] });
     const afterDependency = digest(await readFile(file));
-    await assert.rejects(store.mutateGateIndex(root, 3, 'owner-1', { type: 'gate.dependencies', id: 'gate-1',
+    await assert.rejects(store.mutateGateIndex(root, 5, 'owner-1', { type: 'gate.dependencies', id: 'gate-1',
         dependencies: ['gate-2'] }), /dependency cycle/);
     assert.equal(digest(await readFile(file)), afterDependency);
-    current = await store.mutateGateIndex(root, 3, 'owner-1', { type: 'criterion.edit', gateId: 'gate-1',
+    current = await store.mutateGateIndex(root, 5, 'owner-1', { type: 'criterion.edit', gateId: 'gate-1',
         id: 'criterion-1', title: 'Updated observation', expectedResult: 'New expected result' });
     assert.equal(current.gates[0].qualificationStatus, 'stale');
-    assert.equal((await new RoadmapStore().read<typeof current>(root)).revision, 4);
+    assert.equal((await new RoadmapStore().read<typeof current>(root)).revision, 6);
 }));
