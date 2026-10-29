@@ -1,95 +1,51 @@
-# Roadmap Visual Hierarchy & Progression — owner-approved UX contract
+# Roadmap Gate-First Domain & Visual Hierarchy — owner-approved contract
+
+**Latest G3 handoff (2026-10-29, d19833b4):** The originally failed zero-health request recognition has a scoped R3 code/Chrome repair and focused tests, but the **full G3 P4 Chrome matrix remains NOT GREEN / EVIDENCE GAP**, and owner-native Electron is unqualified. Do not rerun or duplicate the already-fixed R3 slice by default; finish remaining P4 gates and native disposition, or obtain a new explicit owner-approved sequencing exception, before c11-roadmap-redesign P1. This docs/prompt authoring does not implement the redesign or qualify Phase 11.
 
 **Date:** 2026-10-29 (America/Chicago)
-**Status:** APPROVED DESIGN / DOCUMENTATION ONLY. Not implemented or qualified by this document.
-**Owner visual target:** the owner's 2026-10-29 image `this-style.png` shared in the Dope IDE conversation, showing three horizontally linked dark phase cards, nested checkpoint rows, colored status icons and progress bars, and prominent directional arrows. The image itself is a conversation attachment, not a repository asset as of this document. This text is the portable implementation and acceptance description; do not silently substitute a different layout.
-**Scope:** bounded Phase 11 Roadmap presentation and grounded Dope Help correction, executable stack [`c11-roadmap-redesign`](../../tasks/c11-roadmap-redesign/README.md). The earlier `c11-roadmap-visual-hierarchy` charter remains a non-executable approved-design reference.
-**Related authority:** [ADR 0036](../../decisions/0036-unified-roadmap-and-local-first-ai-planning.md), [ADR 0016](../../decisions/0016-dope-dark-visual-identity.md), [ADR 0037](../../decisions/0037-human-centered-ui-and-usability.md), [Phase 11 plan](phase-11-plan.md), [existing c10-horizontal-color evidence](../../tasks/c10-horizontal-color/closeout.md), [existing help correction](../../tasks/c11-guidance/README.md).
+**Status:** APPROVED DESIGN / DOCS ONLY — not implemented, browser-tested or qualified.
+**Canonical domain:** [ADR 0040](../../decisions/0040-phase-gate-roadmap-domain.md).
+**Executable future correction:** [c11-roadmap-redesign](../../tasks/c11-roadmap-redesign/README.md).
+**Visual reference:** owner-approved conversation attachment `this-style.png` (2026-10-29), not committed as a repository asset. It shows three horizontal dark phase cards, child rows, progress tracks and clear arrows. Match visual structure, not fictitious sample qualifications.
 
-## Decision and visual fidelity
+## Outcome
 
-Make the Roadmap a left-to-right **phase progression map**, not a flat canvas of identical phase and checkpoint graph cards. The supplied screenshot is the primary visual style reference. Retain the existing full-editor canvas, ordinary user pan/zoom, responsive focus/viewport persistence, dockable ChatPanel and in-canvas Software Map-style inspector. Do not build another roadmap data owner, chat system or independent checkpoint editor.
+Replace the generic checkpoint graph with a real **Phase > Gate > Criterion** qualification Roadmap. A **Phase** is the visually dominant container. A **Gate** is its testable required condition, rendered as compact collapsible rows. **Criteria** and evidence appear in row foldouts and the existing in-stage inspector. Corrections, tasks, prompt stacks and Work are linked to a Gate or Phase; none substitutes for Gate qualification. No separate inspector, chat system, parallel source store or checkpoint compatibility architecture.
 
-Each phase uses a larger dark rounded container, visually and semantically different from its children:
+### Visual layout
 
-- Regular horizontally aligned phase cards of comparable width, with readable spacing and a clear arrow **between** cards. Content-driven height is fine; phase cards must not overlap or force body text to tiny sizes.
-- Small uppercase `PHASE N` label at top left and compact status icon at top right; a larger high-contrast title below. Do not give every card an orange border.
-- A short, truthful checkpoint-count/qualification summary, a restrained thin progress track/fill, then a subtle divider.
-- Under the divider, each checkpoint appears as one **nested row** with its own status icon, title, and trailing foldout chevron. Rows are visually subordinate to the enclosing phase, not miniature versions of the phase card.
-- Foldouts expand **within the parent phase** to show a concise objective, independent checkpoint state, criteria/dependencies, corrections and an affordance for opening full details. Keep detailed edits, source evidence, approval and history in the existing in-stage inspector overlay; do not spawn a standalone page or duplicate edit authority.
-- A phase with no accepted checkpoints shows an intentionally dim neutral card, empty progress track and helpful 'Add a checkpoint' treatment. Its title remains legible; dimming is not achieved by making all text inaccessible.
-- Visually match the screenshot's restrained charcoal surfaces, fine borders, generous card separation, thin bar, understated status icons/chevrons and arrow emphasis. Avoid huge floating checkpoint cards, noisy animation, sprawling line buses, crowded badges and constant orange highlights. Centralize semantic colors via Theia/Dope theme tokens; support light/custom themes rather than hard-coded dark-only widget CSS.
-- Default collapsed/expanded behavior must be deliberate, stable on refresh and reasonable with very long phases. Large phase inventories may collapse or virtualize child content but may not hide state, truncate identity irrecoverably, or change source ordering silently.
+1. Large, comparably sized dark charcoal rounded PHASE N cards progress **left to right**. Each shows a high-contrast title, small phase label, compact literal state, **qualified / required gates** count where valid, restrained thin progress track and subtle divider.
+2. Inside each phase, Gates are compact nested rows with noncolor status icon, short title and chevron. Expand in place to show objective, criteria, actual evidence verdict, dependencies, correction summary and 'Open details'. All full editing/qualification history remains in the existing Roadmap inspector overlay; not a standalone page.
+3. Phase arrows have obvious left-to-right arrowheads at card edges and communicate **sequence only**. Suppress synthetic dashed member/containment wires. Actual semantic dependencies are inspectable in explicitly selected detail/relationship view; no default crossing lines through card text, no inferred dependency persistence.
+4. Render corrections under their explicit parent Gate or Phase with labeled secondary hierarchy, vertically if expanded. Missing/conflicted parent goes to a diagnosed unassigned area, not to a guessed neighboring phase; keep task/Work/prompt navigation.
+5. Zero accepted Gates => dim **Unplanned** card with legible title, empty track and verified 'Add gate' action. At least one accepted Gate => warm restrained **Planned** appearance unless stronger evidence-based state applies; presence says nothing about full gate-set coverage.
+6. Green/Not Green/Active/Blocked/Unknown/Waived/Requalification Required use distinguishable semantic tokens, accessible labels and icons, with orange reserved mainly for active/selected/primary action. A proposed draft is visibly **Proposed / Not accepted** independent of colors. A user-accepted draft awaiting canonical Markdown publication retains its accurate separate state.
+7. Progress bar measures only **qualified required accepted Gates / total required accepted Gates** where defined, and explicitly says `N of M gates qualified`. No fabricated progress for zero/unknown data; no 100% for empty. A waiver is not silently a pass. Source-backed phase qualification additionally requires approved gate-set completeness, current evidence and no unresolved blocker. Source/task implementation progress is separate.
+8. Keep first camera/fit/focus and intentional saved viewport, expandable row focus, semantic zoom, responsive/narrow panels, keyboard Tab/Enter/Space/Escape, touch and drag, screen readers, reduced motion, light/custom themes, in-stage inspector and saved ChatPanel docking without unexpected recenter or duplication.
 
-The screenshot's Phase 1 Green, Phase 2 orange Active and Phase 3 dim Empty are **illustrative examples**, not claims about the owner's real PixiJS project. A proposal on canvas must be visibly marked proposed regardless of attractive colors.
+### Gate definition and qualification
 
-## Planning presence versus implementation and qualification
+Gate records have explicit phase ownership, a phase-local designation (G1...), objective, stable criteria, dependency references, evidence records and an independent lifecycle. Each criterion must be testable and has expected observation and evidence/result provenance. A prompt completion or green-looking row does not award Green. Qualification must be auditable, based on current source/observations and explicitly approved where owner authority is required. Criteria change, evidence drift, linked-source invalidation and project mismatch require stale/requalification treatment, not retaining old Green.
 
-Preserve existing canonical status taxonomy (`green`, `active`, `not-green`, `waived`, `not-implemented`, `unknown`) and source-backed historical qualification truth. Introduce **planning presence only as derived presentation**, never a canonical Green status.
+Phase qualification is impossible without at least one Gate and explicit owner-approved coverage of the complete phase gate set. Even all visible Gates Green cannot silently qualify a phase if scope completeness is not approved. Waivers require separate explicit dispositions; never infer success from them. 'Planned' remains a presentation treatment, not qualification status.
 
-| Roadmap condition | Required presentation and meaning |
-| --- | --- |
-| Zero accepted child checkpoints | Dim/neutral **Unplanned** appearance, visibly empty; no inferred completion |
-| One or more accepted child checkpoints, not otherwise qualified/active/blocked | Restrained warm neutral/copper **Planned** appearance; planning has begun, **not** implementation done |
-| Source-evidenced active work | Intentional orange **Active** styling |
-| Source-evidenced blocked / Not Green | Muted red/error **Not Green** label/icon; do not conceal the blocker with a positive fill |
-| Evidence-backed Green | Success green; Green only under the existing independent owner/qualification rules |
-| Waived / Unknown | Distinct existing semantic treatment and literal label; never collapse into Green or general completion |
-| Nonaccepted proposal | Clearly marked **Proposed / Not accepted** preview treatment, with explicit Accept/Reject; none of its children count toward accepted planning presence |
+### Greenfield and Markdown
 
-A provisional accepted draft awaiting separate linked Markdown publication also needs its existing truthful approval/publication label. Do not conflate (1) permission to generate, (2) accepting the Roadmap draft, (3) publishing the linked Markdown, or (4) earning Green.
+Replace active checkpoint/milestone APIs and schemas across RoadmapStore, import, document patch/sync, linked observer, greenfield draft, Chat extraction, local-model contract, ProjectPlanningActions, Roadmap projection, Canvas/Inspector, Phase Focus, Work/History consumers and Dope Help. Use the **same authoritative owner and approval paths**, including project/root/source revision hashes, preview/accept/reject, document publication and conflict/relink detection. A saved phase-only or task-oriented assistant response must not become a fabricated Gate-set: show reviewable Phase-only content and ask developer approval before converting a verifiable requirement to a Gate. Incomplete Gate criteria prohibit qualification, not truthful draft preview.
 
-Progress summaries and progress bars must derive from **well-defined checkpoint sets and evidence**. A label such as '2 of 3 complete' must specify whether completion refers to implementation or qualification. Never count mere authored/proposed/discovered prompts, supporting task stacks, card placement or line fill as implemented work. Never infer phase Green solely from every displayed child looking Green; phase qualification follows its recorded evidence and gates. Empty/missing evidence stays Unknown/Not Implemented as appropriate.
+**Alpha cutover:** remove legacy checkpoint/milestone aliases, duplicate state and dead branches. No requirement to parse or reconstitute obsolete `.dope` Roadmap schemas. Fail safely with visible incompatibility/reinitialization rather than clobbering user Markdown or game files. Historical source-bound reports remain evidence and can retain old terms as observations.
 
-Phase/correction status, child status, progress fraction and arrow color may reflect different facts: display enough non-color cues to avoid a misleading uniform success impression. A Green progression segment is earned only by authoritative evidence; a direction arrow by itself denotes **sequence, not a dependency or gate**.
+### Dope Help
 
-## Relationships and parent ownership
+Use only existing verified Dope capability registry, saved ChatPanel, context composer and selected provider; no second chat or model authority. Explain how to add a Gate, why zero Gates is Unplanned and one accepted Gate is Planned, how to open criteria/evidence, what qualifies Gate/Phase Green, how blocked/stale/waived statuses behave, real cross-phase dependencies and correction ownership. Confirm actual UI registration before providing a click path. Help remains no-write unless a separately approved typed action is invoked. Local Q4 is a manual test fixture, never a forced default or hosted fallback.
 
-The default presentation is an unambiguous horizontal **Phase A -> Phase B -> Phase C**. Use real directional arrowheads, robust card-edge anchor points and a distinct arrow color/label style; no anonymous dashed lines between unrelated checkpoint cards and no connector traversing another card's text.
+### Required qualification matrix
 
-- Represent normal phase/checkpoint ownership through actual nesting. Never draw a synthetic branch connector just to communicate a child row's parent.
-- Keep semantic source dependencies in their existing graph/owner model, distinct from chronological phase arrows and inferred presentation memberships. Surface a checkpoint's actual dependencies in its foldout/inspector. If cross-phase dependency lines are offered, show them only in an explicit relationship/dependency mode with direction, labels, accessible descriptions, collision avoidance and a way to return to the uncluttered default.
-- Present corrections/qualification work as explicitly labeled subordinate groups or clearly owned branches associated with the correct parent. Preserve stable source identities, original ordering, historical correction outcomes, task/prompt navigation and the existing Hide Prompts accounting. Do not turn supporting task stacks into semantic checkpoints.
-- If a correction/checkpoint has missing, conflicting or unresolved parent association, do **not** attach it to a guessed neighboring phase. Retain it in the existing discoverable unassigned/issues area with diagnosis and recovery.
-- Connector/layout changes are presentation-only; they must not persist inferred dependencies, rewrite source Markdown, modify Roadmap revisions, or manufacture qualification evidence.
+- Fresh unplanned, first accepted Gate, many proposed only, accepted noncanonical draft and published canonical Roadmap; no false Green.
+- Gate-set completeness not approved, zero gates, evidence missing, criteria partial, all criteria passed, invalidated evidence, explicit waiver/exception, unresolved blocker, no inferred 100%.
+- Linked Markdown create/review/accept/reject/relink/sync/conflict/restart, permission and cross-project isolation, phase-only saved Chat extraction and task-bullet negative.
+- Gate selection/foldout/inspector/editor, correction links, prompt disclosure, real dependencies, long/dense phases, first opening camera, pan/zoom/refresh, dark/light/custom, keyboard/narrow/touch/reduced motion.
+- Real Codex Chrome actual app, screenshots and DOM/action evidence; source identity/build hash, focused tests and final candidate check. Native Electron UI remains separately owner-operated, never claimed from a browser build.
+- Exact source-bound qualification; no legacy shim, unused checkpoint API, dead test or stale executable prompt left behind. Real G3 P4/native prerequisite or explicit documented owner exception required before implementation.
 
-Preserve the existing viewport/actionable-phase camera rules, deliberate saved pan/zoom, Fit/Focus behavior, selected checkpoint focus, keyboard spatial navigation, pointer/touch scrolling and reduced-motion fallback. Expanding child content must not unexpectedly recenter the whole canvas or change saved graph geometry. The full editor, inspector, Markdown/setup overlay and independent Chat docking must remain usable together.
-
-## Dope Help / local model guidance
-
-Extend the **existing** verified capability-help registry and ordinary saved Chat grounding. Do **not** create a second help assistant, a new chat backend, a model-only authority path or any unconsented hosted fallback.
-
-Dope Help must accurately explain: create/add a phase or first checkpoint through a **verified existing UI path**; why a phase is dim; why the first **accepted** checkpoint changes planning presence but not qualification; the meaning of Planned/Active/Green/Not Green/Unknown/Waived; foldouts/inspector; what a progress bar counts; correction ownership and actual dependencies; proposed versus accepted Roadmap and separate linked Markdown publication; and what evidence makes Green. Current project, selected phase/checkpoint, owner revision and supported UI capability may be read through existing bounded, permission-checked context, with safe no-action responses when unavailable.
-
-Example safe response to 'Why is this phase grey?': 'This phase has no accepted checkpoints, so planning has not started. Add an accepted checkpoint to give it a Planned appearance. Green still requires the phase's qualification evidence.' This is an example, **not** hard-coded output and must be adjusted to the actual project state. Never invent an 'Add checkpoint' control, a changed source status or missing permission. Guidance is read-only unless the developer separately requests and approves a supported typed Roadmap action.
-
-Keep the existing c11-guidance scoped Green/Not Green evidence and all historical failed cases intact; new help scope needs new local-Q4 and real-GUI qualification.
-
-## Implementation seams, non-goals and safeguards
-
-Likely presentation seams to inspect before implementation: `roadmap-canvas-model.ts`, `roadmap-canvas-widget.ts`, `roadmap-status-style.ts`, `roadmap-viewport.ts`, centralized semantic theme/CSS, existing inspector widgets, and `dope-capability-help.ts` plus shared Chat grounding. Verify actual current source before changing anything; the issue screenshots are evidence of UX, not proof of current runtime architecture.
-
-Retain `RoadmapStore`, `RoadmapGreenfield`, `ProjectPlanningActions`, stable owner IDs, linked Markdown reconciliation, source hashes/revisions, preview/Accept/Reject and stale-state rejection. Scope is primarily presentation and help, not a Roadmap schema rebuild, new agent runtime, automatic Work launch, alternative document writer or broad redesign of Chat/Planning Maps/Software Map. Preserve source/project isolation, permission boundaries, native/browser behavior and source-grounded status truth.
-
-## Three bounded implementation/qualification loops (NOT AUTHORIZED TO RUN HERE)
-
-| Loop | Focus | Source-bound acceptance |
-| --- | --- | --- |
-| R1 — hierarchy and navigation | Screenshot-matched containers, in-phase checkpoint rows/foldouts, arrows and inspector/viewport continuity | Three-phase sample visually matches target; hierarchy and arrow direction obvious; long/narrow views, keyboard, pan/zoom, overlay, selected phase and proposals remain usable |
-| R2 — progress and relationship truth | Derived Unplanned/Planned visual presence, six canonical evidence statuses, honest summaries/bars, correction ownership, dependency de-cluttering | Empty / first accepted checkpoint / active / blocked / Green / Waived / Unknown / proposed/accepted-draft matrix; no false Green or orphan connector, no guessed cross-phase parent, historical status unchanged |
-| R3 — guidance and regression | Extend Dope Help and bounded context; Markdown/revision/approval and broader presentation regression | Local Q4 (explicitly selected) explains actual fixture state and supported controls; negative controls deny invented paths/authority; browser evidence on current rebuilt source, relevant tests and exact-source closeout |
-
-Each loop may use up to **three bounded repair/qualification cycles**, with a direct **Codex Chrome browser** replay for the affected behavior and focused tests. Record source SHA/version, fixture, screenshots, pass/fail/gaps; do not re-label historical correction results. Native Electron equivalence is a separate owner-controlled evidence gate wherever Phase 11 requires it; a Chrome pass alone is not a claim of native parity or full Phase 11 Green. No standalone version bump or production mutation is authorized by these docs.
-
-### Explicit acceptance checklist
-
-- [ ] The first visible Roadmap state resembles the supplied screenshot's phase-centered visual grammar (within responsive/theme constraints), with no floating lookalike checkpoint cards.
-- [ ] A phase visually changes from dim Unplanned to muted Planned after its first **accepted** checkpoint only; proposals remain plainly noncanonical.
-- [ ] Directional phase arrows are clearly visible; relationship lines do not cross card content and no unrelated checkpoint is visually attached to another phase.
-- [ ] Nested checkpoint identity, state, foldout and full inspector work by pointer, keyboard and narrow/split workbench.
-- [ ] Progress labels/bars and six status treatments are honest across dark/light/custom contrast, hover, selection and reduced motion.
-- [ ] Correction, task-stack/prompt navigation, parent diagnostics, Markdown sync/conflict/relink, source approval, viewport retention and existing Chat placement survive.
-- [ ] Dope Help offers accurate, state-grounded, local-model-compatible explanation and never silently edits work or fabricates qualification.
-- [ ] Direct GUI evidence and exact-source tests support the limited outcome; unobserved gates remain Not Green/Evidence Gap.
-
-**Disposition:** Design approved, implementation not yet performed, qualification not yet earned. Preserve previously recorded Phase 10 and Phase 11 histories and current Phase 11 OPEN/NOT QUALIFIED status.
+**At reviewed 2026-10-29 HEAD `68cdec71af73`: G3 P4 = CHROME NOT GREEN (zero-health requirement false-negative), P3 scoped Green; native unobserved. c11-roadmap-redesign and Phase 11 are NOT RUN / NOT QUALIFIED by this contract.**

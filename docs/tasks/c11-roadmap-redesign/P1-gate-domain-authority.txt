@@ -1,0 +1,28 @@
+TASK: Correction 11 / P1 — Canonical Phase/Gate/Criterion domain and qualification authority
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+MANDATORY PREFLIGHT / STOP
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the Roadmap Gate visual contract, this stack README/assessment/plan, current G3 recovery P4 and owner-native verdict. Latest reviewed main 68cdec71af73: G3 P4 CHROME NOT GREEN (zero-health request false-negative); owner-native outstanding. Do not implement before G3 P4 actual Chrome PASS and native result, unless developer records a new explicit sequencing exception accepting exact remaining gaps. Inspect current git status/HEAD and local source, preserve dirty/concurrent work; never reset/stash/clean/force push, start a new branch, silently self-commit, run /activate, mutate persistent PixiJS project, or invent a Gate pass. No second Roadmap owner or unapproved writer. Missing prerequisites => BLOCKED / STOP.
+
+OBJECTIVE
+Remove the conceptual checkpoint/milestone Roadmap domain and introduce separate authoritative Phase, required Gate and Correction records with Criterion and evidence-based qualification. This is an alpha schema cutover, NOT a legacy migration. Preserve safe source files, other project boundaries and historical evidence.
+
+IMPLEMENT
+1. Inspect current RoadmapStore index schema, parsers, mutation validator, index revision/history and project/source checks; RoadmapProjection/phase association and existing verification status/evidence flows before changes.
+2. Introduce schemaVersion 2 (or explain an equally clean new version), with separate phases[], gates[], corrections[] and preserved linked-document owner; typed project-scoped ID and exact gate.parentPhaseId. Phase: objective/order and explicit gate-set coverage approval, own qualification evidence. Gate: phase-scoped G1/G2 designation/order, objective, testable ordered criteria, explicit dependencies, evidence/provenance and independently assessed disposition. Correction: explicit gate/criterion/phase owner; missing parents diagnosed/unassigned, never inferred through title, c10/c100 prefixes or layout. Task/prompt/Work are references, not gates.
+3. Separate proposal/accepted authoring, implementation state and qualification state. Do not allow ordinary model/manual status-color editing to assert Green. Gate Green requires current validated support for all mandatory criteria, source/project provenance and authorized disposition. A stale source or modified criterion forces Requalification Required; Blocked, Unknown and Waived are non-Green. Waiver requires an explicit owner exception, not an automatic pass.
+4. Phase with zero accepted gates is Unplanned (no 100%); >=1 accepted gate gives only Planned presence. Phase Green requires explicit developer-approved completeness of the required Gate set, all required gates currently qualified, and no blocking condition. Use deterministic pure selectors for eligibility and diagnostic reasons; never update canonical status as a canvas side effect.
+5. Replace core RoadmapCheckpoint/CheckpointNode domain assumptions and mutation interfaces consumed by existing RoadmapService, RoadmapProjection and owner links without creating duplicate models. Reject incompatible old schema with safe explicit 'review/reinitialize/reimport' guidance; never silently delete index, source Markdown or game files. Do not add fallback parsers or alias fields.
+6. Keep source hashes/revisions, permissions, path safety, read-only import evidence, concurrency denial, owner approval and linked Markdown authority. Add focused test fixtures for actual newly typed records, not modified old fixture assertions disguised as a pass.
+
+FOCUSED QUALIFICATION
+- Validate unique stable IDs and G1 naming per phase, parent existence, dependency cycles, cross-project denial, malformed criterion, missing evidence, partial/evidenced Green, stale/revoked evidence, invalid owner waiver, incomplete gate-set and empty phase.
+- Verify imported/read-only and linked owner semantics still deny unauthorized writes, explicit reset does not alter source files. Run focused roadmap-store, projection, status-truth, owner-links, qualification-integration tests and affected compile/build; git diff --check. Tests should reflect new model, not retain obsolete test helpers.
+- Real connected Codex Google Chrome on current rebuilt Dope in a disposable root: show read-only canonical Gate/Phase projection or explicit safe schema-incompatible state (depending P1 backend/UI readiness), and verify no false Green, no clobber on old-index rejection and no cross-project bleed. Document actual observed stage capability; P1 does not need final screenshot fidelity (P3).
+- Up to THREE bounded implement/repair/requalify cycles, preferred <=8 min per implementation slice, direct browser/source proof mandatory. Record source SHA, served build hash, fixture and each PASS/FAIL. If browser missing, domain tests fail, safety uncertain, or mandatory behavior unobserved: P1 NOT GREEN / BLOCKED, STOP before P2. No Phase 11 Green or native parity claim.

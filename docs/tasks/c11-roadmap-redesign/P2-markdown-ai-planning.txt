@@ -1,0 +1,28 @@
+TASK: Correction 11 / P2 — Phase/Gate Markdown synchronization and AI planning semantics
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, Roadmap contract, stack assessment/plan and P1 actual exact-source qualification. Verify P1 PASS, G3 P4/native prereq or recorded owner exception, git main HEAD, worktree, source/build and target test fixtures. No /activate, branch, version bump, unapproved commits, reset/stash/clean, data overwrite, second Chat/creator, hosted fallback or model shell tools. Use disposable roots for destructive negatives. Failure of prerequisite => BLOCKED / STOP.
+
+OBJECTIVE
+Replace checkpoint/milestone authoring with a truthful Phase/Gate/Criterion flow across import, Markdown, greenfield, saved Chat/local model, approval and typed Roadmap actions. A task list is NOT a Gate set.
+
+IMPLEMENT
+1. Inspect roadmap-import.ts, roadmap-document-sync.ts, roadmap-document-patch.ts, roadmap-linked-observer.ts, roadmap-greenfield.ts, project-planning-actions.ts, chat-roadmap-extract.ts, roadmap-local-model.ts, Chat backend and associated service/inspector call sites.
+2. Specify a readable Phase and Gate/criterion Markdown grammar, stable section/criterion identity, explicit phase parent and ordering/dependency mapping. Update minimal patches and bidirectional reconciliation without touching unrelated Markdown/line endings. Keep source SHA, canonical root, revision, read-only path checks, pending-sync/restart recovery, conflict/relink review and exact-source stale denial.
+3. A Roadmap proposal is previewed and accepted separately from publishing linked Markdown. Preview/Reject may not write canonical file or qualify Gates; accepted noncanonical draft remains labeled provisional until linked publication separately approved. Preserve original user/Chat message provenance and consent, no second model call merely to reformat saved answer.
+4. Greenfield AI may propose testable Gates only when the saved source provides actual qualification requirements or developer explicitly approves generation of proposed Gate criteria. **Never** treat generic implementation bullets, feature inventories, Phase N titles, prompt-stack names, Work runs or milestones as automatically accepted Gates. A Phase-only reply stays a Phase-only incomplete proposal with visible missing Gate coverage; user may separately review expansion, without fake criteria or Green.
+5. Update local-model structured JSON schema/validations with bounded phase/gate/criteria sizes, model-agnostic low-context packets and trustworthy sources. Keep local Q4 selected profile when actually chosen; do not silently force a provider or promote it to global default. Update typed ProjectPlanningActions and manual inspector to use the same authorization/revision path; ordinary AI cannot award Green, waive, rewrite Markdown or launch Work.
+6. Delete only obsolete Roadmap checkpoint APIs/fixtures made dead by cutover; P6 owns final whole-repo audit. No fallback compatibility parser for old index; explicit safe owner-reviewed reinitialization only.
+
+QUALIFY
+- Unit/integration: valid Phase/Gate/criterion import, stable remap, duplicate/invalid identity and cycle, non-Roadmap prose preserved, manual Gate edit round trip, external-source drift/relink/conflict/rollback, stale/project mismatch, reject-no-write, accept-not-publish and no approval bypass.
+- Negative natural language: 'Build tower UI', sequential implementation bullets and a five-phase no-Gates Chat response MUST NOT automatically produce qualified Gates. Explicit measurable requirement may be proposed with attribution, but not silently accepted.
+- In real Codex Google Chrome against rebuilt Dope and disposable roots, use saved local-model Chat or deterministic verified fixture to show incomplete Phase-only proposal, proposed real Gate criteria, editor Accept/Reject, linked Markdown publication separated, reloaded source and no accidental file writes. Confirm model provenance; don't simulate live Q4 when unavailable.
+- Focus roadmap-import, linked-store, document-sync/patch, greenfield, chat-roadmap-extract, local-model, planning-actions and create-ui tests; impacted build and git diff --check. Real Chrome action records/source hashes/screenshots required, up to THREE bounded repair/requalification cycles. Any fabricated Gate, clobber, false Green, Chrome gap or broken authority => P2 NOT GREEN / STOP before P3.

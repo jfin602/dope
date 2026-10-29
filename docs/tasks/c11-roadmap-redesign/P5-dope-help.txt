@@ -1,0 +1,26 @@
+TASK: Correction 11 / P5 — Existing Dope Help and Chat grounded in Gates
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, stack assessment/plan, actual P1–P4 exact-source Chrome results and verified UI registrations. G3 P4/native prerequisite or owner exception remains binding. Inspect current HEAD/dirty tree and local-model selection; never override local profile or silently use hosted. No branch/version/lockfile bump, /activate, unsafe shell/model tools, second ChatPanel, self-commit outside owner workflow, unapproved Roadmap publication or direct qualification from model. Failure of prior scope => STOP.
+
+OBJECTIVE
+Teach the actual Phase -> Gate -> Criterion qualification model using the **existing deterministic Dope capability-help registry and saved Chat**. Explanations are state-grounded, accurate for the selected project and read-only absent separately approved typed actions.
+
+IMPLEMENT
+1. Inspect dope-capability-help.ts registry/selector, chat-context-composer.ts, chat-backend.ts and current UI actions after P1–P4. Replace active Roadmap checkpoint help with Gate-specific routes; do not fork another agent/help backend, provider route or copy of ChatPanel.
+2. Provide reliable help for: 'Why is Phase 3 dim?', 'How do I add the first Gate?', 'What makes G2 GREEN?', 'What does the progress track count?', 'Where do I review Gate criteria/evidence?', 'Why did this qualified Gate become stale?', 'Does a waiver make the phase GREEN?', 'Why is correction C under this gate?', 'How do actual dependencies relate to phase arrows?', 'Can I move an implementation task to another phase?'.
+3. Explain planning presence vs gate-set completeness approval vs implementation work vs independent qualification. No model claim counts as a passed criterion; no guessed status or fake click path. Distinguish proposed, accepted noncanonical draft and linked Markdown published state. If no project, unavailable selected Gate, unsupported control or stale owner, say so and give a VERIFIED read-only recovery/navigation path.
+4. Keep bounded project/phase/Gate criteria evidence and source identity context through current ChatContextComposer, freshness and permission checks. Preserve Follow/Pin selection, independent Chat docking, ordinary non-help planning. Prevent wrong-target selector regressions (Planning Map link or Roadmap change-file request must not route to Gate Help).
+5. No auto-triggered create, edit, waiver, acceptance, publish, Work or evidence stamp from help; typed action requires distinct explicit user approval.
+
+QUALIFY
+- Focus dope-capability-help, chat-context-composer, roadmap-chat-context/panel, roadmap-local-model and related negative intent tests. Compile touched packages and run diff check.
+- Real connected Codex Google Chrome on current Dope with saved one Chat and disposable canonical/draft/empty/Green/Not Green/stale/Gate set cases. If selected local Q4_K_M actually available, record model ID/loaded measured context and run true turns; never pretend tests used it otherwise. Ask the Gate/phase/progress/waiver/correction/dependency questions with correct and missing selection; check actual UI paths by clicking and source hashes unchanged. Wrong-linked-file and Planning Map negative controls, reload, narrow split, keyboard, light mode.
+- Up to THREE bounded repair/qualification cycles with exact served source/bundle, Chat ID and screenshots/actual actions. If real Chrome unavailable, required local-model turn unavailable, misleading status or unconsented write found: P5 NOT GREEN / BLOCKED; STOP before P6. No native parity or Phase 11 Green claim.

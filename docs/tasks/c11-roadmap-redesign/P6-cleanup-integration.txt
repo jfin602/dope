@@ -1,0 +1,27 @@
+TASK: Correction 11 / P6 — Alpha checkpoint-domain removal and integrated regression
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, contract, stack plan and actual P1–P5 exact-source qualified evidence. Confirm G3 prerequisite/exception, main HEAD, dirty files, source/version and supported cross-feature owners. Never reset/stash/clean, overwrite concurrent work, switch branch, run /activate, make unauthorized commits, remove historical qualification evidence, mutate persistent PixiJS game, publish linked Markdown unapproved, or bump version. Any prior NOT GREEN => STOP.
+
+OBJECTIVE
+Finish new Gate domain, not a permanent dual stack. Delete unused checkpoint/milestone Roadmap code and obsolete tests, then exercise supported connected Dope workflows against one coherent source candidate. **No compatibility adapters** for old broken alpha schema.
+
+IMPLEMENT
+1. Search active code, styles, type declarations, test fixtures and active docs for Roadmap checkpoint/milestone symbols, old kind enum, unused graph node and status adapters, synthetic edges, duplicated helpers and stale old stack references. Remove or fully replace all obsolete Roadmap-specific branches; **do not delete unrelated Work/runner execution checkpoint terminology** or historical evidence documents that describe actual past results.
+2. Audit and fix all actual active consumers: RoadmapStore/Import/Greenfield/DocumentSync/DocumentPatch/Projection/Service, RoadmapCanvas/Inspector/Viewport, saved Chat and AI prompts/typed planning actions, Phase Focus, Planning Map, task stack discovery, Work/History and prompt source navigation, owner-link reconciliation, Git/source revision and safe linked-document relink. No second writer or duplicate UI state.
+3. Implement/test safe unsupported-old-index handling: no in-place legacy schema decode or silent deletion, developer-visible incompatibility, approved reinitialize or fresh linked-document import using current schema, explicit preview and no source overwrite. No migration requirement; no data-loss exception.
+4. Remove abandoned standalone c11-roadmap-visual-hierarchy charter and previously superseded executable P1–P4 prompt files (already intended as docs-authoring cleanup); keep one current README/assessment/plan and P1–P7 set. Historical tests/evidence need not be rewritten, but active tests must exercise correct schema.
+5. Check gates after relevant Work or code changes: completed task ≠ qualified Gate, old Green evidence invalidated when source changes, no orphan source IDs or missing gate parent, corrections remain correct, and Phase Focus reports implementation distinct from qualification.
+6. Keep restrained theme, accessibility, stable viewport, editor preview, Chat dock, source sync/conflict/relink and cross-project permissions.
+
+QUALIFY
+- Focused tests for all changed owners plus a SINGLE final exact-source aggregate `npm run check` when feasible (if unavailable, record exact missing tool and mark aggregate gap). Browser/Electron builds where relevant; diff check and source SHA.
+- Real connected Codex Google Chrome integration on disposable projects: greenfield saved Chat Phase-only and testable Gates, proposal Accept/Reject, publish separate, canonical Markdown round trip/external edit, Gate edit/evidence invalidation, correction/Work/Phase Focus navigation, invalid old index safe reject, wrong project/stale permissions, reload, theme/keyboard/narrow Chat.
+- Up to THREE bounded repair/qualification cycles, record actual tested candidate, builds, test counts and screenshot/action evidence. Any old alias in active Roadmap code, false Green, unsafe file write, broken consumer or Chrome gap => P6 NOT GREEN / STOP before P7. This does not qualify native Electron or Phase 11.

@@ -1,40 +1,44 @@
-# c11-roadmap-redesign — Owner-approved screenshot-matched Roadmap UI
+# c11-roadmap-redesign — Gate-first Roadmap model and screenshot-matched editor
+
+**Latest G3 handoff (2026-10-29, d19833b4):** The originally failed zero-health request recognition has a scoped R3 code/Chrome repair and focused tests, but the **full G3 P4 Chrome matrix remains NOT GREEN / EVIDENCE GAP**, and owner-native Electron is unqualified. Do not rerun or duplicate the already-fixed R3 slice by default; finish remaining P4 gates and native disposition, or obtain a new explicit owner-approved sequencing exception, before c11-roadmap-redesign P1. This docs/prompt authoring does not implement the redesign or qualify Phase 11.
 
 **Date:** 2026-10-29 (America/Chicago)
-**Status:** `/prompt-ass + /prompt-plan + /prompt-write` **COMPLETED AS DOCUMENTATION** ON GITHUB MAIN. **No product implementation, Codex browser test, local stack validation or qualification executed by this authoring.**
-**Required unchanged version:** `0.11.8` at the reviewed main baseline; recheck local HEAD/dirty tree/current version at Run.
-**Canonical correction/runner name:** `c11-roadmap-redesign`. The earlier [`c11-roadmap-visual-hierarchy` charter](../c11-roadmap-visual-hierarchy/README.md) records the same approved design and is **not** a competing prompt stack.
-**Owner's exact image style:** conversation attachment `this-style.png` (2026-10-29), represented textually in [locked visual/functional contract](../../planning/p11/roadmap-visual-hierarchy-contract.md). The attachment has not been checked into the repository.
+**Status:** /docs-apply + /prompt-ass + /prompt-plan + /prompt-write AUTHORING ONLY on GitHub main. **No product changes, local runner validation, application test, browser/native qualification or version bump made by this authoring.**
+**Baseline:** GitHub main `68cdec71af735af1d1a4d60590c345a07890bf82`, project version `0.11.8` at review; recheck actual source/local dirty worktree before Run.
+**Authority:** [ADR 0040 Gate domain](../../decisions/0040-phase-gate-roadmap-domain.md), [visual and acceptance contract](../../planning/p11/roadmap-visual-hierarchy-contract.md), [assessment](prompt-assessment.md), [implementation plan](implementation-plan.md).
+**Visual target:** owner image `this-style.png` from the 2026-10-29 conversation (attachment is not a repository asset). Dark rounded horizontal phase cards, nested Gate foldouts, clear arrows, restrained orange and evidence-honest progress. No checkpoint nodes.
+**Canonical stack:** this directory alone; no second executable visual-hierarchy stack.
 
-[Prompt assessment](prompt-assessment.md) · [Implementation plan](implementation-plan.md) · [ADR 0036 forward amendment](../../decisions/0036-unified-roadmap-and-local-first-ai-planning.md) · [Phase 11 UX-021](../../planning/p11/usability-issue-ledger.md).
+## Hard sequencing prerequisite — G3 Chrome P4 currently NOT GREEN
 
-## Ordering: G3 first, then this UI stack
+The latest committed [G3 P4 closeout](../c11-g3-recovery/closeout.md) reports **CHROME NOT GREEN** at `68cdec71af73`: user explicitly requested zero-health loss, but coverage reported 'Not in saved request'. G3 P3 is browser-scoped Green; the full P4 matrix and native Electron parity remain open. Do not silently consider G3 closed or run P1 on the strength of P3.
 
-The owner elected **`c11-g3-recovery` P4 Chrome qualification -> owner-native G3 verification -> this Roadmap redesign**. Do not execute P1 merely because these prompts exist. At review, the G3 README reported P2 scoped Green but P3/P4/native pending. Record the **actual** P4 source-bound verdict and owner-native observations first, or a later explicit owner-approved sequencing exception. The redesign changes the canvas and must not invalidate unfinished G3 proof silently. No need to mark all Phase 11 Green before undertaking this correction.
+**Required before P1:** independently repair the narrow G3 zero-HP requirement parser defect in its own approved recovery, rerun exact-source G3 P4 to a real Chrome PASS, and record owner-native G3 confirmation; otherwise obtain a **new explicit documented owner sequencing exception** stating which gaps are accepted. P4 failure is not repaired by merely authoring this stack, and neither scope inherits unobserved qualifications. Avoid Phase 12 activation.
 
-## Execute individually — three bounded repair/qualification loops + independent P4
+## Execute one prompt at a time
 
-| Prompt | Scope | Browser gate |
+| Prompt | Owns | Qualification |
 | --- | --- | --- |
-| [P1 — phase hierarchy](P1-phase-card-hierarchy.txt) | Large horizontal phase containers; nested expandable checkpoint rows; clear phase arrows; preserve editor/inspector/viewport and G3 draft | **Required real Codex Google Chrome** on current served app; max 3 bounded cycles; screenshot style/interaction PASS before P2 |
-| [P2 — progression and relationships](P2-status-relationship-truth.txt) | Zero accepted children dim; first accepted child warm Planned (not Green); evidence-backed canonical statuses/bars; parent correction and dependency clarity | **Required real Chrome** status/correction/proposed fixtures; max 3 cycles; truthful progress PASS before P3 |
-| [P3 — Dope Help and integration](P3-dope-help-regression.txt) | Existing capability-help + saved local Q4 state-grounded answers; viewport/theme/Markdown/Chat/G3 cross-seam checks | **Required real Chrome/local model where available**; max 3 cycles; no false guidance/no write PASS before P4 |
-| [P4 — independent Chrome closeout](P4-chrome-closeout.txt) | Exact-source visual/authority/manual GUI acceptance + separate owner-native handoff | **Required real Chrome**, no further implementation loop by default; preserve native gap |
+| [P1 — Gate domain/authority](P1-gate-domain-authority.txt) | Replace checkpoint schema with separate Phase/Gate/Correction, criterion/evidence/qualification domain | Source/test proofs + mandatory real Chrome smoke, max 3 cycles |
+| [P2 — Markdown and AI planning](P2-markdown-ai-planning.txt) | Phase/Gate import, sync, greenfield, Chat/local model, typed approvals; negative task-bullet semantics | Source/test proofs + real Chrome draft/sync, max 3 cycles |
+| [P3 — Phase/Gate canvas](P3-phase-gate-canvas.txt) | Exact screenshot hierarchy, nesting, foldouts, arrows, inspector, viewport | Source/test proofs + real Chrome visual/interaction, max 3 cycles |
+| [P4 — Qualification/progress/relations](P4-qualification-truth.txt) | Status derivation, evidence freshness, gate-set approval, correction/dependency semantics | Source/test proofs + real Chrome matrix, max 3 cycles |
+| [P5 — Dope Help](P5-dope-help.txt) | Existing help registry/Chat grounded in Gates and verified UI paths | Local-Q4 where available + Chrome saved Chat, max 3 cycles |
+| [P6 — Cleanup/integration](P6-cleanup-integration.txt) | Delete dead checkpoint paths; cross-feature integration and exact-source acceptance | Focused/aggregate tests + real Chrome integration, max 3 cycles |
+| [P7 — Independent closeout](P7-independent-closeout.txt) | Fresh final-source independent Chrome replay and owner-native handoff | Manual Chrome evidence only by default; no fabricated Green |
 
-All four have `- Browser required: yes.` and `GPT-6 Sol High` recommendation; P4 is the one final closeout by filename/title. Each loop should target small <=8-minute implementation slices but never omit direct GUI verification or fake elapsed time; stop immediately on unrepaired NOT GREEN/BLOCKED, do not burn more than three cycles per implementation loop. Use focused unit tests/affected build per slice; avoid repeated full `npm run check`. An exact-source full check is optional in independent P4 if feasible and not duplicative.
+P1–P6 each have at most **three** bounded implement/repair/qualification cycles, usual implementation target <=8 minutes per slice (never cap actual needed test/GUI observation). Browser required for **each** prompt; if absent, the prompt is BLOCKED/NOT GREEN. P7 independently verifies what the earlier loops actually proved, including negative cases, source/hash and missing native scope. One source-bound final aggregate near P6/P7; avoid repeatedly running full `npm run check`.
 
-## Runner / manual Codex Chrome route
+## Manual execution
 
-1. Check G3 P4 + owner-native prerequisite and current exact local source/version/dirty tree; no overrides of existing active changes.
-2. Validate grammar **locally**: `npm run codex:phase:validate -- c11-roadmap-redesign`. This was not executable through documentation authoring.
-3. Run individual P1 prompt in **Codex with the real Chrome browser enabled**, qualify source-bound UI and record evidence; only on PASS manually proceed P2, P3, then P4. **Do not** call `npm run codex:phase -- c11-roadmap-redesign` as a headless substitute: Browser-required stages must hand off to real GUI, not be silently treated as passed. No manual `/activate` step.
-4. Use disposable project fixtures for draft/rejection/permissions; never mutate the persistent PixiJS tower-defense game merely for testing. Safeguard workspace and owner revision, no reset/stash/clean/force push, no additional branch, no surprise changes to main.
-5. P4 returns Chrome scope verdict and **owner-operated native Electron checklist**; native parity must be re-observed for changed Roadmap presentation, not inferred from G3 or build success.
+1. Confirm G3 P4 actual Chrome PASS and native result or explicit new owner exception; inspect HEAD, status, version and fresh source. Do not reset/stash/clean/force push or overwrite owner files.
+2. Run `npm run codex:phase:validate -- c11-roadmap-redesign` locally. This GitHub authoring has **not run** the validator. No /activate.
+3. Manually run P1, then P2, ... P7 **in Codex with connected real Google Chrome browser**; use disposable project roots for mutation/security/negative cases. Ordinary unattended `npm run codex:phase -- c11-roadmap-redesign` is not a substitute for browser-required gates.
+4. Between prompts, require explicit PASS on exact source, write evidence in this stack, and stop immediately on unqualified prerequisite. Do not infer native Electron results from Chrome or an Electron build; owner operates native separately.
+5. Preserve working authority: single RoadmapStore writer, single saved dockable ChatPanel, in-stage inspector, linked Markdown approval/conflict/relink, actual project source/root/hash, Planning Map, Phase Focus, Work/History, Git and prompt navigation. No unapproved linked-document publication, model provider change, autonomous Work or version bump.
 
-## Locked behavior
+## Alpha removal policy
 
-Match supplied image visual grammar: charcoal rounded and readable phase cards with small PHASE label, title, meaningful thin bar, divider; child checkpoints are compact nested foldouts with icons/chevrons; directional arrowheads between phases; dim empty, warm Planned, orange Active, green truly qualified, muted red Not Green, distinct Waived/Unknown. Do not add an unsupported canonical `planned` status or pretend structural presence qualifies implementation. Proposed drafts visually not accepted; linked Markdown publication still separately approved. Correction/task ownership and true dependency information remain preserved but the default view is uncluttered.
+Remove obsolete checkpoint/milestone Roadmap schema, aliases, prompt/view/projection handlers and dead tests/documents. Do not add a compatibility layer. Unsupported old `.dope` Roadmap index must fail with safe explicit reset/reimport guidance; neither silently clobber original Markdown nor delete game data. Historical qualification evidence can retain its original terminology and should not be relabeled Green.
 
-Reuse existing React Flow Roadmap editor and `RoadmapStore`/`RoadmapGreenfield`/`ProjectPlanningActions` and editor inspector; keep saved dockable ChatPanel, existing Dope Help registry, theme tokens, pan/zoom/Focus/Fit, accepted/proposed/Markdown revisions and history. Do not create second Chat/help agent/data owner, auto-Work or prompt execution. Preserve c10-horizontal-color/c11-guidance historical scope and Phase 11 **OPEN / NOT QUALIFIED**.
-
-**Authored only, not Run.** Next action after G3 handoff: locally validate stack and manually execute P1 with Codex browser.
+**Not implemented; not qualified; Phase 11 remains OPEN/NOT QUALIFIED.**

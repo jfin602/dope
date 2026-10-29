@@ -1,0 +1,28 @@
+TASK: Correction 11 / P4 — Gate qualification, phase progression and correction/dependency truth
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, approved visual contract, stack plan/README, actual P1–P3 PASS and G3 P4/native prerequisite disposition. Confirm main/working tree and served UI. No /activate, reset/stash/clean, branch, unapproved source write, autonomous Work or version bump. Prior gate NOT GREEN => STOP.
+
+OBJECTIVE
+Make Phase and Gate colors, progress, correction grouping and dependencies communicate VERIFIED status. Merely adding the first Gate gives 'Planned' appearance, not implementation or Green. Do not infer qualification from a screenshot, prompt completion, percentage or graph placement.
+
+IMPLEMENT
+1. Inspect current Gate/Phase qualification selectors from P1, evidence freshness, status styling, React Flow card UI, correction parent resolution, task discovery and RoadmapInspector. Use authoritative source-bound Gate criteria and recorded result, not manual CSS/AI color. Separate implementation status and qualification state. Stable Gate status names with noncolor labels: Not Implemented, Active, Pending Review, Not Green, Blocked, Unknown, Green, Requalification Required (stale), Waived as explicit exception.
+2. Phase visual presence: zero accepted Gates => dim Unplanned; one or more => restrained Planned unless actual state takes priority; proposed Gate never adds to accepted count. Phase Green only if gate-set coverage explicitly approved, >=1 required Gate, all required Gates current Green, and no blocker. If a waiver exists, require explicit owner phase exception decision rather than silently crediting the Gate. Empty denominator is NOT 100%.
+3. Show honest progress `N of M required gates qualified` and an appropriately normalized thin bar. Do not use the numerator of implemented tasks, prompt stacks or accepted-but-unqualified Gates. Incomplete gate-set coverage must visibly read incomplete even if N=M.
+4. Place correction groups beneath their exact owning Gate or Phase. A correction's explicit parent identity is authoritative, not its c11 name or nearest neighbor. Keep unassigned/missing/conflicted associations in discoverable diagnostics and preserve evidence and prompt/Work navigation, Hide/Show Prompts, phase-local Gate numbers and original source order.
+5. Default route shows chronology-only phase arrows, no synthetic dashed membership buses. Actual explicit dependencies are inspectable in foldout/inspector or deliberately selected relationship mode with direction, accessible label and collision avoidance. Never persist layout inference or manufacture an evidence verdict.
+6. Preserve linked Markdown/source hash/revision and typed approval; display-only actions do not mutate source or canonical qualification. Reassess stale evidence after relevant source edits, project changes, gate criteria edits and rejected/cancelled proposals.
+
+QUALIFICATION MATRIX
+- Fresh empty, one accepted Gate, proposed-only, first Gate without criteria, multiple qualified and unqualified, complete criteria but gate-set unapproved, N/M with stale, Not Green, Blocked, Waived/explicit exception, pending review and unknown. Verify Green only with actual source-bound proof and owner authority; no 100% empty.
+- Positive/negative correction parent exact match, c10 vs c100, missing/foreign parent diagnosed, cross-phase actual dependency visibility while default connectors remain clean; no source write on expand/show relationship.
+- Focus roadmap-status-truth, roadmap-projection, roadmap-canvas, roadmap-owner-links, roadmap-qualification-integration, roadmap-task-discovery tests and theme checks. Run affected browser build and diff check.
+- Real Codex-controlled Google Chrome against current built Dope with disposable status/correction fixtures, screenshots, selection, source revision/hash before-after, dark/light/narrow and keyboard. Up to THREE bounded repair/qualification cycles; each must use actual browser. Any false Green, guessed parent, fabricated percentage, lost evidence, missing browser or unobserved required case => P4 NOT GREEN/STOP before P5. No native parity or Phase 11 Green claim.

@@ -1,0 +1,26 @@
+TASK: Correction 11 / P7 — Independent exact-source Roadmap Gate Chrome closeout and native owner handoff
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+MANUAL EVIDENCE-ONLY CLOSEOUT
+This is ONE independent P7 closeout, not an additional implementation loop by default. Must use real Codex Google Chrome against actual rebuilt current Dope, not a static mock, JSDOM, test output, browser build alone or fabricated screenshot. Do not attempt to control owner native Electron UI: deliver checklist for separate owner operation. Do not create new branch, reset/stash/clean/force push, run /activate, mutate persistent game files, change version, auto-publish Markdown or self-commit outside owner authority.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040 and visual contract, stack README/assessment/plan, P1–P6 actual Chrome and test evidence, G3 P4 repaired Chrome PASS/owner-native outcome or explicit sequencing exception, current main HEAD/dirty worktree, served JS bundle hash, version, actual provider/runtime. If missing/failed prerequisite => NOT GREEN/BLOCKED; don't fabricate full-run scope.
+
+INDEPENDENT REAL CHROME SCENARIOS
+1. **Visual screenshot target:** three large charcoal PHASE cards horizontally linked by visible arrowheads, nested Gate rows with icon/chevron and foldout/criteria, high-contrast titles, thin count/bar, Phase 3 dim only if truly no accepted Gates; no floating equal-looking Gates or crossing dashed pseudo-owner edges. Compare against owner's 2026-10-29 image 'this-style.png'; sample Green/Active color not fabricated.
+2. **Real Gate semantics:** create/edit/reorder qualified Gate/Criteria, verify typed phase owner, explicit G1/G2 designation and unknown/missing parent. Zero, first accepted, proposed-only, incomplete gate set, no criteria, partial/complete/invalidated evidence, blocked/waived/stale/unknown. Phase GREEN only from actual required evidence, coverage approval and no blocker; no default empty 100%, no task/Work equivalence.
+3. **AI/Markdown authority:** saved Chat phase-only and implementation-bullet response stays incomplete (NO invented Gates); measurable criteria proposed separately, preview/Accept/Reject, accepted noncanonical vs separately approved linked Markdown publication; import, external sync, linked relink/conflict/restart, source/project/revision-stale denials. Test canonical file and other source byte hashes before/after read-only and rejection actions.
+4. **Corrections/dependencies:** owner-specific Gate or Phase correction, unresolved/c10/c100 and cross-project negative, Work/Phase Focus/History/prompt navigation, actual directed dependencies in details with chronological arrows kept separate, Show/Hide Prompts accurate.
+5. **Human experience:** Gate foldout, inspector, keyboard Tab/Enter/Space/Escape, pan/zoom/Fit/Focus, saved viewport refresh, long/dense phase names, narrow split and dockable saved Chat, pointer/touch scrolling, dark/light/custom theme, accessible contrast and reduced motion. Selected Gate context persists.
+6. **Dope Help / selected local model:** saved Chat answers actual status, Gate creation, criteria, progress, waiver/stale, corrections/dependencies using existing verified paths; wrong Roadmap-file/Planning Map help negative. Record real selected local Q4 provenance if used; no model/hosted fallback invented.
+7. **Alpha cleanup:** no active Roadmap checkpoint/milestone fallback API, duplicate editor/data owner, legacy index migration shim, obsolete P1–P4 prompts or redundant charter; old incompatible index fails with safe explicit developer-controlled recovery, no source destruction.
+
+EVIDENCE / STOP LAW
+For each case record PASS/FAIL/BLOCKED/NOT RUN and current source SHA, project/fixture, actual Chrome screenshots/DOM/actions, build/served bundle hashes, owner revisions, file hashes, model and tool provenance. Recheck final source unchanged after P6 qualification; run one full `npm run check` only if needed and feasible, not repetitively; record actual count/build failures. Write docs/tasks/c11-roadmap-redesign/closeout.md ONLY after real tests. On all required Chrome gates PASS, verdict: **ROADMAP GATE REDESIGN CHROME-SCOPED QUALIFIED — OWNER NATIVE VERIFICATION PENDING**. On any required gap, **NOT GREEN / BLOCKED**, shortest fix and exact missing observation. Provide owner-native Electron same-source checklist and require independent screenshots/results; never infer parity from Chrome or Electron build. This correction never automatically grants Phase 11 Green, G3 P4 qualification, phase waiver or Phase 12 activation. STOP.

@@ -1,0 +1,26 @@
+TASK: Correction 11 / P3 — Screenshot-exact phase cards with nested Gate foldouts and editor continuity
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0016/0036/0040, the complete visual hierarchy contract and stack plan, actual P1/P2 source-bound Chrome PASS, G3 P4/native outcome/exception. Confirm current main SHA, dirty state, source/test UI registrations and build bundle. Never run /activate, reset/stash/clean, new branch, automatic Work, version bump, unapproved canonical Markdown or model provider change. STOP if earlier Gates unqualified.
+
+OBJECTIVE / OWNER VISUAL
+Use owner's approved 2026-10-29 image 'this-style.png': a **horizontal row of large charcoal rounded PHASE N containers** with small uppercase phase label, prominent phase title, short literal state/count, thin progress track, divider and **compact Gate rows nested within each phase** with status icon and foldout chevron. Clear phase-to-phase arrowheads, not equal miniature floating phase/checkpoint cards or gray dashed cross-card pseudo-membership connectors. Preserve Dope restrained dark/orange theme and alternate themes.
+
+IMPLEMENT
+1. Inspect existing roadmap-canvas-model.ts and roadmap-canvas-widget.ts React Flow custom node types, handles, projection, roadmap-viewport.ts, roadmap-inspector-model/widget, CSS/theme and G3 presentStrategicReview. Build a derived Phase card view from **explicit canonical Gate.parentPhaseId**, with stable child IDs. Proposed/accepted draft states remain clearly distinguished; do not mutate canonical relationships from visual layout.
+2. Replace default floating checkpoint/milestone visual nodes and branch wiring with Phase card containing Gate title/status and accessible collapsed/expanded detail rows. Gate foldout shows objective, acceptance criteria, qualification evidence/unknown, real dependencies, correction summary and Open details action. Use **existing in-stage Roadmap inspector** for full editing and qualification review; no second editor or Chat.
+3. Draw clearly anchored, legible LEFT-to-RIGHT phase progression arrows (chronology only, never stored dependency or implied Green). Suppress synthetic member links. Show attached corrections as subordinate groups and unresolved entities in diagnosed pool; P4 completes relationship truth.
+4. Preserve selection of exact Gate (including keyboard and saved context), Tab/Enter/Space/Escape, focus return, pointer/touch scrolling/drag gesture, semantic zoom/short long phase densities, explicit viewport/focus/fit, first open fitting all sample phases, and independent docked ChatPanel. Expand/fold must not unexpectedly recenter or discard selected row; status typography remains legible.
+5. Keep G3 proposal in the SAME main Roadmap editor with readable numbered phases/Gates before acceptance and editor-local Accept/Reject/Inspect; never click-to-publish linked Markdown. Avoid hardcoding pixels or sample colors, keep theme semantic tokens/light/custom/reduced-motion.
+
+QUALIFY
+- Focus roadmap-canvas, roadmap-spatial-canvas, roadmap-semantic-zoom, roadmap-viewport, roadmap-inspector, roadmap-create-ui and affected theme tests/build.
+- MANDATORY real connected Codex Google Chrome on current rebuilt Dope: disposable 3-phase fixture showing (A) two Gate-containing phases, (B) dim empty third phase, (C) phase arrows, nested foldouts and correct parent ownership, plus G3 Phase-only proposed draft, Accept/Reject boundaries, full inspector/keyboard Gate, Fit/Focus/zoom, narrow Chat, reload and light mode. Screenshot compare with owner's exact visual grammar, but do not treat illustrative GREEN as real qualification.
+- Up to THREE bounded repair/requalification cycles; record current source and served bundle hash, screenshots, DOM/actions, project ID and explicit PASS/FAIL. No visual pass from static mock/JSDOM or build alone. Any float-style Gate card, ambiguous arrow, missing inspector, source mutation or Chrome gap => P3 NOT GREEN/STOP before P4. No native Electron parity claim.
