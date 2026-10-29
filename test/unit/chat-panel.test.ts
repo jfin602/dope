@@ -55,17 +55,19 @@ test('Chat delegates connection repair to AI Center and listens for live registr
     assert.doesNotMatch(widget, /setSessionCredential|\.upsert\(|\.activate\(|SecretInputDialog|setupModels|private async reconnect/);
 });
 
-test('strategic draft progress stays in the saved Chat and offers cancellation and editor recovery', async () => {
+test('strategic generation follows the saved Chat and puts visual review in Roadmap', async () => {
     const controller = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-controller.ts', import.meta.url), 'utf8');
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.match(controller, /event\.chatId === this\.chatId[\s\S]*this\.roadmapGenerationStage = event\.stage/);
-    assert.match(controller, /this\.roadmapGenerationStage = undefined; this\.roadmapOpenTarget = undefined/);
+    assert.match(controller, /this\.roadmapGenerationStage = undefined; this\.roadmapGenerationProjectId = undefined/);
     assert.match(controller, /lease\.connection\.cancelTurn\(lease\.handle, lease\.chatId, lease\.token\)/);
     assert.match(widget, /Generating Roadmap draft with the selected local model/);
     assert.match(widget, /Cancel generation/);
     assert.match(widget, /role', 'status'/);
     assert.match(widget, /Open Roadmap/);
-    assert.match(widget, /state\.decideStrategicDraft\(true\)\.then/);
+    assert.match(widget, /this\.syncStrategicRoadmap\(\)/);
+    assert.match(widget, /Review the graph and choose Accept Draft or Reject Draft in the Roadmap editor/);
+    assert.doesNotMatch(widget, /this\.button\('Accept into draft'/);
     assert.doesNotMatch(widget, /shell\.addWidget\(.*Roadmap/);
 });
 

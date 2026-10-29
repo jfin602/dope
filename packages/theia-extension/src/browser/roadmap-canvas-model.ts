@@ -31,7 +31,9 @@ export function projectRoadmapDraft<T extends RoadmapProjection>(base: T, accept
         const phaseState = proposed && before.get(phase.id) !== JSON.stringify({ title: phase.title, objective: phase.objective, order,
             kind: phase.kind, parentId: phase.parentId })
             ? 'proposed' : 'accepted';
-        nodes.push({ id: phase.id, kind: phase.kind ?? 'phase', title: phase.title, order, status: 'not-implemented',
+        const phaseTitle = phase.title.replace(/^Phase\s+\d+\s*(?:[-—:]\s*)?/i, '').trim() || phase.title;
+        nodes.push({ id: phase.id, kind: phase.kind ?? 'phase',
+            title: phase.kind ? phase.title : `Phase ${order + 1} — ${phaseTitle}`, order, status: 'not-implemented',
             statusLabel: phaseState === 'proposed' ? 'Proposed · not implemented' : 'Accepted draft · not implemented',
             evidence: [], readOnly: true, lane: phase.kind ? 'branch' : 'path', draftState: phaseState });
         if (phase.parentId) edges.push({ id: `draft-correction:${phase.parentId}:${phase.id}`,

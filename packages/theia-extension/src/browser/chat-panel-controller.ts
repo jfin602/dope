@@ -84,6 +84,7 @@ export class ChatPanelController {
     stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
     planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
     roadmapGenerationStage?: Extract<import('@dope/chat/lib/service').ChatEvent, { kind: 'planning-progress' }>['stage'];
+    roadmapGenerationProjectId?: string;
     roadmapOpenTarget?: { workspace: string; projectId: string; chatId: string; revision: number };
     private activeRoadmapOfferId?: string;
     transientUser: { chatId: string; content: string; previousIds: Set<string> } | undefined;
@@ -135,7 +136,8 @@ export class ChatPanelController {
         this.planningProposalError = undefined; this.planPreview = undefined; this.undoPlanRevision = undefined;
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.planningProgress = undefined;
-        this.roadmapGenerationStage = undefined; this.roadmapOpenTarget = undefined; this.activeRoadmapOfferId = undefined;
+        this.roadmapGenerationStage = undefined; this.roadmapGenerationProjectId = undefined;
+        this.roadmapOpenTarget = undefined; this.activeRoadmapOfferId = undefined;
         this.planningMode = 'follow'; this.pinnedPlanning = undefined;
         if (workspace && this.restoredPlanning?.workspace === workspace) {
             this.planningMode = 'pin'; this.pinnedPlanning = this.restoredPlanning.selection;
@@ -270,7 +272,8 @@ export class ChatPanelController {
         this.planningProposalError = undefined; this.planPreview = undefined; this.undoPlanRevision = undefined;
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.planningProgress = undefined;
-        this.roadmapGenerationStage = undefined; this.roadmapOpenTarget = undefined; this.activeRoadmapOfferId = undefined;
+        this.roadmapGenerationStage = undefined; this.roadmapGenerationProjectId = undefined;
+        this.roadmapOpenTarget = undefined; this.activeRoadmapOfferId = undefined;
         this.changed();
         await this.leave();
         await Promise.allSettled(previous);
@@ -441,7 +444,10 @@ export class ChatPanelController {
         const content = this.draft;
         const offerReply = !retryMessageId && /^yes,?\s+create the roadmap[.!]?$/i.test(content.trim());
         this.activeRoadmapOfferId = offerReply ? this.roadmapOffer?.id : undefined;
-        if (this.activeRoadmapOfferId) this.roadmapGenerationStage = 'checking-owner';
+        if (this.activeRoadmapOfferId) {
+            this.roadmapGenerationProjectId = this.roadmapOffer?.projectId;
+            this.roadmapGenerationStage = 'checking-owner';
+        }
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
         this.running = true; this.error = ''; this.stream = undefined; this.planningProgress = undefined;
@@ -507,7 +513,8 @@ export class ChatPanelController {
         const generation = this.generation;
         this.pending = true; this.changed();
         try {
-            if (approve) { this.roadmapGenerationStage = 'checking-owner'; this.changed(); }
+            if (approve) { this.roadmapGenerationProjectId = offer.projectId;
+                this.roadmapGenerationStage = 'checking-owner'; this.changed(); }
             const outcome = await lease.connection.decideRoadmapOffer(lease.handle, lease.chatId,
                 lease.token, offer.id, offer.token, approve, selectedModel);
             if (generation !== this.generation || lease !== this.lease) return;

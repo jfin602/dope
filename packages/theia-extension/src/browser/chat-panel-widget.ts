@@ -8,7 +8,7 @@ import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import type { ChatOperation } from '@dope/chat/lib/service';
 import { CHAT_COLORS, type ChatSettings, type ChatContextKind, type ChatModelSelection } from '@dope/chat';
-import type { ChatContextSelection } from '@dope/chat/lib/service';
+import type { ChatContextSelection, ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { AICenterContribution } from './ai-center-contribution';
@@ -36,6 +36,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly workController?: WorkSelectionController;
     readonly directController?: AgentRunController;
     private composingWork = false;
+    private strategicPresentationKey = '';
+    private strategicPresentationTarget?: { workspace: string; projectId: string; chatId: string };
+    private strategicPresentationQueue: Promise<void> = Promise.resolve();
     private readonly openPlanningActivities = new Set<string>();
     private promptStacksOnly = false;
     private lastWorkSelection?: WorkSelection;
@@ -99,7 +102,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             isCurrent: () => boolean) => Promise<void>,
         connectionStatus?: ConnectionStatusService,
         private readonly openRoadmapDraft?: (projectUri: string, projectId: string, chatId: string,
-            revision: number) => Promise<void>) {
+            revision: number) => Promise<void>,
+        private readonly presentStrategicRoadmap?: (projectUri: string, projectId: string, chatId: string,
+            state: { stage?: Extract<ChatEvent, { kind: 'planning-progress' }>['stage'];
+                review?: ChatStrategicDraftReview; error?: string; clear?: boolean; busy?: boolean },
+            decide: (approve: boolean) => Promise<void>, open: boolean) => Promise<void>) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -110,7 +117,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.title.closable = this.id !== chatLauncherIds.left && this.id !== chatLauncherIds.right &&
             this.id !== workLauncherIds.left && this.id !== workLauncherIds.right;
         this.addClass('dope-chat-panel');
-        this.controller = new ChatPanelController(connect, () => this.render(), owners, this.id,
+        this.controller = new ChatPanelController(connect, () => { this.render(); this.syncStrategicRoadmap(); }, owners, this.id,
             () => { void this.shell.activateWidget(this.id); }, planningSelection);
         this.panel = new SharedPanelState(workOwners, this.id,
             () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
@@ -144,6 +151,42 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.planningListener = planningSelection?.onChange(() => this.updatePlanningLabel());
         this.initialAttach = this.attach();
         if (this.module === 'chat') void this.loadModels();
+    }
+
+    private syncStrategicRoadmap(): void {
+        if (!this.presentStrategicRoadmap || this.module !== 'chat') return;
+        const state = this.controller;
+        const workspace = state.workspace, chatId = state.chatId;
+        const projectId = state.strategicDraftReview?.projectId ?? state.roadmapGenerationProjectId;
+        if (workspace && chatId && projectId && (state.roadmapGenerationStage || state.strategicDraftReview)) {
+            const previous = this.strategicPresentationTarget;
+            const open = !previous || previous.workspace !== workspace || previous.chatId !== chatId ||
+                previous.projectId !== projectId;
+            this.strategicPresentationTarget = { workspace, chatId, projectId };
+            const key = `${workspace}:${chatId}:${state.roadmapGenerationStage ?? ''}:${state.strategicDraftReview?.token ?? ''}:${state.pending}`;
+            if (key === this.strategicPresentationKey) return;
+            this.strategicPresentationKey = key;
+            const payload = { stage: state.roadmapGenerationStage, review: state.strategicDraftReview, busy: state.pending };
+            this.strategicPresentationQueue = this.strategicPresentationQueue.then(() =>
+                this.presentStrategicRoadmap!(workspace, projectId, chatId, payload,
+                    approve => state.strategicDraftReview ? state.decideStrategicDraft(approve) : state.cancel(), open))
+                .catch(error => { state.roadmapOfferStatus = `Roadmap editor unavailable: ${String(error)}. Open Roadmap to retry.`;
+                    this.render(); });
+            return;
+        }
+        const target = this.strategicPresentationTarget;
+        if (!target) return;
+        this.strategicPresentationTarget = undefined;
+        this.strategicPresentationKey = '';
+        const accepted = state.roadmapOpenTarget;
+        const error = state.error || (/not accepted|unavailable|failed/i.test(state.roadmapOfferStatus ?? '') ?
+            state.roadmapOfferStatus : undefined);
+        this.strategicPresentationQueue = this.strategicPresentationQueue.then(async () => {
+            if (accepted && accepted.workspace === target.workspace && accepted.chatId === target.chatId)
+                await this.openRoadmapDraft?.(accepted.workspace, accepted.projectId, accepted.chatId, accepted.revision);
+            else await this.presentStrategicRoadmap!(target.workspace, target.projectId, target.chatId,
+                error ? { error } : { clear: true }, async () => {}, false);
+        }).catch(() => {});
     }
     private scrollToLatest(): void {
         const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
@@ -1919,36 +1962,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             composer.append(this.button('Open Roadmap', () => void openDraft()));
         }
         if (state.strategicDraftReview) {
-            const review = state.strategicDraftReview;
             const section = document.createElement('section'); section.className = 'dope-chat-plan-review';
-            section.setAttribute('aria-label', 'Strategic Roadmap draft review');
-            const heading = document.createElement('strong'); heading.textContent = 'Review proposed strategic Roadmap';
-            section.append(heading);
-            const list = document.createElement('ol');
-            const titles = new Map(review.phases.flatMap(phase => phase.checkpoints.map(checkpoint =>
-                [checkpoint.id, checkpoint.title] as const)));
-            for (const phase of review.phases) {
-                const item = document.createElement('li');
-                const title = document.createElement('strong'); title.textContent = phase.title;
-                const objective = document.createElement('p'); objective.textContent = phase.objective;
-                const checkpoints = document.createElement('ul');
-                for (const checkpoint of phase.checkpoints) {
-                    const row = document.createElement('li');
-                    row.textContent = `${checkpoint.title}: ${checkpoint.objective}` +
-                        (checkpoint.dependencies.length ? ` · After ${checkpoint.dependencies.map(id =>
-                            titles.get(id) ?? id).join(', ')}` : '');
-                    checkpoints.append(row);
-                }
-                item.append(title, objective, checkpoints); list.append(item);
-            }
-            section.append(list, this.button('Accept into draft', () => void state.decideStrategicDraft(true).then(async () => {
-                const target = state.roadmapOpenTarget;
-                if (!target || state.workspace !== target.workspace) return;
-                try { await this.openRoadmapDraft?.(target.workspace, target.projectId, target.chatId, target.revision); }
-                catch (error) { state.roadmapOfferStatus = `Roadmap editor could not open: ${String(error)}. The accepted draft remains available; use Open Roadmap to retry.`;
-                    this.render(); }
-            }), state.pending),
-                this.button('Reject proposal', () => void state.decideStrategicDraft(false), state.pending));
+            section.setAttribute('aria-label', 'Strategic Roadmap draft ready');
+            const heading = document.createElement('strong'); heading.textContent = 'Proposed Roadmap ready';
+            const note = document.createElement('p');
+            note.textContent = 'Review the graph and choose Accept Draft or Reject Draft in the Roadmap editor.';
+            section.append(heading, note);
             composer.append(section);
         }
         if (state.planningProposal) {

@@ -332,13 +332,14 @@ export class ChatBackend implements ChatService {
 
     private async offerRoadmap(root: string, chatId: string, messageId: string,
         leaseToken: string, opportunity: string | undefined, output: string): Promise<ChatRoadmapOffer | undefined> {
-        if (!opportunity?.includes('revision zero') || !/\broadmap\b/i.test(output) ||
-            !/\bdraft\b/i.test(output) || !this.greenfield || this.proposals.has(chatId) ||
+        if (!opportunity?.includes('revision zero') || !this.greenfield || this.proposals.has(chatId) ||
             this.strategicReviews.has(chatId)) return undefined;
         const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
         if (!chat) return undefined;
         const lastUser = chat.messages.filter(item => item.role === 'user').at(-1)?.content ?? '';
-        const requestedAgain = /^\s*(?:please\s+)?(?:create|generate|make)\s+(?:(?:me|another|a|the)\s+)*(?:roadmap\s+draft|draft\s+roadmap)\b/i.test(lastUser);
+        const requestedAgain = /\b(?:create|generate|make|offer)\b[\s\S]{0,100}\bdraft\b[\s\S]{0,60}\broadmap\b/i.test(lastUser) ||
+            /\b(?:create|generate|make|offer)\b[\s\S]{0,100}\broadmap\b[\s\S]{0,60}\bdraft\b/i.test(lastUser);
+        if (!requestedAgain && (!/\broadmap\b/i.test(output) || !/\bdraft\b/i.test(output))) return undefined;
         if (!requestedAgain && chat.messages.some(item => item.role === 'assistant' &&
             item.id !== messageId && /\broadmap\b/i.test(item.content) && /\bdraft\b/i.test(item.content)))
             return undefined;
@@ -394,8 +395,9 @@ export class ChatBackend implements ChatService {
             evidence: grounding.blocks.map(item => item.ref) })).digest('hex');
         const instruction = `Generate one concise whole strategic Roadmap draft for the developer's project. ` +
             `Use saved Chat decisions and verified current project evidence; label suggestions as proposals, never as source facts. ` +
-            `Do not assert that missing evidence means an empty repository. Plan strategic phases and meaningful milestone checkpoints, ` +
-            `not implementation-level tasks. Do not force five phases or assume this is a game. ` +
+            `Do not assert that missing evidence means an empty repository. Plan deliverable strategic phases and meaningful milestone checkpoints, ` +
+            `not implementation-level tasks. Keep optional post-MVP work outside the main MVP path unless requested. ` +
+            `Do not force five phases or assume this is a game. ` +
             `Return ONLY strict JSON with exactly {"type":"strategic-roadmap-draft","projectId":"${state.projectId}",` +
             `"ownerRevision":${state.revision},"phases":[{"title":"Phase title","objective":"Outcome",` +
             `"checkpoints":[{"title":"Milestone","objective":"Outcome","dependsOn":[]}]}]}. ` +
@@ -451,6 +453,7 @@ export class ChatBackend implements ChatService {
             this.strategicReviews.set(chatId, { root, leaseToken, question, preview });
             this.planningProgress(chatId, offer.id, 'draft-ready');
             return { token: preview.token, projectId: preview.projectId, revision: preview.after.revision,
+                draft: preview.after,
                 phases: preview.after.phases.map(phase => ({ title: phase.title, objective: phase.objective,
                     checkpoints: phase.checkpoints.map(checkpoint => ({ id: checkpoint.id, title: checkpoint.title,
                         objective: checkpoint.objective, dependencies: checkpoint.dependencies ?? [] })) })) };

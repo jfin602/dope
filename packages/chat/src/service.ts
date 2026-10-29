@@ -51,6 +51,9 @@ export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: s
 export interface ChatRoadmapOffer { id: string; token: string; projectHandle: string; projectId: string; chatId: ChatId;
     ownerId: string; ownerRevision: number; basis: 'empty-owner'; expiresAt: number }
 export interface ChatStrategicDraftReview { token: string; projectId: string; revision: number;
+    draft: { revision: number; phases: { id: string; title: string; objective: string;
+        kind?: 'correction'; parentId?: string; checkpoints: { id: string; title: string; objective: string;
+            dependencies?: string[] }[] }[] };
     phases: { title: string; objective: string; checkpoints: { id: string; title: string; objective: string;
         dependencies: string[] }[] }[] }
 export interface ChatPlanPreview { coverage: { id: string; text: string;

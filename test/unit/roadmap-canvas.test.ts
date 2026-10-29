@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { roadmapCanvasOrder, roadmapNextId } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { projectRoadmapDraft, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import { roadmapEdgeStatus, roadmapStatusMark, type RoadmapStatus } from '../../packages/theia-extension/src/browser/roadmap-status-style.ts';
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
@@ -25,6 +25,25 @@ test('one keyboard order follows the checkpoint path and attached branches', () 
     assert.equal(roadmapNextId(ids, 'p2', 'Home'), 'p1');
     assert.equal(roadmapNextId(ids, 'p1', 'End'), 'p2');
     assert.equal(roadmapNextId(ids, 'p1', 'Enter'), undefined);
+});
+
+test('strategic preview numbers ordered phases without changing identities or dependency data', () => {
+    const base: RoadmapProjection = { projectId: 'project', revision: 0, nodes: [], edges: [],
+        pools: { ideas: [], issues: [] }, diagnostics: [] };
+    const first = { id: 'stable-a', title: 'Phase 9 — Foundation', objective: 'Set up',
+        checkpoints: [{ id: 'child-a', title: 'Project setup', objective: 'Runnable app', dependencies: [] }] };
+    const second = { id: 'stable-b', title: 'Combat', objective: 'Playable loop',
+        checkpoints: [{ id: 'child-b', title: 'Combat loop', objective: 'Playable', dependencies: ['child-a'] }] };
+    const proposed = projectRoadmapDraft(base, undefined, { revision: 1, phases: [first, second] });
+    assert.deepEqual(proposed.nodes.filter(item => item.kind === 'phase').map(item => [item.id, item.title]),
+        [['stable-a', 'Phase 1 — Foundation'], ['stable-b', 'Phase 2 — Combat']]);
+    assert.equal(proposed.nodes.find(item => item.id === 'child-b')?.phaseAssociation?.phaseId, 'stable-b');
+    assert.ok(proposed.edges.some(edge => edge.from === 'child-a' && edge.to === 'child-b' && edge.kind === 'dependency'));
+    assert.ok(roadmapCanvasConnectors(proposed).some(edge => edge.from === 'stable-a' && edge.to === 'stable-b' &&
+        edge.kind === 'progression'));
+    const reordered = projectRoadmapDraft(base, undefined, { revision: 1, phases: [second, first] });
+    assert.deepEqual(reordered.nodes.filter(item => item.kind === 'phase').map(item => [item.id, item.title]),
+        [['stable-b', 'Phase 1 — Combat'], ['stable-a', 'Phase 2 — Foundation']]);
 });
 
 test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens and no Chat docking effects', () => {
@@ -100,7 +119,7 @@ test('Phase Focus uses the selected phase projection and existing checked source
     assert.match(canvas, /selectPhaseFocus\(index, this\.taskStacks, this\.phaseId,/);
     assert.match(canvas, /this\.service\.phaseFocusEvidence\(uri, index\.projectId, phaseId\)/);
     assert.match(canvas, /selected\?\.kind !== 'phase'/);
-    assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.inspection, this\.phaseFocus/);
+    assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.strategicBar, this\.importEntry, this\.inspection, this\.phaseFocus/);
     assert.match(canvas, /for \(const stack of phase\.stacks\)/);
     assert.match(canvas, /for \(const prompt of stack\.prompts\)/);
     assert.match(canvas, /this\.inspector\.openPrompt\(node\)/);
@@ -121,7 +140,7 @@ test('Details command and selection use one mounted inspector model in the canva
     const inspector = read('packages/theia-extension/src/browser/roadmap-inspector-widget.ts');
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(canvas, /this\.inspectionEditor = new RoadmapInspectorWidget\(inspector\)/);
-    assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.importEntry, this\.inspection/);
+    assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.strategicBar, this\.importEntry, this\.inspection/);
     assert.match(canvas, /this\.setInspectionView\('compact'\);\s*this\.setInspectionOpen\(true\)/);
     assert.match(canvas, /this\.inspectionEditor\.node\.hidden = !!item/);
     assert.match(canvas, /this\.details\.onclick = \(\) => this\.openDetails\(\)/);

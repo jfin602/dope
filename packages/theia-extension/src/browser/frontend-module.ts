@@ -499,6 +499,15 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 if (roots.length !== 1 || roots[0].resource.toString() !== projectUri)
                     throw new Error('Project changed before Roadmap editor navigation');
                 await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
+            }, async (projectUri, projectId, chatId, state, decide, openEditor) => {
+                const roots = await context.container.get(WorkspaceService).roots;
+                if (roots.length !== 1 || roots[0].resource.toString() !== projectUri)
+                    throw new Error('Project changed before Roadmap review');
+                const widget = await context.container.get(WidgetManager)
+                    .getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                if (state.clear) { widget.clearStrategicReview(projectUri, chatId); return; }
+                await widget.presentStrategicReview(projectUri, projectId, chatId, state, decide);
+                if (openEditor) await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
             });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
