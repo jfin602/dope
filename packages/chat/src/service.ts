@@ -50,7 +50,7 @@ export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: s
 /** A transient, noncanonical permission to attempt one draft generation. Never a draft or publication grant. */
 export interface ChatRoadmapOffer { id: string; token: string; projectHandle: string; projectId: string; chatId: ChatId; messageId: string;
     ownerId: string; ownerRevision: number; basis: 'empty-owner'; expiresAt: number }
-export interface ChatStrategicDraftReview { token: string; projectId: string; revision: number;
+export interface ChatStrategicDraftReview { token: string; projectId: string; revision: number; diagnostic?: string;
     draft: { revision: number; phases: { id: string; title: string; objective: string;
         kind?: 'correction'; parentId?: string; checkpoints: { id: string; title: string; objective: string;
             dependencies?: string[] }[] }[] };

@@ -98,6 +98,7 @@ export class ChatBackend implements ChatService {
     private attaching = 0;
     private readonly unlisten: () => void;
     private readonly turns = new Map<string, { token: string; abort: AbortController }>();
+    private readonly roadmapPreparations = new Map<string, { token: string; abort: AbortController }>();
     /** Leases belong to this RPC connection, not to the reusable panel ID or backend PID. */
     private readonly leases = new Map<string, { root: string; token: string }>();
     private readonly pendingCancel = new Map<string, string>();
@@ -370,8 +371,8 @@ export class ChatBackend implements ChatService {
         const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
         if (!chat) return undefined;
         const lastUser = chat.messages.filter(item => item.role === 'user').at(-1)?.content ?? '';
-        const requestedAgain = /\b(?:create|generate|make|offer)\b[\s\S]{0,100}\bdraft\b[\s\S]{0,60}\broadmap\b/i.test(lastUser) ||
-            /\b(?:create|generate|make|offer)\b[\s\S]{0,100}\broadmap\b[\s\S]{0,60}\bdraft\b/i.test(lastUser);
+        const requestedAgain = /\b(?:create|generate|make|offer(?:ing)?)\b[\s\S]{0,100}\bdraft\b[\s\S]{0,60}\broadmap\b/i.test(lastUser) ||
+            /\b(?:create|generate|make|offer(?:ing)?)\b[\s\S]{0,100}\broadmap\b[\s\S]{0,60}\bdraft\b/i.test(lastUser);
         if (!direct && !requestedAgain && (!/\broadmap\b/i.test(output) || !/\bdraft\b/i.test(output))) return undefined;
         if (!direct && !requestedAgain && chat.messages.some(item => item.role === 'assistant' &&
             item.id !== messageId && /\broadmap\b/i.test(item.content) && /\bdraft\b/i.test(item.content)))
@@ -412,18 +413,27 @@ export class ChatBackend implements ChatService {
                 'offered', 'declined');
             return 'declined';
         }
+        const abort = new AbortController();
+        this.roadmapPreparations.set(chatId, { token: leaseToken, abort });
+        const checkCancelled = () => {
+            if (abort.signal.aborted) throw new Error('Roadmap preparation cancelled');
+        };
+        let stagedPreview: StrategicDraftPreview | undefined;
+        try {
         await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
             'offered', 'generating', { stage: 'checking-owner' });
-        try {
+        checkCancelled();
         this.planningProgress(chatId, offer.id, 'checking-owner');
         if (!this.greenfield || !(await this.repository.read(root)).chats.some(chat => chat.id === chatId))
             throw new Error('Roadmap offer Chat is unavailable');
         const state = await this.greenfield.readOpportunity(root);
+        checkCancelled();
         if (state.projectId !== offer.projectId || state.revision !== offer.ownerRevision ||
             state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts ||
             state.acceptedPlans || state.pendingPlans)
             throw new Error('Roadmap owner or draft changed; review Roadmap and request a new offer');
         const saved = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        checkCancelled();
         const source = saved?.messages.find(item => item.id === pending.messageId);
         if (!saved || !source || source.role !== 'assistant') throw new Error('Saved planning answer is unavailable');
         this.planningProgress(chatId, offer.id, 'validating-draft');
@@ -435,6 +445,8 @@ export class ChatBackend implements ChatService {
         await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
             'generating', 'generating', { stage: 'preparing-draft' });
         const preview = await this.greenfield.previewStrategicDraft(root, input, sourceHash);
+        stagedPreview = preview;
+        checkCancelled();
         const latest = (await this.repository.read(root)).chats.find(item => item.id === chatId);
         if (!latest || this.extractedSourceHash(latest, source.id) !== sourceHash ||
             this.disposed || this.root !== root || this.leases.get(chatId)?.token !== leaseToken) {
@@ -449,11 +461,12 @@ export class ChatBackend implements ChatService {
             ['kill income', /(?:kill|defeat).{0,40}(?:money|currency|income)|(?:money|currency|income).{0,40}(?:kill|defeat)/i],
             ['persistent main tower health', /(?:main|base).{0,20}(?:tower|health).{0,50}(?:persist|wave)|(?:persist).{0,50}(?:tower|health)/i],
             ['zero health means loss', /(?:zero|0).{0,20}health.{0,35}(?:lose|loss|game over)/i],
-            ['currency buys towers and abilities', /(?:money|currency).{0,70}tower.{0,70}abilit/i],
+            ['currency buys towers and abilities', /(?:money|currency|resource|income)/i, /tower/i, /abilit/i],
         ] as const;
-        const uncovered = requirements.filter(([, ...patterns]) => patterns.every(pattern => pattern.test(saved.messages
-            .filter(item => item.role === 'user').map(item => item.content).join(' '))) &&
-            !patterns.every(pattern => pattern.test(proposed))).map(([label]) => label);
+        const requested = saved.messages.filter(item => item.role === 'user').map(item => item.content).join(' ');
+        const coverage = requirements.map(([label, ...patterns]) =>
+            `${label}: ${patterns.every(pattern => pattern.test(requested)) ?
+                patterns.every(pattern => pattern.test(proposed)) ? 'Covered' : 'Uncovered' : 'Not in saved request'}`);
         const sourceIndex = saved.messages.findIndex(item => item.id === source.id);
         const sourceUser = saved.messages.slice(0, sourceIndex).reverse().find(item => item.role === 'user');
         const verifiedFile = sourceUser?.role === 'user' && sourceUser.contextRefs.some(ref =>
@@ -462,21 +475,28 @@ export class ChatBackend implements ChatService {
             'Source answer labels goals as verified without file evidence; treat them as proposed. ' : '';
         this.strategicReviews.set(chatId, { root, leaseToken, question: '', preview,
             messageId: pending.messageId, offerId: offer.id, extractedSourceId: source.id });
+        const diagnostic = `${sourceCaution}Requirement coverage — ${coverage.join('; ')}. ` +
+            'Confirm missing checkpoints before publication.';
+        checkCancelled();
         await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
-            'generating', 'ready', { draftRevision: preview.after.revision,
-                diagnostic: `${sourceCaution}${uncovered.length ?
-                    `Uncovered for review: ${uncovered.join(', ')}.` : 'All recognized requirements appear in phase labels.'} ` +
-                    'Confirm missing checkpoints before publication.' });
+            'generating', 'ready', { draftRevision: preview.after.revision, diagnostic });
+        stagedPreview = undefined;
         this.planningProgress(chatId, offer.id, 'draft-ready');
-        return { token: preview.token, projectId: preview.projectId, revision: preview.after.revision,
+        return { token: preview.token, projectId: preview.projectId, revision: preview.after.revision, diagnostic,
             draft: preview.after, phases: preview.after.phases.map(phase => ({ title: phase.title,
                 objective: phase.objective, checkpoints: phase.checkpoints.map(item => ({
                     id: item.id, title: item.title, objective: item.objective, dependencies: item.dependencies ?? [] })) })) };
         } catch (error) {
             this.strategicReviews.delete(chatId);
+            if (stagedPreview) this.greenfield?.rejectStrategicDraft(stagedPreview.token);
             await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
-                'generating', 'failed', { diagnostic: 'Draft preparation failed. Review the current Roadmap and request a new proposal.' }).catch(() => {});
+                'generating', abort.signal.aborted ? 'cancelled' : 'failed',
+                { diagnostic: abort.signal.aborted ? 'Preparation cancelled. Ask Chat for a new phase plan before another offer.' :
+                    'Draft preparation failed. Ask Chat for a revised phase plan before another offer.' }).catch(() => {});
+            this.planningProgress(chatId, offer.id, abort.signal.aborted ? 'cancelled' : 'failed');
             throw error;
+        } finally {
+            if (this.roadmapPreparations.get(chatId)?.abort === abort) this.roadmapPreparations.delete(chatId);
         }
     }
 
@@ -850,9 +870,11 @@ export class ChatBackend implements ChatService {
                 })());
             if (candidates.length !== 1)
                 throw new Error(candidates.length ? 'Multiple saved planning answers are suitable; choose one before creating a Roadmap' :
-                    'No unique completed phase sequence is available in this Chat');
+                    'No unique completed phase sequence is available; ask Chat for a new ordered phase plan first');
             const source = candidates[0];
             const pending = this.proposals.get(request.chatId)?.roadmapOffer;
+            if (source.role === 'assistant' && source.roadmapAction && pending?.messageId !== source.id)
+                throw new Error('This saved answer already has a Roadmap decision; ask Chat for a revised phase plan');
             const offer = pending?.messageId === source.id ? pending : await this.offerRoadmap(root,
                 request.chatId, source.id, request.leaseToken, undefined, source.content, true);
             if (!offer) throw new Error('Roadmap owner or competing draft prevents a new proposal; review Roadmap first');
@@ -1231,8 +1253,11 @@ export class ChatBackend implements ChatService {
     async cancelTurn(projectHandle: string, chatId: string, leaseToken: string): Promise<void> {
         this.active(projectHandle);
         const turn = this.turns.get(chatId);
+        const preparation = this.roadmapPreparations.get(chatId);
         if (turn && turn.token !== leaseToken) throw new Error('Chat turn is not owned by this panel');
+        if (preparation && preparation.token !== leaseToken) throw new Error('Roadmap preparation is not owned by this panel');
         if (turn) turn.abort.abort();
+        else if (preparation) preparation.abort.abort();
         else this.pendingCancel.set(chatId, leaseToken);
     }
     dispose(): void {
@@ -1242,6 +1267,7 @@ export class ChatBackend implements ChatService {
         for (const review of this.strategicReviews.values()) this.greenfield?.rejectStrategicDraft(review.preview.token);
         this.strategicReviews.clear();
         for (const turn of this.turns.values()) turn.abort.abort();
+        for (const preparation of this.roadmapPreparations.values()) preparation.abort.abort();
         // Browser unload cannot reliably finish an RPC release. The server still has
         // the connection's exact tokens when its socket closes. Token checks in the
         // repository prevent a delayed release from touching a successor lease.

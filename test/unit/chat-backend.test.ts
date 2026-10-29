@@ -31,11 +31,11 @@ async function savedRoadmapOffer(backend: ChatBackend, projectHandle: string, ro
                 startedAt: now } } } });
     await backend.mutate({ projectHandle, expectedRevision: snapshot.revision, leaseToken,
         operation: { type: 'finish-assistant', chatId, messageId, outcome: 'complete',
-            content: 'Suggested next steps.', actualModel } });
+            content: output, actualModel } });
     return (backend as unknown as { offerRoadmap(root: string, chatId: string,
-        messageId: string, leaseToken: string, opportunity: string, output: string): Promise<{
+        messageId: string, leaseToken: string, opportunity: string, output: string, direct: boolean): Promise<{
             id: string; token: string; expiresAt: number } | undefined> }).offerRoadmap(root, chatId,
-                messageId, leaseToken, 'revision zero', output);
+                messageId, leaseToken, 'revision zero', output, true);
 }
 const firstPlanRequest = 'Plan a visual Git history for this project. Reuse the existing read-only diff editor in src/diffEditor.js; put branch checkout and commits in the toolbar; keep checkout and commit permissions explicit. Please inspect the relevant files and give me a complete ordered implementation plan with tests before changing anything.';
 
@@ -156,12 +156,12 @@ test('one checked Roadmap offer uses identical button and exact Chat consent wit
         await assert.rejects(backend.decideRoadmapOffer('wrong', chatId, claim.token,
             first.id, first.token, true), /Invalid/);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            first.id, first.token, true), /generation unavailable/);
+            first.id, first.token, true), /No unique ordered implementation sequence/);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
             first.id, first.token, true), /no longer current/);
         const second = (await makeOffer())!;
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: claim.token,
-            content: 'Yes, create the roadmap.' }), /generation unavailable/);
+            content: 'Yes, create the roadmap.' }), /No unique ordered implementation sequence/);
         assert.ok(reads >= 4);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
             second.id, second.token, true), /no longer current/);
@@ -173,93 +173,61 @@ test('one checked Roadmap offer uses identical button and exact Chat consent wit
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('approved offer generates one whole outline, then separate review accepts only a noncanonical draft', async () => {
+test('saved phase outline previews, fails, cancels and accepts without another model call', async () => {
     const root = await folder(), repository = new ChatRepository();
     const greenfield = new RoadmapGreenfield(new RoadmapStore());
-    const projectId = (await greenfield.owner(root)).projectId;
-    const outline = { type: 'strategic-roadmap-draft', projectId, ownerRevision: 0,
-        phases: ['Foundation', 'Map and enemies', 'Combat', 'MVP polish'].map((title, index) => ({
-            title, objective: `Deliver ${title.toLowerCase()}`, checkpoints: [{ title: `${title} milestone`,
-                objective: `Verify ${title.toLowerCase()}`, dependsOn: index ? [index] : [] }] })) };
-    let calls = 0, finishReason = 'stop', actualModelId = 'q4';
-    let cancelGeneration: (() => Promise<void>) | undefined;
-    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
-        models: [{ id: 'q4', usable: true, capabilities: { conversationalText: true, streaming: true,
-            contextWindowTokens: 32768 } }] }] }),
-    async *generate() { calls++; if (cancelGeneration) await cancelGeneration();
-        yield { type: 'complete' as const, text: JSON.stringify(outline),
-        finishReason, actualModelId }; } };
-    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Plan the game' }],
-        refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0 }) };
-    let evidenceVersion = 0;
-    const grounder = { ground: async () => ({ blocks: [{ ref: { kind: 'file', id: 'source',
-        sourceHash: String(evidenceVersion) } }] }) };
     const progress: { messageId: string; stage: string }[] = [];
-    const backend = new ChatBackend(repository, { notifyChatEvent(event) {
-        if (event.kind === 'planning-progress') progress.push({ messageId: event.messageId, stage: event.stage });
-    } }, models as never, composer as never,
-        undefined, grounder as never, undefined, greenfield);
+    let cancelNext = false;
+    let backend: ChatBackend;
+    const client = { notifyChatEvent(event: ChatEvent) {
+        if (event.kind !== 'planning-progress') return;
+        progress.push({ messageId: event.messageId, stage: event.stage });
+        if (cancelNext && event.stage === 'checking-owner') {
+            cancelNext = false;
+            void backend.cancelTurn(projectHandle, chatId, lease.token);
+        }
+    } };
+    backend = new ChatBackend(repository, client, undefined, undefined, undefined, undefined, undefined, greenfield);
+    const projectHandle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
+    const chatId = id();
+    await backend.mutate({ projectHandle, expectedRevision: 0,
+        operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+    const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+    if (!lease.acquired) throw new Error('Lease missing');
+    const outline = 'Phase 1 — Foundation\n- Make scene\nPhase 2 — Path\n- Move enemies\n' +
+        'Phase 3 — Towers\n- Place towers\nPhase 4 — Polish\n- Show loss';
+    const makeOffer = (answer = outline) => savedRoadmapOffer(backend, projectHandle, root, chatId, lease.token, answer);
     try {
-        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
-        await backend.mutate({ projectHandle, expectedRevision: 0,
-            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
-        if (!lease.acquired) throw new Error('Lease missing');
-        cancelGeneration = undefined;
-        const snapshot = await backend.read(projectHandle);
-        await backend.mutate({ projectHandle, expectedRevision: snapshot.revision, leaseToken: lease.token,
-            operation: { type: 'append-user', chatId, message: { schemaVersion: 1, id: id(), role: 'user',
-                createdAt: new Date().toISOString(), content: 'Let us build a tower defense game.', contextRefs: [] } } });
-        const makeOffer = () => savedRoadmapOffer(backend, projectHandle, root, chatId, lease.token);
-        const offer = await makeOffer();
-        assert.ok(offer);
+        const first = await makeOffer(); assert.ok(first);
         const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            offer.id, offer.token, true, { connectionId: 'local', modelId: 'q4' });
-        assert.deepEqual(progress.filter(item => item.messageId === offer.id).map(item => item.stage),
-            ['checking-owner', 'generating-draft', 'validating-draft', 'preparing-draft', 'draft-ready']);
-        assert.notEqual(review, 'declined');
+            first.id, first.token, true);
         if (review === 'declined') throw new Error('Expected review');
-        assert.equal(calls, 1);
-        assert.equal(review.phases.length, 4);
+        assert.deepEqual(review.phases.map(phase => phase.title), ['Foundation', 'Path', 'Towers', 'Polish']);
+        assert.deepEqual(progress.filter(item => item.messageId === first.id).map(item => item.stage),
+            ['checking-owner', 'validating-draft', 'preparing-draft', 'draft-ready']);
         assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-        assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
         assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token, review.token, false), undefined);
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-        finishReason = 'length';
-        const truncated = await makeOffer(); assert.ok(truncated);
+
+        const broken = await makeOffer('Phase 1 — Start\nPhase 3 — Gap'); assert.ok(broken);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            truncated.id, truncated.token, true, { connectionId: 'local', modelId: 'q4' }), /truncated/);
-        assert.equal(progress.filter(item => item.messageId === truncated.id).at(-1)?.stage, 'failed');
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-        finishReason = 'stop'; actualModelId = 'wrong';
-        const wrong = await makeOffer(); assert.ok(wrong);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            wrong.id, wrong.token, true, { connectionId: 'local', modelId: 'q4' }), /model changed/);
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-        actualModelId = 'q4';
-        cancelGeneration = () => backend.cancelTurn(projectHandle, chatId, lease.token);
+            broken.id, broken.token, true), /Phase numbers/);
+        assert.equal(progress.filter(item => item.messageId === broken.id).at(-1)?.stage, 'failed');
+
+        cancelNext = true;
         const cancelled = await makeOffer(); assert.ok(cancelled);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            cancelled.id, cancelled.token, true, { connectionId: 'local', modelId: 'q4' }), /cancelled/);
+            cancelled.id, cancelled.token, true), /cancelled/i);
         assert.equal(progress.filter(item => item.messageId === cancelled.id).at(-1)?.stage, 'cancelled');
         assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-        cancelGeneration = undefined;
+
         const finalOffer = await makeOffer(); assert.ok(finalOffer);
         const finalReview = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            finalOffer.id, finalOffer.token, true, { connectionId: 'local', modelId: 'q4' });
+            finalOffer.id, finalOffer.token, true);
         if (finalReview === 'declined') throw new Error('Expected final review');
-        evidenceVersion++;
-        await assert.rejects(backend.decideStrategicDraft(projectHandle, chatId, lease.token, finalReview.token, true), /source/);
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-        const freshOffer = await makeOffer(); assert.ok(freshOffer);
-        const freshReview = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            freshOffer.id, freshOffer.token, true, { connectionId: 'local', modelId: 'q4' });
-        if (freshReview === 'declined') throw new Error('Expected fresh review');
-        assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token, freshReview.token, true), 1);
+        assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token, finalReview.token, true), 1);
         assert.equal((await greenfield.readOpportunity(root)).drafts, 1);
         assert.equal((await new RoadmapStore().read(root)).revision, 0);
         assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
-        await assert.rejects(backend.decideStrategicDraft(projectHandle, chatId, lease.token, freshReview.token, true), /no longer current/);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -288,13 +256,16 @@ test('ordinary Chat offers a generic project roadmap and both consent routes sha
                     actualModelId: 'q4' };
             } else {
                 ordinaryCalls++;
+                const revised = request.messages.at(-1)?.content.includes('Please revise the inventory phase plan');
                 yield { type: 'complete' as const,
-                    text: 'Start with a validated inventory import, then add a stock report. I can generate a provisional Roadmap draft.',
+                    text: ordinaryCalls === 1 || revised ? 'Phase 1 — Import inventory\n- Validate inventory.csv rows\n' +
+                        'Phase 2 — Build reports\n- Add a stock report\n' +
+                        'I can generate a provisional Roadmap draft.' : 'No new Roadmap proposal.',
                     finishReason: 'stop', actualModelId: 'q4' };
             }
         } };
-        const composer = { compose: async () => ({ messages: [{ role: 'user',
-            content: `Plan inventory reports using verified inventory.csv (${sourceHash}):\n${evidence}` }],
+        const composer = { compose: async (_root: string, _chat: unknown, content: string) => ({ messages: [{ role: 'user',
+            content: `${content}\nPlan inventory reports using verified inventory.csv (${sourceHash}):\n${evidence}` }],
             refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0 }) };
         const grounder = { ground: async () => ({ blocks: [{ ref: { kind: 'file', id: 'inventory.csv',
             sourceHash, contentHash: sourceHash, includedBytes: Buffer.byteLength(evidence) } }] }) };
@@ -313,7 +284,7 @@ test('ordinary Chat offers a generic project roadmap and both consent routes sha
                 selectedModel: selection, content: 'Let us build an inventory reporting tool.' });
             assert.ok(turn.roadmapOffer, 'ordinary Chat must return an owner-checked typed offer');
             assert.match((await backend.get(projectHandle, chatId))!.messages.at(-1)!.content,
-                /validated inventory import/);
+                /Validate inventory.csv rows/);
             assert.equal(turn.roadmapOffer.projectId, projectId);
             if (route === 'decline') {
                 assert.equal(await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
@@ -334,10 +305,13 @@ test('ordinary Chat offers a generic project roadmap and both consent routes sha
                         leaseToken: nextLease.token, selectedModel: selection,
                         content: 'How should we plan the report?' });
                     assert.equal(resumed.roadmapOffer, undefined, 'decline must survive reload');
-                    const requested = await restored.runTurn({ projectHandle: attached.projectHandle, chatId,
+                    await assert.rejects(restored.runTurn({ projectHandle: attached.projectHandle, chatId,
                         leaseToken: nextLease.token, selectedModel: selection,
-                        content: 'Please generate a roadmap draft.' });
-                    assert.ok(requested.roadmapOffer, 'an explicit later request can renew the offer');
+                        content: 'Please generate a roadmap draft.' }), /already has a Roadmap decision/);
+                    const revised = await restored.runTurn({ projectHandle: attached.projectHandle, chatId,
+                        leaseToken: nextLease.token, selectedModel: selection,
+                        content: 'Please revise the inventory phase plan. End by offering a provisional Roadmap draft for review.' });
+                    assert.ok(revised.roadmapOffer, 'an explicit revised saved answer can receive a fresh offer');
                 } finally { restored.dispose(); }
                 continue;
             }
@@ -351,7 +325,7 @@ test('ordinary Chat offers a generic project roadmap and both consent routes sha
             }
             assert.ok(review && review !== 'declined');
             if (!review || review === 'declined') throw new Error('Review missing');
-            assert.equal(generationCalls, 1);
+            assert.equal(generationCalls, 0, 'saved-answer extraction must not call the model again');
             assert.ok(ordinaryCalls >= 1);
             assert.deepEqual(review.phases.map(phase => phase.title), ['Import inventory', 'Build reports']);
             assert.equal((await greenfield.readOpportunity(root)).drafts, 0);

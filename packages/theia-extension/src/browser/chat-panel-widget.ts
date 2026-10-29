@@ -238,10 +238,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         } else if (status === 'generating') {
             heading.textContent = 'Preparing Roadmap Draft';
             const stage = state.roadmapGenerationStage ?? action.stage;
-            note.textContent = stage === 'checking-owner' ? 'Checking project and Roadmap…' :
-                stage === 'generating-draft' ? 'Waiting for the selected model…' :
-                stage === 'validating-draft' ? 'Extracting and validating the saved answer…' :
-                stage === 'preparing-draft' ? 'Preparing editor…' :
+            note.textContent = stage === 'checking-owner' ? 'Checking Roadmap…' :
+                stage === 'generating-draft' ? 'Optional model expansion…' :
+                stage === 'validating-draft' ? 'Extracting saved plan…' :
+                stage === 'preparing-draft' ? 'Validating preview…' :
                 'Checking draft state…';
             actions.append(this.button('Cancel generation', () => void state.cancel()));
         } else if (status === 'ready' && liveReview) {
@@ -267,7 +267,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 status === 'failed' ? 'Roadmap Generation Failed' :
                 status === 'cancelled' ? 'Roadmap Generation Canceled' :
                 status === 'stale' ? 'Roadmap Action Stale' :
-                status === 'ready' ? 'Roadmap Review Expired' : 'Roadmap Offer Expired';
+                status === 'ready' ? 'Roadmap Review No Longer Available' : 'Roadmap Offer No Longer Available';
             note.textContent = status === 'stale' ?
                 'The offer or review session ended. Ask Chat for a new phase outline to continue.' :
                 action.diagnostic ?? (status === 'ready' ?

@@ -21,6 +21,7 @@ export function extractSavedRoadmap(chat: Chat, source: ChatAssistantMessage, pr
     const phases: StrategicDraftInput['phases'] = [];
     let fenced = false;
     let phaseMode = false;
+    let awaitingObjective = false;
     for (const line of lines) {
         if (/^```/.test(line)) { fenced = !fenced; continue; }
         if (fenced || !usable(line)) continue;
@@ -31,10 +32,16 @@ export function extractSavedRoadmap(chat: Chat, source: ChatAssistantMessage, pr
             const title = clean(match[2]);
             if (!title) throw new Error('A phase has no title');
             phases.push({ title, objective: '', checkpoints: [] });
+            awaitingObjective = true;
         } else if (phaseMode && phases.length && /^(?:[-*•]\s+)(.+)$/.test(line)) {
+            awaitingObjective = false;
             const title = clean(line.replace(/^[-*•]\s+/, ''));
             if (title && phases.at(-1)!.checkpoints.length < 16)
                 phases.at(-1)!.checkpoints.push({ title, objective: '', dependsOn: [] });
+        } else if (phaseMode && phases.length && awaitingObjective &&
+            !/^I can (?:generate|create|draft)\b/i.test(line)) {
+            phases.at(-1)!.objective = clean(line);
+            awaitingObjective = false;
         }
     }
     if (!phaseMode) {

@@ -81,6 +81,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly strategicBar = document.createElement('section');
     private strategic?: { uri: string; projectId: string; chatId: string; stage?: Extract<ChatEvent, { kind: 'planning-progress' }>['stage'];
         review?: ChatStrategicDraftReview; error?: string; busy?: boolean; decide: (approve: boolean) => Promise<void> };
+    private strategicFitToken?: string;
     private readonly path = document.createElement('div');
     private root?: Root;
     private flow?: ReactFlowInstance;
@@ -629,23 +630,31 @@ export class RoadmapCanvasWidget extends BaseWidget {
             throw new Error('Roadmap project or canonical owner changed before review');
         if (state.review && (state.review.projectId !== projectId || state.review.draft.revision !== state.review.revision))
             throw new Error('Strategic Roadmap preview has a foreign project or revision');
+        const fit = !!state.review && this.strategicFitToken !== state.review.token;
+        if (fit) this.initialCameraPending = false;
         this.strategic = { uri, projectId, chatId, ...state, decide };
         this.projection = this.withDraft(projectRoadmapTasks(this.inspector.index, this.taskStacks, this.owners,
             { projectId, selectedId: this.selectedId }));
         this.render();
-        if (state.review) requestAnimationFrame(() => {
-            if (this.strategic?.review?.token === state.review?.token && this.flow)
-                void this.flow.fitView({ padding: 0.12, maxZoom: 1 });
-        });
+        if (fit && state.review) {
+            this.strategicFitToken = state.review.token;
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                if (this.strategic?.review?.token === state.review?.token && this.flow)
+                    void this.flow.fitView({ padding: 0.12, maxZoom: 1 });
+            }));
+        }
     }
 
     clearStrategicReview(uri: string, chatId: string): void {
         if (this.strategic?.uri !== uri || this.strategic.chatId !== chatId) return;
         this.strategic = undefined;
+        this.strategicFitToken = undefined;
         this.strategicBar.hidden = true;
         if (this.inspector.index) {
             this.projection = this.withDraft(projectRoadmapTasks(this.inspector.index, this.taskStacks, this.owners,
                 { projectId: this.inspector.index.projectId, selectedId: this.selectedId }));
+            if (this.selectedId && !this.projection.nodes.some(node => node.id === this.selectedId))
+                this.selectedId = undefined;
             this.render();
         }
     }
@@ -963,16 +972,34 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.strategicBar.replaceChildren();
         this.strategicBar.hidden = !state;
         if (!state) return;
+        this.strategicBar.setAttribute('aria-label', 'Roadmap draft review');
         const heading = document.createElement('strong');
-        heading.textContent = state.review ? 'PROPOSED ROADMAP · NOT YET ACCEPTED' : 'Generating Roadmap';
+        const terminal = state.error || state.stage === 'failed' || state.stage === 'cancelled';
+        const incomplete = !!state.review && state.review.draft.phases.some(phase => !phase.checkpoints.length);
+        heading.textContent = terminal ? state.stage === 'cancelled' ? 'ROADMAP PREPARATION CANCELLED' :
+            'ROADMAP PREPARATION FAILED' : state.review ?
+            incomplete ? 'INCOMPLETE ROADMAP PROPOSAL · NOT YET ACCEPTED' : 'PROPOSED ROADMAP · NOT YET ACCEPTED' :
+            'PREPARING ROADMAP REVIEW';
         const progress = document.createElement('span');
-        const labels: Record<string, string> = { 'checking-owner': 'Checking Roadmap owner',
-            'generating-draft': 'Generating strategic phases with selected local model',
-            'validating-draft': 'Validating draft', 'preparing-draft': 'Preparing Roadmap preview',
-            'draft-ready': 'Ready for review', cancelled: 'Generation cancelled', failed: 'Generation failed' };
-        progress.textContent = state.error ?? (state.review ? 'Inspect the graph, then accept or reject this noncanonical proposal.' :
-            labels[state.stage ?? ''] ?? 'Waiting for selected model');
+        const labels: Record<string, string> = { 'checking-owner': 'Checking Roadmap',
+            'generating-draft': 'Optional model expansion', 'validating-draft': 'Extracting saved plan',
+            'preparing-draft': 'Validating preview', 'draft-ready': 'Ready for review',
+            cancelled: 'Preparation cancelled. Request a new proposal from Chat.',
+            failed: 'Preparation failed. Review Roadmap and request a new proposal from Chat.' };
+        progress.setAttribute('role', 'status');
+        progress.textContent = state.error ?? (state.review ?
+            `${incomplete ? 'Incomplete: add checkpoints before linked Markdown publication. ' : ''}` +
+            `${state.review.diagnostic ?? 'Inspect the graph, then accept or reject this noncanonical proposal.'}` :
+            labels[state.stage ?? ''] ?? 'Checking Roadmap');
         this.strategicBar.append(heading, progress);
+        if (state.review) {
+            const inspect = document.createElement('button'); inspect.type = 'button'; inspect.textContent = 'Inspect Proposal';
+            inspect.onclick = () => {
+                const first = state.review?.draft.phases[0];
+                if (first) this.select(first.id);
+            };
+            this.strategicBar.append(inspect);
+        }
         if (state.review) for (const [label, approve] of [['Accept Draft', true], ['Reject Draft', false]] as const) {
             const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
             button.disabled = !!state.busy;
@@ -994,7 +1021,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const item = checkpoint ?? (selected?.id === this.selectedId ? selected : undefined);
         this.draftInspection.hidden = !item;
         this.inspectionEditor.node.hidden = !!item;
-        if (!item) return;
+        if (!item) {
+            this.inspectionSummary.textContent = this.inspector.selected?.title ?? 'Checkpoint details';
+            return;
+        }
         this.inspectionSummary.textContent = `${item.title} · ${this.strategic?.review || this.reviewedPlan?.preview ? 'Proposed' : 'Accepted draft'}`;
         const names = new Map(draft!.phases.flatMap(phase => [[phase.id, phase.title] as const,
             ...phase.checkpoints.map(child => [child.id, child.title] as const)]));
@@ -1005,6 +1035,16 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const dependencies = document.createElement('p');
             dependencies.textContent = `Depends on: ${checkpoint.dependencies.map(id => names.get(id) ?? id).join(', ')}`;
             this.draftInspection.append(dependencies);
+        }
+        if (this.strategic?.review) {
+            const coverage = document.createElement('p');
+            coverage.textContent = this.strategic.review.diagnostic ?? 'Check source requirements before accepting.';
+            this.draftInspection.append(coverage);
+            if (!selected?.checkpoints.length) {
+                const missing = document.createElement('p');
+                missing.textContent = 'Incomplete phase: no checkpoints were supplied. Accept only as a noncanonical draft to refine; linked Markdown cannot be published yet.';
+                this.draftInspection.append(missing);
+            }
         }
         const authority = document.createElement('p'); authority.textContent =
             this.strategic?.review ? 'Proposed strategic Roadmap. Accept or reject in Roadmap; no file has been written.' :

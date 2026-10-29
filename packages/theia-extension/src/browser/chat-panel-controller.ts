@@ -527,7 +527,7 @@ export class ChatPanelController {
             if (outcome !== 'declined') this.strategicDraftReview = outcome;
         } catch (error) {
             if (generation !== this.generation || lease !== this.lease) return;
-            this.error = `Roadmap offer was not accepted: ${String(error)}. Request a new offer in this Chat.`;
+            this.error = `Roadmap offer was not accepted: ${String(error)}. Ask Chat for a revised phase plan before another offer.`;
         } finally {
             if (generation !== this.generation || lease !== this.lease) return;
             this.roadmapOffer = undefined; this.roadmapGenerationStage = undefined;

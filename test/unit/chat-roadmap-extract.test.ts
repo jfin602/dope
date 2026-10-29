@@ -38,6 +38,15 @@ test('phase headings and supported bullets are extracted once without unsupporte
     assert.match(answer.content, /Weeks 1–2/);
 });
 
+test('phase-only answer retains its saved objectives without inventing checkpoints', () => {
+    const answer = source('Phase 1 — Core loop\nCreate a fixed enemy path.\n\nPhase 2 — Economy\n' +
+        'Grant money from kills to buy towers and abilities.\nI can generate a draft for review.');
+    const parsed = extractSavedRoadmap(chat(answer), answer, 'project-1', 0);
+    assert.deepEqual(parsed.phases.map(item => item.objective),
+        ['Create a fixed enemy path.', 'Grant money from kills to buy towers and abilities.']);
+    assert(parsed.phases.every(item => item.checkpoints.length === 0));
+});
+
 test('incomplete, quoted and broken sequences fail closed', () => {
     for (const content of ['> Phase 1: First\n> Phase 2: Second', 'Phase 1: First\nPhase 3: Third',
         '1. First\n3. Third', 'Phase 1: First\nPhase 2: Second...']) {

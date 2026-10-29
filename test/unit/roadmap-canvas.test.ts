@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { projectRoadmapDraft, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { projectRoadmapDraft, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import { roadmapEdgeStatus, roadmapStatusMark, type RoadmapStatus } from '../../packages/theia-extension/src/browser/roadmap-status-style.ts';
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
@@ -44,6 +44,31 @@ test('strategic preview numbers ordered phases without changing identities or de
     const reordered = projectRoadmapDraft(base, undefined, { revision: 1, phases: [second, first] });
     assert.deepEqual(reordered.nodes.filter(item => item.kind === 'phase').map(item => [item.id, item.title]),
         [['stable-b', 'Phase 1 — Combat'], ['stable-a', 'Phase 2 — Foundation']]);
+});
+
+test('five-phase preview groups checkpoints and correction without changing stored dependencies', () => {
+    const base: RoadmapProjection = { projectId: 'project', revision: 0, nodes: [], edges: [],
+        pools: { ideas: [], issues: [] }, diagnostics: [] };
+    const phases = Array.from({ length: 5 }, (_, index) => ({ id: `phase-${index + 1}`,
+        title: `Phase ${index + 1} — Step ${index + 1}`, objective: '',
+        checkpoints: [{ id: `checkpoint-${index + 1}`, title: `Checkpoint ${index + 1}`, objective: '',
+            dependencies: index ? [`checkpoint-${index}`] : [] }] }));
+    const correction = { id: 'correction', title: 'Review correction', objective: '', checkpoints: [],
+        kind: 'correction' as const, parentId: 'phase-2' };
+    const proposed = projectRoadmapDraft(base, undefined, { revision: 1, phases: [...phases, correction] });
+    assert.deepEqual(proposed.nodes.filter(item => item.kind === 'phase').map(item => item.title),
+        phases.map((_, index) => `Phase ${index + 1} — Step ${index + 1}`));
+    const positions = roadmapSpatialLayout(proposed);
+    for (const phase of phases) {
+        assert.equal(positions.get(phase.id)?.x, positions.get(phase.checkpoints[0].id)?.x! - 28);
+        assert.ok(positions.get(phase.checkpoints[0].id)!.y > positions.get(phase.id)!.y);
+    }
+    assert.ok(positions.get('correction')!.y < positions.get('phase-2')!.y);
+    assert.equal(proposed.edges.filter(edge => edge.kind === 'dependency').length, 4);
+    const reordered = projectRoadmapDraft(base, undefined, { revision: 1,
+        phases: [phases[4], ...phases.slice(0, 4), correction] });
+    assert.equal(reordered.nodes.find(item => item.id === 'phase-5')?.title, 'Phase 1 — Step 5');
+    assert.equal(reordered.nodes.find(item => item.id === 'checkpoint-5')?.id, 'checkpoint-5');
 });
 
 test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens and no Chat docking effects', () => {
