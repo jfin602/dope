@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
-    ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal,
+    ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
     ChatContextSelection } from '@dope/chat/lib/service';
 import { suggestedChatTitle, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
@@ -102,6 +102,7 @@ export class ChatBackend implements ChatService {
     private readonly pendingCancel = new Map<string, string>();
     private readonly proposals = new Map<string, { id: string; messageId: string; leaseToken: string;
         handle?: string; request?: PlanningActionRequest; token?: string; changedIds: string[];
+        roadmapOffer?: ChatRoadmapOffer;
         draft?: { handle: string; preview: GreenfieldEditPreview };
         plan?: { handle: string; preview: ImplementationPlanPreview } }>();
     private readonly planUndo = new Map<string, { handle: string; leaseToken: string; revision: number }>();
@@ -303,7 +304,7 @@ export class ChatBackend implements ChatService {
     async release(projectHandle: string, chatId: string, token: string) {
         const root = this.active(projectHandle);
         await this.repository.release(root, chatId, token);
-        if (this.leases.get(chatId)?.token === token) this.leases.delete(chatId);
+        if (this.leases.get(chatId)?.token === token) { this.leases.delete(chatId); this.clearProposal(chatId); }
     }
     publishDelta(request: ChatDeltaRequest) {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat delta request');
@@ -316,6 +317,46 @@ export class ChatBackend implements ChatService {
         if (pending?.draft) this.greenfield?.clearEditPreview(pending.draft.handle);
         if (pending?.plan) this.greenfield?.clearImplementationPlanPreview(pending.plan.handle);
         this.proposals.delete(chatId);
+    }
+
+    private async offerRoadmap(root: string, chatId: string, messageId: string,
+        leaseToken: string, opportunity: string | undefined, output: string): Promise<ChatRoadmapOffer | undefined> {
+        if (!opportunity?.includes('revision zero') || !/\broadmap\b/i.test(output) ||
+            !/\bdraft\b/i.test(output) || !this.greenfield || this.proposals.has(chatId)) return undefined;
+        const state = await this.greenfield.readOpportunity(root);
+        if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation ||
+            state.drafts || state.acceptedPlans || state.pendingPlans) return undefined;
+        if (!this.handle || this.root !== root) return undefined;
+        const offer: ChatRoadmapOffer = { id: randomUUID(), token: randomUUID(), projectHandle: this.handle,
+            projectId: state.projectId,
+            chatId, ownerId: state.projectId, ownerRevision: state.revision, basis: 'empty-owner',
+            expiresAt: Date.now() + 5 * 60_000 };
+        this.proposals.set(chatId, { id: offer.id, messageId, leaseToken, changedIds: [], roadmapOffer: offer });
+        return offer;
+    }
+
+    async decideRoadmapOffer(projectHandle: string, chatId: string, leaseToken: string,
+        offerId: string, token: string, approve: boolean): Promise<'declined' | 'generation-unavailable'> {
+        const root = this.active(projectHandle), pending = this.proposals.get(chatId);
+        const offer = pending?.roadmapOffer;
+        if (!offer || offer.id !== offerId || offer.token !== token || offer.chatId !== chatId ||
+            offer.projectHandle !== projectHandle ||
+            pending?.leaseToken !== leaseToken || this.leases.get(chatId)?.token !== leaseToken ||
+            this.turns.has(chatId) || typeof approve !== 'boolean' || Date.now() >= offer.expiresAt)
+            throw new Error('Roadmap offer expired or is no longer current; ask again in this Chat');
+        // Consume before any await: simultaneous button/text submissions cannot both pass.
+        this.proposals.delete(chatId);
+        await this.repository.renew(root, chatId, leaseToken);
+        if (!approve) return 'declined';
+        if (!this.greenfield || !(await this.repository.read(root)).chats.some(chat => chat.id === chatId))
+            throw new Error('Roadmap offer Chat is unavailable');
+        const state = await this.greenfield.readOpportunity(root);
+        if (state.projectId !== offer.projectId || state.revision !== offer.ownerRevision ||
+            state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts ||
+            state.acceptedPlans || state.pendingPlans)
+            throw new Error('Roadmap owner or draft changed; review Roadmap and request a new offer');
+        // P3 supplies the generation implementation. Consent does not create a draft or canonical file.
+        return 'generation-unavailable';
     }
 
     private async retirePending(root: string, chatId: string, leaseToken: string): Promise<void> {
@@ -618,6 +659,16 @@ export class ChatBackend implements ChatService {
 
     async runTurn(request: ChatTurnRequest): Promise<ChatTurnResult> {
         const root = this.active(request.projectHandle);
+        // Only this exact developer-authored phrase can resolve the current saved Chat offer.
+        // Retries and quoted/embedded affirmatives never carry generation consent.
+        if (!request.retryMessageId && /^yes,?\s+create the roadmap[.!]?$/i.test(request.content?.trim() ?? '')) {
+            const offer = this.proposals.get(request.chatId)?.roadmapOffer;
+            if (!offer) throw new Error('No current Roadmap offer in this Chat; request a new offer first');
+            const decision = await this.decideRoadmapOffer(request.projectHandle, request.chatId,
+                request.leaseToken, offer.id, offer.token, true);
+            return { refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0,
+                ...(decision === 'generation-unavailable' ? { roadmapOfferDecision: decision } : {}) };
+        }
         if (!this.models || this.turns.has(request.chatId)) throw new Error('Chat turn already active or runtime unavailable');
         const snapshot = await this.repository.read(root);
         const chat = snapshot.chats.find(item => item.id === request.chatId);
@@ -914,7 +965,11 @@ export class ChatBackend implements ChatService {
                             kind === 'no-action' ? 'no-action' : bridge && kind === 'bridge-proposal' ? 'suggested' :
                                 result.proposal ? 'pending' : 'rejected');
                     }
-                    return { ...preview, ...result };
+                    const roadmapOffer = !request.retryMessageId && !localRoadmap &&
+                        !bridgeSelection && !request.planningSteps && !planOnly ?
+                        await this.offerRoadmap(root, key, assistant.id, request.leaseToken, opportunity, output)
+                            .catch(() => undefined) : undefined;
+                    return { ...preview, ...result, ...(roadmapOffer ? { roadmapOffer } : {}) };
                 }
             }
             throw new Error('Model stream ended without completion');

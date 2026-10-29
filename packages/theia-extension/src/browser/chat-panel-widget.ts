@@ -1866,6 +1866,29 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             });
             composer.append(selectedContext);
         }
+        if (state.roadmapOffer) {
+            const offer = document.createElement('section');
+            offer.className = 'dope-chat-roadmap-offer';
+            offer.setAttribute('aria-label', 'Optional Roadmap draft generation offer');
+            const heading = document.createElement('strong');
+            heading.textContent = 'Draft Roadmap available';
+            const note = document.createElement('p');
+            note.textContent = 'This is a provisional draft offer. Generation is not yet available in this version; no Roadmap file will be created.';
+            const actions = document.createElement('div');
+            actions.className = 'dope-chat-roadmap-offer-actions';
+            const decide = (approve: boolean) => void state.decideRoadmapOffer(approve).then(() =>
+                this.content.querySelector<HTMLElement>('.dope-chat-roadmap-offer-status')?.focus());
+            const generate = this.button('Generate Draft Roadmap', () => decide(true), state.pending || state.running);
+            generate.className = 'dope-chat-roadmap-offer-primary';
+            actions.append(generate, this.button('Not now', () => decide(false), state.pending || state.running));
+            offer.append(heading, note, actions);
+            composer.append(offer);
+        }
+        if (state.roadmapOfferStatus) {
+            const note = document.createElement('p'); note.setAttribute('role', 'status');
+            note.className = 'dope-chat-roadmap-offer-status'; note.tabIndex = -1;
+            note.textContent = state.roadmapOfferStatus; composer.append(note);
+        }
         if (state.planningProposal) {
             const proposal = state.planningProposal;
             const review = document.createElement('section');

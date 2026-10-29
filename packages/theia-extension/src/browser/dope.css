@@ -987,3 +987,13 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-pools button { width: auto; display: inline-block; margin-left: auto; padding: 5px 8px; color: var(--theia-button-secondaryForeground, var(--theia-foreground)); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); cursor: pointer; }
 .dope-roadmap-pools button:disabled { opacity: .6; cursor: default; }
 .dope-roadmap-pools :is(input, button):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-chat-roadmap-offer {
+    border: 1px solid #a65b2f;
+    border-radius: 6px;
+    padding: 10px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.dope-chat-roadmap-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.dope-chat-roadmap-offer-primary { background: #9a4d22; color: #fff; border-color: #9a4d22; }
+.dope-chat-roadmap-offer-primary:focus-visible { outline: 2px solid #f0aa72; outline-offset: 2px; }

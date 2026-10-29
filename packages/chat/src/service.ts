@@ -47,10 +47,14 @@ export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'histor
 export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
 export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: string; ownerId: string;
     revision: number; changedIds: string[]; action: { type: string; id: string }; summary: string }
+/** A transient, noncanonical permission to attempt one draft generation. Never a draft or publication grant. */
+export interface ChatRoadmapOffer { id: string; token: string; projectHandle: string; projectId: string; chatId: ChatId;
+    ownerId: string; ownerRevision: number; basis: 'empty-owner'; expiresAt: number }
 export interface ChatPlanPreview { coverage: { id: string; text: string;
     status: 'covered' | 'needs-review' | 'missing'; explanation: string; stepNumbers: number[] }[] }
 export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal;
-    proposalError?: string; planPreview?: ChatPlanPreview }
+    proposalError?: string; planPreview?: ChatPlanPreview; roadmapOffer?: ChatRoadmapOffer;
+    roadmapOfferDecision?: 'generation-unavailable' }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;
@@ -77,6 +81,8 @@ export interface ChatService {
     runTurn(request: ChatTurnRequest): Promise<ChatTurnResult>;
     decidePlanningProposal(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined>;
+    decideRoadmapOffer(projectHandle: string, chatId: ChatId, leaseToken: string,
+        offerId: string, token: string, approve: boolean): Promise<'declined' | 'generation-unavailable'>;
     undoPlanningRevision(projectHandle: string, chatId: ChatId, leaseToken: string,
         expectedRevision: number): Promise<number>;
     cancelTurn(projectHandle: string, chatId: ChatId, leaseToken: string): Promise<void>;
