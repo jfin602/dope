@@ -56,6 +56,27 @@
 | UX-020 | **Owner-approved feature/UX design, 2026-10-28; provisional P1; G3 NOT IMPLEMENTED/NOT RUN** | After the initial PixiJS planning turn, Chat repeats content across systems/order lists, misses the opportunity to offer an authorized Roadmap draft, and has no verified button-or-confirmation tool that generates a complete strategic multi-phase draft with visible progress and main-editor focus. **No real G3 code/UI reproduction yet.** | **DESIGN APPROVED / NOT QUALIFIED.** Complete G2 first; G3-A short useful continuity, G3-B checked owner-aware offer, G3-C button + contextual typed consent and multi-phase draft review, G3-D truthful progress and existing Roadmap editor navigation. Distinguish approve-generation from accept-draft from canonical Markdown publish. Never duplicate existing Roadmap/Chat owner or force Work. [Contract](greenfield-experience-contract.md) and [matrix](panel-usability-matrix.md). |
 
 
+## UX-020 — Real-native G3 recovery evidence and issue breakdown (2026-10-29; owner-observed)
+
+The existing UX-020 row remains its **historical 2026-10-28 design state**. This section supersedes its no-live-evidence assumption for current G3 assessment, **without changing old records**. Main `57bf7267` (then `c8c8bfe` added message-attached action history) / version `0.11.8`; actual Electron binary/source parity not proven. Native screenshot/transcript support observations, not every hypothesized root cause.
+
+| ID | Failure / requirement | Severity | Evidence and qualification target |
+| --- | --- | --- | --- |
+| G3-01 | Natural "Let's make a roadmap", repeated and bare "Roadmap" generate prose rather than executable proposal | P0 | Native transcript; narrow `offerRoadmap` regex. Owner-aware intent must activate draft preparation, ambiguity asks once. |
+| G3-02 | A second LLM inference generates strict JSON after a plan already exists | P0 | `ChatBackend.decideRoadmapOffer` calls `models.generate`. Default response-first deterministic parser; zero extra inference in ordinary path. |
+| G3-03 | Follow Interactive lacks an exact selected model for draft generation | P0 | Native "Select an exact local model" while source Chat had local Q4 provenance. Parser should be model-independent; optional expansion resolves verified permitted model. |
+| G3-04 | One recoverable failure irreversibly consumes offer | P1 | Current backend consumes before preflight; ensure safe retry/renewal with concurrency protection. |
+| G3-05 | Roadmap action controls deform Chat composer | P1 | Earlier UI, `ChatPanelWidget` composer; render only under source assistant message. |
+| G3-06 | Durable action state/history tied to source assistant turn | P1 | Required, partially implemented in `c8c8bfe` `ChatRoadmapAction`. Confirm lifecycle/reload/terminal status with real UI; do not duplicate storage. |
+| G3-07 | Review must happen on visible proposed canvas before accept/reject | P0 | Canvas strategic bar exists but native positive flow blocked; real visual decision and canonical no-write needed. |
+| G3-08 | Phase hierarchy/connector readability | P1 | Earlier screenshot dense dependencies, numbering partly coded; horizontal Phase N and checkpoint grouping with subdued secondary edges. |
+| G3-09 | Fabricated schedule estimates (Weeks 1–2 etc.) | P1 | Native model prose. No speculative Roadmap schedules; strip unsourced labels from draft, preserve original Chat and user-provided constraints. |
+| G3-10 | Missing/altered user requirements | P1 | Native model phase outlines delay main-tower health or omit abilities. Show uncovered developer constraints, do not invent completion. |
+| G3-11 | Claims a proposed feature is implemented without code evidence | P1 | Native transcript says already has pathing/grid/economy. Clarify source-backed facts vs unimplemented goals. |
+| G3-12 | Chrome checks not equivalent to actual Electron native runtime | P0 | Actual native fails. Both clients must run identical coherent source/build and workflow; builds alone are insufficient. |
+| G3-13 | Failure/progress display says "Generating" after terminal error | P2 | Native screenshot; terminal error/cancelled UI must be accurate and recoverable. |
+
+Recovery sequence: Loop 1 G3-01/02/03/04/09/10/11; Loop 2 G3-05/06; Loop 3 G3-07/08/13; Loop 4 G3-12 and R1–R7. Use real persistent tower-defense game only for authorized non-destructive owner workflow; disposable roots for negative tests. Phase 11 NOT GREEN.
 ## Runtime investigation — H2 browser backend exits
 
 **Investigating / Evidence Gap (no new confirmed UX ID or severity yet).** The [H2 report](../../tasks/p11/h2-history-evidence-preview-readability.md) records **three browser backend exits with code 139** during reload/build transitions, with successful subsequent restart and exact-bundle preview. The cause, affected binary and reproducibility were not established. Do **not** assign these to LM Studio, label them a proven product root cause, claim a fix, or use them to erase H2's independently passing deterministic preview. A future isolated investigation should capture process ID, signal/core dump/backtrace when present, backend/build logs, source/bundle SHA, concurrent reload/builds and reproduction. Only then classify severity and a stable runtime/UX issue ID; report any additional H02 observations separately.

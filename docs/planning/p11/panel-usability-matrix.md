@@ -27,6 +27,21 @@
 
 Qualify in real Codex/Chrome browser with actually selected local model and source/execution provenance, plus safe disposable projects for destructive/foreign/permission/secret negatives. No fake Green from synthetic responses, Electron build, or a unit aggregate. This G3 requires a **separate future manual closeout** after G2; no editing previously authored prompt files or historical outcomes.
 
+## G3 recovery — native + Chrome R1–R7 (approved 2026-10-29; NOT QUALIFIED)
+
+Historical G3-A–D entries above retain their dates/dispositions. **G3-E** explicitly covers source-message action history. Source design reviewed at `57bf7267`, then `c8c8bfe` committed some action-history code; source at manual test must be freshly recorded. User's real native failures control the current verdict regardless of earlier Chrome or unit success. No new Green has been claimed.
+
+| Gate | Exact human task and positive evidence | Negative/authority checks | Current |
+| --- | --- | --- | --- |
+| **R1 Intent** | Replay "Let's make a roadmap first", "lets make a roadmap", and contextual "Roadmap" after the owner's initial PixiJS design; enter typed Roadmap action instead of repeated prose. | Ambiguous standalone bare word must not mutate, wrong/initialized owner suppresses duplicate. | NOT GREEN native |
+| **R2 Zero-inference extraction** | Parse the exact assistant implementation sequence, not parallel feature list, to phased proposed draft; model `generate` call count is **zero after the completed Chat answer**. | Incomplete/competing/quoted lists fail safely; no invented checkpoints; optional AI expansion requires separate permission. | NOT RUN |
+| **R3 Fidelity and no estimates** | Verify PixiJS, fixed path, kill income, persistent main-tower HP, zero-HP loss, towers+abilities are covered or explicitly flagged uncovered. New Roadmap has no invented week ranges/dates. | Existing files vs user-desired features are not conflated; preserve explicit developer-authored deadlines and exact Chat text. | NOT GREEN native |
+| **R4 Authorization** | Clear request or matching action card prepares noncanonical preview; stale-free retries on recoverable failures. | Reject foreign project/chat/offer/lease/revision, duplicate and double click; no implicit canonical/Work permission. | NOT GREEN native |
+| **R5/G3-E Message history** | Native and Chrome action card appears under owning assistant message with Offered/Ready/Accepted/Rejected/Failed; after new turn and reload same status. Composer stable. | No reusable stale tokens, debug/card data not copied, drag/selection preserved, wrong message/project denied. | EVIDENCE GAP |
+| **R6 Canvas review** | Existing Roadmap main editor shows numbered horizontal proposed phases and checkpoint groups **before** Accept/Reject; editor only owns decision and distinct canonical Markdown approval. | Failure/Cancel no generating header/phantom canvas; no implicit publication, dependency data retained. | PARTIAL / NOT GREEN |
+| **R7 Native/browser parity** | Same exact built source and comparable project/Roadmap/model state, exact owner transcript operated in **Google Chrome and Electron**, with source/bundle/model provenance and screenshots. | Electron startup/cache mismatch investigated; never infer native pass from browser-only run/build. | NOT GREEN native |
+
+Constrain the full game source to read-only unless owner authorizes the actual draft action; use disposable project copies for duplicate, rejection, stale and destructive negatives. Real output counts/times are evidence when available, but never invent implementation time estimates for project Roadmaps. Final correction closeout is distinct from overall Phase 11 Green.
 ## Current Bridge/Phase Focus evidence — 2026-10-19 (older P4 table remains historical)
 
 | Gate | Latest source-bound observation | Current scoped disposition |
