@@ -1,0 +1,38 @@
+TASK: Correction 11 / P4 — Native and Chrome G3 recovery qualification closeout
+
+CONFIGURATION
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE & AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/tasks/c11-g3-recovery/README.md`, the assessment/plan, `docs/planning/p11/greenfield-experience-contract.md`, the UX-020 issue section, G3 R1-R7 matrix and ADRs 0025/0036. Inspect actual local `git status --short`, HEAD, manifest version and concurrent uncommitted changes, related product code/test and actual process/build; the GitHub review source `c8c8bfe` and docs baseline `8d57ffe` are not a local checkout assertion. Preserve source and worktree; no reset/stash/clean/force-push/self-commit, dependency/version/lockfile changes, override of existing work, historical prompt/closeout editing or new branch. Do not run /activate. If there is a conflict, owner-controlled state uncertainty or version drift, STOP and report. Scope <=8-minute-focused implementation when safe (10 min soft/15 hard); do not trade correctness for a time estimate. No new ChatPanel, RoadmapStore, Greenfield owner, model provider fallback, arbitrary model shell/file/network tool or Work run. Never modify the owner's persistent PixiJS game source or perform destructive testing there. Permission to prepare a noncanonical Roadmap proposal is distinct from accepting the proposal and separately approving canonical linked Markdown. Phase 11 OPEN, G3 NOT GREEN until qualified in real native & browser.
+
+THIS IS A MANUAL QUALIFICATION/CLOSEOUT, NOT AN IMPLEMENTATION PROMPT.
+Read full P1-P3 results. Inspect exact Git HEAD/worktree, current app version, source/build hashes and runtime model connection details. Build, then independently establish that the actual Chrome-served and **native Electron process** are using the same product source; a passing `npm run build:electron` alone is NOT a native GUI test. Use Codex browser to operate Chrome; inspect native Electron through actual available GUI/computer-control method or collect explicit **owner-operated native steps + screenshots/logs/provenance**. If Electron cannot be operated or verified, mark R7 BLOCKED/EVIDENCE GAP, never claim parity. Do not assume that an app title/version number proves identical bundles. Protect the owner game; disposable project clones for negative and accept/reject tests.
+
+REAL TESTS — exact native owner conversation
+Developer original design:
+"I want to make a 2D tower defense game with PixiJS. Let's do a fixed enemy path. You collect money for killing enemies. Your main tower has persistent health throughout every wave. If your tower health reaches 0 you lose. You use your money to buy more towers and abilities."
+Then native follow-up:
+"Lets make a roadmap first"
+Follow-up regressions in independent fresh Chat/owner-safe fixture:
+"lets make a roadmap"
+"Roadmap"
+And previously failing explicit "Please generate a roadmap draft."
+
+R1 INTENT: First clear request activates app-owned proposed Roadmap creation, not another random prose list; bare ambiguous "Roadmap" asks a safe brief question only when context insufficient.
+R2 EXTRACTION: The current saved assistant phase sequence is the actual source; instrument/run evidence shows zero additional model inference for conversion. If two candidate lists exist, implementation order wins or ambiguity is surfaced, never duplicated phases. No exact-model requirement on parse-only path despite Follow Interactive. Optional explicit AI expansion independent.
+R3 FIDELITY: Screenshot/proposal shows numbered phases in actual source order with no unrequested Weeks N-M/dates; verified coverage or explicitly Uncovered status for PixiJS, fixed path, kill income, persistent main-tower HP, death at zero, buying towers and abilities. No claim those game systems are implemented absent inspected files.
+R4 AUTHORITY: Clear direct request or message-card approval prepares noncanonical preview with project/Chat/source/revision/lease checks, stale/foreign/duplicate denied. Recoverable failure not permanently destructive to offer; no linked Markdown or game file writes.
+R5 MESSAGE HISTORY: The action card appears beneath the originating **assistant** message, never inside composer; clean input after new turns and reload. Actual Offered/Ready/Accepted/Rejected/Failed stays aligned with backend; no old token replay; copy response/transcript excludes action/debug info and selection/drag-pan works.
+R6 CANVAS: Existing main Roadmap opens and displays proposed ordered Phase 1...N, grouped milestones, readable dependencies, and editor-only Accept/Reject *before* persistence. Accept noncanonical only; Reject no write. Failed/Cancelled state not stuck in "Generating"; keyboard/narrow/Chat placement/recovery documented.
+R7 PARITY: Actually run **both** Chrome and Electron on exact verified coherent source with comparable project/owner state, user-visible action, model provenance where relevant, and screenshots/accessible state. Browser-only results cannot establish native Green.
+
+NEGATIVE VALIDATION
+Use disposable fixture for already-existing canonical Roadmap, competing draft, stale project/owner revision, wrong Chat/lease, ambiguous input, model unavailable optional expansion, partial/incomplete phase list, quoted lists, missing checkpoint, source drift, rejection/cancel/reload and double-click. Owner game never subjected to destructive tests. Revalidate no canonical Markdown without separate preview/approval; no automatic Work. Do not repeatedly regenerate until lucky answer; record one bounded observed attempt per scenario and all failures.
+
+CLOSEOUT AND STOP
+For each R1–R7 record PASS/FAIL/BLOCKED/EVIDENCE GAP with exact source, actual full model reply, browser/native screenshots/logs, output/inference call count, approved/rejected source message/offer identity, actual phases and incomplete requirements, file no-write check, test/build commands/results and any backend exits. Only after coherent real GUI positives pass, run one justified full `npm run check` (if feasible) and preserve its independent outcome; never equate 100s of unit tests with native UX Green. Create **new observed evidence** at `docs/tasks/c11-g3-recovery/closeout.md` only after actual review; do not pre-author a passing report or edit any P*.txt. Explicitly mark G3 GREEN only with source-bound native and Chrome and owner approval. Phase 11 remains OPEN / NOT QUALIFIED absent broader gates. No self-commit and STOP.

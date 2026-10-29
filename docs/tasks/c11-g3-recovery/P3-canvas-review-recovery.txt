@@ -1,0 +1,29 @@
+TASK: Correction 11 / P3 — Numbered Roadmap canvas, review authority and truthful recovery
+
+CONFIGURATION
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE & AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/tasks/c11-g3-recovery/README.md`, the assessment/plan, `docs/planning/p11/greenfield-experience-contract.md`, the UX-020 issue section, G3 R1-R7 matrix and ADRs 0025/0036. Inspect actual local `git status --short`, HEAD, manifest version and concurrent uncommitted changes, related product code/test and actual process/build; the GitHub review source `c8c8bfe` and docs baseline `8d57ffe` are not a local checkout assertion. Preserve source and worktree; no reset/stash/clean/force-push/self-commit, dependency/version/lockfile changes, override of existing work, historical prompt/closeout editing or new branch. Do not run /activate. If there is a conflict, owner-controlled state uncertainty or version drift, STOP and report. Scope <=8-minute-focused implementation when safe (10 min soft/15 hard); do not trade correctness for a time estimate. No new ChatPanel, RoadmapStore, Greenfield owner, model provider fallback, arbitrary model shell/file/network tool or Work run. Never modify the owner's persistent PixiJS game source or perform destructive testing there. Permission to prepare a noncanonical Roadmap proposal is distinct from accepting the proposal and separately approving canonical linked Markdown. Phase 11 OPEN, G3 NOT GREEN until qualified in real native & browser.
+
+OBJECTIVE
+Complete the handoff from P1's zero-inference response parser and P2's message card into the EXISTING central Roadmap editor. Show a real numbered proposal BEFORE acceptance, with meaningful checkpoint grouping and a safe incomplete-draft state. Fix the owner's native screenshot that displayed an empty canvas and "Generating Roadmap" after a completed failure.
+
+SOURCE AND UX
+- `RoadmapGreenfield.previewStrategicDraft` / `acceptStrategicDraft` already manage transient noncanonical review and project authority.
+- `RoadmapCanvasWidget.presentStrategicReview` and `renderStrategicBar` already show proposal and Accept/Reject. `roadmap-canvas-model.projectRoadmapDraft` already derives `Phase N` from order; preserve and qualify.
+- `dope.roadmap.open` already opens the ONE main-editor canvas. The previous native error came from second local generation; for response-first no local model wait should appear.
+
+IMPLEMENTATION
+1. On authorized preparation open/focus the existing Roadmap main editor promptly (no new modal/second widget), checking actual project identity. Show truthful brief stages **Checking Roadmap -> Extracting saved plan -> Validating preview -> Ready for review**. No simulated streaming, fabricated percentage or waiting for Q4 when parser runs. Display meaningful terminal FAILED/CANCELLED state instead of "Generating Roadmap" header; safe retry/open recovery only when valid. If fast, render proposal immediately without artificial spinner/delay.
+2. Render P1 validated source proposal on existing canvas **before** Accept. Phase 1, Phase 2, ... from actual strategic phase order; do not duplicate user `Phase N` prefixes. Keep left-to-right primary phase path, checkpoints grouped vertically beneath parent, corrections branching vertically; subtle/uncluttered cross-checkpoint connectors while retaining real dependencies and graph IDs. Fit phases on initial opening, not continuously overriding user's pan/zoom. Phase-only incomplete preview is clearly labeled incomplete, not silently filled with fake checkpoints or allowed to publish prematurely.
+3. Provide actual visually readable Inspect/Accept Draft/Reject Draft inside the Roadmap editor, never the composer. If phase-only proposal requires additional support, show missing details/requirements in inspector so user can refine safely or decline; separate accepted **noncanonical** draft vs canonical linked Markdown publication. No backend write on opening preview; reject clears only transient proposal, no game or Roadmap file edit. Server-side revision/token/Chat/project/source/lease revalidation on Accept. Current editor decisions update original assistant action card from P2; wrong project or stale review fails closed.
+4. Developer requirements coverage: show six tower-defense decisions or explicit "Uncovered" at review, do not imply nonexistent source implementations. No invented weeks/months/time estimates on phase nodes; preserve explicit user deadlines as annotations when supported. Keep dark-orange restrained styles, accessible keyboard/aria, readable phase detail overlay and Chat dock.
+5. Native failure case "Select an exact local model" must no longer appear on the ordinary parser path; if optional expansion is separately invoked, its own precise model failure must leave a recoverable and non-generating UI state. Runtime disconnection should not strand busy/phantom roadmap.
+
+FOCUSED GATE
+Test ordered 4/5 phase proposals, no double "Phase 1" labels, stable IDs after reorder, parent grouping, dependencies unchanged despite reduced visible edges, correction vertical branch, incomplete no-checkpoint proposals, visual pre-accept, Accept/Reject and canonical no-write. Verify failed/cancelled terminal label, retry and project switch, no false status, no duplicate canvas and Chat dock unchanged. Focused typecheck/build/Node tests plus `git diff --check`, no repeated full aggregate. Browser-only smoke may be run as supplemental evidence but P4 must actually operate native Electron; STOP and report if editor review still fails.

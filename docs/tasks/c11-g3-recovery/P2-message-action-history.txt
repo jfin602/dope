@@ -1,0 +1,24 @@
+TASK: Correction 11 / P2 — Saved assistant Roadmap card and clean composer
+
+CONFIGURATION
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE & AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/tasks/c11-g3-recovery/README.md`, the assessment/plan, `docs/planning/p11/greenfield-experience-contract.md`, the UX-020 issue section, G3 R1-R7 matrix and ADRs 0025/0036. Inspect actual local `git status --short`, HEAD, manifest version and concurrent uncommitted changes, related product code/test and actual process/build; the GitHub review source `c8c8bfe` and docs baseline `8d57ffe` are not a local checkout assertion. Preserve source and worktree; no reset/stash/clean/force-push/self-commit, dependency/version/lockfile changes, override of existing work, historical prompt/closeout editing or new branch. Do not run /activate. If there is a conflict, owner-controlled state uncertainty or version drift, STOP and report. Scope <=8-minute-focused implementation when safe (10 min soft/15 hard); do not trade correctness for a time estimate. No new ChatPanel, RoadmapStore, Greenfield owner, model provider fallback, arbitrary model shell/file/network tool or Work run. Never modify the owner's persistent PixiJS game source or perform destructive testing there. Permission to prepare a noncanonical Roadmap proposal is distinct from accepting the proposal and separately approving canonical linked Markdown. Phase 11 OPEN, G3 NOT GREEN until qualified in real native & browser.
+
+OBJECTIVE
+Make the Roadmap action belong to its **original assistant message**, with compact native state and durable history, while the composer stays solely for writing/sending prompts and existing model/context/message controls. Source `c8c8bfe` ALREADY introduced `ChatRoadmapAction` on `ChatAssistantMessage` and `ChatRepository.recordRoadmapAction` with `roadmapActionCard(message)`. Audit and REPAIR that implementation; don't create a second action table, schema or ChatPanel.
+
+IMPLEMENTATION
+1. Trace new P1 extracted proposal from exact source assistant message ID/content hash into already-committed typed `ChatRoadmapAction`. Anchor actions to originating response even if developer later requested "lets make a roadmap" in a subsequent user turn. No "attach to last message" hack. Project ID, saved Chat, owner revision, offer identity and one-use token still checked backend. Only the trusted app renders a styled button, not model-supplied HTML/JSON.
+2. Ensure card directly follows assistant Markdown in transcript. State labels accurately distinguish Offered, Preparing/Extracting, Ready for review, Accepted (noncanonical), Rejected, Declined, Failed, Cancelled/Stale. "Generate Draft Roadmap"/"Not now" only if current offer valid. Ready and Accepted provide safe Open Roadmap action. Original assistant content/copy must be untouched. Use restrained dark-orange primary only, neutral secondary, keyboard/aria labels and narrow Chat placement.
+3. Remove ALL Roadmap-specific offer/review/progress/status/history widgets from `composer.append` paths, including obsolete `roadmapOfferStatus`, `roadmapOpenTarget` and strategic draft review notices where still present. Preserve non-Roadmap messaging status/model/context functionality and Work/other planning contracts. Do not merely hide via CSS. Avoid UI jumping as action changes and duplicate cards on streamed refresh.
+4. Persist action transitions through existing `ChatRepository.recordRoadmapAction` with verified server outcomes. Do not save authorization tokens or mark accepted until Greenfield accepts. After save, leave Chat, send another turn, reload, and restore: original card should show terminal status and never reissue permission. Offer expiration should display expired/stale and deny repeat. Canvas decision (P3) must update this same message card, not create a new Chat message. Preserve writer lease and project isolation. Make statuses meaningful without exposing raw provider/debug content.
+5. Verify Copy Response and Copy Transcript exclude card internals, debug/tool-call details, progress metadata; normal text selection and drag scrolling continue. Buttons cannot pan transcript; no second Chat system or visual duplicate.
+
+FOCUSED GATE
+Unit/backend-renderer integration for action source message ID/hash, multi-message, two saved Chats, multi-root, refresh/reload, completed, failed and declined/expired states, backend authority and no history resurrection. Static/dynamic renderer tests check no Roadmap widgets inside composer; keyboard and narrow layout; copy/drag unaffected. Existing P1 and G1/G2 tests pass. Build relevant packages, focused tests, `git diff --check`. Source test does not constitute actual UI Green; STOP for manual Chrome/Electron inspection of card and clean composer before P3.
