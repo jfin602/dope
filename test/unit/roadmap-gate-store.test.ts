@@ -174,7 +174,6 @@ test('dependency cycle and foreign reference cannot write; changed criteria inva
     const store = new RoadmapStore();
     const base = index(root, digest('unused'));
     delete (base as Partial<typeof base>).linkedDocument;
-    base.phases[0].qualificationStatus = 'green';
     await store.saveGateIndex(root, 0, 'uninitialized', base);
     const source = { projectId: 'owner-1', revision: 1, sha256: digest('tested source') };
     await store.mutateGateIndex(root, 1, 'owner-1', { type: 'evidence.propose', gateId: 'gate-1',
@@ -191,7 +190,7 @@ test('dependency cycle and foreign reference cannot write; changed criteria inva
     let current = await store.mutateGateIndex(root, 3, 'owner-1', { type: 'gate.create', id: 'gate-2',
         parentPhaseId: 'phase-1', designation: 'G2', title: 'Second', purpose: 'Verify second',
         criteria: [{ id: 'criterion-2', title: 'Observe second', expectedResult: 'Second is visible' }] });
-    assert.equal(current.phases[0].qualificationStatus, 'stale');
+    assert.equal(current.phases[0].qualificationStatus, 'unknown');
     const before = digest(await readFile(file));
     await assert.rejects(store.mutateGateIndex(root, 4, 'owner-1', { type: 'gate.dependencies', id: 'gate-1',
         dependencies: ['foreign-gate'] }), /dependency parent/);

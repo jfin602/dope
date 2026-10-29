@@ -53,10 +53,14 @@ export interface RoadmapGate {
     draftAcceptance: RoadmapDraftAcceptance;
     qualificationSource?: RoadmapSourceProof;
     qualificationBlockers?: string[];
+    waiver?: { authorizedBy: string; authorizedAt: string; reason: string; source: RoadmapSourceProof };
 }
-export type GateQualification = { status: 'green' | 'not-green' | 'unknown' | 'blocked' | 'stale'; reasons: string[] };
+export type GateQualification = { status: 'green' | 'not-green' | 'unknown' | 'blocked' | 'stale' | 'waived'; reasons: string[] };
 /** Read-only decision. A stored color or implementation status is never evidence. */
 export function evaluateGateQualification(gate: RoadmapGate, currentSource = gate.qualificationSource): GateQualification {
+    if (gate.waiver) return !currentSource || !sameRoadmapSource(gate.waiver.source, currentSource) ?
+        { status: 'stale', reasons: ['Exceptional Gate waiver source changed'] } :
+        { status: 'waived', reasons: [`Exceptional Gate waiver: ${gate.waiver.reason}`] };
     if (gate.qualificationBlockers?.length) return { status: 'blocked', reasons: [...gate.qualificationBlockers] };
     if (gate.draftAcceptance === 'proposed') return { status: 'unknown', reasons: ['Gate definition is proposed'] };
     if (!gate.criteria.length) return { status: 'unknown', reasons: ['Gate has no criteria'] };
@@ -96,7 +100,65 @@ export interface RoadmapPhase {
     implementationStatus: RoadmapImplementationStatus;
     qualificationStatus: RoadmapQualificationStatus;
     draftAcceptance: RoadmapDraftAcceptance;
-    gateSetCoverage: { status: 'unreviewed' } | { status: 'approved'; approvedBy: string; source: RoadmapSourceProof };
+    gateSetCoverage: { status: 'unreviewed' } | { status: 'approved'; approvedBy: string; reviewedAt: string;
+        approvedAtRevision: number; requiredGateIds: string[]; source: RoadmapSourceProof };
+    qualificationSource?: RoadmapSourceProof;
+    qualificationBlockers?: string[];
+    /** An exceptional disposition is recorded separately and never counts as Green. */
+    exception?: { kind: 'waived'; authorizedBy: string; authorizedAt: string; reason: string; source: RoadmapSourceProof };
+}
+export type PhaseQualification = { status: 'unplanned' | 'planned' | 'green' | 'not-green' | 'blocked' | 'stale' | 'waived';
+    qualified: number; required: number; reasons: string[] };
+/** Coverage is an owner decision about the complete required set, independent of Gate evidence. */
+export function evaluatePhaseQualification(index: RoadmapGateIndex, phaseId: string,
+    currentSource?: RoadmapSourceProof): PhaseQualification {
+    const phase = index.phases.find(item => item.id === phaseId);
+    if (!phase) throw new Error('Missing Roadmap Phase');
+    const gates = index.gates.filter(item => item.parentPhaseId === phaseId && item.draftAcceptance !== 'proposed');
+    const required = gates.length;
+    const results = gates.map(gate => {
+        const evidence = evaluateGateQualification(gate, currentSource);
+        const result = gate.qualificationStatus === 'stale' && evidence.status === 'green' ?
+                { status: 'stale', reasons: ['Gate status requires requalification'] } : evidence;
+        return { gate, result };
+    });
+    const qualified = results.filter(item => item.result.status === 'green').length;
+    const reasons: string[] = [];
+    let stale = results.some(item => item.result.status === 'stale');
+    if (!required) reasons.push('Phase has no accepted Gates');
+    if (phase.gateSetCoverage.status !== 'approved') reasons.push('Complete required Gate set is not approved');
+    else {
+        const approved = phase.gateSetCoverage;
+        const ids = gates.map(item => item.id).sort();
+        if (JSON.stringify(ids) !== JSON.stringify([...approved.requiredGateIds].sort())) {
+            reasons.push('Required Gate set changed since approval'); stale = true;
+        }
+        if (!currentSource || !sameRoadmapSource(approved.source, currentSource) ||
+            !phase.qualificationSource || !sameRoadmapSource(approved.source, phase.qualificationSource)) {
+            reasons.push('Phase source changed since Gate-set approval'); stale = true;
+        }
+        if (index.linkedDocument && (approved.source.path !== index.linkedDocument.path ||
+            approved.source.sha256 !== index.linkedDocument.sourceHash || index.linkedDocument.syncState !== 'synced')) {
+            reasons.push('Linked Roadmap source changed since Gate-set approval'); stale = true;
+        }
+    }
+    for (const { gate, result } of results) {
+        if (result.status !== 'green') reasons.push(`${gate.id}: ${result.status}${result.reasons.length ? ` (${result.reasons.join('; ')})` : ''}`);
+    }
+    for (const blocker of phase.qualificationBlockers ?? []) reasons.push(`Phase blocker: ${blocker}`);
+    if (!required) return { status: 'unplanned', qualified, required, reasons };
+    if (phase.exception) {
+        reasons.push(`Exceptional Phase waiver: ${phase.exception.reason}`);
+        if (!currentSource || !sameRoadmapSource(phase.exception.source, currentSource)) {
+            reasons.push('Exceptional Phase waiver source changed');
+            return { status: 'stale', qualified, required, reasons };
+        }
+        return { status: 'waived', qualified, required, reasons };
+    }
+    if (phase.qualificationBlockers?.length) return { status: 'blocked', qualified, required, reasons };
+    if (stale) return { status: 'stale', qualified, required, reasons };
+    if (phase.gateSetCoverage.status !== 'approved') return { status: 'planned', qualified, required, reasons };
+    return { status: reasons.length ? 'not-green' : 'green', qualified, required, reasons };
 }
 export interface RoadmapCorrection {
     id: string;
@@ -203,30 +265,49 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     const phaseOrders = new Set<number>();
     for (const item of phases) {
         assertion(record(item) && keys(item, ['id', 'projectId', 'title', 'objective', 'order', 'dependencies',
-            'implementationStatus', 'qualificationStatus', 'draftAcceptance', 'gateSetCoverage']) &&
+            'implementationStatus', 'qualificationStatus', 'draftAcceptance', 'gateSetCoverage'],
+            ['qualificationSource', 'qualificationBlockers', 'exception']) &&
             identity(item, projectId) && prose(item.title, 512) && prose(item.objective, 8192) && ordered(item.order) &&
-            references(item.dependencies, item.id as string) && states(item), 'phase fields');
+            references(item.dependencies, item.id as string) && states(item) &&
+            (item.qualificationSource === undefined || source(item.qualificationSource, projectId)) &&
+            (item.qualificationBlockers === undefined || Array.isArray(item.qualificationBlockers) &&
+                item.qualificationBlockers.length <= MAX_NESTED && item.qualificationBlockers.every(v => prose(v, 1024))) &&
+            (item.exception === undefined || record(item.exception) &&
+                keys(item.exception, ['kind', 'authorizedBy', 'authorizedAt', 'reason', 'source']) &&
+                item.exception.kind === 'waived' && identifier(item.exception.authorizedBy) &&
+                timestamp(item.exception.authorizedAt) && prose(item.exception.reason, 1024) &&
+                source(item.exception.source, projectId)), 'phase fields');
         const p = item as unknown as RoadmapPhase;
         assertion(!phaseOrders.has(p.order), 'duplicate phase order');
         phaseOrders.add(p.order); claim(p.id);
         const coverage = p.gateSetCoverage;
         assertion(record(coverage) && (coverage.status === 'unreviewed' ? keys(coverage, ['status']) :
-            coverage.status === 'approved' && keys(coverage, ['status', 'approvedBy', 'source']) &&
-            identifier(coverage.approvedBy) && source(coverage.source, projectId)), 'phase gate-set coverage');
+            coverage.status === 'approved' && keys(coverage, ['status', 'approvedBy', 'reviewedAt',
+                'approvedAtRevision', 'requiredGateIds', 'source']) && identifier(coverage.approvedBy) &&
+            timestamp(coverage.reviewedAt) && natural(coverage.approvedAtRevision) &&
+            (coverage.approvedAtRevision as number) <= (raw.revision as number) &&
+            Array.isArray(coverage.requiredGateIds) && coverage.requiredGateIds.length > 0 &&
+            coverage.requiredGateIds.length <= MAX_ENTITIES && coverage.requiredGateIds.every(identifier) &&
+            new Set(coverage.requiredGateIds).size === coverage.requiredGateIds.length &&
+            source(coverage.source, projectId)), 'phase gate-set coverage');
     }
     const gateOrder = new Set<string>();
     const designation = new Set<string>();
     for (const item of gates) {
         assertion(record(item) && keys(item, ['id', 'projectId', 'parentPhaseId', 'designation', 'title', 'purpose',
             'order', 'dependencies', 'criteria', 'implementationStatus', 'qualificationStatus', 'draftAcceptance'],
-            ['qualificationSource', 'qualificationBlockers']) &&
+            ['qualificationSource', 'qualificationBlockers', 'waiver']) &&
             identity(item, projectId) && identifier(item.parentPhaseId) && /^G[1-9][0-9]*$/.test(item.designation as string) &&
             prose(item.title, 512) && prose(item.purpose, 8192) && ordered(item.order) &&
             references(item.dependencies, item.id as string) && Array.isArray(item.criteria) &&
             item.criteria.length > 0 && item.criteria.length <= MAX_NESTED && states(item) &&
             (item.qualificationSource === undefined || source(item.qualificationSource, projectId)) &&
             (item.qualificationBlockers === undefined || Array.isArray(item.qualificationBlockers) &&
-                item.qualificationBlockers.length <= MAX_NESTED && item.qualificationBlockers.every(v => prose(v, 1024))), 'gate fields');
+                item.qualificationBlockers.length <= MAX_NESTED && item.qualificationBlockers.every(v => prose(v, 1024))) &&
+            (item.waiver === undefined || record(item.waiver) &&
+                keys(item.waiver, ['authorizedBy', 'authorizedAt', 'reason', 'source']) &&
+                identifier(item.waiver.authorizedBy) && timestamp(item.waiver.authorizedAt) &&
+                prose(item.waiver.reason, 1024) && source(item.waiver.source, projectId)), 'gate fields');
         const gate = item as unknown as RoadmapGate;
         assertion(phases.some(p => (p as RoadmapPhase).id === gate.parentPhaseId), 'gate parent phase');
         const localOrder = `${gate.parentPhaseId}\0${gate.order}`;
@@ -285,6 +366,18 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     for (const gate of gates as RoadmapGate[]) {
         if (gate.qualificationStatus === 'green')
             assertion(evaluateGateQualification(gate).status === 'green', 'unverified Gate Green');
+        if (gate.qualificationStatus === 'waived') assertion(!!gate.waiver, 'unreviewed Gate waiver');
+    }
+    for (const phase of phases as RoadmapPhase[]) {
+        if (phase.gateSetCoverage.status === 'approved') {
+            assertion(phase.gateSetCoverage.requiredGateIds.every(id => (gates as RoadmapGate[])
+                .some(gate => gate.id === id && gate.parentPhaseId === phase.id && gate.draftAcceptance !== 'proposed')),
+            'approved Gate set membership');
+        }
+        if (phase.qualificationStatus === 'green')
+            assertion(evaluatePhaseQualification(raw as unknown as RoadmapGateIndex, phase.id,
+                phase.qualificationSource).status === 'green', 'unverified Phase Green');
+        if (phase.qualificationStatus === 'waived') assertion(!!phase.exception, 'unreviewed Phase waiver');
     }
     if (raw.linkedDocument !== undefined) {
         const doc = raw.linkedDocument;

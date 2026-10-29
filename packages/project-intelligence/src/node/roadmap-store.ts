@@ -8,7 +8,8 @@ import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPe
 import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
-import { criterionHash, evaluateGateQualification, parseRoadmapGateIndex } from './roadmap-gate-domain';
+import { criterionHash, evaluateGateQualification, evaluatePhaseQualification, parseRoadmapGateIndex,
+    sameRoadmapSource } from './roadmap-gate-domain';
 import type { Criterion, GateEvidence, RoadmapCorrection, RoadmapGate, RoadmapGateIndex, RoadmapPhase, RoadmapSourceProof } from './roadmap-gate-domain';
 
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -169,7 +170,18 @@ export type RoadmapGateMutation =
     | { type: 'evidence.revoke'; gateId: string; criterionId: string; id: string;
         reviewerId: string; reviewedAt: string }
     | { type: 'gate.source'; id: string; source: RoadmapSourceProof }
-    | { type: 'gate.blockers'; id: string; reasons: string[] };
+    | { type: 'gate.blockers'; id: string; reasons: string[] }
+    | { type: 'gate.waiver.approve'; id: string; authorizedBy: string; authorizedAt: string;
+        reason: string; source: RoadmapSourceProof }
+    | { type: 'gate.waiver.revoke'; id: string }
+    | { type: 'phase.coverage.approve'; id: string; requiredGateIds: string[];
+        approvedBy: string; reviewedAt: string; source: RoadmapSourceProof }
+    | { type: 'phase.coverage.revoke'; id: string }
+    | { type: 'phase.source'; id: string; source: RoadmapSourceProof }
+    | { type: 'phase.blockers'; id: string; reasons: string[] }
+    | { type: 'phase.waiver.approve'; id: string; authorizedBy: string; authorizedAt: string;
+        reason: string; source: RoadmapSourceProof }
+    | { type: 'phase.waiver.revoke'; id: string };
 
 function citation(value: unknown): value is RoadmapCitation {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -435,6 +447,30 @@ export class RoadmapStore {
             if (candidate.projectRoot !== root || candidate.revision !== expectedRevision + 1)
                 throw new Error('Roadmap root or revision changed');
             // This general definition saver cannot manufacture reviewed qualification.
+            for (const item of candidate.phases) {
+                const previous = current.phases.find(entry => entry.id === item.id);
+                if (item.gateSetCoverage.status === 'approved' &&
+                    JSON.stringify(item.gateSetCoverage) !== JSON.stringify(previous?.gateSetCoverage) ||
+                    item.qualificationStatus === 'green' && previous?.qualificationStatus !== 'green' ||
+                    item.qualificationStatus === 'waived' && previous?.qualificationStatus !== 'waived' ||
+                    previous && (JSON.stringify(item.qualificationSource) !== JSON.stringify(previous.qualificationSource) ||
+                        JSON.stringify(item.qualificationBlockers) !== JSON.stringify(previous.qualificationBlockers) ||
+                        JSON.stringify(item.exception) !== JSON.stringify(previous.exception)))
+                    throw new Error('Phase qualification requires typed review operations');
+                if (item.gateSetCoverage.status === 'approved' && previous && (
+                    item.title !== previous.title || item.objective !== previous.objective ||
+                    item.draftAcceptance !== previous.draftAcceptance ||
+                    JSON.stringify(item.dependencies) !== JSON.stringify(previous.dependencies) ||
+                    JSON.stringify(candidate.gates.filter(gate => gate.parentPhaseId === item.id).map(gate =>
+                        [gate.id, gate.designation, gate.title, gate.purpose, gate.order, gate.draftAcceptance,
+                            gate.dependencies, gate.criteria.map(criterion => [criterion.id, criterion.title,
+                                criterion.expectedResult, criterion.order])])) !==
+                    JSON.stringify(current.gates.filter(gate => gate.parentPhaseId === item.id).map(gate =>
+                        [gate.id, gate.designation, gate.title, gate.purpose, gate.order, gate.draftAcceptance,
+                            gate.dependencies, gate.criteria.map(criterion => [criterion.id, criterion.title,
+                                criterion.expectedResult, criterion.order])]))))
+                    throw new Error('Phase requirements changed; revoke Gate-set coverage before saving');
+            }
             for (const previous of current.gates) {
                 for (const priorCriterion of previous.criteria) {
                     if (!priorCriterion.evidence.length) continue;
@@ -447,10 +483,12 @@ export class RoadmapStore {
             for (const gate of candidate.gates) {
                 const previous = current.gates.find(item => item.id === gate.id);
                 if (gate.qualificationStatus === 'green' && previous?.qualificationStatus !== 'green' ||
+                    gate.qualificationStatus === 'waived' && previous?.qualificationStatus !== 'waived' ||
                     !previous && gate.criteria.some(item => item.evidence.length) ||
                     previous && (gate.qualificationStatus !== previous.qualificationStatus ||
                         JSON.stringify(gate.qualificationSource) !== JSON.stringify(previous.qualificationSource) ||
                         JSON.stringify(gate.qualificationBlockers) !== JSON.stringify(previous.qualificationBlockers) ||
+                        JSON.stringify(gate.waiver) !== JSON.stringify(previous.waiver) ||
                         gate.criteria.some(item => JSON.stringify(item.evidence) !==
                             JSON.stringify(previous.criteria.find(entry => entry.id === item.id)?.evidence ?? []))))
                     throw new Error('Gate evidence and qualification require typed review operations');
@@ -699,27 +737,101 @@ export class RoadmapStore {
                 case 'gate.source':
                     if (operation.source.projectId !== expectedProjectId) throw new Error('Foreign tested source');
                     gate(operation.id).qualificationSource = operation.source;
+                    if (gate(operation.id).waiver && !sameRoadmapSource(gate(operation.id).waiver!.source, operation.source))
+                        delete gate(operation.id).waiver;
                     break;
                 case 'gate.blockers':
                     gate(operation.id).qualificationBlockers = operation.reasons;
                     break;
+                case 'gate.waiver.approve': {
+                    const item = gate(operation.id);
+                    if (operation.source.projectId !== expectedProjectId || !item.qualificationSource ||
+                        !sameRoadmapSource(operation.source, item.qualificationSource))
+                        throw new Error('Exceptional Gate waiver requires current owned source');
+                    item.waiver = { authorizedBy: operation.authorizedBy, authorizedAt: operation.authorizedAt,
+                        reason: operation.reason, source: operation.source };
+                    break;
+                }
+                case 'gate.waiver.revoke':
+                    if (!gate(operation.id).waiver) throw new Error('Gate has no exceptional waiver');
+                    delete gate(operation.id).waiver;
+                    break;
+                case 'phase.coverage.approve': {
+                    const item = phase(operation.id);
+                    const requiredGateIds = candidate.gates.filter(entry => entry.parentPhaseId === item.id &&
+                        entry.draftAcceptance !== 'proposed').map(entry => entry.id);
+                    if (!requiredGateIds.length || !Array.isArray(operation.requiredGateIds) ||
+                        operation.requiredGateIds.length !== requiredGateIds.length ||
+                        new Set(operation.requiredGateIds).size !== requiredGateIds.length ||
+                        operation.requiredGateIds.some(entityId => !requiredGateIds.includes(entityId)))
+                        throw new Error('Approval must review the complete nonempty required Gate set');
+                    if (operation.source.projectId !== expectedProjectId)
+                        throw new Error('Foreign Phase approval source');
+                    if (candidate.linkedDocument && (operation.source.path !== candidate.linkedDocument.path ||
+                        operation.source.sha256 !== candidate.linkedDocument.sourceHash))
+                        throw new Error('Phase approval source differs from linked Roadmap');
+                    item.gateSetCoverage = { status: 'approved', approvedBy: operation.approvedBy,
+                        reviewedAt: operation.reviewedAt, approvedAtRevision: current.revision + 1,
+                        requiredGateIds: [...requiredGateIds].sort(), source: operation.source };
+                    item.qualificationSource = operation.source;
+                    break;
+                }
+                case 'phase.coverage.revoke':
+                    if (phase(operation.id).gateSetCoverage.status !== 'approved')
+                        throw new Error('Phase Gate-set coverage is not approved');
+                    phase(operation.id).gateSetCoverage = { status: 'unreviewed' };
+                    break;
+                case 'phase.source': {
+                    const item = phase(operation.id);
+                    if (operation.source.projectId !== expectedProjectId) throw new Error('Foreign Phase source');
+                    item.qualificationSource = operation.source;
+                    if (item.gateSetCoverage.status === 'approved' &&
+                        !sameRoadmapSource(item.gateSetCoverage.source, operation.source))
+                        item.gateSetCoverage = { status: 'unreviewed' };
+                    break;
+                }
+                case 'phase.blockers':
+                    phase(operation.id).qualificationBlockers = operation.reasons;
+                    break;
+                case 'phase.waiver.approve': {
+                    const item = phase(operation.id);
+                    if (!candidate.gates.some(entry => entry.parentPhaseId === item.id &&
+                        entry.draftAcceptance !== 'proposed'))
+                        throw new Error('Unplanned Phase cannot receive a waiver');
+                    if (operation.source.projectId !== expectedProjectId || !item.qualificationSource ||
+                        !sameRoadmapSource(operation.source, item.qualificationSource))
+                        throw new Error('Exceptional Phase waiver requires current owned source');
+                    item.exception = { kind: 'waived', authorizedBy: operation.authorizedBy,
+                        authorizedAt: operation.authorizedAt, reason: operation.reason, source: operation.source };
+                    break;
+                }
+                case 'phase.waiver.revoke':
+                    if (!phase(operation.id).exception) throw new Error('Phase has no exceptional waiver');
+                    delete phase(operation.id).exception;
+                    break;
                 default: throw new Error('Unknown Roadmap Gate mutation');
             }
             if (operation.type === 'evidence.propose' || operation.type === 'evidence.approve' ||
-                operation.type === 'evidence.revoke' || operation.type === 'gate.source' || operation.type === 'gate.blockers') {
-                const changedGate = gate(operation.type === 'gate.source' || operation.type === 'gate.blockers' ?
+                operation.type === 'evidence.revoke' || operation.type === 'gate.source' || operation.type === 'gate.blockers' ||
+                operation.type === 'gate.waiver.approve' || operation.type === 'gate.waiver.revoke') {
+                const changedGate = gate(operation.type === 'gate.source' || operation.type === 'gate.blockers' ||
+                    operation.type === 'gate.waiver.approve' || operation.type === 'gate.waiver.revoke' ?
                     operation.id : operation.gateId);
                 changedGate.qualificationStatus = evaluateGateQualification(changedGate).status;
             }
             // Definition changes invalidate prior qualification. Evidence review alone does not
             // invalidate the phase's approved gate-set definition.
             const definitionChange = !operation.type.startsWith('evidence.') &&
-                operation.type !== 'gate.source' && operation.type !== 'gate.blockers';
+                operation.type !== 'gate.source' && operation.type !== 'gate.blockers' &&
+                !operation.type.startsWith('gate.waiver.') &&
+                !operation.type.startsWith('phase.coverage.') && !operation.type.startsWith('phase.waiver.') &&
+                operation.type !== 'phase.source' && operation.type !== 'phase.blockers';
             const affectedPhases = new Set<string>();
             for (const item of definitionChange ? candidate.gates : []) {
                 const previous = current.gates.find(entry => entry.id === item.id);
                 if (!previous || JSON.stringify(previous) !== JSON.stringify(item)) {
                     affectedPhases.add(item.parentPhaseId);
+                    if (item.waiver) delete item.waiver;
                     if (item.qualificationStatus === 'green' || item.criteria.some(criterion =>
                         criterion.evidence.some(evidence => evidence.review.status === 'approved' &&
                             evidence.validation?.status === 'stale'))) item.qualificationStatus = 'stale';
@@ -745,8 +857,18 @@ export class RoadmapStore {
             for (const item of candidate.phases) {
                 const previous = current.phases.find(entry => entry.id === item.id);
                 if (affectedPhases.has(item.id)) item.gateSetCoverage = { status: 'unreviewed' };
-                if ((affectedPhases.has(item.id) || previous && JSON.stringify(previous) !== JSON.stringify(item)) &&
-                    item.qualificationStatus === 'green') item.qualificationStatus = 'stale';
+                if (definitionChange && previous && (item.title !== previous.title ||
+                    item.objective !== previous.objective || item.draftAcceptance !== previous.draftAcceptance ||
+                    JSON.stringify(item.dependencies) !== JSON.stringify(previous.dependencies)))
+                    item.gateSetCoverage = { status: 'unreviewed' };
+                if (item.exception && (affectedPhases.has(item.id) || item.qualificationSource &&
+                    !sameRoadmapSource(item.exception.source, item.qualificationSource))) delete item.exception;
+                const result = evaluatePhaseQualification(candidate, item.id, item.qualificationSource);
+                item.qualificationStatus = result.status === 'green' ? 'green' : result.status === 'blocked' ? 'blocked' :
+                    result.status === 'waived' ? 'waived' : result.status === 'stale' ||
+                    previous?.qualificationStatus === 'green' || previous?.gateSetCoverage.status === 'approved' &&
+                    item.gateSetCoverage.status !== 'approved' ? 'stale' :
+                    result.status === 'not-green' ? 'not-green' : 'unknown';
             }
             if (JSON.stringify(candidate) === JSON.stringify(current)) throw new Error('Roadmap mutation has no changes');
             candidate.revision = current.revision + 1;
