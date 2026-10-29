@@ -1,0 +1,16 @@
+# /prompt-plan — Phase 12 first stack, Pi Agent
+
+**Date:** 2026-10-29. **Status:** PLANNED / DOCS ONLY / NOT RUN. **Execution folder:** `p12` (not runner-invalid `p12-pi-agent`). Phase 12 inactive pending a documented Phase 11 owner decision, 0.12.0 version-only baseline, independently reviewed standalone Pi/Qwen qualification and explicit later Run. Version targets below are **future assigned targets, not current package state**.
+
+| Prompt | Planned target version | Implementation boundary | Focused verification |
+| --- | --- | --- | --- |
+| P1 — Bundle dependency and choose transport | 0.12.1 | Pin/review official Pi SDK or worker, embed zero-global-install resources/license and minimal internal runtime factory without changing routing | Import/start on dev backend; dependency/license integrity; no global Pi discovery |
+| P2 — AI Center local model bridge | 0.12.2 | Translate exact local selected model/endpoint/capabilities/loaded context into isolated Pi session; local-only and eligibility checks | selection/disabled/cold/context unknown/wrong model/no hosted fallback |
+| P3 — Default no-tool local conversation | 0.12.3 | Route eligible local Chat and bounded Planning inference through Pi in noTools mode, existing Chat backend, no implicit Work or G3 extra inference | saved Chat, Roadmap plan/no-action, streaming/cancel, default/explicit provider |
+| P4 — Brokered Work tool bridge | 0.12.4 | Expose only Dope grant-scoped workspace tools; sandbox and candidate model retained; disable Pi built-in shell/file/plugin paths | tool sandbox negative matrix and real fixture read/edit/test |
+| P5 — Work events, review and History | 0.12.5 | Translate Pi event stream into existing AgentRun transcript/status and review/promotion; no Pi session as canonical | accept/reject two independent fixture candidates, grant revocation, continuity |
+| P6 — Context and lifecycle recovery | 0.12.6 | Short outputs, compaction/session continuity with Dope-owned references; crash/restart/cancel/model stopped | 32K live reference when available, durable decisions and no duplicate writes |
+| P7 — AppImage and zero-setup UX | 0.12.7 | Bundle all Pi dependencies/assets in Electron packaged resources, validate no `~/.pi`/global binary, AI Center status/help, local install/rollback | production package smoke and no-setup negative; browser/build checks |
+| P8 — Integrated manual closeout | 0.12.8 | Real browser with Codex, real local-model edit/test/repair on disposable project; owner-operated native Electron parity handoff and exact-source evidence | B1–B9, separate Chrome PASS/FAIL and NATIVE PENDING until owner evidence |
+
+**Preflight every prompt:** BOOT.md, AGENTS.md, workflow, ADR 0039, Phase 12 plan/contracts, live HEAD+dirty worktree, exact version, and prior prompt evidence; never stash/reset/clean the owner's work, rewrite historical G3 prompts or auto-advance versions. Pi may not run in Dope until Phase 12 is explicitly entered after P11 disposition. Each prompt runs narrow tests/typecheck/build as needed and reports actual unchanged/target version, source and test evidence. P8 requires operated GUI, not mock or Electron build only; Codex cannot operate owner's native Electron and must prepare exact owner checklist. P8 closeout is Pi-stack scope only. Subsequent tower-defense real-use is a separate human-driven workstream.
