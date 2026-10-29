@@ -1,0 +1,30 @@
+TASK: Correction 11 / P3 — State-grounded Dope Help and Roadmap integration qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, this stack README/assessment/plan, approved visual-hierarchy contract, ADR 0016/0036/0037, current Dope Help source/test and c11-guidance scoped history. Verify P1 and P2 real Chrome PASS, pre-existing G3 P4/native sequencing, local HEAD/version/dirty tree and exact current UI registrations. Don't reset/stash/clean, create branch, self-commit outside runner authority, rewrite prior closeouts, bump dependencies, use arbitrary filesystem/shell tools through model, or run /activate. If earlier loops not qualified, STOP. Test local Q4 only if explicitly available/selected and truly loaded at verified context; no hosted fallback or fake provenance.
+
+OBJECTIVE
+Teach users what the new hierarchy and progression mean via **existing deterministic Dope capability-help registry and existing saved ChatPanel**. User questions: 'Why is Phase 3 grey?', 'How do I add the first checkpoint?', 'How do I expand a checkpoint?', 'What does Planned mean?', 'Why isn't this phase Green?', 'What does the progress bar count?', 'Why is this correction under Phase 2?', 'How do dependencies connect across phases?' and 'How can I qualify a phase as Green?'. Answers must be truthful for actual current project/selection and use verified UI labels; helpful no-action guidance must not mutate Roadmap.
+
+SOURCE TARGETS
+`packages/theia-extension/src/node/dope-capability-help.ts` (registry, availability, selector), `chat-context-composer.ts`, `chat-backend.ts` and selected local-model no-action validation/ChatPanel only if proven necessary. Existing `roadmap-canvas-widget.ts`/inspector registration for true UI affordances. `test/unit/dope-capability-help.test.ts`, `chat-context-composer.test.ts`, `roadmap-chat-context.test.ts` and adjacent focused tests.
+
+IMPLEMENT
+1. Extend current capability registry with discoverable, narrowly matched Roadmap phase/checkpoint creation, visual state, foldout, progress/qualification and relationship guidance. Keep existing source-link/refresh/objective, Planning Map help and normal conversational planning intact. Priority rules prevent asking 'How do I change a Planning Map link?' from turning into 'Change linked Roadmap file'; avoid Objective-edit detours.
+2. Ground relevant help in real current project/phase/checkpoint/source state, selected status, accepted child count and verified qualification evidence as available via existing bounded typed context/permissions. If uncertain/no project, say state unavailable and give verified navigation to inspect; never invent state, UI labels, Green gate, completed file or proof from color.
+3. Explicitly separate (a) create/accept a checkpoint and gain Planned visual emphasis, (b) implementation work, (c) independent qualification to Green, and (d) proposed Draft/Accept/Reject and linked Markdown publication. No special help-only LLM agent, model classifier, second ChatPanel/store, direct AI source write, model provider override or consent-bypassing hosted egress.
+4. Display responses as readable validated prose with proper limitation/recovery and noncolor state labels. User can keep Chat dock wherever they place it and open Roadmap inspector without moving/recreating Chat. Use existing project/selection freshness checks and current local-model output validation.
+5. Regress new P1/P2 with real imported Dope Markdown, long/narrow and stage-camera/overlay conditions, G3 phase-only proposal and accepted source, corrections/prompts, dark/light/custom, reduced motion, keyboard, touch-equivalent scrolling, and link conflict/relink. Make only directly demonstrated repairs inside this prompt's scope.
+
+FOCUSED TESTS
+Run direct capability-help registry/negative selector table, `test/unit/dope-capability-help.test.ts`, `chat-context-composer.test.ts`, `roadmap-chat-context.test.ts`, `roadmap-chat-panel.test.ts`, `roadmap-local-model.test.ts` where touched. Test no project/selected phase, stale/foreign source, malicious request, unavailable UI control, wrong-linked-Roadmap phrasing, Planning Map negative and ordinary phase creation intent. Compile affected sources before tests that import lib, `git diff --check`; no routine full aggregate.
+
+MANDATORY REAL CODEX CHROME LOOP — MAX 3 CYCLES
+Use real Codex Google Chrome browser with current served Dope, disposable empty/planned/qualified/proposed fixtures, and **one saved Chat** with verified selected local Q4_K_M only if available; record actual runtime model/context and never silently fallback. Ask at least the grey/Planned/Green/progress/dependencies/expand questions, with and without relevant selection; inspect answer validity, UI paths, follow versus pin and no-write hashes. Run two unrelated negatives (Roadmap file replacement and Planning Map links) to ensure no wrong answer. Open actual UI control(s), expand a child, see G3 proposed/accepted states and test reload, narrow Chat dock, dark/light, keyboard, viewport persistence. Capture screenshots, source/bundle, Chat ID/provider, output summary and PASS/FAIL per gate. Up to THREE bounded repair and actual browser requalification cycles; if browser or required local model unavailable, record BLOCKED/EVIDENCE GAP, never substitute a unit fixture for local-model turn. STOP before P4 if scope not Green. Native Electron parity and full Phase 11 stay separate.
