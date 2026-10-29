@@ -3,7 +3,7 @@
 **Date:** 2026-10-29 (America/Chicago)
 **Status:** APPROVED DESIGN / DOCUMENTATION ONLY. Not implemented or qualified by this document.
 **Owner visual target:** the owner's 2026-10-29 image `this-style.png` shared in the Dope IDE conversation, showing three horizontally linked dark phase cards, nested checkpoint rows, colored status icons and progress bars, and prominent directional arrows. The image itself is a conversation attachment, not a repository asset as of this document. This text is the portable implementation and acceptance description; do not silently substitute a different layout.
-**Scope:** bounded Phase 11 Roadmap presentation and grounded Dope Help correction, `c11-roadmap-visual-hierarchy`.
+**Scope:** bounded Phase 11 Roadmap presentation and grounded Dope Help correction, executable stack [`c11-roadmap-redesign`](../../tasks/c11-roadmap-redesign/README.md). The earlier `c11-roadmap-visual-hierarchy` charter remains a non-executable approved-design reference.
 **Related authority:** [ADR 0036](../../decisions/0036-unified-roadmap-and-local-first-ai-planning.md), [ADR 0016](../../decisions/0016-dope-dark-visual-identity.md), [ADR 0037](../../decisions/0037-human-centered-ui-and-usability.md), [Phase 11 plan](phase-11-plan.md), [existing c10-horizontal-color evidence](../../tasks/c10-horizontal-color/closeout.md), [existing help correction](../../tasks/c11-guidance/README.md).
 
 ## Decision and visual fidelity
