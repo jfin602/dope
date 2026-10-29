@@ -1,0 +1,20 @@
+TASK: Phase 12 / P2 — Auto-wire the exact AI Center local model into bundled Pi
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.12.2`.
+
+PREFLIGHT
+Use prior P1 source/decision and phase entry evidence. Inspect current source/dirty state, `packages/ai/src/index.ts`, AI registry role policy, `packages/theia-extension/src/node/model-connections.ts`, `local-agent-capability.ts`, `local-agent-execution.ts`, and exact Pi SDK model provider contract. If P1 is blocked/unqualified or baseline changed unexpectedly, STOP without guessing.
+
+OBJECTIVE
+Dope AI Center is the single user-visible source of local model identity. Automatically bind selected enabled LOCAL `lm-studio` connection to an isolated Pi session: exact endpoint, model key, capability readiness, verified loaded context and output budget, and credential reference (without leaking secrets). Do NOT create a second Pi model configuration page, write `~/.pi/agent/models.json`, modify an existing Pi profile or make a separate user API-key step.
+
+IMPLEMENTATION
+Build narrow eligibility/refresh adapter with validated model connection/provider key and active runtime probe. Do not infer loaded 32768 tokens from a display name or global default. Permit explicit previously configured local endpoints under present AI Center policies. Reject unknown/disabled/cold/unloaded/tool-incompatible models for tool mode with actionable UI error; no silent cloud fallback, alternate Qwen model, or automatic provider hop. Supply optional tools=false where appropriate. Preserve exact selection, role routing, and ordinary no-model manual navigation.
+
+FOCUSED QUALIFICATION
+Fixture: correct local model maps to Pi and produces a synthetic non-project completion; wrong/disabled/stale/unknown ID, endpoint switch, context mismatch, local server unreachable, unauthorized hosted fallback and credential redaction deny. Use actual connected local model only when available and record runtime provenance; do not fake successful live inference. Focused tests plus affected build/typecheck. Report observed model IDs and verified context without publishing credentials. STOP.
