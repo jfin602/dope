@@ -52,6 +52,44 @@ test('orientation, root and test listing, existence, file read and automatic ref
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('greenfield technology mentions are not file lookups; explicit filenames remain evidence', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-greenfield-'));
+  const other = await mkdtemp(join(tmpdir(), 'dope-greenfield-other-'));
+  try {
+    const grounder = new ChatProjectGrounder(emptyIndex);
+    const idea = 'Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js';
+    const greenfield = await grounder.ground(root, idea);
+    assert.deepEqual(greenfield.blocks.map(block => block.ref.kind), ['project-orientation']);
+    assert.match(greenfield.blocks[0].text, /Attached project/);
+    assert.doesNotMatch(JSON.stringify(greenfield), /pixi\.js: absent|Architecture: unavailable|Physical Map: unavailable/);
+    assert.equal(greenfield.blocks[0].ref.origin, 'automatic');
+    assert.equal(greenfield.blocks[0].ref.projectId === (await grounder.ground(other, idea)).blocks[0].ref.projectId, false);
+    assert.equal(greenfield.blocks[0].ref.contentHash, createHash('sha256').update(greenfield.blocks[0].text).digest('hex'));
+    const design = await grounder.ground(root, 'What architecture would work for a new game?');
+    assert.equal(design.blocks.some(block => block.ref.kind === 'architecture' || block.ref.kind === 'grounding-status'), false);
+    for (const mention of ['Use pixi.js for graphics', 'using pixi.js', 'use React',
+      'Build with three.js', 'use lodash.js for helpers']) {
+      const result = await grounder.ground(root, mention);
+      assert.equal(result.blocks.some(block => block.ref.kind === 'file'), false, mention);
+      assert.equal(result.diagnostics.some(item => item.kind === 'unavailable'), false, mention);
+    }
+    await mkdir(join(root, 'src'));
+    await writeFile(join(root, 'src/game.ts'), 'export const game = true;\n');
+    await writeFile(join(root, 'package.json'), '{"name":"game"}');
+    for (const [question, path] of [['read src/game.ts', 'src/game.ts'],
+      ['inspect package.json', 'package.json'], ['read `src/game.ts;`', 'src/game.ts']]) {
+      const result = await grounder.ground(root, question);
+      assert.equal(result.blocks.find(block => block.ref.kind === 'file')?.ref.id, path);
+      assert.ok(result.blocks.find(block => block.ref.kind === 'file')?.ref.sourceHash);
+    }
+    const missing = await grounder.ground(root, 'does pixi.js exist?');
+    assert.match(missing.blocks.find(block => block.ref.kind === 'file')!.text, /Project file pixi\.js: absent/);
+    assert.equal((await grounder.ground(root, 'does `pixi.js` exist?')).blocks.some(block =>
+      block.ref.kind === 'file' && /absent/.test(block.text)), true);
+    assert.equal((await grounder.ground(root, 'read ../secret')).diagnostics.some(item => item.kind === 'rejected'), true);
+  } finally { await rm(root, { recursive: true, force: true }); await rm(other, { recursive: true, force: true }); }
+});
+
 test('path/text search is stable, skips generated trees and reports bounds', async () => {
   const root = await fixture();
   try {

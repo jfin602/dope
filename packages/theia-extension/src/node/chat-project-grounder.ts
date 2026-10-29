@@ -46,8 +46,15 @@ function explicitPaths(question: string): { path: string; directorySyntax: boole
         const raw = match[1];
         const path = raw.replace(/[;,:!?]+$/u, '').replace(/\.$/u, '');
         if (!path || !(path.includes('/') || /\.[a-z\d]{1,8}$/i.test(path))) return [];
+        const before = question.slice(Math.max(0, match.index! - 48), match.index!);
+        const after = question.slice(match.index! + match[0].length, match.index! + match[0].length + 32);
+        // A dotted package name is not a request to inspect a same-named project file.
+        // Explicit relative paths retain their existing behavior; bare filenames need file intent.
+        if (!path.includes('/') &&
+            !/\b(?:read|inspect|open|check|view|show|find|locate|edit|examine)(?:\s+(?:the|this|my|project|workspace|source|file|named|called)){0,3}$/i.test(before) &&
+            !/^[\s'"`)]*(?:file|exists?|present)\b/i.test(after)) return [];
         return [{ path: path.replace(/\/$/u, ''), directorySyntax: path.endsWith('/'),
-            before: question.slice(Math.max(0, match.index! - 48), match.index!) }];
+            before }];
     });
 }
 const implementationSource = (path: string) =>
@@ -393,14 +400,8 @@ export class ChatProjectGrounder {
         const canonical = await this.root(root);
         const blocks: GroundingBlock[] = [], diagnostics: GroundingDiagnostic[] = [];
         const add = (result: GroundingResult) => { blocks.push(...result.blocks); diagnostics.push(...result.diagnostics); };
-        let architecture = false, map = false;
-        try { architecture = (await readInitialization(canonical)).initialized; }
-        catch { diagnostics.push({ kind: 'unavailable', source: 'architecture', message: 'Canonical Architecture unavailable' }); }
-        try { map = !!await this.currentMap(canonical); }
-        catch { diagnostics.push({ kind: 'unavailable', source: 'physical-map', message: 'Current Physical Map unavailable' }); }
-        const status = this.index.status(canonical);
         blocks.push(this.block(canonical, 'project-orientation', 'project:orientation', 'Project orientation',
-            `Attached project. Architecture: ${architecture ? 'available' : 'unavailable'}. Physical Map: ${map ? `current generation ${status.generation}` : 'unavailable'}.`));
+            'Attached project. Project-relative evidence appears below when inspected for this turn.'));
         const finish = (): GroundingResult => {
             // Rejection and unavailability are themselves turn evidence. Never put the
             // rejected path (which may be an absolute host path) in a model ref or label.
@@ -438,7 +439,7 @@ export class ChatProjectGrounder {
                 add(directory ? await this.listDirectory(canonical, explicit) : await this.readFile(canonical, explicit));
             } catch { diagnostics.push({ kind: 'rejected', source: 'project path', message: 'Requested project path is unsafe or unavailable' }); }
         } else if (/\b(?:repository root|project root|root directory|root folder)\b/i.test(q)) add(await this.listDirectory(canonical));
-        if (/\b(?:architecture|subsystem|component|system)\b/i.test(q)) {
+        if (/\b(?:canonical|dope|project|chat)\s+architecture\b|\barchitecture\s+(?:subsystem|component|system|map)\b|\b(?:show|describe|inspect|query)\s+(?:the\s+)?architecture\b|^(?:the\s+)?architecture\??$/i.test(q)) {
             try { add(await this.architecture(canonical, q)); }
             catch { diagnostics.push({ kind: 'unavailable', source: 'architecture', message: 'Canonical Architecture unavailable' }); }
         }

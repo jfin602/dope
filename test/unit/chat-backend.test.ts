@@ -13,6 +13,7 @@ import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat
 import { PlanningBridgeApprovals } from '../../packages/theia-extension/lib/node/planning-bridge-approvals.js';
 import { projectWorkflowLineage } from '../../packages/theia-extension/lib/node/workflow-lineage.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
+import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
@@ -22,8 +23,54 @@ const firstPlanRequest = 'Plan a visual Git history for this project. Reuse the 
 test('only an explicit first-pass planning request selects plan mode', () => {
     assert.equal(requestsImplementationPlan(firstPlanRequest), true);
     for (const ordinary of ['Plan with Chat help', 'What is the plan?', 'Plan a trip',
-        'Please inspect src/diffEditor.js', 'Plan a checkpoint and inspect the Roadmap'])
+        'Please inspect src/diffEditor.js', 'Plan a checkpoint and inspect the Roadmap',
+        'Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js'])
         assert.equal(requestsImplementationPlan(ordinary), false);
+});
+
+test('greenfield G1 stays ordinary saved Chat with selected model and no plan creation', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+        inputsCurrent: async () => false };
+    const content = 'Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js';
+    let planStarts = 0;
+    let sent: { role: string; content: string }[] = [];
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true, providerId: 'local',
+        models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true, streaming: true,
+            contextWindowTokens: 8192, maxInputTokens: 8192 } }] }] }),
+    async *generate(_selection: unknown, request: { messages: { role: string; content: string }[] }) {
+        sent = request.messages;
+        yield { type: 'complete' as const, text: 'Start with one map, one tower, and one enemy.', actualModelId: 'q4' };
+    } };
+    const greenfield = { ensureRestored: async () => {}, chatDraft: () => undefined,
+        chatImplementationPlan: () => undefined, beginImplementationPlan: async () => { planStarts++; throw new Error('Unexpected plan'); } };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        new ChatContextComposer({} as never, {} as never, index as never, repository), undefined,
+        new ChatProjectGrounder(index as never), undefined, greenfield as never);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Game idea' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        const preview = await backend.previewContext({ projectHandle, chatId,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content, context: [] });
+        const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
+        assert.equal(planStarts, 0);
+        assert.equal(result.proposal, undefined);
+        assert.equal(result.refs.some(ref => ref.kind === 'file'), false);
+        assert.equal(result.refs[0]?.kind, 'project-orientation');
+        assert.deepEqual(result.refs, preview.refs);
+        assert.equal(sent[0]?.role, 'system');
+        assert.equal(sent.some(message => /implementation-plan|pixi\.js: absent/.test(message.content)), false);
+        const saved = (await backend.get(projectHandle, chatId))!.messages;
+        assert.equal(saved[0].role, 'user');
+        assert.equal(saved[0].contextRefs[0]?.kind, 'project-orientation');
+        assert.equal(saved[1].role, 'assistant');
+        assert.equal(saved[1].execution?.selectedModel.modelId, 'q4');
+        assert.equal(saved[1].planningActivity, undefined);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
 test('dedicated Chat connections share project changes without crossing projects', async () => {

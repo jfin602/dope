@@ -107,7 +107,7 @@ test('context and active history share selected-model budget with explicit omiss
 });
 
 test('automatic investigation references hash only bytes included in the measured context', async () => {
-  const active = chat(); active.settings.context.maxInputTokens = 300;
+  const active = chat(); active.settings.context.maxInputTokens = 500;
   const source = 'verified evidence '.repeat(100);
   const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
     {} as SoftwareMapIndex, {} as ChatRepository);
@@ -141,6 +141,60 @@ test('normalized explicit file evidence reaches model context with honest curren
     assert.equal(ref?.contentHash, ref?.sourceHash);
     assert.match(composed.messages.at(-1)!.content, /export const diffEditor/);
     assert.equal(composed.refs.some(item => item.kind === 'directory'), false);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('ordinary greenfield context keeps source truth and permits prospective design', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-greenfield-context-'));
+  try {
+    const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+      inputsCurrent: async () => false } as unknown as SoftwareMapIndex;
+    const content = 'Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js';
+    const grounding = await new ChatProjectGrounder(index).ground(root, content);
+    const active = chat(); active.settings.context.maxInputTokens = 1000;
+    const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, index, {} as ChatRepository);
+    const composed = await composer.compose(root, active, content, [],
+      { ...model, contextWindowTokens: 2000, maxInputTokens: 2000 }, grounding);
+    assert.equal(composed.messages[0].role, 'system');
+    assert.match(composed.messages[0].content, /prospective designs/);
+    assert.match(composed.messages[0].content, /existing project files/);
+    assert.match(composed.messages[0].content, /feasible starting approach/);
+    assert.match(composed.messages[0].content, /No file evidence in this turn.*NOT that the attached project is empty/);
+    assert.match(composed.messages[0].content, /short implementation order/);
+    assert.match(composed.messages[0].content, /first milestone or vertical slice/);
+    assert.match(composed.messages[0].content, /at most one consequential question/);
+    assert.doesNotMatch(composed.messages[0].content, /PixiJS|tower defense/);
+    assert.equal(composed.refs.some(ref => ref.kind === 'file' || ref.kind === 'grounding-status'), false);
+    assert.equal(composed.refs[0]?.kind, 'project-orientation');
+    assert.match(composed.messages.at(-1)!.content, /Auto project-orientation/);
+    assert.ok(composed.usedTokens <= composed.budgetTokens);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('uninspected files are not an empty project; a current root listing can verify an empty scope', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-project-truth-'));
+  try {
+    const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+      inputsCurrent: async () => false } as unknown as SoftwareMapIndex;
+    const grounder = new ChatProjectGrounder(index);
+    const active = chat(); active.settings.context.maxInputTokens = 1200;
+    const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, index, {} as ChatRepository);
+    await writeFile(join(root, 'existing.ts'), 'export const existing = true;');
+    const idea = 'Help plan a command-line backup utility in Rust';
+    const uninspected = await composer.compose(root, active, idea, [],
+      { ...model, contextWindowTokens: 2000, maxInputTokens: 2000 }, await grounder.ground(root, idea));
+    assert.equal(uninspected.refs.some(ref => ref.kind === 'directory' || ref.kind === 'file'), false);
+    assert.match(uninspected.messages[0].content, /files were not inspected or included/);
+    assert.match(uninspected.messages[0].content, /software project.*short implementation order/);
+    assert.doesNotMatch(uninspected.messages[0].content, /PixiJS|tower defense/);
+    assert.doesNotMatch(uninspected.messages.at(-1)!.content, /existing\.ts|\(empty\)/);
+    await rm(join(root, 'existing.ts'));
+    const listed = await grounder.ground(root, 'What is at the repository root?');
+    assert.match(listed.blocks.find(block => block.ref.kind === 'directory')!.text, /Project directory \.: \(empty\)/);
+    const verified = await composer.compose(root, active, 'What is at the repository root?', [],
+      { ...model, contextWindowTokens: 2000, maxInputTokens: 2000 }, listed);
+    assert.match(verified.messages.at(-1)!.content, /Auto directory.*Project directory \.: \(empty\)/s);
+    assert.match(verified.messages[0].content, /limit the claim to the listed scope/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
