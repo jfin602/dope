@@ -97,7 +97,11 @@ Dope is dark-first: first-run/default presentation uses the Dope-owned **Dope Da
 
 Every Dope-owned UI surface must offer a discoverable purpose and entry point, comprehensible primary action, truthful state/feedback, recoverable failure and practical keyboard/narrow-pane operation where applicable. Human task completion is a separate quality gate from technical correctness and visual consistency. The developer remains the protagonist; one consistent theme does not by itself make a panel easy to operate.
 
-The comprehensive inventory and real human-task GUI qualification belong to design-approved, inactive **Phase 11 Human-Centered UI**, after Phase 10 Roadmap. The separate `c9-theme-fix` remains palette-only. Living Software Knowledge Model background alignment is inactive **Phase 12** with ADR 0023 controls unchanged. Theia owns ordinary editor behavior; improve Dope integration without a broad Theia fork or changing product-domain authority.
+The comprehensive inventory and real human-task GUI qualification belong to design-approved, inactive **Phase 11 Human-Centered UI**, after Phase 10 Roadmap. The separate `c9-theme-fix` remains palette-only. Bundled Pi local agent runtime and manual real-use qualification are planned for **Phase 12** under ADR 0039, subject to Phase 11 owner closeout; no Pi integration is implemented by this decision. Living Software Knowledge Model background alignment moves intact to inactive **Phase 13**, retaining ADR 0023 controls. Theia owns ordinary editor behavior; improve Dope integration without a broad Theia fork or changing product-domain authority.
+
+## Bundled local agent runtime boundary (ADR 0039, future Phase 12)
+
+Dope remains the provider-independent domain/authority owner. A pinned Pi Coding Agent package will be included in the Electron AppImage and used internally as the default for eligible local model inference and coding loops; **AI Center** remains the only user-visible local connection/model configuration. Ordinary Chat and Planning may only use no-tool Pi; Work may only expose Dope-mediated, ExecutionGrant-checked sandbox commands. Pi session summaries/compaction are transport context, not canonical Chat/Work/History/Roadmap state. Dope retains explicit candidate review/promotion, project isolation, no silent hosted egress, and alternate user-selected providers. This is approved architecture, not implemented or phase-activated. [Phase 12 plan](planning/p12/phase-12-plan.md).
 
 ## Workbench placement contract
 
