@@ -1,43 +1,31 @@
-# /prompt-plan — c11-roadmap-redesign-v2 remaining implementation prompts
+# /prompt-plan — Gate-first Roadmap qualification only (c11-roadmap-redesign-v2)
 
-**2026-10-29 MANUAL P14 RECOVERY OVERRIDE (OWNER-APPROVED / DOCS ONLY):** The original P12/P13 output is visibly too small, lacks prominent planned progression colors and forces too much manual Gate form navigation. Before any P14 PASS marker or P15 handoff, run [M1–M3](manual/README.md) using connected real Chrome: M1 readable large cards and state colors; M2 create/edit/reorder/qualify-review all supported Roadmap structures primarily via **the existing saved ChatPanel** and source-bound previews; M3 default read-only details with explicit selected-item Edit toggle and independent combined P14 qualification. This supplements, **does not rewrite**, immutable P14 prompt. Normal Fit All must never force microtext as the default camera; no status color from mere prompt execution. Stop on NOT GREEN/EVIDENCE GAP, retain actual prior source. No runner P15 until source-bound M3/P14 PASS.
+**2026-10-29 OWNER NARROW-SCOPE OVERRIDE:** Phase 11 ends after owner-qualified Roadmap manipulation, visual progression, source/evidence behavior and alpha cleanup. [Authoritative exit amendment](../../planning/p11/roadmap-only-exit-amendment-2026-10-29.md). The previously authored WorkItem/prompt-composer/agent handoff P15–P23 is **deferred**; existing separate Planning Map/Work features are not deleted. Product version 0.11.8 remains until explicit owner phase handoff. This is docs/prompt authoring only.
+**Source contract:** [ADR 0040](../../decisions/0040-phase-gate-roadmap-domain.md), [visual layout](../../planning/p11/roadmap-visual-hierarchy-contract.md), [manual M1–M3](manual/README.md), [unstarted-source supersession](roadmap-only-pending-supersession-2026-10-29.md).
+**Technical rule:** Existing executed P1–P13/P14 prompt files and qualification evidence remain unchanged; do not fake P14 PASS, modify its first-authored bytes or automatically turn historical Bridge failure into Green. Only new unstarted P15/P16 plus final P17 are authored.
 
-**Date:** 2026-10-29. **Scope:** Owner-approved review/replacement of UNSTARTED P8+ only. P1–P7 are source-immutable, locally reported completed; exact local Git evidence must be verified by runner. Version `0.11.8` unchanged. [Readme](README.md), [assessment](prompt-assessment.md), [prompt source supersession](pending-prompt-supersession-2026-10-29.md).
-**Design:** ADR 0040 Gate-first semantics; screenshot-matched visual contract; ADR 0038 single existing Planning Bridge; ADR 0039 future Pi engine not yet integrated.
+## Already scoped P1–P14 — preserve, finish manual recovery
 
-## Phase/Gate foundations
+P1–P7 established the canonical schema/authority and typed operations. P8–P11 cover Roadmap Markdown/create/Chat local planning, P12–P13 canvas and selected-Gate details. They have reported/committed scoped output but **not independently sufficient visual qualification**. P14 source-bound Chrome observed undersized Phase cards, weak progression color and menu-heavy Gate editing; its prior NOT GREEN is not erased.
 
-P1–P7 (unchanged): schema/criteria evidence authority, Gate/Phase eligibility, projection/service, planning actions and inspector. Preserve completed work and the original P1 NOT GREEN history. The next implementation resumes at **P8**, not by redoing foundational prompts.
+**Manual recovery gate:** M1 large readable Phase cards, real effective camera and source-based progression colors. M2 full Gate/Phase/criterion/relation/correction editing by conversation in existing saved Chat with schema-validated preview/approve, proper model provenance and source safety. M3 selected-item Inspector read-only until Edit toggled and independent combined Chrome; only after all M1–M3 + original P14 evidence PASS may its exact commit subject mark completion.
 
-## Source, draft and UI — P8–P14
+## Remaining short implementation sequence
 
-- **P8:** Phase/Gate/criterion Markdown parser and exact source mapping; implementation/task bullets are not required Gates.
-- **P9:** Safe bidirectional Gate Markdown patch/sync/relink/conflict, explicit source owner and independent publication approval.
-- **P10:** Single Greenfield review/accept/reject owner with incomplete Phase-only previews and proposed testable Gates.
-- **P11:** Existing saved Chat/local proposal extraction, correct requirement coverage and no fabricated Gate/proposed Green/model second call.
-- **P12:** Owner-image Phase containers (horizontal arrows and differentiated nesting, true state labels, viewport).
-- **P13:** Gate foldouts/in-stage Inspector, exact selected Gate and truthful nonworking Prepare Work affordance before P15.
-- **P14 (manual Chrome):** Qualify UI/selection/drafts/keyboard/Chat/source no-write. Do not demand Gate->Work execution before P15–P19. On genuine PASS commit with exact subject `c11-roadmap-redesign-v2/P14: Chrome UI integration qualification`; do not use this marker on failure.
+### P15 — Dead Roadmap code cleanup (runner)
 
-## Gate -> planned work -> prompts -> agent — P15–P19
+Inspect actual source post-P14 and delete unused Roadmap checkpoint/milestone model/aliases/adapters, duplicate view/edit paths and obsolete tests. No runtime legacy compatibility to broken alpha indices; retain explicit safe incompatible-schema rejection and owner-approved reimport. **Do not** remove independent Planning Map, Work, History, phase-stack composer or agent runtime code simply because Gate→Work integration is deferred. Keep a truthful disabled/deferred Roadmap Prepare Work affordance instead of a broken enabled control. Focus tests and diff/build.
 
-- **P15:** Gate-scoped Prepare Work and existing Planning Bridge owner identity; explicit source/Gate/criteria/branch refs and source-backed impact/target approval. Include separate Roadmap vs PlanningCollection identity fixes; no duplicate map.
-- **P16:** Approved target decomposed into ready, reviewable existing WorkItems with Gate/criterion and source trace; completion does not qualify.
-- **P17:** Existing phase-stack composer produces valid prompt files + sole closeout from ready WorkItems, with Gate origin/criteria/validation/working-set and provider-neutral executor; user reviews before publication. Do not demand Pi bundled.
-- **P18:** Strict preview/publish and separate deliberate Work Run, existing ExecutionGrant, isolated candidate and developer validation/promotion; publish alone does not Run and Run alone does not mark Green.
-- **P19:** Actual run/test/History/Phase Focus results traced to originating Gate, evidence reviewed for criteria/current source and stale invalidation; Phase coverage/waiver/blocked/qualification + corrections/dependencies remain distinct.
+### P16 — Roadmap source/tooling integration (runner)
 
-## Guidance, cleanup and independent qualification — P20–P23
+Verify all Roadmap mutations through existing ChatPanel and optional selected Inspector Edit, exact approved project/owner/source revisions, draft preview/reject/accept, linked Markdown sync/relink/conflicts, current evidence-based phase/gate state, corrections/dependencies, colors/camera and source safety. Run affected tests, one `npm run check` when coherent, and browser/Electron builds. **No WorkItem authoring, stack generation, Pi integration, Work Run or automatic result-to-Gate evidence** as an acceptance gate. STOP on real Roadmap false Green, unavailable Chat edit or harmful old code.
 
-- **P20:** Existing deterministic Dope Help and saved Chat grounded in verified Gate->Work/prompt UI paths; no second chat or false Pi availability.
-- **P21:** Remove unused old Roadmap checkpoint/milestone schema/API/aliases/tests; leave unrelated Work execution checkpoints and historical evidence.
-- **P22:** Integrated testing on disposable projects of Roadmap->Planning Map->WorkItems->prompt preview/publish->explicit Work/candidate review->Gate evidence, source hashes, permissions, restart, linked docs; one final source-coherent aggregate and builds. Pi remains Phase12; test current eligible coding runtime instead.
-- **P23 (manual independent Chrome):** Complete Gate->Work UX, actual agent invocation when eligible, prompt/approval/qualification provenance, cross-project/source negatives, owner visual target, saved Chat, source/version/bundle hashes and native Electron owner checklist. Missing required GUI proof is NOT GREEN/EVIDENCE GAP; no Phase11-wide Green.
+### P17 — Roadmap and Phase 11 manual closeout (independent Chrome)
 
-## Runner and source rules
+Fresh source/served browser and actual local-model (if available) tests for readable large Phase cards, state colors, conversational Phase/Gate/criterion/relation/correction manipulation, source-bound approvals, optional Edit, Markdown, evidence/qualification, project isolation, keyboard/theme/narrow/restart. Independent source hash/build/test/Git evidence and scoped owner-native handoff/gap. Report PASS/NOT GREEN; **owner explicitly closes Phase 11 only after Roadmap qualifies** for amended scope, with older unrelated failures/deferred work explicitly recorded. Owner Phase 11 closeout then permits separately authored 0.12.0 baseline and Phase 12 Pi entry subject to their own prerequisites.
 
-The runner enforces first-authored **path** immutability. To support the explicit owner's remaining-prompt update while P1–P7 retain their completed SHA evidence, retire only old unexecuted P8–P19 paths and add new named P8–P23 files. Do NOT patch runner to relax source-integrity checks, forge completed Git subjects, or alter prompt numbers of completed work. Exact manual P14 **title remains unchanged**, preserving expected resume subject. Validate stack grammar locally after merging, then verify actual P1–P7 subjects/HEAD before running.
+## Runner order
 
-Local P1–P7 commits may not be on remote main: `git pull --ff-only` can fail if local history diverges. Review clean git status and remote/local log, `git fetch origin`, and perform a normal **non-destructive merge** of origin/main into local main if local is ahead; resolve any conflicts intentionally, without `reset --hard`, force push or rewriting known qualified commits. Resume only after the runner sees P1–P7 previously completed and P8 next. It stops again at P14; after genuine manual P14 PASS and subject commit, restart for P15–P22 and P23 final manual.
+`npm run codex:phase:validate -- c11-roadmap-redesign-v2` validates the active P1–P17 stack. The runner stops at browser-required P14 until genuine manual PASS subject; then runs P15/P16 and stops at manual final P17. Every original prompt path P1–P14 is unchanged; previous unstarted P15–P23 paths are retired from active tree but preserved in Git history. No new branch, reset/stash/clean, version bump, model default changes or unauthorized project source write.
 
-No product changes, actual tests, browser or runner actions are performed by these document/prompt updates.
+**Phase 11 scope is narrowed; historical Work/Bridge/Hunts outcomes are not requalified or deleted.**

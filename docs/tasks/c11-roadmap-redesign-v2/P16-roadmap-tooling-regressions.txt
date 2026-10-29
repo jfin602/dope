@@ -1,0 +1,23 @@
+TASK: Correction 11 / P16 — Gate Roadmap manipulation and source-authority integration regressions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, ADR 0040, approved Phase 11 scope amendment, Roadmap visual contract, v2 README/implementation plan, M1–M3/P14 source-bound evidence and P15 PASS. Verify exact local source, version, owner state and Git prefix before any effect. Keep historical failures and explicit deferred agent-work scope honest. No /activate, version/lockfile bump, branch reset/stash/clean, new Chat/help store, unnecessary hosted model use or persistent-game mutation for destructive fixtures.
+
+SINGLE DELIVERABLE
+On one coherent current Gate-first product, integrate and test ONLY the Roadmap's own capabilities:
+- User can create/edit/reorder/move/remove and inspect Phases, Gates, criteria, dependencies and corrections through the **existing saved ChatPanel's typed source/revision-bound preview/Accept/Reject**, including multiple related edits, selected/current Chat context, noncanonical draft, stale/foreign denial and no silent source write.
+- Selected item Inspector is useful read-only by default, explicit Edit toggle enables precise Phase/Gate/criterion field changes through the same typed backend, Cancel/Undo behave safely, no menu-heavy parallel editor and no cosmetic status dropdown that grants Green.
+- Greenfield proposal, manual editing, linked Markdown import/patch/sync/relink/conflict/restart, source hashes/revisions, project isolation and owner/permissions remain correct. Implementation-task bullets never become fake qualification Gates.
+- Status selectors use actual source-backed planning presence, approved Gate-set completeness, verified criterion evidence, active/not-green/blocked/stale/waived/unknown labels, no empty 100%, no automatic Green. Source/provenance change must invalidate stale claims.
+- Phase cards are large and Gate text legible at normal effective zoom, first-open camera does not force microscopic Fit All, progression colors are visible via tokens and noncolor labels, with narrow/light/keyboard/viewport/Chat regression.
+- Roadmap **tooling** here means Chat-to-typed-Roadmap actions and local field editing, NOT Work, prompt-stack generation, Pi engine, agent tool grants or prompt execution. Verify disabled/deferred Prepare Work state is truthful and harmless; do not add an agent workflow to satisfy a UI test.
+
+PASS / TESTS
+Run relevant focused tests including `roadmap-store`, `roadmap-projection`, `roadmap-canvas`, `roadmap-status-truth`, `roadmap-inspector`, `roadmap-greenfield`, `project-planning-actions`, `roadmap-document-sync`, `roadmap-chat-context`, `chat-backend` and `dope-capability-help` where present. Perform one coherent `npm run check` and affected browser/Electron builds if feasible; report exact results and gaps, no fabricated counts. Check `git diff --check`. If stale source, unauthorized write, false Green, regressed reader or an unimplemented Chat edit remains, P16 NOT GREEN and STOP before final P17. Actual independent connected Chrome and Phase 11 owner-close remain P17, not this runner stage.

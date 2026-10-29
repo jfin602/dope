@@ -1,5 +1,7 @@
 # Phase 11 — Preliminary panel usability matrix
 
+**2026-10-29 OWNER EXIT SCOPE OVERRIDE:** [Roadmap-only Phase 11 exit](roadmap-only-exit-amendment-2026-10-29.md) supersedes this matrix as a mandatory broad Phase 11 exit list. Current Phase 11 acceptance requires source-bound Roadmap visuals, Chat typed CRUD, selected Inspector Edit, Markdown/evidence, and dead-code cleanup in M1–M3/P14 + P15–P17. Historical G3 R1–R7, Bridge D1–D8, Hunts and other failed/unrun items retain their exact historical NOT GREEN/EVIDENCE GAP and are deferred to post-Pi review; they are not magically passed or deleted. Documentation only.
+
 ## Greenfield-first real-project Chat gates — owner approved 2026-10-28 (NOT QUALIFIED)
 
 **Reference human project:** the developer's persistent 2D tower-defense game using PixiJS; **not** a disposable fixture and not permission to edit game files. [Experience contract](greenfield-experience-contract.md) · [UX-018 and UX-019](usability-issue-ledger.md). The two Chat responses are owner-supplied evidence, not a controlled browser replay or a verified model prompt trace. This is the immediate Phase 11 priority ahead of broader structured planning; prior workstreams and independent D1–D8/owner-close conditions remain open. Record exact tested product SHA/version, user/AI actor, selected/loaded model, attached project identity, Auto-context bytes/source hashes, browser operations, reply quality and approval state. Negative or destructive tests use disposable project copies.

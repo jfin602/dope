@@ -1,5 +1,7 @@
 # Manual Chrome recovery — large Phase cards, progression color, conversation-first editing
 
+**2026-10-29 NARROWED PHASE 11 EXIT:** Manual M1–M3 are **unchanged** and remain mandatory for visual scale/color, Chat-first manipulation and optional Edit/P14 qualification. After genuine M3/P14 PASS, the v2 runner now executes P15 unused Roadmap code cleanup, P16 Roadmap-only source/tooling integration, then stops at P17 final manual Chrome/owner-close review. Gate→WorkItems/prompt/agent execution is postponed until a later post-Pi proposal and is NOT required by M1–M3 or P11. Historical P14 NOT GREEN remains. [Scope](../../../planning/p11/roadmap-only-exit-amendment-2026-10-29.md). No new test result from docs.
+
 **Owner decision:** 2026-10-29 during active v2 P14 observation. The running UI remains too small/dim and editor behavior overemphasizes forms. This is an owner-observed **P14 acceptance failure**, not a qualified result.
 **Status:** M1–M3 **AUTHORED / NOT RUN / NOT QUALIFIED** by this documentation commit. Product version stays `0.11.8`.
 **Entry:** This folder is within [c11-roadmap-redesign-v2](../README.md), not a second runner stack. It contains exactly **three manual real-Chrome implementation/qualification prompts**. Review [visual contract](../../../planning/p11/roadmap-visual-hierarchy-contract.md) and [ADR 0040](../../../decisions/0040-phase-gate-roadmap-domain.md). The owner screenshot `this-style.png` remains the styling baseline, with this 2026-10-29 owner clarification taking precedence for scale, color, and interaction.

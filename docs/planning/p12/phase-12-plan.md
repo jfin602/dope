@@ -1,5 +1,7 @@
 # Phase 12 — Bundled Local Agent Runtime and Real-Use Qualification
 
+**2026-10-29 OWNER P11→P12 BOUNDARY CHANGE (DOCS ONLY):** The [Phase 11 Roadmap-only exit](../p11/roadmap-only-exit-amendment-2026-10-29.md) supersedes earlier broad Work/Bridge/Hunts prerequisites. Phase 12 entry requires **actual independent Roadmap-only final P17 and explicit owner Phase 11 closure** (including truthful native status/disposition), then separate coherent 0.12.0 baseline, Pi standalone qualification and owner entry approval. Historical failed Bridge/G3 Chrome/Hunts are deferred known issues, not PASS. Existing immutable `p12` P1–P8 integrates Pi as local coding runtime behind existing Dope authorities; Gate→WorkItems→generated prompts→agent result integration is deferred to a separately assessed post-Pi follow-on, NOT grafted into Pi P1–P8 or required for Phase 11. Pi remains NOT IMPLEMENTED/NOT ACTIVATED.
+
 **Status (2026-10-29):** Owner-approved forward design; DOCUMENTATION AND PROMPT AUTHORING ONLY. Phase 11 **OPEN / NOT QUALIFIED**; Phase 12 **NOT ACTIVATED**; no 0.12.0 baseline, product code, package, Pi dependency or model integration is claimed. Entry requires separate exact-source Phase 11 owner disposition and coherent version-only 0.12.0 baseline, plus standalone Pi/Qwen qualification with acceptable results. [ADR 0039](../../decisions/0039-bundled-pi-local-agent-runtime.md).
 
 ## Purpose

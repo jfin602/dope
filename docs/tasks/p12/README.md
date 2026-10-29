@@ -1,5 +1,7 @@
 # p12 — Pi Agent Integration (first Phase 12 stack)
 
+**2026-10-29 OWNER PHASE 11 HANDOFF UPDATE (DOCS ONLY):** Require [narrowed Roadmap-only Phase 11 qualified and explicitly owner-closed](../../planning/p11/roadmap-only-exit-amendment-2026-10-29.md) before P12, plus original separate Pi standalone report, 0.12.0 baseline and P12 execution approval. Old incomplete broad P11 Work/Bridge/Hunts are deferred known issues, not automatic P12 entry blockers or retroactive Green. Immutable `p12` P1–P8 files unchanged. Gate→WorkItem→prompt-stack→Pi integration to be assessed **after** Pi is running; do not assume bundled Pi already exists. No activation/version change by this note.
+
 **Descriptive name:** `p12-pi-agent`. **Executable folder:** `docs/tasks/p12` because the current phase-runner grammar rejects `p12-pi-agent`. **Status:** Eight prompts authored as forward planning only on 2026-10-29; NOT RUN / NOT IMPLEMENTED / NOT QUALIFIED. Phase 11 OPEN; Phase 12 inactive; `0.12.0` only a proposed future baseline, not established. See [assessment](prompt-assessment.md), [implementation plan](implementation-plan.md), [phase contract](../../planning/p12/phase-12-plan.md), [B1–B9](../../planning/p12/pi-qualification-contract.md), [ADR 0039](../../decisions/0039-bundled-pi-local-agent-runtime.md).
 
 | File | Role | Browser |

@@ -1,0 +1,20 @@
+TASK: Correction 11 / P15 — Remove obsolete Roadmap domain and unused alpha code
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT AND SCOPE
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the owner-approved 2026-10-29 Phase 11 narrow-scope amendment, c11-roadmap-redesign-v2 README/plan, and real M1/M2/M3 plus P14 exact-source PASS and its Git marker. Verify local main Git history, current source/version, clean or explicitly reviewed worktree and original completed P1-P14 prompt identities. Never invent P14 qualification; if P14 missing/NOT GREEN, STOP. Do not reset/stash/clean/force push, change branch, bump version, overwrite the persistent owner PixiJS project or source Markdown, or treat historical NOT GREEN reports as Green.
+
+SINGLE DELIVERABLE
+Remove unused, superseded **Roadmap-specific** checkpoint/milestone/schema1 aliases, duplicate model/UI branches and dead tests after the Gate-first cutover. Audit store/projection/import/Greenfield/Chat, canvas/inspector, help, theme, linked-document, service and active Roadmap calls. Use the one canonical Phase/Gate/Criterion store and actions; delete obsolete dual runtime schema support or duplicate editor paths rather than maintaining compatibility with broken alpha indexes. Unsupported old `.dope` Roadmap indexes must still reject safely with developer-visible review/reinitialize/reimport, no source clobber.
+
+EXPLICIT DEFERRED WORK BOUNDARY
+Do **not** implement or qualify Gate -> Planning Map -> WorkItems -> prompt generation, task stack publication, coding-agent launch or Work/History reconciliation in this prompt. Do not delete those existing independent Planning Map/Work/task-composer/Pi prerequisite modules merely because Phase 11 has deferred their integration. Remove code only if proven unreachable, unused and unrelated to supported workflows; document each uncertain dependency and leave it intact. Existing Roadmap Prepare Work affordance may be disabled with honest 'deferred until agent workflow integration' explanation; no misleading enabled dead-end. Preserve runner/Git execution checkpoint terminology, saved ChatPanel, independent software maps, evidence history and historical prompt files.
+
+PASS / QUALIFICATION
+Targeted static/reference audit with an exceptions register; focused Gate store, editor, Chat actions, Markdown sync/relink, compatibility rejection and theme tests; affected TypeScript/browser build and `git diff --check`. A removal that breaks a supported live Roadmap edit, source owner or independent Work path is FAIL. Report exact source SHA, deleted paths, retained shared Work owners and PASS/FAIL; this runner prompt does not claim real Chrome or Phase 11 GREEN. STOP before P16 on failure.
