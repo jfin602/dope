@@ -1,0 +1,27 @@
+TASK: Phase 12 / P8 — Manual bundled Pi integration qualification closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+The assigned project version is `0.12.8`.
+
+MANUAL T3 ONLY — NO FALSE GREEN
+This is an independent real-GUI qualification prompt, NOT another broad implementation loop. Codex must operate the current Dope browser app in actual Google Chrome using available Codex browser controls, and the owner separately operates packaged native Electron. Codex cannot claim control of the owner's native UI. If connected Chrome/browser backend unavailable, report BLOCKED and STOP, not mock success. An Electron build cannot prove native operation. Do NOT use the persistent tower-defense game as a disposable test fixture.
+
+PREFLIGHT
+Review BOOT.md, AGENTS.md, workflow, ADR 0039, Phase 12 plan, B1–B9 contract, P1–P7 source and exact completed evidence. Confirm Phase 11 owner close/disposition, 0.12.0 baseline, actual version/HEAD, Pi pinned dependency and package hash, local model/AI Center connection/actual loaded context and coherent served browser bundle. Verify no uncommitted unrelated state destroyed. Read any runtime blocker instead of skipping.
+
+OPERATED CHROME SCENARIOS
+1. Launch Dope with Pi already present and no separately installed Pi. Inspect AI Center local selection/readiness and show failure/recovery on missing/cold/disabled model; preserve Codex/manual model choices.
+2. Existing saved ChatPanel: ordinary local Chat and related Planning, one model per-turn provenance, no Pi file/shell capability and no unintended Roadmap/Work writes. Verify G3 response-first parser does not cause a second inference.
+3. Create a disposable TypeScript Git workspace and explicitly grant Dope Work. Use actual connected local Qwen/Pi to diagnose and repair a bug across at least two files, run tests, inspect real tool events and candidate diff. Ensure Codex does NOT implement the benchmark code on Pi's behalf.
+4. Reject one independent candidate with zero source changes; accept a separately validated candidate with only approved source promotion. Inspect durable Work/History/Chat after another turn, reload/restart, model switch and cancellation. Retain selected browser source and actual Pi model ID.
+5. Attempt negative path cases on fresh fixtures: no grant, foreign root/project, symlink/traversal/credential access, unknown model/32K cap, Pi crash, server interruption, double-submit, stale candidate, network/hosted fallback. Verify actual enforcement and no project-data egress.
+
+B1–B9 REPORT AND OWNER NATIVE HANDOFF
+For each gate classify PASS/NOT GREEN/BLOCKED/EVIDENCE GAP with exact browser screenshots/accessibility DOM, source SHA, installed package/PI version/hash, model, context, events, test commands/results, timing and candidate Git state. A passing suite/mocks/packaging smoke alone is insufficient. P8 may say `PI INTEGRATION CHROME QUALIFIED — OWNER NATIVE PENDING` if all applicable browser gates pass; do NOT claim Pi stack GREEN until owner returns independent native AppImage observation of AI Center, Chat, Work, candidate review, History, restart and failure recovery on equivalent source. No automatic owner acceptance or silent gate waiver.
+
+FINAL DISPOSITION
+Only after verified native source-bound evidence and owner signoff can the first p12 stack be labeled scoped Green. Phase 12 as a whole remains OPEN until the separate manual tower-defense real-use repair track qualifies. Preserve all previous failures, do not auto-run the next workstream, alter historical prompts, deploy, or self-commit. STOP.
