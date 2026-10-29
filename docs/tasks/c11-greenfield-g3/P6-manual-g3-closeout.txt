@@ -1,0 +1,33 @@
+TASK: Correction 11 / P6 — Manual G3 Chrome and local-Q4 qualification closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- MANUAL actual Codex Chrome / selected local-model human-task acceptance; not headless runner implementation.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no version bump.
+
+PREFLIGHT / AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/planning/p11/greenfield-experience-contract.md`, ADR 0025/0036, and this stack's `README.md`, `prompt-assessment.md` and `implementation-plan.md`. Inspect ACTUAL local HEAD, branch, `git status --short`, version, prior P1–P3 source/qual evidence and running bundle. GitHub authoring `c947700a` / `0.11.8` is not a local run pin. Preserve G1/G2 source, old immutable `c11-greenfield-patch` P1-P3, existing qualifications and concurrent owner work. On conflict or version advance STOP for owner review; do not reset/stash/clean/force-push, downgrade, self-commit, change manifests/pins/lockfiles or overwrite dirty files. Separate user Run authorization required; no `/activate`. Implementation target <=8 minutes, 10 soft/15 hard. Keep same ChatPanel/ChatBackend/Greenfield/Roadmap owners, project identity/leases, source freshness, provider/egress consent, output limits and deliberate Markdown/Work approvals; no model unrestricted tools, auto Work, second Chat or canonical publication. The developer's tower-defense source is read-only; adversarial/destructive tests use disposable project roots.
+
+MANUAL SOURCE PREFLIGHT
+Inspect exact implementation HEAD, dirty worktree, G1 owner-reported single-turn Green, G2 owner-reported Green commit and actual P1–P5 product/test evidence; verify current Chrome-served Dope bundle is built from the exact tested source. If build/served hashes or owner/source basis differ, report EVIDENCE GAP. Do not modify/overwrite game source or historical c11-greenfield-patch P3/P8/P5 closeouts. Model selection must be explicit and actual in saved execution: reference LM Studio `qwen3-coder-30b-a3b-instruct@q4_k_m`, loaded `32768` only when current runtime inventory proves it. No silent hosted fallback. Operate the real saved ChatPanel, current Roadmap canvas and approval controls via Codex browser; backend-only tests/mock screenshots do not count. Browser tool absent => BLOCKED, not fake Green.
+
+G3-A — CONCISE CHAT AND CONTINUITY
+In real owner's PixiJS tower-defense Chat, use a natural follow-up about the game's MVP plan. Confirm one useful recommended technical direction, a first-playable milestone and at most one material question where useful. Observe genuine continuity with saved developer decisions, not two duplicated feature/steps lists or a fixed headings template. Soft ~100–170 words applies only to straightforward query; ask for a deeper technical explanation separately to verify no hard cap. Measure actual model output tokens/time where available and record full response; don't assert performance gains without before/after evidence.
+
+G3-B — VERIFIED ROADMAP OPPORTUNITY
+Read the actual project's current authoritative Roadmap/Greenfield owner state (project ID, revision, linked document and competing drafts) before expecting any offer. If the real game already has a canonical Roadmap or pending draft, test Open/Continue/Review there; **don't** create a duplicate or destroy it merely to force an "absent" positive. For a fresh no-Roadmap creation path, use a safe disposable project with comparable conversation context. Verify offer occurs only at useful moment, context grounded and no repeated nag/claim inferred solely from absent files or Architecture/Physical Map.
+
+G3-C — TWO CONSENT ROUTES AND VALID STRATEGIC DRAFT
+In one safe fresh no-Roadmap fixture, click the styled **Generate Draft Roadmap** button; separately use an independent project/chat to reply explicitly "Yes, create the roadmap" to the current offer. Both paths must call one checked project/Chat/offer/revision/token authorization service. Confirm the model generates meaningful bounded multi-phase strategic roadmap (five for tower-defense only when model chooses/review accepts), with checkpoints/dependencies, and a distinct second accept/reject review of the generated NONCANONICAL draft. Test cancel/Not now, isolated "yes", stale owner revision, wrong project, multiple offers, double-click and active writer where GUI permits; otherwise mark explicit negatives not run. No canonical Markdown before separate approval, no Work Run.
+
+G3-D — TRUTHFUL PROGRESS AND ROADMAP EDITOR
+During actual Q4 generation, capture transient waiting/generating/validating/ready statuses with timings; no fake internal model reasoning, fabricated percentages or silent multi-inference narrator. Verify cancellation/failure and backend-disconnect recovery where safe. After a validated draft is ready, the EXISTING `dope.roadmap.open` central-editor Roadmap view appears/focuses, with the actual new draft graph visible/fitted; Chat remains in owner-chosen dock with same saved conversation and active model. If navigation fails but recoverable Open Roadmap works, document that specific outcome; don't claim automatic focus passed. Verify user can edit/review draft and canonical linked Markdown still requires separate explicit preview+approval.
+
+FINAL VALIDATION AND REPORT
+Only if real G3-A/B/C/D positives pass on an exact coherent product source, run one justified final `npm run check`, report exact tests/typecheck/browser+Electron builds and source/bundle hashes. Record process exits/timing separately (SIGSEGV not assumed G3-related). Mark G3-A/B/C/D independently PASS/FAIL/BLOCKED/EVIDENCE GAP/NOT RUN and explain concrete scope. One failure => G3 NOT GREEN even if all unit tests pass. Source-bound browser/local-Q4 scoped Green requires human owner acceptance; native Electron GUI remains unobserved unless actually operated. Phase 11 OPEN/NOT QUALIFIED, G4/G5/Bridge/Hunts and prior CP failures retain old status.
+
+Only after real observation, create a new `docs/tasks/c11-greenfield-g3/closeout.md` with exact date/source, response excerpts, proposal/approval identity, generation/model timings, editor screenshot or accessibility evidence, no-write outcome and negative/unknown matrix. Do not pre-author a passing closeout, self-commit, revise authored P*.txt or infer P6 from deterministic simulation. Return outcome to owner and STOP.

@@ -1,0 +1,25 @@
+TASK: Correction 11 / P4 — Show truthful generation progress and open the existing Roadmap editor
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 progress/navigation integration; real GUI evidence belongs to P6.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no version bump.
+
+PREFLIGHT / AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/planning/p11/greenfield-experience-contract.md`, ADR 0025/0036, and this stack's `README.md`, `prompt-assessment.md` and `implementation-plan.md`. Inspect ACTUAL local HEAD, branch, `git status --short`, version, prior P1–P3 source/qual evidence and running bundle. GitHub authoring `c947700a` / `0.11.8` is not a local run pin. Preserve G1/G2 source, old immutable `c11-greenfield-patch` P1-P3, existing qualifications and concurrent owner work. On conflict or version advance STOP for owner review; do not reset/stash/clean/force-push, downgrade, self-commit, change manifests/pins/lockfiles or overwrite dirty files. Separate user Run authorization required; no `/activate`. Implementation target <=8 minutes, 10 soft/15 hard. Keep same ChatPanel/ChatBackend/Greenfield/Roadmap owners, project identity/leases, source freshness, provider/egress consent, output limits and deliberate Markdown/Work approvals; no model unrestricted tools, auto Work, second Chat or canonical publication. The developer's tower-defense source is read-only; adversarial/destructive tests use disposable project roots.
+
+MISSION
+After explicit G3 user consent (P2) and a completed valid strategic draft proposal/acceptance path (P3), keep the developer informed through potentially lengthy local Q4 inference and navigate to the new **noncanonical** Roadmap draft in the existing main editor. Don't move or replace the saved Chat. Do not navigate on error, rejected or stale proposal, nor claim canonical Roadmap publication.
+
+SOURCE AND IMPLEMENTATION
+1. Inspect `packages/chat/src/service.ts` `planning-progress` events (currently waiting/validating), `ChatBackend.planningProgress`, `ChatPanelController` and `ChatPanelWidget` current Working/proposal UI. Extend typed event/stage support **compatibly**, only where genuine boundaries exist: checking Roadmap/project owner, consent accepted, generation starting/waiting on selected model, validating completed model result, preparing draft/editor, ready/cancelled/failed. Progress must be triggered by actual application code, not speculative model chain of thought, fake phase counts, percentages or a second narration inference. Keep a lightweight persistent/visible "Generating Roadmap draft..." while Q4 is busy; show real cancellation, no ghost spinner if backend exits.
+2. After server-valid draft is ready for review, reuse existing `dope.roadmap.open` command and `ROADMAP_CANVAS_ID`; refresh/reveal the **correct current project** Greenfield draft and fit strategic nodes into the existing main canvas. Preserve the Chat panel's left/right/center/bottom dock, active saved Chat, scroll/selected model and writer lease. Navigate only after validating actual project identity and draft/revision. If editor navigation or refresh fails, offer an accessible "Open Roadmap" recovery affordance without losing the draft or trying a second create.
+3. Maintain clear authority labels: "Generating draft" -> "Draft ready for review" -> "Accepted draft (not canonical)" -> separate linked Markdown preview/approval. Don't move accepted/canonical state on UI focus. A G3 offer can be dismissed. Keyboard focus, screen reader status and narrow layout work with restrained orange only on primary actions.
+4. Cancellation/timeout/error and project switch must invalidate transient generation/offer and stop progress without leaving approval tokens live. Preserve older `planning-progress` users, normal Chat streams, Work, Help and Bridge.
+
+FOCUSED TESTS / HANDOFF
+Extend `test/unit/chat-panel.test.ts`, `chat-backend.test.ts`, `roadmap-canvas.test.ts` and current frontend navigation/event tests. Verify real event sequence does not claim unobserved progress, cancellation/error clears busy state, stale/foreign project denied, complete valid draft opens only one editor, Chat dock/lease preserved, recovery action when navigation fails, no canonical files written. Build changed modules, focused tests and `git diff --check`. Report exact results and the remaining real Chrome/Q4 evidence gap; do not fabricate a GUI run. STOP and request manual smoke check before P5 if practical.

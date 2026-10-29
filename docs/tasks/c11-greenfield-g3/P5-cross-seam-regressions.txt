@@ -1,0 +1,26 @@
+TASK: Correction 11 / P5 — Cross-seam G3 integration and security regressions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 focused integration and security verification; repair only demonstrated P1–P4 faults.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no version bump.
+
+PREFLIGHT / AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/planning/p11/greenfield-experience-contract.md`, ADR 0025/0036, and this stack's `README.md`, `prompt-assessment.md` and `implementation-plan.md`. Inspect ACTUAL local HEAD, branch, `git status --short`, version, prior P1–P3 source/qual evidence and running bundle. GitHub authoring `c947700a` / `0.11.8` is not a local run pin. Preserve G1/G2 source, old immutable `c11-greenfield-patch` P1-P3, existing qualifications and concurrent owner work. On conflict or version advance STOP for owner review; do not reset/stash/clean/force-push, downgrade, self-commit, change manifests/pins/lockfiles or overwrite dirty files. Separate user Run authorization required; no `/activate`. Implementation target <=8 minutes, 10 soft/15 hard. Keep same ChatPanel/ChatBackend/Greenfield/Roadmap owners, project identity/leases, source freshness, provider/egress consent, output limits and deliberate Markdown/Work approvals; no model unrestricted tools, auto Work, second Chat or canonical publication. The developer's tower-defense source is read-only; adversarial/destructive tests use disposable project roots.
+
+MISSION
+Verify the **complete** new G3 path after P1–P4 on current real source, without expanding scope or changing other Phase 11 systems. Developer in normal Chat receives concise response and app-verified Roadmap opportunity, accepts typed offer via button or matched natural "Yes, create the roadmap", model produces one bounded strategic outline, application validates it, human separately reviews the draft, and existing main Roadmap editor opens to it with truthful progress. Canonical linked Markdown still requires its own preview/approval. G1/G2 original features and previous CP/Bridge behavior must remain safe.
+
+DETERMINISTIC INTEGRATION AND NEGATIVES
+1. Cross the actual Chat RPC -> owner check -> typed offer -> same approval handler for button and natural confirmation -> local model fake complete stream -> strict full-draft validator -> reviewed noncanonical draft -> current Roadmap canvas/editor focus, preserving saved Chat. Test no prior offer + "yes" and quoted assistant "yes" as no authorization.
+2. Owner/authority: actual canonical Roadmap, linked Markdown, pendingCreation, competing plan-only or accepted Greenfield draft, stale current owner revision, project/Chat switch, two tabs/writer leases, repeated/double-click, expired/revoked offer, declined/reload, cancel/retry and stale source evidence all deny duplicate or unauthorized creation. No model free-form JSON/tool text can pass as permission.
+3. Data & execution: malformed/partial/oversized/foreign/cyclic strategic phase graph; selected local Q4 unavailable or context changed; unauthorized hosted project egress/provider switch; symlink/hidden `.dope` files; no unsafe filesystem/network/shell tools; stop upon project switch; no loss of existing user files, no automatic `ROADMAP.md`, Work Run or prompt stack. Source references must match actual included evidence.
+4. UX: compact answer still gives a useful recommended milestone; absent Roadmap opportunity only when verified; don't nag after Not now; correct selected model, visible actual stage events, cancellation recovery, accessible button, keyboard/Space/Enter, narrow main editor and Chat placement, no duplicate Roadmap tab. Preserve earlier manual Greenfield/plan projection and existing 2–3-action Roadmap edit flows; no new state owner.
+5. Use existing focused `test/unit` families for backend, context composer, greenfield, roadmap canvas, Chat panel and integration. Test one generic non-game project to prove this is not a five-phase PixiJS hardcode. Do NOT treat mock success as G3 Green or assume identical source if uncommitted competing changes exist.
+
+VERIFICATION / HANDOFF
+Build compiled libs only as needed, run focused Node tests/typecheck and `git diff --check`. If a narrow integration defect is actually reproduced, make smallest fix within P1–P4 seams and show failing-before/passing-after. Do not run entire aggregate repeatedly or work on Phase 11 unrelated problems. Return changed source paths, exact tests/counts, exceptions and source hashes. STOP for manual P6 in Codex Chrome on actual Q4; no self-commit or qualified claim.
