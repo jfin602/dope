@@ -1,0 +1,20 @@
+TASK: Phase 12 / P5 — Map Pi Work events into existing review and History
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.12.5`.
+
+PREFLIGHT
+Confirm exact P4 source and granted broker tests. Read existing AgentRun/AgentTaskSequence/ExecutionGrant/CandidateDelta status and `packages/agent-core/src/transcript.ts`, Dope Work/History backend, saved Chat projections. Inspect Pi structured streaming/session events. No new Work panel, second History database, or rewrite of accepted source/immutable prompt history.
+
+OBJECTIVE
+Translate actual Pi session, model and tool events into the current Dope Work transcript and lifecycle: starting, running, command results, errors, cancellation, test validation, candidate pending, Accept/Reject, and completed/failed status. Dope remains single authority for Work and History. Pi cannot mark a proposal Green or promote a candidate by narration.
+
+IMPLEMENTATION
+Implement bounded event adapter with run/task/project IDs, provider/model attribution and stable stream ordering. Preserve compact expandable safe tool output and separate human-readable summaries; redact credentials/debug in copied Chat text. Reconcile callbacks on cancellation/double-event, stale source basis and restart. Existing validation and independent candidate review/promotion must occur OUTSIDE Pi and only with owner approval, including rejected candidates with zero source mutation.
+
+FOCUSED QUALIFICATION
+Two fresh disposable fixture candidates, one rejected (source unchanged) and one accepted after review (only intended files promoted); verify Work transcript/history exact identities before and after app restart, tool ordering and error records. Exercise revocation, cancellation and foreign-owner refusal. Run focused tests and build. If actual Pi event wire is not supported by installed SDK, report blocker rather than fabricating event data. STOP.
