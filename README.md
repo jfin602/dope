@@ -1,5 +1,7 @@
 # Dope
 
+> **2026-10-29 forward Phase 12 decision (DOCS/AUTHORING ONLY):** After Phase 11 has independently met its G3/owner-native and broader exit/owner-disposition gates, Phase 12 will bundle Pi Coding Agent inside Dope as the **default local agent runtime** with automatic AI Center model selection, retained Dope Chat/Work/tool authority and no separate Pi installation. The first runner-compatible stack `docs/tasks/p12/` is authored (descriptive workstream `p12-pi-agent`), NOT RUN. Real PixiJS tower-defense manual use/repair follows; the former Phase 12 Living Software Knowledge Model is preserved as **Phase 13**. Phase 11 remains OPEN / NOT QUALIFIED, Phase 12 NOT ACTIVATED, package version stays `0.11.8`, no Pi integration or `0.12.0` baseline is claimed. [ADR 0039](docs/decisions/0039-bundled-pi-local-agent-runtime.md) · [Phase plan](docs/planning/p12/phase-12-plan.md) · [Prompts](docs/tasks/p12/README.md). Older status blocks below are dated history.
+
 Dope is an AI-native software development environment designed to keep the developer at the center of the engineering process.
 
 The goal is not maximum autonomous code generation. The goal is maximum leverage while preserving understanding, authorship, skill, control, and the satisfaction of building software yourself.
