@@ -1,5 +1,7 @@
 # /prompt-plan — c11-roadmap-redesign-v2 remaining implementation prompts
 
+**2026-10-29 MANUAL P14 RECOVERY OVERRIDE (OWNER-APPROVED / DOCS ONLY):** The original P12/P13 output is visibly too small, lacks prominent planned progression colors and forces too much manual Gate form navigation. Before any P14 PASS marker or P15 handoff, run [M1–M3](manual/README.md) using connected real Chrome: M1 readable large cards and state colors; M2 create/edit/reorder/qualify-review all supported Roadmap structures primarily via **the existing saved ChatPanel** and source-bound previews; M3 default read-only details with explicit selected-item Edit toggle and independent combined P14 qualification. This supplements, **does not rewrite**, immutable P14 prompt. Normal Fit All must never force microtext as the default camera; no status color from mere prompt execution. Stop on NOT GREEN/EVIDENCE GAP, retain actual prior source. No runner P15 until source-bound M3/P14 PASS.
+
 **Date:** 2026-10-29. **Scope:** Owner-approved review/replacement of UNSTARTED P8+ only. P1–P7 are source-immutable, locally reported completed; exact local Git evidence must be verified by runner. Version `0.11.8` unchanged. [Readme](README.md), [assessment](prompt-assessment.md), [prompt source supersession](pending-prompt-supersession-2026-10-29.md).
 **Design:** ADR 0040 Gate-first semantics; screenshot-matched visual contract; ADR 0038 single existing Planning Bridge; ADR 0039 future Pi engine not yet integrated.
 
