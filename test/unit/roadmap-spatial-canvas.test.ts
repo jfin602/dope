@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
 import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/roadmap-store.ts';
-import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
+import { projectLegacyRoadmap as projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
 import { roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapDetailAtZoom, roadmapEdgeHandles, roadmapBranchPath, roadmapSpatialLayout, roadmapSpatialNextId, roadmapVisibleGraph } from
     '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import { roadmapInitialCamera, roadmapInitialTarget } from '../../packages/theia-extension/src/browser/roadmap-viewport.ts';

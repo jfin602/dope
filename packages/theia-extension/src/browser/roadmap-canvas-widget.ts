@@ -6,18 +6,19 @@ import { BaseWidget, Message, codicon } from '@theia/core/lib/browser/widgets/wi
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
+import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import { projectRoadmapTasks, selectPhaseFocus, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { RoadmapService } from '../roadmap-service';
 import type { PhaseFocusEvidence } from '../node/phase-focus-evidence';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
-import type { RoadmapLink, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { RoadmapIndex, RoadmapLink, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft, ImplementationPlanProjectionPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
-import { currentDraftChange, projectRoadmapDraft, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
+import { currentDraftChange, projectRoadmapDraft, gatePhaseCards, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
@@ -34,12 +35,13 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
     select: (id: string) => void; activate: (id: string) => void;
     reveal: (id: string, element: HTMLButtonElement) => void } }): React.ReactElement {
     const item = data.item;
+    const card = item.phaseCard;
     return React.createElement(React.Fragment, null,
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
         React.createElement(Handle, { id: 'top', type: 'target', position: Position.Top, isConnectable: false }),
         React.createElement(Handle, { id: 'bottom', type: 'target', position: Position.Bottom, isConnectable: false }),
         React.createElement(Handle, { id: 'right-target', type: 'target', position: Position.Right, isConnectable: false }),
-        React.createElement('button', { type: 'button', className: `dope-roadmap-node dope-roadmap-status-${item.status}${item.draftState ? ` dope-roadmap-draft-${item.draftState}` : ''}`,
+        React.createElement('button', { type: 'button', className: `dope-roadmap-node dope-roadmap-status-${item.status}${item.draftState ? ` dope-roadmap-draft-${item.draftState}` : ''}${card ? ' dope-roadmap-phase-card' : ''}`,
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
             'aria-label': `${item.draftState === 'proposed' ? 'Proposed draft' : item.draftState === 'accepted' ? 'Accepted draft' : 'Canonical Roadmap'} ${item.kind}: ${item.title}; ${item.statusLabel}${item.phaseAssociation?.unresolvedReason ?
                 `; Parent unresolved: ${item.phaseAssociation.unresolvedReason}` : ''}${data.relation ? `; ${data.relation}` : ''}${data.omitted ? `; ${data.omitted} prompts hidden` : ''}`,
@@ -49,11 +51,26 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement('small', { className: 'dope-roadmap-authority' },
             item.draftState === 'proposed' ? 'Proposed · review required' :
                 item.draftState === 'accepted' ? 'Accepted draft · not yet canonical' : 'Canonical Roadmap'),
-        data.detail !== 'world' ? React.createElement('small', null, item.kind) : null,
+        card ? React.createElement('small', { className: 'dope-roadmap-phase-label' }, `PHASE ${card.number}`) :
+            data.detail !== 'world' ? React.createElement('small', null, item.kind) : null,
         React.createElement('strong', null, item.title),
         React.createElement('span', { className: 'dope-roadmap-status' },
             React.createElement('span', { className: 'dope-roadmap-status-mark', 'aria-hidden': true }, roadmapStatusMark[item.status]),
             item.statusLabel),
+        card ? React.createElement(React.Fragment, null,
+            React.createElement('span', { className: 'dope-roadmap-phase-divider', 'aria-hidden': true }),
+            React.createElement('span', { className: 'dope-roadmap-phase-count' },
+                card.required ? `${card.qualified} of ${card.required} gates qualified` : 'No accepted gates · Unplanned'),
+            React.createElement('span', { className: 'dope-roadmap-phase-track', role: 'progressbar',
+                'aria-label': 'Required accepted Gates qualified', 'aria-valuemin': 0,
+                'aria-valuemax': card.required || 1, 'aria-valuenow': card.qualified,
+                'aria-valuetext': card.required ? `${card.qualified} of ${card.required} gates qualified` : 'No accepted gates' },
+            React.createElement('span', { style: { width: card.required ? `${100 * card.qualified / card.required}%` : '0%' } })),
+            React.createElement('span', { className: 'dope-roadmap-phase-children' },
+                ...card.gates.map(gate => React.createElement('span', { key: gate.id, className: 'dope-roadmap-gate-row' },
+                    `${gate.designation} · ${gate.title} · ${gate.proposed ? 'Proposed / Not accepted' : gate.status}`)),
+                ...card.corrections.map(correction => React.createElement('span', { key: correction.id,
+                    className: 'dope-roadmap-correction-row' }, `Correction · ${correction.title} · ${correction.status}`)))) : null,
         item.phaseAssociation?.unresolvedReason ? React.createElement('small', {
             className: 'dope-roadmap-association-warning' }, `Parent unresolved: ${item.phaseAssociation.unresolvedReason}`) : null,
         data.detail === 'checkpoint' && item.evidence.length ? React.createElement('small', null,
@@ -410,8 +427,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 inspector.dirty ? 'Show Roadmap details: unsaved draft' : 'Show Roadmap details on canvas');
             if (graphChanged) {
                 this.schedulePresentation();
-                this.projection = this.withDraft(projectRoadmapTasks(inspector.index, this.taskStacks, this.owners,
-                    { projectId: inspector.index.projectId, selectedId: this.selectedId }));
+                this.projection = this.projectIndex(inspector.index);
                 this.render();
             }
         });
@@ -551,14 +567,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const restoredId = switched ? this.selectedId : undefined;
             this.inspector.setSnapshot(projectUri, index);
             if (switched && restoredId) {
-                if (index.checkpoints.some(item => item.id === restoredId)) this.inspector.select(restoredId);
+                if (index.checkpoints?.some(item => item.id === restoredId) ||
+                    (index as unknown as RoadmapGateIndex).phases?.some(item => item.id === restoredId)) this.inspector.select(restoredId);
                 else this.selectedId = restoredId; // Prompt nodes are presentation-only and absent from the inspector index.
             }
             if (index.revision === 0) this.status.textContent = 'No Roadmap yet. Import one, create manually, or plan with an existing Chat.';
             if (priorProjectUri === projectUri && selectedTaskId &&
-                projectRoadmapTasks(index, tasks).nodes.some(node => node.id === selectedTaskId)) this.selectedId = selectedTaskId;
-            this.projection = this.withDraft(projectRoadmapTasks(index, tasks, owners,
-                { projectId: index.projectId, selectedId: this.selectedId }));
+                this.projectIndex(index, tasks, owners).nodes.some(node => node.id === selectedTaskId)) this.selectedId = selectedTaskId;
+            this.projection = this.projectIndex(index, tasks, owners);
             if (switched && this.selectedId) {
                 const restoredTask = this.projection.nodes.find(node => node.id === this.selectedId && node.taskSource);
                 if (restoredTask) this.inspector.selectTask(restoredTask);
@@ -575,8 +591,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                         const recovered = await this.service.read(projectUri);
                         if (this.isDisposed || request !== this.request || this.projectUri !== projectUri) return;
                         this.inspector.setSnapshot(projectUri, recovered);
-                        this.projection = this.withDraft(projectRoadmapTasks(recovered, tasks, owners,
-                            { projectId: recovered.projectId, selectedId: this.selectedId }));
+                        this.projection = this.projectIndex(recovered, tasks, owners);
                         this.render();
                     }
                     this.syncPreview = sync;
@@ -633,8 +648,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const fit = !!state.review && this.strategicFitToken !== state.review.token;
         if (fit) this.initialCameraPending = false;
         this.strategic = { uri, projectId, chatId, ...state, decide };
-        this.projection = this.withDraft(projectRoadmapTasks(this.inspector.index, this.taskStacks, this.owners,
-            { projectId, selectedId: this.selectedId }));
+        this.projection = this.projectIndex(this.inspector.index);
         this.render();
         if (fit && state.review) {
             this.strategicFitToken = state.review.token;
@@ -651,8 +665,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.strategicFitToken = undefined;
         this.strategicBar.hidden = true;
         if (this.inspector.index) {
-            this.projection = this.withDraft(projectRoadmapTasks(this.inspector.index, this.taskStacks, this.owners,
-                { projectId: this.inspector.index.projectId, selectedId: this.selectedId }));
+            this.projection = this.projectIndex(this.inspector.index);
             if (this.selectedId && !this.projection.nodes.some(node => node.id === this.selectedId))
                 this.selectedId = undefined;
             this.render();
@@ -674,6 +687,17 @@ export class RoadmapCanvasWidget extends BaseWidget {
             projectRoadmapDraft(base, undefined, this.reviewedPlan.preview.draft) : base;
     }
 
+    private projectIndex(index: RoadmapIndex, tasks = this.taskStacks, owners = this.owners): TaskRoadmapProjection {
+        if ((index as unknown as RoadmapGateIndex).schemaVersion === 2) {
+            const phases = gatePhaseCards(index as unknown as RoadmapGateIndex, owners);
+            return { ...phases, unlinkedTasks: phases.unassignedCorrections.map(item => ({
+                path: item.id, title: item.title, reason: 'Correction parent is missing or conflicted.' })),
+                omittedTaskNodes: 0 };
+        }
+        return this.withDraft(projectRoadmapTasks(index, tasks, owners,
+            { projectId: index.projectId, selectedId: this.selectedId }));
+    }
+
     /** Reject foreign, stale and repeated notifications before touching presentation state. */
     draftChanged(change: GreenfieldChange): void {
         if (change.kind === 'plan' && this.inspector.index?.projectRoot === change.root &&
@@ -691,8 +715,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (change.kind === 'cancelled') { this.createState = undefined; this.proposedDraft = undefined; }
         else if (change.kind === 'accepted') { state.draft = change.draft!; state.preview = undefined; this.proposedDraft = undefined; }
         else this.proposedDraft = change.kind === 'proposed' ? change.draft : undefined;
-        if (this.inspector.index) this.projection = this.withDraft(projectRoadmapTasks(this.inspector.index,
-            this.taskStacks, this.owners, { projectId: state.projectId, selectedId: this.selectedId }));
+        if (this.inspector.index) this.projection = this.projectIndex(this.inspector.index);
         this.render();
     }
 
@@ -852,11 +875,15 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private renderPhaseFocus(): void {
+        if (!this.phaseOpen) return;
         const index = this.inspector.index;
+        if ((index as unknown as RoadmapGateIndex | undefined)?.schemaVersion === 2) {
+            this.setPhaseOpen(false); // The schema-two Gate inspector is completed in P13.
+            return;
+        }
         const evidence = this.phaseEvidence?.projectId === index?.projectId ? this.phaseEvidence : undefined;
         const phase = index && this.phaseId && selectPhaseFocus(index, this.taskStacks, this.phaseId,
             evidence?.checkpoints, evidence?.qualifications, evidence?.failedPromptEvidence, evidence?.blocked);
-        if (!this.phaseOpen) return;
         if (!phase || phase.projectId !== this.projectId) {
             this.setPhaseOpen(false);
             return;
@@ -1116,7 +1143,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 ...handles,
                 type: handles.targetHandle === 'right-target' ? 'branchRoute' : 'smoothstep',
                 selectable: true, selected: item.id === this.selectedEdgeId, zIndex: 1,
-                ...(item.kind === 'dependency' ? { markerEnd: { type: MarkerType.ArrowClosed } } : {}),
+                ...(item.kind === 'dependency' || item.kind === 'progression' ?
+                    { markerEnd: { type: MarkerType.ArrowClosed } } : {}),
                 ariaLabel: `${item.label}; ${titles.get(item.from) ?? item.from} to ${titles.get(item.to) ?? item.to}; endpoint status ${status}`,
                 className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}${item.kind === 'dependency' ? ` dope-roadmap-edge-${status}` : ''}${projection?.nodes.find(node => node.id === item.to)?.draftState ? ` dope-roadmap-draft-${projection.nodes.find(node => node.id === item.to)?.draftState}` : ''}${roadmapConnectorTouchesSelection(item, this.selectedId) ? ' dope-roadmap-edge-related' : ''}` };
         });
@@ -1863,8 +1891,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const preview = await this.service.previewImplementationPlanProjection(state.uri, state.handle);
             if (this.reviewedPlan !== state || this.projectUri !== state.uri) return;
             state.preview = preview;
-            this.projection = this.withDraft(projectRoadmapTasks(index, this.taskStacks, this.owners,
-                { projectId: index.projectId, selectedId: this.selectedId }));
+            this.projection = this.projectIndex(index);
             this.render();
         } catch (error) { if (this.reviewedPlan === state) state.error = `Plan projection unavailable: ${String(error)}. Refresh and review again.`; }
         finally { if (this.reviewedPlan === state) { state.busy = false; this.renderImportEntry(); } }
@@ -1880,8 +1907,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.reviewedPlan = undefined;
             this.createState = { uri: state.uri, projectId: state.projectId, handle: state.handle,
                 draft, mode: 'plan', path: 'ROADMAP.md', busy: false };
-            this.projection = this.withDraft(projectRoadmapTasks(index, this.taskStacks, this.owners,
-                { projectId: index.projectId, selectedId: this.selectedId }));
+            this.projection = this.projectIndex(index);
             this.render();
         } catch (error) { if (this.reviewedPlan === state) {
             state.preview = undefined; state.error = `Plan projection was not accepted: ${String(error)}. Refresh and review again.`;
@@ -1897,8 +1923,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         finally {
             if (this.reviewedPlan === state) {
                 state.preview = undefined; state.busy = false;
-                this.projection = this.withDraft(projectRoadmapTasks(index, this.taskStacks, this.owners,
-                    { projectId: index.projectId, selectedId: this.selectedId }));
+                this.projection = this.projectIndex(index);
                 this.render();
             }
         }
@@ -2007,8 +2032,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         ++this.createSerial; this.createState = undefined; this.proposedDraft = undefined; this.draftSequence = 0;
         this.draftEpoch = undefined;
         void this.service.cancelDraft(state.handle).catch(() => undefined);
-        if (this.inspector.index) this.projection = projectRoadmapTasks(this.inspector.index,
-            this.taskStacks, this.owners, { projectId: state.projectId, selectedId: this.selectedId });
+        if (this.inspector.index) this.projection = this.projectIndex(this.inspector.index);
         this.render();
     }
 
@@ -2240,7 +2264,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const heading = document.createElement('h2');
         heading.textContent = 'Unsequenced Ideas and Issues';
         const hint = document.createElement('p');
-        const selectedCheckpoint = this.inspector.index?.checkpoints.some(item => item.id === this.selectedId && !item.readOnly);
+        const selectedCheckpoint = this.inspector.index?.checkpoints?.some(item => item.id === this.selectedId && !item.readOnly);
         hint.textContent = selectedCheckpoint ? 'Link a record to the selected checkpoint. The original record stays with its owner.' :
             'Select a checkpoint above to link an Idea or Issue.';
         this.pools.append(heading, hint, this.poolFilter);
@@ -2281,8 +2305,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }
         if (projection.unlinkedTasks.length) {
             const group = document.createElement('section');
-            const title = document.createElement('h3'); title.textContent = 'Unlinked task sources';
-            const list = document.createElement('ul'); list.setAttribute('aria-label', 'Unlinked task sources');
+            const title = document.createElement('h3'); title.textContent = this.inspector.gateIndex ? 'Unassigned corrections' : 'Unlinked task sources';
+            const list = document.createElement('ul'); list.setAttribute('aria-label', title.textContent);
             for (const source of projection.unlinkedTasks.filter(item => !query ||
                 `${item.title} ${item.path} ${item.reason}`.toLocaleLowerCase().includes(query))) {
                 const item = document.createElement('li');

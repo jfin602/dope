@@ -29,6 +29,10 @@ export interface CheckpointNode {
     phaseAssociation?: PhaseAssociation;
     taskSource?: { stackPath: string; path?: string; fingerprint: string; number?: number; version?: string;
         browserRequired?: boolean; segment?: string; diagnostic?: string };
+    /** Read-only schema-two visual summary; no RoadmapStore field is written. */
+    phaseCard?: { number: number; title: string; qualification: string; qualified: number; required: number;
+        gates: { id: string; designation: string; title: string; status: string; proposed: boolean }[];
+        corrections: { id: string; title: string; status: string }[] };
 }
 export interface CheckpointEdge {
     id: string;

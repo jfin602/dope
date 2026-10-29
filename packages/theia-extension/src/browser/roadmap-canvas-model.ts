@@ -1,5 +1,57 @@
 import type { CheckpointNode, CheckpointEdge, LegacyRoadmapProjection as RoadmapProjection } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { GreenfieldDraft, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
+import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
+import { evaluateGateQualification, evaluatePhaseQualification } from '@dope/project-intelligence/lib/node/roadmap-gate-domain.js';
+import { projectRoadmap } from '@dope/project-intelligence/lib/roadmap-projection.js';
+
+export interface PhaseCardSummary {
+    number: number;
+    title: string;
+    qualification: string;
+    qualified: number;
+    required: number;
+    gates: { id: string; designation: string; title: string; status: string; proposed: boolean }[];
+    corrections: { id: string; title: string; status: string }[];
+}
+
+/** Read-only schema-two card data. Gate rows are contained in their Phase, never graph peers. */
+export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly RoadmapOwnerRecord[] = []): { projectId: string; revision: number;
+    nodes: CheckpointNode[]; edges: CheckpointEdge[]; pools: RoadmapProjection['pools']; diagnostics: string[];
+    unassignedCorrections: { id: string; title: string }[] } {
+    const source = projectRoadmap(index, owners);
+    const phases = [...index.phases].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+    const nodes: CheckpointNode[] = phases.map((phase, number) => {
+        const result = evaluatePhaseQualification(index, phase.id, phase.qualificationSource);
+        const gates = index.gates.filter(gate => gate.parentPhaseId === phase.id)
+            .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+            .map(gate => ({ id: gate.id, designation: gate.designation, title: gate.title,
+                status: source.nodes.find(node => node.id === gate.id)?.qualificationStatus ??
+                    evaluateGateQualification(gate, gate.qualificationSource).status,
+                proposed: gate.draftAcceptance === 'proposed' }));
+        const corrections = index.corrections.filter(item => item.parent.kind === 'phase' && item.parent.id === phase.id ||
+            item.parent.kind === 'gate' && gates.some(gate => gate.id === item.parent.id))
+            .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+            .map(item => ({ id: item.id, title: item.title, status: item.qualificationStatus }));
+        const label = phase.title.replace(/^Phase\s+\d+\s*(?:[-—:]\s*)?/i, '').trim() || phase.title;
+        const phaseNumber = /^Phase\s+(\d+)\b/i.exec(phase.title);
+        const card: PhaseCardSummary = { number: phaseNumber ? Number(phaseNumber[1]) : number + 1, title: label,
+            qualification: result.status, qualified: result.qualified, required: result.required,
+            gates, corrections };
+        return { id: phase.id, kind: 'phase', title: phase.title, order: phase.order,
+            status: result.status === 'green' ? 'green' : result.status === 'not-green' ? 'not-green' :
+                result.status === 'blocked' ? 'not-green' : result.status === 'waived' ? 'waived' : 'unknown',
+            statusLabel: result.status === 'unplanned' ? 'Unplanned' : result.status === 'planned' ? 'Planned' :
+                result.status === 'stale' ? 'Requalification Required' : result.status === 'not-green' ? 'Not Green' :
+                    result.status[0].toUpperCase() + result.status.slice(1),
+            evidence: [], readOnly: true, lane: 'path',
+            draftState: phase.draftAcceptance === 'published' ? undefined : phase.draftAcceptance,
+            phaseCard: card };
+    });
+    return { projectId: index.projectId, revision: index.revision, nodes, edges: [],
+        pools: { ideas: source.pools.ideas, issues: source.pools.issues }, diagnostics: source.diagnostics,
+        unassignedCorrections: source.pools.corrections.map(item => ({ id: item.id, title: item.title })) };
+}
 
 export function currentDraftChange(change: GreenfieldChange, state: { root: string; projectId: string;
     handle: string; revision: number; sequence: number }): boolean {

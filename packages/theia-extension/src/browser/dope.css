@@ -102,12 +102,24 @@ body.theia-light:not(.dope-dark) {
   --dope-roadmap-focus: color-mix(in srgb, var(--theia-focusBorder) 78%, black);
 }
 .dope-roadmap-node strong { font-size: 14px; }
+.dope-roadmap-phase-card { width: 340px; min-height: 240px; gap: 10px; padding: 18px 20px; border-radius: 18px; border-left-width: 2px; background: color-mix(in srgb, var(--theia-editorWidget-background, var(--theia-editor-background)) 88%, var(--theia-editor-foreground)); box-shadow: 0 6px 20px var(--theia-widget-shadow, transparent); }
+.dope-roadmap-phase-card:hover { background: color-mix(in srgb, var(--theia-editorWidget-background, var(--theia-editor-background)) 82%, var(--theia-editor-foreground)); }
+.dope-roadmap-phase-card > strong { font-size: 21px; line-height: 1.25; font-weight: 700; max-width: 100%; }
+.dope-roadmap-phase-card .dope-roadmap-phase-label { font-size: 11px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; color: var(--theia-editor-foreground); }
+.dope-roadmap-phase-divider { display: block; width: 100%; border-top: 1px solid var(--theia-widget-border, var(--theia-descriptionForeground)); }
+.dope-roadmap-phase-count { font-size: 12px; color: var(--theia-editor-foreground); }
+.dope-roadmap-phase-track { display: block; height: 5px; width: 100%; border-radius: 99px; background: color-mix(in srgb, var(--theia-descriptionForeground) 30%, transparent); overflow: hidden; }
+.dope-roadmap-phase-track > span { display: block; height: 100%; background: var(--dope-roadmap-green, var(--theia-testing-iconPassed, var(--theia-foreground))); }
+.dope-roadmap-phase-children { display: grid; gap: 5px; width: 100%; max-height: 150px; overflow: auto; }
+.dope-roadmap-gate-row, .dope-roadmap-correction-row { display: block; padding: 6px 8px; border: 1px solid var(--theia-widget-border); border-radius: 7px; background: var(--theia-editor-background); color: var(--theia-editor-foreground); font-size: 12px; line-height: 1.35; }
+.dope-roadmap-correction-row { border-left: 3px solid var(--theia-editorWarning-foreground, var(--theia-widget-border)); }
 .dope-roadmap-omitted { color: var(--theia-descriptionForeground); font-size: 12px; }
 .dope-roadmap-node .dope-roadmap-association-warning { color: var(--theia-editorWarning-foreground, var(--theia-foreground)); }
 .dope-roadmap-detail { color: var(--theia-descriptionForeground); }
 .dope-roadmap-edge .react-flow__edge-path { stroke: var(--theia-descriptionForeground); stroke-width: 2; }
 .dope-roadmap-edge-branch .react-flow__edge-path { stroke-dasharray: 6 4; }
 .dope-roadmap-edge-progression .react-flow__edge-path { stroke: var(--theia-editor-foreground); stroke-width: 2.5; }
+.dope-roadmap-edge-progression .react-flow__edge-marker { fill: var(--theia-editor-foreground); }
 .dope-roadmap-edge-membership .react-flow__edge-path { stroke: var(--theia-descriptionForeground); stroke-width: 2; stroke-dasharray: 7 4; }
 .dope-roadmap-edge-containment .react-flow__edge-path { stroke: var(--theia-descriptionForeground); stroke-width: 1.5; stroke-dasharray: 2 5; }
 .dope-roadmap-edge-dependency .react-flow__edge-path { stroke-width: 2.5; stroke-dasharray: 9 3; }

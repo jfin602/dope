@@ -117,7 +117,7 @@ test('keyboard and Focus Selection camera changes honor reduced motion', () => {
 
 test('widget initializes after project projection and saves only intentional camera changes', () => {
     assert.match(widget, /this\.initialCameraPending = !state\.viewport/);
-    assert.match(widget, /this\.projection = this\.withDraft\(projectRoadmapTasks\(index, tasks, owners/);
+    assert.match(widget, /this\.projection = this\.projectIndex\(index, tasks, owners\)/);
     assert.match(widget, /this\.queueInitialCamera\(\)/);
     assert.match(widget, /generation === this\.cameraGeneration && uri === this\.projectUri && flow === this\.flow/);
     assert.match(widget, /cameraGeneration !== this\.cameraGeneration \|\|[\s\S]*?cameraProjectUri !== this\.projectUri\) return;[\s\S]*?if \(roadmapUserViewportEvent\(event\)\) this\.recordUserCamera\(viewport\)/);

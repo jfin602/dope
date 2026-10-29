@@ -3,13 +3,48 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { projectRoadmapDraft, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { projectRoadmapDraft, gatePhaseCards, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import type { RoadmapGateIndex } from '../../packages/project-intelligence/src/node/roadmap-gate-domain.ts';
 import { roadmapEdgeStatus, roadmapStatusMark, type RoadmapStatus } from '../../packages/theia-extension/src/browser/roadmap-status-style.ts';
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
 const node = (id: string, lane: 'path' | 'branch', order: number) => ({
     id, lane, order, kind: lane === 'path' ? 'phase' as const : 'correction' as const,
     title: id, status: 'unknown' as const, statusLabel: 'Unknown', evidence: [], readOnly: false,
+});
+
+test('schema-two phase cards nest Gates, count only accepted Gates and leave source identity untouched', () => {
+    const phase = (id: string, order: number) => ({ id, projectId: 'project', title: `Phase ${order + 1} — ${'A long readable title '.repeat(5)}`,
+        objective: 'Outcome', order, dependencies: [], implementationStatus: 'unknown' as const,
+        qualificationStatus: 'unknown' as const, draftAcceptance: 'published' as const,
+        gateSetCoverage: { status: 'unreviewed' as const } });
+    const gate = (id: string, parentPhaseId: string, order: number, acceptance: 'accepted' | 'proposed') => ({
+        id, projectId: 'project', parentPhaseId, designation: `G${order + 1}`, title: id, purpose: 'Verify', order,
+        dependencies: [], criteria: [], implementationStatus: 'unknown' as const,
+        qualificationStatus: 'unknown' as const, draftAcceptance: acceptance });
+    const index: RoadmapGateIndex = { schemaVersion: 2, projectId: 'project', projectRoot: '/tmp/fixture', revision: 4,
+        phases: [phase('phase-a', 0), phase('phase-b', 1)],
+        gates: [gate('gate-a', 'phase-a', 0, 'accepted'), gate('gate-draft', 'phase-a', 1, 'proposed')], corrections: [],
+        linkedDocument: { projectId: 'project', projectRoot: '/tmp/fixture', path: 'ROADMAP.md',
+            sourceHash: 'a'.repeat(64), syncState: 'synced', sections: [] } };
+    const before = JSON.stringify(index);
+    const cards = gatePhaseCards(index);
+    assert.deepEqual(cards.nodes.map(item => item.id), ['phase-a', 'phase-b']);
+    assert.deepEqual(cards.nodes.map(item => item.statusLabel), ['Planned', 'Unplanned']);
+    assert.equal(cards.nodes[0].phaseCard?.required, 1);
+    assert.equal(cards.nodes[0].phaseCard?.qualified, 0);
+    assert.deepEqual(cards.nodes[0].phaseCard?.gates.map(item => [item.id, item.proposed]),
+        [['gate-a', false], ['gate-draft', true]]);
+    assert.equal(cards.nodes[1].phaseCard?.required, 0);
+    assert.deepEqual(roadmapCanvasConnectors(cards).map(item => item.kind), ['progression']);
+    const positions = roadmapSpatialLayout(cards);
+    assert.ok(positions.get('phase-a')!.x < positions.get('phase-b')!.x);
+    assert.equal(JSON.stringify(index), before);
+    assert.equal(index.linkedDocument?.sourceHash, 'a'.repeat(64));
+    const css = read('packages/theia-extension/src/browser/dope.css');
+    assert.match(css, /\.dope-roadmap-phase-card \{ width: 340px/);
+    assert.match(css, /\.dope-roadmap-phase-card > strong \{ font-size: 21px/);
+    assert.match(css, /\.dope-roadmap-phase-children \{[^}]*max-height: 150px; overflow: auto/);
 });
 
 test('one keyboard order follows the checkpoint path and attached branches', () => {
