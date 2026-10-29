@@ -1,9 +1,9 @@
 # /prompt-plan — c11-roadmap-redesign-v2
 
-**Sequencing authority:** The original 2026-10-29 P1 exception explicitly applied to the former P1 only and did NOT authorize P2 after P1 NOT GREEN. It is preserved as historical evidence, **not inherited as authorization to run v2**. V2 documentation and prompt authoring are approved now; before any v2 implementation, obtain a NEW explicit owner execution/sequencing decision or meet the original full G3 prerequisite. G3 P4 is owner-accepted native-priority Green with Chrome R1-R7 evidence gaps; these are not silently requalified.
+**CURRENT v2 EXECUTION AUTHORITY (2026-10-29):** The owner deliberately started the named v2 runner; its first attempt stopped at preflight with zero code changes and no P1 PASS. That direct execution action is the **new, distinct v2 sequencing decision**, recorded in [owner-run authorization](qualification/2026-10-29-owner-run-authorization.md). It supersedes the earlier documentation-only preflight request for another written approval. Old P1's exception remains limited to old P1; G3 Chrome R1–R7 gaps remain evidence gaps. Re-run v2 P1 normally with all original technical tests and stop conditions; **do not edit immutable P*.txt source** or forge a completed prompt.
 
 **Date:** 2026-10-29; DOCUMENTATION / EXECUTABLE PROMPTS ONLY; NOT RUN / QUALIFIED.
-**Source:** use current HEAD/local worktree, not a stale pinned SHA. Version `0.11.8` unchanged, main only. Retain old P1 NOT GREEN and its safe incompatible-schema rejection. The original P1 sequencing exception was scoped to that former prompt only; v2 execution needs new explicit owner authorization or completed G3 prerequisites.
+**Source:** use current HEAD/local worktree, not a stale pinned SHA. Version `0.11.8` unchanged, main only. Retain old P1 NOT GREEN and its safe incompatible-schema rejection. The old P1 exception cannot authorize this stack; the owner's subsequent direct v2 runner launch is separately documented as the v2 execution decision.
 
 ## Design and authority
 

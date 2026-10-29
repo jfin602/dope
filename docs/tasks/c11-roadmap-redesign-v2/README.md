@@ -1,6 +1,6 @@
 # c11-roadmap-redesign-v2 — Gate-first Roadmap execution recovery
 
-**Sequencing authority:** The original 2026-10-29 P1 exception explicitly applied to the former P1 only and did NOT authorize P2 after P1 NOT GREEN. It is preserved as historical evidence, **not inherited as authorization to run v2**. V2 documentation and prompt authoring are approved now; before any v2 implementation, obtain a NEW explicit owner execution/sequencing decision or meet the original full G3 prerequisite. G3 P4 is owner-accepted native-priority Green with Chrome R1-R7 evidence gaps; these are not silently requalified.
+**CURRENT v2 EXECUTION AUTHORITY (2026-10-29):** The owner deliberately started the named v2 runner; its first attempt stopped at preflight with zero code changes and no P1 PASS. That direct execution action is the **new, distinct v2 sequencing decision**, recorded in [owner-run authorization](qualification/2026-10-29-owner-run-authorization.md). It supersedes the earlier documentation-only preflight request for another written approval. Old P1's exception remains limited to old P1; G3 Chrome R1–R7 gaps remain evidence gaps. Re-run v2 P1 normally with all original technical tests and stop conditions; **do not edit immutable P*.txt source** or forge a completed prompt.
 
 **Decision:** 2026-10-29 owner-directed redesign of failed `c11-roadmap-redesign` P1; docs/prompts only.
 **Execution stack:** `c11-roadmap-redesign-v2` (new identity required by `scripts/codex-phase.mjs` authored-prompt immutability). The original [P1 NOT GREEN evidence](../c11-roadmap-redesign/qualification/2026-10-29-p1-repair-cycles.md), owner [sequencing exception](../c11-roadmap-redesign/qualification/2026-10-29-p1-sequencing-exception.md), and P1–P7 authored prompt bytes remain historical and are NOT edited or requalified.
@@ -10,7 +10,7 @@
 
 ## Authoritative status and entry
 
-At the reviewed source, the original G3 P4 has an **owner-accepted native-priority Green disposition**, with incomplete Chrome R1–R7 evidence; its limitation remains explicit. The historical P1 sequencing exception allowed the former P1 only; it does not authorize running this new v2 stack. Obtain new owner approval or satisfy the complete G3 prerequisite before execution. The earlier exception is historical only and does not waive any v2 implementation or qualification gate. Read actual local repo state and do not assume an uncommitted outcome is on `main`.
+At the reviewed source, the original G3 P4 has an **owner-accepted native-priority Green disposition**, with incomplete Chrome R1–R7 evidence; its limitation remains explicit. The historical P1 sequencing exception applied only to former P1. A **new, separate v2 execution decision** is now documented from the owner's deliberate v2 runner invocation; it authorizes entering this stack, without qualifying outstanding G3 Chrome gaps. The earlier exception is historical only and does not waive any v2 implementation or qualification gate. Read actual local repo state and do not assume an uncommitted outcome is on `main`.
 
 The P1 not-Green result and its safe rejection are an **input baseline**, not a completed v2 prompt. V2 starts at P1 with new contracts/tests. Preserve the existing no-write rejection until the new schema is authoritative; do not let its continued existence mask a missing implementation.
 
@@ -50,6 +50,6 @@ P15–P18 are runner compatible and cover status/relationships, Dope Help, dead 
 - Preserve normal user-authored Markdown, independent project source files, prior Chrome/NOT GREEN reports, model/Work approvals, source/revisions and Git history. Incompatible indexes show explicit safe recovery; never delete or rewrite original bytes without distinct human approval.
 - Do not change `0.11.8`, dependencies/lockfile, branch, model defaults or hosted permissions. Never reset/stash/clean/force push, overwrite owner dirty work or mutate the persistent PixiJS project for tests. Disposable project fixtures for destructive tests.
 - **Tests are scoped**: a P2 parser passing does not qualify P6 projection; a completed Work prompt does not qualify Gate Green; browser build is not a Chrome check. Use focused tests and affected build per slice and one justified final aggregate near P18/P19.
-- No /activate step. Do not use `--closeout` to bypass manual P19. Native Electron verification is separate. The prior P1 sequencing exception is NOT v2 execution authorization or a qualification waiver.
+- No /activate step. Do not use `--closeout` to bypass manual P19. Native Electron verification is separate. The prior P1 sequencing exception remains old-P1-only; the new owner-run v2 execution decision is documented above and is NOT a qualification waiver.
 
 **Prompt files are authored only; v2 has not been run or qualified.**
