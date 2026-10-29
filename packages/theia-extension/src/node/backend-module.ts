@@ -49,6 +49,7 @@ import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store'
 import { RoadmapGreenfield } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { RoadmapLinkedObserver } from '@dope/project-intelligence/lib/node/roadmap-linked-observer';
 import { RoadmapOwnerLinks } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
+import { readRoadmapProjection } from '@dope/project-intelligence/lib/node/roadmap-projection-reader';
 import { discoverRoadmapCandidates, previewRoadmapImport } from '@dope/project-intelligence/lib/node/roadmap-import';
 import { discoverRoadmapTaskStacks } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import { resolveRoadmapPromptSource } from './roadmap-prompt-open';
@@ -186,6 +187,11 @@ export default new ContainerModule(bind => {
                     greenfield.bindChat(root, handle, chatId);
                 },
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
+                readProjection: async (uri, presentation = {}) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    const owners = await new RoadmapOwnerLinks().list(root);
+                    return readRoadmapProjection(store, root, owners, presentation);
+                },
                 owners: async (uri) => new RoadmapOwnerLinks().list(await context.container.get(PlanningStore).root(uri)),
                 discoverTasks: async (uri) => {
                     const root = await context.container.get(PlanningStore).root(uri);

@@ -1,4 +1,4 @@
-import type { CheckpointNode, CheckpointEdge, RoadmapProjection } from '@dope/project-intelligence/lib/roadmap-projection';
+import type { CheckpointNode, CheckpointEdge, LegacyRoadmapProjection as RoadmapProjection } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { GreenfieldDraft, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 
 export function currentDraftChange(change: GreenfieldChange, state: { root: string; projectId: string;

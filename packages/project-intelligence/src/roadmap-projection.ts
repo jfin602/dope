@@ -1,5 +1,8 @@
 import type { RoadmapCheckpoint, RoadmapIndex, RoadmapLink } from './node/roadmap-store';
 import type { RoadmapOwnerRecord } from './node/roadmap-owner-links';
+import type { GateEvidence, RoadmapGateIndex, RoadmapImplementationStatus, RoadmapQualificationStatus,
+    RoadmapDraftAcceptance } from './node/roadmap-gate-domain';
+import { evaluateGateQualification, evaluatePhaseQualification } from './node/roadmap-gate-domain';
 import { correctionIdentifier, resolveCorrectionPhase, roadmapPhaseNumber, type PhaseAssociation } from './roadmap-phase-association';
 
 export interface RoadmapPresentation {
@@ -9,6 +12,7 @@ export interface RoadmapPresentation {
     placements?: Record<string, { x: number; y: number }>;
     colors?: Record<string, string>;
 }
+/** @deprecated P17 removes this compile-only schema-1 canvas shape. */
 export interface CheckpointNode {
     id: string;
     kind: RoadmapCheckpoint['kind'] | 'task-stack' | 'prompt';
@@ -44,7 +48,8 @@ export interface PoolNode {
     readOnly: boolean;
     provenance: string;
 }
-export interface RoadmapProjection {
+/** @deprecated P17 removes the old checkpoint canvas contract. */
+export interface LegacyRoadmapProjection {
     projectId: string;
     revision: number;
     nodes: CheckpointNode[];
@@ -64,8 +69,9 @@ const nodeOrder = (a: CheckpointNode, b: CheckpointNode): number => a.order - b.
     (a.lane === b.lane ? 0 : a.lane === 'path' ? -1 : 1) || compare(a.id, b.id);
 
 /** Read-only semantic graph. Layout, colors and viewport belong to the caller's presentation state. */
-export function projectRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwnerRecord[] = [],
-    presentation: RoadmapPresentation = {}): RoadmapProjection {
+/** @deprecated Compile-only seam for the old canvas/task projection; P17 removes it. Store reads reject schema 1. */
+export function projectLegacyRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwnerRecord[] = [],
+    presentation: RoadmapPresentation = {}): LegacyRoadmapProjection {
     const nodes: CheckpointNode[] = index.checkpoints.map((item): CheckpointNode => ({
         id: item.id, kind: item.kind, title: item.title, order: item.order, status: item.status,
         statusLabel: item.status === 'waived' && item.evidence.some(citation =>
@@ -144,4 +150,94 @@ export function projectRoadmap(index: RoadmapIndex, owners: readonly RoadmapOwne
         omittedNeighbors: Math.max(0, neighbors.length - 16), omittedLinks: Math.max(0, checkpoint.links.length - 16),
     } : undefined;
     return { projectId: index.projectId, revision: index.revision, nodes, edges, pools, diagnostics, selection };
+}
+
+export interface GateRoadmapNode {
+    id: string;
+    kind: 'phase' | 'gate' | 'correction';
+    title: string;
+    order: number;
+    parentId?: string;
+    parentKind?: 'phase' | 'gate';
+    implementationStatus: RoadmapImplementationStatus;
+    qualificationStatus: RoadmapQualificationStatus | 'planned' | 'unplanned';
+    draftAcceptance: RoadmapDraftAcceptance;
+    evidenceStatus: 'none' | 'proposed' | 'approved' | 'failed' | 'stale';
+    evidence: GateEvidence[];
+}
+export interface RoadmapProjection {
+    projectId: string;
+    revision: number;
+    nodes: GateRoadmapNode[];
+    edges: CheckpointEdge[];
+    pools: { ideas: PoolNode[]; issues: PoolNode[]; corrections: GateRoadmapNode[] };
+    diagnostics: string[];
+    selection?: { node: GateRoadmapNode; neighbors: GateRoadmapNode[] };
+}
+
+/** The schema-2 canonical view used by RoadmapService. No task stack creates a Gate. */
+export function projectRoadmap(index: RoadmapGateIndex, owners: readonly RoadmapOwnerRecord[] = [],
+    presentation: RoadmapPresentation = {}): RoadmapProjection {
+    if (index.schemaVersion !== 2) throw new Error('Roadmap projection requires schema 2');
+    const diagnostics: string[] = [];
+    const phases: GateRoadmapNode[] = [...index.phases].sort((a, b) => a.order - b.order || compare(a.id, b.id)).map(phase => ({
+        id: phase.id, kind: 'phase', title: phase.title, order: phase.order,
+        implementationStatus: phase.implementationStatus,
+        qualificationStatus: evaluatePhaseQualification(index, phase.id, phase.qualificationSource).status,
+        draftAcceptance: phase.draftAcceptance, evidenceStatus: 'none', evidence: [],
+    }));
+    const gates: GateRoadmapNode[] = [...index.gates].sort((a, b) =>
+        compare(a.parentPhaseId, b.parentPhaseId) || a.order - b.order || compare(a.id, b.id)).map(gate => {
+        const evidence = gate.criteria.flatMap(criterion => criterion.evidence.map(item => ({ ...item })));
+        const evaluated = evaluateGateQualification(gate, gate.qualificationSource).status;
+        const qualificationStatus = evaluated === 'green' && (gate.qualificationStatus === 'stale' ||
+            index.linkedDocument && index.linkedDocument.syncState !== 'synced') ? 'stale' : evaluated;
+        return { id: gate.id, kind: 'gate', title: gate.title, order: gate.order,
+            parentId: gate.parentPhaseId, parentKind: 'phase', implementationStatus: gate.implementationStatus,
+            qualificationStatus, draftAcceptance: gate.draftAcceptance, evidence,
+            evidenceStatus: qualificationStatus === 'stale' ? 'stale' : qualificationStatus === 'not-green' ? 'failed' :
+                evidence.some(item => item.review.status === 'approved') ? 'approved' : evidence.length ? 'proposed' : 'none' };
+    });
+    const corrections: GateRoadmapNode[] = [...index.corrections].sort((a, b) =>
+        a.order - b.order || compare(a.id, b.id)).map(item => ({
+        id: item.id, kind: 'correction', title: item.title, order: item.order,
+        parentId: item.parent.id, parentKind: item.parent.kind, implementationStatus: item.implementationStatus,
+        qualificationStatus: item.qualificationStatus, draftAcceptance: item.draftAcceptance,
+        evidenceStatus: 'none', evidence: [],
+    }));
+    const nodes = [...phases, ...gates, ...corrections];
+    const byId = new Map(nodes.map(node => [node.id, node]));
+    const edges: CheckpointEdge[] = [];
+    for (const node of [...gates, ...corrections]) {
+        if (!node.parentId || byId.get(node.parentId)?.kind !== node.parentKind) {
+            diagnostics.push(`Unassigned ${node.kind}: ${node.id}`); continue;
+        }
+        edges.push({ id: `parent:${node.parentId}:${node.id}`, from: node.parentId, to: node.id,
+            kind: 'branch', label: `${node.kind} parent` });
+    }
+    for (const entity of [...index.phases, ...index.gates]) for (const dependency of entity.dependencies) {
+        if (byId.get(dependency)?.kind !== byId.get(entity.id)?.kind) {
+            diagnostics.push(`Invalid dependency: ${dependency} -> ${entity.id}`); continue;
+        }
+        edges.push({ id: `dependency:${dependency}:${entity.id}`, from: dependency, to: entity.id,
+            kind: 'dependency', label: 'Depends on' });
+    }
+    edges.sort((a, b) => compare(a.from, b.from) || compare(a.to, b.to) || compare(a.id, b.id));
+    const ownerPool = (owner: RoadmapOwnerRecord): PoolNode => ({
+        id: `${owner.owner}:${owner.targetId}`, owner: owner.owner, targetId: owner.targetId,
+        title: owner.title, status: owner.status, readOnly: owner.readOnly,
+        provenance: owner.owner === 'issue' ? 'known-issues.md' : owner.artifact.provenance,
+        ...(owner.owner === 'issue' ? { sourceHash: owner.sourceHash } : { ownerRevision: owner.ownerRevision }),
+    });
+    const poolOrder = (a: PoolNode, b: PoolNode): number => compare(a.title, b.title) || compare(a.id, b.id);
+    const pools = { ideas: owners.filter(owner => owner.owner === 'project-mind' && owner.artifact.type === 'idea').map(ownerPool).sort(poolOrder),
+        issues: owners.filter(owner => owner.owner === 'issue').map(ownerPool).sort(poolOrder),
+        corrections: corrections.filter(node => !node.parentId || byId.get(node.parentId)?.kind !== node.parentKind) };
+    const selected = (presentation.projectId === undefined || presentation.projectId === index.projectId) &&
+        presentation.selectedId ? byId.get(presentation.selectedId) : undefined;
+    const neighborIds = selected ? new Set(edges.filter(edge => edge.from === selected.id || edge.to === selected.id)
+        .map(edge => edge.from === selected.id ? edge.to : edge.from)) : new Set<string>();
+    return { projectId: index.projectId, revision: index.revision, nodes, edges, pools,
+        diagnostics: diagnostics.sort(compare),
+        selection: selected ? { node: selected, neighbors: nodes.filter(node => neighborIds.has(node.id)) } : undefined };
 }

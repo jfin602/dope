@@ -1,5 +1,5 @@
-import { projectRoadmap } from './roadmap-projection';
-import type { CheckpointEdge, CheckpointNode, RoadmapPresentation, RoadmapProjection } from './roadmap-projection';
+import { projectLegacyRoadmap as projectRoadmap } from './roadmap-projection';
+import type { CheckpointEdge, CheckpointNode, RoadmapPresentation, LegacyRoadmapProjection } from './roadmap-projection';
 import type { RoadmapIndex } from './node/roadmap-store';
 import type { RoadmapOwnerRecord } from './node/roadmap-owner-links';
 import { correctionPhaseNumber, resolveCorrectionPhase, roadmapPhaseNumber } from './roadmap-phase-association';
@@ -20,7 +20,7 @@ export interface FailedPromptEvidence {
     evidenceHash: string;
 }
 export interface UnlinkedTaskSource { path: string; title: string; reason: string; diagnostic?: string }
-export interface TaskRoadmapProjection extends RoadmapProjection {
+export interface TaskRoadmapProjection extends LegacyRoadmapProjection {
     unlinkedTasks: UnlinkedTaskSource[];
     omittedTaskNodes: number;
 }

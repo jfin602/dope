@@ -5,6 +5,7 @@ import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/proj
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft, ImplementationPlanProjectionPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
+import type { RoadmapProjection, RoadmapPresentation } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { PhaseFocusEvidence } from './node/phase-focus-evidence';
 
 export const roadmapServicePath = '/services/dope/roadmap';
@@ -33,7 +34,10 @@ export interface RoadmapService {
     acceptDraft(handle: string, preview: GreenfieldPreview, approved: boolean): Promise<RoadmapIndex>;
     cancelDraft(handle: string): Promise<void>;
     bindDraftChat(projectUri: string, handle: string, chatId: string): Promise<void>;
+    /** @deprecated P17 removes this schema-1 typed compile seam. The store only reads schema 2. */
     read(projectUri: string): Promise<RoadmapIndex>;
+    /** Canonical schema-2 view; selection is scoped to the saved project identity. */
+    readProjection(projectUri: string, presentation?: RoadmapPresentation): Promise<RoadmapProjection>;
     owners(projectUri: string): Promise<RoadmapOwnerRecord[]>;
     discoverTasks(projectUri: string): Promise<RoadmapTaskStack[]>;
     phaseFocusEvidence(projectUri: string, expectedProjectId: string, phaseId: string): Promise<PhaseFocusEvidence>;
