@@ -1,0 +1,20 @@
+TASK: Phase 12 / P4 — Expose only Dope-authorized tools to Pi Work
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.12.4`.
+
+PREFLIGHT
+Confirm P1–P3 gates and source basis. Read `packages/theia-extension/src/node/local-agent-execution.ts`, `agent-execution-runtime.ts`, `agent-runtime-backend.ts`, `packages/agent-core/src/authority.ts`, `node/local-tool-sandbox.ts`, and existing candidate code/test. Verify Pi default tools and third-party extensions cannot operate outside the authorized bridge. Do not repair unrelated Phase 11 issues.
+
+OBJECTIVE
+An explicitly authorized Dope Work Run may use Pi to inspect code, edit the isolated candidate workspace and execute approved validation commands. Pi must NEVER directly mutate the user's canonical source, git refs, Dope Roadmap/Planning artifacts or unaudited paths. Keep the existing ExecutionGrant, task/sequence, owner authority, OS isolation and Dope candidate validation/review/promotion boundary.
+
+IMPLEMENTATION
+Register minimum custom Dope tool wrappers with per-invocation grant/capability and root checks. Disable Pi's built-in read/write/edit/bash tools, other outbound provider paths and user/project plugin discovery; do not trust agent prompt instructions as security. Revalidate approved realpath/path/symlink and command/network rules inside existing broker for every tool call; deny expired/revoked/wrong owner/revision/cancelled runs. Preserve logs without leaking secrets. Do not auto accept changes or add implicit privileges.
+
+FOCUSED QUALIFICATION
+Use disposable Git fixtures: actual Pi-selected local model if ready to read, propose/edit and run a small test; deterministic transport doubles for rejection scenarios. Verify missing/foreign/stale grant, traversal, symlink escape, credential access, network/hosted egress, changed worktree, unapproved shell and direct canonical write fail closed. Confirm source outside candidate untouched before explicit Dope promotion. Targeted security regressions/build; include real invocation evidence or mark local inference gap. STOP.
