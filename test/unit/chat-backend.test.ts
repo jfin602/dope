@@ -73,6 +73,50 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('G2 sends fresh workspace evidence after preview and requires hosted project consent', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+        inputsCurrent: async () => false };
+    const packets: string[] = []; let calls = 0;
+    const capabilities = { conversationalText: true, streaming: true, contextWindowTokens: 8192, maxInputTokens: 8192 };
+    const models = { list: async () => ({ connections: [
+        { id: 'local', ready: true, providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true, capabilities }] },
+        { id: 'hosted', ready: true, providerId: 'remote', models: [{ id: 'remote', label: 'Remote', usable: true, capabilities }] }
+    ] }), async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
+        calls++; packets.push(request.messages.map(message => message.content).join('\n'));
+        yield { type: 'complete' as const, text: 'I see the current source.', actualModelId: 'q4' };
+    } };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        new ChatContextComposer({} as never, {} as never, index as never, repository), undefined,
+        new ChatProjectGrounder(index as never));
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        const content = 'Okay I created our basic structure';
+        await mkdir(join(root, 'src'));
+        await writeFile(join(root, 'src/game.ts'), 'export const wave = 1;\n');
+        const preview = await backend.previewContext({ projectHandle, chatId,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content, context: [] });
+        const oldHash = preview.refs.find(ref => ref.id === 'src/game.ts')?.sourceHash;
+        await writeFile(join(root, 'src/game.ts'), 'export const wave = 2;\n');
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'hosted', modelId: 'remote' }, content }), /hosted project-data confirmation/);
+        assert.equal(calls, 0);
+        const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
+        assert.ok(packets.some(packet => /export const wave = 2/.test(packet)));
+        assert.equal(packets.some(packet => /export const wave = 1/.test(packet)), false);
+        const ref = result.refs.find(item => item.id === 'src/game.ts')!;
+        assert.notEqual(ref.sourceHash, oldHash);
+        assert.equal(ref.sourceHash, ref.contentHash);
+        assert.equal((await backend.get(projectHandle, chatId))!.messages[0].contextRefs
+            .find(item => item.id === 'src/game.ts')?.contentHash, ref.contentHash);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('dedicated Chat connections share project changes without crossing projects', async () => {
     const first = await folder(), second = await folder(), repository = new ChatRepository();
     const eventsA: ChatEvent[] = [], eventsB: ChatEvent[] = [], eventsOther: ChatEvent[] = [];

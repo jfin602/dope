@@ -397,7 +397,8 @@ export class ChatContextComposer {
             if (evidence) { remaining -= cost; attached.push(prefix + evidence); }
             // Cite exactly the excerpt sent to the model; a smaller budget cannot claim unseen bytes.
             refs.push({ ...block.ref, estimatedTokens: cost, includedBytes: Buffer.byteLength(evidence, 'utf8'),
-                contentHash: createHash('sha256').update(evidence).digest('hex') });
+                contentHash: createHash('sha256').update(evidence).digest('hex'),
+                ...(evidence === block.text ? {} : { sourceHash: undefined }) });
         }
         if (!attached.length) remaining += wrapperTokens;
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];

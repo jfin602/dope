@@ -90,6 +90,51 @@ test('greenfield technology mentions are not file lookups; explicit filenames re
   } finally { await rm(root, { recursive: true, force: true }); await rm(other, { recursive: true, force: true }); }
 });
 
+test('ordinary structure updates inspect current safe files on every turn', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-structure-'));
+  const outside = await mkdtemp(join(tmpdir(), 'dope-structure-private-'));
+  try {
+    const grounder = new ChatProjectGrounder(emptyIndex);
+    const phrase = 'Okay I created our basic structure';
+    const empty = await grounder.ground(root, phrase);
+    assert.match(empty.blocks.find(block => block.ref.kind === 'directory')!.text, /Project directory \.: \(empty\)/);
+    await mkdir(join(root, 'src')); await mkdir(join(root, 'test'));
+    await mkdir(join(root, '.dope'));
+    await writeFile(join(root, '.dope/private.json'), 'private');
+    await writeFile(join(root, 'package.json'), '{"name":"tower","version":"1.2.3"}');
+    await writeFile(join(root, 'src/game.ts'), 'export const level = 1;\n');
+    await writeFile(join(root, 'test/game.test.ts'), 'test("game", () => {});\n');
+    await writeFile(join(outside, 'secret.ts'), 'outside-secret');
+    await symlink(join(outside, 'secret.ts'), join(root, 'src/secret.ts'));
+    const current = await grounder.ground(root, phrase);
+    assert.deepEqual(current.blocks.filter(block => block.ref.kind === 'directory').map(block => block.ref.id), ['.', 'src', 'test']);
+    const source = current.blocks.find(block => block.ref.id === 'src/game.ts')!;
+    assert.equal(source.text, 'export const level = 1;\n');
+    assert.equal(source.ref.sourceHash, createHash('sha256').update(source.text).digest('hex'));
+    assert.equal(source.ref.contentHash, source.ref.sourceHash);
+    assert.ok(current.blocks.some(block => block.ref.id === 'package.json'));
+    assert.equal(current.blocks.some(block => block.ref.id === 'src/secret.ts'), false);
+    assert.doesNotMatch(JSON.stringify(current), /outside-secret|private\.json|\.dope/);
+    await writeFile(join(root, 'src/game.ts'), 'export const level = 2;\n');
+    const changed = await grounder.ground(root, 'I added the files');
+    assert.match(changed.blocks.find(block => block.ref.id === 'src/game.ts')!.text, /level = 2/);
+    assert.notEqual(changed.blocks.find(block => block.ref.id === 'src/game.ts')!.ref.sourceHash, source.ref.sourceHash);
+    assert.equal((await grounder.ground(root, 'I made a src folder')).blocks.some(block => block.ref.id === 'src'), true);
+    await writeFile(join(root, 'src/large.ts'), 'x'.repeat(10_000));
+    const bounded = await grounder.ground(root, phrase);
+    const large = bounded.blocks.find(block => block.ref.id === 'src/large.ts')!;
+    assert.ok(large.ref.includedBytes! <= 2048);
+    assert.equal(large.ref.sourceHash, undefined);
+    assert.ok(bounded.diagnostics.some(item => item.kind === 'truncated' && item.source === 'src/large.ts'));
+    await mkdir(join(root, 'src', 'scenes'));
+    await writeFile(join(root, 'src', 'scenes', 'level.ts'), 'export const scene = true;\n');
+    const nested = await grounder.ground(root, 'I updated our source structure');
+    assert.equal(nested.blocks.some(block => block.ref.id === 'src/scenes' && block.ref.kind === 'directory'), true);
+    assert.equal(nested.blocks.some(block => block.ref.id === 'src/scenes/level.ts' && block.ref.kind === 'file'), true);
+    assert.equal((await grounder.ground(root, 'hello there')).blocks.some(block => block.ref.kind === 'directory'), false);
+  } finally { await rm(root, { recursive: true, force: true }); await rm(outside, { recursive: true, force: true }); }
+});
+
 test('path/text search is stable, skips generated trees and reports bounds', async () => {
   const root = await fixture();
   try {

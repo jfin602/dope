@@ -668,7 +668,7 @@ export class ChatBackend implements ChatService {
         const model = connection?.ready && connection.models.find(item => item.id === selectedModel.modelId && item.usable);
         if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
         if ((draft || bridge || planOnly) && connection.providerId !== 'local') throw new Error('Planning requires a selected local model');
-        if (roadmapTurn && connection.providerId !== 'local' && request.hostedProjectDataAuthorized !== true)
+        if (connection.providerId !== 'local' && request.hostedProjectDataAuthorized !== true)
             throw new Error('Chat hosted project-data confirmation required');
         const controls = chat.settings.reasoningControls ?? {};
         for (const [id, value] of Object.entries(controls))

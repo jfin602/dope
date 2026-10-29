@@ -59,6 +59,9 @@ function explicitPaths(question: string): { path: string; directorySyntax: boole
 }
 const implementationSource = (path: string) =>
     /^(?:(?:packages|apps)\/.+\/src\/|src\/|test\/).+\.[cm]?[jt]sx?$/.test(path);
+const structureChanged = (question: string) =>
+    /\b(?:i|we|i've|we've)\s+(?:just\s+)?(?:created|added|made|set\s+up|put\s+in|started|changed|updated)\b/i.test(question) &&
+    /\b(?:structure|scaffold|files?|folders?|directories|source|src|project|setup|manifest|tests?)\b/i.test(question);
 
 export class ChatProjectGrounder {
     constructor(private readonly index: SoftwareMapIndex) {}
@@ -159,6 +162,75 @@ export class ChatProjectGrounder {
         return { blocks: [this.block(canonical, 'directory', path || '.', path || '.',
             `Project directory ${path || '.'}: ${lines.length ? lines.join('\n') : '(empty)'}${omitted ? `\n${omitted} entries omitted` : ''}`)],
             diagnostics: omitted ? [{ kind: 'truncated', source: path || '.', message: `${omitted} directory entries omitted` }] : [] };
+    }
+    /** Fresh, small snapshot for ordinary Chat after the developer changes the workspace. */
+    private async currentStructure(root: string): Promise<GroundingResult> {
+        const blocks: GroundingBlock[] = [], diagnostics: GroundingDiagnostic[] = [];
+        const add = (result: GroundingResult) => { blocks.push(...result.blocks); diagnostics.push(...result.diagnostics); };
+        add(await this.listDirectory(root));
+        const entries = (await readdir(root, { withFileTypes: true })).sort((a, b) => cmp(a.name, b.name))
+            .filter(entry => !privateName(entry.name) && !skip.has(entry.name) &&
+                !/[\p{Cc}\p{Cf}]/u.test(entry.name) && !entry.isSymbolicLink())
+            .slice(0, GROUNDING_LIMITS.entries);
+        const files: string[] = [];
+        for (const name of ['package.json', 'index.html', 'tsconfig.json', 'vite.config.ts'])
+            if (entries.some(entry => entry.name === name && entry.isFile())) files.push(name);
+        const directories = ['src', 'test', 'tests', 'app'].filter(name =>
+            entries.some(entry => entry.name === name && entry.isDirectory())).slice(0, 2);
+        let nestedListed = false;
+        for (const directory of directories) {
+            try {
+                add(await this.listDirectory(root, directory));
+                const children = (await readdir(await this.target(root, directory), { withFileTypes: true }))
+                    .sort((a, b) => cmp(a.name, b.name)).slice(0, GROUNDING_LIMITS.entries);
+                for (const child of children) {
+                    if (directory === 'src' && !nestedListed && child.isDirectory() &&
+                        !privateName(child.name) && !skip.has(child.name)) {
+                        const nested = `${directory}/${child.name}`;
+                        add(await this.listDirectory(root, nested));
+                        nestedListed = true;
+                        const nestedFiles = (await readdir(await this.target(root, nested), { withFileTypes: true }))
+                            .sort((a, b) => cmp(a.name, b.name)).slice(0, GROUNDING_LIMITS.entries);
+                        for (const file of nestedFiles) {
+                            if (file.isFile() && !privateName(file.name) &&
+                                /\.(?:[cm]?[jt]sx?|html|css|json)$/i.test(file.name)) {
+                                files.push(`${nested}/${file.name}`);
+                                break;
+                            }
+                        }
+                    }
+                    if (!child.isFile() || privateName(child.name) || skip.has(child.name) ||
+                        !/\.(?:[cm]?[jt]sx?|html|css|json)$/i.test(child.name)) continue;
+                    files.push(`${directory}/${child.name}`);
+                    if (files.length >= 4) break;
+                }
+            } catch {
+                diagnostics.push({ kind: 'unavailable', source: directory,
+                    message: `Current ${directory} directory could not be inspected` });
+            }
+        }
+        for (const path of [...new Set(files)].slice(0, 4)) {
+            try {
+                const result = await this.readFile(root, path);
+                const file = result.blocks[0];
+                if (file.text === `Project file ${path}: absent`) {
+                    diagnostics.push({ kind: 'unavailable', source: path,
+                        message: 'File changed or disappeared during current workspace inspection' });
+                    continue;
+                }
+                const excerpt = Buffer.from(file.text, 'utf8').subarray(0, 2048).toString('utf8').replace(/\uFFFD+$/, '');
+                const block = this.block(root, 'file', path, path, excerpt);
+                if (file.ref.sourceHash && excerpt === file.text) block.ref.sourceHash = file.ref.sourceHash;
+                blocks.push(block);
+                diagnostics.push(...result.diagnostics);
+                if (excerpt !== file.text) diagnostics.push({ kind: 'truncated', source: path,
+                    message: 'Current file excerpt limited to 2048 bytes' });
+            } catch {
+                diagnostics.push({ kind: 'unavailable', source: path,
+                    message: 'Current file read blocked or changed during inspection' });
+            }
+        }
+        return { blocks, diagnostics };
     }
     private async walk(root: string, visit: (path: string, isFile: boolean) => Promise<boolean>): Promise<GroundingDiagnostic[]> {
         const queue: { path: string; depth: number }[] = [{ path: '', depth: 0 }];
@@ -438,7 +510,8 @@ export class ChatProjectGrounder {
                 catch (error) { if (!missing(error)) throw error; directory = listing; }
                 add(directory ? await this.listDirectory(canonical, explicit) : await this.readFile(canonical, explicit));
             } catch { diagnostics.push({ kind: 'rejected', source: 'project path', message: 'Requested project path is unsafe or unavailable' }); }
-        } else if (/\b(?:repository root|project root|root directory|root folder)\b/i.test(q)) add(await this.listDirectory(canonical));
+        } else if (structureChanged(q)) add(await this.currentStructure(canonical));
+        else if (/\b(?:repository root|project root|root directory|root folder)\b/i.test(q)) add(await this.listDirectory(canonical));
         if (/\b(?:canonical|dope|project|chat)\s+architecture\b|\barchitecture\s+(?:subsystem|component|system|map)\b|\b(?:show|describe|inspect|query)\s+(?:the\s+)?architecture\b|^(?:the\s+)?architecture\??$/i.test(q)) {
             try { add(await this.architecture(canonical, q)); }
             catch { diagnostics.push({ kind: 'unavailable', source: 'architecture', message: 'Canonical Architecture unavailable' }); }

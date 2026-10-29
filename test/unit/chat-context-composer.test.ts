@@ -144,6 +144,35 @@ test('normalized explicit file evidence reaches model context with honest curren
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('fresh structure evidence reaches the ordinary Chat packet with matching references', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-structure-context-'));
+  try {
+    await mkdir(join(root, 'src'));
+    await writeFile(join(root, 'package.json'), '{"name":"game"}');
+    await writeFile(join(root, 'src/game.ts'), 'export const wave = 1;\n');
+    const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+      inputsCurrent: async () => false } as unknown as SoftwareMapIndex;
+    const grounder = new ChatProjectGrounder(index);
+    const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, index, {} as ChatRepository);
+    const active = chat(); active.settings.context.maxInputTokens = 2000;
+    const content = 'Okay I created our basic structure';
+    const first = await composer.compose(root, active, content, [],
+      { ...model, contextWindowTokens: 4000, maxInputTokens: 4000 }, await grounder.ground(root, content));
+    const packet = first.messages.at(-1)!.content;
+    assert.match(packet, /\[Auto directory: \.\]/);
+    assert.match(packet, /\[Auto file: src\/game\.ts\]/);
+    assert.match(packet, /export const wave = 1/);
+    const ref = first.refs.find(item => item.id === 'src/game.ts')!;
+    assert.equal(ref.sourceHash, createHash('sha256').update('export const wave = 1;\n').digest('hex'));
+    assert.equal(ref.contentHash, ref.sourceHash);
+    await writeFile(join(root, 'src/game.ts'), 'export const wave = 2;\n');
+    const second = await composer.compose(root, active, content, [],
+      { ...model, contextWindowTokens: 4000, maxInputTokens: 4000 }, await grounder.ground(root, content));
+    assert.match(second.messages.at(-1)!.content, /export const wave = 2/);
+    assert.notEqual(second.refs.find(item => item.id === 'src/game.ts')!.sourceHash, ref.sourceHash);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('ordinary greenfield context keeps source truth and permits prospective design', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-greenfield-context-'));
   try {

@@ -57,6 +57,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private workReconnect?: Promise<void>;
     private backendOffline = false;
     private workspaceAttachFailed = false;
+    private workspaceRootCount?: number;
     private workAttachmentError = false;
     private workAttachTimer?: ReturnType<typeof setTimeout>;
     private reconnectProbe?: ReturnType<typeof setInterval>;
@@ -247,6 +248,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private async attach(): Promise<void> {
         const request = ++this.workspaceRequest;
         this.workspaceAttachFailed = false;
+        this.workspaceRootCount = undefined;
         this.workAttachmentError = false;
         if (this.workAttachTimer) clearTimeout(this.workAttachTimer);
         const previous = this.panel.layout();
@@ -272,6 +274,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             return;
         } finally { if (timer) clearTimeout(timer); }
         if (this.isDisposed || request !== this.workspaceRequest) return;
+        this.workspaceRootCount = roots.length;
         const workspace = roots.length === 1 ? roots[0].resource.toString() : undefined;
         this.panel.attach(workspace);
         this.panel.setMode(this.module);
@@ -1402,7 +1405,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const focusedWorkKey = this.content.contains(active) ? active?.dataset.workKey : undefined;
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
         this.status.textContent = this.panel.mode === 'chat' ?
-            state.error || (state.loading ? 'Loading Chats…' : !state.workspace ? 'Open one project to use Chats.' : '') :
+            state.error || (state.loading ? 'Loading Chats…' : !state.workspace ?
+                this.workspaceRootCount === undefined ? 'Checking the attached project…' :
+                this.workspaceRootCount === 0 ? 'Open a project folder to use Chats.' :
+                'Multiple project roots are open. Open one project folder to use Chats.' : '') :
             this.workspaceAttachFailed ? 'Work project did not respond. Retry the connection.' :
             !this.panel.workspace ? 'Open one project to use Work.' : this.backendOffline ?
                 'Work is temporarily disconnected. Reconnecting when the backend returns…' :
