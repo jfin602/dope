@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -248,6 +248,111 @@ test('approved offer generates one whole outline, then separate review accepts o
         assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
         await assert.rejects(backend.decideStrategicDraft(projectHandle, chatId, lease.token, freshReview.token, true), /no longer current/);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('ordinary Chat offers a generic project roadmap and both consent routes share reviewed noncanonical creation', async () => {
+    for (const route of ['button', 'chat', 'decline'] as const) {
+        const root = await folder(), repository = new ChatRepository();
+        const greenfield = new RoadmapGreenfield(new RoadmapStore());
+        const projectId = (await greenfield.owner(root)).projectId;
+        const source = join(root, 'inventory.csv');
+        const evidence = 'item,quantity\nbolts,12\n';
+        await writeFile(source, evidence);
+        const sourceHash = createHash('sha256').update(evidence).digest('hex');
+        const outline = { type: 'strategic-roadmap-draft', projectId, ownerRevision: 0,
+            phases: ['Import inventory', 'Build reports'].map((title, index) => ({ title,
+                objective: `Deliver ${title.toLowerCase()}`,
+                checkpoints: [{ title: `${title} milestone`, objective: `Verify ${title.toLowerCase()}`,
+                    dependsOn: index ? [index] : [] }] })) };
+        let generationCalls = 0, ordinaryCalls = 0;
+        const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+            models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true, streaming: true,
+                contextWindowTokens: 32768 } }] }] }),
+        async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
+            if (request.messages.some(message => message.content.includes('strategic-roadmap-draft'))) {
+                generationCalls++;
+                yield { type: 'complete' as const, text: JSON.stringify(outline), finishReason: 'stop',
+                    actualModelId: 'q4' };
+            } else {
+                ordinaryCalls++;
+                yield { type: 'complete' as const,
+                    text: 'Start with a validated inventory import, then add a stock report. I can generate a provisional Roadmap draft.',
+                    finishReason: 'stop', actualModelId: 'q4' };
+            }
+        } };
+        const composer = { compose: async () => ({ messages: [{ role: 'user',
+            content: `Plan inventory reports using verified inventory.csv (${sourceHash}):\n${evidence}` }],
+            refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0 }) };
+        const grounder = { ground: async () => ({ blocks: [{ ref: { kind: 'file', id: 'inventory.csv',
+            sourceHash, contentHash: sourceHash, includedBytes: Buffer.byteLength(evidence) } }] }) };
+        const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+            composer as never, undefined, grounder as never, undefined, greenfield);
+        try {
+            const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+            await backend.mutate({ projectHandle, expectedRevision: 0,
+                operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+            const lease = await backend.claim({ projectHandle, chatId, ownerId: `panel-${route}` });
+            if (!lease.acquired) throw new Error('Lease missing');
+            const selection = { connectionId: 'local', modelId: 'q4' };
+            await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                selectedModel: selection, content: 'Yes, create the roadmap.' }), /No current Roadmap offer/);
+            const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                selectedModel: selection, content: 'Let us build an inventory reporting tool.' });
+            assert.ok(turn.roadmapOffer, 'ordinary Chat must return an owner-checked typed offer');
+            assert.match((await backend.get(projectHandle, chatId))!.messages.at(-1)!.content,
+                /validated inventory import/);
+            assert.equal(turn.roadmapOffer.projectId, projectId);
+            if (route === 'decline') {
+                assert.equal(await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+                    turn.roadmapOffer.id, turn.roadmapOffer.token, false), 'declined');
+                const followup = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                    selectedModel: selection, content: 'How should we plan the import?' });
+                assert.equal(followup.roadmapOffer, undefined, 'Not now must suppress an unsolicited repeat offer');
+                assert.equal(generationCalls, 0);
+                await backend.release(projectHandle, chatId, lease.token);
+                const restored = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+                    composer as never, undefined, grounder as never, undefined, greenfield);
+                try {
+                    const attached = await restored.attach(pathToFileURL(root).href);
+                    const nextLease = await restored.claim({ projectHandle: attached.projectHandle,
+                        chatId, ownerId: 'restored-panel' });
+                    if (!nextLease.acquired) throw new Error('Restored lease missing');
+                    const resumed = await restored.runTurn({ projectHandle: attached.projectHandle, chatId,
+                        leaseToken: nextLease.token, selectedModel: selection,
+                        content: 'How should we plan the report?' });
+                    assert.equal(resumed.roadmapOffer, undefined, 'decline must survive reload');
+                    const requested = await restored.runTurn({ projectHandle: attached.projectHandle, chatId,
+                        leaseToken: nextLease.token, selectedModel: selection,
+                        content: 'Please generate a roadmap draft.' });
+                    assert.ok(requested.roadmapOffer, 'an explicit later request can renew the offer');
+                } finally { restored.dispose(); }
+                continue;
+            }
+            let review;
+            if (route === 'button') review = await backend.decideRoadmapOffer(projectHandle, chatId,
+                lease.token, turn.roadmapOffer.id, turn.roadmapOffer.token, true, selection);
+            else {
+                const response = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                    selectedModel: selection, content: 'Yes, create the roadmap.' });
+                review = response.roadmapDraftReview;
+            }
+            assert.ok(review && review !== 'declined');
+            if (!review || review === 'declined') throw new Error('Review missing');
+            assert.equal(generationCalls, 1);
+            assert.ok(ordinaryCalls >= 1);
+            assert.deepEqual(review.phases.map(phase => phase.title), ['Import inventory', 'Build reports']);
+            assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+            assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+            await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+                turn.roadmapOffer.id, turn.roadmapOffer.token, true, selection), /no longer current/);
+            assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token,
+                review.token, true), 1);
+            assert.equal((await greenfield.readOpportunity(root)).drafts, 1);
+            assert.equal((await new RoadmapStore().read(root)).revision, 0);
+            assert.equal(await readFile(source, 'utf8'), 'item,quantity\nbolts,12\n');
+            assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+        } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    }
 });
 
 test('Roadmap offer fails closed on owner changes, expiration, foreign Chat, and lost writer', async () => {

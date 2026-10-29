@@ -335,6 +335,13 @@ export class ChatBackend implements ChatService {
         if (!opportunity?.includes('revision zero') || !/\broadmap\b/i.test(output) ||
             !/\bdraft\b/i.test(output) || !this.greenfield || this.proposals.has(chatId) ||
             this.strategicReviews.has(chatId)) return undefined;
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        if (!chat) return undefined;
+        const lastUser = chat.messages.filter(item => item.role === 'user').at(-1)?.content ?? '';
+        const requestedAgain = /^\s*(?:please\s+)?(?:create|generate|make)\s+(?:(?:me|another|a|the)\s+)*(?:roadmap\s+draft|draft\s+roadmap)\b/i.test(lastUser);
+        if (!requestedAgain && chat.messages.some(item => item.role === 'assistant' &&
+            item.id !== messageId && /\broadmap\b/i.test(item.content) && /\bdraft\b/i.test(item.content)))
+            return undefined;
         const state = await this.greenfield.readOpportunity(root);
         if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation ||
             state.drafts || state.acceptedPlans || state.pendingPlans) return undefined;
