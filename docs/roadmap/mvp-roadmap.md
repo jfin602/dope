@@ -1,5 +1,7 @@
 # Dope Roadmap
 
+**CURRENT 2026-10-29 — OWNER-APPROVED FORWARD PHASE 12 RESEQUENCING (DOCS ONLY):** The first Phase 12 workstream is bundled Pi Coding Agent as Dope's default **local** agent runtime, followed by manual PixiJS tower-defense real-use qualification and issue-driven repairs. The executable first stack is `docs/tasks/p12` (descriptive workstream `p12-pi-agent`; runner grammar does not permit that as a folder). [ADR 0039](../decisions/0039-bundled-pi-local-agent-runtime.md), [Phase 12 plan](../planning/p12/phase-12-plan.md), [B1–B9](../planning/p12/pi-qualification-contract.md), [assessment/plan/prompts](../tasks/p12/README.md). The formerly approved Living Software Knowledge Model is preserved as Phase 13 with ADR 0023 invariants; its old Phase 12 references below are historical. **Phase 11 is still OPEN / NOT QUALIFIED**, with G3 P1–P4 Chrome and owner-native gates plus broader Hunts/D1–D8 disposition required before an explicit Phase 11 owner close; no 0.12.0 baseline, Pi integration, Phase 12 activation, Run, qualification or change to `0.11.8` is asserted here. Historical evidence untouched.
+
 **CURRENT PHASE 11 / 2026-10-19 — PLANNING BRIDGE FINAL EVIDENCE CAMPAIGN (DOCS ONLY):** [Latest Work/dirty-basis real-browser qualification](../tasks/c11-bridge-execution-recovery/qualification/2026-10-19-dirty-basis-final.md) remains **NOT GREEN overall** despite source-bound **56/56 focused and 772/772 full tests**, real candidate rejection/acceptance, exact two-file promotion and verified fixture Git checkpoint `c2bce6b`. D6 PASS in bounded browser scope; D5 partial (earlier real F4 reorder/immutability PASS in separate fixture); D7 partial because `SeveritySelector` structure remains correctly not implemented; D8 FAIL because live History stayed Loading History and Phase Focus implementation Unknown, despite a valid Work run/checkpoint. Native GUI remains unobserved, Roadmap relink was generation-sensitive, and automation-driven fixture decisions are not owner signoff. [Next planned R1–R5 campaign](../tasks/c11-bridge-final-evidence/README.md) targets existing History and Phase Focus projections, reviewed planning target/relink, remaining authority/UX/native gates, then final integrated qualification. Historical P15/P5/initial F4 deferral remain; version `0.11.8`, Phase 11 OPEN/NOT QUALIFIED, Phase 12 inactive. No implementation or prompts written in this docs update.
 
 
@@ -120,7 +122,8 @@ This is a cross-phase qualification ladder, not an additional phase and not perm
 | Product Phase 11 — Human-Centered UI / Usability Qualification | **OPEN / NOT QUALIFIED at `0.11.8`.** The known-issue implementation is retained; [M1 recovery](../tasks/c11-guidance/manual/m1-recovery-qualification.md) is scoped browser/local-Q4 Green for UX-003 at `e69d7e5`. [c11-brainstorm P8 repair](../tasks/c11-brainstorm/qualification/p8-repair-loop/2026-10-17.md) has bounded browser F1/F2 passes on uncommitted local source, with security/native **EVIDENCE GAP**; its original P8 NOT GREEN remains historical. Native/hosted gaps and separate H02 unrun Hunter remain. Audit Dope-owned panels against real human tasks and qualify cross-panel flows with direct GUI evidence. Palette-only `c9-theme-fix` is separate. |
 | **Planned workstream — Planning Bridge** (ADR 0038; **not a numbered product-phase activation**) | **OWNER-APPROVED DESIGN / DOCS ONLY / NOT IMPLEMENTED, PROMPT-WRITTEN, RUN OR QUALIFIED.** After `c11-brainstorm` produces approved Roadmap checkpoints, `Prepare Work` guides Physical Map impact -> Planning Map transformations -> WorkItems -> human-reviewed task stacks -> separate Work Run -> qualification/reconciliation and owner closeout. Five stages / nine derived states and a small-fix fast lane; preserve one Chat, Roadmap/Planning/Work/History owners, local/no-model paths and explicit approvals. Plan [PB1–PB8](../planning/planning-bridge/plan.md); [ADR 0038](../decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md). Does not advance current Phase 11 or activate Phase 12. |
 >>>>>>> c98e5a5 (c11-qual-rep-loop EVIDENCE GAP)
-| Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11) | Dope continuously reconciles source/runtime, canonical Software Map, docs and contracts through deterministic-first and bounded local-first background checks, using actual WorkItem/AgentRun/change provenance and optional History navigation context (not deprecated Session membership). Remains inactive; no automatic canonical mutation or hosted escalation. |
+| Product Phase 12 — Bundled Local Agent Runtime and Real-Use Qualification | **FORWARD DESIGN APPROVED / NOT ACTIVATED.** Bundle Pi in Dope as default eligible local agent runtime, auto-wire AI Center model, retain Dope Chat/Work/tools/approvals and other providers, verify packaged AppImage, then manual PixiJS tower-defense real-use and iterative repair. See [p12 plan](../planning/p12/phase-12-plan.md), [prompts](../tasks/p12/README.md). Phase 11 OPEN; no baseline or Run. |
+| Product Phase 13 — Living Software Knowledge Model (formerly Phase 12) | Preserve former Phase 12 source/runtime/map/docs/contracts alignment and resource-aware background checks, using WorkItem/AgentRun/History evidence under ADR 0023; remains inactive, no silent canonical mutation or hosted escalation. See [preserved plan](../planning/p13/phase-13-scope.md). |
 
 Self-development never receives privileged authority.
 
@@ -1120,7 +1123,15 @@ Exit requires real local/manual edits, UI consistency, restart, stale/project is
 
 **Status: OPEN / NOT QUALIFIED at `0.11.8`.** The known-issue implementation is retained, and [M1 recovery](../tasks/c11-guidance/manual/m1-recovery-qualification.md) is scoped Green for UX-003 in browser/local Q4 at `e69d7e5`. The original M1/P3/P8 failures remain historical; native/hosted parity and wider Phase 11 usability are open. Continue **Hunt → Triage → Repair → Verify** against real user goals. The [manual Hunter](../tasks/p11/usability-hunt-manual.md), [living issue ledger](../planning/p11/usability-issue-ledger.md), [coverage matrix](../planning/p11/panel-usability-matrix.md), [Phase 11 plan](../planning/p11/phase-11-plan.md), and [known-issue U1–U9 contract](../planning/p11/usability-recovery-contract.md) guide execution. The first separate Hunter is ready for History → exact continuation → Work status/review but has not run. Final Green requires registered-surface/real GUI coverage, no unresolved P0 or undisposed material P1, demonstrated regressions/restart/recovery and two **different** broad clean hunts followed by explicit owner acceptance. Discovery does not auto-authorize product repair. Phase 10 evidence and Phase 12 inactivity remain unchanged.
 
-## Product Phase 12 — Living Software Knowledge Model (formerly Phase 10, then 11)
+## Product Phase 12 — Bundled Local Agent Runtime and Real-Use Qualification
+
+**Status:** OWNER-APPROVED FORWARD DESIGN ONLY / NOT ACTIVATED (2026-10-29). Phase 11 remains OPEN; 0.12.0 version-only baseline is not established. No Pi product integration or qualification is claimed.
+
+Purpose: Ship a pinned Pi Coding Agent runtime INSIDE Dope and make it the default for eligible local Chat/Planning inference and explicitly authorized coding Work, automatically using existing AI Center connection/model selection. Preserve the single saved ChatPanel, Roadmap and linked Markdown, Planning Bridge, Work grants/isolated candidate review, History, no-model workflow and explicit Codex/other providers. No global Pi CLI, user `~/.pi` configuration or second setup; compatible model/server remains a separate prerequisite. Deny default Pi shell/file/extension privileges; only Dope-brokered per-task tools may execute under grants.
+
+Ordered work: (1) first runner-compatible `p12` Pi integration stack, future planned 0.12.1–0.12.8, B1–B9 and fresh AppImage/manual native evidence; (2) separately authorized manual tower-defense real-use and repeated triage/repair/qualification. Exit requires a local model completing real coding/test/repair, truthful context/recovery and no unauthorized promotion/egress, plus owner acceptance of persistent PixiJS project development. Phase 12-wide closeout is not implied by the first Pi-stack Green. [Phase plan](../planning/p12/phase-12-plan.md), [ADR 0039](../decisions/0039-bundled-pi-local-agent-runtime.md), [qualification](../planning/p12/pi-qualification-contract.md), [real-use contract](../planning/p12/tower-defense-real-use-contract.md).
+
+## Product Phase 13 — Living Software Knowledge Model (formerly Phase 12; originally 10, then 11)
 
 Purpose:
 Turn the Software Map into a living, evidence-backed software knowledge model that continuously checks whether implementation, runtime evidence, canonical architecture, documentation and formal contracts still describe the same software state.
@@ -1145,7 +1156,7 @@ Initial scope:
 Background intelligence law:
 Deterministic analysis narrows the problem first. Local models are the preferred high-volume semantic maintenance layer. Model output creates findings/interpretation, not physical evidence or canonical truth, and foreground developer interaction always outranks background inference.
 
-General-purpose ambient intelligence remains outside this phase. Phase 12 authorizes only bounded background work required to maintain the Living Software Knowledge Model.
+General-purpose ambient intelligence remains outside this phase. Phase 13 authorizes only bounded background work required to maintain the Living Software Knowledge Model.
 
 Exit condition:
 
@@ -1156,7 +1167,7 @@ On a real project, Dope can detect representative source/map, source/documentati
 These remain valid parts of the vision but must not block the initial product:
 - dedicated Research workspace
 - semantic project-wide search
-- general-purpose advanced ambient intelligence beyond the bounded Phase 12 knowledge-alignment monitor
+- general-purpose advanced ambient intelligence beyond the bounded Phase 13 knowledge-alignment monitor
 - automatic Ideas capture
 - sophisticated model routing
 - multi-agent orchestration
