@@ -1,0 +1,31 @@
+TASK: Correction 11 / P2 — Truthful Roadmap status progression, correction ownership and clean relationships
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, stack README/assessment/plan, owner Roadmap visual hierarchy contract and ADR 0016/0036/0037; confirm P1 was **actually qualified in real Chrome** on a committed current-source product and prerequisite c11-g3-recovery P4/native handoff remains valid or owner exception explicitly documented. Inspect current local HEAD, dirty tree, 0.11.8, current CSS/React Flow projection and any concurrent edits. Never reset/stash/clean/force push, self-commit outside agreed runner authority, create a new branch, run /activate, change package version, linked Markdown ownership or actual qualification evidence. Do not run on the persistent PixiJS game for mutation/negative cases. If P1 not qualified, STOP. This prompt has up to THREE real browser-qualified repair cycles; ordinary code work should stay small.
+
+OBJECTIVE
+Complete the exact screenshot's progression **without fake completion or misleading connectors**. A phase with ZERO accepted checkpoint children stays dim Unplanned; a phase with >=1 accepted checkpoint gains a muted warm Planned appearance, but **does not become Green**. Authoritative six-state labels (`green`, `active`, `not-green`, `waived`, `not-implemented`, `unknown`) and owner/source evidence always take priority over mere structural presence. Match restrained charcoal/green/orange/gray screenshot colors through semantic Theia/Dope tokens, with noncolor labels/icons and light/theme contrast.
+
+SOURCE TARGETS
+Inspect `roadmap-status-style.ts`, current phase-card UI/React Flow component, `roadmap-canvas-model.ts` connector view, `roadmap-projection.ts`, phase association/task discovery and central CSS/theme. Preserve exact source-backed phase IDs, correction IDs, typed dependencies, `RoadmapInspectorModel` and all G3 draft/Accept/Reject owners.
+
+IMPLEMENT
+1. Introduce strictly derived display properties for unplanned/planned presence, excluding **proposed** and unrelated task/prompt children. Keep separate canonical status; do not persist an invented `planned` qualification status. Phase Green, Not Green, waived, Unknown remain literal even if they have zero or many children; show a coherent summary if source has historically qualified phase with sparse structural data.
+2. Give each card compact status mark and readable summary/track. Define numerator/denominator from known accepted real checkpoint sets and actual evidence; if no verified completion count exists, show an honest `N checkpoints` / `Progress unknown` rather than `2 of 3 complete`. Qualify count as implementation vs qualification. Never derive Green just because all displayed rows happen to look Green or a route is filled.
+3. Use green for recorded qualified status, orange for active implementation, muted red for Not Green, separate waiver/unknown visuals, neutral low-planning opacity for empty. Keep selection/focus separate; no brand orange flood, no default orange borders on every card, no low-contrast text. Proposed draft uses obvious nonaccepted label/bar independent of any status color; publishing linked Markdown requires separate approval.
+4. Visually group corrections and related qualification branches **inside or beneath the correct parent phase/checkpoint** as expandable named subordinate groups. Preserve source association ordering, failure evidence and existing prompt disclosure counts, open-prompt read-only behavior. Distinguish `c10-...` from `c100-...`; do not attach missing/conflicted parent to the nearest card. Keep unresolved references in diagnosed/unassigned pool.
+5. Suppress default **membership/containment dashed cross-phase wires** now that ownership is visually nested. Keep only clear chronological phase arrows by default. Actual source-stored directed dependencies survive and are discoverable from a checkpoint foldout/inspector or explicit dependency view with arrows/names and card collision avoidance, not silently discarded or rewritten. Never conflate a chronological arrow with dependency/approval gate.
+6. Preserve dense projects, large phase counts, Show/Hide Prompts, linked Markdown revision/content hashes, manual/canonical status and source-backed G3 previews. Verify alternate selected themes and reduced-motion static view.
+
+FOCUSED TESTS
+Run targeted `test/unit/roadmap-status-truth.test.ts`, `roadmap-projection.test.ts`, `roadmap-canvas.test.ts`, `roadmap-spatial-canvas.test.ts`, `roadmap-task-discovery.test.ts`, `roadmap-owner-links.test.ts` where touched, `dope-theme.test.ts` on theme changes. Test zero/one accepted child, proposed-only children, accept/reject transition, each six canonical statuses, Green evidence versus incomplete children, missing parent and c10/c100, source stored dependency and unchanged owner index/source hash. Build touched output, diff check; no repeated full aggregate.
+
+MANDATORY REAL CODEX CHROME LOOP — MAX 3 CYCLES
+Operate real **Google Chrome with Codex browser** against rebuilt current Dope. Use disposable fixtures to show (A) dim 0-child phase; (B) one accepted child becomes Planned without Green; (C) active partial implementation; (D) real evidenced Green; (E) Not Green/Waived/Unknown separate; (F) proposal-only remains noncanonical; (G) correction under proper parent and an unresolved-parent negative; (H) real cross-phase dependency separately inspectable without crossing default lines. Check screenshot parity, arrow direction, progressive foldout, dark/light/keyboard/focus, narrow Chat and no source writes on display-only actions. Record served source/build, fixture, owner revision/hash, screenshots/DOM and explicit PASS/FAIL for each. Up to THREE bounded repair and actual browser requalification cycles. Any remaining false Green, fabricated percentage, misleading parent/edge, blocked browser, or unobserved mandatory case -> P2 NOT GREEN/BLOCKED; STOP before P3. Never mark old c10 correction or Phase 11 newly Green from this limited correction.
