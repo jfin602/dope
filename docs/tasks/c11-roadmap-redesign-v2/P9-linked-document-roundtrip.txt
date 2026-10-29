@@ -1,0 +1,25 @@
+TASK: Correction 11 / P9 — Linked Gate Markdown patch sync and relink
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / BOUNDARY
+AUTHORISATION: The original P1 sequencing exception did NOT authorize v2 execution, only its former P1. Require a new explicit owner execution/sequencing approval or fully qualified G3 Chrome/native prerequisite before v2 implementation. This v2 authoring is not permission to run; the old P1 and G3 evidence do not qualify new Gates.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the owner Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan, P8 exact-source PASS and original P1 NOT GREEN history. Confirm actual main, clean/approved local tree and project version. Retain P1's safe incompatible-schema refusal but do not confuse it with live Gate implementation. No /activate, branch switch, reset/stash/clean/force push, version bump, arbitrary model grants, hosted fallback, new Chat/Store or unapproved source publication. Use disposable files for negative tests and protect the owner's PixiJS game. Prior failed gate => STOP.
+
+SINGLE DELIVERABLE
+Connect schema2 Gate records to the EXISTING linked Roadmap document patch/sync/observer/relink machinery with minimal lossless changes. Do not design a second Markdown writer.
+
+IMPLEMENT
+- Replace checkpointId section mappings with stable Gate/Phase/criterion section IDs and approved writable fields; maintain unrelated Markdown exactly, line endings, user prose and documented source revisions.
+- Preserve preview/Approve/Cancel, sourceHash/expectedRevision, external source changed vs canonical edit conflict, pending patch/restart recovery and safe relink to another approved path. Linked document publication stays a separate approval from accepting a greenfield draft.
+- Do not overwrite original content if parser cannot safely patch a mapped field; reject with informative review instead. No runtime migration from broken schema1 metadata is required.
+TEST / PASS
+Real temp Markdown -> import/link -> Gate title/criterion edit preview -> approve -> file delta only in mapped section -> reload, conflict/relink/restart/double-write/cross-root negatives; source byte hashes on rejects. Focus document-patch, document-sync, linked-store/replacement tests and affected compile/build. Any silent edit is FAIL.
+
+RUNNER CONTRACT
+One focused outcome, affected tests/build and source-bound PASS/FAIL. Record actual evidence and remaining next-stage seam; no automatic three-cycle loops, no real-Chrome claim for this runner stage. No UI qualification before manually operated P14. STOP on failed tests, unsafe writes or incomplete stated deliverable.

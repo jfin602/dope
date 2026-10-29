@@ -1,0 +1,26 @@
+TASK: Correction 11 / P18 — Connected Roadmap Work and source integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE SAFETY
+AUTHORISATION: Original P1 sequencing exception applies ONLY to former P1 and does not authorize v2 execution. Obtain new explicit owner execution/sequencing approval or fully satisfied G3 Chrome/native prerequisite. This is documentation/prompt authoring only. Old P1/G3 evidence does not qualify v2.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, owner visual contract and c11-roadmap-redesign-v2 README/assessment/plan. Verify prior P17 evidence is actual PASS on source, the owner P1 sequencing exception and original P1 NOT GREEN historical reports remain traceable, current main HEAD/version/worktree and independent source/approval boundaries. No /activate, new branch, reset/stash/clean/force push, false Git PASS marker, version/lockfile bump, unauthorized Work/Chat/model tool grants, or unapproved linked Markdown mutation. Protect persistent PixiJS project; use disposable fixtures. On failed prerequisite STOP.
+
+SINGLE DELIVERABLE
+Verify and fix only demonstrated cross-seam regressions on one coherent current Gate-domain product before manual final qualification. Do not reopen the original giant refactor or add new optional features.
+
+IMPLEMENT / TEST
+- Exercise actual accepted Phase/Gate/criterion project through RoadmapStore/service, Greenfield/Chat approval, linked Markdown sync/relink/conflict/pending recovery, ProjectPlanningActions/inspector, Phase Focus, Planning Map, Work/History, task/prompt discovery, correction association, selected Gate context, project isolation and source freshness.
+- Confirm prompted Work completion not Gate qualification; links remain distinguishable and no silent source publishing, Green promotion, model tool grants or cross-project contamination. One authoritative owner and existing saved Chat.
+- Use disposable project fixtures. Re-run focused tests after fixes, affected browser and Electron builds and one full npm run check when coherent and feasible. Record actual test counts and failures, no fake browser or native GUI claim.
+- Re-run alpha dead-path audit and ensure new canonical Gate status survives restart/source edit, check read-only external Markdown and wrong-owner/stale token negatives. Respect version 0.11.8 and no repository clean/reset.
+PASS / STOP
+Explicit test inventory with source SHA, final successful builds and known gaps. Any missing current-store Gate, false qualification or source overwrite is NOT GREEN and must be fixed before P19. The independent real Chrome replay remains P19.
+
+SOURCE-BOUND DISPOSITION
+Report only results observed on final tested source and actual commands. A local model, Chrome or native result cannot be invented or inherited from the unrelated old P1. Distinguish pass/fail/evidence-gap and leave Phase 11 OPEN until separate owner qualification.

@@ -1,0 +1,25 @@
+TASK: Correction 11 / P4 — Criterion evidence and Gate qualification evaluator
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE AUTHORITY
+AUTHORISATION: The 2026-10-29 sequencing exception applied ONLY to the former unqualified P1; it is not authority to execute v2. Before ANY v2 implementation require a new explicit owner execution/sequencing approval or verified full G3 Chrome/native prerequisite. Authoring v2 prompts is not permission to run. No v2 Gate is qualified by inherited evidence.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan, previous P3 v2 source-bound PASS and the owner's P1 sequencing exception. Confirm actual local main HEAD, version, worktree and source; preserve prior evidence. The original P1's safe incompatible-schema rejection is retained but NOT accepted as new domain completion. Do not reset/stash/clean/force push, create branches, bump version, overwrite owner work, publish Markdown, force hosted fallback, run /activate or touch the persistent game for negative tests. A failed predecessor or uncontrolled dirty tree blocks this prompt.
+
+SINGLE DELIVERABLE
+Implement and connect source-bound criterion verification and Gate qualification determination to the canonical store/service. Do not conflate implementation completion with qualification.
+
+IMPLEMENT
+- Define evidence record: criterion ID, observed outcome PASS/FAIL, source project+revision/hash or relevant tested source identity, timestamp/approved observer or test provenance, and validation/stale reason. For source-free manual checks record explicit responsible reviewer and observed action.
+- Accept evidence only through authorized typed operation. Gate GREEN eligible iff every required criterion has sufficient current passing evidence and no unresolved blocker; missing/failed evidence remains Not Green/Unknown/Pending and changed source/criteria causes Requalification Required.
+- Separate evidence proposal from approval. Local model assertion, finished prompt, colored UI or task history is NOT admissible as unreviewed Green proof. No automatic waiver.
+TEST / PASS
+Real persisted Gate criterion evidence write/read, pass/fail/missing/stale/revised criterion/revoked evidence and unauthorized promotion negatives; pure selector tests plus store integration, compilation/diff check. No visual frontend claim.
+
+RUNNER OUTPUT
+Report exact tested source, changed files, focused test/build commands and counts, remaining next-stage seam and explicit PASS/FAIL. One bounded objective, not three arbitrary repair cycles. Runner-only test result; do not assert connected Chrome, native Electron, Phase 11 or whole redesign Green. STOP on failed focused acceptance.

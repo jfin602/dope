@@ -1,0 +1,25 @@
+TASK: Correction 11 / P1 — Canonical Gate domain types and pure validation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE AUTHORITY
+AUTHORISATION: The 2026-10-29 sequencing exception applied ONLY to the former unqualified P1; it is not authority to execute v2. Before ANY v2 implementation require a new explicit owner execution/sequencing approval or verified full G3 Chrome/native prerequisite. Authoring v2 prompts is not permission to run. No v2 Gate is qualified by inherited evidence.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan, previous P1 original NOT GREEN evidence and the owner's P1 sequencing exception. Confirm actual local main HEAD, version, worktree and source; preserve prior evidence. The original P1's safe incompatible-schema rejection is retained but NOT accepted as new domain completion. Do not reset/stash/clean/force push, create branches, bump version, overwrite owner work, publish Markdown, force hosted fallback, run /activate or touch the persistent game for negative tests. A failed predecessor or uncontrolled dirty tree blocks this prompt.
+
+SINGLE DELIVERABLE
+Create compile-safe Phase, Gate, Criterion, Correction, GateEvidence and source/qualification types and pure runtime validators under the EXISTING Roadmap domain owner (e.g. packages/project-intelligence/src/node/roadmap-store.ts or adjacent canonical domain module). This is NOT a new store and does not attempt app-wide cutover. Existing retained incompatible-schema no-write protection from original failed P1 stays intact.
+
+IMPLEMENT
+- Define project-scoped durable identities; Gate.parentPhaseId required; explicit Correction parent type (Gate or Phase); phase-local Gate order and designation; criterion expected-result and source-bound proof; separate implementation status, qualification status, draft acceptance and phase gate-set coverage.
+- Define strict schemaVersion 2 structure with phases[], gates[], corrections[] and linked-document metadata. Validate ID uniqueness, required fields, exact parent, dependency topology/cycle, malformed evidence and size limits; reject invalid/foreign references. Do not guess parent from title, numeric prefix or graph proximity.
+- Build a pure selector that detects schema 2 shape but does not create a second runtime index, parallel writer or schema1-to-Gate fallback. Do not break or delete running source consumers here.
+TEST / PASS
+Focused new domain validation tests (positive and malformed/cycle/parent/empty phases), project-intelligence typecheck/build and git diff --check. Proof is the new types/validator actually compiled and tested; explicitly report that live store cutover is P2, not claim P1 establishes GUI or qualification. STOP if tests fail; no Chrome required.
+
+RUNNER OUTPUT
+Report exact tested source, changed files, focused test/build commands and counts, remaining next-stage seam and explicit PASS/FAIL. One bounded objective, not three arbitrary repair cycles. Runner-only test result; do not assert connected Chrome, native Electron, Phase 11 or whole redesign Green. STOP on failed focused acceptance.

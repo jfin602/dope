@@ -1,0 +1,30 @@
+TASK: Correction 11 / P19 — Independent Gate Roadmap Chrome closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE SAFETY
+AUTHORISATION: Original P1 sequencing exception applies ONLY to former P1 and does not authorize v2 execution. Obtain new explicit owner execution/sequencing approval or fully satisfied G3 Chrome/native prerequisite. This is documentation/prompt authoring only. Old P1/G3 evidence does not qualify v2.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, owner visual contract and c11-roadmap-redesign-v2 README/assessment/plan. Verify prior P18 evidence is actual PASS on source, the owner P1 sequencing exception and original P1 NOT GREEN historical reports remain traceable, current main HEAD/version/worktree and independent source/approval boundaries. No /activate, new branch, reset/stash/clean/force push, false Git PASS marker, version/lockfile bump, unauthorized Work/Chat/model tool grants, or unapproved linked Markdown mutation. Protect persistent PixiJS project; use disposable fixtures. On failed prerequisite STOP.
+
+ONE MANUAL INDEPENDENT FINAL CLOSEOUT — NOT AN AUTOMATED RUNNER STAGE
+After P1-P18 are genuinely qualified, use a separate real Codex-controlled Google Chrome session and current rebuilt Dope to assess the *complete* Phase/Gate/Criterion product. This is evidence-only by default; do not treat output/build or prior P14 as proof of all scopes.
+
+INDEPENDENT TEST MATRIX
+1. Show owner-approved exact visual grammar on fresh 3+ Phase fixture: large charcoal horizontal cards, true arrowheads, nested Gate rows, qualified count/bar, legible dark/light/custom/resize and no crossing dashed fake parent wires.
+2. Real user-created Phase -> Gate -> Criterion -> save/reload -> evidence-approved Gate Green -> explicitly complete Gate set -> Phase Green. Negatives: empty phase, first accepted Gate only, all Gates Green without completeness approval, incomplete criterion, blocked, stale after source change, waiver/exception, foreign or unavailable evidence, no empty 100%.
+3. Saved local-model Chat where actually selected (record exact provider/context) -> Phase-only/implementation bullets remain incomplete -> explicit measurable Gate proposal with review -> Reject/Accept -> separate linked Markdown publish authorization. Check source revision hashes, restart, relink/conflict, no read-only/pending silent write.
+4. Correction under exact Gate/Phase, unresolved parent diagnostic, directed dependencies visible on demand vs order-only Phase arrows, Work/Phase Focus/History/task source navigation with unchanged qualification authority.
+5. Foldout/Inspector edit/keyboard/selection/pan/zoom/viewport reload/Chat dock/typing/touch and reduced-motion; real Dope Help answers selected project Gate/phase truth and wrong Planning Map/file-link negatives.
+6. Existing incompatible schema safe reject with original bytes unchanged; all legacy Roadmap-specific code/old prompt frontend paths retired (historic evidence untouched).
+7. Record exact HEAD, dirty state, version, verified frontend+backend served bundle SHA, project IDs, screenshots, clicks, selected model, tested commands/build/test counts, PASS/FAIL/NOT RUN gaps. Do not infer actual native Electron GUI from build or Chrome.
+
+VERDICT
+Write docs/tasks/c11-roadmap-redesign-v2/closeout.md only after real checks. Full Chrome matrix PASS => 'GATE ROADMAP REDESIGN CHROME-SCOPED QUALIFIED — NATIVE OWNER VERIFICATION PENDING'. Otherwise 'NOT GREEN / EVIDENCE GAP' with minimal targeted next action. Deliver source-matched manual owner-native Electron checklist; do not grant Phase 11, G3 or Phase 12 Green, issue a version bump or publish a linked Roadmap without separate authority. STOP.
+
+SOURCE-BOUND DISPOSITION
+Report only results observed on final tested source and actual commands. A local model, Chrome or native result cannot be invented or inherited from the unrelated old P1. Distinguish pass/fail/evidence-gap and leave Phase 11 OPEN until separate owner qualification.

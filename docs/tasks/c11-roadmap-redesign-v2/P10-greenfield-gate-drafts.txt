@@ -1,0 +1,25 @@
+TASK: Correction 11 / P10 — Greenfield Phase Gate draft review and approval
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / BOUNDARY
+AUTHORISATION: The original P1 sequencing exception did NOT authorize v2 execution, only its former P1. Require a new explicit owner execution/sequencing approval or fully qualified G3 Chrome/native prerequisite before v2 implementation. This v2 authoring is not permission to run; the old P1 and G3 evidence do not qualify new Gates.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the owner Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan, P9 exact-source PASS and original P1 NOT GREEN history. Confirm actual main, clean/approved local tree and project version. Retain P1's safe incompatible-schema refusal but do not confuse it with live Gate implementation. No /activate, branch switch, reset/stash/clean/force push, version bump, arbitrary model grants, hosted fallback, new Chat/Store or unapproved source publication. Use disposable files for negative tests and protect the owner's PixiJS game. Prior failed gate => STOP.
+
+SINGLE DELIVERABLE
+Update RoadmapGreenfield and schema validators to propose/accept explicit Phase/Gate/criterion drafts on the canonical schema2 model. Preserve the existing ONE draft owner and editor acceptance flow.
+
+IMPLEMENT
+- Phase-only candidate with zero Gates is valid but visibly incomplete; required Gate set completeness is not granted by draft acceptance. Valid Gate proposals contain testable acceptance conditions and exact parent phase.
+- Distinguish proposed, accepted noncanonical and separately published Markdown; preview and Reject do not write canonical source. Source/revision/project-bound tokens prevent stale or foreign Accept; external approval required for publication.
+- No automatic conversion of implementation steps into Gates, invented test criteria, schedule or Green. Update draft editing actions to create Gate, edit criterion, reorder Gate, attach correction under explicit Phase/Gate owner.
+TEST / PASS
+Actual greenfield service create/read/preview/reject/accept/restart against schema2, phase-only empty Gate list, real Gate criteria proposal, rejected no-file hash, late stale token, owner switch and accepted-not-published. Focus roadmap-greenfield, live-draft, create/sync integration tests, package build/diff check.
+
+RUNNER CONTRACT
+One focused outcome, affected tests/build and source-bound PASS/FAIL. Record actual evidence and remaining next-stage seam; no automatic three-cycle loops, no real-Chrome claim for this runner stage. No UI qualification before manually operated P14. STOP on failed tests, unsafe writes or incomplete stated deliverable.

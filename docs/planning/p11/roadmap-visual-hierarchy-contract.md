@@ -1,5 +1,7 @@
 # Roadmap Gate-First Domain & Visual Hierarchy — owner-approved contract
 
+**CURRENT EXECUTION CONTRACT (2026-10-29):** Keep this approved Phase -> Gate -> Criterion and exact screenshot visual target. The implementation stack is now [c11-roadmap-redesign-v2](../../tasks/c11-roadmap-redesign-v2/README.md), superseding the earlier oversized original P1–P7 after P1 NOT GREEN. V2 has narrowly qualified runner slices and manual P14/P19 real Chrome boundaries. Prior P1 safe index rejection is not a working Gate domain; no prior evidence is relabeled Green.
+
 **Latest G3 handoff (2026-10-29, d19833b4):** The originally failed zero-health request recognition has a scoped R3 code/Chrome repair and focused tests, but the **full G3 P4 Chrome matrix remains NOT GREEN / EVIDENCE GAP**, and owner-native Electron is unqualified. Do not rerun or duplicate the already-fixed R3 slice by default; finish remaining P4 gates and native disposition, or obtain a new explicit owner-approved sequencing exception, before c11-roadmap-redesign P1. This docs/prompt authoring does not implement the redesign or qualify Phase 11.
 
 **Date:** 2026-10-29 (America/Chicago)

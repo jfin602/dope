@@ -1,0 +1,25 @@
+TASK: Correction 11 / P6 — Gate projection and existing Roadmap service integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE AUTHORITY
+AUTHORISATION: The 2026-10-29 sequencing exception applied ONLY to the former unqualified P1; it is not authority to execute v2. Before ANY v2 implementation require a new explicit owner execution/sequencing approval or verified full G3 Chrome/native prerequisite. Authoring v2 prompts is not permission to run. No v2 Gate is qualified by inherited evidence.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan, previous P5 v2 source-bound PASS and the owner's P1 sequencing exception. Confirm actual local main HEAD, version, worktree and source; preserve prior evidence. The original P1's safe incompatible-schema rejection is retained but NOT accepted as new domain completion. Do not reset/stash/clean/force push, create branches, bump version, overwrite owner work, publish Markdown, force hosted fallback, run /activate or touch the persistent game for negative tests. A failed predecessor or uncontrolled dirty tree blocks this prompt.
+
+SINGLE DELIVERABLE
+Wire the accepted schema2 authoritative records through the existing Roadmap service/backend and projection, with selected Phase/Gate identities. This must not be an isolated new domain prototype.
+
+IMPLEMENT
+- Replace central RoadmapProjection's old universal CheckpointNode semantics with source-derived Phase/Gate/Correction view data and explicit parent ID, valid dependency edge and evidence status. Derive status/relationships from canonical store; no synthetic Gate for task stack.
+- Route existing RoadmapService reads/change events/revisions to this projection; maintain permission, per-project identity and owners, and diagnostic unassigned correction pool.
+- Update immediate extension/frontend consumers minimally to compile; presentation redesign follows P12/P13. Remove or mark temporary compile-only seams for P17 removal (do not add runtime schema1 support).
+TEST / PASS
+Focused projection + service tests against REAL saved schema2 store: Phase/Gate visible with stable ID/status, explicit parent, selected Gate works, cross-project/c10-c100 negative, no fake Green; affected extension/backend builds and diff check. A disconnected projection module does NOT pass.
+
+RUNNER OUTPUT
+Report exact tested source, changed files, focused test/build commands and counts, remaining next-stage seam and explicit PASS/FAIL. One bounded objective, not three arbitrary repair cycles. Runner-only test result; do not assert connected Chrome, native Electron, Phase 11 or whole redesign Green. STOP on failed focused acceptance.

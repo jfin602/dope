@@ -1,5 +1,7 @@
 # c11-roadmap-redesign — Gate-first Roadmap model and screenshot-matched editor
 
+**SUPERSEDED FOR FUTURE EXECUTION (2026-10-29):** This original P1–P7 prompt set is immutable historical authoring. P1 finished **NOT GREEN** after three repairs; see [record](qualification/2026-10-29-p1-repair-cycles.md). Do not edit, rerun or treat its safe schema rejection as a Gate-domain PASS. The owner-directed smaller runner/manual replacement is [c11-roadmap-redesign-v2](../c11-roadmap-redesign-v2/README.md). New v2 prompt authoring is not execution approval; the old P1 sequencing exception cannot be reused to authorize v2 runs. Preserve all original prompt bytes, evidence and previous closeout status.
+
 **Latest G3 handoff (2026-10-29, d19833b4):** The originally failed zero-health request recognition has a scoped R3 code/Chrome repair and focused tests, but the **full G3 P4 Chrome matrix remains NOT GREEN / EVIDENCE GAP**, and owner-native Electron is unqualified. Do not rerun or duplicate the already-fixed R3 slice by default; finish remaining P4 gates and native disposition, or obtain a new explicit owner-approved sequencing exception, before c11-roadmap-redesign P1. This docs/prompt authoring does not implement the redesign or qualify Phase 11.
 
 **Date:** 2026-10-29 (America/Chicago)

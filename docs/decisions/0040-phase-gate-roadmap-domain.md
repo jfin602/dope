@@ -1,5 +1,7 @@
 # ADR 0040 — Roadmap phases, qualification gates and criteria
 
+**EXECUTION PLAN SUPERSESSION (2026-10-29):** [c11-roadmap-redesign-v2](../tasks/c11-roadmap-redesign-v2/README.md) replaces execution of the earlier P1–P7 stack after source-bound original P1 NOT GREEN. V2 splits store/schema/authority/qualification/sync/Chat/visual/help/cleanup into narrowly testable runner prompts, manual real-Chrome P14 UI check and P19 independent closeout. Original prompt source/evidence remain immutable; the owner P1-only sequencing exception is not a blanket v2 execution approval. No product Gate implementation or new qualification claimed by prompt authoring.
+
 **Latest G3 handoff (2026-10-29, d19833b4):** The originally failed zero-health request recognition has a scoped R3 code/Chrome repair and focused tests, but the **full G3 P4 Chrome matrix remains NOT GREEN / EVIDENCE GAP**, and owner-native Electron is unqualified. Do not rerun or duplicate the already-fixed R3 slice by default; finish remaining P4 gates and native disposition, or obtain a new explicit owner-approved sequencing exception, before c11-roadmap-redesign P1. This docs/prompt authoring does not implement the redesign or qualify Phase 11.
 
 **Date:** 2026-10-29 (America/Chicago)

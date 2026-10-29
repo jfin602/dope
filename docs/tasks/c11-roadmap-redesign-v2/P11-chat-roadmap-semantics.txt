@@ -1,0 +1,25 @@
+TASK: Correction 11 / P11 — Saved Chat and local-model Gate planning semantics
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / BOUNDARY
+AUTHORISATION: The original P1 sequencing exception did NOT authorize v2 execution, only its former P1. Require a new explicit owner execution/sequencing approval or fully qualified G3 Chrome/native prerequisite before v2 implementation. This v2 authoring is not permission to run; the old P1 and G3 evidence do not qualify new Gates.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the owner Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan, P10 exact-source PASS and original P1 NOT GREEN history. Confirm actual main, clean/approved local tree and project version. Retain P1's safe incompatible-schema refusal but do not confuse it with live Gate implementation. No /activate, branch switch, reset/stash/clean/force push, version bump, arbitrary model grants, hosted fallback, new Chat/Store or unapproved source publication. Use disposable files for negative tests and protect the owner's PixiJS game. Prior failed gate => STOP.
+
+SINGLE DELIVERABLE
+Update saved Chat -> Roadmap extraction and local-model structured proposals to preserve actual user plan intent and prevent arbitrary task bullets becoming required Gates.
+
+IMPLEMENT
+- Inspect chat-roadmap-extract, chat-roadmap-requirements, roadmap-local-model and ChatBackend typed message action. Keep existing deterministic response-first extraction with NO extra model call to restate saved source.
+- Retain ordered Phases from clear saved assistant sequence, including Phase-only incomplete proposal. Gate criteria may be proposed only from explicit testable qualification statements or separately approved expansion; a feature/task/implementation list is not a Gate. Show requirement coverage as Covered/Uncovered/Not in saved request grounded in actual user text, not generated labels.
+- Preserve original saved Chat ID, selected model provenance, Follow/Pin, offer/Accept/Reject separation, absence of fabricated dates, bounded local context and trusted owner revision. No new ChatPanel/store, no tools in ordinary Chat or hosted fallback.
+TEST / PASS
+Focused Chat extraction/requirement tests for PixiJS tower defense five implementation tasks (zero fabricated Gates), explicit 'G1 must pass' with verifiable criteria, natural zero-health loss wording, Phase-only, wrong project, stale saved source, no second model call and approved proposal. Affected Chat/backend builds plus diff check.
+
+RUNNER CONTRACT
+One focused outcome, affected tests/build and source-bound PASS/FAIL. Record actual evidence and remaining next-stage seam; no automatic three-cycle loops, no real-Chrome claim for this runner stage. No UI qualification before manually operated P14. STOP on failed tests, unsafe writes or incomplete stated deliverable.

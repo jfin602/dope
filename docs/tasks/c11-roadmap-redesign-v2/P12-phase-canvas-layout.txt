@@ -1,0 +1,25 @@
+TASK: Correction 11 / P12 — Screenshot Phase containers and chronological arrows
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / BOUNDARY
+AUTHORISATION: The original P1 sequencing exception did NOT authorize v2 execution, only its former P1. Require a new explicit owner execution/sequencing approval or fully qualified G3 Chrome/native prerequisite before v2 implementation. This v2 authoring is not permission to run; the old P1 and G3 evidence do not qualify new Gates.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the owner Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan, P11 exact-source PASS and original P1 NOT GREEN history. Confirm actual main, clean/approved local tree and project version. Retain P1's safe incompatible-schema refusal but do not confuse it with live Gate implementation. No /activate, branch switch, reset/stash/clean/force push, version bump, arbitrary model grants, hosted fallback, new Chat/Store or unapproved source publication. Use disposable files for negative tests and protect the owner's PixiJS game. Prior failed gate => STOP.
+
+SINGLE DELIVERABLE
+Refactor the EXISTING React Flow Roadmap canvas to render visually dominant Phase parent cards and clear left-to-right Phase arrows, not floating checkpoint lookalike nodes.
+
+IMPLEMENT
+- Inspect roadmap-canvas-model/widget, roadmap-viewport, RoadmapProjection and theme tokens. Phase card = small PHASE N label, large legible title, understated status/count slot and progress track slot, divider, neutral charcoal/Dope Dark styling; prepare within-card Gate child regions for P13. Do not hardcode screenshot's fictional Green status or use orange around every card.
+- Remove synthetic dashed membership/containment edges from default view; arrowheads between actual Phase containers mean chronological order only, not dependencies/qualification. Keep actual semantic dependency records for later details view.
+- Preserve stable Phase identity, proposed vs accepted draft appearance, first camera Fit three-Phase fixture, pan/zoom, arrangement, light/custom/reduced-motion and Chat docking. Source layout is view-only and cannot mutate Gate/Phase status, Markdown, or owner revisions.
+TEST / PASS
+Focused roadmap-canvas, roadmap-spatial-canvas, roadmap-semantic-zoom, viewport, theme, create-ui tests for three Phases, directed arrows, no cross-text edges, draft overlay and resized viewport; affected browser build and diff check. This runner prompt does NOT claim Chrome screenshot matching; P14 will do that.
+
+RUNNER CONTRACT
+One focused outcome, affected tests/build and source-bound PASS/FAIL. Record actual evidence and remaining next-stage seam; no automatic three-cycle loops, no real-Chrome claim for this runner stage. No UI qualification before manually operated P14. STOP on failed tests, unsafe writes or incomplete stated deliverable.

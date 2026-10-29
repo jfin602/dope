@@ -1,0 +1,25 @@
+TASK: Correction 11 / P2 — Authoritative schema-two read and safe persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE AUTHORITY
+AUTHORISATION: The 2026-10-29 sequencing exception applied ONLY to the former unqualified P1; it is not authority to execute v2. Before ANY v2 implementation require a new explicit owner execution/sequencing approval or verified full G3 Chrome/native prerequisite. Authoring v2 prompts is not permission to run. No v2 Gate is qualified by inherited evidence.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan, previous P1 v2 source-bound PASS and the owner's P1 sequencing exception. Confirm actual local main HEAD, version, worktree and source; preserve prior evidence. The original P1's safe incompatible-schema rejection is retained but NOT accepted as new domain completion. Do not reset/stash/clean/force push, create branches, bump version, overwrite owner work, publish Markdown, force hosted fallback, run /activate or touch the persistent game for negative tests. A failed predecessor or uncontrolled dirty tree blocks this prompt.
+
+SINGLE DELIVERABLE
+Wire the new schemaVersion 2 Phase/Gate/Correction index from P1 into the ACTUAL RoadmapStore read/persist path. Original failed P1 only made schema2 a safe error; this task must make it accepted in the real authoritative store.
+
+IMPLEMENT
+- Inspect RoadmapStore parseRoadmapIndex, default index creation, persist/atomic-write and existing incompatible-schema detection. Accept valid schema2; reject malformed schema2; reject old schema1 as incompatible with explicit approved review/reinitialize/reimport guidance, not by silently migrating.
+- Add schema2 load, roundtrip and safe overwrite protections. Preserve project root, trusted projectId, source fingerprint, revision and read-only access. Do not write original linked Markdown during index read, and never modify an incompatible old index on read.
+- Update narrow immediate consumers so the package still compiles. Temporary intra-repository compile-only adapter for downstream old type imports is permitted ONLY until P17; it cannot be a second persistent store, old-schema runtime fallback or fabricated qualified Gate.
+TEST / PASS
+Real RoadmapStore read + save + restart fixture roundtrip on schema2, byte hash unchanged on invalid schema/index and on old schema1 rejection, wrong root/project denial, package compilation, focused store tests, diff check. A standalone parser prototype not invoked by RoadmapStore is FAIL. No UI/Chrome pass claimed.
+
+RUNNER OUTPUT
+Report exact tested source, changed files, focused test/build commands and counts, remaining next-stage seam and explicit PASS/FAIL. One bounded objective, not three arbitrary repair cycles. Runner-only test result; do not assert connected Chrome, native Electron, Phase 11 or whole redesign Green. STOP on failed focused acceptance.

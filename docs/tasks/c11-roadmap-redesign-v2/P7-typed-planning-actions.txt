@@ -1,0 +1,25 @@
+TASK: Correction 11 / P7 — Validated Gate actions and inspector model authority
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE AUTHORITY
+AUTHORISATION: The 2026-10-29 sequencing exception applied ONLY to the former unqualified P1; it is not authority to execute v2. Before ANY v2 implementation require a new explicit owner execution/sequencing approval or verified full G3 Chrome/native prerequisite. Authoring v2 prompts is not permission to run. No v2 Gate is qualified by inherited evidence.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan, previous P6 v2 source-bound PASS and the owner's P1 sequencing exception. Confirm actual local main HEAD, version, worktree and source; preserve prior evidence. The original P1's safe incompatible-schema rejection is retained but NOT accepted as new domain completion. Do not reset/stash/clean/force push, create branches, bump version, overwrite owner work, publish Markdown, force hosted fallback, run /activate or touch the persistent game for negative tests. A failed predecessor or uncontrolled dirty tree blocks this prompt.
+
+SINGLE DELIVERABLE
+Make existing ProjectPlanningActions and RoadmapInspectorModel read/create/edit a Gate through their existing approved authority boundary, without creating new UI.
+
+IMPLEMENT
+- Replace old Roadmap checkpoint create/edit/link/depend/reorder actions with typed Phase/Gate/criterion operations and stable selected ID. Allow manual edits, review previews and source-bound acceptance using the SAME trusted owner, project root and expected revisions.
+- Gate status color editing must not grant GREEN; qualification/evidence authority routes through P4/P5. Keep linked Markdown source-approved field edits separate from structured criterion evidence changes.
+- Preserve no-action Chat, Planning Map/Work routing, read-only imported sections, and source drift checks; do not use model native shell tools.
+TEST / PASS
+Live service-backed action preview -> approval -> persisted Gate edit -> inspector selected Gate on reload, negative invalid ID/permission/stale owner/no-approval. Focus project-planning-actions, roadmap-inspector tests, affected builds + diff check. No Chrome claim.
+
+RUNNER OUTPUT
+Report exact tested source, changed files, focused test/build commands and counts, remaining next-stage seam and explicit PASS/FAIL. One bounded objective, not three arbitrary repair cycles. Runner-only test result; do not assert connected Chrome, native Electron, Phase 11 or whole redesign Green. STOP on failed focused acceptance.

@@ -1,0 +1,25 @@
+TASK: Correction 11 / P3 — Phase Gate and Criterion mutation authority
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE AUTHORITY
+AUTHORISATION: The 2026-10-29 sequencing exception applied ONLY to the former unqualified P1; it is not authority to execute v2. Before ANY v2 implementation require a new explicit owner execution/sequencing approval or verified full G3 Chrome/native prerequisite. Authoring v2 prompts is not permission to run. No v2 Gate is qualified by inherited evidence.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan, previous P2 v2 source-bound PASS and the owner's P1 sequencing exception. Confirm actual local main HEAD, version, worktree and source; preserve prior evidence. The original P1's safe incompatible-schema rejection is retained but NOT accepted as new domain completion. Do not reset/stash/clean/force push, create branches, bump version, overwrite owner work, publish Markdown, force hosted fallback, run /activate or touch the persistent game for negative tests. A failed predecessor or uncontrolled dirty tree blocks this prompt.
+
+SINGLE DELIVERABLE
+Make the canonical RoadmapStore actually create/edit/reorder/delete Phase and Gate definitions, criteria, and explicit corrections with stable IDs, revision checking and safe persistence. No UI work.
+
+IMPLEMENT
+- Extend typed mutation or service operations for Phase creation/edit/reorder, Gate creation with exact parent, criterion add/edit/remove/reorder, Gate dependency changes and Correction attach/reparent. Enforce project root, read-only/source ownership and expected revision.
+- Reject missing Gate parents, duplicate IDs, invalid criterion, dependency cycles, cross-project reference and concurrent stale edit without partial write. Preserve deterministic ordering and source annotations.
+- Keep ordinary model planning suggestions separate from authoritative write. Implement controlled mutation as single owner; don't add shadow arrays or old checkpoint aliases for convenience.
+TEST / PASS
+Create Phase -> Gate -> criterion -> save/reload using actual store APIs, verify resulting schema2 bytes and revisions; correction parent negative, duplicate and stale/foreign no-write hashes. A real mutation + restart test must pass. Package build/typecheck + diff check. STOP on no-authority or no-write violation.
+
+RUNNER OUTPUT
+Report exact tested source, changed files, focused test/build commands and counts, remaining next-stage seam and explicit PASS/FAIL. One bounded objective, not three arbitrary repair cycles. Runner-only test result; do not assert connected Chrome, native Electron, Phase 11 or whole redesign Green. STOP on failed focused acceptance.

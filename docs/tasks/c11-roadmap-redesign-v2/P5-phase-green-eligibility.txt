@@ -1,0 +1,25 @@
+TASK: Correction 11 / P5 — Phase Gate-set coverage and Green eligibility
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE AUTHORITY
+AUTHORISATION: The 2026-10-29 sequencing exception applied ONLY to the former unqualified P1; it is not authority to execute v2. Before ANY v2 implementation require a new explicit owner execution/sequencing approval or verified full G3 Chrome/native prerequisite. Authoring v2 prompts is not permission to run. No v2 Gate is qualified by inherited evidence.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan, previous P4 v2 source-bound PASS and the owner's P1 sequencing exception. Confirm actual local main HEAD, version, worktree and source; preserve prior evidence. The original P1's safe incompatible-schema rejection is retained but NOT accepted as new domain completion. Do not reset/stash/clean/force push, create branches, bump version, overwrite owner work, publish Markdown, force hosted fallback, run /activate or touch the persistent game for negative tests. A failed predecessor or uncontrolled dirty tree blocks this prompt.
+
+SINGLE DELIVERABLE
+Implement a tested Phase qualification evaluator and explicit owner-reviewed Gate-set completeness decision, using P4 Gate truth. Do not implement UI presentation yet.
+
+IMPLEMENT
+- Store a project/revision-bound developer approval for the phase's complete required Gate set (not inferred from one Gate or a generated draft). Zero accepted Gates = Unplanned; >=1 = Planned presence only. Preserve phase-level blockers/approval provenance.
+- Phase GREEN eligible iff approved complete nonempty required Gate set, every required Gate currently GREEN, and no unresolved blocker. A waived Gate remains waiver, not a counted GREEN; any exceptional phase disposition must be explicit, separately authorized and visibly exceptional rather than silently laundering success.
+- Gate changes, status revision, changed source or new requirements invalidate prior phase Green eligibility and, when necessary, prior coverage approval. Expose deterministic reason strings for Inspector/Chat.
+TEST / PASS
+Focus zero/one/many, all-green-no-approval, approved-all-green, waiver, blocked, stale, new Gate and foreign approval tests on store-backed records; typecheck/diff check. Never claim a Phase GREEN from bar fill.
+
+RUNNER OUTPUT
+Report exact tested source, changed files, focused test/build commands and counts, remaining next-stage seam and explicit PASS/FAIL. One bounded objective, not three arbitrary repair cycles. Runner-only test result; do not assert connected Chrome, native Electron, Phase 11 or whole redesign Green. STOP on failed focused acceptance.

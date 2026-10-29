@@ -1,0 +1,34 @@
+TASK: Correction 11 / P14 — Chrome UI integration qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / SOURCE SAFETY
+AUTHORISATION: Original P1 sequencing exception applies ONLY to former P1 and does not authorize v2 execution. Obtain new explicit owner execution/sequencing approval or fully satisfied G3 Chrome/native prerequisite. This is documentation/prompt authoring only. Old P1/G3 evidence does not qualify v2.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, owner visual contract and c11-roadmap-redesign-v2 README/assessment/plan. Verify prior P13 evidence is actual PASS on source, the owner P1 sequencing exception and original P1 NOT GREEN historical reports remain traceable, current main HEAD/version/worktree and independent source/approval boundaries. No /activate, new branch, reset/stash/clean/force push, false Git PASS marker, version/lockfile bump, unauthorized Work/Chat/model tool grants, or unapproved linked Markdown mutation. Protect persistent PixiJS project; use disposable fixtures. On failed prerequisite STOP.
+
+MANUAL REAL-CHROME GATE — NOT A FULL REDESIGN CLOSEOUT
+Run this prompt individually in Codex with the connected real Google Chrome browser, on current rebuilt Dope. Runner stops here by design. The code-only PASS results from P1-P13 are prerequisites, not substitutes for these observations.
+
+BEFORE TEST
+Inspect exact main HEAD/product version 0.11.8, clean/owner-approved worktree, local build/served JS bundle hash and backend identity. Start only on disposable schema2 projects, never mutate the owner's persistent PixiJS game for negatives. Check accepted/preview owner revision and safe source.
+TESTED SCENARIOS (all mandatory)
+1. Load a fresh schema2 Phase->Gate->Criterion project through ACTUAL RoadmapStore and editor (not a mocked HTML). Create/read/edit a Gate using existing approved UI, refresh and prove persistence; invalid schema1 remains non-destructively rejected with explicit guidance.
+2. Compare owner screenshot's horizontal three Phase cards, small PHASE label, readable title, clean left-to-right arrowheads, compact nested Gate rows, foldout detail and inspector selection. Phase-only third card remains dim Unplanned; one accepted Gate visually Planned without Green; show proposed draft label clearly.
+3. Operate click/keyboard Gate foldout, full in-stage inspector, saved Chat dock in narrow split, first-open camera/Fit/Focus/zoom/reload. No dashed pseudo-ownership wires or uncued child/parent ambiguity.
+4. Phase-only saved Chat proposal remains incomplete; actual Gate criteria review/Accept/Reject; no canonical Markdown write on Reject or mere accepted noncanonical draft. Record actual source hashes and file content before/after.
+5. Record actual Chrome screenshots/DOM interactions, tested source SHA, served bundle SHA, fixture root, project ID, status and exact failures. Check accessibility, light/theme and no unauthorized write.
+
+QUALIFICATION / RESUME
+If any required UI or authority behavior FAILS or Chrome inaccessible, write NOT GREEN evidence under a NON-PASS Git subject and STOP; do not advance P15. Targeted fixes for this scoped UI gate are permitted, but retest affected scenarios and final source. There is NO auto 3-cycle quota that converts failure into success.
+
+Only after all required P14 UI cases genuinely PASS on the final source, write docs/tasks/c11-roadmap-redesign-v2/qualification/p14-chrome-ui.md and create a single PASS commit with exact Git subject:
+c11-roadmap-redesign-v2/P14: Chrome UI integration qualification
+That subject is required by the existing runner's Git-prefix resume detector. Never commit a failure with that subject. Then rerun npm run codex:phase -- c11-roadmap-redesign-v2 to resume at P15. P14 does not qualify final statuses/help/cleanup, native Electron or Phase 11.
+
+SOURCE-BOUND DISPOSITION
+Report only results observed on final tested source and actual commands. A local model, Chrome or native result cannot be invented or inherited from the unrelated old P1. Distinguish pass/fail/evidence-gap and leave Phase 11 OPEN until separate owner qualification.
