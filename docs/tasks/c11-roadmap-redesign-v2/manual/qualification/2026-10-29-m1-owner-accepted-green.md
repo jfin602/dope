@@ -1,0 +1,15 @@
+# M1 visual correction — OWNER-ACCEPTED GREEN
+
+Date: 2026-10-29. The owner reviewed the selected-card border and Phase layout, said the changes look good, directed that the two outstanding tests be fixed, and explicitly waived the Chrome reduced-motion replay because it is not material to the intended native use. This is an M1 visual-correction decision, **not** the original P14 Chrome integration PASS, Phase 11 Green, or native Electron qualification. Product version remains `0.11.8`.
+
+## Source and result
+
+- Parent Git HEAD before this commit: `803c1960fb2fb4147eae31d4521d18f50bbc83d1`. The reviewed product change is the Phase sizing, progression presentation, readable camera, Gate expansion and card-perimeter selection outline in the files committed with this record. The test-only follow-up updates `roadmap-status-truth.test.ts` to use the supported historical preview projection and removes retired schema-1 store calls; it does not change the served product.
+- Browser JavaScript SHA-256: `fc9aa87bc64cabb5d88b74ef58e7bab26117272285e280bb5cb298228dea03dd`. CSS SHA-256: `d73d38af824f93685c95012b7c375632017a9002dc4800ec0b8082c90eddce27`. Local built artifacts still match the hashes served for the Chrome replay. The prior [dated NOT GREEN record](2026-10-29-m1-chrome-partial-not-green.md) remains preserved with its observed actions and [screenshots](m1-screenshots/verified-three-initial-chrome.jpg).
+- Final focused tests: **58/58 pass**, including the three status-truth tests, canvas, spatial layout, semantic zoom, viewport, Phase/Gate qualification and theme checks. The affected TypeScript and browser build passed before the test-only follow-up. `git diff --check` passes. The previous two status-truth failures were calls to retired schema-1 APIs; the revised test now checks historical preview provenance without claiming schema-1 persistence.
+
+## Browser evidence carried forward
+
+Connected Chrome showed the three-Phase and seven-Phase disposable Roadmaps at a usable scale `1`: `500 px` card, `23 px` title and `15 px` Gate text. The selected Planned Phase had a `3 px` copper outline around the **whole card** and no orange title outline. Green and Unplanned cards had their respective source-backed colors. Gate and criterion expansion wrapped long text while the camera stayed fixed. Fit All was an explicit overview action; Focus restored readable scale. Horizontal drag, Shift+Right pan, reload, left/right Chat splits and light, custom dark and high-contrast themes were exercised. The fixture Roadmap files retained their recorded SHA-256 hashes through presentation.
+
+The owner-directed reduced-motion omission is recorded as **NOT RUN in Chrome**; the existing viewport test covers the zero-duration branch. Individual Active, Blocked, Waived and Stale colors have focused domain/style coverage but were not each replayed as separate live Chrome fixture states. M3 still owns the independent integrated browser replay, and native Electron remains unobserved. This M1 decision does not create the exact P14 PASS marker or authorize P15.

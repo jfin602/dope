@@ -30,7 +30,7 @@ export interface CheckpointNode {
     taskSource?: { stackPath: string; path?: string; fingerprint: string; number?: number; version?: string;
         browserRequired?: boolean; segment?: string; diagnostic?: string };
     /** Read-only schema-two visual summary; no RoadmapStore field is written. */
-    phaseCard?: { number: number; title: string; qualification: string; qualified: number; required: number;
+    phaseCard?: { number: number; title: string; qualification: string; presentation: string; qualified: number; required: number;
         gates: (RoadmapGate & { status: string; proposed: boolean })[];
         corrections: RoadmapCorrection[] };
 }

@@ -62,7 +62,7 @@ test('viewport state restores only within matching project and rejects corrupt c
     assert.match(widget, /if \(restoredTask\) this\.inspector\.selectTask\(restoredTask\)/);
 });
 
-test('current work uses authoritative phase statuses and a readable centered camera', () => {
+test('current work uses authoritative phase statuses and a readable top-aligned camera', () => {
     const nodes = [
         { id: 'old-active-correction', kind: 'correction', order: 13, status: 'active' },
         { id: 'phase-9', kind: 'phase', order: 24, status: 'green' },
@@ -72,11 +72,10 @@ test('current work uses authoritative phase statuses and a readable centered cam
     assert.equal(roadmapInitialTarget(nodes)?.id, 'phase-10');
     assert.equal(roadmapInitialTarget(nodes.filter(node => node.kind !== 'phase'))?.id, 'old-active-correction');
     const camera = roadmapInitialCamera({ x: 4200, y: 640 }, 1100, 700);
-    assert.equal(camera.zoom, 0.9);
-    assert.equal(4200 * camera.zoom + camera.x + 140 * camera.zoom, 550);
-    assert.equal(640 * camera.zoom + camera.y + 80 * camera.zoom, 350);
-    assert.ok((4200 - 420) * camera.zoom + camera.x > 0);
-    assert.ok((4200 + 420) * camera.zoom + camera.x < 1100);
+    assert.equal(camera.zoom, 1);
+    assert.equal(4200 * camera.zoom + camera.x, 24);
+    assert.equal(640 * camera.zoom + camera.y, 32);
+    assert.ok((4200 + 500) * camera.zoom + camera.x < 1100);
 });
 
 test('keyboard navigation reveals an offscreen checkpoint at the current zoom', () => {
@@ -112,7 +111,7 @@ test('a full-width saved camera reveals its selected card on a narrow stage and 
 
 test('keyboard and Focus Selection camera changes honor reduced motion', () => {
     assert.match(widget, /duration: window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches \? 0 : 160/);
-    assert.match(widget, /duration: window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches \? 0 : 320/);
+    assert.match(widget, /const duration = window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches \? 0 : 320/);
 });
 
 test('widget initializes after project projection and saves only intentional camera changes', () => {

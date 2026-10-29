@@ -56,9 +56,13 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
     assert.equal(JSON.stringify(index), before);
     assert.equal(index.linkedDocument?.sourceHash, 'a'.repeat(64));
     const css = read('packages/theia-extension/src/browser/dope.css');
-    assert.match(css, /\.dope-roadmap-phase-card \{ width: 340px/);
-    assert.match(css, /\.dope-roadmap-phase-main > strong \{ font-size: 21px/);
-    assert.match(css, /\.dope-roadmap-phase-children \{[^}]*max-height: 190px; overflow: auto/);
+    assert.match(css, /\.dope-roadmap-phase-card \{ width: 500px/);
+    assert.match(css, /\.dope-roadmap-phase-main > strong \{ font-size: 23px/);
+    assert.match(css, /\.dope-roadmap-phase-children \{ display: grid; gap: 9px; width: 100%; \}/);
+    assert.match(css, /\.dope-roadmap-gate-summary \{[^}]*min-height: 54px/);
+    assert.equal(cards.nodes[0].phaseCard?.presentation, 'planned');
+    assert.equal(cards.nodes[1].phaseCard?.presentation, 'unplanned');
+    assert.ok(positions.get('phase-b')!.x - positions.get('phase-a')!.x >= 580);
 });
 
 test('schema-two Phase-only and explicit Gate proposals remain visible without promoting task bullets', () => {

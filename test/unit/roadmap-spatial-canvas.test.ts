@@ -230,8 +230,8 @@ test('actual full Dope import plus current c10 correction labels has a route and
     assert.ok(camera.zoom >= 0.72 && camera.zoom <= 1.12);
     const neighbors = ['#phase-9', '#phase-10', '#phase-11'].map(suffix =>
         positions.get(graph.nodes.find(node => node.id.endsWith(suffix))!.id)!);
-    assert.ok(neighbors.every(position => position.x * camera.zoom + camera.x > -280 &&
-        position.x * camera.zoom + camera.x < 1100));
+    assert.ok(neighbors[1].x * camera.zoom + camera.x >= 0);
+    assert.ok(neighbors[2].x * camera.zoom + camera.x < 1100);
     const connectors = roadmapCanvasConnectors(graph);
     const phase10 = graph.nodes.find(item => item.id.endsWith('#phase-10'))!;
     const c10 = graph.nodes.filter(item => item.kind === 'correction' && item.phaseAssociation?.phaseId === phase10.id);

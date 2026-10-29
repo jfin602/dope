@@ -40,7 +40,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
     if (card) return React.createElement(React.Fragment, null,
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
         React.createElement(Handle, { id: 'right-target', type: 'target', position: Position.Right, isConnectable: false }),
-        React.createElement('div', { className: `dope-roadmap-node dope-roadmap-phase-card dope-roadmap-status-${item.status}`,
+        React.createElement('div', { className: `dope-roadmap-node dope-roadmap-phase-card dope-roadmap-phase-${card.presentation}`,
             'data-phase-id': item.id },
         React.createElement('button', { type: 'button', className: 'dope-roadmap-phase-main',
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
@@ -63,7 +63,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             React.createElement('span', { style: { width: card.required ? `${100 * card.qualified / card.required}%` : '0%' } })),
         React.createElement('div', { className: 'dope-roadmap-phase-children nowheel' },
             ...card.gates.map(gate => React.createElement('details', { key: gate.id,
-                className: 'dope-roadmap-gate-row nodrag nopan', 'data-gate-id': gate.id,
+                className: `dope-roadmap-gate-row dope-roadmap-gate-${gate.status} nodrag nopan`, 'data-gate-id': gate.id,
                 'aria-current': data.selectedGateId === gate.id ? 'true' : undefined,
                 onClick: event => event.stopPropagation(),
                 onDoubleClick: event => event.stopPropagation(),
@@ -76,15 +76,16 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     onClick: event => { if (window.getSelection()?.toString()) event.preventDefault(); } },
                     React.createElement('span', { className: 'dope-roadmap-gate-icon', 'aria-hidden': true },
                         gate.proposed ? '◇' : gate.status === 'green' ? '✓' : gate.status === 'not-green' ? '!' : '?'),
-                    React.createElement('span', null, roadmapGateLabel(gate)),
+                    React.createElement('span', { className: 'dope-roadmap-gate-title' }, roadmapGateLabel(gate)),
                     React.createElement('span', { className: 'dope-roadmap-gate-qualifier' },
                         gate.proposed ? 'Proposed / Not accepted' : gate.status.replaceAll('-', ' ')),
                     React.createElement('span', { className: 'dope-roadmap-gate-chevron', 'aria-hidden': true }, '⌄')),
                 React.createElement('div', { className: 'dope-roadmap-gate-foldout' },
                     React.createElement('p', null, `Objective: ${gate.purpose}`),
                     React.createElement('strong', null, 'Criteria'),
-                    gate.criteria.length ? gate.criteria.map(criterion => React.createElement('div', { key: criterion.id },
-                        React.createElement('p', null, `${criterion.title} · Expected: ${criterion.expectedResult}`),
+                    gate.criteria.length ? gate.criteria.map(criterion => React.createElement('details', { key: criterion.id },
+                        React.createElement('summary', null, criterion.title),
+                        React.createElement('p', null, `Expected: ${criterion.expectedResult}`),
                         React.createElement('p', null, criterion.evidence.length ?
                             criterion.evidence.map(evidence => `${evidence.result} (${evidence.review.status}${evidence.validation ? ', stale' : ''}): ${evidence.summary}`).join('; ') :
                             'No evidence recorded.'))) : React.createElement('p', null, 'No criteria recorded.'),
@@ -1207,7 +1208,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         });
         this.root.render(React.createElement(ReactFlow, {
             id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes, edgeTypes: roadmapEdgeTypes,
-            defaultViewport: this.displayedViewport ?? { x: 20, y: 20, zoom: 0.85 }, minZoom: 0.2, maxZoom: 2,
+            defaultViewport: this.displayedViewport ?? { x: 20, y: 20, zoom: 1 }, minZoom: 0.2, maxZoom: 2,
             ...roadmapGestures(this.arranging), elementsSelectable: true,
             nodesFocusable: false, edgesFocusable: false,
             zoomOnDoubleClick: false, nodeDragThreshold: 5,
@@ -1361,9 +1362,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.expanded, this.collapsed, 96, this.promptWindow);
         const position = this.placements.get(this.selectedId) ?? roadmapSpatialLayout({ ...this.projection, ...visible }).get(this.selectedId);
         if (!position) return;
+        const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 320;
+        if (this.projection.nodes.some(item => item.id === this.selectedId && item.phaseCard)) {
+            const camera = roadmapInitialCamera(position, this.stage.clientWidth, this.stage.clientHeight);
+            this.intentionalCamera(flow => flow.setViewport(camera, { duration }));
+            return;
+        }
         this.intentionalCamera(flow => flow.setCenter(position.x + 140, position.y + 40,
-            { zoom: Math.max(1.4, flow.getZoom()),
-                duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 320 }));
+            { zoom: Math.max(1.4, flow.getZoom()), duration }));
     }
 
     private nextPrompts(): void {

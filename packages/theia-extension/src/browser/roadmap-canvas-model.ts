@@ -9,10 +9,30 @@ export interface PhaseCardSummary {
     number: number;
     title: string;
     qualification: string;
+    presentation: string;
     qualified: number;
     required: number;
     gates: (RoadmapGate & { status: string; proposed: boolean })[];
     corrections: RoadmapCorrection[];
+}
+
+/** A color is a projection of accepted source state, never an editable qualification. */
+export function roadmapPhasePresentation(index: RoadmapGateIndex, phaseId: string): string {
+    const phase = index.phases.find(item => item.id === phaseId);
+    if (!phase) return 'unknown';
+    const qualification = evaluatePhaseQualification(index, phaseId, phase.qualificationSource).status;
+    if (qualification !== 'planned') return qualification;
+    const accepted = index.gates.filter(gate => gate.parentPhaseId === phaseId && gate.draftAcceptance !== 'proposed');
+    const gateStates = accepted.map(gate => evaluateGateQualification(gate, gate.qualificationSource).status);
+    if (gateStates.includes('blocked')) return 'blocked';
+    if (gateStates.includes('not-green')) return 'not-green';
+    if (gateStates.includes('stale')) return 'stale';
+    // Active requires recorded work and reviewed, current criterion evidence. A bare
+    // implementation label or prompt discovery cannot color a Phase as underway.
+    const active = accepted.some(gate => gate.implementationStatus === 'active' &&
+        gate.criteria.some(criterion => criterion.evidence.some(evidence =>
+            evidence.review.status === 'approved' && evidence.validation?.status !== 'stale')));
+    return active ? 'active' : 'planned';
 }
 
 /** Keep a model-supplied designation in the title from appearing twice in Gate UI. */
@@ -50,13 +70,16 @@ export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly Roadmap
             .map(item => item);
         const label = phase.title.replace(/^Phase\s+\d+\s*(?:[-—:]\s*)?/i, '').trim() || phase.title;
         const phaseNumber = /^Phase\s+(\d+)\b/i.exec(phase.title);
+        const presentation = roadmapPhasePresentation(index, phase.id);
         const card: PhaseCardSummary = { number: phaseNumber ? Number(phaseNumber[1]) : number + 1, title: label,
-            qualification: result.status, qualified: result.qualified, required: result.required,
+            qualification: result.status, presentation, qualified: result.qualified, required: result.required,
             gates, corrections };
         return { id: phase.id, kind: 'phase', title: phase.title, order: phase.order,
-            status: result.status === 'green' ? 'green' : result.status === 'not-green' ? 'not-green' :
-                result.status === 'blocked' ? 'not-green' : result.status === 'waived' ? 'waived' : 'unknown',
-            statusLabel: result.status === 'unplanned' ? 'Unplanned' : result.status === 'planned' ? 'Planned' :
+            status: presentation === 'green' ? 'green' : presentation === 'not-green' || presentation === 'blocked' ? 'not-green' :
+                presentation === 'active' ? 'active' : presentation === 'waived' ? 'waived' : 'unknown',
+            statusLabel: presentation === 'unplanned' ? 'Unplanned' : presentation === 'planned' ? 'Planned' :
+                presentation === 'active' ? 'Active' : presentation === 'not-green' ? 'Not Green' :
+                    presentation === 'blocked' ? 'Blocked' : presentation === 'stale' ? 'Requalification Required' :
                 result.status === 'stale' ? 'Requalification Required' : result.status === 'not-green' ? 'Not Green' :
                     result.status[0].toUpperCase() + result.status.slice(1),
             evidence: [], readOnly: true, lane: 'path',
@@ -84,7 +107,7 @@ export function projectGateDraftCards<T extends RoadmapProjection>(base: T, acce
             draftAcceptance: proposed ? 'proposed' as const : 'accepted' as const,
             status: 'unknown', proposed: !!proposed,
         }));
-        const card: PhaseCardSummary = { number: number + 1, title: phase.title, qualification: 'unplanned',
+        const card: PhaseCardSummary = { number: number + 1, title: phase.title, qualification: 'unplanned', presentation: 'unplanned',
             qualified: 0, required: 0, gates, corrections: [] };
         return { id: phase.id, kind: 'phase', title: phase.title, order: number, status: 'unknown',
             statusLabel: 'Unplanned', evidence: [], readOnly: true, lane: 'path',
@@ -399,6 +422,7 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
         Math.max(160, 100 + Math.ceil(node.title.length / 20) * 22 +
             (node.phaseAssociation?.unresolvedReason ? 44 : 0));
     let nextBandX = 64;
+    const bandByNode = new Map<string, string>();
     const visitBand = (root: CheckpointNode): void => {
         const x = nextBandX;
         const cursor = { upper: baseline - 70, lower: baseline + cardHeight(root) + 70 };
@@ -407,6 +431,7 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
             const height = cardHeight(node);
             const y = node === root ? baseline : upper ? cursor.upper - height : cursor.lower;
             placed.set(node.id, { x: x + Math.min(depth, 3) * column, y });
+            bandByNode.set(node.id, root.id);
             if (node !== root) {
                 if (upper) cursor.upper = y - 44;
                 else cursor.lower = y + height + 44;
@@ -416,7 +441,7 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
                     node === root ? roadmapUpperBranch(child) : upper);
         };
         visit(root, 0, false);
-        nextBandX += 420;
+        nextBandX += root.phaseCard ? 580 : 420;
     };
     for (const phase of projection.nodes.filter(node => node.kind === 'phase').sort(compare)) visitBand(phase);
     // Unmatched work stays in a distinct, discoverable region past the phase route.
@@ -433,16 +458,16 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
     const pending = [...promptById.values()].sort((a, b) =>
         (a.taskSource?.stackPath ?? '').localeCompare(b.taskSource?.stackPath ?? '') ||
         (a.taskSource?.number ?? 0) - (b.taskSource?.number ?? 0));
-    const cursors = new Map<number, { upper: number; lower: number }>();
+    const cursors = new Map<string, { upper: number; lower: number }>();
     for (const prompt of pending) {
         const owner = ownerByPrompt.get(prompt.id) ?? projection.edges.find(edge => edge.to === prompt.id &&
             promptById.has(edge.from))?.from;
         const anchor = owner && placed.get(owner);
         if (!anchor) continue;
-        const band = Math.round((anchor.x - 64) / 420);
+        const band = bandByNode.get(owner) ?? owner;
         let cursor = cursors.get(band);
         if (!cursor) {
-            const strategic = [...placed.entries()].filter(([, point]) => Math.round((point.x - 64) / 420) === band);
+            const strategic = [...placed.entries()].filter(([id]) => bandByNode.get(id) === band);
             cursor = { upper: Math.min(...strategic.map(([, point]) => point.y)) - 80,
                 lower: Math.max(...strategic.map(([id, point]) => point.y + cardHeight(byId.get(id)!))) + 80 };
             cursors.set(band, cursor);
@@ -452,6 +477,7 @@ export function roadmapSpatialLayout(projection: RoadmapProjection): Map<string,
         const height = cardHeight(prompt);
         const y = correction ? cursor.upper - height : cursor.lower;
         placed.set(prompt.id, { x: anchor.x, y });
+        bandByNode.set(prompt.id, band);
         if (correction) cursor.upper = y - 44;
         else cursor.lower = y + height + 44;
     }

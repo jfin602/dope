@@ -4,8 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
-import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
-import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
+import { projectLegacyRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
 import type { RoadmapIndex } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 
 test('current owner dispositions beat historical status without erasing failed gates', async () => {
@@ -32,13 +31,13 @@ test('current owner dispositions beat historical status without erasing failed g
             return { id: item.id, kind: item.kind, title: item.title, objective: '', order, dependencies: [], links: [],
                 status: item.status, readOnly: item.readOnly, source: item.source, evidence: item.evidence };
         }) };
-    const projection = projectRoadmap(index);
+    const projection = projectLegacyRoadmap(index);
     assert.equal(projection.nodes[1].status, 'waived');
     assert.equal(projection.nodes[1].statusLabel, 'Owner-closed for sequencing');
     assert.ok(projection.diagnostics.some(message => message.includes('phase-7') && message.includes('docs/tasks/p7/closeout.md')));
 });
 
-test('source order, reimport, linked Markdown edit and restart retain status provenance', async () => {
+test('source order and linked Markdown edits retain historical import provenance', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-status-'));
     try {
         await mkdir(join(root, 'docs/roadmap'), { recursive: true });
@@ -54,12 +53,13 @@ test('source order, reimport, linked Markdown edit and restart retain status pro
         assert.equal(checkpoint.status, 'green');
         assert.equal(checkpoint.roadmapStatus, 'active');
         assert.ok(checkpoint.diagnostics.includes('Conflicting historical status evidence'));
-        const store = new RoadmapStore();
-        const accepted = await store.acceptImport(root, 0, first);
-        const reopened = await new RoadmapStore().read(root);
-        assert.equal(reopened.checkpoints[0].status, 'green');
-        assert.deepEqual(reopened.checkpoints[0].evidence, accepted.checkpoints[0].evidence);
-        const projected = projectRoadmap(reopened);
+        const projectPreview = (item: typeof checkpoint) => projectLegacyRoadmap({
+            schemaVersion: 1, projectId: 'historical-preview', projectRoot: root, revision: 1,
+            checkpoints: [{ id: item.id, kind: item.kind, title: item.title, objective: '', order: 0,
+                dependencies: [], links: [], status: item.status, readOnly: item.readOnly,
+                source: item.source, evidence: item.evidence }],
+        });
+        const projected = projectPreview(checkpoint);
         assert.equal(projected.nodes[0].statusLabel, 'Green');
         assert.ok(projected.diagnostics.some(message => message.includes('docs/tasks/p7/closeout.md')));
         await writeFile(path, roadmap('UNKNOWN'));
@@ -68,10 +68,8 @@ test('source order, reimport, linked Markdown edit and restart retain status pro
         assert.equal(changed.checkpoints[0].roadmapStatus, 'unknown');
         assert.notEqual(changed.checkpoints[0].source.sha256, checkpoint.source.sha256);
         assert.equal((await readFile(join(root, 'docs/tasks/p7/closeout.md'), 'utf8')).includes('Not Qualified'), true);
-        await assert.rejects(store.acceptImport(root, 1, first), /Stale Roadmap import preview/);
-        const imported = await store.acceptImport(root, 1, changed, accepted.projectId);
-        assert.equal((await new RoadmapStore().read(root)).checkpoints[0].status, 'green');
-        assert.equal(imported.checkpoints[0].evidence.find(item => item.path === 'docs/roadmap/mvp-roadmap.md')?.status, 'unknown');
+        assert.equal(changed.checkpoints[0].evidence.find(item => item.path === 'docs/roadmap/mvp-roadmap.md')?.status, 'unknown');
+        assert.equal(projectPreview(changed.checkpoints[0]).nodes[0].statusLabel, 'Green');
         assert.deepEqual((await previewRoadmapImport(root)).checkpoints[0], changed.checkpoints[0]);
         const planPath = join(root, 'docs/planning/p7/phase-7-plan.md');
         const closeoutPath = join(root, 'docs/tasks/p7/closeout.md');

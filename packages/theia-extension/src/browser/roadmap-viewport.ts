@@ -92,12 +92,12 @@ export function roadmapInitialTarget<T extends RoadmapCameraNode>(nodes: readonl
         ordered.find(node => node.status === 'active') ?? ordered[0];
 }
 
-/** Center the card at phase detail; adjacent 420px phase columns remain visible. */
+/** Start at readable detail with the actionable card fully visible from its top edge. */
 export function roadmapInitialCamera(target: { x: number; y: number }, width: number, height: number):
     NonNullable<RoadmapViewportState['viewport']> {
-    const zoom = 0.9;
-    return { x: width / 2 - (target.x + 140) * zoom,
-        y: height / 2 - (target.y + 80) * zoom, zoom };
+    const zoom = Math.min(1, Math.max(0.9, (width - 48) / 500));
+    return { x: 24 - target.x * zoom,
+        y: Math.min(32, height * 0.06) - target.y * zoom, zoom };
 }
 
 /** Keyboard navigation keeps the selected card in view without changing its zoom. */
