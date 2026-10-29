@@ -7,6 +7,10 @@ import { checkedRoadmapDocumentFile, planRoadmapDocumentPatch, publishRoadmapDoc
 import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPendingRecovery } from './roadmap-document-sync';
 import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
+import { gateField, planGateDocumentPatch, previewGateDocumentSync, previewGateDocumentRelink,
+    readGateMappedDocument } from './roadmap-gate-document';
+import type { GateDocumentEdit, GateDocumentPatch, GateDocumentSyncPreview, GateDocumentRelinkPreview,
+    GateMappedField } from './roadmap-gate-document';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
 import { criterionHash, evaluateGateQualification, evaluatePhaseQualification, parseRoadmapGateIndex,
     sameRoadmapSource } from './roadmap-gate-domain';
@@ -548,9 +552,14 @@ export class RoadmapStore {
                 ...item.criteria.map(criterion => ({ sectionKey: criterion.sectionKey, kind: 'criterion' as const,
                     id: criterion.id }))]),
             ...parsed.corrections.map(item => ({ sectionKey: item.sectionKey, kind: 'correction' as const, id: item.id }))];
+        const linked: RoadmapGateIndex['linkedDocument'] = { projectId, projectRoot: root,
+            path: fresh.roadmapPath, sourceHash: source.sha256, syncState: 'synced', sections };
+        const mapped = await readGateMappedDocument(root, linked);
+        if (mapped.hash !== source.sha256 || mapped.diagnostics.length || mapped.fields.length !== sections.length)
+            throw new Error('Gate source changed or mapped sections are ambiguous');
+        linked.lastSynced = { sourceHash: source.sha256, fields: mapped.fields };
         const next: RoadmapGateIndex = { schemaVersion: 2, projectId, projectRoot: root, revision: expectedRevision + 1,
-            phases, gates, corrections, linkedDocument: { projectId, projectRoot: root,
-                path: fresh.roadmapPath, sourceHash: source.sha256, syncState: 'synced', sections } };
+            phases, gates, corrections, linkedDocument: linked };
         return this.saveGateIndex(root, expectedRevision, current.projectId, next);
     }
 
@@ -927,6 +936,189 @@ export class RoadmapStore {
     private async readRetired(root: string): Promise<RoadmapIndex> {
         const current = await this.read<RoadmapGateIndex>(root);
         throw new Error(`Checkpoint Roadmap operations are retired for schema ${current.schemaVersion}; use Gate actions`);
+    }
+
+    /** An accepted Gate draft is independent from publication of its linked Markdown. */
+    async previewGateDocumentPatch(root: string, edit: GateDocumentEdit): Promise<GateDocumentPatch> {
+        return planGateDocumentPatch(root, await this.read<RoadmapGateIndex>(root), edit);
+    }
+
+    private gateDocumentCandidate(current: RoadmapGateIndex, fields: GateMappedField[], sourceHash: string): RoadmapGateIndex {
+        const next = structuredClone(current);
+        const previousHash = current.linkedDocument!.sourceHash;
+        for (const field of fields) {
+            const prior = gateField(current, field.kind, field.id);
+            if (!prior) throw new Error('Missing linked Gate owner');
+            if (field.kind === 'phase') {
+                const phase = next.phases.find(item => item.id === field.id)!;
+                phase.title = field.title; phase.objective = field.detail;
+                if (['green', 'waived', 'not-green'].includes(phase.qualificationStatus)) phase.qualificationStatus = 'stale';
+                if (field.title !== prior.title || field.detail !== prior.detail) phase.gateSetCoverage = { status: 'unreviewed' };
+            } else if (field.kind === 'gate') {
+                const gate = next.gates.find(item => item.id === field.id)!;
+                gate.title = field.title; gate.purpose = field.detail;
+                if (['green', 'waived', 'not-green'].includes(gate.qualificationStatus)) gate.qualificationStatus = 'stale';
+                if (field.title !== prior.title || field.detail !== prior.detail)
+                    next.phases.find(item => item.id === gate.parentPhaseId)!.gateSetCoverage = { status: 'unreviewed' };
+            } else if (field.kind === 'criterion') {
+                const gate = next.gates.find(item => item.criteria.some(c => c.id === field.id))!;
+                const criterion = gate.criteria.find(item => item.id === field.id)!;
+                criterion.title = field.title; criterion.expectedResult = field.detail;
+                if (['green', 'waived', 'not-green'].includes(gate.qualificationStatus)) gate.qualificationStatus = 'stale';
+                if (field.title !== prior.title || field.detail !== prior.detail)
+                    next.phases.find(item => item.id === gate.parentPhaseId)!.gateSetCoverage = { status: 'unreviewed' };
+            } else {
+                const correction = next.corrections.find(item => item.id === field.id)!;
+                correction.title = field.title; correction.objective = field.detail;
+            }
+        }
+        if (sourceHash !== previousHash) {
+            for (const phase of next.phases) if (['green', 'waived', 'not-green'].includes(phase.qualificationStatus))
+                phase.qualificationStatus = 'stale';
+            for (const gate of next.gates) if (['green', 'waived', 'not-green'].includes(gate.qualificationStatus))
+                gate.qualificationStatus = 'stale';
+        }
+        next.linkedDocument = { ...next.linkedDocument!, sourceHash, syncState: 'synced', pending: undefined,
+            lastSynced: { sourceHash, fields } };
+        return next;
+    }
+
+    async previewGateDocumentSync(root: string): Promise<GateDocumentSyncPreview> {
+        return previewGateDocumentSync(root, await this.read<RoadmapGateIndex>(root));
+    }
+
+    async applyGateDocumentSync(root: string, expected: GateDocumentSyncPreview, approved: boolean): Promise<RoadmapGateIndex> {
+        if (!approved) return this.read<RoadmapGateIndex>(root);
+        if (expected.state !== 'source-changed' || !expected.sourceHash) throw new Error('No safe Gate source change to accept');
+        const result = await this.locked(root, async () => {
+            const { file } = await this.paths(root); const expectedHash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (current.projectId !== expected.projectId || current.revision !== expected.revision)
+                throw new Error('Stale Gate sync owner or revision');
+            const fresh = await previewGateDocumentSync(root, current);
+            if (fresh.state !== 'source-changed' || JSON.stringify(fresh) !== JSON.stringify(expected))
+                throw new Error('Stale Gate sync preview');
+            const mapped = await readGateMappedDocument(root, current.linkedDocument!);
+            if (mapped.hash !== expected.sourceHash || mapped.diagnostics.length) throw new Error('Stale Gate source');
+            const next = this.gateDocumentCandidate(current, mapped.fields, mapped.hash);
+            next.revision++;
+            await this.replace(root, next, expectedHash);
+            return next;
+        });
+        this.publish({ root, projectId: result.projectId, revision: result.revision,
+            changedIds: [...result.phases, ...result.gates, ...result.corrections].map(item => item.id) });
+        return result;
+    }
+
+    async previewGateRelink(root: string, path: string): Promise<GateDocumentRelinkPreview> {
+        return previewGateDocumentRelink(root, await this.read<RoadmapGateIndex>(root), path);
+    }
+
+    async applyGateRelink(root: string, expected: GateDocumentRelinkPreview, approved: boolean): Promise<RoadmapGateIndex> {
+        if (!approved) return this.read<RoadmapGateIndex>(root);
+        if (expected.state !== 'ready' || !expected.sourceHash) throw new Error('Relink requires a safe approved preview');
+        const next = await this.locked(root, async () => {
+            const { file } = await this.paths(root); const expectedHash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (current.projectId !== expected.projectId || current.revision !== expected.revision)
+                throw new Error('Stale Gate relink owner or revision');
+            const fresh = await previewGateDocumentRelink(root, current, expected.path);
+            if (fresh.state !== 'ready' || JSON.stringify(fresh) !== JSON.stringify(expected))
+                throw new Error('Stale Gate relink preview');
+            const candidate: RoadmapGateIndex = { ...structuredClone(current), revision: current.revision + 1,
+                linkedDocument: { ...current.linkedDocument!, path: fresh.path, sourceHash: fresh.sourceHash!, syncState: 'synced' } };
+            for (const phase of candidate.phases)
+                if (['green', 'waived', 'not-green'].includes(phase.qualificationStatus)) phase.qualificationStatus = 'stale';
+            for (const gate of candidate.gates)
+                if (['green', 'waived', 'not-green'].includes(gate.qualificationStatus)) gate.qualificationStatus = 'stale';
+            await this.replace(root, candidate, expectedHash); return candidate;
+        });
+        this.publish({ root, projectId: next.projectId, revision: next.revision, changedIds: [] });
+        return next;
+    }
+
+    /** Persist intent before the independent Markdown write, then settle the single Roadmap owner. */
+    async publishGateDocumentPatch(root: string, expected: GateDocumentPatch, approved: boolean): Promise<RoadmapGateIndex> {
+        if (!approved) return this.read<RoadmapGateIndex>(root);
+        const result = await this.locked(root, async () => {
+            const { file } = await this.paths(root); let expectedHash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (current.projectId !== expected.projectId || current.revision !== expected.revision)
+                throw new Error('Stale Gate patch owner or revision');
+            const fresh = await planGateDocumentPatch(root, current, expected.edit);
+            if (JSON.stringify(fresh) !== JSON.stringify(expected)) throw new Error('Stale Gate document patch preview');
+            const marker: RoadmapGateIndex = { ...current, revision: current.revision + 1,
+                linkedDocument: { ...current.linkedDocument!, syncState: 'pending-sync', pending: {
+                    basisRevision: current.revision, beforeHash: expected.beforeHash, afterHash: expected.afterHash,
+                    edit: { kind: expected.edit.kind, id: expected.edit.id,
+                        ...(expected.edit.title === undefined ? {} : { title: expected.edit.title }),
+                        ...(expected.edit.detail === undefined ? {} : { detail: expected.edit.detail }) }, outcome: 'prepared' } } };
+            await this.replace(root, marker, expectedHash);
+            try { await publishRoadmapDocumentPatch(root, expected); }
+            catch (error) { throw new Error(`Linked Gate pending sync; recover before retrying: ${String(error)}`); }
+            expectedHash = await this.indexHash(file);
+            const mapped = await readGateMappedDocument(root, marker.linkedDocument!);
+            if (mapped.hash !== expected.afterHash || mapped.diagnostics.length)
+                throw new Error('Linked Gate pending sync; source changed after publication');
+            const next = this.gateDocumentCandidate(marker, mapped.fields, mapped.hash);
+            next.revision++;
+            await this.replace(root, next, expectedHash);
+            return next;
+        });
+        this.publish({ root, projectId: result.projectId, revision: result.revision,
+            changedIds: [expected.edit.id] });
+        return result;
+    }
+
+    async recoverGateDocumentPatch(root: string, approved: boolean): Promise<RoadmapGateIndex> {
+        if (!approved) return this.read<RoadmapGateIndex>(root);
+        return this.locked(root, async () => {
+            const { file } = await this.paths(root); const expectedHash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            const linked = current.linkedDocument; const pending = linked?.pending;
+            if (!linked || !pending || linked.syncState !== 'pending-sync') throw new Error('No pending Gate patch');
+            const backup = join(root, `${linked.path}.dope-pending-backup`);
+            let backupPresent = false;
+            let backupConflict = false;
+            try {
+                const info = await lstat(backup);
+                if (!info.isFile() || info.isSymbolicLink() || info.size > 2 * 1024 * 1024)
+                    throw new Error('Unsafe pending Gate backup');
+                if (info.size === 0) {
+                    await lstat(join(root, linked.path));
+                    await rm(backup);
+                } else {
+                    const handle = await open(backup, constants.O_RDONLY | constants.O_NOFOLLOW);
+                    try {
+                        if (createHash('sha256').update(await handle.readFile()).digest('hex') !== pending.beforeHash)
+                            backupConflict = true;
+                    } finally { await handle.close(); }
+                    if (!backupConflict) {
+                        backupPresent = true;
+                        try { await lstat(join(root, linked.path)); }
+                        catch (error) {
+                            if (!missing(error)) throw error;
+                            await hardLink(backup, join(root, linked.path));
+                        }
+                    }
+                }
+            } catch (error) { if (!missing(error)) throw error; }
+            const mapped = backupConflict ? undefined : await readGateMappedDocument(root, linked).catch(() => undefined);
+            if (backupConflict || !mapped || mapped.diagnostics.length ||
+                mapped.hash !== pending.beforeHash && mapped.hash !== pending.afterHash) {
+                if (pending.outcome === 'conflict') return current;
+                const conflict: RoadmapGateIndex = { ...current, revision: current.revision + 1,
+                    linkedDocument: { ...linked, pending: { ...pending, outcome: 'conflict' } } };
+                await this.replace(root, conflict, expectedHash); return conflict;
+            }
+            const next = mapped.hash === pending.beforeHash ? { ...current, revision: current.revision + 1,
+                linkedDocument: { ...linked, syncState: 'synced' as const, pending: undefined } } :
+                this.gateDocumentCandidate(current, mapped.fields, mapped.hash);
+            if (mapped.hash === pending.afterHash) next.revision++;
+            await this.replace(root, next, expectedHash);
+            if (backupPresent) await rm(backup);
+            return next;
+        });
     }
 
     private async locked<T>(root: string, work: () => Promise<T>): Promise<T> {

@@ -1,5 +1,7 @@
 import type { RoadmapIndex, RoadmapChange, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
+import type { GateDocumentEdit, GateDocumentPatch, GateDocumentSyncPreview, GateDocumentRelinkPreview } from
+    '@dope/project-intelligence/lib/node/roadmap-gate-document';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import type { PlanningActionRequest, PlanningActionPreview, PlanningUndoRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
@@ -48,6 +50,13 @@ export interface RoadmapService {
     /** Approved explicit Phase/Gate Markdown import into the schema-2 Roadmap owner. */
     acceptGateImport(projectUri: string, expectedRevision: number, projectId: string,
         preview: RoadmapImportPreview): Promise<RoadmapGateIndex>;
+    previewGateDocumentPatch(projectUri: string, edit: GateDocumentEdit): Promise<GateDocumentPatch>;
+    publishGateDocumentPatch(projectUri: string, preview: GateDocumentPatch, approved: boolean): Promise<RoadmapGateIndex>;
+    previewGateDocumentSync(projectUri: string): Promise<GateDocumentSyncPreview>;
+    applyGateDocumentSync(projectUri: string, preview: GateDocumentSyncPreview, approved: boolean): Promise<RoadmapGateIndex>;
+    previewGateRelink(projectUri: string, path: string): Promise<GateDocumentRelinkPreview>;
+    applyGateRelink(projectUri: string, preview: GateDocumentRelinkPreview, approved: boolean): Promise<RoadmapGateIndex>;
+    recoverGateDocumentPatch(projectUri: string, approved: boolean): Promise<RoadmapGateIndex>;
     acceptImport(projectUri: string, expectedRevision: number, expectedProjectId: string, preview: RoadmapImportPreview): Promise<RoadmapIndex>;
     previewReplacement(projectUri: string, path: string): Promise<RoadmapReplacementPreview>;
     applyReplacement(projectUri: string, preview: RoadmapReplacementPreview, approved: boolean): Promise<RoadmapIndex>;

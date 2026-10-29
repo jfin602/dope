@@ -2,7 +2,7 @@ import { watch, type FSWatcher } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import { checkedRoadmapDocumentFile } from './roadmap-document-patch';
-import type { RoadmapIndex } from './roadmap-store';
+import type { RoadmapGateIndex } from './roadmap-gate-domain';
 
 /** Watches one accepted source only. The caller owns project lifecycle and any reconciliation. */
 export class RoadmapLinkedObserver {
@@ -12,7 +12,7 @@ export class RoadmapLinkedObserver {
     private notified?: string;
     private root?: string;
 
-    constructor(private readonly read: (root: string) => Promise<RoadmapIndex>,
+    constructor(private readonly read: (root: string) => Promise<RoadmapGateIndex>,
         private readonly changed: (root: string, projectId: string) => void) {}
 
     async observe(root?: string): Promise<void> {

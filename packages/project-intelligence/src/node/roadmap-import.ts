@@ -97,7 +97,7 @@ export function roadmapSectionKey(heading: string, generic: boolean): string | u
     if (explicit) return explicit[1].toLowerCase();
     return (generic ? genericIdentity(heading) : identity(heading))?.key;
 }
-function parseGateSource(path: string, sha256: string, lines: string[], fenced: Set<number>): RoadmapGateSourcePreview {
+export function parseGateSource(path: string, sha256: string, lines: string[], fenced: Set<number>): RoadmapGateSourcePreview {
     const phases: RoadmapGateSourcePreview['phases'] = [];
     const gates: RoadmapGateSourcePreview['gates'] = [];
     const corrections: RoadmapGateSourcePreview['corrections'] = [];

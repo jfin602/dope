@@ -222,6 +222,24 @@ export default new ContainerModule(bind => {
                 previewImport: async (uri, path) => previewRoadmapImport(await context.container.get(PlanningStore).root(uri), path),
                 acceptGateImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
                     .acceptGateImport(await context.container.get(PlanningStore).root(uri), revision, projectId, importPreview),
+                previewGateDocumentPatch: async (uri, edit) => store.previewGateDocumentPatch(
+                    await context.container.get(PlanningStore).root(uri), edit),
+                publishGateDocumentPatch: async (uri, preview, approved) => store.publishGateDocumentPatch(
+                    await context.container.get(PlanningStore).root(uri), preview, approved),
+                previewGateDocumentSync: async uri => store.previewGateDocumentSync(
+                    await context.container.get(PlanningStore).root(uri)),
+                applyGateDocumentSync: async (uri, preview, approved) => store.applyGateDocumentSync(
+                    await context.container.get(PlanningStore).root(uri), preview, approved),
+                previewGateRelink: async (uri, path) => store.previewGateRelink(
+                    await context.container.get(PlanningStore).root(uri), path),
+                applyGateRelink: async (uri, preview, approved) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    const result = await store.applyGateRelink(root, preview, approved);
+                    if (approved) await observer.observe(root);
+                    return result;
+                },
+                recoverGateDocumentPatch: async (uri, approved) => store.recoverGateDocumentPatch(
+                    await context.container.get(PlanningStore).root(uri), approved),
                 acceptImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
                     .acceptImport(await context.container.get(PlanningStore).root(uri), revision, importPreview, projectId),
                 previewReplacement: async (uri, path) => store.previewReplacement(

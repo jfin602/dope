@@ -179,6 +179,10 @@ export interface RoadmapGateLinkedDocument {
     sourceHash: string;
     syncState: 'synced' | 'source-changed' | 'conflict' | 'pending-sync' | 'missing';
     sections: { sectionKey: string; kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string }[];
+    lastSynced?: { sourceHash: string; fields: { kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string;
+        title: string; detail: string }[] };
+    pending?: { basisRevision: number; beforeHash: string; afterHash: string; edit: { kind: 'phase' | 'gate' | 'criterion';
+        id: string; title?: string; detail?: string }; outcome: 'prepared' | 'document-written' | 'conflict' };
 }
 export interface RoadmapGateIndex {
     schemaVersion: 2;
@@ -381,7 +385,7 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     }
     if (raw.linkedDocument !== undefined) {
         const doc = raw.linkedDocument;
-        assertion(record(doc) && keys(doc, ['projectId', 'projectRoot', 'path', 'sourceHash', 'syncState', 'sections']) &&
+        assertion(record(doc) && keys(doc, ['projectId', 'projectRoot', 'path', 'sourceHash', 'syncState', 'sections'], ['lastSynced', 'pending']) &&
             doc.projectId === projectId && doc.projectRoot === projectRoot && path(doc.path) && /\.md$/i.test(doc.path) &&
             hash(doc.sourceHash) && member(doc.syncState, ['synced', 'source-changed', 'conflict', 'pending-sync', 'missing']) &&
             Array.isArray(doc.sections) && doc.sections.length <= MAX_ENTITIES, 'linked document');
@@ -396,6 +400,28 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
                     .some(e => (e as { id: string }).id === section.id) &&
                 !sectionKeys.has(section.sectionKey) && !sectionIds.has(section.id), 'linked section');
             sectionKeys.add(section.sectionKey); sectionIds.add(section.id);
+        }
+        const linked = doc as RoadmapGateLinkedDocument;
+        if (linked.lastSynced !== undefined) {
+            const basis = linked.lastSynced;
+            assertion(record(basis) && keys(basis, ['sourceHash', 'fields']) && hash(basis.sourceHash) &&
+                Array.isArray(basis.fields) && basis.fields.length === sections.length &&
+                basis.fields.every((field: unknown) => record(field) && keys(field, ['kind', 'id', 'title', 'detail']) &&
+                    member(field.kind, ['phase', 'gate', 'criterion', 'correction']) && identifier(field.id) &&
+                    prose(field.title, 512) && typeof field.detail === 'string' && field.detail.length <= 8192 &&
+                    sections.some(section => section.id === field.id && section.kind === field.kind)) &&
+                new Set(basis.fields.map((field: { id: string }) => field.id)).size === sections.length, 'linked basis');
+        }
+        if (linked.pending !== undefined) {
+            const pending = linked.pending;
+            assertion(record(pending) && keys(pending, ['basisRevision', 'beforeHash', 'afterHash', 'edit', 'outcome']) &&
+                natural(pending.basisRevision) && hash(pending.beforeHash) && hash(pending.afterHash) &&
+                member(pending.outcome, ['prepared', 'document-written', 'conflict']) &&
+                record(pending.edit) && keys(pending.edit, ['kind', 'id'], ['title', 'detail']) &&
+                member(pending.edit.kind, ['phase', 'gate', 'criterion']) && identifier(pending.edit.id) &&
+                (pending.edit.title === undefined || prose(pending.edit.title, 512)) &&
+                (pending.edit.detail === undefined || prose(pending.edit.detail, 8192)) &&
+                linked.syncState === 'pending-sync', 'linked pending patch');
         }
     }
     return value as RoadmapGateIndex;
