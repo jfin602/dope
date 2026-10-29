@@ -24,6 +24,12 @@ test('named implementation order wins over a competing feature inventory', () =>
     assert(parsed.phases.every(item => !item.checkpoints.length));
 });
 
+test('recommended implementation order wins over an earlier core systems list', () => {
+    const answer = source('Core Systems to Implement First:\n1. Grid\n2. Enemies\n\nRecommended Implementation Order:\n1. Render a PixiJS map\n2. Move enemies on a fixed path\n3. Add persistent tower health\n\nFirst Milestone: Playable prototype');
+    assert.deepEqual(extractSavedRoadmap(chat(answer), answer, 'project-1', 0).phases.map(item => item.title),
+        ['Render a PixiJS map', 'Move enemies on a fixed path', 'Add persistent tower health']);
+});
+
 test('phase headings and supported bullets are extracted once without unsupported weeks', () => {
     const answer = source('Phase 1: PixiJS setup (Weeks 1–2)\n- Create scene\nPhase 2: Fixed path (Weeks 3–4)\n- Place route\n');
     const parsed = extractSavedRoadmap(chat(answer), answer, 'project-1', 0);

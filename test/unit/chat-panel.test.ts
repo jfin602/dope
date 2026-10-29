@@ -61,8 +61,10 @@ test('strategic generation follows the saved Chat and puts visual review in Road
     assert.match(controller, /event\.chatId === this\.chatId[\s\S]*this\.roadmapGenerationStage = event\.stage/);
     assert.match(controller, /this\.roadmapGenerationStage = undefined; this\.roadmapGenerationProjectId = undefined/);
     assert.match(controller, /lease\.connection\.cancelTurn\(lease\.handle, lease\.chatId, lease\.token\)/);
-    assert.match(widget, /Waiting for the selected model and generating phases/);
+    assert.match(widget, /Extracting and validating the saved answer/);
     assert.match(widget, /Cancel generation/);
+    assert.match(widget, /roadmapActionCard\(message\)/);
+    assert.doesNotMatch(widget, /roadmapOpenTarget/);
     assert.match(widget, /role', 'status'/);
     assert.match(widget, /Open Roadmap/);
     assert.match(widget, /this\.syncStrategicRoadmap\(\)/);

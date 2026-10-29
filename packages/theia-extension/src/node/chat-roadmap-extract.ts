@@ -39,7 +39,7 @@ export function extractSavedRoadmap(chat: Chat, source: ChatAssistantMessage, pr
     }
     if (!phaseMode) {
         const labels = lines.flatMap((line, index) =>
-            /^(?:#{1,6}\s*)?(?:implementation order(?: recommendation)?|roadmap|implementation roadmap)\s*:?$/i.test(line.replace(/\*\*/g, ''))
+            /^(?:#{1,6}\s*)?(?:(?:recommended\s+)?implementation order(?: recommendation)?|roadmap|implementation roadmap)\s*:?$/i.test(line.replace(/\*\*/g, ''))
                 ? [index] : []);
         const sequences: StrategicDraftInput['phases'][] = [];
         const starts = labels.length ? labels : [0];

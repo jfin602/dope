@@ -1002,11 +1002,13 @@ body.theia-light:not(.dope-dark) {
     padding: 8px 10px;
     margin-top: 7px;
     width: min(100%, 52ch);
+    min-height: 5.5rem;
     box-sizing: border-box;
     background: color-mix(in srgb, var(--theia-editor-background) 88%, var(--theia-input-background));
 }
 .dope-chat-roadmap-offer strong { display: block; font-size: 12px; }
 .dope-chat-roadmap-offer p { margin: 4px 0 7px; color: var(--theia-descriptionForeground); font-size: 12px; line-height: 1.4; }
 .dope-chat-roadmap-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.dope-chat-roadmap-offer-primary { background: #9a4d22; color: #fff; border-color: #9a4d22; }
+.dope-chat-roadmap-offer-actions button { max-width: 100%; white-space: normal; background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); color: var(--theia-button-secondaryForeground, var(--theia-foreground)); border: 1px solid var(--theia-widget-border); }
+.dope-chat-roadmap-offer-actions .dope-chat-roadmap-offer-primary { background: #9a4d22; color: #fff; border-color: #9a4d22; }
 .dope-chat-roadmap-offer button:focus-visible { outline: 2px solid #f0aa72; outline-offset: 2px; }

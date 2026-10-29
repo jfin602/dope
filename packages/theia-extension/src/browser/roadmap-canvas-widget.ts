@@ -602,6 +602,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     async revealAcceptedChatDraft(projectUri: string, projectId: string, chatId: string,
         revision: number): Promise<void> {
         await this.refresh();
+        this.clearStrategicReview(projectUri, chatId);
         const state = this.createState;
         if (this.projectUri !== projectUri || this.projectId !== projectId ||
             state?.uri !== projectUri || state.projectId !== projectId || state.mode !== 'chat' ||

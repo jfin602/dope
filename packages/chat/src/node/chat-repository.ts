@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, readdir, realpath, rename, rm, rmdir, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -515,6 +515,10 @@ export class ChatRepository {
                 action.chatId !== chatId || (expected ? message.roadmapAction?.offerId !== expected.offerId ||
                     message.roadmapAction.status !== expected.status : !!message.roadmapAction))
                 throw new Error('Roadmap action state changed');
+            if (action.sourceMessageId !== undefined && action.sourceMessageId !== messageId ||
+                action.sourceContentHash !== undefined && action.sourceContentHash !==
+                    createHash('sha256').update(message.content).digest('hex'))
+                throw new Error('Roadmap action source changed');
             const messages = [...chat.messages];
             messages[at] = parseChatMessage({ ...message, roadmapAction: action });
             const now = new Date().toISOString();

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -49,10 +49,24 @@ test('saved answer prepares a review without a second model call or exact select
         const action = saved?.messages.find(item => item.id === sourceId);
         assert(action?.role === 'assistant');
         assert.match(action.roadmapAction?.diagnostic ?? '', /without file evidence/);
+        assert.equal(action.roadmapAction?.sourceMessageId, sourceId);
+        assert.equal(action.roadmapAction?.sourceContentHash,
+            createHash('sha256').update(action.content).digest('hex'));
+        assert.doesNotMatch(action.roadmapAction?.diagnostic ?? '', new RegExp(sourceId));
         assert.equal((await store.read(root)).revision, 0);
         assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             content: 'Lets make a roadmap first' }), /competing draft|prevents a new proposal/);
+        assert.equal(calls, 0);
+        await backend.release(projectHandle, chatId, lease.token);
+        const retired = await backend.get(projectHandle, chatId);
+        const retiredAction = retired?.messages.find(item => item.id === sourceId);
+        assert(retiredAction?.role === 'assistant');
+        assert.equal(retiredAction.roadmapAction?.status, 'stale');
+        const reclaimed = await backend.claim({ projectHandle, chatId, ownerId: 'next-panel' });
+        assert(reclaimed.acquired);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: reclaimed.token,
+            content: 'Lets make a roadmap first' }), /prevents a new proposal/);
         assert.equal(calls, 0);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

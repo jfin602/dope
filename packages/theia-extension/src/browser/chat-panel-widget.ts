@@ -30,6 +30,26 @@ import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
 import { panelFocusTarget } from './history-focus-target';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 
+function copyChatText(text: string): Promise<void> {
+    // Keep the copy command inside the click gesture. Some desktop browser
+    // contexts expose Clipboard.writeText but reject it for an embedded editor.
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    const selection = window.getSelection();
+    const ranges = selection ? Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index)) : [];
+    const input = document.createElement('textarea');
+    input.value = text;
+    input.setAttribute('aria-hidden', 'true');
+    input.style.cssText = 'position:fixed;left:-10000px;top:0;opacity:0';
+    document.body.append(input);
+    input.focus(); input.select();
+    const copied = document.execCommand('copy');
+    input.remove();
+    previousFocus?.focus();
+    if (selection) { selection.removeAllRanges(); for (const range of ranges) selection.addRange(range); }
+    return copied ? Promise.resolve() :
+        navigator.clipboard?.writeText(text) ?? Promise.reject(new Error('Clipboard unavailable'));
+}
+
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly controller: ChatPanelController;
     readonly panel: SharedPanelState;
@@ -170,27 +190,30 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.strategicPresentationQueue = this.strategicPresentationQueue.then(() =>
                 this.presentStrategicRoadmap!(workspace, projectId, chatId, payload,
                     approve => state.strategicDraftReview ? state.decideStrategicDraft(approve) : state.cancel(), open))
-                .catch(error => { state.roadmapOfferStatus = `Roadmap editor unavailable: ${String(error)}. Open Roadmap to retry.`;
+                .catch(() => { state.error = 'Roadmap editor unavailable. Open Roadmap to retry.';
                     this.render(); });
             return;
         }
         const target = this.strategicPresentationTarget;
         if (!target) return;
+        if (state.pending) return;
         this.strategicPresentationTarget = undefined;
         this.strategicPresentationKey = '';
-        const accepted = state.roadmapOpenTarget;
-        const error = state.error || (/not accepted|unavailable|failed/i.test(state.roadmapOfferStatus ?? '') ?
-            state.roadmapOfferStatus : undefined);
+        const acceptedMessage = state.chat?.messages.find(message => message.role === 'assistant' &&
+            message.roadmapAction?.status === 'accepted' && message.roadmapAction.projectId === target.projectId);
+        const accepted = acceptedMessage?.role === 'assistant' ? acceptedMessage.roadmapAction : undefined;
+        const error = state.error || undefined;
         this.strategicPresentationQueue = this.strategicPresentationQueue.then(async () => {
-            if (accepted && accepted.workspace === target.workspace && accepted.chatId === target.chatId)
-                await this.openRoadmapDraft?.(accepted.workspace, accepted.projectId, accepted.chatId, accepted.revision);
+            if (accepted?.draftRevision !== undefined && accepted.chatId === target.chatId)
+                await this.openRoadmapDraft?.(target.workspace, accepted.projectId, accepted.chatId, accepted.draftRevision);
             else await this.presentStrategicRoadmap!(target.workspace, target.projectId, target.chatId,
                 error ? { error } : { clear: true }, async () => {}, false);
         }).catch(() => {});
     }
     private roadmapActionCard(message: ChatAssistantMessage): HTMLElement | undefined {
         const action = message.roadmapAction, state = this.controller;
-        if (!action || action.chatId !== state.chatId || !state.workspace) return undefined;
+        if (!action || action.chatId !== state.chatId || !state.workspace ||
+            action.sourceMessageId !== undefined && action.sourceMessageId !== message.id) return undefined;
         const liveOffer = state.roadmapOffer?.id === action.offerId &&
             state.roadmapOffer.messageId === message.id && state.roadmapOffer.projectId === action.projectId &&
             Date.now() < state.roadmapOffer.expiresAt ? state.roadmapOffer : undefined;
@@ -213,14 +236,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             actions.append(generate, this.button('Not now', () => void state.decideRoadmapOffer(false),
                 state.pending || state.running));
         } else if (status === 'generating') {
-            heading.textContent = 'Generating Roadmap';
+            heading.textContent = 'Preparing Roadmap Draft';
             const stage = state.roadmapGenerationStage ?? action.stage;
             note.textContent = stage === 'checking-owner' ? 'Checking project and Roadmap…' :
-                stage === 'generating-draft' ? 'Waiting for the selected model and generating phases…' :
-                stage === 'validating-draft' ? 'Validating draft…' :
+                stage === 'generating-draft' ? 'Waiting for the selected model…' :
+                stage === 'validating-draft' ? 'Extracting and validating the saved answer…' :
                 stage === 'preparing-draft' ? 'Preparing editor…' :
-                'Generation state is being checked.';
-            if (state.pending || state.running) actions.append(this.button('Cancel generation', () => void state.cancel()));
+                'Checking draft state…';
+            actions.append(this.button('Cancel generation', () => void state.cancel()));
         } else if (status === 'ready' && liveReview) {
             heading.textContent = 'Roadmap Ready for Review';
             note.textContent = action.diagnostic ?? 'Review the proposed phases in the Roadmap editor.';
@@ -243,10 +266,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 status === 'declined' ? 'Roadmap Creation Declined' :
                 status === 'failed' ? 'Roadmap Generation Failed' :
                 status === 'cancelled' ? 'Roadmap Generation Canceled' :
+                status === 'stale' ? 'Roadmap Action Stale' :
                 status === 'ready' ? 'Roadmap Review Expired' : 'Roadmap Offer Expired';
-            note.textContent = action.diagnostic ?? (status === 'ready' ?
+            note.textContent = status === 'stale' ?
+                'The offer or review session ended. Ask Chat for a new phase outline to continue.' :
+                action.diagnostic ?? (status === 'ready' ?
                 'The review session ended. Request a new draft to continue.' :
-                status === 'offered' ? 'Request a new offer to generate a draft.' : 'No active Roadmap action.');
+                status === 'offered' ? 'Request a new offer to generate a draft.' :
+                status === 'declined' ? 'You chose not to prepare this Roadmap draft.' :
+                status === 'rejected' ? 'The proposed draft was rejected. No Roadmap was created.' :
+                status === 'cancelled' ? 'Draft preparation was canceled.' : 'No active Roadmap action.');
         }
         card.append(heading, note);
         if (actions.childElementCount) card.append(actions);
@@ -1646,7 +1675,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const copyTranscript = () => {
             const text = chatTranscriptCopyText(chat, state.stream,
                 state.transientUser?.chatId === chat.id ? state.transientUser : undefined);
-            void (navigator.clipboard?.writeText(text) ?? Promise.reject(new Error('Clipboard unavailable')))
+            void copyChatText(text)
                 .then(() => {
                     transcriptCopyIcon.className = codicon('check');
                     transcriptCopy.setAttribute('aria-label', 'Transcript copied'); transcriptCopy.title = 'Transcript copied';
@@ -1713,6 +1742,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         for (const message of chat.messages) {
             const item = document.createElement('li');
             item.className = `dope-chat-message dope-chat-message-${message.role}`;
+            item.dataset.messageId = message.id;
             item.setAttribute('aria-label', message.role === 'user' ? 'You' : 'Assistant');
             if (message.role === 'user') item.dataset.color = chat.color;
             const content = document.createElement('div');
@@ -1759,7 +1789,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const raw = document.createElement('pre'); raw.className = 'dope-chat-activity-raw';
                     raw.textContent = body;
                     const copy = this.button('Copy JSON', () => {
-                        void (navigator.clipboard?.writeText(body) ?? Promise.reject(new Error('Clipboard unavailable')))
+                        void copyChatText(body)
                             .then(() => { copy.textContent = 'Copied'; }, () => { copy.textContent = 'Copy failed'; });
                     });
                     copy.setAttribute('aria-label', `Copy original JSON for ${activity.label}`);
@@ -1850,7 +1880,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     state.stream?.messageId !== undefined && state.stream.messageId === message.id ? state.stream.content : undefined);
                 if (copyText) {
                     const copy = this.button('', () => {
-                        void (navigator.clipboard?.writeText(copyText) ?? Promise.reject(new Error('Clipboard unavailable')))
+                        void copyChatText(copyText)
                             .then(() => { icon.className = codicon('check');
                                 copy.setAttribute('aria-label', 'Response copied'); copy.title = 'Copied';
                                 setTimeout(() => { icon.className = codicon('copy');
@@ -2088,13 +2118,20 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     }
                 } catch { /* The backend preview remains the decision authority. */ }
             }
-            composer.append(review);
+            const source = Array.from(transcript.children).find(item =>
+                (item as HTMLElement).dataset.messageId === proposal.messageId);
+            if (planProposal) composer.append(review);
+            else if (source) source.append(review);
         }
         if (state.planningProposalError) {
             const note = document.createElement('p');
             note.setAttribute('role', 'status');
             note.textContent = state.planningProposalError;
-            composer.append(note);
+            const source = Array.from(transcript.children).find(item =>
+                (item as HTMLElement).dataset.messageId === state.planningProposalErrorMessageId);
+            if (source) source.append(note);
+            else if (!/roadmap/i.test(state.planningProposalError)) composer.append(note);
+            else this.status.textContent = state.planningProposalError;
         }
         if (state.planPreview) {
             const preview = document.createElement('section');

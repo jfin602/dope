@@ -320,6 +320,7 @@ export class ChatBackend implements ChatService {
                 if (this.disposed) throw new Error('Disposed Chat connection');
                 // A new lease cannot approve an in-memory preview from an earlier owner/session.
                 await this.retirePending(root, request.chatId, result.token);
+                await this.retireRoadmapActions(root, request.chatId, result.token);
                 if (this.disposed) throw new Error('Disposed Chat connection');
                 this.clearProposal(request.chatId);
                 const prior = this.strategicReviews.get(request.chatId);
@@ -339,6 +340,8 @@ export class ChatBackend implements ChatService {
     async release(projectHandle: string, chatId: string, token: string) {
         const root = this.active(projectHandle);
         if (this.turns.get(chatId)?.token === token) this.turns.get(chatId)?.abort.abort();
+        if (this.leases.get(chatId)?.token === token)
+            await this.retireRoadmapActions(root, chatId, token).catch(() => {});
         await this.repository.release(root, chatId, token);
         if (this.leases.get(chatId)?.token === token) {
             this.leases.delete(chatId); this.clearProposal(chatId);
@@ -382,12 +385,11 @@ export class ChatBackend implements ChatService {
             chatId, messageId, ownerId: state.projectId, ownerRevision: state.revision, basis: 'empty-owner',
             expiresAt: Date.now() + 5 * 60_000 };
         const prior = chat.messages.find(item => item.id === messageId);
-        const retry = prior?.role === 'assistant' && prior.roadmapAction &&
-            ['offered', 'ready', 'failed', 'cancelled', 'declined', 'stale'].includes(prior.roadmapAction.status)
-            ? { offerId: prior.roadmapAction.offerId, status: prior.roadmapAction.status } : undefined;
+        if (!prior || prior.role !== 'assistant' || prior.roadmapAction) return undefined;
         await this.repository.recordRoadmapAction(root, chatId, messageId, leaseToken,
             { schemaVersion: 1, offerId: offer.id, projectId: offer.projectId, chatId,
-                ownerRevision: offer.ownerRevision, status: 'offered' }, retry);
+                sourceMessageId: messageId, sourceContentHash: createHash('sha256').update(prior.content).digest('hex'),
+                ownerRevision: offer.ownerRevision, status: 'offered' });
         this.proposals.set(chatId, { id: offer.id, messageId, leaseToken, changedIds: [], roadmapOffer: offer });
         return offer;
     }
@@ -462,7 +464,7 @@ export class ChatBackend implements ChatService {
             messageId: pending.messageId, offerId: offer.id, extractedSourceId: source.id });
         await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
             'generating', 'ready', { draftRevision: preview.after.revision,
-                diagnostic: `Saved answer ${source.id}. ${sourceCaution}${uncovered.length ?
+                diagnostic: `${sourceCaution}${uncovered.length ?
                     `Uncovered for review: ${uncovered.join(', ')}.` : 'All recognized requirements appear in phase labels.'} ` +
                     'Confirm missing checkpoints before publication.' });
         this.planningProgress(chatId, offer.id, 'draft-ready');
@@ -473,7 +475,7 @@ export class ChatBackend implements ChatService {
         } catch (error) {
             this.strategicReviews.delete(chatId);
             await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
-                'generating', 'failed', { diagnostic: String(error).slice(0, 240) }).catch(() => {});
+                'generating', 'failed', { diagnostic: 'Draft preparation failed. Review the current Roadmap and request a new proposal.' }).catch(() => {});
             throw error;
         }
     }
@@ -504,7 +506,7 @@ export class ChatBackend implements ChatService {
             return revision;
         } catch (error) {
             await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken,
-                pending.offerId, 'ready', 'failed', { diagnostic: String(error).slice(0, 240) }).catch(() => {});
+                pending.offerId, 'ready', 'failed', { diagnostic: 'Draft acceptance failed. Review the current Roadmap before trying again.' }).catch(() => {});
             throw error;
         } finally { this.greenfield?.rejectStrategicDraft(token); }
     }
@@ -517,6 +519,16 @@ export class ChatBackend implements ChatService {
             await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
                 { ...message.planningActivity, status: 'stale' },
                 { proposalId: message.planningActivity.proposalId, status: 'pending' });
+        }
+    }
+    /** A new owner cannot reuse an offer or a preview held only by the old connection. */
+    private async retireRoadmapActions(root: string, chatId: string, leaseToken: string): Promise<void> {
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        for (const message of chat?.messages ?? []) {
+            if (message.role !== 'assistant' || !message.roadmapAction ||
+                !['offered', 'generating', 'ready'].includes(message.roadmapAction.status)) continue;
+            await this.updateRoadmapAction(root, chatId, message.id, leaseToken,
+                message.roadmapAction.offerId, message.roadmapAction.status, 'stale');
         }
     }
     private planningProgress(chatId: string, messageId: string, stage: Extract<ChatEvent, { kind: 'planning-progress' }>['stage']): void {

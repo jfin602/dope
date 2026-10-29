@@ -82,6 +82,9 @@ export interface ChatAssistantMessage {
 export interface ChatRoadmapAction {
     schemaVersion: 1;
     offerId: string;
+    /** The completed assistant response that owns this action. */
+    sourceMessageId?: string;
+    sourceContentHash?: string;
     projectId: string;
     chatId: string;
     ownerRevision: number;
@@ -320,13 +323,16 @@ export function parseChatMessage(value: unknown): ChatMessage {
     throw new Error('Invalid Chat role');
 }
 export function parseChatRoadmapAction(value: unknown): ChatRoadmapAction {
-    const v = record(value, ['schemaVersion', 'offerId', 'projectId', 'chatId', 'ownerRevision', 'status', 'stage', 'draftRevision', 'diagnostic'],
+    const v = record(value, ['schemaVersion', 'offerId', 'sourceMessageId', 'sourceContentHash', 'projectId', 'chatId', 'ownerRevision', 'status', 'stage', 'draftRevision', 'diagnostic'],
         ['schemaVersion', 'offerId', 'projectId', 'chatId', 'ownerRevision', 'status']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported Roadmap action schema');
     const status = choice(v.status, ['offered', 'generating', 'ready', 'accepted', 'rejected', 'declined', 'failed', 'cancelled', 'stale'] as const, 'Roadmap action status');
     if (v.stage !== undefined && status !== 'generating' || v.draftRevision !== undefined && !['ready', 'accepted'].includes(status))
         throw new Error('Invalid Roadmap action state');
-    return { schemaVersion: 1, offerId: identifier(v.offerId), projectId: string(v.projectId, 'Roadmap project ID'),
+    return { schemaVersion: 1, offerId: identifier(v.offerId),
+        ...(v.sourceMessageId === undefined ? {} : { sourceMessageId: identifier(v.sourceMessageId) }),
+        ...(v.sourceContentHash === undefined ? {} : { sourceContentHash: string(v.sourceContentHash, 'Roadmap source hash') }),
+        projectId: string(v.projectId, 'Roadmap project ID'),
         chatId: identifier(v.chatId), ownerRevision: count(v.ownerRevision, 'Roadmap owner revision'), status,
         ...(v.stage === undefined ? {} : { stage: choice(v.stage,
             ['checking-owner', 'generating-draft', 'validating-draft', 'preparing-draft'] as const, 'Roadmap stage') }),
