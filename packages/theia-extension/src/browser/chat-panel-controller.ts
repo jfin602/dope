@@ -86,7 +86,7 @@ export class ChatPanelController {
     roadmapGenerationStage?: Extract<import('@dope/chat/lib/service').ChatEvent, { kind: 'planning-progress' }>['stage'];
     roadmapGenerationProjectId?: string;
     roadmapOpenTarget?: { workspace: string; projectId: string; chatId: string; revision: number };
-    private activeRoadmapOfferId?: string;
+    activeRoadmapOfferId?: string;
     transientUser: { chatId: string; content: string; previousIds: Set<string> } | undefined;
     private connection?: ChatConnection;
     private handle?: string;
@@ -513,7 +513,7 @@ export class ChatPanelController {
         const generation = this.generation;
         this.pending = true; this.changed();
         try {
-            if (approve) { this.roadmapGenerationProjectId = offer.projectId;
+            if (approve) { this.activeRoadmapOfferId = offer.id; this.roadmapGenerationProjectId = offer.projectId;
                 this.roadmapGenerationStage = 'checking-owner'; this.changed(); }
             const outcome = await lease.connection.decideRoadmapOffer(lease.handle, lease.chatId,
                 lease.token, offer.id, offer.token, approve, selectedModel);
@@ -528,6 +528,7 @@ export class ChatPanelController {
             if (generation !== this.generation || lease !== this.lease) return;
             this.roadmapOffer = undefined; this.roadmapGenerationStage = undefined;
             this.pending = false; this.changed(); await this.refresh(true);
+            this.activeRoadmapOfferId = undefined;
         }
     }
     async decideStrategicDraft(approve: boolean): Promise<void> {

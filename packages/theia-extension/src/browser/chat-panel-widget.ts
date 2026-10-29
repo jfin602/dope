@@ -7,7 +7,7 @@ import { ConnectionStatus, type ConnectionStatusService } from '@theia/core/lib/
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import type { ChatOperation } from '@dope/chat/lib/service';
-import { CHAT_COLORS, type ChatSettings, type ChatContextKind, type ChatModelSelection } from '@dope/chat';
+import { CHAT_COLORS, type ChatSettings, type ChatContextKind, type ChatModelSelection, type ChatAssistantMessage } from '@dope/chat';
 import type { ChatContextSelection, ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
@@ -187,6 +187,70 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             else await this.presentStrategicRoadmap!(target.workspace, target.projectId, target.chatId,
                 error ? { error } : { clear: true }, async () => {}, false);
         }).catch(() => {});
+    }
+    private roadmapActionCard(message: ChatAssistantMessage): HTMLElement | undefined {
+        const action = message.roadmapAction, state = this.controller;
+        if (!action || action.chatId !== state.chatId || !state.workspace) return undefined;
+        const liveOffer = state.roadmapOffer?.id === action.offerId &&
+            state.roadmapOffer.messageId === message.id && state.roadmapOffer.projectId === action.projectId &&
+            Date.now() < state.roadmapOffer.expiresAt ? state.roadmapOffer : undefined;
+        const liveReview = action.status === 'ready' && !!state.strategicDraftReview &&
+            state.strategicDraftReview.projectId === action.projectId;
+        const card = document.createElement('section');
+        card.className = 'dope-chat-roadmap-offer';
+        card.setAttribute('aria-label', 'Roadmap action');
+        const heading = document.createElement('strong');
+        const note = document.createElement('p'); note.setAttribute('role', 'status');
+        const actions = document.createElement('div'); actions.className = 'dope-chat-roadmap-offer-actions';
+        const status = action.status === 'offered' && state.activeRoadmapOfferId === action.offerId &&
+            state.roadmapGenerationStage ? 'generating' : action.status;
+        if (status === 'offered' && liveOffer) {
+            heading.textContent = 'Create Roadmap Draft';
+            note.textContent = 'Generate a provisional strategic Roadmap from this discussion. Review it in the Roadmap editor before accepting.';
+            const generate = this.button('Generate Draft Roadmap', () => void state.decideRoadmapOffer(true, this.selectedModel()),
+                state.pending || state.running);
+            generate.className = 'dope-chat-roadmap-offer-primary';
+            actions.append(generate, this.button('Not now', () => void state.decideRoadmapOffer(false),
+                state.pending || state.running));
+        } else if (status === 'generating') {
+            heading.textContent = 'Generating Roadmap';
+            const stage = state.roadmapGenerationStage ?? action.stage;
+            note.textContent = stage === 'checking-owner' ? 'Checking project and Roadmap…' :
+                stage === 'generating-draft' ? 'Waiting for the selected model and generating phases…' :
+                stage === 'validating-draft' ? 'Validating draft…' :
+                stage === 'preparing-draft' ? 'Preparing editor…' :
+                'Generation state is being checked.';
+            if (state.pending || state.running) actions.append(this.button('Cancel generation', () => void state.cancel()));
+        } else if (status === 'ready' && liveReview) {
+            heading.textContent = 'Roadmap Ready for Review';
+            note.textContent = 'Review the proposed phases in the Roadmap editor.';
+            actions.append(this.button('Open Roadmap', () => {
+                const review = state.strategicDraftReview, workspace = state.workspace, chatId = state.chatId;
+                if (review && workspace && chatId && review.projectId === action.projectId)
+                    void this.presentStrategicRoadmap?.(workspace, action.projectId, chatId,
+                        { review }, approve => state.decideStrategicDraft(approve), true);
+            }));
+        } else if (status === 'accepted') {
+            heading.textContent = 'Roadmap Draft Accepted';
+            note.textContent = 'Accepted draft · not yet published. Canonical Markdown still requires separate approval.';
+            if (action.draftRevision !== undefined) actions.append(this.button('Open Roadmap', () => {
+                const workspace = state.workspace, chatId = state.chatId;
+                if (workspace && chatId === action.chatId)
+                    void this.openRoadmapDraft?.(workspace, action.projectId, chatId, action.draftRevision!);
+            }));
+        } else {
+            heading.textContent = status === 'rejected' ? 'Roadmap Draft Rejected' :
+                status === 'declined' ? 'Roadmap Creation Declined' :
+                status === 'failed' ? 'Roadmap Generation Failed' :
+                status === 'cancelled' ? 'Roadmap Generation Canceled' :
+                status === 'ready' ? 'Roadmap Review Expired' : 'Roadmap Offer Expired';
+            note.textContent = action.diagnostic ?? (status === 'ready' ?
+                'The review session ended. Request a new draft to continue.' :
+                status === 'offered' ? 'Request a new offer to generate a draft.' : 'No active Roadmap action.');
+        }
+        card.append(heading, note);
+        if (actions.childElementCount) card.append(actions);
+        return card;
     }
     private scrollToLatest(): void {
         const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
@@ -1399,22 +1463,81 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             time.textContent = new Date(chat.lastInteractedAt).toLocaleDateString();
             text.append(title, time);
             select.append(dot, text);
-            const menu = document.createElement('details');
-            menu.className = 'dope-chat-context';
-            const menuLabel = document.createElement('summary');
-            menuLabel.textContent = '⋯';
-            menuLabel.setAttribute('aria-label', `Actions for Chat ${chat.title}`);
-            const actions = document.createElement('div');
-            actions.className = 'dope-chat-actions';
-            const rename = this.button('Rename', () => void this.name('Rename Chat', chat.title).then(title => {
-                if (title) this.mutate({ type: 'rename-chat', chatId: chat.id, title });
-            }));
-            const move = this.button('Move', () => void this.folderChoice('Move Chat', chat.folderPath).then(folderPath => {
-                if (folderPath !== undefined) this.mutate({ type: 'move-chat', chatId: chat.id, folderPath });
-            }));
-            actions.append(rename, move);
-            menu.append(menuLabel, actions);
-            row.append(select, menu);
+            const menu = document.createElement('div');
+            menu.className = 'dope-chat-composer-menu dope-chat-row-menu';
+            menu.popover = 'auto';
+            menu.id = `${this.id}-chat-actions-${chat.id}`;
+            menu.setAttribute('role', 'menu');
+            menu.setAttribute('aria-label', `Actions for Chat ${chat.title}`);
+            const more = this.button('⋯', () => {
+                if (menu.matches(':popover-open')) { menu.hidePopover(); return; }
+                menu.showPopover();
+                const bounds = more.getBoundingClientRect();
+                const width = menu.offsetWidth, height = menu.offsetHeight;
+                menu.style.left = `${Math.max(8, Math.min(bounds.right - width, window.innerWidth - width - 8))}px`;
+                menu.style.top = `${bounds.bottom + height + 8 <= window.innerHeight ? bounds.bottom + 4 :
+                    Math.max(8, bounds.top - height - 4)}px`;
+                menu.querySelector<HTMLButtonElement>('button')?.focus();
+            });
+            more.className = 'dope-chat-row-more';
+            more.setAttribute('aria-label', `Actions for Chat ${chat.title}`);
+            more.setAttribute('aria-haspopup', 'menu');
+            more.setAttribute('aria-controls', menu.id);
+            more.setAttribute('aria-expanded', 'false');
+            menu.addEventListener('toggle', () => more.setAttribute('aria-expanded', String(menu.matches(':popover-open'))));
+            menu.addEventListener('focusout', event => {
+                if (event.relatedTarget && !menu.contains(event.relatedTarget as Node) && menu.matches(':popover-open'))
+                    menu.hidePopover();
+            });
+            menu.addEventListener('keydown', event => {
+                const entries = [...menu.querySelectorAll<HTMLButtonElement>('button')];
+                const index = entries.indexOf(document.activeElement as HTMLButtonElement);
+                if (event.key === 'Escape') { event.preventDefault(); menu.hidePopover(); more.focus(); return; }
+                const next = event.key === 'ArrowDown' ? (index + 1) % entries.length :
+                    event.key === 'ArrowUp' ? (index + entries.length - 1) % entries.length :
+                        event.key === 'Home' ? 0 : event.key === 'End' ? entries.length - 1 : -1;
+                if (next >= 0) { event.preventDefault(); entries[next].focus(); }
+            });
+            more.addEventListener('keydown', event => {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    if (!menu.matches(':popover-open')) more.click();
+                    const entries = menu.querySelectorAll<HTMLButtonElement>('button');
+                    (event.key === 'ArrowUp' ? entries[entries.length - 1] : entries[0])?.focus();
+                }
+            });
+            const menuEntry = (label: string, iconName: string, paths: string[], action: () => void): HTMLButtonElement => {
+                const entry = this.button('', () => { menu.hidePopover(); action(); });
+                entry.setAttribute('role', 'menuitem');
+                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                icon.setAttribute('class', `lucide lucide-${iconName}`);
+                icon.setAttribute('viewBox', '0 0 24 24');
+                icon.setAttribute('fill', 'none');
+                icon.setAttribute('stroke', 'currentColor');
+                icon.setAttribute('stroke-width', '2');
+                icon.setAttribute('stroke-linecap', 'round');
+                icon.setAttribute('stroke-linejoin', 'round');
+                icon.setAttribute('aria-hidden', 'true');
+                for (const d of paths) {
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', d); icon.append(path);
+                }
+                const text = document.createElement('span'); text.textContent = label;
+                entry.append(icon, text);
+                return entry;
+            };
+            const rename = menuEntry('Rename', 'pencil',
+                ['M21.174 6.812a1.2 1.2 0 0 0 0-1.698l-2.288-2.288a1.2 1.2 0 0 0-1.698 0L3 17l-1 4 4-1Z', 'm15 5 4 4'],
+                () => void this.name('Rename Chat', chat.title).then(title => {
+                    if (title) this.mutate({ type: 'rename-chat', chatId: chat.id, title });
+                }));
+            const move = menuEntry('Move', 'folder',
+                ['M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z'],
+                () => void this.folderChoice('Move Chat', chat.folderPath).then(folderPath => {
+                    if (folderPath !== undefined) this.mutate({ type: 'move-chat', chatId: chat.id, folderPath });
+                }));
+            menu.append(rename, move);
+            row.append(select, more, menu);
             item.append(row);
             list.append(item);
         }
@@ -1662,6 +1785,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             time.dateTime = message.createdAt;
             time.textContent = new Date(message.createdAt).toLocaleString();
             item.append(content);
+            if (message.role === 'assistant') {
+                const action = this.roadmapActionCard(message);
+                if (action) item.append(action);
+            }
             const meta = document.createElement('small'); meta.className = 'dope-chat-message-meta';
             meta.append(time);
             if (message.role === 'user' && message.contextRefs.length) {
@@ -1885,23 +2012,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         toolbar.append(more, modelSelector, submitButton);
         composer.append(input, toolbar);
         composer.append(menu);
-        if (state.roadmapGenerationStage && (state.pending || state.running)) {
-            const progress = document.createElement('p');
-            progress.className = 'dope-chat-planning-progress';
-            progress.setAttribute('role', 'status');
-            progress.setAttribute('aria-live', 'polite');
-            const stage = state.roadmapGenerationStage;
-            progress.textContent = stage === 'generating-draft' ? 'Generating Roadmap draft with the selected local model…' :
-                stage === 'checking-owner' ? 'Checking current Roadmap and project…' :
-                stage === 'validating-draft' ? 'Validating completed Roadmap draft…' :
-                stage === 'preparing-draft' ? 'Preparing draft for review…' :
-                stage === 'draft-ready' ? 'Draft ready for review.' :
-                stage === 'cancelled' ? 'Roadmap draft generation cancelled.' :
-                stage === 'failed' ? 'Roadmap draft generation failed.' : 'Generating Roadmap draft…';
-            composer.append(progress);
-            if (state.pending && !['draft-ready', 'cancelled', 'failed'].includes(stage))
-                composer.append(this.button('Cancel generation', () => void state.cancel()));
-        }
         if (state.running && state.planningProgress) {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';
@@ -1927,48 +2037,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 selectedContext.append(row);
             });
             composer.append(selectedContext);
-        }
-        if (state.roadmapOffer) {
-            const offer = document.createElement('section');
-            offer.className = 'dope-chat-roadmap-offer';
-            offer.setAttribute('aria-label', 'Optional Roadmap draft generation offer');
-            const heading = document.createElement('strong');
-            heading.textContent = 'Draft Roadmap available';
-            const note = document.createElement('p');
-            note.textContent = 'Generate one provisional strategic outline with the selected local model. You will review its phases and milestones before accepting a noncanonical draft.';
-            const actions = document.createElement('div');
-            actions.className = 'dope-chat-roadmap-offer-actions';
-            const decide = (approve: boolean) => void state.decideRoadmapOffer(approve, this.selectedModel()).then(() =>
-                this.content.querySelector<HTMLElement>('.dope-chat-roadmap-offer-status')?.focus());
-            const generate = this.button('Generate Draft Roadmap', () => decide(true), state.pending || state.running);
-            generate.className = 'dope-chat-roadmap-offer-primary';
-            actions.append(generate, this.button('Not now', () => decide(false), state.pending || state.running));
-            offer.append(heading, note, actions);
-            composer.append(offer);
-        }
-        if (state.roadmapOfferStatus) {
-            const note = document.createElement('p'); note.setAttribute('role', 'status');
-            note.className = 'dope-chat-roadmap-offer-status'; note.tabIndex = -1;
-            note.textContent = state.roadmapOfferStatus; composer.append(note);
-        }
-        if (state.roadmapOpenTarget && state.workspace === state.roadmapOpenTarget.workspace) {
-            const openDraft = async () => {
-                const target = state.roadmapOpenTarget;
-                if (!target || state.workspace !== target.workspace) return;
-                try { await this.openRoadmapDraft?.(target.workspace, target.projectId, target.chatId, target.revision); }
-                catch (error) { state.roadmapOfferStatus = `Roadmap editor could not open: ${String(error)}. The accepted draft remains available; use Open Roadmap to retry.`;
-                    this.render(); }
-            };
-            composer.append(this.button('Open Roadmap', () => void openDraft()));
-        }
-        if (state.strategicDraftReview) {
-            const section = document.createElement('section'); section.className = 'dope-chat-plan-review';
-            section.setAttribute('aria-label', 'Strategic Roadmap draft ready');
-            const heading = document.createElement('strong'); heading.textContent = 'Proposed Roadmap ready';
-            const note = document.createElement('p');
-            note.textContent = 'Review the graph and choose Accept Draft or Reject Draft in the Roadmap editor.';
-            section.append(heading, note);
-            composer.append(section);
         }
         if (state.planningProposal) {
             const proposal = state.planningProposal;

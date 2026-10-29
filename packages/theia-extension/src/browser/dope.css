@@ -668,13 +668,13 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-context > summary:hover, .dope-chat-context[open] > summary { color: var(--theia-foreground); background: var(--theia-list-hoverBackground); }
 .dope-chat-folder > details > .dope-chat-context { margin: 2px 0 4px 12px; }
 .dope-chat-actions { display: flex; flex-wrap: wrap; gap: 5px; padding: 5px 0; }
-.dope-chat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 4px; }
-.dope-chat-row:has(.dope-chat-context[open]) > .dope-chat-context { grid-column: 1 / -1; }
-.dope-chat-row .dope-chat-actions { padding-left: 12px; }
+.dope-chat-row { display: grid; grid-template-columns: minmax(0, 1fr) 28px; align-items: center; gap: 4px; min-width: 0; }
 .dope-chat-panel button.dope-chat-select { display: flex; align-items: center; gap: 8px; min-width: 0; width: 100%; padding: 6px 7px; text-align: left; background: transparent; border: 1px solid transparent; border-left: 3px solid transparent; }
 .dope-chat-panel button.dope-chat-select:hover:not(:disabled) { background: var(--theia-list-hoverBackground); }
 .dope-chat-row-text { display: grid; gap: 2px; min-width: 0; }
-.dope-chat-row-title { line-height: 1.35; overflow-wrap: anywhere; }
+.dope-chat-row-title { display: block; min-width: 0; line-height: 1.35; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dope-chat-panel button.dope-chat-row-more { box-sizing: border-box; width: 28px; height: 28px; padding: 0; background: transparent; border-color: transparent; color: var(--theia-descriptionForeground); font-size: 20px; line-height: 1; }
+.dope-chat-panel button.dope-chat-row-more:is(:hover, :focus-visible), .dope-chat-panel button.dope-chat-row-more[aria-expanded="true"] { color: var(--theia-foreground); background: var(--theia-list-hoverBackground); }
 .dope-chat-row .dope-chat-color-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--chat-color); }
 .dope-chat-row time { color: var(--theia-descriptionForeground); font-size: 11px; }
 .dope-chat-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; }
@@ -900,6 +900,10 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-composer-menu { box-sizing: border-box; position: fixed; top: auto; right: auto; width: min(220px, calc(100vw - 16px)); max-height: min(360px, 60vh); overflow: auto; margin: 0; padding: 6px; border: 1px solid var(--theia-widget-border); border-radius: 8px; background: var(--theia-input-background); box-shadow: 0 6px 18px #0008; }
 .dope-chat-composer-menu:not(:popover-open) { display: none; }
 .dope-chat-composer-menu select, .dope-chat-composer-menu button { box-sizing: border-box; display: block; width: 100%; margin: 2px 0; text-align: left; }
+.dope-chat-row-menu { width: min(180px, calc(100vw - 16px)); max-height: calc(100vh - 16px); background: var(--theia-editor-background); }
+.dope-chat-panel .dope-chat-row-menu button { display: flex; align-items: center; gap: 9px; padding: 7px 9px; background: transparent; border-color: transparent; color: var(--theia-foreground); }
+.dope-chat-panel .dope-chat-row-menu button:hover { background: var(--theia-list-hoverBackground); }
+.dope-chat-row-menu .lucide { width: 16px; height: 16px; flex: none; color: var(--theia-descriptionForeground); }
 .dope-chat-selected-context { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 !important; margin: 0; }
 .dope-chat-selected-context li { display: inline-flex; gap: 4px; align-items: center; margin: 0; padding: 2px 5px; border: 1px solid var(--theia-widget-border); border-radius: 5px; }
 .dope-chat-context-diagnostics { color: var(--theia-descriptionForeground); font-size: 11px; }
@@ -993,12 +997,16 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-pools button:disabled { opacity: .6; cursor: default; }
 .dope-roadmap-pools :is(input, button):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-chat-roadmap-offer {
-    border: 1px solid #a65b2f;
+    border: 1px solid var(--theia-widget-border);
     border-radius: 6px;
-    padding: 10px;
-    max-width: 100%;
+    padding: 8px 10px;
+    margin-top: 7px;
+    width: min(100%, 52ch);
     box-sizing: border-box;
+    background: color-mix(in srgb, var(--theia-editor-background) 88%, var(--theia-input-background));
 }
+.dope-chat-roadmap-offer strong { display: block; font-size: 12px; }
+.dope-chat-roadmap-offer p { margin: 4px 0 7px; color: var(--theia-descriptionForeground); font-size: 12px; line-height: 1.4; }
 .dope-chat-roadmap-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .dope-chat-roadmap-offer-primary { background: #9a4d22; color: #fff; border-color: #9a4d22; }
-.dope-chat-roadmap-offer-primary:focus-visible { outline: 2px solid #f0aa72; outline-offset: 2px; }
+.dope-chat-roadmap-offer button:focus-visible { outline: 2px solid #f0aa72; outline-offset: 2px; }

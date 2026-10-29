@@ -5,7 +5,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assignedChatColor, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
     parseChatCollection, parseChatColor, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
-import type { Chat, ChatCollection, ChatFolder, ChatPlanningActivity } from '../index';
+import type { Chat, ChatCollection, ChatFolder, ChatPlanningActivity, ChatRoadmapAction } from '../index';
 import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -491,6 +491,32 @@ export class ChatRepository {
                 throw new Error('Planning activity state changed');
             const messages = [...chat.messages];
             messages[at] = parseChatMessage({ ...message, planningActivity: activity });
+            const now = new Date().toISOString();
+            const chats = [...current.chats];
+            chats[index] = parseChat({ ...chat, messages, revision: chat.revision + 1, updatedAt: now });
+            const next = parseChatCollection({ ...current, chats, revision: current.revision + 1 });
+            await this.write(root, next);
+            this.emit(root, { revision: next.revision, kind: 'changed', chatId });
+        });
+    }
+    /** Updates the original assistant message; never stores a reusable offer or review token. */
+    async recordRoadmapAction(root: string, chatId: string, messageId: string, leaseToken: string,
+        action: ChatRoadmapAction, expected?: { offerId: string; status: ChatRoadmapAction['status'] }): Promise<void> {
+        await this.locked(root, async base => {
+            const lease = await this.lease(base, chatId);
+            if (!lease || !this.active(lease) || lease.token !== leaseToken) throw new Error('Chat ownership lease required');
+            const current = await this.recover(root, base);
+            const index = current.chats.findIndex(chat => chat.id === chatId);
+            if (index < 0) throw new Error('Chat not found');
+            const chat = current.chats[index];
+            const at = chat.messages.findIndex(message => message.id === messageId);
+            const message = chat.messages[at];
+            if (!message || message.role !== 'assistant' || message.execution.status !== 'complete' ||
+                action.chatId !== chatId || (expected ? message.roadmapAction?.offerId !== expected.offerId ||
+                    message.roadmapAction.status !== expected.status : !!message.roadmapAction))
+                throw new Error('Roadmap action state changed');
+            const messages = [...chat.messages];
+            messages[at] = parseChatMessage({ ...message, roadmapAction: action });
             const now = new Date().toISOString();
             const chats = [...current.chats];
             chats[index] = parseChat({ ...chat, messages, revision: chat.revision + 1, updatedAt: now });

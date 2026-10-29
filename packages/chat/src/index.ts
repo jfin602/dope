@@ -76,6 +76,19 @@ export interface ChatAssistantMessage {
     content: string; // Visible answer only; hidden reasoning is not durable state.
     execution: ChatExecution;
     planningActivity?: ChatPlanningActivity; // Backend-verified projection; content remains the exact model output.
+    roadmapAction?: ChatRoadmapAction;
+}
+/** Durable, backend-verified outcome. An approval token is deliberately never saved here. */
+export interface ChatRoadmapAction {
+    schemaVersion: 1;
+    offerId: string;
+    projectId: string;
+    chatId: string;
+    ownerRevision: number;
+    status: 'offered' | 'generating' | 'ready' | 'accepted' | 'rejected' | 'declined' | 'failed' | 'cancelled' | 'stale';
+    stage?: 'checking-owner' | 'generating-draft' | 'validating-draft' | 'preparing-draft';
+    draftRevision?: number;
+    diagnostic?: string;
 }
 export interface ChatPlanningActivity {
     schemaVersion: 1;
@@ -283,26 +296,42 @@ function parseExecution(value: unknown): ChatExecution {
     return execution;
 }
 export function parseChatMessage(value: unknown): ChatMessage {
-    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'execution', 'planningActivity'],
+    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'execution', 'planningActivity', 'roadmapAction'],
         ['schemaVersion', 'id', 'role', 'createdAt', 'content']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported message schema');
     const base = { schemaVersion: 1 as const, id: identifier(v.id), createdAt: time(v.createdAt), content: string(v.content, 'message content', false) };
     if (v.role === 'user') {
-        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.planningActivity !== undefined || !base.content.trim()) throw new Error('Invalid user message');
+        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || !base.content.trim()) throw new Error('Invalid user message');
         return { ...base, role: 'user', contextRefs: v.contextRefs.map(parseChatContextRef) };
     }
     if (v.role === 'assistant') {
         if (v.contextRefs !== undefined) throw new Error('Invalid assistant message');
         const execution = parseExecution(v.execution);
         const planningActivity = v.planningActivity === undefined ? undefined : parsePlanningActivity(v.planningActivity);
+        const roadmapAction = v.roadmapAction === undefined ? undefined : parseChatRoadmapAction(v.roadmapAction);
         if (planningActivity && !['complete', 'failed', 'cancelled'].includes(execution.status))
             throw new Error('Planning activity requires a completed execution');
         if (planningActivity && (planningActivity.kind === 'error' ? execution.status !== 'failed' :
             planningActivity.kind === 'cancelled' ? execution.status !== 'cancelled' : execution.status !== 'complete'))
             throw new Error('Planning activity differs from execution outcome');
-        return { ...base, role: 'assistant', execution, ...(planningActivity ? { planningActivity } : {}) };
+        return { ...base, role: 'assistant', execution, ...(planningActivity ? { planningActivity } : {}),
+            ...(roadmapAction ? { roadmapAction } : {}) };
     }
     throw new Error('Invalid Chat role');
+}
+export function parseChatRoadmapAction(value: unknown): ChatRoadmapAction {
+    const v = record(value, ['schemaVersion', 'offerId', 'projectId', 'chatId', 'ownerRevision', 'status', 'stage', 'draftRevision', 'diagnostic'],
+        ['schemaVersion', 'offerId', 'projectId', 'chatId', 'ownerRevision', 'status']);
+    if (v.schemaVersion !== 1) throw new Error('Unsupported Roadmap action schema');
+    const status = choice(v.status, ['offered', 'generating', 'ready', 'accepted', 'rejected', 'declined', 'failed', 'cancelled', 'stale'] as const, 'Roadmap action status');
+    if (v.stage !== undefined && status !== 'generating' || v.draftRevision !== undefined && !['ready', 'accepted'].includes(status))
+        throw new Error('Invalid Roadmap action state');
+    return { schemaVersion: 1, offerId: identifier(v.offerId), projectId: string(v.projectId, 'Roadmap project ID'),
+        chatId: identifier(v.chatId), ownerRevision: count(v.ownerRevision, 'Roadmap owner revision'), status,
+        ...(v.stage === undefined ? {} : { stage: choice(v.stage,
+            ['checking-owner', 'generating-draft', 'validating-draft', 'preparing-draft'] as const, 'Roadmap stage') }),
+        ...(v.draftRevision === undefined ? {} : { draftRevision: count(v.draftRevision, 'draft revision') }),
+        ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'Roadmap diagnostic') }) };
 }
 export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
     const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'verifiedGuidance'],

@@ -48,7 +48,7 @@ export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatC
 export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: string; ownerId: string;
     revision: number; changedIds: string[]; action: { type: string; id: string }; summary: string }
 /** A transient, noncanonical permission to attempt one draft generation. Never a draft or publication grant. */
-export interface ChatRoadmapOffer { id: string; token: string; projectHandle: string; projectId: string; chatId: ChatId;
+export interface ChatRoadmapOffer { id: string; token: string; projectHandle: string; projectId: string; chatId: ChatId; messageId: string;
     ownerId: string; ownerRevision: number; basis: 'empty-owner'; expiresAt: number }
 export interface ChatStrategicDraftReview { token: string; projectId: string; revision: number;
     draft: { revision: number; phases: { id: string; title: string; objective: string;

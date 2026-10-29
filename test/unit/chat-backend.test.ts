@@ -18,6 +18,25 @@ import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
 const id = () => randomUUID();
+async function savedRoadmapOffer(backend: ChatBackend, projectHandle: string, root: string,
+    chatId: string, leaseToken: string, output = 'I can generate a roadmap draft.') {
+    const messageId = id(), executionId = id(), now = new Date().toISOString();
+    const actualModel = { schemaVersion: 1 as const, connectionId: 'local', modelId: 'q4',
+        providerId: 'local', modelLabel: 'Q4' };
+    let snapshot = await backend.read(projectHandle);
+    snapshot = await backend.mutate({ projectHandle, expectedRevision: snapshot.revision, leaseToken,
+        operation: { type: 'begin-assistant', chatId, message: { schemaVersion: 1, id: messageId,
+            role: 'assistant', createdAt: now, content: '', execution: { schemaVersion: 1,
+                id: executionId, status: 'pending', selectedModel: { connectionId: 'local', modelId: 'q4' },
+                startedAt: now } } } });
+    await backend.mutate({ projectHandle, expectedRevision: snapshot.revision, leaseToken,
+        operation: { type: 'finish-assistant', chatId, messageId, outcome: 'complete',
+            content: 'Suggested next steps.', actualModel } });
+    return (backend as unknown as { offerRoadmap(root: string, chatId: string,
+        messageId: string, leaseToken: string, opportunity: string, output: string): Promise<{
+            id: string; token: string; expiresAt: number } | undefined> }).offerRoadmap(root, chatId,
+                messageId, leaseToken, 'revision zero', output);
+}
 const firstPlanRequest = 'Plan a visual Git history for this project. Reuse the existing read-only diff editor in src/diffEditor.js; put branch checkout and commits in the toolbar; keep checkout and commit permissions explicit. Please inspect the relevant files and give me a complete ordered implementation plan with tests before changing anything.';
 
 test('only an explicit first-pass planning request selects plan mode', () => {
@@ -120,10 +139,7 @@ test('one checked Roadmap offer uses identical button and exact Chat consent wit
             operation: { type: 'create-chat', id: chatId, folderPath: '' } });
         const claim = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!claim.acquired) throw new Error('Lease missing');
-        const makeOffer = () => (backend as unknown as { offerRoadmap(root: string, chatId: string,
-            messageId: string, leaseToken: string, opportunity: string, output: string): Promise<{
-                id: string; token: string; expiresAt: number } | undefined> }).offerRoadmap(root, chatId,
-                    id(), claim.token, 'revision zero', 'I can generate a roadmap draft.');
+        const makeOffer = () => savedRoadmapOffer(backend, projectHandle, root, chatId, claim.token);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: claim.token,
             content: 'Yes, create the roadmap.' }), /No current Roadmap offer/);
         const first = (await makeOffer())!;
@@ -194,10 +210,7 @@ test('approved offer generates one whole outline, then separate review accepts o
         await backend.mutate({ projectHandle, expectedRevision: snapshot.revision, leaseToken: lease.token,
             operation: { type: 'append-user', chatId, message: { schemaVersion: 1, id: id(), role: 'user',
                 createdAt: new Date().toISOString(), content: 'Let us build a tower defense game.', contextRefs: [] } } });
-        const makeOffer = () => (backend as unknown as { offerRoadmap(root: string, chatId: string,
-            messageId: string, leaseToken: string, opportunity: string, output: string): Promise<{
-                id: string; token: string }> }).offerRoadmap(root, chatId, id(), lease.token,
-                    'revision zero', 'I can generate a roadmap draft.');
+        const makeOffer = () => savedRoadmapOffer(backend, projectHandle, root, chatId, lease.token);
         const offer = await makeOffer();
         assert.ok(offer);
         const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
@@ -370,10 +383,8 @@ test('Roadmap offer fails closed on owner changes, expiration, foreign Chat, and
             operation: { type: 'create-chat', id: other, folderPath: '' } });
         const claim = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!claim.acquired) throw new Error('Lease missing');
-        const makeOffer = () => (backend as unknown as { offerRoadmap(root: string, chatId: string,
-            messageId: string, leaseToken: string, opportunity: string, output: string): Promise<{
-                id: string; token: string; expiresAt: number } | undefined> }).offerRoadmap(root, chatId,
-                    id(), claim.token, 'revision zero', 'A roadmap draft is available.');
+        const makeOffer = () => savedRoadmapOffer(backend, projectHandle, root, chatId, claim.token,
+            'A roadmap draft is available.');
         for (const change of [{ revision: 1 }, { linkedDocument: 'ROADMAP.md' }, { drafts: 1 },
             { pendingCreation: true }, { canonicalMarkdown: true }, { acceptedPlans: 1 },
             { pendingPlans: 1 }, { projectId: id() }]) {
