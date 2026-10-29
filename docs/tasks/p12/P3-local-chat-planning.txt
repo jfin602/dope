@@ -1,0 +1,20 @@
+TASK: Phase 12 / P3 — Make Pi the default local no-tool Chat and Planning runtime
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.12.3`.
+
+PREFLIGHT
+Read P1/P2 source/evidence, ADR 0039, current Chat and model routing. Confirm coherent 0.12.2 source/version, appropriate owner execution, and working Pi model bridge. Inspect `packages/theia-extension/src/node/chat-backend.ts`, `model-connections.ts`, `chat-context-composer.ts`, `chat-project-grounder.ts`, Chat service/model runtime contracts and Roadmap proposal path. Preserve active Phase 11 G3 response-first conversion behavior and local selected-model semantics.
+
+OBJECTIVE
+Eligible local conversational and bounded Planning generation use the Dope-owned Pi adapter by default, without any Pi coding tool, filesystem/shell/network capability, extension autodiscovery or separate user setup. Maintain ONE saved, freely dockable ChatPanel, its existing roles/leases, selected connection, streaming, cancellation and provenance. Dope continues to validate typed Roadmap/Planning proposals, approvals and canonical Markdown; Pi merely performs authorized inference. Parser-only G3 paths must still use ZERO additional model calls.
+
+IMPLEMENTATION
+Wrap Pi's noTools/session mode behind existing per-turn model runtime interfaces; do not introduce a second Chat repository, persistent Pi-source-of-truth conversation, arbitrary tools, auto Work, arbitrary source mutation, background hosted request or global default model. Preserve manual/no-model flows and explicit Codex/hosted selections. Stop gracefully on unsupported local model/size/capability and show actionable recovery without switching model. Record bounded context/token usage, actual model ID and truthful finish/error status.
+
+FOCUSED QUALIFICATION
+Fixture check no-tool Pi cannot invoke read/edit/bash/network even if malicious model emits tool-call-like content; one saved local Chat turn plus follow-up and Roadmap strategy proposal, regular no-action prose, user selection switch, missing server, cancellation, cross-project and restored Chat. Verify G3 parsed-response no-second-inference and no unauthorized Markdown writes; focused tests plus relevant builds. If live local response unobservable, report EVIDENCE GAP, not Green. STOP.
