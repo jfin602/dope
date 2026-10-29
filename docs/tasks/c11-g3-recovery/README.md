@@ -1,5 +1,7 @@
 # c11-g3-recovery — Chrome-qualified loops, owner-native final gate
 
+**Current result (2026-10-29): P2 scoped GREEN** on source `b715fb54` at unchanged `0.11.8`, with the owner accepting native copy/paste evidence for the remaining Chrome clipboard uncertainty. See [P2 qualification](qualification/p2-message-action-2026-10-29.md). P3 and P4 are not qualified; G3 and Phase 11 remain OPEN/NOT QUALIFIED. The original authoring status below is retained as its dated handoff.
+
 **Status:** Four prompts authored and revised by explicit owner instruction before execution. **No implementation, Chrome test, or native test has been run by this documentation update.** Version `0.11.8` unchanged. GitHub `main` only; no new branch. The source assessment used `c8c8bfe` (existing ChatRoadmapAction); the recovery docs and prompts were initially committed at `97321da`. These edits adjust how the prompts are executed, not their implementation scope.
 
 [Assessment](prompt-assessment.md) · [Plan](implementation-plan.md) · [G3 contract](../../planning/p11/greenfield-experience-contract.md) · [R1–R7](../../planning/p11/panel-usability-matrix.md) · [UX-020](../../planning/p11/usability-issue-ledger.md).
