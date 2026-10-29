@@ -15,6 +15,31 @@ const fixture = async (run: (root: string) => Promise<void>): Promise<void> => {
     try { await run(root); } finally { await rm(root, { recursive: true, force: true }); }
 };
 
+test('read-only opportunity checks empty, competing draft and existing Roadmap without publication', async () => fixture(async root => {
+    const store = new RoadmapStore(), greenfield = new RoadmapGreenfield(store);
+    assert.deepEqual(await readdir(root), []);
+    assert.deepEqual(await greenfield.readOpportunity(root), {
+        projectId: 'uninitialized', revision: 0, canonicalMarkdown: false, pendingCreation: false,
+        checkpoints: 0, drafts: 0, acceptedPlans: 0, pendingPlans: 0 });
+    assert.deepEqual(await readdir(root), []);
+    await writeFile(join(root, 'ROADMAP.md'), '# Existing plan\n');
+    assert.equal((await greenfield.readOpportunity(root)).canonicalMarkdown, true);
+    await rm(join(root, 'ROADMAP.md'));
+    const started = await greenfield.begin(root);
+    assert.equal((await greenfield.readOpportunity(root)).drafts, 1);
+    assert.equal((await store.read(root)).revision, 0);
+    const existing = await store.mutate(root, 0, { type: 'create', id: 'm1', kind: 'milestone',
+        title: 'Existing', objective: '', order: 0 });
+    await assert.rejects(greenfield.readOpportunity(root), /owner changed/);
+    greenfield.cancel(started.handle);
+    const view = await greenfield.readOpportunity(root);
+    assert.equal(view.projectId, existing.projectId);
+    assert.equal(view.revision, 1);
+    assert.equal(view.checkpoints, 1);
+    assert.equal(view.drafts, 0);
+    assert.deepEqual(await readdir(root), ['.dope']);
+}));
+
 test('a capped draft sequence is provisional until approved and checks each projected step', async () => fixture(async root => {
     const store = new RoadmapStore();
     const drafts = new RoadmapGreenfield(store);

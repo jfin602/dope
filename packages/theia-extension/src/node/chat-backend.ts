@@ -155,15 +155,39 @@ export class ChatBackend implements ChatService {
         return draft ? [{ role: 'system' as const, content: draft.text }, ...messages] : messages;
     }
 
+    private async roadmapOpportunity(root: string, content: string, ordinary: boolean): Promise<string | undefined> {
+        if (!ordinary || !/\b(?:roadmap|milestone|plan|planning|start|begin|build|create|design|architecture)\b/i.test(content))
+            return undefined;
+        if (!this.greenfield) return 'Roadmap opportunity: the current project owner could not be checked. Do not claim the Roadmap is absent or offer to create a draft; suggest checking Roadmap first.';
+        try {
+            const state = await this.greenfield.readOpportunity(root);
+            const base = `Checked read-only Roadmap opportunity for root ${JSON.stringify(root)}, projectId ${state.projectId}, owner revision ${state.revision}: `;
+            if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts ||
+                state.acceptedPlans || state.pendingPlans)
+                return base + `linked document ${state.linkedDocument ? JSON.stringify(state.linkedDocument) : 'none'}, ` +
+                    `root ROADMAP.md present ${state.canonicalMarkdown}, ${state.checkpoints} checkpoints, creation pending ${state.pendingCreation}, ` +
+                    `${state.drafts} Greenfield drafts, ${state.acceptedPlans} accepted plans, ${state.pendingPlans} pending plans. ` +
+                    'An owner, creation, draft, or plan already exists. Offer Open, Continue, or Review Roadmap as appropriate; do not offer a duplicate draft.';
+            return base + 'revision zero, no linked document, pending creation, Greenfield draft, or accepted/pending plan. ' +
+                'At a useful planning juncture you may mention that Dope can generate a provisional Roadmap draft. ' +
+                'This is an informational possibility only: no executable offer or authorization exists in this turn. ' +
+                'Do not claim a draft was generated or repeat the suggestion if it was already made in this Chat.';
+        } catch {
+            return 'Roadmap opportunity: the current project owner or draft state could not be verified. ' +
+                'Do not infer absence or offer draft creation; suggest checking Roadmap first.';
+        }
+    }
+
     private async composeTurn(root: string, chat: Chat, content: string, context: ChatContextSelection[],
         model: ConversationModelCapabilities, budget?: ReturnType<typeof roadmapLocalBudget>,
-        draft?: { text: string }, grounding?: GroundingResult, bridgeMode = false) {
+        draft?: { text: string }, grounding?: GroundingResult, bridgeMode = false,
+        opportunity?: string) {
         const capabilities = planningComposerCapabilities(model, budget, draft);
         let inputTokens = capabilities.maxInputTokens;
         for (let attempt = 0; attempt < 4; attempt++) {
             const composed = await this.composer!.compose(root, chat, content, context,
                 inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding,
-                !!budget, bridgeMode);
+                !!budget, bridgeMode, opportunity);
             if (!budget) return composed;
             const bytes = Buffer.byteLength(JSON.stringify(this.withDraft(composed.messages, draft)), 'utf8');
             if (bytes <= budget.inputBytes) {
@@ -228,6 +252,8 @@ export class ChatBackend implements ChatService {
                 throw new Error('This Roadmap already has an owner; review it before starting a new implementation plan');
         }
         const planOnly = planBinding?.planOnly === true || explicitPlan;
+        const opportunity = await this.roadmapOpportunity(root, request.content, !helpTurn && !draft && !planOnly &&
+            !request.context.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'planning-map'));
         if (planOnly && !this.grounder) throw new Error('Project investigation unavailable');
         const planningGrounding = planOnly ? await this.grounder?.investigateIdea(root, request.content) :
             await this.grounder?.ground(root, request.content);
@@ -242,7 +268,7 @@ export class ChatBackend implements ChatService {
         if (planOnly && budget!.output < 2048) throw new Error('Selected local model has insufficient plan output capacity');
         const composed = await this.composeTurn(root, chat, request.content, request.context,
             model.capabilities, budget, planOnly ? { text: planBinding?.plan ? planRevisionInstruction(planBinding.plan) :
-                firstPlanInstruction(planRequirements(request.content)) } : draft, planningGrounding);
+                firstPlanInstruction(planRequirements(request.content)) } : draft, planningGrounding, false, opportunity);
         if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
             planOnly ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
                 chat.settings.context.reservedOutputTokens);
@@ -633,6 +659,8 @@ export class ChatBackend implements ChatService {
             throw new Error('Bridge proposal requires one current selected checkpoint and a Planning owner');
         const bridge = bridgeSelection ? await BridgeLocalProposal.prepare(this.bridgePlanning!, root, bridgeSelection) : undefined;
         const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') || !!draft || helpTurn || !!bridge || planOnly;
+        const opportunity = await this.roadmapOpportunity(root, content, !roadmapTurn &&
+            !(request.context ?? []).some(item => item.kind === 'planning-map'));
         if (request.planningSteps !== undefined && (![2, 3].includes(request.planningSteps) ||
             !roadmapTurn || helpTurn || !draft &&
             (request.context ?? []).filter(item => item.kind === 'roadmap-checkpoint').length !== 1))
@@ -685,7 +713,7 @@ export class ChatBackend implements ChatService {
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
         const composed = await this.composeTurn(root, contextChat, content, request.context ?? [],
-            model.capabilities, budget, planningPrompt, grounding, !!bridge);
+            model.capabilities, budget, planningPrompt, grounding, !!bridge, opportunity);
         if (bridge) composed.refs.push(bridge.reference);
         if ((request.context ?? []).some(item => item.kind === 'roadmap-checkpoint') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint'))
@@ -785,7 +813,7 @@ export class ChatBackend implements ChatService {
                         throw new ModelRuntimeFailure('Loaded local context or limits changed; preview this turn again',
                             'unsupported-capability');
                     const next = await this.composeTurn(root, contextChat, content, request.context ?? [],
-                        resolvedModel.capabilities, nextBudget, planningPrompt, grounding, !!bridge);
+                        resolvedModel.capabilities, nextBudget, planningPrompt, grounding, !!bridge, opportunity);
                     if (bridge) next.refs.push(bridge.reference);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');

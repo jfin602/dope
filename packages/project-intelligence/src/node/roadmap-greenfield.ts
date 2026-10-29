@@ -413,6 +413,29 @@ export class RoadmapGreenfield {
             ...(item.implementationPlan ? { plan: copy(item.implementationPlan) } : {}) }));
     }
 
+    /** Read-only opportunity snapshot for ordinary Chat; no draft or owner is created. */
+    async readOpportunity(root: string): Promise<{ projectId: string; revision: number;
+        linkedDocument?: string; canonicalMarkdown: boolean; pendingCreation: boolean; checkpoints: number;
+        drafts: number; acceptedPlans: number; pendingPlans: number }> {
+        const owner = await this.store.read(root);
+        await this.ensureRestored(root);
+        const entries = this.entries(root);
+        const current = await this.store.read(root);
+        if (current.projectRoot !== root || current.projectId !== owner.projectId ||
+            current.revision !== owner.revision || entries.some(item => item.projectId !== current.projectId ||
+                item.planOnly && item.ownerRevision !== current.revision))
+            throw new Error('Roadmap owner changed during opportunity read');
+        let canonicalMarkdown = false;
+        try { lstatSync(join(root, 'ROADMAP.md')); canonicalMarkdown = true; }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+        return { projectId: current.projectId, revision: current.revision,
+            ...(current.linkedDocument ? { linkedDocument: current.linkedDocument.path } : {}),
+            canonicalMarkdown, pendingCreation: !!current.pendingCreation, checkpoints: current.checkpoints.length,
+            drafts: entries.filter(item => !item.planOnly).length,
+            acceptedPlans: entries.filter(item => !!item.implementationPlan).length,
+            pendingPlans: entries.filter(item => item.planOnly && !item.implementationPlan).length };
+    }
+
     private persist(root: string, entries: StoredDraft[]): void {
         const { directory, file } = this.paths(root, true);
         const lock = join(directory, 'roadmap-drafts.lock');

@@ -16,7 +16,7 @@ import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/
 import type { GroundingResult } from './chat-project-grounder';
 import { DOPE_CAPABILITY_HELP_VERSION, projectDopeCapabilityHelp, selectDopeCapabilityHelp, type DopeHelpId } from './dope-capability-help';
 
-export const GROUNDED_CHAT_INSTRUCTION = 'Ground claims about existing project files, installed packages, architecture, and canonical state in current supplied evidence; never imply an unobserved file was inspected. No file evidence in this turn means the files were not inspected or included, NOT that the attached project is empty or has no architecture. Describe an empty directory only when a current directory listing verifies it, and limit the claim to the listed scope. Distinguish verified project facts from the developer\'s goals and your provisional recommendations. You may suggest prospective designs, implementation steps, tests, and tradeoffs without existing code. When asked to begin planning a software project, recommend a feasible starting approach, give a short implementation order, and identify a small useful first milestone or vertical slice; adapt these to the idea and stated constraints. Ask at most one consequential question when it would change the next decision, after offering a provisional approach. Mention unavailable evidence only when it matters to the request; do not require a repository inspection, initialized Architecture, or Physical Map for brainstorming. Use natural conversation without required report headings; return a formal plan only when the developer explicitly asks for that format.';
+export const GROUNDED_CHAT_INSTRUCTION = "Ground claims about existing project files, packages, architecture and canonical state in current supplied evidence; never imply an unobserved file was inspected. No file evidence in this turn means files were not inspected or included, NOT that the attached project is empty. Describe an empty directory only from a current listing; limit the claim to the listed scope. Separate verified facts, developer goals and provisional recommendations. You may suggest prospective designs, steps, tests and tradeoffs without code. For a straightforward ordinary request, give one practical recommendation, a short ordered approach and an initial deliverable. Around 100–170 words is a soft preference, never a cap. Give more detail when the request or safety requires it; avoid repeating systems and steps. When asked to begin planning a software project, recommend a feasible starting approach, a short implementation order and a first milestone or vertical slice suited to the idea. Ask at most one consequential question when useful for the next decision. Mention unavailable evidence only when relevant; do not require repository inspection, Architecture or Physical Map for brainstorming. Use natural conversation without required headings; give a formal plan only when explicitly requested.";
 const ROADMAP_ACTION_INSTRUCTION = 'Use the supplied checkpoint capabilities to determine whether its Objective is editable; a request to read does not make a linked checkpoint unlinked or read-only. For a factual or decision question without an edit request, choose type no-action and put the concrete answer in its message field. Answer from the supplied evidence, including owner and document revisions when present, and distinguish those counters. If a fact is absent, say so without inventing it; do not replace available facts with a generic missing-evidence or edit-capability reason. Never copy an instruction phrase as the answer. For a linked Markdown checkpoint, only if capabilities.objective.editable is true and the user requests an Objective change, propose {"type":"roadmap-intent","intent":"set-objective","value":"one line"}. Otherwise choose type no-action with a concrete source-backed reason in its message field. For an unlinked checkpoint, a validated roadmap-proposal action may be used. All proposals require developer approval. Never claim an edit was applied.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
@@ -311,7 +311,7 @@ export class ChatContextComposer {
 
     async compose(root: string, chat: Chat, content: string, selections: ChatContextSelection[],
         capabilities: ConversationModelCapabilities, grounding?: GroundingResult,
-        strictHelpJson = false, bridgeMode = false): Promise<ComposedChatContext> {
+        strictHelpJson = false, bridgeMode = false, roadmapOpportunity?: string): Promise<ComposedChatContext> {
         if (!content.trim()) throw new Error('Enter a message before sending');
         if (!Array.isArray(selections) || selections.length > 20) throw new Error('Too many context selections');
         const policy = chat.settings.context;
@@ -336,6 +336,7 @@ export class ChatContextComposer {
         const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
         const roadmapInstruction = roadmapAction && !bridgeMode;
         let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0) -
+            (roadmapOpportunity ? tokens(roadmapOpportunity) : 0) -
             (roadmapInstruction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) - (help ? tokens(help.instruction) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
@@ -402,6 +403,7 @@ export class ChatContextComposer {
         }
         if (!attached.length) remaining += wrapperTokens;
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];
+        if (roadmapOpportunity) messages.push({ role: 'system', content: roadmapOpportunity });
         if (roadmapInstruction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
         if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];

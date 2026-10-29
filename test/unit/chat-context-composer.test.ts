@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import type { Chat } from '../../packages/chat/lib/index.js';
-import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { ChatContextComposer, GROUNDED_CHAT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { createSnapshot } from '../../packages/software-map/lib/index.js';
 import type { ProjectMindStore } from '../../packages/project-intelligence/lib/node/project-mind-store.js';
@@ -20,6 +20,14 @@ const chat = (): Chat => ({ schemaVersion: 1, id: id(), revision: 0, folderPath:
   settings: { schemaVersion: 1, context: { maxInputTokens: 500, reservedOutputTokens: 0, history: 'recent', savedChatSearch: true,
     allowedSources: ['editor', 'selection', 'file', 'project-mind', 'architecture', 'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat'] } },
   messages: [] });
+
+test('ordinary Chat brevity is soft, general-purpose, and preserves source truth', () => {
+  assert.match(GROUNDED_CHAT_INSTRUCTION, /100–170 words is a soft preference, never a cap/);
+  assert.match(GROUNDED_CHAT_INSTRUCTION, /Give more detail when the request or safety requires it/);
+  assert.match(GROUNDED_CHAT_INSTRUCTION, /one practical recommendation.*initial deliverable/);
+  assert.match(GROUNDED_CHAT_INSTRUCTION, /never imply an unobserved file was inspected/);
+  assert.doesNotMatch(GROUNDED_CHAT_INSTRUCTION, /PixiJS|tower defense|strict JSON|truncate/);
+});
 
 test('all bounded source kinds resolve through project authorities with durable typed provenance', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-context-'));

@@ -43,7 +43,10 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
         yield { type: 'complete' as const, text: 'Start with one map, one tower, and one enemy.', actualModelId: 'q4' };
     } };
     const greenfield = { ensureRestored: async () => {}, chatDraft: () => undefined,
-        chatImplementationPlan: () => undefined, beginImplementationPlan: async () => { planStarts++; throw new Error('Unexpected plan'); } };
+        chatImplementationPlan: () => undefined,
+        readOpportunity: async () => ({ projectId: 'uninitialized', revision: 0, canonicalMarkdown: false, pendingCreation: false,
+            checkpoints: 0, drafts: 0, acceptedPlans: 0, pendingPlans: 0 }),
+        beginImplementationPlan: async () => { planStarts++; throw new Error('Unexpected plan'); } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
         new ChatContextComposer({} as never, {} as never, index as never, repository), undefined,
         new ChatProjectGrounder(index as never), undefined, greenfield as never);
@@ -63,6 +66,8 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
         assert.equal(result.refs[0]?.kind, 'project-orientation');
         assert.deepEqual(result.refs, preview.refs);
         assert.equal(sent[0]?.role, 'system');
+        assert.ok(sent.some(message => /Checked read-only Roadmap opportunity.*revision zero/s.test(message.content)));
+        assert.ok(sent.some(message => /may mention that Dope can generate a provisional Roadmap draft/.test(message.content)));
         assert.equal(sent.some(message => /implementation-plan|pixi\.js: absent/.test(message.content)), false);
         const saved = (await backend.get(projectHandle, chatId))!.messages;
         assert.equal(saved[0].role, 'user');
@@ -71,6 +76,33 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
         assert.equal(saved[1].execution?.selectedModel.modelId, 'q4');
         assert.equal(saved[1].planningActivity, undefined);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('ordinary Chat opportunity suppresses duplicate or unverifiable offers without model inference', async () => {
+    const repository = new ChatRepository();
+    const state = { projectId: 'p1', revision: 0, canonicalMarkdown: false, pendingCreation: false, checkpoints: 0,
+        drafts: 0, acceptedPlans: 0, pendingPlans: 0, linkedDocument: undefined as string | undefined };
+    const greenfield = { readOpportunity: async () => state };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, undefined, undefined,
+        undefined, undefined, undefined, greenfield as never);
+    const read = (content = 'Help plan the project') =>
+        (backend as unknown as { roadmapOpportunity(root: string, content: string, ordinary: boolean): Promise<string | undefined> })
+            .roadmapOpportunity('/tmp/project', content, true);
+    try {
+        assert.match((await read())!, /may mention.*provisional Roadmap draft/);
+        assert.equal(await read('What is the weather?'), undefined);
+        assert.equal(await (backend as unknown as { roadmapOpportunity(root: string, content: string,
+            ordinary: boolean): Promise<string | undefined> }).roadmapOpportunity('/tmp/project', 'Plan it', false), undefined);
+        for (const change of [{ revision: 1 }, { linkedDocument: 'ROADMAP.md' }, { canonicalMarkdown: true },
+            { pendingCreation: true }, { drafts: 1 }, { acceptedPlans: 1 }, { pendingPlans: 1 }]) {
+            Object.assign(state, change);
+            assert.match((await read())!, /do not offer a duplicate draft/);
+            Object.assign(state, { revision: 0, linkedDocument: undefined, canonicalMarkdown: false, pendingCreation: false,
+                drafts: 0, acceptedPlans: 0, pendingPlans: 0 });
+        }
+        greenfield.readOpportunity = async () => { throw new Error('owner unavailable'); };
+        assert.match((await read())!, /could not be verified.*Do not infer absence/s);
+    } finally { backend.dispose(); }
 });
 
 test('G2 sends fresh workspace evidence after preview and requires hosted project consent', async () => {
