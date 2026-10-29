@@ -1,5 +1,6 @@
 import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
+import { evaluateGateQualification } from '@dope/project-intelligence/lib/node/roadmap-gate-domain.js';
 
 export const ROADMAP_INSPECTOR_ID = 'dope-roadmap-inspector';
 export const ROADMAP_CANVAS_INSPECTOR_ID = 'dope-roadmap-canvas-inspector';
@@ -15,7 +16,7 @@ export class RoadmapInspectorWidget extends BaseWidget {
         this.title.iconClass = codicon('milestone');
         this.title.closable = true;
         this.addClass('dope-roadmap-inspector');
-        this.content.setAttribute('aria-label', 'Roadmap checkpoint details');
+        this.content.setAttribute('aria-label', 'Roadmap details');
         this.node.append(this.content);
         this.off = model.onChange(() => this.render());
         this.render();
@@ -38,6 +39,7 @@ export class RoadmapInspectorWidget extends BaseWidget {
         const selection = textControl && typeof textControl.selectionStart === 'number' ?
             [textControl.selectionStart, textControl.selectionEnd] : undefined;
         const item = this.model.selected;
+        const gate = this.model.selectedGate;
         const prompt = this.model.selectedPrompt;
         this.content.replaceChildren();
         if (!item && prompt) {
@@ -55,7 +57,18 @@ export class RoadmapInspectorWidget extends BaseWidget {
             this.content.append(feedback);
             return;
         }
-        if (!item) { this.content.append(this.element('p', 'Select a checkpoint on the Roadmap to inspect it.')); return; }
+        if (gate) {
+            this.renderGate(gate);
+            if (active) {
+                const replacement = this.content.querySelector<HTMLElement>(`#${active}`);
+                replacement?.focus();
+                if (replacement && scrollTop !== undefined) replacement.scrollTop = scrollTop;
+                if (selection && (replacement instanceof HTMLInputElement || replacement instanceof HTMLTextAreaElement))
+                    replacement.setSelectionRange(selection[0], selection[1]);
+            }
+            return;
+        }
+        if (!item) { this.content.append(this.element('p', 'Select a Phase or Gate on the Roadmap to inspect it.')); return; }
         const heading = this.element('h2', item.title);
         const state = this.element('p', `${item.kind} · ${item.status.replaceAll('-', ' ')} · Roadmap revision ${this.model.index?.revision}`);
         const objective = this.element('section');
@@ -99,6 +112,73 @@ export class RoadmapInspectorWidget extends BaseWidget {
             if (selection && (replacement instanceof HTMLInputElement || replacement instanceof HTMLTextAreaElement))
                 replacement.setSelectionRange(selection[0], selection[1]);
         }
+    }
+    private renderGate(gate: NonNullable<RoadmapInspectorModel['selectedGate']>): void {
+        const index = this.model.gateIndex;
+        const phase = index?.phases.find(item => item.id === gate.parentPhaseId);
+        const qualification = evaluateGateQualification(gate, gate.qualificationSource);
+        this.content.append(this.element('h2', `${gate.designation} · ${gate.title}`),
+            this.element('p', `Gate in ${phase?.title ?? gate.parentPhaseId} · ${gate.draftAcceptance} · ${qualification.status.replaceAll('-', ' ')} · Roadmap revision ${index?.revision}`));
+        const objective = this.element('section');
+        objective.append(this.element('h3', 'Objective'), this.element('p', gate.purpose));
+        const criteria = this.element('section');
+        criteria.append(this.element('h3', 'Criteria and available evidence'));
+        if (!gate.criteria.length) criteria.append(this.element('p', 'No criteria recorded. Gate qualification is unavailable.'));
+        for (const criterion of gate.criteria) {
+            const group = this.element('div');
+            group.append(this.element('h4', criterion.title), this.element('p', `Expected: ${criterion.expectedResult}`));
+            if (!criterion.evidence.length) group.append(this.element('p', 'No evidence recorded.'));
+            for (const evidence of criterion.evidence) group.append(this.element('p',
+                `${evidence.result} · ${evidence.review.status}${evidence.validation ? ' · stale' : ''} · ${evidence.summary} · ${evidence.verifiedBy}`));
+            criteria.append(group);
+        }
+        const dependencies = this.element('section');
+        dependencies.append(this.element('h3', 'Dependencies'));
+        if (!gate.dependencies.length) dependencies.append(this.element('p', 'None recorded.'));
+        for (const id of gate.dependencies) {
+            const target = index?.gates.find(candidate => candidate.id === id);
+            dependencies.append(this.element('p', target ? `${target.designation} · ${target.title}` : `Unresolved · ${id}`));
+        }
+        const corrections = this.element('section');
+        corrections.append(this.element('h3', 'Corrections'));
+        const linked = index?.corrections.filter(item => item.parent.kind === 'gate' && item.parent.id === gate.id) ?? [];
+        if (!linked.length) corrections.append(this.element('p', 'None recorded.'));
+        for (const correction of linked) corrections.append(this.element('p', `${correction.title} · ${correction.qualificationStatus.replaceAll('-', ' ')} · ${correction.objective}`));
+        this.content.append(objective, criteria, dependencies, corrections);
+        const prepare = this.button('Prepare Work', () => void this.model.prepareWork());
+        prepare.id = 'dope-roadmap-prepare-work'; prepare.disabled = true;
+        prepare.setAttribute('aria-label', `Prepare Work for Gate ${gate.designation}: unavailable`);
+        this.content.append(prepare, this.element('p', this.model.prepareWorkBlockedReason));
+        if (this.editable && this.model.gateDraft) {
+            const form = this.element('form');
+            form.onsubmit = event => { event.preventDefault(); void this.model.saveGate(); };
+            form.append(this.element('h3', 'Edit Gate definition'));
+            const title = this.element('input'); title.id = 'dope-roadmap-gate-title';
+            title.value = this.model.gateDraft.title; title.maxLength = 200;
+            title.setAttribute('aria-label', 'Gate title');
+            title.oninput = () => this.model.changeGate('title', title.value);
+            const purpose = this.element('textarea'); purpose.id = 'dope-roadmap-gate-purpose';
+            purpose.value = this.model.gateDraft.purpose; purpose.maxLength = 8192;
+            purpose.setAttribute('aria-label', 'Gate objective');
+            purpose.oninput = () => this.model.changeGate('purpose', purpose.value);
+            const save = this.element('button', 'Preview Gate edit'); save.type = 'submit';
+            save.disabled = !this.model.dirty || this.model.busy;
+            form.append(title, purpose, save);
+            if (this.model.requiresApproval) {
+                form.append(this.element('p', `${this.model.previewSummary ?? 'Review this Gate change.'} Approve explicitly.`));
+                const approve = this.button('Approve Gate edit', () => void this.model.approve());
+                approve.id = 'dope-roadmap-gate-approve'; approve.disabled = this.model.busy;
+                form.append(approve);
+            }
+            if (this.model.dirty || this.model.requiresApproval) {
+                const discard = this.button('Discard Gate edit', () => this.model.discardEdit());
+                discard.disabled = this.model.busy; form.append(discard);
+            }
+            this.content.append(form);
+        }
+        const feedback = this.element('p', this.model.error ?? (this.model.busy ? 'Checking Roadmap revision…' : ''));
+        feedback.setAttribute('role', this.model.error ? 'alert' : 'status');
+        this.content.append(feedback);
     }
     private renderEditor(title: string): void {
         const draft = this.model.draft!;

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { projectRoadmapDraft, gatePhaseCards, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { projectRoadmapDraft, gatePhaseCards, roadmapSelectableGate, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import type { RoadmapGateIndex } from '../../packages/project-intelligence/src/node/roadmap-gate-domain.ts';
 import { roadmapEdgeStatus, roadmapStatusMark, type RoadmapStatus } from '../../packages/theia-extension/src/browser/roadmap-status-style.ts';
 
@@ -24,7 +24,13 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
         qualificationStatus: 'unknown' as const, draftAcceptance: acceptance });
     const index: RoadmapGateIndex = { schemaVersion: 2, projectId: 'project', projectRoot: '/tmp/fixture', revision: 4,
         phases: [phase('phase-a', 0), phase('phase-b', 1)],
-        gates: [gate('gate-a', 'phase-a', 0, 'accepted'), gate('gate-draft', 'phase-a', 1, 'proposed')], corrections: [],
+        gates: [{ ...gate('gate-a', 'phase-a', 0, 'accepted'), purpose: 'Prove exact source',
+            criteria: [{ id: 'criterion-a', projectId: 'project', title: 'Result visible',
+                expectedResult: 'Visible after reload', order: 0, evidence: [] }] },
+            gate('gate-draft', 'phase-a', 1, 'proposed')],
+        corrections: [{ id: 'fix-a', projectId: 'project', parent: { kind: 'gate', id: 'gate-a' },
+            title: 'Repair result', objective: 'Restore visibility', order: 0,
+            implementationStatus: 'unknown', qualificationStatus: 'unknown', draftAcceptance: 'accepted' }],
         linkedDocument: { projectId: 'project', projectRoot: '/tmp/fixture', path: 'ROADMAP.md',
             sourceHash: 'a'.repeat(64), syncState: 'synced', sections: [] } };
     const before = JSON.stringify(index);
@@ -35,6 +41,14 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
     assert.equal(cards.nodes[0].phaseCard?.qualified, 0);
     assert.deepEqual(cards.nodes[0].phaseCard?.gates.map(item => [item.id, item.proposed]),
         [['gate-a', false], ['gate-draft', true]]);
+    assert.equal(cards.nodes[0].phaseCard?.gates[0].purpose, 'Prove exact source');
+    assert.equal(cards.nodes[0].phaseCard?.gates[0].criteria[0].expectedResult, 'Visible after reload');
+    assert.deepEqual(cards.nodes[0].phaseCard?.corrections[0].parent, { kind: 'gate', id: 'gate-a' });
+    assert.equal(roadmapSelectableGate(index, 'project', 4, 'phase-a', 'gate-a')?.id, 'gate-a');
+    assert.equal(roadmapSelectableGate(index, 'project', 4, 'phase-a', 'gate-draft')?.draftAcceptance, 'proposed');
+    assert.equal(roadmapSelectableGate(index, 'foreign', 4, 'phase-a', 'gate-a'), undefined);
+    assert.equal(roadmapSelectableGate(index, 'project', 3, 'phase-a', 'gate-a'), undefined);
+    assert.equal(roadmapSelectableGate(index, 'project', 4, 'phase-b', 'gate-a'), undefined);
     assert.equal(cards.nodes[1].phaseCard?.required, 0);
     assert.deepEqual(roadmapCanvasConnectors(cards).map(item => item.kind), ['progression']);
     const positions = roadmapSpatialLayout(cards);
@@ -43,8 +57,8 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
     assert.equal(index.linkedDocument?.sourceHash, 'a'.repeat(64));
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(css, /\.dope-roadmap-phase-card \{ width: 340px/);
-    assert.match(css, /\.dope-roadmap-phase-card > strong \{ font-size: 21px/);
-    assert.match(css, /\.dope-roadmap-phase-children \{[^}]*max-height: 150px; overflow: auto/);
+    assert.match(css, /\.dope-roadmap-phase-main > strong \{ font-size: 21px/);
+    assert.match(css, /\.dope-roadmap-phase-children \{[^}]*max-height: 190px; overflow: auto/);
 });
 
 test('one keyboard order follows the checkpoint path and attached branches', () => {

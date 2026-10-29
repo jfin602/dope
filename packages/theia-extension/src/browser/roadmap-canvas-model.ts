@@ -1,6 +1,6 @@
 import type { CheckpointNode, CheckpointEdge, LegacyRoadmapProjection as RoadmapProjection } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { GreenfieldDraft, GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
+import type { RoadmapGate, RoadmapCorrection, RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import { evaluateGateQualification, evaluatePhaseQualification } from '@dope/project-intelligence/lib/node/roadmap-gate-domain.js';
 import { projectRoadmap } from '@dope/project-intelligence/lib/roadmap-projection.js';
@@ -11,8 +11,17 @@ export interface PhaseCardSummary {
     qualification: string;
     qualified: number;
     required: number;
-    gates: { id: string; designation: string; title: string; status: string; proposed: boolean }[];
-    corrections: { id: string; title: string; status: string }[];
+    gates: (RoadmapGate & { status: string; proposed: boolean })[];
+    corrections: RoadmapCorrection[];
+}
+
+/** Resolve a row against the current project and revision before changing presentation selection. */
+export function roadmapSelectableGate(index: RoadmapGateIndex | undefined, projectId: string,
+    revision: number, phaseId: string, gateId: string): RoadmapGate | undefined {
+    if (!index || index.projectId !== projectId || index.revision !== revision ||
+        !index.phases.some(phase => phase.id === phaseId)) return undefined;
+    return index.gates.find(gate => gate.id === gateId && gate.parentPhaseId === phaseId &&
+        gate.projectId === projectId);
 }
 
 /** Read-only schema-two card data. Gate rows are contained in their Phase, never graph peers. */
@@ -25,14 +34,14 @@ export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly Roadmap
         const result = evaluatePhaseQualification(index, phase.id, phase.qualificationSource);
         const gates = index.gates.filter(gate => gate.parentPhaseId === phase.id)
             .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
-            .map(gate => ({ id: gate.id, designation: gate.designation, title: gate.title,
+            .map(gate => ({ ...gate,
                 status: source.nodes.find(node => node.id === gate.id)?.qualificationStatus ??
                     evaluateGateQualification(gate, gate.qualificationSource).status,
                 proposed: gate.draftAcceptance === 'proposed' }));
         const corrections = index.corrections.filter(item => item.parent.kind === 'phase' && item.parent.id === phase.id ||
             item.parent.kind === 'gate' && gates.some(gate => gate.id === item.parent.id))
             .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
-            .map(item => ({ id: item.id, title: item.title, status: item.qualificationStatus }));
+            .map(item => item);
         const label = phase.title.replace(/^Phase\s+\d+\s*(?:[-—:]\s*)?/i, '').trim() || phase.title;
         const phaseNumber = /^Phase\s+(\d+)\b/i.exec(phase.title);
         const card: PhaseCardSummary = { number: phaseNumber ? Number(phaseNumber[1]) : number + 1, title: label,

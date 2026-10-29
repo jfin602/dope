@@ -1,6 +1,6 @@
 import type { RoadmapCheckpoint, RoadmapIndex, RoadmapLink } from './node/roadmap-store';
 import type { RoadmapOwnerRecord } from './node/roadmap-owner-links';
-import type { GateEvidence, RoadmapGateIndex, RoadmapImplementationStatus, RoadmapQualificationStatus,
+import type { GateEvidence, RoadmapGate, RoadmapCorrection, RoadmapGateIndex, RoadmapImplementationStatus, RoadmapQualificationStatus,
     RoadmapDraftAcceptance } from './node/roadmap-gate-domain';
 import { evaluateGateQualification, evaluatePhaseQualification } from './node/roadmap-gate-domain';
 import { correctionIdentifier, resolveCorrectionPhase, roadmapPhaseNumber, type PhaseAssociation } from './roadmap-phase-association';
@@ -31,8 +31,8 @@ export interface CheckpointNode {
         browserRequired?: boolean; segment?: string; diagnostic?: string };
     /** Read-only schema-two visual summary; no RoadmapStore field is written. */
     phaseCard?: { number: number; title: string; qualification: string; qualified: number; required: number;
-        gates: { id: string; designation: string; title: string; status: string; proposed: boolean }[];
-        corrections: { id: string; title: string; status: string }[] };
+        gates: (RoadmapGate & { status: string; proposed: boolean })[];
+        corrections: RoadmapCorrection[] };
 }
 export interface CheckpointEdge {
     id: string;

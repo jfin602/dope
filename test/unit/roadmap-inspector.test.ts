@@ -319,6 +319,10 @@ test('real planning service creates, approves and reloads a selected Gate withou
         reloaded.select('gate-1');
         assert.equal(reloaded.selectedGate?.purpose, 'Verify saved result');
         assert.equal(reloaded.selectedGate?.qualificationStatus, 'unknown');
+        assert.match(reloaded.prepareWorkBlockedReason ?? '', /Gate-scoped Prepare Work needs planning/);
+        const beforePrepare = JSON.stringify(await store.read<RoadmapGateIndex>(project));
+        await reloaded.prepareWork();
+        assert.equal(JSON.stringify(await store.read<RoadmapGateIndex>(project)), beforePrepare);
         await reloaded.proposeGate('phase-1', 'bad\0id', 'G2', 'Invalid', 'Invalid', [
             { id: 'criterion-2', title: 'Visible', expectedResult: 'Visible' }]);
         assert.match(reloaded.error ?? '', /Invalid|identity/);
