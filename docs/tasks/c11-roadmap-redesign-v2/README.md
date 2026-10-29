@@ -10,7 +10,7 @@
 
 ## Authoritative status and entry
 
-At the reviewed source, the original G3 P4 has an **owner-accepted native-priority Green disposition**, with incomplete Chrome R1–R7 evidence; its limitation remains explicit. The historical P1 sequencing exception allowed the former P1 only; it does not authorize running this new v2 stack. Obtain new owner approval or satisfy the complete G3 prerequisite before execution. The exception is inherited for **sequencing only**, not for any new v2 implementation/qualification gate. Read actual local repo state and do not assume an uncommitted outcome is on `main`.
+At the reviewed source, the original G3 P4 has an **owner-accepted native-priority Green disposition**, with incomplete Chrome R1–R7 evidence; its limitation remains explicit. The historical P1 sequencing exception allowed the former P1 only; it does not authorize running this new v2 stack. Obtain new owner approval or satisfy the complete G3 prerequisite before execution. The earlier exception is historical only and does not waive any v2 implementation or qualification gate. Read actual local repo state and do not assume an uncommitted outcome is on `main`.
 
 The P1 not-Green result and its safe rejection are an **input baseline**, not a completed v2 prompt. V2 starts at P1 with new contracts/tests. Preserve the existing no-write rejection until the new schema is authoritative; do not let its continued existence mask a missing implementation.
 
