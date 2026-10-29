@@ -1,0 +1,25 @@
+TASK: Correction 11 / P1 — Concise Chat and verified Roadmap opportunity
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 G3-A/B source work; early manual selected-Q4 browser review before next stage.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no version bump.
+
+PREFLIGHT / AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/planning/p11/greenfield-experience-contract.md`, ADR 0025/0036 and this stack's `README.md`, `prompt-assessment.md`, and `implementation-plan.md`. Inspect ACTUAL local `git status --short`, HEAD, version, current implementation/tests, compiled libs and concurrent owner work. GitHub authoring baseline `c947700a` / version `0.11.8` is not a local pin or proof the local worktree is clean. Preserve existing P1/G1, G2 source and immutable `c11-greenfield-patch` P1-P3, earlier CP failures and owner modifications. If local source or version conflicts, STOP and report; do not reset/stash/clean/force-push, downgrade, change manifests/pins/lockfiles or self-commit. Separate owner Run authorization required; docs authoring is not Run and no `/activate` gate is needed. Target <=8 minutes for this bounded implementation (10 soft, 15 hard); stop honestly if not achievable. Keep one Chat/Greenfield/Roadmap owner, project identity, source freshness, approvals, leases, provider selection and hosted-data consent; no model shell/process/arbitrary filesystem/network tools, no new Chat system, no auto Work, no canonical Markdown publication, no default model changes. The real tower-defense project is developer-owned: do not mutate its source or use it for destructive tests; use disposable projects for negative cases.
+
+MISSION
+Make existing ordinary Chat helpful but less repetitive, and give it verified current Roadmap state before it offers draft creation. Owner's G1 single Chrome/Q4 pass recommended game architecture and milestone, but duplicated systems and step lists. Current source has `ChatContextComposer.GROUNDED_CHAT_INSTRUCTION` and `ChatBackend.runTurn/previewContext`, `RoadmapStore.read`, `RoadmapGreenfield.list` and real saved Chat. The assistant must not infer "no Roadmap" merely because no Roadmap context was attached. G2 changes in grounder/backend/widget are real and must be preserved.
+
+IMPLEMENT
+1. Add only compact general-purpose ordinary Chat guidance: one practical recommendation, short ordered approach and initial deliverable; one meaningful next question only when useful. About 100-170 words for a straightforward request is a SOFT preference, not a hard filter, output truncation, template, or mandate for complex tasks. Preserve deeper answers when asked and strict source-truth instruction. Do not hardcode PixiJS, tower-defense phases or force structured plan-mode/JSON.
+2. Supply an app-owned, read-only, current Roadmap opportunity view where relevant: root/project ID, actual Roadmap revision, linked document/creation pending and any accepted or pending Greenfield draft or existing plan. Recheck under same project authority as existing Roadmap services; source text only is not authority. Avoid expensive unconditional repository scanning or model introspection. If owner is unavailable, report uncertainty rather than fabricate absence. If canonical Roadmap or conflicting draft exists, offer Open/Continue/Review, not duplicate.
+3. At a useful planning juncture when eligibility is actually verified, Chat may mention that a Roadmap draft can be generated. P1 must NOT create the offer's executable token, perform generation, create an accepted plan, write project state, or imply that a model sentence authorizes a mutation; P2 owns the typed action.
+4. Ensure `previewContext` and `runTurn` stay consistent where current-context reflection is relevant. Preserve explicit plan/help/selected-Roadmap/Bridge routing, ordinary conversational mode, model and egress rules, Chat history/leases and no-G1 false missing file claim. Do not alter formal planning classifier or existing user-chosen model.
+
+FOCUSED TESTS / STOP
+Extend `test/unit/chat-context-composer.test.ts`, `chat-backend.test.ts` and closest Roadmap owner tests: verified empty Roadmap creates eligible read-only state; existing linked/canonical, pending creation, competing Greenfield draft, wrong project/revision and unavailable owner suppress offer; normal idea remains ordinary Chat; no model-inferred "absent" when state not read. Confirm instruction isn't a hard 170-word cap or templated PixiJS answer, no new inference, no canonical write; G1/G2 tests remain passing. Build necessary compiled libs, run only focused tests, `git diff --check`; report exact commands/results and paths. No full aggregate and no GREEN from fake model. STOP for early OWNER live Chrome/local-Q4 G3-A/B check before authorizing P2; preserve any failed response and don't silently proceed.

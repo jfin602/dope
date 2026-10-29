@@ -1,0 +1,26 @@
+TASK: Correction 11 / P2 — One Roadmap offer and dual explicit user consent
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 G3-C authorization seam; do not generate full content yet.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no version bump.
+
+PREFLIGHT / AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/planning/p11/greenfield-experience-contract.md`, ADR 0025/0036 and this stack's `README.md`, `prompt-assessment.md`, and `implementation-plan.md`. Inspect ACTUAL local `git status --short`, HEAD, version, current implementation/tests, compiled libs and concurrent owner work. GitHub authoring baseline `c947700a` / version `0.11.8` is not a local pin or proof the local worktree is clean. Preserve existing P1/G1, G2 source and immutable `c11-greenfield-patch` P1-P3, earlier CP failures and owner modifications. If local source or version conflicts, STOP and report; do not reset/stash/clean/force-push, downgrade, change manifests/pins/lockfiles or self-commit. Separate owner Run authorization required; docs authoring is not Run and no `/activate` gate is needed. Target <=8 minutes for this bounded implementation (10 soft, 15 hard); stop honestly if not achievable. Keep one Chat/Greenfield/Roadmap owner, project identity, source freshness, approvals, leases, provider selection and hosted-data consent; no model shell/process/arbitrary filesystem/network tools, no new Chat system, no auto Work, no canonical Markdown publication, no default model changes. The real tower-defense project is developer-owned: do not mutate its source or use it for destructive tests; use disposable projects for negative cases.
+
+MISSION
+Connect a verified Roadmap opportunity to ONE typed noncanonical generation offer that a human can accept using a restrained, accessible Chat action ("Generate Draft Roadmap") OR an explicit developer Chat response such as "Yes, create the roadmap." This is a narrow Chat/Planning capability, not general model-selected tools or implicit write permission. P1 read-only owner eligibility and G1/G2 context must remain intact.
+
+IMPLEMENT
+1. Inspect `packages/chat/src/service.ts` contracts, `ChatBackend` existing proposal/lease model, `ChatPanelController` current Chat identity and `ChatPanelWidget` proposal renderer, and `RoadmapStore`/`RoadmapGreenfield` ownership. Extend only existing typed transport/owner, not a second proposal database or Chat surface. An OFFER contains project identity, exact saved chat ID, checked Roadmap owner ID/revision, creation/draft basis, unique offer ID/token and bounded lifetime/one-shot status. The model may recommend offering; it cannot mint or approve the authorization token.
+2. Add a clearly differentiated noncanonical Chat offer with primary dark-orange restrained **Generate Draft Roadmap** button and neutral **Not now**. Accessible names, keyboard Enter/Space, focus/narrow-pane/screen reader semantics; don't relocate Chat. Clicking should call the same server-side approval that clear natural-language affirmative uses. "Yes" is accepted only when unambiguously refers to the exact current offer in the SAME saved Chat and attached project; a generic isolated "yes", quoted text, model-generated affirmative, other-chat message or stale prior offer does nothing. Prefer deterministic offer resolution/explicit intent rather than an extra classifier/inference to authorize mutation.
+3. Server re-read current `RoadmapStore` and `RoadmapGreenfield` immediately at confirmation. Verify live Chat writer lease/token, project, offer identity, Roadmap revision, pendingCreation, linked Markdown and competing drafts. A single approval permits one **generation attempt**; it never accepts generated contents, creates canonical `ROADMAP.md` or starts Work. Reject/Not now, stale, expired, concurrent, project switch, double click, no active offer and no consent must fail closed with truthful UI recovery. Offer may be transient; if persisted across restart, require fresh explicit confirmation and revalidation; never resurrect approval as automatic.
+4. Provide a deliberately narrow backend capability point usable by the assistant through typed Dope application routing, not arbitrary model tools or unrestricted prompt text. If Roadmap exists, offer Open/Continue rather than new generation; no duplicate draft.
+5. P3 will implement model generation and complete strategic draft validation. A P2 placeholder may return "generation not yet available" without making a fake success or phantom draft; DO NOT expose a production button that falsely claims a roadmap was generated before P3, and keep intermediate UI honest.
+
+FOCUSED TESTS / STOP
+Test the SAME offer accepted through button versus explicit matched Chat phrase; reject/not now; no offer+yes; mismatched chat/project/token; stale revision; linked Roadmap; competing draft; double submit; expiration/reload; inactive writer; no model egress and no canonical source/write. Extend existing Chat backend/controller/UI and Roadmap integration tests, preserve G1/G2 and existing proposal schemas. Build touched libs, focused tests, `git diff --check`. Record exact results and limits; STOP for owner review of consent semantics before any content-generating P3. Do not claim G3-C Green from synthetic tests.
