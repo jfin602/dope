@@ -1,6 +1,8 @@
 import type { RoadmapCheckpoint, RoadmapIndex } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningAction, PlanningActionPreview, PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
+import type { GatePlanningAction } from '@dope/project-intelligence/lib/node/project-planning-actions';
+import type { RoadmapGate, RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { RoadmapService } from '../roadmap-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { PlanningBasis } from '@dope/visual-planning';
@@ -21,6 +23,7 @@ export class RoadmapInspectorModel {
     selectedId?: string;
     selectedPrompt?: CheckpointNode;
     draft?: { title: string; objective: string; status: RoadmapCheckpoint['status'] };
+    gateDraft?: { title: string; purpose: string };
     dirty = false;
     busy = false;
     error?: string;
@@ -47,7 +50,12 @@ export class RoadmapInspectorModel {
                 this.setSnapshot(uri, next);
         } catch (error) { if (uri === this.projectUri) { this.error = error instanceof Error ? error.message : String(error); this.emit(); } }
     }
-    get selected(): RoadmapCheckpoint | undefined { return this.index?.checkpoints.find(item => item.id === this.selectedId); }
+    get selected(): RoadmapCheckpoint | undefined { return this.index?.checkpoints?.find(item => item.id === this.selectedId); }
+    get gateIndex(): RoadmapGateIndex | undefined {
+        return (this.index as unknown as RoadmapGateIndex | undefined)?.schemaVersion === 2 ?
+            this.index as unknown as RoadmapGateIndex : undefined;
+    }
+    get selectedGate(): RoadmapGate | undefined { return this.gateIndex?.gates.find(item => item.id === this.selectedId); }
     get prepareWorkBlockedReason(): string | undefined {
         const index = this.index, item = this.selected;
         if (!index || !this.projectUri || index.projectId === 'uninitialized' || !index.revision)
@@ -118,7 +126,10 @@ export class RoadmapInspectorModel {
             const diff = pending.preview.documentDiff;
             return `Document: ${diff.path}\n${diff.changedLines.map(line => `- ${line.before}\n+ ${line.after}`).join('\n')}`;
         }
-        const next = pending.preview.next.checkpoints.find(item => item.id === this.selectedId);
+        const gate = pending.preview.next.gates?.find(item => item.id === this.selectedId) ??
+            pending.preview.next.gates?.find(item => item.id === pending.preview.changedIds[0]);
+        if (gate) return `Proposed Gate ${gate.designation}: ${gate.title}; purpose: ${gate.purpose}; ${gate.criteria.length} criteria. Qualification: ${gate.qualificationStatus}.`;
+        const next = pending.preview.next.checkpoints?.find(item => item.id === this.selectedId);
         return next && `Proposed: ${next.title}; ${next.status.replaceAll('-', ' ')}; objective: ${next.objective}`;
     }
 
@@ -131,6 +142,7 @@ export class RoadmapInspectorModel {
             this.selectedId = undefined;
             this.selectedPrompt = undefined;
             this.draft = undefined;
+            this.gateDraft = undefined;
             this.dirty = false;
             this.undo = undefined;
             this.pending = undefined;
@@ -149,14 +161,16 @@ export class RoadmapInspectorModel {
                 this.pending = undefined;
                 this.error = 'Roadmap changed before approval. Review the current revision and preview again.';
             }
-            if (this.selectedId && !this.selected) this.select(undefined);
+            if (this.selectedId && !this.selected && !this.selectedGate &&
+                !this.gateIndex?.phases.some(item => item.id === this.selectedId)) this.select(undefined);
             if (!this.dirty && !this.pending) this.resetDraft();
         } else this.index = undefined;
         this.emit();
     }
 
     select(id: string | undefined): void {
-        if (id && !this.index?.checkpoints.some(item => item.id === id)) return;
+        if (id && !this.index?.checkpoints?.some(item => item.id === id) &&
+            !this.gateIndex?.gates.some(item => item.id === id) && !this.gateIndex?.phases.some(item => item.id === id)) return;
         ++this.serial;
         this.selectedId = id;
         this.selectedPrompt = undefined;
@@ -202,6 +216,51 @@ export class RoadmapInspectorModel {
     private resetDraft(): void {
         const item = this.selected;
         this.draft = item && { title: item.title, objective: item.objective, status: item.status };
+        const gate = this.selectedGate;
+        this.gateDraft = gate && { title: gate.title, purpose: gate.purpose };
+    }
+    changeGate(field: 'title' | 'purpose', value: string): void {
+        if (!this.gateDraft || !this.selectedGate) return;
+        this.gateDraft = { ...this.gateDraft, [field]: value };
+        this.dirty = true; this.pending = undefined; this.error = undefined;
+        ++this.serial; this.emit();
+    }
+    async proposeGate(parentPhaseId: string, id: string, designation: string, title: string, purpose: string,
+        criteria: { id: string; title: string; expectedResult: string }[]): Promise<void> {
+        await this.previewGateAction({ type: 'gate.create', parentPhaseId, id, designation, title, purpose, criteria }, id);
+    }
+    async saveGate(): Promise<void> {
+        const item = this.selectedGate, draft = this.gateDraft;
+        if (!item || !draft || !this.dirty) return;
+        await this.previewGateAction({ type: 'gate.edit', id: item.id, title: draft.title, purpose: draft.purpose }, item.id);
+    }
+    async editCriterion(gateId: string, id: string, title: string, expectedResult: string): Promise<void> {
+        await this.previewGateAction({ type: 'criterion.edit', gateId, id, title, expectedResult }, gateId);
+    }
+    private async previewGateAction(action: GatePlanningAction, selectedId: string): Promise<void> {
+        const uri = this.projectUri, index = this.gateIndex;
+        if (!uri || !index || this.busy || !index.phases.some(item => item.id ===
+            (action.type === 'gate.create' ? action.parentPhaseId :
+                index.gates.find(gate => gate.id === selectedId)?.parentPhaseId))) return;
+        const serial = ++this.serial;
+        this.busy = true; this.error = undefined; this.emit();
+        try {
+            if (!this.handle) {
+                const attached = await this.service.attach(uri);
+                if (serial !== this.serial || uri !== this.projectUri || attached.snapshot.projectId !== index.projectId ||
+                    attached.snapshot.revision !== index.revision) { await this.service.detach(attached.projectHandle); return; }
+                this.handle = attached.projectHandle;
+            }
+            const request: PlanningActionRequest = { projectHandle: this.handle!, ownerId: index.projectId,
+                expectedRevision: index.revision,
+                sourceHashes: index.linkedDocument ? { [selectedId]: index.linkedDocument.sourceHash } : undefined,
+                actions: [action] };
+            const preview = await this.service.preview(request);
+            if (serial !== this.serial || uri !== this.projectUri || this.gateIndex?.revision !== index.revision ||
+                preview.ownerId !== index.projectId) throw new Error('Roadmap changed during Gate preview');
+            this.pending = { request, preview, serial };
+        } catch (error) { if (serial === this.serial) this.error = error instanceof Error ? error.message : String(error); }
+        finally { if (serial === this.serial) { this.busy = false; this.emit(); } }
     }
     change(field: 'title' | 'objective' | 'status', value: string): void {
         if (!this.draft || !this.selected || this.selected.readOnly) return;
@@ -275,6 +334,8 @@ export class RoadmapInspectorModel {
         if (serial !== this.serial || this.index?.projectId !== result.projectId || this.projectUri === undefined) return;
         this.pending = undefined;
         this.index = result;
+        if ((result as unknown as RoadmapGateIndex).schemaVersion === 2 && request.actions[0].type === 'gate.create')
+            this.selectedId = request.actions[0].id;
         this.dirty = false;
         this.resetDraft();
         const token = await this.service.undoToken(request.projectHandle, result.projectId);

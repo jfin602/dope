@@ -1,33 +1,37 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
-import { parseRetiredCheckpointIndex as parseRoadmapIndex, RoadmapStore } from './roadmap-store';
-import type { RoadmapCheckpoint, RoadmapIndex, RoadmapLink } from './roadmap-store';
-import { planRoadmapDocumentPatch } from './roadmap-document-patch';
-import type { RoadmapDocumentPatch } from './roadmap-document-patch';
+import { RoadmapStore } from './roadmap-store';
+import type { RoadmapCheckpoint, RoadmapGateMutation, RoadmapIndex, RoadmapLink } from './roadmap-store';
+import type { RoadmapGateIndex } from './roadmap-gate-domain';
 import { RoadmapOwnerLinks } from './roadmap-owner-links';
 import type { RoadmapOwnerRecord } from './roadmap-owner-links';
+import type { RoadmapDocumentPatch } from './roadmap-document-patch';
+
 export interface RoadmapPlanningRecord { owner: 'planning-map' | 'transformation' | 'work-item' }
 export interface RoadmapPlanningLinks {
     resolve(root: string, link: RoadmapLink): Promise<RoadmapPlanningRecord | undefined>;
 }
-
-export type PlanningAction =
+export type GatePlanningAction = Extract<RoadmapGateMutation, { type:
+    'phase.create' | 'phase.edit' | 'phase.reorder' | 'phase.dependencies' |
+    'gate.create' | 'gate.edit' | 'gate.reorder' | 'gate.dependencies' |
+    'criterion.add' | 'criterion.edit' | 'criterion.reorder' }> & { id?: string };
+type RuntimeSnapshot = RoadmapIndex & Pick<RoadmapGateIndex, 'phases' | 'gates' | 'corrections'>;
+/** Legacy compile seam for consumers migrated in P8–P17. Runtime rejects these operations. */
+type RetiredAction =
     | { type: 'create'; id: string; kind: RoadmapCheckpoint['kind']; title: string; objective: string; order: number }
     | { type: 'edit'; id: string; title?: string; objective?: string }
     | { type: 'document-edit'; id: string; title?: string; objective?: string; order?: number; prose?: string }
-    | { type: 'link'; id: string; link: RoadmapLink }
-    | { type: 'unlink'; id: string; link: RoadmapLink }
-    | { type: 'depend'; id: string; dependencyId: string }
-    | { type: 'undepend'; id: string; dependencyId: string }
+    | { type: 'link' | 'unlink'; id: string; link: RoadmapLink }
+    | { type: 'depend' | 'undepend'; id: string; dependencyId: string }
     | { type: 'reorder'; id: string; order: number }
     | { type: 'status'; id: string; status: 'unknown' | 'active' | 'not-implemented' | 'not-green' };
-
+export type PlanningAction = GatePlanningAction | RetiredAction;
 export interface PlanningActionRequest {
     projectHandle: string;
     ownerId: string;
     expectedRevision: number;
-    /** Required for each source-backed checkpoint touched by the batch. */
+    /** The current linked source fingerprint, keyed by the edited stable entity ID. */
     sourceHashes?: Record<string, string>;
     actions: PlanningAction[];
 }
@@ -37,288 +41,153 @@ export interface PlanningActionPreview {
     revision: number;
     changedIds: string[];
     requiresApproval: boolean;
-    next: RoadmapIndex;
+    /** Schema-two runtime; intersection keeps retired consumers compiling until P17. */
+    next: RuntimeSnapshot;
     documentDiff?: Pick<RoadmapDocumentPatch, 'path' | 'changedLines' | 'beforeHash' | 'afterHash'>;
 }
 export interface PlanningUndoRequest { projectHandle: string; ownerId: string; expectedRevision: number; token: string }
 export type PlanningLinkResolver = (root: string, link: RoadmapLink) => Promise<boolean>;
 
-const keys = (value: Record<string, unknown>, required: string[], optional: string[] = []): void => {
-    if (required.some(key => !Object.hasOwn(value, key)) || Object.keys(value).some(key => !required.includes(key) && !optional.includes(key)))
-        throw new Error('Invalid planning action fields');
+const specification: Record<GatePlanningAction['type'], readonly string[]> = {
+    'phase.create': ['type', 'id', 'title', 'objective'],
+    'phase.edit': ['type', 'id', 'title', 'objective'],
+    'phase.reorder': ['type', 'ids'],
+    'phase.dependencies': ['type', 'id', 'dependencies'],
+    'gate.create': ['type', 'id', 'parentPhaseId', 'designation', 'title', 'purpose', 'criteria'],
+    'gate.edit': ['type', 'id', 'title', 'purpose'],
+    'gate.reorder': ['type', 'parentPhaseId', 'ids'],
+    'gate.dependencies': ['type', 'id', 'dependencies'],
+    'criterion.add': ['type', 'gateId', 'id', 'title', 'expectedResult'],
+    'criterion.edit': ['type', 'gateId', 'id', 'title', 'expectedResult'],
+    'criterion.reorder': ['type', 'gateId', 'ids']
 };
-const object = (value: unknown): Record<string, unknown> => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid planning action');
-    return value as Record<string, unknown>;
-};
-const validId = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 256 && !/[\x00-\x1f]/.test(value);
-const validText = (value: unknown, max: number): value is string => typeof value === 'string' && value.length <= max && !value.includes('\0');
-const validOrder = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
-const linkKey = (link: RoadmapLink): string => `${link.owner}\0${link.targetId}`;
 const digest = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const copy = <T>(value: T): T => structuredClone(value);
+const record = (value: unknown): value is Record<string, unknown> =>
+    !!value && typeof value === 'object' && !Array.isArray(value);
+const validId = (value: unknown): value is string => typeof value === 'string' &&
+    value.length > 0 && value.length <= 256 && value.trim() === value && !/[\x00-\x1f\x7f]/.test(value);
 
-/** Provider-neutral authority for Roadmap-owned planning changes. External owners remain read-only here. */
+/** One project-bound, reviewable schema-two action through the RoadmapStore writer. */
 export class ProjectPlanningActions {
     private readonly handles = new Map<string, { root: string; ownerId: string }>();
-    private readonly undo = new Map<string, { ownerId: string; revision: number; before: RoadmapCheckpoint; after: RoadmapCheckpoint }>();
-
+    private readonly undo = new Map<string, { ownerId: string; revision: number; before: RoadmapGateIndex; after: RoadmapGateIndex; token: string }>();
     private readonly owners = new RoadmapOwnerLinks();
 
     constructor(private readonly store: RoadmapStore, private readonly resolveLink?: PlanningLinkResolver,
         private readonly planningLinks?: RoadmapPlanningLinks) {}
 
-    async attach(root: string): Promise<{ projectHandle: string; snapshot: RoadmapIndex }> {
+    async attach(root: string): Promise<{ projectHandle: string; snapshot: RuntimeSnapshot }> {
         if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root) throw new Error('Invalid planning root');
-        const snapshot = await this.store.read(root);
-        if (!snapshot.revision || snapshot.pendingCreation)
-            throw new Error('Roadmap must be initialized before planning actions');
+        const snapshot = await this.store.read<RoadmapGateIndex>(root);
+        if (!snapshot.revision) throw new Error('Roadmap must be initialized before planning actions');
         const projectHandle = randomUUID();
         this.handles.set(projectHandle, { root, ownerId: snapshot.projectId });
-        return { projectHandle, snapshot: copy(snapshot) };
+        return { projectHandle, snapshot: copy(snapshot) as unknown as RuntimeSnapshot };
     }
-
     detach(projectHandle: string): void { this.handles.delete(projectHandle); this.undo.delete(projectHandle); }
-
-    private binding(projectHandle: string, ownerId: string): { root: string; ownerId: string } {
-        const binding = this.handles.get(projectHandle);
-        if (!binding || binding.ownerId !== ownerId) throw new Error('Foreign or disposed planning handle');
-        return binding;
+    private binding(handle: string, ownerId: string): { root: string; ownerId: string } {
+        const value = this.handles.get(handle);
+        if (!value || value.ownerId !== ownerId) throw new Error('Foreign or disposed planning handle');
+        return value;
     }
-
-    async read(projectHandle: string, ownerId: string, selectedId?: string): Promise<RoadmapIndex | { selected: RoadmapCheckpoint; neighbors: RoadmapCheckpoint[]; revision: number }> {
+    async read(projectHandle: string, ownerId: string, selectedId?: string): Promise<RoadmapGateIndex | {
+        selected: RoadmapGateIndex['gates'][number] | RoadmapGateIndex['phases'][number];
+        neighbors: RoadmapGateIndex['gates']; revision: number }> {
         const { root } = this.binding(projectHandle, ownerId);
-        const snapshot = await this.store.read(root);
+        const snapshot = await this.store.read<RoadmapGateIndex>(root);
         if (snapshot.projectId !== ownerId) throw new Error('Planning owner changed');
         if (selectedId === undefined) return copy(snapshot);
-        const selected = snapshot.checkpoints.find(item => item.id === selectedId);
-        if (!selected) throw new Error('Unknown Roadmap checkpoint');
-        const neighbors = snapshot.checkpoints.filter(item => selected.dependencies.includes(item.id) || item.dependencies.includes(selectedId));
+        const selected = snapshot.gates.find(item => item.id === selectedId) ?? snapshot.phases.find(item => item.id === selectedId);
+        if (!selected) throw new Error('Unknown Roadmap Gate or Phase');
+        const neighbors = snapshot.gates.filter(item => item.dependencies.includes(selectedId) ||
+            selected.dependencies.includes(item.id));
         return copy({ selected, neighbors, revision: snapshot.revision });
     }
-
     async readOwner(projectHandle: string, ownerId: string, link: RoadmapLink): Promise<RoadmapOwnerRecord | RoadmapPlanningRecord | undefined> {
         const { root } = this.binding(projectHandle, ownerId);
-        if ((await this.store.read(root)).projectId !== ownerId) throw new Error('Planning owner changed');
+        if ((await this.store.read<RoadmapGateIndex>(root)).projectId !== ownerId) throw new Error('Planning owner changed');
         return ['planning-map', 'transformation', 'work-item'].includes(link.owner)
             ? this.planningLinks?.resolve(root, link) : this.owners.resolve(root, link);
     }
-
     async readDetached(projectHandle: string, ownerId: string): Promise<RoadmapOwnerRecord[]> {
         const { root } = this.binding(projectHandle, ownerId);
-        const roadmap = await this.store.read(root);
-        if (roadmap.projectId !== ownerId) throw new Error('Planning owner changed');
-        return this.owners.detached(root, roadmap);
+        const snapshot = await this.store.read<RoadmapGateIndex>(root);
+        if (snapshot.projectId !== ownerId) throw new Error('Planning owner changed');
+        // Schema-two Gates do not carry the retired checkpoint link array. Keep the
+        // original owner inventory available while its Gate attachment moves in P9.
+        return (await this.owners.list(root)).filter(record =>
+            record.owner === 'issue' || record.artifact.type === 'idea');
     }
-
-    private validateRequest(request: PlanningActionRequest): { root: string; ownerId: string } {
-        const value = object(request);
-        keys(value, ['projectHandle', 'ownerId', 'expectedRevision', 'actions'], ['sourceHashes']);
-        const binding = this.binding(request.projectHandle, request.ownerId);
-        if (!validOrder(request.expectedRevision) || request.expectedRevision === 0 || !Array.isArray(request.actions) ||
-            request.actions.length < 1 || request.actions.length > 32) throw new Error('Invalid planning action request');
-        if (request.sourceHashes !== undefined) {
-            const hashes = object(request.sourceHashes);
-            if (Object.keys(hashes).some(key => !validId(key) || typeof hashes[key] !== 'string' || !/^[a-f0-9]{64}$/.test(hashes[key] as string)))
-                throw new Error('Invalid planning source hashes');
-        }
-        return binding;
+    private checked(request: PlanningActionRequest): { root: string; operation: GatePlanningAction } {
+        if (!record(request) || Object.keys(request).some(key => !['projectHandle', 'ownerId', 'expectedRevision', 'sourceHashes', 'actions'].includes(key)) ||
+            !validId(request.ownerId) || !Number.isSafeInteger(request.expectedRevision) || request.expectedRevision < 1 ||
+            !Array.isArray(request.actions) || request.actions.length !== 1)
+            throw new Error('Invalid planning action request');
+        const { root } = this.binding(request.projectHandle, request.ownerId);
+        const action = request.actions[0];
+        if (!record(action) || typeof action.type !== 'string' || !Object.hasOwn(specification, action.type))
+            throw new Error('Unknown or retired planning action type');
+        const fields = specification[action.type as GatePlanningAction['type']];
+        if (Object.keys(action).length !== fields.length || fields.some(key => !Object.hasOwn(action, key)))
+            throw new Error('Invalid Gate planning action fields');
+        if (request.sourceHashes !== undefined && (!record(request.sourceHashes) ||
+            Object.entries(request.sourceHashes).some(([key, hash]) => !validId(key) || typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))))
+            throw new Error('Invalid planning source hashes');
+        return { root, operation: action as GatePlanningAction };
     }
-
-    private async project(current: RoadmapIndex, request: PlanningActionRequest, root: string): Promise<PlanningActionPreview> {
+    private sourceCheck(current: RoadmapGateIndex, request: PlanningActionRequest, operation: GatePlanningAction): void {
+        if (!current.linkedDocument) return;
+        const targets = [operation.type === 'criterion.add' || operation.type === 'criterion.edit' || operation.type === 'criterion.reorder'
+            ? operation.gateId : operation.type === 'gate.reorder' ? operation.parentPhaseId :
+                'id' in operation ? operation.id : undefined].filter((id): id is string => !!id);
+        if (targets.some(id => current.linkedDocument!.sections.some(section => section.id === id) &&
+            request.sourceHashes?.[id] !== current.linkedDocument!.sourceHash))
+            throw new Error('Stale or missing linked Roadmap source hash');
+    }
+    async preview(request: PlanningActionRequest): Promise<PlanningActionPreview> {
+        const { root, operation } = this.checked(request);
+        const current = await this.store.read<RoadmapGateIndex>(root);
         if (current.projectId !== request.ownerId || current.revision !== request.expectedRevision)
             throw new Error('Stale or foreign planning owner revision');
-        if (request.actions.some(action => action.type === 'document-edit')) {
-            if (request.actions.length !== 1) throw new Error('Linked Roadmap edit must be a single action');
-            const action = object(request.actions[0]) as PlanningAction;
-            if (action.type !== 'document-edit') throw new Error('Invalid linked Roadmap action');
-            keys(action, ['type', 'id'], ['title', 'objective', 'order', 'prose']);
-            if (!validId(action.id) || action.title !== undefined && (!validText(action.title, 512) || !action.title.trim()) ||
-                action.objective !== undefined && !validText(action.objective, 8192) ||
-                action.prose !== undefined && !validText(action.prose, 8192) ||
-                action.order !== undefined && !validOrder(action.order)) throw new Error('Invalid linked Roadmap edit');
-            const sourceHash = request.sourceHashes?.[action.id];
-            if (!sourceHash) throw new Error('Expected linked Roadmap source hash required');
-            const patch = await planRoadmapDocumentPatch(root, current, {
-                checkpointId: action.id, sourceHash, title: action.title, objective: action.objective,
-                order: action.order, prose: action.prose
-            });
-            const next = copy(current);
-            next.revision++;
-            next.linkedDocument = { ...current.linkedDocument!, sourceHash: patch.afterHash,
-                lastSynced: { sourceHash: patch.afterHash, roadmapRevision: next.revision } };
-            for (const checkpoint of next.checkpoints) {
-                if (checkpoint.source?.path !== patch.path) continue;
-                checkpoint.source.sha256 = patch.afterHash;
-                if (checkpoint.id === action.id) {
-                    if (action.title !== undefined) {
-                        checkpoint.title = action.title;
-                        checkpoint.source.text = patch.after.split(/\r?\n/)[checkpoint.source.line - 1];
-                    }
-                    if (action.objective !== undefined) checkpoint.objective = action.objective;
-                    if (action.order !== undefined) checkpoint.order = action.order;
-                }
-            }
-            parseRoadmapIndex(next, root);
-            const changedIds = next.checkpoints.filter((item, index) => JSON.stringify(item) !== JSON.stringify(current.checkpoints[index])).map(item => item.id);
-            return { token: digest({ ownerId: current.projectId, revision: current.revision, actions: request.actions,
-                sourceHashes: request.sourceHashes, next, patchHash: patch.afterHash }), ownerId: current.projectId,
-                revision: current.revision, changedIds, requiresApproval: true, next,
-                documentDiff: { path: patch.path, beforeHash: patch.beforeHash, afterHash: patch.afterHash,
-                    changedLines: patch.changedLines } };
-        }
-        const checkpoints = copy(current.checkpoints);
-        let requiresApproval = false;
-        for (const raw of request.actions) {
-            const action = object(raw) as PlanningAction;
-            if (!validId(action.id)) throw new Error('Invalid checkpoint identity');
-            if (action.type === 'create') {
-                keys(action, ['type', 'id', 'kind', 'title', 'objective', 'order']);
-                if (!['phase', 'correction', 'milestone'].includes(action.kind) || !validText(action.title, 512) ||
-                    !action.title.trim() || !validText(action.objective, 8192) || !validOrder(action.order) ||
-                    checkpoints.some(item => item.id === action.id)) throw new Error('Invalid checkpoint creation');
-                checkpoints.push({ id: action.id, kind: action.kind, title: action.title, objective: action.objective,
-                    order: action.order, dependencies: [], links: [], status: 'unknown', readOnly: false, evidence: [] });
-                continue;
-            }
-            const item = checkpoints.find(entry => entry.id === action.id);
-            if (!item || item.readOnly) throw new Error('Unknown or read-only Roadmap checkpoint');
-            if (item.source && request.sourceHashes?.[item.id] !== item.source.sha256) throw new Error('Stale Roadmap source hash');
-            if (item.source && (action.type === 'edit' || action.type === 'reorder'))
-                throw new Error('Linked Roadmap prose must use document-edit');
-            switch (action.type) {
-                case 'edit':
-                    keys(action, ['type', 'id'], ['title', 'objective']);
-                    if (action.title === undefined && action.objective === undefined ||
-                        action.title !== undefined && (!validText(action.title, 512) || !action.title.trim()) ||
-                        action.objective !== undefined && !validText(action.objective, 8192) ||
-                        item.source && action.title !== undefined && action.title !== item.title) throw new Error('Invalid Roadmap edit');
-                    if (action.title !== undefined) item.title = action.title;
-                    if (action.objective !== undefined) item.objective = action.objective;
-                    break;
-                case 'link': case 'unlink': {
-                    keys(action, ['type', 'id', 'link']);
-                    const link = object(action.link) as unknown as RoadmapLink;
-                    keys(link as unknown as Record<string, unknown>, ['owner', 'targetId'], ['ownerRevision', 'sourceHash', 'ownerProjectId', 'basis']);
-                    if (!['document', 'project-mind', 'issue', 'planning-map', 'transformation', 'work-item', 'evidence'].includes(link.owner) ||
-                        !validId(link.targetId) || link.ownerRevision !== undefined && !validOrder(link.ownerRevision) ||
-                        link.sourceHash !== undefined && !/^[a-f0-9]{64}$/.test(link.sourceHash) ||
-                        (link.owner === 'document' || link.owner === 'evidence' ? !link.sourceHash :
-                            link.owner === 'issue' ? link.sourceHash === undefined && link.ownerRevision === undefined :
-                                link.ownerRevision === undefined))
-                        throw new Error('Invalid Roadmap link');
-                    if (['planning-map', 'transformation', 'work-item'].includes(link.owner) &&
-                        (!this.planningLinks || !link.ownerProjectId || !link.basis || link.sourceHash !== undefined))
-                        throw new Error('Planning Map link requires exact owner and basis');
-                    const index = item.links.findIndex(existing => linkKey(existing) === linkKey(link));
-                    if (action.type === 'link') {
-                        if (index >= 0 || !(['planning-map', 'transformation', 'work-item'].includes(link.owner)
-                            ? await this.planningLinks?.resolve(root, link) :
-                            this.resolveLink ? await this.resolveLink(root, link) : await this.owners.resolve(root, link)))
-                            throw new Error('Foreign or unresolved Roadmap link');
-                        item.links.push(link);
-                    } else {
-                        if (index < 0 || JSON.stringify(item.links[index]) !== JSON.stringify(link)) throw new Error('Unknown or changed Roadmap link');
-                        item.links.splice(index, 1);
-                        requiresApproval = true;
-                    }
-                    break;
-                }
-                case 'depend': case 'undepend':
-                    keys(action, ['type', 'id', 'dependencyId']);
-                    if (!validId(action.dependencyId) || !checkpoints.some(entry => entry.id === action.dependencyId) || action.dependencyId === item.id)
-                        throw new Error('Foreign or invalid Roadmap dependency');
-                    if (action.type === 'depend') {
-                        if (item.dependencies.includes(action.dependencyId)) throw new Error('Duplicate Roadmap dependency');
-                        item.dependencies.push(action.dependencyId);
-                    } else {
-                        if (!item.dependencies.includes(action.dependencyId)) throw new Error('Unknown Roadmap dependency');
-                        item.dependencies = item.dependencies.filter(id => id !== action.dependencyId);
-                        requiresApproval = true;
-                    }
-                    break;
-                case 'reorder':
-                    keys(action, ['type', 'id', 'order']);
-                    if (!validOrder(action.order)) throw new Error('Invalid Roadmap order');
-                    item.order = action.order;
-                    break;
-                case 'status':
-                    keys(action, ['type', 'id', 'status']);
-                    if (!['unknown', 'active', 'not-implemented', 'not-green'].includes(action.status) || item.source ||
-                        item.status === 'green' || item.status === 'waived') throw new Error('Roadmap gate promotion requires evidence authority');
-                    item.status = action.status;
-                    requiresApproval = true;
-                    break;
-                default: throw new Error('Unknown planning action type');
-            }
-        }
-        const next = parseRoadmapIndex({ ...current, revision: current.revision + 1, checkpoints }, root);
-        const before = new Map(current.checkpoints.map(item => [item.id, item]));
-        const changedIds = checkpoints.filter(item => JSON.stringify(item) !== JSON.stringify(before.get(item.id))).map(item => item.id);
-        if (!changedIds.length) throw new Error('Planning action makes no change');
-        return { token: digest({ ownerId: current.projectId, revision: current.revision, actions: request.actions,
-            sourceHashes: request.sourceHashes, next }), ownerId: current.projectId, revision: current.revision,
-            changedIds, requiresApproval, next };
+        this.sourceCheck(current, request, operation);
+        const next = await this.store.mutateGateIndex(root, current.revision, current.projectId, operation, true);
+        const changedIds = [...next.phases, ...next.gates, ...next.corrections]
+            .filter(item => JSON.stringify(item) !== JSON.stringify([...current.phases, ...current.gates, ...current.corrections]
+                .find(previous => previous.id === item.id))).map(item => item.id);
+        const token = digest({ ownerId: current.projectId, revision: current.revision, operation,
+            sourceHashes: request.sourceHashes, current, next });
+        return { token, ownerId: current.projectId, revision: current.revision,
+            changedIds, requiresApproval: true, next: next as unknown as RuntimeSnapshot };
     }
-
-    async preview(request: PlanningActionRequest): Promise<PlanningActionPreview> {
-        const { root } = this.validateRequest(request);
-        return this.project(await this.store.read(root), request, root);
+    async apply(request: PlanningActionRequest, token: string, approved = false): Promise<RuntimeSnapshot> {
+        if (!approved) throw new Error('Planning action approval required');
+        const { root, operation } = this.checked(request);
+        const current = await this.store.read<RoadmapGateIndex>(root);
+        const preview = await this.preview(request);
+        if (preview.token !== token) throw new Error('Stale or foreign planning preview token');
+        this.sourceCheck(current, request, operation);
+        const next = await this.store.mutateGateIndex(root, request.expectedRevision, request.ownerId, operation);
+        const undoToken = randomUUID();
+        this.undo.set(request.projectHandle, { ownerId: request.ownerId, revision: next.revision,
+            before: current, after: next, token: undoToken });
+        return next as unknown as RuntimeSnapshot;
     }
-
-    async apply(request: PlanningActionRequest, token: string, approved = false): Promise<RoadmapIndex> {
-        const { root } = this.validateRequest(request);
-        if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw new Error('Invalid planning preview token');
-        if (request.actions[0]?.type === 'document-edit') {
-            const result = await this.store.transactDocument(root, request.expectedRevision, request.ownerId, async current => {
-                const preview = await this.project(current, request, root);
-                if (preview.token !== token || !approved) throw new Error('Planning preview or approval required');
-                const action = request.actions[0];
-                if (action.type !== 'document-edit') throw new Error('Invalid linked Roadmap edit');
-                const patch = await planRoadmapDocumentPatch(root, current, {
-                    checkpointId: action.id, sourceHash: request.sourceHashes![action.id],
-                    title: action.title, objective: action.objective, order: action.order, prose: action.prose
-                });
-                if (patch.afterHash !== preview.documentDiff?.afterHash) throw new Error('Stale linked Roadmap preview');
-                return { next: preview.next, patch };
-            });
-            this.undo.delete(request.projectHandle);
-            return copy(result);
-        }
-        let undo: { before: RoadmapCheckpoint; after: RoadmapCheckpoint } | undefined;
-        const result = await this.store.transact(root, request.expectedRevision, request.ownerId, async current => {
-            const preview = await this.project(current, request, root);
-            if (preview.token !== token || preview.requiresApproval && !approved) throw new Error('Planning preview or approval required');
-            if (request.actions.length === 1 && preview.changedIds.length === 1 &&
-                ['edit', 'link', 'depend', 'reorder'].includes(request.actions[0].type)) {
-                const before = current.checkpoints.find(item => item.id === preview.changedIds[0]);
-                const after = preview.next.checkpoints.find(item => item.id === preview.changedIds[0]);
-                if (before && after) undo = { before: copy(before), after: copy(after) };
-            }
-            return preview.next.checkpoints;
-        });
-        if (undo) this.undo.set(request.projectHandle, { ownerId: request.ownerId, revision: result.revision, ...undo });
-        else this.undo.delete(request.projectHandle);
-        return copy(result);
-    }
-
-    async undoEligible(request: PlanningUndoRequest): Promise<RoadmapIndex> {
-        const { root } = this.binding(request.projectHandle, request.ownerId);
-        const entry = this.undo.get(request.projectHandle);
-        if (!entry || entry.ownerId !== request.ownerId || entry.revision !== request.expectedRevision ||
-            request.token !== digest(entry)) throw new Error('Undo conflict or unavailable');
-        const result = await this.store.transact(root, request.expectedRevision, request.ownerId, async current => {
-            const present = current.checkpoints.find(item => item.id === entry.after.id);
-            if (JSON.stringify(present) !== JSON.stringify(entry.after)) throw new Error('Undo conflict');
-            return current.checkpoints.map(item => item.id === entry.before.id ? copy(entry.before) : item);
-        });
-        this.undo.delete(request.projectHandle);
-        return copy(result);
-    }
-
     undoToken(projectHandle: string, ownerId: string): string | undefined {
         this.binding(projectHandle, ownerId);
-        const entry = this.undo.get(projectHandle);
-        return entry ? digest(entry) : undefined;
+        return this.undo.get(projectHandle)?.token;
+    }
+    async undoEligible(request: PlanningUndoRequest): Promise<RuntimeSnapshot> {
+        const { root } = this.binding(request.projectHandle, request.ownerId);
+        const entry = this.undo.get(request.projectHandle);
+        if (!entry || entry.ownerId !== request.ownerId || entry.token !== request.token)
+            throw new Error('Undo conflict');
+        const current = await this.store.read<RoadmapGateIndex>(root);
+        if (current.revision !== request.expectedRevision || current.revision !== entry.revision ||
+            JSON.stringify(current) !== JSON.stringify(entry.after)) throw new Error('Stale Roadmap revision');
+        const restored = { ...copy(entry.before), revision: current.revision + 1 };
+        const result = await this.store.saveGateIndex(root, current.revision, request.ownerId, restored);
+        this.undo.delete(request.projectHandle);
+        return result as unknown as RuntimeSnapshot;
     }
 }

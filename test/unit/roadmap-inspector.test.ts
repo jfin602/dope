@@ -2,6 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/node/project-planning-actions.js';
+import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import type { RoadmapGateIndex } from '../../packages/project-intelligence/lib/node/roadmap-gate-domain.js';
 import { RoadmapInspectorModel } from '../../packages/theia-extension/src/browser/roadmap-inspector-model.ts';
 import { roadmapNextId } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/roadmap-store.ts';
@@ -269,4 +276,52 @@ test('linked source edits use document authority and expose the exact line diff 
     assert.equal(sourceHash, 'a'.repeat(64));
     assert.match(model.previewSummary ?? '', /- Objective: Original\n\+ Objective: Edited/);
     assert.equal(state.applied, 0);
+});
+
+test('real planning service creates, approves and reloads a selected Gate without granting Green', async () => {
+    const project = await mkdtemp(join(tmpdir(), 'dope-gate-inspector-'));
+    try {
+        const store = new RoadmapStore();
+        await store.saveGateIndex(project, 0, 'uninitialized', { schemaVersion: 2, projectId: 'owner-1',
+            projectRoot: project, revision: 1, phases: [], gates: [], corrections: [] });
+        await store.mutateGateIndex(project, 1, 'owner-1', { type: 'phase.create', id: 'phase-1',
+            title: 'Phase One', objective: 'Deliver one' });
+        const actions = new ProjectPlanningActions(store);
+        const service = {
+            read: async () => store.read<RoadmapGateIndex>(project) as unknown as RoadmapIndex,
+            attach: async () => actions.attach(project), detach: async (handle: string) => actions.detach(handle),
+            preview: async (request: Parameters<ProjectPlanningActions['preview']>[0]) => actions.preview(request),
+            apply: async (request: Parameters<ProjectPlanningActions['apply']>[0], token: string, approved: boolean) =>
+                actions.apply(request, token, approved),
+            undoToken: async (handle: string, ownerId: string) => actions.undoToken(handle, ownerId),
+            undo: async (request: Parameters<ProjectPlanningActions['undoEligible']>[0]) => actions.undoEligible(request)
+        } as unknown as RoadmapService;
+        const uri = pathToFileURL(project).href;
+        const model = new RoadmapInspectorModel(service);
+        model.setSnapshot(uri, await service.read(uri));
+        await model.proposeGate('phase-1', 'gate-1', 'G1', 'Review', 'Verify result', [
+            { id: 'criterion-1', title: 'Visible', expectedResult: 'Result is visible' }]);
+        assert.equal(model.requiresApproval, true);
+        assert.equal((await store.read<RoadmapGateIndex>(project)).gates.length, 0);
+        await model.approve();
+        assert.equal(model.selectedId, 'gate-1');
+        assert.equal(model.selectedGate?.qualificationStatus, 'unknown');
+        model.changeGate('purpose', 'Verify saved result');
+        await model.saveGate();
+        assert.equal(model.requiresApproval, true);
+        await model.approve();
+        assert.equal(model.selectedGate?.purpose, 'Verify saved result');
+        model.setSnapshot(uri, await service.read(uri));
+        assert.equal(model.selectedId, 'gate-1');
+        assert.equal(model.selectedGate?.purpose, 'Verify saved result');
+        const reloaded = new RoadmapInspectorModel(service);
+        reloaded.setSnapshot(uri, await service.read(uri));
+        reloaded.select('gate-1');
+        assert.equal(reloaded.selectedGate?.purpose, 'Verify saved result');
+        assert.equal(reloaded.selectedGate?.qualificationStatus, 'unknown');
+        await reloaded.proposeGate('phase-1', 'bad\0id', 'G2', 'Invalid', 'Invalid', [
+            { id: 'criterion-2', title: 'Visible', expectedResult: 'Visible' }]);
+        assert.match(reloaded.error ?? '', /Invalid|identity/);
+        assert.equal((await store.read<RoadmapGateIndex>(project)).gates.length, 1);
+    } finally { await rm(project, { recursive: true, force: true }); }
 });

@@ -513,7 +513,7 @@ export class RoadmapStore {
 
     /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
-        operation: RoadmapGateMutation): Promise<RoadmapGateIndex> {
+        operation: RoadmapGateMutation, previewOnly = false): Promise<RoadmapGateIndex> {
         if (!revision(expectedRevision) || !id(expectedProjectId) || !operation || typeof operation !== 'object')
             throw new Error('Invalid Roadmap mutation authority');
         const next = await this.locked(root, async () => {
@@ -873,10 +873,10 @@ export class RoadmapStore {
             if (JSON.stringify(candidate) === JSON.stringify(current)) throw new Error('Roadmap mutation has no changes');
             candidate.revision = current.revision + 1;
             parseRoadmapIndex(candidate, root);
-            await this.replace(root, candidate, expectedHash);
+            if (!previewOnly) await this.replace(root, candidate, expectedHash);
             return candidate;
         });
-        this.publish({ root, projectId: next.projectId, revision: next.revision,
+        if (!previewOnly) this.publish({ root, projectId: next.projectId, revision: next.revision,
             changedIds: [...next.phases, ...next.gates, ...next.corrections].map(item => item.id) });
         return next;
     }

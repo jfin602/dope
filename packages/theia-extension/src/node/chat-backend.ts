@@ -626,6 +626,8 @@ export class ChatBackend implements ChatService {
                     raw.ownerRevision !== context[0].ownerRevision)
                     throw new Error('Invalid planning proposal schema');
                 actions = (sequence ? raw.actions : [raw.action]) as PlanningAction[];
+                if (actions.some(action => !('id' in action) || typeof action.id !== 'string'))
+                    throw new Error('Planning proposal requires a selected identity');
                 if (actions.some(action => action.type !== 'create' && action.id !== selected.id))
                     throw new Error('Planning proposal targets an unselected checkpoint');
             }
@@ -641,7 +643,7 @@ export class ChatBackend implements ChatService {
             this.proposals.set(chatId, { id, messageId, leaseToken, handle, request,
                 token: preview.token, changedIds: preview.changedIds });
             return { proposal: { id, chatId, messageId, ownerId: preview.ownerId, revision: preview.revision,
-                changedIds: preview.changedIds, action: { type: actions.length > 1 ? 'sequence' : actions[0].type, id: actions[0].id },
+                changedIds: preview.changedIds, action: { type: actions.length > 1 ? 'sequence' : actions[0].type, id: actions[0].id! },
                 summary: JSON.stringify({ actions, before: actions.map(action => fields(attached.snapshot.checkpoints.find(item => item.id === action.id))),
                     after: actions.map(action => fields(preview.next.checkpoints.find(item => item.id === action.id))),
                     ...(preview.documentDiff ? { documentDiff: preview.documentDiff } : {}) }) } };
