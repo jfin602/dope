@@ -29,8 +29,19 @@ export interface RoadmapImportPreview {
     roadmapPath: string;
     sources: RoadmapSource[];
     checkpoints: RoadmapCheckpointPreview[];
+    gateSource: RoadmapGateSourcePreview;
     diagnostics: string[];
     mind?: { revision: number; artifactIds: string[] };
+}
+/** Explicit Markdown grammar; these locations are proof, not qualification evidence. */
+export interface RoadmapGateSourcePreview {
+    phases: { id: string; sectionKey: string; title: string; objective: string; source: RoadmapCitation }[];
+    gates: { id: string; sectionKey: string; parentPhaseId: string; designation: string; title: string;
+        purpose: string; criteria: { id: string; sectionKey: string; title: string; expectedResult: string;
+            source: RoadmapCitation }[]; source: RoadmapCitation }[];
+    corrections: { id: string; sectionKey: string; parent: { kind: 'phase' | 'gate'; id: string };
+        title: string; objective: string; source: RoadmapCitation }[];
+    diagnostics: string[];
 }
 export interface RoadmapCandidate {
     path: string;
@@ -80,7 +91,69 @@ function genericIdentity(heading: string): { kind: RoadmapCheckpointPreview['kin
 }
 /** Share the importer's exact heading identity rule with guarded document patches. */
 export function roadmapSectionKey(heading: string, generic: boolean): string | undefined {
+    const criterion = /^\s*[-*]\s+Criterion\s+\S+\s*\[id:\s*([a-z0-9][a-z0-9-]*)\]/i.exec(heading);
+    if (criterion) return criterion[1].toLowerCase();
+    const explicit = /^(?:Phase\s+\d+|Gate\s+G[1-9]\d*|Correction\b[^\[]*)\s*\[id:\s*([a-z0-9][a-z0-9-]*)\]/i.exec(heading);
+    if (explicit) return explicit[1].toLowerCase();
     return (generic ? genericIdentity(heading) : identity(heading))?.key;
+}
+function parseGateSource(path: string, sha256: string, lines: string[], fenced: Set<number>): RoadmapGateSourcePreview {
+    const phases: RoadmapGateSourcePreview['phases'] = [];
+    const gates: RoadmapGateSourcePreview['gates'] = [];
+    const corrections: RoadmapGateSourcePreview['corrections'] = [];
+    const diagnostics: string[] = [];
+    const citation = (index: number): RoadmapCitation => ({ path, sha256, line: index + 1, text: lines[index] });
+    const sectionIds = new Set<string>();
+    const claim = (id: string, line: number): void => {
+        if (sectionIds.has(id)) diagnostics.push(`Duplicate section ID ${id} at line ${line}`);
+        sectionIds.add(id);
+    };
+    let currentGate: RoadmapGateSourcePreview['gates'][number] | undefined;
+    for (let index = 0; index < lines.length; index++) {
+        if (fenced.has(index)) continue;
+        const line = lines[index];
+        if (/^#{2,3} /.test(line)) currentGate = undefined;
+        const phase = /^## Phase\s+\d+\s*\[id:\s*([a-z0-9][a-z0-9-]*)\]\s*:\s*(.+)$/i.exec(line);
+        if (phase) {
+            const id = phase[1].toLowerCase(); claim(id, index + 1);
+            const objective = /^\s*(?:\*\*)?Objective(?:\*\*)?:\s*(.+)$/i.exec(lines[index + 1] ?? '')?.[1];
+            if (!objective) diagnostics.push(`Phase ${id} has no explicit objective at line ${index + 1}`);
+            phases.push({ id, sectionKey: id, title: phase[2].trim(), objective: objective ?? '', source: citation(index) });
+            continue;
+        }
+        const gate = /^### Gate\s+(G[1-9]\d*)\s*\[id:\s*([a-z0-9][a-z0-9-]*)\]\s*\[phase:\s*([a-z0-9][a-z0-9-]*)\]\s*:\s*(.+)$/i.exec(line);
+        if (gate) {
+            const id = gate[2].toLowerCase(); claim(id, index + 1);
+            const purpose = /^\s*(?:\*\*)?Objective(?:\*\*)?:\s*(.+)$/i.exec(lines[index + 1] ?? '')?.[1];
+            if (!purpose) diagnostics.push(`Gate ${id} has no explicit objective at line ${index + 1}`);
+            currentGate = { id, sectionKey: id, parentPhaseId: gate[3].toLowerCase(), designation: gate[1].toUpperCase(),
+                title: gate[4].trim(), purpose: purpose ?? '', criteria: [], source: citation(index) };
+            gates.push(currentGate); continue;
+        }
+        const correction = /^### Correction\s+(.+?)\s*\[id:\s*([a-z0-9][a-z0-9-]*)\]\s*\[(phase|gate):\s*([a-z0-9][a-z0-9-]*)\]\s*:\s*(.+)$/i.exec(line);
+        if (correction) {
+            const id = correction[2].toLowerCase(); claim(id, index + 1);
+            corrections.push({ id, sectionKey: id, parent: { kind: correction[3].toLowerCase() as 'phase' | 'gate',
+                id: correction[4].toLowerCase() }, title: correction[5].trim(), objective: correction[5].trim(), source: citation(index) });
+            continue;
+        }
+        if (/^### Gate\b/i.test(line)) diagnostics.push(`Ambiguous Gate heading at line ${index + 1}: explicit id and phase required`);
+        if (/^### Correction\b/i.test(line)) diagnostics.push(`Ambiguous correction owner at line ${index + 1}`);
+        const criterion = /^\s*[-*]\s+Criterion\s+\S+\s*\[id:\s*([a-z0-9][a-z0-9-]*)\]\s*:\s*(.+?)\s+[—-]\s+Expected:\s*(.+)$/i.exec(line);
+        if (criterion && currentGate) {
+            const id = criterion[1].toLowerCase(); claim(id, index + 1);
+            currentGate.criteria.push({ id, sectionKey: id, title: criterion[2].trim(), expectedResult: criterion[3].trim(), source: citation(index) });
+        } else if (/^\s*[-*]\s+Criterion\b/i.test(line)) diagnostics.push(`Ambiguous criterion at line ${index + 1}`);
+    }
+    const phaseIds = new Set(phases.map(item => item.id));
+    const gateIds = new Set(gates.map(item => item.id));
+    for (const gate of gates) {
+        if (!phaseIds.has(gate.parentPhaseId)) diagnostics.push(`Gate ${gate.id} has no explicit matching Phase ID at line ${gate.source.line}`);
+        if (!gate.criteria.length) diagnostics.push(`Gate ${gate.id} has no testable criteria at line ${gate.source.line}`);
+    }
+    for (const correction of corrections) if (!(correction.parent.kind === 'phase' ? phaseIds : gateIds).has(correction.parent.id))
+        diagnostics.push(`Correction ${correction.id} has no matching owner at line ${correction.source.line}`);
+    return { phases, gates, corrections, diagnostics };
 }
 async function checkedRoot(root: string): Promise<void> {
     if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root || !(await stat(root)).isDirectory())
@@ -260,6 +333,7 @@ export async function previewRoadmapImport(root: string, selectedPath = roadmapP
         if (heading) { if (sections.length) sections[sections.length - 1].end = index; sections.push({ line: index + 1, heading: heading[1], end: lines.length }); }
     }
     if (fence) diagnostics.push('Unclosed roadmap Markdown fence');
+    const gateSource = parseGateSource(selectedPath, byPath.get(selectedPath)!.sha256, lines, fencedLines);
     const counts = new Map<string, number>();
     for (const section of sections) { const item = generic ? genericIdentity(section.heading) : identity(section.heading); if (item) counts.set(item.key, (counts.get(item.key) ?? 0) + 1); }
     const checkpoints: RoadmapCheckpointPreview[] = [];
@@ -333,5 +407,6 @@ export async function previewRoadmapImport(root: string, selectedPath = roadmapP
     }
     // A missing Mind is ordinary. read() is deliberately non-initializing.
     const mind = await new ProjectMindStore().read(root);
-    return { roadmapPath: selectedPath, sources, checkpoints, diagnostics, ...(mind ? { mind: { revision: mind.revision, artifactIds: mind.artifacts.map(artifact => artifact.id) } } : {}) };
+    return { roadmapPath: selectedPath, sources, checkpoints, gateSource, diagnostics,
+        ...(mind ? { mind: { revision: mind.revision, artifactIds: mind.artifacts.map(artifact => artifact.id) } } : {}) };
 }

@@ -220,6 +220,8 @@ export default new ContainerModule(bind => {
                     await context.container.get(PlanningStore).root(uri), path, fingerprint),
                 discoverImports: async uri => discoverRoadmapCandidates(await context.container.get(PlanningStore).root(uri)),
                 previewImport: async (uri, path) => previewRoadmapImport(await context.container.get(PlanningStore).root(uri), path),
+                acceptGateImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
+                    .acceptGateImport(await context.container.get(PlanningStore).root(uri), revision, projectId, importPreview),
                 acceptImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
                     .acceptImport(await context.container.get(PlanningStore).root(uri), revision, importPreview, projectId),
                 previewReplacement: async (uri, path) => store.previewReplacement(

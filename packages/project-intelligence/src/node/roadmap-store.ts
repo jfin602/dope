@@ -511,6 +511,49 @@ export class RoadmapStore {
         return next;
     }
 
+    /** Accept an exact, reviewed Markdown preview into an empty schema-2 owner. The source is never edited. */
+    async acceptGateImport(root: string, expectedRevision: number, projectId: string,
+        preview: RoadmapImportPreview): Promise<RoadmapGateIndex> {
+        if (!id(projectId) || projectId === 'uninitialized') throw new Error('Invalid Roadmap project identity');
+        const current = await this.read<RoadmapGateIndex>(root);
+        if (current.revision !== expectedRevision || current.projectId !== 'uninitialized' && current.projectId !== projectId)
+            throw new Error('Stale Roadmap import owner or revision');
+        if (current.phases.length || current.gates.length || current.corrections.length || current.linkedDocument)
+            throw new Error('Existing Roadmap requires separate reviewed replacement');
+        const fresh = await previewRoadmapImport(root, preview.roadmapPath);
+        if (JSON.stringify(fresh) !== JSON.stringify(preview)) throw new Error('Roadmap import preview or source changed');
+        const source = fresh.sources.find(item => item.path === fresh.roadmapPath);
+        const parsed = fresh.gateSource;
+        if (!source || !parsed.phases.length || parsed.diagnostics.length)
+            throw new Error(`Roadmap Gate source is incomplete or ambiguous: ${parsed.diagnostics.join('; ')}`);
+        const phases: RoadmapPhase[] = parsed.phases.map((phase, order) => ({
+            id: phase.id, projectId, title: phase.title, objective: phase.objective, order,
+            dependencies: [], implementationStatus: 'unknown', qualificationStatus: 'unknown',
+            draftAcceptance: 'published', gateSetCoverage: { status: 'unreviewed' } }));
+        const gates: RoadmapGate[] = parsed.gates.map(gate => ({
+            id: gate.id, projectId, parentPhaseId: gate.parentPhaseId, designation: gate.designation,
+            title: gate.title, purpose: gate.purpose, order: parsed.gates.filter(item =>
+                item.parentPhaseId === gate.parentPhaseId).findIndex(item => item.id === gate.id),
+            dependencies: [], criteria: gate.criteria.map((criterion, criterionOrder) => ({
+                id: criterion.id, projectId, title: criterion.title, expectedResult: criterion.expectedResult,
+                order: criterionOrder, evidence: [] })), implementationStatus: 'unknown',
+            qualificationStatus: 'unknown', draftAcceptance: 'published' }));
+        const corrections: RoadmapCorrection[] = parsed.corrections.map((correction, order) => ({
+            id: correction.id, projectId, parent: correction.parent, title: correction.title,
+            objective: correction.objective, order, implementationStatus: 'unknown',
+            qualificationStatus: 'unknown', draftAcceptance: 'published' }));
+        const sections = [
+            ...parsed.phases.map(item => ({ sectionKey: item.sectionKey, kind: 'phase' as const, id: item.id })),
+            ...parsed.gates.flatMap(item => [{ sectionKey: item.sectionKey, kind: 'gate' as const, id: item.id },
+                ...item.criteria.map(criterion => ({ sectionKey: criterion.sectionKey, kind: 'criterion' as const,
+                    id: criterion.id }))]),
+            ...parsed.corrections.map(item => ({ sectionKey: item.sectionKey, kind: 'correction' as const, id: item.id }))];
+        const next: RoadmapGateIndex = { schemaVersion: 2, projectId, projectRoot: root, revision: expectedRevision + 1,
+            phases, gates, corrections, linkedDocument: { projectId, projectRoot: root,
+                path: fresh.roadmapPath, sourceHash: source.sha256, syncState: 'synced', sections } };
+        return this.saveGateIndex(root, expectedRevision, current.projectId, next);
+    }
+
     /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
         operation: RoadmapGateMutation, previewOnly = false): Promise<RoadmapGateIndex> {

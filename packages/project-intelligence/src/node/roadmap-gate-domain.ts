@@ -178,7 +178,7 @@ export interface RoadmapGateLinkedDocument {
     path: string;
     sourceHash: string;
     syncState: 'synced' | 'source-changed' | 'conflict' | 'pending-sync' | 'missing';
-    sections: { sectionKey: string; kind: 'phase' | 'gate' | 'correction'; id: string }[];
+    sections: { sectionKey: string; kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string }[];
 }
 export interface RoadmapGateIndex {
     schemaVersion: 2;
@@ -390,8 +390,9 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
         const sectionIds = new Set<string>();
         for (const section of sections) {
             assertion(record(section) && keys(section, ['sectionKey', 'kind', 'id']) && identifier(section.sectionKey) &&
-                member(section.kind, ['phase', 'gate', 'correction']) && identifier(section.id) &&
-                (section.kind === 'phase' ? phases : section.kind === 'gate' ? gates : corrections)
+                member(section.kind, ['phase', 'gate', 'criterion', 'correction']) && identifier(section.id) &&
+                (section.kind === 'criterion' ? (gates as RoadmapGate[]).flatMap(gate => gate.criteria) :
+                    section.kind === 'phase' ? phases : section.kind === 'gate' ? gates : corrections)
                     .some(e => (e as { id: string }).id === section.id) &&
                 !sectionKeys.has(section.sectionKey) && !sectionIds.has(section.id), 'linked section');
             sectionKeys.add(section.sectionKey); sectionIds.add(section.id);

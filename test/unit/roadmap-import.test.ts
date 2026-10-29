@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
-import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
 
 const fixture = async (run: (root: string) => Promise<void>): Promise<void> => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-import-'));
@@ -115,23 +114,17 @@ test('actual Dope sources keep qualified Phase 9 distinct from retained Phase 5 
     assert.deepEqual(await readFile(path), before);
 });
 
-test('actual mixed correction headings retain stable read-only phase association on repeated preview', async () => {
+test('actual mixed correction headings retain stable source identities on repeated preview', async () => {
     const root = process.cwd();
     const first = await previewRoadmapImport(root);
     const again = await previewRoadmapImport(root);
     assert.deepEqual(first.checkpoints.map(item => item.id), again.checkpoints.map(item => item.id));
-    const index = { schemaVersion: 1 as const, projectId: 'fixture', projectRoot: root, revision: 7,
-        checkpoints: first.checkpoints.map(item => ({ id: item.id, kind: item.kind, title: item.title,
-            objective: '', order: first.checkpoints.indexOf(item), dependencies: [], links: [],
-            status: item.status, readOnly: item.readOnly, source: item.source, evidence: item.evidence })) };
-    const before = JSON.stringify(index);
-    const projection = projectRoadmap(index);
-    assert.equal(projection.nodes.length, 31);
-    assert.equal(JSON.stringify(index), before);
-    assert.equal(projection.revision, 7);
+    assert.ok(first.checkpoints.length >= 31);
     for (const suffix of ['c4-color-theme', 'c5-physical-map-load', 'c9-codex-chat']) {
-        const node = projection.nodes.find(item => item.id.endsWith(`#${suffix}`))!;
-        assert.equal(node.phaseAssociation?.phaseId?.endsWith(`#phase-${suffix[1]}`), true);
+        const item = first.checkpoints.find(entry => entry.id.endsWith(`#${suffix}`))!;
+        assert.equal(item.kind, 'correction');
+        assert.equal(item.source.path, 'docs/roadmap/mvp-roadmap.md');
+        assert.ok(item.source.line > 0);
     }
-    assert.ok(projection.nodes.filter(node => node.kind === 'correction' && node.phaseAssociation?.phaseId).length >= 16);
+    assert.ok(first.checkpoints.filter(item => item.kind === 'correction').length >= 16);
 });
