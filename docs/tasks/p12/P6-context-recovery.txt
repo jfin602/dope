@@ -1,0 +1,20 @@
+TASK: Phase 12 / P6 — Bound Pi context and recover failed local sessions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.12.6`.
+
+PREFLIGHT
+Read all earlier P1–P5 outcomes and current model/session/History ownership. Confirm actual Pi API and local model loaded context are verified before measuring token behavior. Preserve selected AI Center connection and 32,768 Q4 test profile as scoped reference, not global default.
+
+OBJECTIVE
+Use Pi's context management and compaction to reduce overlong tool history without losing essential task goals, source references, accepted decisions, current candidate diff, validation output and remaining blockers. Dope-owned transcript/approvals remain canonical. Robustly survive model interruption, Pi crash, restart, app cancellation and project switch without duplicate operations or hidden fallback.
+
+IMPLEMENTATION
+Configure bounded system/tool context, short event/tool stdout, compaction trigger and Dope-safe state rehydration using project-scoped exact references. Record compacted versus original transcript identity, source hashes and actual context usage. Reject compaction that loses approved constraints or rewrites canonical facts. Ensure request abort/backpressure, session close/suspend, Pi worker disposal and cold-model resume are reversible and explain errors. Never migrate user global Pi sessions or write `~/.pi`.
+
+FOCUSED QUALIFICATION
+On a verified loaded local Qwen 32,768 window, test short and near-limit sequences with source-bound task constraints, compaction if naturally reached, and post-compaction requirement recall; do not force fake measurements. Test cancel during tool, Pi host failure, LM Studio stop/restart, context overflow, project switch, stale candidate and resumed Work/Chat. Report token counts, timing, tool calls and accurately mark compaction NOT TESTED if not actually triggered. Adjacent focused tests/build; no unapproved canonical mutation. STOP.
