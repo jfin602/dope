@@ -1,0 +1,18 @@
+TASK: Correction 11 / P8 — Phase Gate Criterion Markdown source grammar
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the reviewed 2026-10-29 pending-prompt supersession. The owner explicitly requested this change after reporting P7 completion. Verify actual committed P1–P7 prefix, current main, version and clean/approved worktree; do not infer Green from chat. The separate owner-run v2 execution decision is already documented; do NOT demand yet another authorization just for prompt entry. No /activate, new branch, forced reset/stash/clean, version bump, unsafe Markdown rewrite, hosted fallback, new Chat/Store/Work runtime, or persistent game mutation. Use disposable roots for destructive tests. STOP if prior prompt not source-qualified.
+
+SINGLE BOUNDED OUTCOME
+Update the canonical Markdown importer and section-key mapper to treat Phase/Gate/criterion as distinct source-backed constructs. Bind Gate to exactly one explicit Phase ID, with stable Gate/criterion section IDs and objective, accepted state and ordered criteria. Preserve line/section/source hash and read-only diagnostics. A Phase-only document remains valid but incomplete; generic task/feature bullets do NOT produce Gates. Do not write linked source while parsing, invent qualification or reintroduce schema-1 runtime fallback.
+
+FOCUSED PASS/FAIL
+Create disposable Markdown fixtures with 3 phases and gates/criteria, phase-only, task-only negative, duplicate Gate ID, ambiguous parent, correction owner and unrelated prose. Prove real RoadmapImport -> schema2 store handoff, source hashes/line locations and no source modification; focused import/candidates tests, affected compile, diff check.
+Report actual source SHA, changed seams, focused tests and remaining next-stage work. Runner tests are not live Chrome proof. No Phase/Gate Green from prompt completion; STOP on failed proof, ambiguous source authority or unapproved write.

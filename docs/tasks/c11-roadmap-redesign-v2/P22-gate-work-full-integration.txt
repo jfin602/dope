@@ -1,0 +1,17 @@
+TASK: Correction 11 / P22 — Roadmap Gate-to-Work integrated regression
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the owner-reviewed pending P8+ prompt supersession. Preserve actual P1–P7 completed Git prefix (verify, do not invent), prior P21 source-bound PASS and existing v2 execution approval. No new approval prompt merely because this file is newly authored; implementation still requires scope/Work/grant approvals at the actual action boundaries. Verify main, unchanged version, reviewed worktree, source hashes and permissions. No /activate, reset/stash/clean/force push, unapproved canonical Markdown publication, speculative Green, hosted fallback, or destructive tests on owner's persistent game. Stop if prior source gate not qualified.
+
+SINGLE BOUNDED OUTCOME
+SINGLE BOUNDED OUTCOME: Qualify the end-to-end **provider-neutral** source-authoritative Gate planning and Work interface across RoadmapStore -> Inspector/Prepare Work -> current Physical/Planning Map -> approved target -> ready WorkItems -> prompt-stack preview/publish -> deliberate Work Run -> candidate review -> criterion evidence/reconciliation -> Gate/Phase status. Use existing saved Chat, History, Phase Focus, project/source drift/relink, prompt navigation and correction branch. Demonstrate both manual/no-model and selected local model/Work paths only where genuinely available. Do not claim the future Pi integration is present; verify that future Pi can implement the same task/grant interface without Gate schema duplication. Security negatives: stale/foreign owner, missing consent, unauthorized source writes or tool grants, no automatic Green or Run. Focus tests, one justifiable `npm run check` and affected browser/Electron builds; report current tested source and any missing native GUI as gap. The independent Chrome end-to-end replay remains P23.
+
+DISPOSITION
+Record exact tested source/commands/evidence and PASS/FAIL/NOT RUN. Runner scoped tests do not prove real Chrome or native Electron. STOP on incomplete outcome; no Phase 11 Green.

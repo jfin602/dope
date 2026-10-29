@@ -1,0 +1,17 @@
+TASK: Correction 11 / P14 — Chrome UI integration qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the owner-reviewed pending P8+ prompt supersession. Preserve actual P1–P7 completed Git prefix (verify, do not invent), prior P13 source-bound PASS and existing v2 execution approval. No new approval prompt merely because this file is newly authored; implementation still requires scope/Work/grant approvals at the actual action boundaries. Verify main, unchanged version, reviewed worktree, source hashes and permissions. No /activate, reset/stash/clean/force push, unapproved canonical Markdown publication, speculative Green, hosted fallback, or destructive tests on owner's persistent game. Stop if prior source gate not qualified.
+
+MANDATORY REAL CODEX CHROME
+MANUAL GUI QUALIFICATION (not a runner implementation pass). From connected **real Codex Google Chrome**, inspect rebuilt Dope at one exact source/bundle hash. Use disposable schema2 Roadmaps. Test (1) user-created Phase->Gate->criterion persists/reloads via RoadmapStore, (2) 3 horizontal phase cards/arrowheads and nested Gate rows match owner visual grammar, (3) foldout/Inspector selection, keyboard, narrow Chat split, pan/zoom/Focus/Fit/restart, (4) Phase-only proposal and explicit Gate proposal correctly labeled; Reject/Accept distinct from canonical Markdown publication; no unapproved write, (5) first Gate Planned NOT Green. P15–P19 implement downstream Work handoff and full qualification presentation later, so do NOT fail P14 merely because that future functionality is not implemented yet; ensure no misleading enabled Prepare Work action. Record screenshot/DOM/actions, project ID, current HEAD, served browser bundle SHA, source hashes and PASS/FAIL for every case. If failures, fix only actual P14 visual/interaction defects and retest; STOP and record NOT GREEN without a fake PASS commit. On true scoped PASS, commit evidence/accepted fixes with **exact subject** `c11-roadmap-redesign-v2/P14: Chrome UI integration qualification`; the runner uses that subject to resume P15. Never fabricate a marker. Do not claim Pi/native/Phase 11 Green.
+
+DISPOSITION
+Record exact tested source/commands/evidence and PASS/FAIL/NOT RUN. Manual P14 PASS commit must use its exact canonical title/subject so the runner can resume P15. Failure must not be committed under that subject.

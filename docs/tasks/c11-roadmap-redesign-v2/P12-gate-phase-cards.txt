@@ -1,0 +1,18 @@
+TASK: Correction 11 / P12 — Horizontal Phase cards and directional arrows
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the reviewed 2026-10-29 pending-prompt supersession. The owner explicitly requested this change after reporting P7 completion. Verify actual committed P1–P7 prefix, current main, version and clean/approved worktree; do not infer Green from chat. The separate owner-run v2 execution decision is already documented; do NOT demand yet another authorization just for prompt entry. No /activate, new branch, forced reset/stash/clean, version bump, unsafe Markdown rewrite, hosted fallback, new Chat/Store/Work runtime, or persistent game mutation. Use disposable roots for destructive tests. STOP if prior prompt not source-qualified.
+
+SINGLE BOUNDED OUTCOME
+Use existing React Flow Roadmap canvas and ADR 0016 theme tokens to implement large horizontal rounded Phase cards with PHASE N label, prominent legible title, qualification summary slot, divider, thin progress track and visible left-to-right arrows. Arrows mean chronology ONLY, not dependencies or Gate pass. Gate children belong inside phases, never equal-sized floating lookalike cards or dashed pseudo-membership lines. Proposed vs canonical visible; preserve first camera/Fit/Focus, zoom, saved viewport, light/theme contrast and Chat docking. Do not hardcode screenshot's illustrative status as actual evidence.
+
+FOCUSED PASS/FAIL
+Focused roadmap canvas/spatial/viewport/theme/proposed review tests and affected browser build; no actual Chrome qualification claimed until P14. Phase IDs and source hashes unchanged by view-only actions; long/narrow fixture retains readable identity.
+Report actual source SHA, changed seams, focused tests and remaining next-stage work. Runner tests are not live Chrome proof. No Phase/Gate Green from prompt completion; STOP on failed proof, ambiguous source authority or unapproved write.

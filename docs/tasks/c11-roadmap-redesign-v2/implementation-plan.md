@@ -1,53 +1,41 @@
-# /prompt-plan — c11-roadmap-redesign-v2
+# /prompt-plan — c11-roadmap-redesign-v2 remaining implementation prompts
 
-**CURRENT v2 EXECUTION AUTHORITY (2026-10-29):** The owner deliberately started the named v2 runner; its first attempt stopped at preflight with zero code changes and no P1 PASS. That direct execution action is the **new, distinct v2 sequencing decision**, recorded in [owner-run authorization](qualification/2026-10-29-owner-run-authorization.md). It supersedes the earlier documentation-only preflight request for another written approval. Old P1's exception remains limited to old P1; G3 Chrome R1–R7 gaps remain evidence gaps. Re-run v2 P1 normally with all original technical tests and stop conditions; **do not edit immutable P*.txt source** or forge a completed prompt.
+**Date:** 2026-10-29. **Scope:** Owner-approved review/replacement of UNSTARTED P8+ only. P1–P7 are source-immutable, locally reported completed; exact local Git evidence must be verified by runner. Version `0.11.8` unchanged. [Readme](README.md), [assessment](prompt-assessment.md), [prompt source supersession](pending-prompt-supersession-2026-10-29.md).
+**Design:** ADR 0040 Gate-first semantics; screenshot-matched visual contract; ADR 0038 single existing Planning Bridge; ADR 0039 future Pi engine not yet integrated.
 
-**Date:** 2026-10-29; DOCUMENTATION / EXECUTABLE PROMPTS ONLY; NOT RUN / QUALIFIED.
-**Source:** use current HEAD/local worktree, not a stale pinned SHA. Version `0.11.8` unchanged, main only. Retain old P1 NOT GREEN and its safe incompatible-schema rejection. The old P1 exception cannot authorize this stack; the owner's subsequent direct v2 runner launch is separately documented as the v2 execution decision.
+## Phase/Gate foundations
 
-## Design and authority
+P1–P7 (unchanged): schema/criteria evidence authority, Gate/Phase eligibility, projection/service, planning actions and inspector. Preserve completed work and the original P1 NOT GREEN history. The next implementation resumes at **P8**, not by redoing foundational prompts.
 
-Build one actual Roadmap store authority with `phases[]`, `gates[]`, `corrections[]`, each Gate owns criteria with current evidence and evidence invalidation. Phase requires explicit approved coverage of its required Gate set before Phase Green eligibility. Use stable IDs and exact parents, source hashes/revisions and approved status transitions. Never treat tasks/runner prompt checkpoints as required Gates; no old alpha schema compatibility; incompatible saved index gets safe reviewed reimport/reinitialize path.
+## Source, draft and UI — P8–P14
 
-Stages are **incremental compile-safe boundaries**, not prolonged dual-model coexistence. A new pure domain validator may exist before it is called by the store, but a second runtime repository/writer or old-index-to-new qualification mapping is prohibited. Each stage compiles and has exact unit/integration success with explicitly named unimplemented next seam. P17 removes any temporary shims. The ultimate UX must match owner `this-style.png` with horizontal Phase cards, nested foldout Gates, clear arrows, restrained colors/progress and in-stage inspector/Chat docking.
+- **P8:** Phase/Gate/criterion Markdown parser and exact source mapping; implementation/task bullets are not required Gates.
+- **P9:** Safe bidirectional Gate Markdown patch/sync/relink/conflict, explicit source owner and independent publication approval.
+- **P10:** Single Greenfield review/accept/reject owner with incomplete Phase-only previews and proposed testable Gates.
+- **P11:** Existing saved Chat/local proposal extraction, correct requirement coverage and no fabricated Gate/proposed Green/model second call.
+- **P12:** Owner-image Phase containers (horizontal arrows and differentiated nesting, true state labels, viewport).
+- **P13:** Gate foldouts/in-stage Inspector, exact selected Gate and truthful nonworking Prepare Work affordance before P15.
+- **P14 (manual Chrome):** Qualify UI/selection/drafts/keyboard/Chat/source no-write. Do not demand Gate->Work execution before P15–P19. On genuine PASS commit with exact subject `c11-roadmap-redesign-v2/P14: Chrome UI integration qualification`; do not use this marker on failure.
 
-## Runner block A — core domain (P1–P7)
+## Gate -> planned work -> prompts -> agent — P15–P19
 
-- **P1 — Types and validation:** In `roadmap-store.ts` or a directly owned domain module define Phase, Gate, Criterion, Correction, evidence, status and schema validators as pure code; no unconnected second store. Test malformed IDs/parents/cycles and 0 criteria, compile. No UI expectation.
-- **P2 — Schema-2 persisted read:** Wire the real `RoadmapStore` to new schema-versioned index read/write and preserve existing safe incompatible-schema rejection. Keep compile-safe consumer boundary; update store read/roundtrip tests. Do not recreate schema-1 compatibility.
-- **P3 — Mutations:** Canonical store create/edit/reorder Phase/Gate/criterion and correction ownership with compare-and-swap revision/permissions and no-write rejects; tests persist/reload and stale/project isolation.
-- **P4 — Gate evidence qualification:** Pure deterministic criteria/evidence evaluator wired to authoritative store/service, explicit result provenance/freshness, not mutable color; tests pass/fail/missing/stale/untrusted source.
-- **P5 — Phase eligibility:** Record owner-approved Gate-set completeness, all required Gates Green/no blocker, waiver disposition, empty phase not Green; tests exercise changes invalidating Green.
-- **P6 — Projection and service:** Replace RoadmapProjection and Service interface consumers with canonical Phase/Gate projection and selected Gate identity; no orphaned old checkpoint node stand-in; compile/serve app.
-- **P7 — Planning actions:** Typed validated Gate actions and inspector model read/edit pathways with preview/approve/reject, safe source/project revision; stop if no user-approvable Gate creation.
+- **P15:** Gate-scoped Prepare Work and existing Planning Bridge owner identity; explicit source/Gate/criteria/branch refs and source-backed impact/target approval. Include separate Roadmap vs PlanningCollection identity fixes; no duplicate map.
+- **P16:** Approved target decomposed into ready, reviewable existing WorkItems with Gate/criterion and source trace; completion does not qualify.
+- **P17:** Existing phase-stack composer produces valid prompt files + sole closeout from ready WorkItems, with Gate origin/criteria/validation/working-set and provider-neutral executor; user reviews before publication. Do not demand Pi bundled.
+- **P18:** Strict preview/publish and separate deliberate Work Run, existing ExecutionGrant, isolated candidate and developer validation/promotion; publish alone does not Run and Run alone does not mark Green.
+- **P19:** Actual run/test/History/Phase Focus results traced to originating Gate, evidence reviewed for criteria/current source and stale invalidation; Phase coverage/waiver/blocked/qualification + corrections/dependencies remain distinct.
 
-## Runner block B — content + UI (P8–P13)
+## Guidance, cleanup and independent qualification — P20–P23
 
-- **P8 — Markdown import:** Phase/Gate/criterion Markdown grammar, stable section mapping, ignore non-gate bullets, preserve unrelated Markdown.
-- **P9 — Linked document roundtrip:** patch/sync/relink conflict/recovery including explicit authorization, no unintended canonical write.
-- **P10 — Greenfield review:** Gate-capable but incomplete Phase-only preview, explicit proposed vs accepted, no accidental publish/auto-Green.
-- **P11 — Chat AI proposals:** adapt saved Chat extraction/local model bounded validation so implementation steps remain tasks and missing Gate criteria are visible; no extra model call or fake schedule.
-- **P12 — Canvas phase layout:** React Flow large horizontal Phase containers, arrows, no synthetic parent wires, proposed vs canonical preview.
-- **P13 — Gate interactions:** nested keyboard/pointer foldouts, inspector selection, actual criteria/detail, pan/zoom/Focus/Fit/docked Chat. Tests and browser build, but no Chrome claim yet.
+- **P20:** Existing deterministic Dope Help and saved Chat grounded in verified Gate->Work/prompt UI paths; no second chat or false Pi availability.
+- **P21:** Remove unused old Roadmap checkpoint/milestone schema/API/aliases/tests; leave unrelated Work execution checkpoints and historical evidence.
+- **P22:** Integrated testing on disposable projects of Roadmap->Planning Map->WorkItems->prompt preview/publish->explicit Work/candidate review->Gate evidence, source hashes, permissions, restart, linked docs; one final source-coherent aggregate and builds. Pi remains Phase12; test current eligible coding runtime instead.
+- **P23 (manual independent Chrome):** Complete Gate->Work UX, actual agent invocation when eligible, prompt/approval/qualification provenance, cross-project/source negatives, owner visual target, saved Chat, source/version/bundle hashes and native Electron owner checklist. Missing required GUI proof is NOT GREEN/EVIDENCE GAP; no Phase11-wide Green.
 
-## Manual boundary (P14)
+## Runner and source rules
 
-**Browser required: yes.** In real connected Codex Chrome, demonstrate actual Gate creation/edit/persistence, 3-phase screenshot grammar, nested selection, foldout and inspector, phase-only draft/Accept/Reject, source no-write and reloaded viewport; capture bundle/source identity and test results. P14 may repair its own narrow UI bugs in manual Codex session. Do NOT call the whole redesign Green. On full scoped PASS only, create an evidence/approved source commit with exact subject `c11-roadmap-redesign-v2/P14: Chrome UI integration qualification`, so the runner can recognize the gate and continue to P15. On failure, record NOT GREEN under a non-PASS subject and STOP, do not insert fake matching history.
+The runner enforces first-authored **path** immutability. To support the explicit owner's remaining-prompt update while P1–P7 retain their completed SHA evidence, retire only old unexecuted P8–P19 paths and add new named P8–P23 files. Do NOT patch runner to relax source-integrity checks, forge completed Git subjects, or alter prompt numbers of completed work. Exact manual P14 **title remains unchanged**, preserving expected resume subject. Validate stack grammar locally after merging, then verify actual P1–P7 subjects/HEAD before running.
 
-## Runner block C — truth and cleanup (P15–P18)
+Local P1–P7 commits may not be on remote main: `git pull --ff-only` can fail if local history diverges. Review clean git status and remote/local log, `git fetch origin`, and perform a normal **non-destructive merge** of origin/main into local main if local is ahead; resolve any conflicts intentionally, without `reset --hard`, force push or rewriting known qualified commits. Resume only after the runner sees P1–P7 previously completed and P8 next. It stops again at P14; after genuine manual P14 PASS and subject commit, restart for P15–P22 and P23 final manual.
 
-- **P15 — Status + correction/dependency presentation:** required qualified N/M progress, no empty 100%, blocked/waived/stale; direct correction parent/diagnostic and deliberate dependency view. Source-backed pure selectors and component tests.
-- **P16 — Dope Help:** existing deterministic help registry + bounded Chat context for Gate meanings and verified controls, no new Chat, auto-Work or hosted fallback.
-- **P17 — Alpha cleanup:** remove every unused Roadmap checkpoint/milestone kind/API/alias and duplicate UI/test, dead charter references, while preserving unrelated Work checkpoint/History and historical documentation. Safe schema-incompatible explicit recovery remains.
-- **P18 — Cross-seam integration:** Phase Focus, Work, task discovery, History, prompt navigation, linked docs, saved Chat, ownership/permission, source drift, light/dark/theme; one full `npm run check` when coherent, affected browser/Electron builds. Do not claim native UI from build.
-
-## Final manual qualification (P19)
-
-Connected real Chrome replays Gate qualification, source hashes, draft/accept/publish separation, Phase coverage approval, status/stale/waiver, correction/dependencies, Chat Help, alpha cleanup, responsive/keyboard/theme. Independently compare exact screenshot grammar and no silent write. Document exact tested source/build and verdict, provide owner-native same-source Electron checklist; Phase 11 remains OPEN pending its independent full gates.
-
-## Operator and source rules
-
-- `npm run codex:phase:validate -- c11-roadmap-redesign-v2` locally before execution; then `npm run codex:phase -- c11-roadmap-redesign-v2`. The runner stops at P14. Qualified P14 must be committed under its exact canonical subject to permit runner P15 resumption, then runner stops again at final P19.
-- No /activate. Do not write implementation commits in this authoring. No false Git history markers or version advancement.
-- Do not overwrite local dirty owner work, force-reset/stash/clean, silently commit untracked private evidence, touch persistent game files for destructive tests or publish Markdown without permission. Use disposable fixtures.
-- No blanket 3-repair cycle on massive scopes; work is split into single-outcome prompts and STOP on unqualified slice. Focused tests/builds per prompt, no browser for P1–P13/P15–P18, real browser for P14 and P19.
+No product changes, actual tests, browser or runner actions are performed by these document/prompt updates.

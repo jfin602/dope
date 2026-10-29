@@ -1,0 +1,18 @@
+TASK: Correction 11 / P18 — Approved prompt publication and guarded agent Work handoff
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the owner-reviewed pending P8+ prompt supersession. Preserve actual P1–P7 completed Git prefix (verify, do not invent), prior P17 source-bound PASS and existing v2 execution approval. No new approval prompt merely because this file is newly authored; implementation still requires scope/Work/grant approvals at the actual action boundaries. Verify main, unchanged version, reviewed worktree, source hashes and permissions. No /activate, reset/stash/clean/force push, unapproved canonical Markdown publication, speculative Green, hosted fallback, or destructive tests on owner's persistent game. Stop if prior source gate not qualified.
+
+SINGLE BOUNDED OUTCOME
+SINGLE BOUNDED OUTCOME: Reuse `PlanningStackPublication` preview/approval/publication journal and existing AgentRuntimeService/ExecutionGrant/Work to hand a Gate-associated stack to current available coding engine. A Gate can own multiple sequential corrections/stacks; publish after explicit developer approval; viewing/editing/publishing NEVER starts Work. Separate deliberate Run invokes existing per-task tool grants, isolated candidate workspace and developer promotion. The coding agent runtime must be selected via existing AI Center/follow-coding-agent policy (current Codex/local path), not a direct Pi-only API or auto installed Pi; Phase 12 later supplies Pi behind this contract. Source/Git/owner/fingerprint and immutable authored sequence guard both publication and Run. Preserve restart/reject/cancel/revoke and runner/manual browser stages.
+PASS: safe disposable Gate -> ready WorkItems -> preview -> Reject (no file/task) and separately approved Publish -> discovered stack -> explicit Run (or honest unavailable runtime) with no unauthorized canonical write. Check publication, agent grant and candidate tests, source/hash/owner denials, no implicit execution or false Gate Green.
+
+DISPOSITION
+Record exact tested source/commands/evidence and PASS/FAIL/NOT RUN. Runner scoped tests do not prove real Chrome or native Electron. STOP on incomplete outcome; no Phase 11 Green.

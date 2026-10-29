@@ -1,0 +1,18 @@
+TASK: Correction 11 / P11 — Gate-aware saved Chat and local planning semantics
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the reviewed 2026-10-29 pending-prompt supersession. The owner explicitly requested this change after reporting P7 completion. Verify actual committed P1–P7 prefix, current main, version and clean/approved worktree; do not infer Green from chat. The separate owner-run v2 execution decision is already documented; do NOT demand yet another authorization just for prompt entry. No /activate, new branch, forced reset/stash/clean, version bump, unsafe Markdown rewrite, hosted fallback, new Chat/Store/Work runtime, or persistent game mutation. Use disposable roots for destructive tests. STOP if prior prompt not source-qualified.
+
+SINGLE BOUNDED OUTCOME
+Adapt ChatRoadmap extraction/local-model structured proposal to Phase/Gate/Criterion: explicit verifiable requirements may generate PROPOSED Gates; sequential implementation tasks or feature inventories must not automatically become required Gates. Retain response-first saved message reuse (no redundant model call), developer coverage explanations, source requirement provenance, no schedules without evidence, bounded context and exact selected-model identity. Existing saved ChatPanel remains one across dock positions. Separate planning generation from coding agent execution; no Pi installation or implicit Work tools in ordinary Chat.
+
+FOCUSED PASS/FAIL
+Actual saved message fixtures: PixiJS fixed-path tower defense list remains Phase-only/incomplete; explicit Gate acceptance criteria is proposed but not Green; original zero-health requirement accurately retained; stale/foreign source and no-write denials. Focus Chat extraction/requirements/local-model/Chat backend tests and compile.
+Report actual source SHA, changed seams, focused tests and remaining next-stage work. Runner tests are not live Chrome proof. No Phase/Gate Green from prompt completion; STOP on failed proof, ambiguous source authority or unapproved write.

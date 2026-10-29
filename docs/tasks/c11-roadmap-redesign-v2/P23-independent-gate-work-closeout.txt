@@ -1,0 +1,23 @@
+TASK: Correction 11 / P23 — Independent Gate-to-Work Chrome closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+INDEPENDENT MANUAL CLOSEOUT — NOT A NEW IMPLEMENTATION LOOP
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan, owner-reviewed pending P8+ supersession, actual P1–P22 source-bound PASS and P14 manual evidence. Confirm current main/worktree, backend+frontend served bundle hashes, project/version and real connected Codex-controlled Google Chrome. Reuse historic G3 owner-reported scope only where actually source-applicable; never invent missing Chrome/native proof. No /activate, version bump, branch change, destructive persistent-game fixtures, automatic Work or linked publication, or false source/evidence claims.
+
+MANDATORY INDEPENDENT REAL-CHROME MATRIX
+1. **Target visual/editor:** Three+ horizontally linked dark Phase cards (PHASE N/title, thin truthful bar, source-backed status, nested Gate foldouts with icons/chevrons), no floating lookalike Gate cards/dashed owner buses; navigate with mouse/keyboard/touch, pan/zoom/Fit/Focus, reload, narrow Chat, light/custom/reduced-motion, in-stage inspector. Screenshot compare owner `this-style.png`; illustrative screenshot Green is not a qualification claim.
+2. **Canonical authority:** Create Phase->Gate->criterion in disposable schema2 project; source+revision bound edit/reload; incomplete Phase-only draft, measurable proposed Gate, Accept/Reject, accepted noncanonical vs separately approved Markdown publication. No task bullet to required Gate automatically; linked doc conflict/relink/restart and source no-write denials. Old unsupported index remains byte-for-byte unchanged on refusal.
+3. **Actual Gate -> planning -> prompts:** Select Gate and operate Prepare Work; inspect real current Software Map impact and source; approve exact scope and target Planning Map; review Gate-linked WorkItems/criteria/working sets; compose P*.txt + sole closeout with source/dependencies; preview and reject without files, then separately approve a publication. Validate correct prompt grammar, no fabricated Gate Green, stable source identity and prompt navigation. Do not substitute a fabricated standalone mock.
+4. **Work/agent handoff:** Confirm approved prompt publication by itself does not Run, and deliberate Work Run uses existing selected coding agent through Dope authorization/grant and isolated candidate review. If Pi is not integrated, test an available existing provider and record **Pi pending Phase 12**, not a v2 failure. If no eligible agent/approved grant available, mark required execution path EVIDENCE GAP/NOT GREEN and report realistic next action; never fake agent tool effects.
+5. **Evidence reconciliation:** Link actual run/validation/History/Phase Focus evidence to originating Gate criteria; failed test => NOT GREEN, accepted current criterion evidence => Gate eligible Green, changed source => stale/requalification. Phase Green requires approved complete nonempty Gate set/all current required Gates qualified/no unresolved blockers. Waiver separate. Verify correction exact parent and source-based dependencies distinct from chronological phase arrows.
+6. **Help and alpha cleanup:** Existing ChatPanel/Dope Help accurately explains Gate->Prepare Work->WorkItems->prompt preview/publish->Run and statuses with verified UI controls, no fabricated paths, silent provider fallback or writing. Confirm no active old Roadmap checkpoint schema/aliases/duplicate Chat/Store; historical evidence and unrelated execution 'checkpoint' preserved.
+7. **Independent source/security:** Verify final Git SHA, served JS/bundle hashes, saved Chat/model provider, test inventory, candidate reject/accept/approval operations, wrong-root/stale/foreign/permission and unauthorized Markdown/Work negatives. Build and test success alone is not Chrome; Electron build alone not native GUI parity.
+
+FINAL DISPOSITION
+Record per gate PASS/FAIL/BLOCKED/NOT RUN and evidence/screenshots/actions/source/hash in `docs/tasks/c11-roadmap-redesign-v2/closeout.md` ONLY after running. All mandatory Chrome gates PASS => `GATE ROADMAP + WORK HANDOFF CHROME-SCOPED QUALIFIED — OWNER NATIVE VERIFICATION PENDING`; any required unobserved/failing case => `NOT GREEN / EVIDENCE GAP` and shortest targeted correction. Provide owner-operated same-source native Electron checklist. This closeout cannot mark Phase 11, Pi Phase 12 or old G3 unobserved gates Green. STOP.

@@ -1,55 +1,50 @@
-# c11-roadmap-redesign-v2 — Gate-first Roadmap execution recovery
+# c11-roadmap-redesign-v2 — Gate-first Roadmap and Gate-to-Work control center
 
-**CURRENT v2 EXECUTION AUTHORITY (2026-10-29):** The owner deliberately started the named v2 runner; its first attempt stopped at preflight with zero code changes and no P1 PASS. That direct execution action is the **new, distinct v2 sequencing decision**, recorded in [owner-run authorization](qualification/2026-10-29-owner-run-authorization.md). It supersedes the earlier documentation-only preflight request for another written approval. Old P1's exception remains limited to old P1; G3 Chrome R1–R7 gaps remain evidence gaps. Re-run v2 P1 normally with all original technical tests and stop conditions; **do not edit immutable P*.txt source** or forge a completed prompt.
+**Updated:** 2026-10-29. **Owner decision:** Update unexecuted P8 onward after P7 completion, retaining P1–P7 exact authored bytes and completed work. **Product version:** `0.11.8` unchanged. Phase 11 remains OPEN until separately qualified.
+**Approved design:** [ADR 0040](../../decisions/0040-phase-gate-roadmap-domain.md); [visual target contract](../../planning/p11/roadmap-visual-hierarchy-contract.md); owner reference `this-style.png`. [Prompt assessment](prompt-assessment.md), [implementation plan](implementation-plan.md), [pending-source supersession record](pending-prompt-supersession-2026-10-29.md).
+**Existing entry approval:** [Owner-run authorization](qualification/2026-10-29-owner-run-authorization.md) established separate v2 execution intent. Do not demand another approval merely to enter an authorized prompt. Individual scope, source writes, prompt publication, Work Run, tool grants and Gate qualification retain their own explicit authority.
 
-**Decision:** 2026-10-29 owner-directed redesign of failed `c11-roadmap-redesign` P1; docs/prompts only.
-**Execution stack:** `c11-roadmap-redesign-v2` (new identity required by `scripts/codex-phase.mjs` authored-prompt immutability). The original [P1 NOT GREEN evidence](../c11-roadmap-redesign/qualification/2026-10-29-p1-repair-cycles.md), owner [sequencing exception](../c11-roadmap-redesign/qualification/2026-10-29-p1-sequencing-exception.md), and P1–P7 authored prompt bytes remain historical and are NOT edited or requalified.
-**Version:** `0.11.8` unchanged (verify current package and exact source before Run). Phase 11 remains OPEN / NOT QUALIFIED. No product implementation or browser qualification is claimed by these authored prompts.
-**Authority:** [ADR 0040](../../decisions/0040-phase-gate-roadmap-domain.md) and [visual contract](../../planning/p11/roadmap-visual-hierarchy-contract.md). The exact owner `this-style.png` reference remains the visual target; no new image/style target.
-**Why v2:** Old P1 required schema/store/projection/qualification/UI all at once. The connected-Chrome three-repair report retained safe incompatible-schema rejection only, with the app still on `checkpoints[]`. Re-running the same massive P1 or rewriting its immutable source is prohibited.
+## Canonical outcome
 
-## Authoritative status and entry
+**Phase -> required Gates -> testable Criteria** answers *what must pass*. **Gate -> approved Planning Map / WorkItems -> reviewable prompt stack -> explicitly approved agent Work -> source-bound evidence** answers *what to build and what was proven*. The Roadmap is the planning/progression control center; existing Planning Maps own architecture design, WorkItems own scoped implementation, the Prompt Stack Composer owns executable text, Work owns execution/grants/candidates, and Gate evidence owns qualification. No duplicate Chat, Roadmap store, Planning Map or coding agent runtime.
 
-At the reviewed source, the original G3 P4 has an **owner-accepted native-priority Green disposition**, with incomplete Chrome R1–R7 evidence; its limitation remains explicit. The historical P1 sequencing exception applied only to former P1. A **new, separate v2 execution decision** is now documented from the owner's deliberate v2 runner invocation; it authorizes entering this stack, without qualifying outstanding G3 Chrome gaps. The earlier exception is historical only and does not waive any v2 implementation or qualification gate. Read actual local repo state and do not assume an uncommitted outcome is on `main`.
+A WorkItem or prompt completing does NOT qualify a Gate. A Phase is GREEN only with owner-approved complete Gate coverage, every required Gate GREEN on current evidence and no blockers. The owner-approved horizontal phase cards/nested Gate foldouts/clean chronological arrows remain the visual target. Linked Markdown/source hash and explicit approval remain authoritative.
 
-The P1 not-Green result and its safe rejection are an **input baseline**, not a completed v2 prompt. V2 starts at P1 with new contracts/tests. Preserve the existing no-write rejection until the new schema is authoritative; do not let its continued existence mask a missing implementation.
+**Pi:** Phase 12 [ADR 0039](../../decisions/0039-bundled-pi-local-agent-runtime.md) will bundle Pi as local coding runtime through existing AI Center/Dope grant broker. V2 must produce **provider-neutral** Gate->Work/prompt contracts using current available agent runtime, not install Pi, require Pi-specific tool calls or silently switch models. Pi can plug in later without another prompt/qualification owner.
 
-## Runner and manual boundaries
+## Source-history rule (important)
 
-P1–P13 use `Browser required: no.` and should run through `npm run codex:phase -- c11-roadmap-redesign-v2` on a reviewed clean checkout after `npm run codex:phase:validate -- c11-roadmap-redesign-v2`. Each runner prompt has a **single bounded implementation outcome** and focused code-level qualification; no arbitrary eight-minute architectural deadline and no repeated mandatory Chrome on disconnected backend slices. Runner commits successful prompts with its normal exact-subject convention. A run **stops at P14**, which is the manual real-Chrome UI integration qualification. On P14 PASS, manually commit the evidence and any accepted repair with **exact subject** `c11-roadmap-redesign-v2/P14: Chrome UI integration qualification` (the same subject returned by `promptCommitSubject`). Then the runner can resume at P15 after verifying history/source/clean worktree. Never record the PASS subject on failure or without genuine Chrome evidence. A separate non-PASS evidence commit can retain failures.
+The repository runner checks the **first committed bytes of each P*.txt path**; it rejects in-place edits as authored-source drift. The owner asked to change only remaining unstarted prompts. Thus P1–P7 are **untouched** and source-bound historical P1 failure evidence is preserved. The earlier **unstarted** P8–P19 paths are deleted from the active tree and their historical content remains in Git; newly named, materially revised P8–P23 files were added in this same v2 folder. Contiguous P numbering, original completed prefix, strict runner grammar, stable version and manual P14 checkpoint subject are preserved. [Full mapping and supersession rationale](pending-prompt-supersession-2026-10-29.md). This is reviewed future-source supersession, **not** a bypass of runner validation, a rewrite of started prompts, or fake completion.
 
-P15–P18 are runner compatible and cover status/relationships, Dope Help, dead code removal and cross-seam integration. P19 is the ONE final manual browser closeout; the runner stops for it and does not confer Green. All browser evidence must come from connected **real Codex Google Chrome** on current rebuilt Dope; independent Electron is owner-operated, not inferred from build. If any intermediate step fails its **own** scoped contract, STOP and repair that slice, never carry a false PASS marker forward.
+## Execution map
 
-## Prompt sequence
-
-| Prompt | Mode | Bounded proof |
+| Span | Route | Single scope / acceptance |
 | --- | --- | --- |
-| P1 | Runner | Domain types and pure validators; no runtime cutover |
-| P2 | Runner | Schema-2 store read/reject with safe files |
-| P3 | Runner | Gate/Phase/Correction store mutations and revisions |
-| P4 | Runner | Criterion evidence evaluator and stale result |
-| P5 | Runner | Phase completeness/waiver/Green eligibility |
-| P6 | Runner | Canonical projection/service integration |
-| P7 | Runner | Validated planning actions and inspector domain |
-| P8 | Runner | Phase/Gate Markdown import and stable mapping |
-| P9 | Runner | Linked Markdown patch/sync/relink |
-| P10 | Runner | Reviewable greenfield Gate draft |
-| P11 | Runner | Chat extraction/local planning without task->Gate invention |
-| P12 | Runner | Horizontal Phase cards and arrow view |
-| P13 | Runner | Nested Gate foldout/inspector/viewport navigation |
-| P14 | Manual Chrome | Actual visual/editor contract at this boundary |
-| P15 | Runner | Gate status/progress/corrections/dependencies |
-| P16 | Runner | Existing Dope Help/Chat grounded in Gates |
-| P17 | Runner | Alpha legacy checkpoint path and dead-code removal |
-| P18 | Runner | Connected Work/Phase Focus/History/Markdown integration |
-| P19 | Manual Chrome closeout | Independent final-source qualification/native handoff |
+| P1–P7 | Runner — **reported completed locally** | Authoritative Phase/Gate domain, evidence/Phase eligibility, projection/service and typed planning action |
+| P8 | Runner | Phase/Gate/criterion Markdown import |
+| P9 | Runner | Lossless linked Markdown sync/relink |
+| P10 | Runner | Proposed/accepted Gate greenfield drafts |
+| P11 | Runner | Chat/local planning semantics, no task->Gate auto-conversion |
+| P12 | Runner | Horizontal Phase cards + arrows |
+| P13 | Runner | Nested Gate foldouts, inspector and selected Gate |
+| **P14** | **Manual real Chrome** | Actual Gate/editor/visual GUI qualification (not yet agent handoff) |
+| P15 | Runner | Gate-scoped Prepare Work and Planning Bridge owner identity |
+| P16 | Runner | Gate criteria -> reviewed ready WorkItems |
+| P17 | Runner | Gate WorkItems -> valid prompt-stack draft |
+| P18 | Runner | Preview/publish + separate approved Work execution |
+| P19 | Runner | Run/test evidence -> Gate qualification/status/correction links |
+| P20 | Runner | Existing Dope Help and saved Chat guidance |
+| P21 | Runner | Remove unused Roadmap checkpoint/milestone code |
+| P22 | Runner | Provider-neutral end-to-end integration and source-bound tests |
+| **P23** | **Manual real Chrome** | Independent full Gate->Work->evidence GUI closeout; native owner handoff |
 
-## Safety / stop laws
+Each implementation prompt is bounded to one owner/seam and focused source tests; no recurring three-cycle browser requirement on disconnected backend work. P14 and P23 need **real connected Codex Chrome**, not a browser build/JSDOM. Browser status is scoped. Phase 11/native Pi are independently qualified later.
 
-- New **one canonical** Phase/Gate/Criterion domain replaces active Roadmap checkpoint/milestone semantics. No enduring runtime compatibility for broken alpha `.dope` schemas; temporary code-compilation seams must be explicitly tracked and removed by P17. Do not create a second independent Roadmap writer. Reuse `RoadmapStore`, greenfield, planning actions, current inspector and saved dockable ChatPanel.
-- Preserve normal user-authored Markdown, independent project source files, prior Chrome/NOT GREEN reports, model/Work approvals, source/revisions and Git history. Incompatible indexes show explicit safe recovery; never delete or rewrite original bytes without distinct human approval.
-- Do not change `0.11.8`, dependencies/lockfile, branch, model defaults or hosted permissions. Never reset/stash/clean/force push, overwrite owner dirty work or mutate the persistent PixiJS project for tests. Disposable project fixtures for destructive tests.
-- **Tests are scoped**: a P2 parser passing does not qualify P6 projection; a completed Work prompt does not qualify Gate Green; browser build is not a Chrome check. Use focused tests and affected build per slice and one justified final aggregate near P18/P19.
-- No /activate step. Do not use `--closeout` to bypass manual P19. Native Electron verification is separate. The prior P1 sequencing exception remains old-P1-only; the new owner-run v2 execution decision is documented above and is NOT a qualification waiver.
+## How to resume after P7
 
-**Prompt files are authored only; v2 has not been run or qualified.**
+1. Preserve and verify local completed P1–P7 runner commits, clean/approved worktree and `0.11.8`. This authoring connection cannot see local unpushed runner commits; no P1–P7 PASS is asserted from GitHub remote. Reconcile Git history without losing the original completed commits or source evidence. If local main is ahead of origin/main, `git pull --ff-only` may refuse; use a reviewed non-destructive merge after `git fetch` rather than resetting or discarding commits.
+2. Run `npm run codex:phase:validate -- c11-roadmap-redesign-v2`; inspect P8–P23 active prompt names. Then `npm run codex:phase -- c11-roadmap-redesign-v2`. The runner must identify P1–P7 as previously completed by their exact commit subjects and continue at P8. If it starts at P1, STOP and inspect the Git prefix; don't manufacture markers.
+3. It stops at **P14**. After genuine Chrome PASS only, commit evidence (and qualified fixes) with exact subject `c11-roadmap-redesign-v2/P14: Chrome UI integration qualification`. Then rerun runner for P15–P22. It stops again at **P23** for independent manual Chrome closeout.
+4. Use disposable project roots for rejection/security fixtures; preserve owner PixiJS game files, source Markdown, original P1 NOT GREEN evidence, and original accepted G3 limitations. No /activate, branch reset, force push, auto Work, surprise publication, version bump or hosted fallback. Block on real safety/authority/test failure; don't request redundant execution consent.
+
+**This commit only revises future documents/prompts; it does not run new product work, local validator, browser or native qualification.**

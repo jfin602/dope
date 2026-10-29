@@ -1,0 +1,18 @@
+TASK: Correction 11 / P16 — Approved Gate target into traceable WorkItems
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the owner-reviewed pending P8+ prompt supersession. Preserve actual P1–P7 completed Git prefix (verify, do not invent), prior P15 source-bound PASS and existing v2 execution approval. No new approval prompt merely because this file is newly authored; implementation still requires scope/Work/grant approvals at the actual action boundaries. Verify main, unchanged version, reviewed worktree, source hashes and permissions. No /activate, reset/stash/clean/force push, unapproved canonical Markdown publication, speculative Green, hosted fallback, or destructive tests on owner's persistent game. Stop if prior source gate not qualified.
+
+SINGLE BOUNDED OUTCOME
+SINGLE BOUNDED OUTCOME: From approved Gate scope + current Planning Map target, generate/review one-to-many (or many-to-one where source-backed) **WorkItems** associated with the originating Gate and relevant criteria, source branches and dependencies. Use existing VisualPlanningService/PlanningTargetReview/suggestWorkItems and WorkItem owners; no duplicate Task owner. WorkItems retain working set, constraints, acceptance criteria, validation targets, source hash, expected revision and readiness. Add required mapping of which Gate criteria each WorkItem is intended to support, but completion does not qualify those criteria. Preserve explicit human Accept/Reject/adjust/split/merge, cycle checks and provisional -> ready state. Block stale target, foreign Gate or unaccepted criteria.
+PASS: Gate -> approved target -> 2 reviewed ready WorkItems, stable Gate association, source/criterion traceability, one-to-many negative, wrong owner/stale-basis denials and no AgentTask before separate Run. Focus target-review, WorkItem and planning-store tests.
+
+DISPOSITION
+Record exact tested source/commands/evidence and PASS/FAIL/NOT RUN. Runner scoped tests do not prove real Chrome or native Electron. STOP on incomplete outcome; no Phase 11 Green.

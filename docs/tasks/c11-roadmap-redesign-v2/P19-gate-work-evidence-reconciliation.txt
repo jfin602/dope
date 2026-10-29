@@ -1,0 +1,18 @@
+TASK: Correction 11 / P19 — Associate work evidence and qualification to Gates
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the owner-reviewed pending P8+ prompt supersession. Preserve actual P1–P7 completed Git prefix (verify, do not invent), prior P18 source-bound PASS and existing v2 execution approval. No new approval prompt merely because this file is newly authored; implementation still requires scope/Work/grant approvals at the actual action boundaries. Verify main, unchanged version, reviewed worktree, source hashes and permissions. No /activate, reset/stash/clean/force push, unapproved canonical Markdown publication, speculative Green, hosted fallback, or destructive tests on owner's persistent game. Stop if prior source gate not qualified.
+
+SINGLE BOUNDED OUTCOME
+SINGLE BOUNDED OUTCOME: Reconcile Gate-linked WorkItem/AgentTask/Run/History and real validation artifacts into read-only evidence suggestions and source-backed qualification records, using existing validators and authorized status transitions. A successful prompt, Git checkpoint or Pi/Codex 'done' alone is NOT criterion PASS. Developer-reviewed test/manual evidence must specify criterion, tested source hash, current project and freshness. Show implementation completion separately from Gate GREEN, stale evidence requalification after source changes, actual N/M qualified Gate count, approved complete Gate-set and blockers. Associate exact-parent corrections and typed dependency evidence (no proximity/name inference); keep unowned diagnostics and no phantom Green. Do not rewrite historical Work reports.
+PASS: completed Work but failing criterion => NOT GREEN; accepted passing evidence => Gate eligible, source changed => stale, all gates Green without phase coverage approval => Phase NOT GREEN; waiver separate, correction exact parent, foreign/unknown evidence negative. Focus qualification/projection/Work/history/Phase Focus tests and affected build.
+
+DISPOSITION
+Record exact tested source/commands/evidence and PASS/FAIL/NOT RUN. Runner scoped tests do not prove real Chrome or native Electron. STOP on incomplete outcome; no Phase 11 Green.

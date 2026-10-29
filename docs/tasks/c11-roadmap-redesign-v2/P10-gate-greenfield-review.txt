@@ -1,0 +1,18 @@
+TASK: Correction 11 / P10 — Reviewable Gate greenfield proposals and approval
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION AUTHORITY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, the Roadmap visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the reviewed 2026-10-29 pending-prompt supersession. The owner explicitly requested this change after reporting P7 completion. Verify actual committed P1–P7 prefix, current main, version and clean/approved worktree; do not infer Green from chat. The separate owner-run v2 execution decision is already documented; do NOT demand yet another authorization just for prompt entry. No /activate, new branch, forced reset/stash/clean, version bump, unsafe Markdown rewrite, hosted fallback, new Chat/Store/Work runtime, or persistent game mutation. Use disposable roots for destructive tests. STOP if prior prompt not source-qualified.
+
+SINGLE BOUNDED OUTCOME
+Update the single RoadmapGreenfield owner to draft Phase -> proposed Gate -> criteria with exact parent, stable ID and clear unresolved requirement coverage. Phase-only draft with zero Gates remains reviewable and NOT GREEN. Explicit measurable gates may be suggested but never accepted automatically; acceptance of Roadmap structure is not approval that a Phase Gate-set is complete and not approval of linked Markdown publication. Preserve existing Chat message-linked proposal identity, Accept/Reject, source-stale checks, bounded edits and no second draft store.
+
+FOCUSED PASS/FAIL
+Run real schema2 draft create/inspect/edit/accept/reject/reload, proposal-only vs accepted Gate counts, phase-only and task-only negatives, duplicate/foreign/stale token, no canonical file on reject or accepted noncanonical draft. Focus greenfield/create-sync/create-ui tests and affected build.
+Report actual source SHA, changed seams, focused tests and remaining next-stage work. Runner tests are not live Chrome proof. No Phase/Gate Green from prompt completion; STOP on failed proof, ambiguous source authority or unapproved write.

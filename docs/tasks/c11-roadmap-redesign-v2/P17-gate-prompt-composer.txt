@@ -1,0 +1,18 @@
+TASK: Correction 11 / P17 — Gate-scoped prompt-stack authoring from ready WorkItems
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+
+PREFLIGHT / EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040, visual contract, c11-roadmap-redesign-v2 README/assessment/plan and the owner-reviewed pending P8+ prompt supersession. Preserve actual P1–P7 completed Git prefix (verify, do not invent), prior P16 source-bound PASS and existing v2 execution approval. No new approval prompt merely because this file is newly authored; implementation still requires scope/Work/grant approvals at the actual action boundaries. Verify main, unchanged version, reviewed worktree, source hashes and permissions. No /activate, reset/stash/clean/force push, unapproved canonical Markdown publication, speculative Green, hosted fallback, or destructive tests on owner's persistent game. Stop if prior source gate not qualified.
+
+SINGLE BOUNDED OUTCOME
+SINGLE BOUNDED OUTCOME: Adapt EXISTING `composePhaseStackDraft` and `VisualPlanningBackend.stackOutline/previewStackPublication` to prepare implementation prompts for an accepted Gate's ready WorkItems. Preserve T1/T2 sizing, source working sets, dependencies, validation commands, a sole final manual closeout, proper filenames/runner grammar and developer-editable outline ordering BEFORE authored prompt files exist. Every generated prompt identifies the originating Gate, relevant criteria, specific WorkItem and source basis, but does not claim Gate GREEN. Distinguish the planning model used to compose prompts from the AI Center coding agent selected later for Work; do not hardcode Pi availability or force hosted GPT. Pi support is Phase 12 and must consume the same provider-neutral task contract.
+PASS: verified existing Planning Map WorkItems -> exact reviewable P1..Pn + manual closeout, gate/criteria trace in output, dependency order/cycles, valid grammar, local provider independence, no prompt file writes on preview and source-drift negatives. Focus composer, planning-backend, runner-import tests.
+
+DISPOSITION
+Record exact tested source/commands/evidence and PASS/FAIL/NOT RUN. Runner scoped tests do not prove real Chrome or native Electron. STOP on incomplete outcome; no Phase 11 Green.
