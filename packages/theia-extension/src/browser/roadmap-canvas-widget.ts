@@ -962,7 +962,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.reviewedPlan?.preview && !this.createState ? 'Proposed plan projection on canvas · Review the graph and accept or reject below. Nothing has been published.' :
             this.strategic?.review ? 'Proposed Roadmap on canvas · Not yet accepted. Accept or reject here. Nothing has been published.' :
             this.proposedDraft ? 'Proposed draft on canvas · Review and accept or reject in the selected Chat. Nothing has been published.' :
-                this.createState ? `Accepted draft revision ${this.createState.draft.revision} on canvas · Preview and explicitly approve creation to publish linked Markdown.` :
+                this.createState ? `Accepted draft revision ${this.createState.draft.revision} on canvas · Review Phase and Gate definitions before accepting Roadmap structure. Markdown publication requires separate approval.` :
                     'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
             `${displayedCount} displayed checkpoints · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ''}${this.reviewedPlan ? ' · Reviewed plan remains noncanonical; bulk projection into this Roadmap is unavailable.' : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
     }
@@ -975,7 +975,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.strategicBar.setAttribute('aria-label', 'Roadmap draft review');
         const heading = document.createElement('strong');
         const terminal = state.error || state.stage === 'failed' || state.stage === 'cancelled';
-        const incomplete = !!state.review && state.review.draft.phases.some(phase => !phase.checkpoints.length);
+        const incomplete = !!state.review && state.review.draft.phases.some(phase => !phase.gates?.length);
         heading.textContent = terminal ? state.stage === 'cancelled' ? 'ROADMAP PREPARATION CANCELLED' :
             'ROADMAP PREPARATION FAILED' : state.review ?
             incomplete ? 'INCOMPLETE ROADMAP PROPOSAL · NOT YET ACCEPTED' : 'PROPOSED ROADMAP · NOT YET ACCEPTED' :
@@ -988,7 +988,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             failed: 'Preparation failed. Review Roadmap and request a new proposal from Chat.' };
         progress.setAttribute('role', 'status');
         progress.textContent = state.error ?? (state.review ?
-            `${incomplete ? 'Incomplete: add checkpoints before linked Markdown publication. ' : ''}` +
+            `${incomplete ? 'Incomplete: Phase Gate-set coverage remains unresolved. ' : ''}` +
             `${state.review.diagnostic ?? 'Inspect the graph, then accept or reject this noncanonical proposal.'}` :
             labels[state.stage ?? ''] ?? 'Checking Roadmap');
         this.strategicBar.append(heading, progress);
@@ -1994,10 +1994,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const current = await this.service.read(state.uri);
             if (current.projectId !== state.projectId || current.revision !== 0 || this.projectUri !== state.uri)
                 throw new Error('Roadmap changed. Refresh and start a new draft');
-            const result = await this.service.acceptDraft(state.handle, state.preview, true);
+            await this.service.acceptDraft(state.handle, state.preview, true);
             if (serial !== this.createSerial || this.createState !== state) return;
             this.createState = undefined;
-            this.inspector.setSnapshot(state.uri, result);
             await this.refresh();
         } catch (error) { if (serial === this.createSerial && this.createState === state) state.error = `Creation failed: ${String(error)}. Review the preview and retry, or Refresh to recover.`; }
         finally { if (serial === this.createSerial && this.createState === state) { state.busy = false; this.renderImportEntry(); } }
@@ -2101,6 +2100,56 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 title: phaseTitle.value, objective: phaseObjective.value }); };
             const savePhase = document.createElement('button'); savePhase.type = 'submit'; savePhase.textContent = 'Update phase'; savePhase.disabled = state.busy;
             phaseEdit.append(phaseTitleLabel, phaseObjectiveLabel, savePhase); group.append(phaseEdit);
+            if (!item.kind) {
+                const gateForm = document.createElement('form');
+                const gateTitle = document.createElement('input'); gateTitle.required = true; gateTitle.maxLength = 200;
+                gateTitle.setAttribute('aria-label', `New Gate in ${item.title}`);
+                const gatePurpose = document.createElement('input'); gatePurpose.required = true; gatePurpose.maxLength = 8192;
+                gatePurpose.setAttribute('aria-label', 'Testable Gate purpose');
+                gateForm.onsubmit = event => { event.preventDefault(); void this.previewCreateEdit({
+                    type: 'create-gate', phaseId: item.id, title: gateTitle.value, purpose: gatePurpose.value }); };
+                const addGate = document.createElement('button'); addGate.type = 'submit'; addGate.textContent = 'Preview Gate';
+                gateForm.append(gateTitle, gatePurpose, addGate); group.append(gateForm);
+                for (const gate of item.gates ?? []) {
+                    const gateHeading = document.createElement('h6'); gateHeading.textContent = `${gate.designation} · ${gate.title} · Proposed definition`;
+                    group.append(gateHeading);
+                    const gateEdit = document.createElement('form');
+                    const gateName = document.createElement('input'); gateName.required = true; gateName.maxLength = 200;
+                    gateName.value = gate.title; gateName.setAttribute('aria-label', `Edit ${gate.designation} title`);
+                    const gateObjective = document.createElement('input'); gateObjective.required = true; gateObjective.maxLength = 8192;
+                    gateObjective.value = gate.purpose; gateObjective.setAttribute('aria-label', `Edit ${gate.designation} purpose`);
+                    gateEdit.onsubmit = event => { event.preventDefault(); void this.previewCreateEdit({
+                        type: 'edit-gate', phaseId: item.id, gateId: gate.id,
+                        title: gateName.value, purpose: gateObjective.value }); };
+                    const saveGate = document.createElement('button'); saveGate.type = 'submit'; saveGate.textContent = 'Preview Gate edit';
+                    gateEdit.append(gateName, gateObjective, saveGate); group.append(gateEdit);
+                    const criterionForm = document.createElement('form');
+                    const criterionTitle = document.createElement('input'); criterionTitle.required = true; criterionTitle.maxLength = 200;
+                    criterionTitle.setAttribute('aria-label', `New criterion for ${gate.designation}`);
+                    const expected = document.createElement('input'); expected.required = true; expected.maxLength = 8192;
+                    expected.setAttribute('aria-label', `Expected observation for ${gate.designation}`);
+                    criterionForm.onsubmit = event => { event.preventDefault(); void this.previewCreateEdit({
+                        type: 'add-criterion', phaseId: item.id, gateId: gate.id,
+                        title: criterionTitle.value, expectedResult: expected.value }); };
+                    const addCriterion = document.createElement('button'); addCriterion.type = 'submit';
+                    addCriterion.textContent = 'Preview criterion';
+                    criterionForm.append(criterionTitle, expected, addCriterion); group.append(criterionForm);
+                    for (const criterion of gate.criteria) {
+                        const criterionEdit = document.createElement('form');
+                        const criterionName = document.createElement('input'); criterionName.required = true; criterionName.maxLength = 200;
+                        criterionName.value = criterion.title; criterionName.setAttribute('aria-label', `Edit ${criterion.title} criterion`);
+                        const criterionResult = document.createElement('input'); criterionResult.required = true; criterionResult.maxLength = 8192;
+                        criterionResult.value = criterion.expectedResult;
+                        criterionResult.setAttribute('aria-label', `Edit expected result for ${criterion.title}`);
+                        criterionEdit.onsubmit = event => { event.preventDefault(); void this.previewCreateEdit({
+                            type: 'edit-criterion', phaseId: item.id, gateId: gate.id, criterionId: criterion.id,
+                            title: criterionName.value, expectedResult: criterionResult.value }); };
+                        const saveCriterion = document.createElement('button'); saveCriterion.type = 'submit';
+                        saveCriterion.textContent = 'Preview criterion edit';
+                        criterionEdit.append(criterionName, criterionResult, saveCriterion); group.append(criterionEdit);
+                    }
+                }
+            }
             for (const checkpoint of item.checkpoints) {
                 const edit = document.createElement('form');
                 const checkpointTitleLabel = document.createElement('label'); checkpointTitleLabel.textContent = `Edit ${checkpoint.title} title`;
@@ -2150,7 +2199,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const add = document.createElement('button'); add.type = 'submit'; add.textContent = 'Add checkpoint'; add.disabled = state.busy;
             checkpointForm.append(checkpointLabel, checkpointObjectiveLabel, add); group.append(checkpointForm); section.append(group);
         }
-        const pathLabel = document.createElement('label'); pathLabel.textContent = 'New Markdown path in this project';
+        const pathLabel = document.createElement('label'); pathLabel.textContent = 'Proposed Markdown path (publication requires separate approval)';
         const path = document.createElement('input'); path.value = state.path; path.maxLength = 512;
         path.oninput = () => { state.path = path.value; state.preview = undefined;
             section.querySelector('[data-approve-draft]')?.remove(); section.querySelector('pre')?.remove(); };
@@ -2172,9 +2221,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 ...(item.parentId ? [`Correction ${item.title} branches from ${names.get(item.parentId) ?? item.parentId}`] : []),
                 ...item.checkpoints.flatMap(checkpoint => (checkpoint.dependencies ?? []).map(dependency =>
                     `${checkpoint.title} depends on ${names.get(dependency) ?? dependency}`))]);
-            summary.textContent = `${state.preview.markdown}\nGraph relationships:\n${relations.length ? relations.join('\n') : 'None'}\n`;
+            summary.textContent = `${state.preview.markdown}\nUnresolved coverage:\n${state.preview.unresolvedCoverage.join('\n') || 'Gate-set completeness still requires owner review'}\nGraph relationships:\n${relations.length ? relations.join('\n') : 'None'}\n`;
             section.append(summary);
-            const approve = button(`Approve and create ${state.preview.path}`, () => void this.acceptCreate());
+            const approve = button('Accept Roadmap structure (no Markdown publication)', () => void this.acceptCreate());
             approve.dataset.approveDraft = 'true'; section.append(approve);
         }
         if (state.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert'); error.textContent = state.error; section.append(error); }

@@ -34,7 +34,7 @@ export interface RoadmapService {
     redoDraftEdit(handle: string, expectedRevision: number): Promise<GreenfieldDraft>;
     readDraft(handle: string): Promise<GreenfieldDraft>;
     previewDraft(handle: string, path: string): Promise<GreenfieldPreview>;
-    acceptDraft(handle: string, preview: GreenfieldPreview, approved: boolean): Promise<RoadmapIndex>;
+    acceptDraft(handle: string, preview: GreenfieldPreview, approved: boolean): Promise<RoadmapGateIndex>;
     cancelDraft(handle: string): Promise<void>;
     bindDraftChat(projectUri: string, handle: string, chatId: string): Promise<void>;
     /** @deprecated P17 removes this schema-1 typed compile seam. The store only reads schema 2. */

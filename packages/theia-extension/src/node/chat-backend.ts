@@ -200,8 +200,10 @@ export class ChatBackend implements ChatService {
             if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts ||
                 state.acceptedPlans || state.pendingPlans)
                 return base + `linked document ${state.linkedDocument ? JSON.stringify(state.linkedDocument) : 'none'}, ` +
-                    `root ROADMAP.md present ${state.canonicalMarkdown}, ${state.checkpoints} checkpoints, creation pending ${state.pendingCreation}, ` +
-                    `${state.drafts} Greenfield drafts, ${state.acceptedPlans} accepted plans, ${state.pendingPlans} pending plans. ` +
+                    `root ROADMAP.md present ${state.canonicalMarkdown}, ${state.gates} accepted Gates, ` +
+                    `${state.draftGates} Gates in drafts, ${state.proposedGates} proposed Gates, ` +
+                    `creation pending ${state.pendingCreation}, ${state.drafts} Greenfield drafts, ` +
+                    `${state.acceptedPlans} accepted plans, ${state.pendingPlans} pending plans. ` +
                     'An owner, creation, draft, or plan already exists. Offer Open, Continue, or Review Roadmap as appropriate; do not offer a duplicate draft.';
             return base + 'revision zero, no linked document, pending creation, Greenfield draft, or accepted/pending plan. ' +
                 'At a useful planning juncture you may mention that Dope can generate a provisional Roadmap draft. ' +
@@ -457,7 +459,9 @@ export class ChatBackend implements ChatService {
         const coverage = roadmapRequirementCoverage(
             saved.messages.filter(item => item.role === 'user').map(item => item.content),
             input.phases.map(phase => [phase.title, phase.objective,
-                ...phase.checkpoints.map(item => item.title)].join(' ')));
+                ...phase.checkpoints.map(item => item.title),
+                ...(phase.gates ?? []).flatMap(gate => [gate.title, gate.purpose,
+                    ...gate.criteria.map(criterion => `${criterion.title} ${criterion.expectedResult}`)])].join(' ')));
         const sourceIndex = saved.messages.findIndex(item => item.id === source.id);
         const sourceUser = saved.messages.slice(0, sourceIndex).reverse().find(item => item.role === 'user');
         const verifiedFile = sourceUser?.role === 'user' && sourceUser.contextRefs.some(ref =>
@@ -467,7 +471,7 @@ export class ChatBackend implements ChatService {
         this.strategicReviews.set(chatId, { root, leaseToken, question: '', preview,
             messageId: pending.messageId, offerId: offer.id, extractedSourceId: source.id });
         const diagnostic = `${sourceCaution}Requirement coverage — ${coverage.join('; ')}. ` +
-            'Confirm missing checkpoints before publication.';
+            'Review unmet requirements, testable Gates and Gate-set completeness before any publication.';
         checkCancelled();
         await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
             'generating', 'ready', { draftRevision: preview.after.revision, diagnostic });
@@ -475,7 +479,10 @@ export class ChatBackend implements ChatService {
         this.planningProgress(chatId, offer.id, 'draft-ready');
         return { token: preview.token, projectId: preview.projectId, revision: preview.after.revision, diagnostic,
             draft: preview.after, phases: preview.after.phases.map(phase => ({ title: phase.title,
-                objective: phase.objective, checkpoints: phase.checkpoints.map(item => ({
+                objective: phase.objective, gates: (phase.gates ?? []).map(gate => ({
+                    id: gate.id, parentPhaseId: gate.parentPhaseId, designation: gate.designation,
+                    title: gate.title, purpose: gate.purpose, criteria: gate.criteria })),
+                checkpoints: phase.checkpoints.map(item => ({
                     id: item.id, title: item.title, objective: item.objective, dependencies: item.dependencies ?? [] })) })) };
         } catch (error) {
             this.strategicReviews.delete(chatId);

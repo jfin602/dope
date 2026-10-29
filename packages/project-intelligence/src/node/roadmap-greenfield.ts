@@ -3,13 +3,18 @@ import { constants } from 'node:fs';
 import { closeSync, fsyncSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { realpath, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
-import { roadmapSectionKey } from './roadmap-import';
+import { discoverRoadmapCandidates, roadmapSectionKey } from './roadmap-import';
 import { RoadmapStore } from './roadmap-store';
 import type { RoadmapIndex } from './roadmap-store';
+import type { RoadmapGateIndex, RoadmapGate, RoadmapPhase } from './roadmap-gate-domain';
 
+/** Historical implementation/task outline content. It never becomes a qualification Gate. */
 export interface GreenfieldCheckpoint { id: string; title: string; objective: string; dependencies?: string[] }
+export interface GreenfieldCriterion { id: string; title: string; expectedResult: string }
+export interface GreenfieldGate { id: string; parentPhaseId: string; designation: string; title: string;
+    purpose: string; criteria: GreenfieldCriterion[]; dependencies?: string[] }
 export interface GreenfieldPhase { id: string; title: string; objective: string; checkpoints: GreenfieldCheckpoint[];
-    kind?: 'correction'; parentId?: string }
+    gates?: GreenfieldGate[]; kind?: 'correction'; parentId?: string }
 export interface GreenfieldDraft { revision: number; phases: GreenfieldPhase[] }
 /** A reviewed, noncanonical plan associated with one Greenfield draft and its saved Chat. */
 export interface ImplementationPlanStep { id: string; title: string; detail: string; expectedOutputs: string[];
@@ -38,6 +43,11 @@ export interface ImplementationPlanProjectionPreview { token: string; handle: st
     ownerRevision: number; draft: GreenfieldDraft; requiresApproval: true }
 export type GreenfieldEdit =
     | { type: 'create-phase'; title: string; objective?: string }
+    | { type: 'create-gate'; phaseId: string; title: string; purpose: string }
+    | { type: 'edit-gate'; phaseId: string; gateId: string; title?: string; purpose?: string }
+    | { type: 'add-criterion'; phaseId: string; gateId: string; title: string; expectedResult: string }
+    | { type: 'edit-criterion'; phaseId: string; gateId: string; criterionId: string;
+        title?: string; expectedResult?: string }
     | { type: 'create-checkpoint'; phaseId: string; title: string; objective?: string }
     | { type: 'edit-phase'; phaseId: string; title?: string; objective?: string }
     | { type: 'edit-checkpoint'; phaseId: string; checkpointId: string; title?: string; objective?: string }
@@ -49,11 +59,12 @@ export type GreenfieldEdit =
     | { type: 'create-correction'; parentId: string; title: string; objective?: string }
     | { type: 'attach-correction'; correctionId: string; parentId: string };
 export interface GreenfieldPreview { token: string; draftRevision: number; path: string; markdown: string;
-    phases: GreenfieldPhase[]; requiresApproval: true }
+    phases: GreenfieldPhase[]; gates: GreenfieldGate[]; unresolvedCoverage: string[]; requiresApproval: true }
 export interface GreenfieldEditPreview { token: string; draftRevision: number; before: GreenfieldDraft;
     after: GreenfieldDraft; action: GreenfieldEdit; actions?: GreenfieldEdit[]; requiresApproval: true }
 export interface StrategicDraftInput { projectId: string; ownerRevision: number; allowIncomplete?: true; phases: {
-    title: string; objective: string; checkpoints: { title: string; objective: string; dependsOn: number[] }[] }[] }
+    title: string; objective: string; checkpoints: { title: string; objective: string; dependsOn: number[] }[];
+    gates?: { title: string; purpose: string; criteria: { title: string; expectedResult: string }[] }[] }[] }
 export interface StrategicDraftPreview { token: string; handle: string; projectId: string; ownerRevision: number;
     draftRevision: number; sourceHash: string; before: GreenfieldDraft; after: GreenfieldDraft; requiresApproval: true }
 /** Noncanonical presentation notification. A proposed value is a fully validated preview, never an accepted edit. */
@@ -242,7 +253,7 @@ function validDraft(value: unknown): value is GreenfieldDraft {
     const keys = new Set<string>();
     const dependencies = new Map<string, string[]>();
     for (const [index, phase] of draft.phases.entries()) {
-        if (!phase || !fields(phase, ['id', 'title', 'objective', 'checkpoints'], ['kind', 'parentId']) || !uuid(phase.id) ||
+        if (!phase || !fields(phase, ['id', 'title', 'objective', 'checkpoints'], ['gates', 'kind', 'parentId']) || !uuid(phase.id) ||
             ids.has(phase.id) || !title(phase.title) || !objective(phase.objective) ||
             !Array.isArray(phase.checkpoints) || (phase.kind !== undefined && phase.kind !== 'correction') ||
             (phase.kind === 'correction' ? !uuid(phase.parentId) || phase.parentId === phase.id ||
@@ -253,6 +264,24 @@ function validDraft(value: unknown): value is GreenfieldDraft {
             `Phase ${draft.phases.slice(0, index + 1).filter(item => !item.kind).length} — ${phase.title}`, true);
         if (!phaseKey || keys.has(phaseKey)) return false;
         keys.add(phaseKey);
+        if (phase.gates !== undefined && (!Array.isArray(phase.gates) || phase.gates.length > 128 || phase.kind)) return false;
+        const designations = new Set<string>();
+        for (const gate of phase.gates ?? []) {
+            if (!gate || !fields(gate, ['id', 'parentPhaseId', 'designation', 'title', 'purpose', 'criteria'], ['dependencies']) ||
+                !uuid(gate.id) || ids.has(gate.id) || gate.parentPhaseId !== phase.id ||
+                !/^G[1-9]\d*$/.test(gate.designation) || designations.has(gate.designation) ||
+                !title(gate.title) || !objective(gate.purpose) || !Array.isArray(gate.criteria) ||
+                gate.criteria.length > 128 || gate.dependencies !== undefined &&
+                (!Array.isArray(gate.dependencies) || gate.dependencies.length > 128 ||
+                    gate.dependencies.some(id => !uuid(id)) || new Set(gate.dependencies).size !== gate.dependencies.length)) return false;
+            ids.add(gate.id); designations.add(gate.designation);
+            dependencies.set(gate.id, gate.dependencies ?? []);
+            for (const criterion of gate.criteria) {
+                if (!criterion || !fields(criterion, ['id', 'title', 'expectedResult']) || !uuid(criterion.id) ||
+                    ids.has(criterion.id) || !title(criterion.title) || !objective(criterion.expectedResult)) return false;
+                ids.add(criterion.id);
+            }
+        }
         for (const checkpoint of phase.checkpoints) {
             checkpoints++;
             if (!checkpoint || !fields(checkpoint, ['id', 'title', 'objective'], ['dependencies']) || !uuid(checkpoint.id) ||
@@ -377,6 +406,17 @@ export class RoadmapGreenfield {
         catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     }
 
+    private assertNoCanonicalMarkdown(root: string): void {
+        try { lstatSync(join(root, 'ROADMAP.md')); throw new Error('Existing canonical Roadmap requires reviewed import'); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    }
+
+    private async assertNoRoadmapSource(root: string): Promise<void> {
+        this.assertNoCanonicalMarkdown(root);
+        if ((await discoverRoadmapCandidates(root)).candidates.length)
+            throw new Error('Existing Roadmap Markdown candidate requires reviewed import');
+    }
+
     /** Restore only accepted draft state. Approval previews are never serialized. */
     async restore(root: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string }[]> {
         if ([...this.accepting].some(handle => this.drafts.get(handle)?.root === root))
@@ -421,11 +461,12 @@ export class RoadmapGreenfield {
     /** Read-only opportunity snapshot for ordinary Chat; no draft or owner is created. */
     async readOpportunity(root: string): Promise<{ projectId: string; revision: number;
         linkedDocument?: string; canonicalMarkdown: boolean; pendingCreation: boolean; checkpoints: number;
+        gates: number; draftGates: number; proposedGates: number;
         drafts: number; acceptedPlans: number; pendingPlans: number }> {
-        const owner = await this.store.read(root);
+        const owner = await this.store.read<RoadmapGateIndex>(root);
         await this.ensureRestored(root);
         const entries = this.entries(root);
-        const current = await this.store.read(root);
+        const current = await this.store.read<RoadmapGateIndex>(root);
         if (current.projectRoot !== root || current.projectId !== owner.projectId ||
             current.revision !== owner.revision || entries.some(item => item.projectId !== current.projectId ||
                 item.planOnly && item.ownerRevision !== current.revision))
@@ -435,7 +476,12 @@ export class RoadmapGreenfield {
         catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
         return { projectId: current.projectId, revision: current.revision,
             ...(current.linkedDocument ? { linkedDocument: current.linkedDocument.path } : {}),
-            canonicalMarkdown, pendingCreation: !!current.pendingCreation, checkpoints: current.checkpoints.length,
+            canonicalMarkdown, pendingCreation: false, checkpoints: 0,
+            gates: current.gates.filter(gate => gate.draftAcceptance !== 'proposed').length,
+            draftGates: entries.filter(item => !item.planOnly).reduce((count, item) =>
+                count + item.value.phases.reduce((sum, phase) => sum + (phase.gates?.length ?? 0), 0), 0),
+            proposedGates: [...this.strategicPreviews.values()].filter(item => item.root === root).reduce((count, item) =>
+                count + item.preview.after.phases.reduce((sum, phase) => sum + (phase.gates?.length ?? 0), 0), 0),
             drafts: entries.filter(item => !item.planOnly).length,
             acceptedPlans: entries.filter(item => !!item.implementationPlan).length,
             pendingPlans: entries.filter(item => item.planOnly && !item.implementationPlan).length };
@@ -496,6 +542,7 @@ export class RoadmapGreenfield {
         const current = await this.store.read(root);
         if (current.revision || current.linkedDocument || current.pendingCreation)
             throw new Error('Roadmap already initialized or creation pending');
+        await this.assertNoRoadmapSource(root);
         await this.ensureRestored(root);
         const fresh = await this.store.read(root);
         if (fresh.projectId !== current.projectId || fresh.revision || fresh.linkedDocument || fresh.pendingCreation)
@@ -516,24 +563,40 @@ export class RoadmapGreenfield {
         if (!input || input.projectId !== owner.projectId || input.ownerRevision !== owner.revision || owner.revision ||
             owner.linkedDocument || owner.pendingCreation || this.entries(root).length)
             throw new Error('Stale or foreign Roadmap owner or competing draft');
+        await this.assertNoRoadmapSource(root);
         if ([...this.strategicPreviews.values()].some(item => item.root === root))
             throw new Error('Another strategic draft awaits review');
         if (!/^[0-9a-f]{64}$/.test(sourceHash) || !input || !fields(input, ['projectId', 'ownerRevision', 'phases'], ['allowIncomplete']) ||
             (input.allowIncomplete !== undefined && input.allowIncomplete !== true) ||
-            !Array.isArray(input.phases) || input.phases.length < 2 || input.phases.length > 32)
+            !Array.isArray(input.phases) || input.phases.length < 1 || input.phases.length > 32)
             throw new Error('Invalid strategic draft phase count or source');
         const handle = randomUUID(), ids: string[] = [];
         let checkpointCount = 0;
         const phases: GreenfieldPhase[] = input.phases.map((phase, phaseIndex) => {
-            if (!phase || !fields(phase, ['title', 'objective', 'checkpoints']) ||
+            if (!phase || !fields(phase, ['title', 'objective', 'checkpoints'], ['gates']) ||
                 !title(phase.title) || !objective(phase.objective) ||
                 (!input.allowIncomplete && !phase.objective.trim()) ||
-                !Array.isArray(phase.checkpoints) || (!input.allowIncomplete && !phase.checkpoints.length) ||
-                phase.checkpoints.length > 16)
-                throw new Error(`Invalid strategic phase ${phaseIndex + 1}: title, objective or checkpoints missing`);
+                !Array.isArray(phase.checkpoints ?? []) || !Array.isArray(phase.gates ?? []) ||
+                (!input.allowIncomplete && !(phase.gates?.length || phase.checkpoints?.length)) ||
+                (phase.checkpoints?.length ?? 0) > 16 || (phase.gates?.length ?? 0) > 16)
+                throw new Error(`Invalid strategic phase ${phaseIndex + 1}: title, objective or requirements missing`);
             const phaseId = stableId(`strategic-phase:${owner.projectId}:${sourceHash}:${phaseIndex}:${phase.title}`);
             return { id: phaseId, title: phase.title, objective: phase.objective,
-                checkpoints: phase.checkpoints.map((checkpoint, index) => {
+                gates: (phase.gates ?? []).map((gate, index) => {
+                    if (!gate || !fields(gate, ['title', 'purpose', 'criteria']) || !title(gate.title) ||
+                        !objective(gate.purpose) || !Array.isArray(gate.criteria) || gate.criteria.length > 16)
+                        throw new Error(`Invalid strategic Gate ${phaseIndex + 1}.${index + 1}`);
+                    const id = stableId(`strategic-gate:${owner.projectId}:${sourceHash}:${phaseIndex}:${index}`);
+                    return { id, parentPhaseId: phaseId, designation: `G${index + 1}`, title: gate.title,
+                        purpose: gate.purpose, criteria: gate.criteria.map((criterion, criterionIndex) => {
+                            if (!criterion || !fields(criterion, ['title', 'expectedResult']) ||
+                                !title(criterion.title) || !objective(criterion.expectedResult))
+                                throw new Error('Invalid strategic Gate criterion');
+                            return { id: stableId(`strategic-criterion:${id}:${criterionIndex}`),
+                                title: criterion.title, expectedResult: criterion.expectedResult };
+                        }) };
+                }),
+                checkpoints: (phase.checkpoints ?? []).map((checkpoint, index) => {
                     checkpointCount++;
                     if (!checkpoint || !fields(checkpoint, ['title', 'objective', 'dependsOn']) ||
                         !title(checkpoint.title) || !objective(checkpoint.objective) ||
@@ -847,6 +910,10 @@ export class RoadmapGreenfield {
         const raw = action as unknown as Record<string, unknown>;
         const required: Record<GreenfieldEdit['type'], string[]> = {
             'create-phase': ['type', 'title'], 'create-checkpoint': ['type', 'phaseId', 'title'],
+            'create-gate': ['type', 'phaseId', 'title', 'purpose'],
+            'edit-gate': ['type', 'phaseId', 'gateId'],
+            'add-criterion': ['type', 'phaseId', 'gateId', 'title', 'expectedResult'],
+            'edit-criterion': ['type', 'phaseId', 'gateId', 'criterionId'],
             'edit-phase': ['type', 'phaseId'], 'edit-checkpoint': ['type', 'phaseId', 'checkpointId'],
             'reorder-phase': ['type', 'phaseId', 'order'],
             'reorder-checkpoint': ['type', 'phaseId', 'checkpointId', 'order'],
@@ -862,18 +929,54 @@ export class RoadmapGreenfield {
             Object.keys(raw).some(key => !required[action.type].includes(key) &&
                 !(key === 'objective' && ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint',
                     'split-checkpoint', 'create-correction'].includes(action.type)) &&
-                !(key === 'title' && ['edit-phase', 'edit-checkpoint'].includes(action.type))))
+                !(key === 'title' && ['edit-phase', 'edit-checkpoint', 'edit-gate', 'edit-criterion'].includes(action.type)) &&
+                !(key === 'purpose' && action.type === 'edit-gate') &&
+                !(key === 'expectedResult' && action.type === 'edit-criterion')))
             throw new Error('Invalid greenfield edit fields');
         const phase = 'phaseId' in action ? next.phases.find(item => item.id === action.phaseId) : undefined;
         if ('phaseId' in action && !phase) throw new Error('Unknown greenfield phase');
         if ('title' in action && action.title !== undefined && !title(action.title) ||
-            'objective' in action && action.objective !== undefined && !objective(action.objective))
+            'objective' in action && action.objective !== undefined && !objective(action.objective) ||
+            'purpose' in action && action.purpose !== undefined && !objective(action.purpose) ||
+            'expectedResult' in action && action.expectedResult !== undefined && !objective(action.expectedResult))
             throw new Error('Invalid greenfield text');
         switch (action.type) {
             case 'create-phase':
                 if (next.phases.length >= 32) throw new Error('Greenfield phase limit');
                 next.phases.push({ id: randomUUID(), title: action.title, objective: action.objective ?? '', checkpoints: [] });
                 break;
+            case 'create-gate': {
+                if (phase!.kind || !action.purpose.trim() || (phase!.gates?.length ?? 0) >= 128)
+                    throw new Error('Invalid Greenfield Gate parent, purpose or limit');
+                const gates = phase!.gates ?? (phase!.gates = []);
+                gates.push({ id: randomUUID(), parentPhaseId: phase!.id, designation: `G${gates.length + 1}`,
+                    title: action.title, purpose: action.purpose, criteria: [] });
+                break;
+            }
+            case 'edit-gate': {
+                const gate = phase!.gates?.find(item => item.id === action.gateId);
+                if (!gate || action.title === undefined && action.purpose === undefined)
+                    throw new Error('Unknown or empty Greenfield Gate edit');
+                if (action.title !== undefined) gate.title = action.title;
+                if (action.purpose !== undefined) gate.purpose = action.purpose;
+                break;
+            }
+            case 'add-criterion': {
+                const gate = phase!.gates?.find(item => item.id === action.gateId);
+                if (!gate || !action.expectedResult.trim() || gate.criteria.length >= 128)
+                    throw new Error('Unknown Greenfield Gate or invalid criterion');
+                gate.criteria.push({ id: randomUUID(), title: action.title, expectedResult: action.expectedResult });
+                break;
+            }
+            case 'edit-criterion': {
+                const criterion = phase!.gates?.find(item => item.id === action.gateId)?.criteria
+                    .find(item => item.id === action.criterionId);
+                if (!criterion || action.title === undefined && action.expectedResult === undefined)
+                    throw new Error('Unknown or empty Greenfield criterion edit');
+                if (action.title !== undefined) criterion.title = action.title;
+                if (action.expectedResult !== undefined) criterion.expectedResult = action.expectedResult;
+                break;
+            }
             case 'create-checkpoint':
                 if (next.phases.reduce((count, item) => count + item.checkpoints.length, 0) >= 256)
                     throw new Error('Greenfield checkpoint limit');
@@ -1060,36 +1163,59 @@ export class RoadmapGreenfield {
         return copy(target);
     }
 
+    /** Review a structural acceptance and a separate, unpublished Markdown candidate. */
     preview(handle: string, path: string): GreenfieldPreview {
         const entry = this.drafts.get(handle);
         if (!entry || entry.planOnly) throw new Error('Unknown greenfield draft');
         this.assertUninitialized(entry.root);
-        if (!entry.value.phases.length || !entry.value.phases.some(phase => phase.checkpoints.length))
-            throw new Error('Greenfield draft needs a phase and checkpoint');
+        this.assertNoCanonicalMarkdown(entry.root);
+        if (!entry.value.phases.some(phase => !phase.kind))
+            throw new Error('Greenfield draft needs a Phase');
         if (!path || path.length > 512 || isAbsolute(path) || !/\.md$/i.test(path) ||
             path.includes('\\') || path.includes(':') || path.split('/')[0] === '.dope' ||
             path.split('/').some(part => !part || part === '.' || part === '..'))
             throw new Error('Unsafe greenfield Roadmap path');
+        let candidate = entry.root;
+        for (const part of path.split('/')) {
+            candidate = join(candidate, part);
+            try {
+                const info = lstatSync(candidate);
+                if (info.isSymbolicLink() || candidate === join(entry.root, path) || !info.isDirectory())
+                    throw new Error('Greenfield Markdown path exists or is unsafe');
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+            }
+        }
         const lines = ['# Roadmap', ''];
-        let order = 0;
         let phaseNumber = 0;
+        const unresolvedCoverage: string[] = [];
         for (const phase of entry.value.phases) {
-            lines.push(phase.kind === 'correction' ? `## Correction ${phase.title}` :
-                `## Phase ${++phaseNumber} — ${phase.title}`, 'Status: NOT IMPLEMENTED',
-                `Objective: ${phase.objective}`, `Order: ${order++}`, 'Prose: ', '');
-            for (const checkpoint of phase.checkpoints)
-                lines.push(`### Milestone ${checkpoint.title}`, 'Status: NOT IMPLEMENTED',
-                    `Objective: ${checkpoint.objective}`, `Order: ${order++}`, 'Prose: ', '');
+            if (phase.kind) { unresolvedCoverage.push(`${phase.title}: correction requires separate Gate/Phase review`); continue; }
+            lines.push(`## Phase ${++phaseNumber} [id: ${phase.id}]: ${phase.title}`,
+                `Objective: ${phase.objective || 'UNRESOLVED: define the Phase outcome'}`, '');
+            unresolvedCoverage.push(`${phase.title}: complete required Gate-set coverage is not approved`);
+            if (!phase.gates?.length) unresolvedCoverage.push(`${phase.title}: no accepted Gates; Gate-set coverage unreviewed`);
+            if (phase.checkpoints.length) unresolvedCoverage.push(`${phase.title}: task or milestone bullets are not Gates`);
+            for (const gate of phase.gates ?? []) {
+                lines.push(`### Gate ${gate.designation} [id: ${gate.id}] [phase: ${phase.id}]: ${gate.title}`,
+                    `Objective: ${gate.purpose || 'UNRESOLVED: define the Gate requirement'}`);
+                if (!gate.criteria.length) unresolvedCoverage.push(`${gate.designation}: testable criteria unresolved`);
+                for (const criterion of gate.criteria) lines.push(
+                    `- Criterion C${gate.criteria.indexOf(criterion) + 1} [id: ${criterion.id}]: ${criterion.title} — Expected: ${criterion.expectedResult}`);
+                lines.push('');
+            }
         }
         const markdown = `${lines.join('\n')}\n`;
         if (Buffer.byteLength(markdown) > 2 * 1024 * 1024) throw new Error('Greenfield Roadmap size limit');
         const token = hash(JSON.stringify({ nonce: randomUUID(), handle, root: entry.root, path, revision: entry.value.revision, markdown }));
         this.creationPreviews.set(handle, token);
         return { token, draftRevision: entry.value.revision, path, markdown,
-            phases: copy(entry.value.phases), requiresApproval: true };
+            phases: copy(entry.value.phases), gates: copy(entry.value.phases.flatMap(phase => phase.gates ?? [])),
+            unresolvedCoverage, requiresApproval: true };
     }
 
-    async accept(handle: string, preview: GreenfieldPreview, approved: boolean): Promise<RoadmapIndex> {
+    /** Approve schema-two Roadmap structure only. Linked Markdown needs its own reviewed publication. */
+    async accept(handle: string, preview: GreenfieldPreview, approved: boolean): Promise<RoadmapGateIndex> {
         const entry = this.drafts.get(handle);
         if (!entry || !approved || !preview || this.accepting.has(handle) ||
             this.creationPreviews.get(handle) !== preview.token ||
@@ -1097,42 +1223,31 @@ export class RoadmapGreenfield {
             throw new Error('Greenfield preview and approval required');
         this.accepting.add(handle);
         try {
-            const current = await this.store.read(entry.root);
-            if (current.revision) throw new Error('Stale Roadmap revision');
-            if (current.projectId !== entry.projectId) throw new Error('Stale greenfield project identity');
-            const keys = new Map<string, string>();
-            let phaseNumber = 0;
-            for (const phase of entry.value.phases) {
-                keys.set(phase.id, roadmapSectionKey(phase.kind === 'correction' ? `Correction ${phase.title}` :
-                    `Phase ${++phaseNumber} — ${phase.title}`, true)!);
-                for (const checkpoint of phase.checkpoints)
-                    keys.set(checkpoint.id, roadmapSectionKey(`Milestone ${checkpoint.title}`, true)!);
-            }
-            const strategicParent = (parentId: string): GreenfieldPhase => {
-                const owner = entry.value.phases.find(candidate => candidate.id === parentId ||
-                    candidate.checkpoints.some(checkpoint => checkpoint.id === parentId));
-                if (!owner) throw new Error('Foreign correction parent');
-                return owner.kind === 'correction' ? strategicParent(owner.parentId!) : owner;
-            };
-            const topology = entry.value.phases.flatMap(phase => [
-                ...(phase.parentId ? [{ sectionKey: keys.get(phase.id)!, dependencies: [keys.get(phase.parentId)!],
-                    parentPhaseKey: keys.get(strategicParent(phase.parentId).id)! }] : []),
-                ...phase.checkpoints.filter(item => item.dependencies?.length).map(item => ({
-                    sectionKey: keys.get(item.id)!, dependencies: item.dependencies!.map(id => keys.get(id)!) }))
-            ]);
-            // Preserve only reviewed upstream provenance; the Roadmap and linked Markdown own the scope.
-            const plan = entry.implementationPlan;
-            if (plan) verifyPlanEvidence(entry.root, plan);
-            const planOrigin = plan && { planRevision: plan.revision, planHash: hash(JSON.stringify(plan)),
-                constraints: plan.constraints,
-                steps: plan.steps.map(step => {
-                    const projectedId = stableId(`plan-step:${step.id}`);
-                    const sectionKey = keys.get(projectedId);
-                    if (!sectionKey) throw new Error('Reviewed plan step lost its Roadmap projection');
-                    return { stepId: step.id, sectionKey, expectedOutputs: step.expectedOutputs };
-                }) };
-            const result = await this.store.acceptGreenfield(entry.root, 0, preview.path, preview.markdown,
-                topology, planOrigin);
+            const current = await this.store.read<RoadmapGateIndex>(entry.root);
+            if (current.revision || current.phases.length || current.gates.length || current.linkedDocument ||
+                current.projectId !== entry.projectId)
+                throw new Error('Stale greenfield Roadmap owner');
+            await this.assertNoRoadmapSource(entry.root);
+            if (entry.implementationPlan) verifyPlanEvidence(entry.root, entry.implementationPlan);
+            if (entry.value.phases.some(phase => phase.kind || !phase.objective.trim() ||
+                (phase.gates ?? []).some(gate => !gate.purpose.trim() || !gate.criteria.length ||
+                    gate.criteria.some(criterion => !criterion.expectedResult.trim()))))
+                throw new Error('Incomplete Gate or Phase definition; review the draft before acceptance');
+            const projectId = current.projectId === 'uninitialized' ? stableId(`greenfield-project:${handle}`) : current.projectId;
+            const phases: RoadmapPhase[] = entry.value.phases.map((phase, order) => ({
+                id: phase.id, projectId, title: phase.title, objective: phase.objective, order,
+                dependencies: [], implementationStatus: 'unknown', qualificationStatus: 'unknown',
+                draftAcceptance: 'accepted', gateSetCoverage: { status: 'unreviewed' } }));
+            const gates: RoadmapGate[] = entry.value.phases.flatMap(phase => (phase.gates ?? []).map((gate, order) => ({
+                id: gate.id, projectId, parentPhaseId: phase.id, designation: gate.designation,
+                title: gate.title, purpose: gate.purpose, order, dependencies: gate.dependencies ?? [],
+                criteria: gate.criteria.map((criterion, criterionOrder) => ({ id: criterion.id, projectId,
+                    title: criterion.title, expectedResult: criterion.expectedResult, order: criterionOrder, evidence: [] })),
+                implementationStatus: 'unknown' as const, qualificationStatus: 'unknown' as const,
+                draftAcceptance: 'accepted' as const })));
+            const candidate: RoadmapGateIndex = { schemaVersion: 2, projectId, projectRoot: entry.root,
+                revision: 1, phases, gates, corrections: [] };
+            const result = await this.store.saveGateIndex(entry.root, 0, current.projectId, candidate);
             this.accepting.delete(handle);
             this.cancel(handle);
             return result;

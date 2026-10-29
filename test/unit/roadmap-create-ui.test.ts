@@ -16,7 +16,10 @@ test('blank Roadmap exposes model-free draft, preview, approval, cancellation an
     assert.match(widget, /type: 'edit-checkpoint'/);
     assert.match(widget, /previewDraft\(state\.handle, state\.path\)/);
     assert.match(widget, /acceptDraft\(state\.handle, state\.preview, true\)/);
-    assert.match(widget, /this\.createState = undefined;\s*this\.inspector\.setSnapshot\(state\.uri, result\);\s*await this\.refresh\(\)/);
+    assert.match(widget, /this\.createState = undefined;\s*await this\.refresh\(\)/);
+    assert.match(widget, /type: 'create-gate'/);
+    assert.match(widget, /type: 'add-criterion'/);
+    assert.match(widget, /Accept Roadmap structure \(no Markdown publication\)/);
     assert.match(widget, /if \(this\.createState\) \{\s*const draft = await this\.service\.readDraft\(this\.createState\.handle\)/);
     assert.match(widget, /cancelDraft\(state\.handle\)/);
     assert.match(widget, /role', 'alert'/);
@@ -50,7 +53,7 @@ test('creation controls have labels, keyboard forms, narrow layout and semantic 
     assert.match(widget, /form\.onsubmit = event => \{ event\.preventDefault\(\)/);
     assert.match(widget, /checkpointForm\.onsubmit = event => \{ event\.preventDefault\(\)/);
     assert.match(widget, /Roadmap creation preview/);
-    assert.match(widget, /New Markdown path in this project/);
+    assert.match(widget, /Proposed Markdown path \(publication requires separate approval\)/);
     assert.match(css, /\.dope-roadmap-create \{ display: grid/);
     assert.match(css, /\.dope-roadmap-create :is\(input, select\):focus-visible/);
     const rules = css.slice(css.indexOf('.dope-roadmap-create'), css.indexOf('.dope-roadmap-canvas header button'));

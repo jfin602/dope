@@ -52,9 +52,13 @@ export interface ChatRoadmapOffer { id: string; token: string; projectHandle: st
     ownerId: string; ownerRevision: number; basis: 'empty-owner'; expiresAt: number }
 export interface ChatStrategicDraftReview { token: string; projectId: string; revision: number; diagnostic?: string;
     draft: { revision: number; phases: { id: string; title: string; objective: string;
-        kind?: 'correction'; parentId?: string; checkpoints: { id: string; title: string; objective: string;
+        kind?: 'correction'; parentId?: string; gates?: { id: string; parentPhaseId: string; designation: string;
+            title: string; purpose: string; criteria: { id: string; title: string; expectedResult: string }[] }[];
+        checkpoints: { id: string; title: string; objective: string;
             dependencies?: string[] }[] }[] };
-    phases: { title: string; objective: string; checkpoints: { id: string; title: string; objective: string;
+    phases: { title: string; objective: string; gates?: { id: string; parentPhaseId: string; designation: string;
+        title: string; purpose: string; criteria: { id: string; title: string; expectedResult: string }[] }[];
+        checkpoints: { id: string; title: string; objective: string;
         dependencies: string[] }[] }[] }
 export interface ChatPlanPreview { coverage: { id: string; text: string;
     status: 'covered' | 'needs-review' | 'missing'; explanation: string; stepNumbers: number[] }[] }
