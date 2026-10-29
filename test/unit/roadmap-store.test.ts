@@ -49,7 +49,13 @@ test('corruption, unsupported version, oversized and symlink state fail closed',
     await assert.rejects(store.read(root), /Corrupt or unsupported/);
     await assert.rejects(store.mutate(root, 1, create('m2')), /Corrupt or unsupported/);
     await writeFile(file, JSON.stringify({ ...snapshot, schemaVersion: 99 }));
-    await assert.rejects(store.read(root), /Corrupt or unsupported/);
+    await assert.rejects(store.read(root), /Incompatible Roadmap index schema.*Review the index/);
+    const schemaTwo = Buffer.from(JSON.stringify({ schemaVersion: 2, projectId: snapshot.projectId,
+        projectRoot: root, revision: 1, phases: [], gates: [], corrections: [] }));
+    await writeFile(file, schemaTwo);
+    await assert.rejects(store.read(root), /Incompatible Roadmap index schema.*Review the index/);
+    await assert.rejects(store.mutate(root, 1, create('m2')), /Incompatible Roadmap index schema/);
+    assert.deepEqual(await readFile(file), schemaTwo);
     await writeFile(file, Buffer.alloc(4 * 1024 * 1024 + 1));
     await assert.rejects(store.read(root), /size limit/);
     await rm(file);

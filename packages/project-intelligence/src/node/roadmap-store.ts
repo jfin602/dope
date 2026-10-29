@@ -332,8 +332,15 @@ export class RoadmapStore {
             if (!info.isFile() || info.size > MAX_BYTES) throw new Error('Unsafe Roadmap file');
             const bytes = await handle.readFile();
             if (bytes.length > MAX_BYTES) throw new Error('Roadmap index size limit exceeded');
-            try { return parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root); }
-            catch { throw new Error(`Corrupt or unsupported Roadmap index: ${file}`); }
+            const guidance = 'Review the index before an explicitly approved reinitialize or reimport; no source files were changed';
+            let parsed: unknown;
+            try { parsed = JSON.parse(bytes.toString('utf8')); }
+            catch { throw new Error(`Corrupt or unsupported Roadmap index: ${file}. ${guidance}`); }
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
+                'schemaVersion' in parsed && parsed.schemaVersion !== 1)
+                throw new Error(`Incompatible Roadmap index schema: ${file}. ${guidance}`);
+            try { return parseRoadmapIndex(parsed, root); }
+            catch { throw new Error(`Corrupt or unsupported Roadmap index: ${file}. ${guidance}`); }
         } finally { await handle.close(); }
     }
 
