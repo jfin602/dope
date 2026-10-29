@@ -1,0 +1,23 @@
+TASK: Phase 12 / P1 — Bundle a pinned Pi runtime and choose the Dope transport
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.12.1`.
+
+ENTRY GATE — NO AUTOMATIC PHASE ENTRY
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0039-bundled-pi-local-agent-runtime.md, docs/planning/p12/phase-12-plan.md, docs/tasks/p12/prompt-assessment.md and implementation-plan.md. Before any source mutation, verify explicit Phase 11 owner closeout/disposition, independently reviewed Pi/Qwen standalone result, coherent committed 0.12.0 baseline and deliberate owner Run of p12. If missing, STOP BLOCKED. Inspect current HEAD, branch, dirty state and exact existing upstream dependency; do not reset/stash/clean.
+
+OBJECTIVE
+Make a reproducible, version-pinned, license-compliant Pi runtime part of Dope's source/package dependency graph, not a global user-installed tool. Evaluate minimal embedded TypeScript SDK versus supervised, bundled RPC subprocess; choose based on verified Node/Theia/Electron module format, packaging, fault containment and restart behavior. Preserve user Pi files and existing Codex/local routing. Only make the smallest necessary foundation changes in this prompt; do not yet switch live Chat/Work default.
+
+TARGET SEAMS
+Review `apps/electron/package.json` ASAR/files/extraResources, `apps/electron/scripts/packaged-main.cjs`, `packages/theia-extension/src/node/backend-module.ts`, local agent adapter and `scripts/local-install.mjs`. Official Pi site/documentation `https://pi.dev` and verified official source; pin and record exact package/version, license and transitive assets. Do not add community extensions. No global npm install and no update/install action on app startup.
+
+IMPLEMENTATION
+Introduce a Dope-internal, injectable Pi runtime factory/host adapter with explicit lifecycle, isolated config/resource loader, no global/project auto-discovery, no built-in dangerous tool access and diagnostic version info. Resolve package resources from both dev and actual packaged layouts. Make build dependency inclusion deterministic with checked-in lockfile/notice as required, without changing model routing. Do not expose an unrestricted Pi CLI or user-provided extension execution. If SDK cannot meet runtime/package security, choose supervised bundled worker and record reason.
+
+FOCUSED QUALIFICATION
+Check import/construct/dispose in an isolated Node fixture, rejected default tools/extension discovery and no global `pi` dependency. Build affected packages, run focused tests/typecheck and dependency/license check; inspect emitted artifacts. Do not claim pristine AppImage qualification yet (P7). Report source SHA, dependency lock/version, strategy, meaningful test counts and remaining packaging risks. No self-commit, no broad suite, no model downloading. STOP.
