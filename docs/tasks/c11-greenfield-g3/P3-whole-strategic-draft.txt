@@ -1,0 +1,25 @@
+TASK: Correction 11 / P3 — Generate a complete strategic Roadmap draft for review
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- T2 bounded full multi-phase draft generation within existing Greenfield owner.
+
+VERSIONING
+- Required unchanged project version: `0.11.8`.
+- Correction only; no version bump.
+
+PREFLIGHT / AUTHORITY
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/planning/p11/greenfield-experience-contract.md`, ADR 0025/0036 and this stack's `README.md`, `prompt-assessment.md`, and `implementation-plan.md`. Inspect ACTUAL local `git status --short`, HEAD, version, current implementation/tests, compiled libs and concurrent owner work. GitHub authoring baseline `c947700a` / version `0.11.8` is not a local pin or proof the local worktree is clean. Preserve existing P1/G1, G2 source and immutable `c11-greenfield-patch` P1-P3, earlier CP failures and owner modifications. If local source or version conflicts, STOP and report; do not reset/stash/clean/force-push, downgrade, change manifests/pins/lockfiles or self-commit. Separate owner Run authorization required; docs authoring is not Run and no `/activate` gate is needed. Target <=8 minutes for this bounded implementation (10 soft, 15 hard); stop honestly if not achievable. Keep one Chat/Greenfield/Roadmap owner, project identity, source freshness, approvals, leases, provider selection and hosted-data consent; no model shell/process/arbitrary filesystem/network tools, no new Chat system, no auto Work, no canonical Markdown publication, no default model changes. The real tower-defense project is developer-owned: do not mutate its source or use it for destructive tests; use disposable projects for negative cases.
+
+MISSION
+After P2 verified human approval of ONE offer, use the selected eligible local model to propose a **whole strategic Roadmap draft** in one bounded response, validate it and present separately reviewable noncanonical state. A five-phase PixiJS MVP is a sample, never a hardcoded requirement. The current `RoadmapGreenfield.projectImplementationPlan` derives phases from dependency depth; `previewEditSequence` only allows 2-3 graph actions. Neither is the correct general-purpose whole-strategic-draft interface. Reuse Greenfield's current project/file lock, revision, preview, approval, source hash, dependency validation and linked-Markdown publication boundary.
+
+IMPLEMENT
+1. Inspect current `RoadmapGreenfield` draft/plan/projection and `RoadmapService` contract/implementations, `ChatBackend`, `roadmap-local-model.ts`, and selected local capacity/budget. Add a bounded full-strategic-draft **proposal/preview** method through the EXISTING Greenfield owner; no second storage domain, no repeated small edit batches, no direct RoadmapStore write. Handle meaningful phase titles/objectives, bounded checkpoints per phase, dependencies and stable IDs with deterministic schema validation. Respect existing phase/checkpoint/byte caps and real project/source/revision basis; refuse malformed, partial, empty, oversized, cyclic, foreign or stale output.
+2. The prompt to Q4 uses actual saved conversational decisions, proposed milestone and current project evidence; distinguish source facts from suggestions. It requests a concise whole strategic plan rather than technical implementation-level detail. Do not force 5 phases for every project, assert missing file as empty repo, or let the model select files/executable tools. Preserve provider/egress, actually loaded local context and cancellation.
+3. A **permission to generate** (P2) starts inference but is NOT permission to accept its outputs. The validated structure becomes a readable proposed draft for a SECOND explicit accept/reject. Once accepted, it is a versioned **noncanonical Greenfield draft**, not linked Markdown or canonical Roadmap. Preserve pre-existing Greenfield manual/edit/plan flow, event freshness and approval tokens; stale source or owner conflicts require regenerate/review. Do not automatically publish.
+4. If output incomplete or validation fails, preserve original Chat and show meaningful missing/invalid diagnostics without creating a phantom draft or writing any canonical file. Prevent another model call solely for narration or reviewer. Ensure model finishes before proposal is actionable.
+
+FOCUSED TESTS / STOP
+Add/extend `test/unit/roadmap-greenfield.test.ts`, `roadmap-local-model.test.ts` and `chat-backend.test.ts` for full 3-6 phase generic fixture and tower-defense example, nested checkpoints, dependencies, cap/bytes, source revision, cancellation, incorrect model, duplicate approval, output truncation, project switching, accept/reject, stale/foreign source, zero canonical Markdown bytes before explicit publish. Also assert old 2-3 action draft and dependency-level plan projection remain intact. Use focused builds/tests and `git diff --check`; report exact results and limitations, no full aggregate. STOP with reviewed noncanonical draft proof; P4 owns visible progress/editor focus. Do not call this full G3 Green.
