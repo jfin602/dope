@@ -56,6 +56,9 @@ export class RoadmapInspectorModel {
             this.index as unknown as RoadmapGateIndex : undefined;
     }
     get selectedGate(): RoadmapGate | undefined { return this.gateIndex?.gates.find(item => item.id === this.selectedId); }
+    get selectedPhase(): RoadmapGateIndex['phases'][number] | undefined {
+        return this.gateIndex?.phases.find(item => item.id === this.selectedId);
+    }
     get prepareWorkBlockedReason(): string | undefined {
         if (this.gateIndex) return 'Gate-scoped Prepare Work needs planning. The Gate-to-Planning handoff is not available yet.';
         const index = this.index, item = this.selected;

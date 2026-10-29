@@ -1,6 +1,7 @@
 import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { evaluateGateQualification } from '@dope/project-intelligence/lib/node/roadmap-gate-domain.js';
+import { roadmapGateLabel } from './roadmap-canvas-model';
 
 export const ROADMAP_INSPECTOR_ID = 'dope-roadmap-inspector';
 export const ROADMAP_CANVAS_INSPECTOR_ID = 'dope-roadmap-canvas-inspector';
@@ -68,6 +69,21 @@ export class RoadmapInspectorWidget extends BaseWidget {
             }
             return;
         }
+        const phase = this.model.selectedPhase;
+        if (phase) {
+            const gates = this.model.gateIndex?.gates.filter(item => item.parentPhaseId === phase.id) ?? [];
+            this.content.append(this.element('h2', phase.title),
+                this.element('p', `Phase ${phase.order + 1} · ${phase.draftAcceptance} · ${phase.qualificationStatus.replaceAll('-', ' ')} · Roadmap revision ${this.model.gateIndex?.revision}`));
+            const objective = this.element('section');
+            objective.append(this.element('h3', 'Objective'), this.element('p', phase.objective));
+            const coverage = this.element('section');
+            coverage.append(this.element('h3', 'Gate coverage'),
+                this.element('p', `${gates.length} accepted ${gates.length === 1 ? 'Gate' : 'Gates'} · complete Gate-set coverage ${phase.gateSetCoverage.status.replaceAll('-', ' ')}`));
+            for (const item of gates) coverage.append(this.element('p', `${roadmapGateLabel(item)} · ${item.qualificationStatus.replaceAll('-', ' ')}`));
+            if (!gates.length) coverage.append(this.element('p', 'No accepted Gates. This Phase is Unplanned, not Green.'));
+            this.content.append(objective, coverage);
+            return;
+        }
         if (!item) { this.content.append(this.element('p', 'Select a Phase or Gate on the Roadmap to inspect it.')); return; }
         const heading = this.element('h2', item.title);
         const state = this.element('p', `${item.kind} · ${item.status.replaceAll('-', ' ')} · Roadmap revision ${this.model.index?.revision}`);
@@ -117,7 +133,7 @@ export class RoadmapInspectorWidget extends BaseWidget {
         const index = this.model.gateIndex;
         const phase = index?.phases.find(item => item.id === gate.parentPhaseId);
         const qualification = evaluateGateQualification(gate, gate.qualificationSource);
-        this.content.append(this.element('h2', `${gate.designation} · ${gate.title}`),
+        this.content.append(this.element('h2', roadmapGateLabel(gate)),
             this.element('p', `Gate in ${phase?.title ?? gate.parentPhaseId} · ${gate.draftAcceptance} · ${qualification.status.replaceAll('-', ' ')} · Roadmap revision ${index?.revision}`));
         const objective = this.element('section');
         objective.append(this.element('h3', 'Objective'), this.element('p', gate.purpose));
@@ -137,7 +153,7 @@ export class RoadmapInspectorWidget extends BaseWidget {
         if (!gate.dependencies.length) dependencies.append(this.element('p', 'None recorded.'));
         for (const id of gate.dependencies) {
             const target = index?.gates.find(candidate => candidate.id === id);
-            dependencies.append(this.element('p', target ? `${target.designation} · ${target.title}` : `Unresolved · ${id}`));
+            dependencies.append(this.element('p', target ? roadmapGateLabel(target) : `Unresolved · ${id}`));
         }
         const corrections = this.element('section');
         corrections.append(this.element('h3', 'Corrections'));

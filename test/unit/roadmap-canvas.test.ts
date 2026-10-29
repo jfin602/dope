@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { projectRoadmapDraft, gatePhaseCards, roadmapSelectableGate, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import type { RoadmapGateIndex } from '../../packages/project-intelligence/src/node/roadmap-gate-domain.ts';
 import { roadmapEdgeStatus, roadmapStatusMark, type RoadmapStatus } from '../../packages/theia-extension/src/browser/roadmap-status-style.ts';
 
@@ -59,6 +59,35 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
     assert.match(css, /\.dope-roadmap-phase-card \{ width: 340px/);
     assert.match(css, /\.dope-roadmap-phase-main > strong \{ font-size: 21px/);
     assert.match(css, /\.dope-roadmap-phase-children \{[^}]*max-height: 190px; overflow: auto/);
+});
+
+test('schema-two Phase-only and explicit Gate proposals remain visible without promoting task bullets', () => {
+    assert.equal(roadmapGateLabel({ designation: 'G1', title: 'G1 Build acceptance' }), 'G1 · Build acceptance');
+    assert.equal(roadmapGateLabel({ designation: 'G1', title: 'Build acceptance' }), 'G1 · Build acceptance');
+    const base: RoadmapProjection = { projectId: 'draft-owner', revision: 0, nodes: [], edges: [],
+        pools: { ideas: [], issues: [], corrections: [] }, diagnostics: [] };
+    const draft = { revision: 1, phases: [{ id: 'phase-1', title: 'Foundation', objective: 'Build a base',
+        checkpoints: [{ id: 'task-1', title: 'Set up build', objective: 'Task only' }], gates: [] }] };
+    const phaseOnly = projectGateDraftCards(base, undefined, draft);
+    assert.deepEqual(phaseOnly.nodes.map(item => item.id), ['phase-1']);
+    assert.equal(phaseOnly.nodes[0].draftState, 'proposed');
+    assert.equal(phaseOnly.nodes[0].phaseCard?.required, 0);
+    assert.deepEqual(phaseOnly.nodes[0].phaseCard?.gates, []);
+    const explicit = projectGateDraftCards(base, undefined, { revision: 2, phases: [{ ...draft.phases[0],
+        gates: [{ id: 'gate-1', parentPhaseId: 'phase-1', designation: 'G1', title: 'Build passes',
+            purpose: 'Verify current source', criteria: [{ id: 'criterion-1', title: 'Build exits zero',
+                expectedResult: 'No compile errors' }] }] }] });
+    assert.equal(explicit.nodes[0].phaseCard?.gates[0].proposed, true);
+    assert.equal(explicit.nodes[0].phaseCard?.gates[0].criteria[0].expectedResult, 'No compile errors');
+    assert.equal(explicit.nodes[0].phaseCard?.required, 0);
+    const accepted = projectGateDraftCards(base, { revision: 2, phases: [{ ...draft.phases[0],
+        gates: [{ id: 'gate-1', parentPhaseId: 'phase-1', designation: 'G1', title: 'Build passes',
+            purpose: 'Verify current source', criteria: [{ id: 'criterion-1', title: 'Build exits zero',
+                expectedResult: 'No compile errors' }] }] }] });
+    assert.equal(accepted.nodes[0].draftState, 'accepted');
+    assert.equal(accepted.nodes[0].phaseCard?.gates[0].draftAcceptance, 'accepted');
+    assert.equal(accepted.nodes[0].phaseCard?.gates[0].proposed, false);
+    assert.deepEqual(base.nodes, []);
 });
 
 test('one keyboard order follows the checkpoint path and attached branches', () => {

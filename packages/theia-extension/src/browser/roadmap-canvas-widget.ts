@@ -18,7 +18,7 @@ import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/proj
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft, ImplementationPlanProjectionPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
-import { currentDraftChange, projectRoadmapDraft, gatePhaseCards, roadmapSelectableGate, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
+import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
@@ -76,7 +76,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     onClick: event => { if (window.getSelection()?.toString()) event.preventDefault(); } },
                     React.createElement('span', { className: 'dope-roadmap-gate-icon', 'aria-hidden': true },
                         gate.proposed ? '◇' : gate.status === 'green' ? '✓' : gate.status === 'not-green' ? '!' : '?'),
-                    React.createElement('span', null, `${gate.designation} · ${gate.title}`),
+                    React.createElement('span', null, roadmapGateLabel(gate)),
                     React.createElement('span', { className: 'dope-roadmap-gate-qualifier' },
                         gate.proposed ? 'Proposed / Not accepted' : gate.status.replaceAll('-', ' ')),
                     React.createElement('span', { className: 'dope-roadmap-gate-chevron', 'aria-hidden': true }, '⌄')),
@@ -312,8 +312,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             button.append(glyph); button.onclick = action;
         }
         this.arrangeButton.type = 'button';
-        icon(this.arrangeButton, 'Arrange checkpoint positions', 'move');
-        this.arrangeButton.title = 'Move checkpoint cards without changing their order or dependencies';
+        icon(this.arrangeButton, 'Arrange Roadmap card positions', 'move');
+        this.arrangeButton.title = 'Move Roadmap cards without changing their order or dependencies';
         this.arrangeButton.setAttribute('aria-pressed', 'false');
         this.arrangeButton.onclick = () => {
             this.arranging = !this.arranging;
@@ -326,7 +326,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         for (const [button, label, action] of [
             [this.expandButton, 'Expand selected Roadmap branch', () => this.setExpansion(true)],
             [this.collapseButton, 'Collapse selected Roadmap branch', () => this.setExpansion(false)],
-            [this.focusButton, 'Focus selected Roadmap checkpoint', () => this.focusSelection()],
+            [this.focusButton, 'Focus selected Roadmap card', () => this.focusSelection()],
         ] as const) { icon(button, label, button === this.focusButton ? 'target' : button === this.expandButton ? 'expand-all' : 'collapse-all');
             button.onclick = action; }
         this.detailLabel.className = 'dope-roadmap-detail';
@@ -352,7 +352,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
         this.path.className = 'dope-roadmap-stage';
-        this.path.setAttribute('aria-label', 'Roadmap checkpoints canvas');
+        this.path.setAttribute('aria-label', 'Roadmap canvas');
         this.path.tabIndex = 0;
         this.path.title = 'Shift+Arrow pans. In Arrange mode, Alt+Arrow moves the selected card.';
         this.path.onkeydown = event => this.onPathKey(event);
@@ -739,7 +739,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private projectIndex(index: RoadmapIndex, tasks = this.taskStacks, owners = this.owners): TaskRoadmapProjection {
         if ((index as unknown as RoadmapGateIndex).schemaVersion === 2) {
             const phases = gatePhaseCards(index as unknown as RoadmapGateIndex, owners);
-            return { ...phases, unlinkedTasks: phases.unassignedCorrections.map(item => ({
+            const accepted = this.createState?.projectId === phases.projectId ? this.createState.draft : undefined;
+            const proposed = this.strategic?.projectId === phases.projectId ? this.strategic.review?.draft :
+                this.proposedDraft ?? (this.reviewedPlan?.projectId === phases.projectId ? this.reviewedPlan.preview?.draft : undefined);
+            const visible = projectGateDraftCards(phases, accepted, proposed);
+            return { ...visible, unlinkedTasks: phases.unassignedCorrections.map(item => ({
                 path: item.id, title: item.title, reason: 'Correction parent is missing or conflicted.' })),
                 omittedTaskNodes: 0 };
         }
@@ -1037,10 +1041,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.status.textContent = projection.revision === 0 ?
             this.reviewedPlan?.preview && !this.createState ? 'Proposed plan projection on canvas · Review the graph and accept or reject below. Nothing has been published.' :
             this.strategic?.review ? 'Proposed Roadmap on canvas · Not yet accepted. Accept or reject here. Nothing has been published.' :
-            this.proposedDraft ? 'Proposed draft on canvas · Review and accept or reject in the selected Chat. Nothing has been published.' :
+            this.proposedDraft ? `Proposed draft on canvas · Review and accept or reject ${this.createState?.mode === 'manual' ? 'in Roadmap' : 'in the selected Chat'}. Nothing has been published.` :
                 this.createState ? `Accepted draft revision ${this.createState.draft.revision} on canvas · Review Phase and Gate definitions before accepting Roadmap structure. Markdown publication requires separate approval.` :
                     'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
-            `${displayedCount} displayed checkpoints · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ''}${this.reviewedPlan ? ' · Reviewed plan remains noncanonical; bulk projection into this Roadmap is unavailable.' : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
+            `${displayedCount} displayed Roadmap cards · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ' · Accepted structure; Markdown not published'}${this.reviewedPlan ? ' · Reviewed plan remains noncanonical; bulk projection into this Roadmap is unavailable.' : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
     }
 
     private renderStrategicBar(): void {
@@ -1421,7 +1425,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.inspector.index?.revision === 0 ? 'Markdown / Create' : 'Markdown';
         this.sourceButton.setAttribute('aria-label', linkedDocument ?
             `Roadmap Markdown ${linkedDocument.path}: ${sourceNotice}${needsReview ? '; review required' : ''}` :
-            `Roadmap Markdown, import and create${approvalPending ? '; approval required' : ''}`);
+            this.inspector.index?.revision === 0 ?
+                `Roadmap Markdown, import and create${approvalPending ? '; approval required' : ''}` :
+                'Roadmap Markdown: accepted structure has no published file');
         this.sourceButton.dataset.review = String(needsReview);
         this.sourceSummary.textContent = linkedDocument ? `Linked Markdown · ${linkedDocument.path} · ${sourceNotice}` :
             approvalPending ? 'Linked Markdown · Approval required' : 'Linked Markdown · Setup';
@@ -1529,7 +1535,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
             }
             return;
         }
-        if (index.revision !== 0) return;
+        if (index.revision !== 0) {
+            const note = document.createElement('p');
+            note.textContent = 'This accepted Roadmap structure has no linked Markdown. No canonical file has been published.';
+            this.importEntry.append(note);
+            return;
+        }
         const heading = document.createElement('h3'); heading.textContent = 'Start your Roadmap';
         const actions = document.createElement('div'); actions.className = 'dope-roadmap-import-actions';
         const button = (label: string, action: () => void): HTMLButtonElement => {
@@ -2096,7 +2107,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             state.mode === 'plan' ? 'Accepted plan Roadmap draft' : 'Create a Roadmap manually';
         const note = document.createElement('p'); note.textContent = state.mode === 'plan' ?
             'Review the projected outcomes, edit if needed, then preview and explicitly approve the new linked Markdown file.' :
-            'Build one phase and checkpoint at a time. Preview before approving a new Markdown file. No model is needed.';
+            'Build Phases, Gates and testable Criteria. Review each change, then accept the Roadmap structure. Markdown publication requires separate approval. No model is needed.';
         section.append(heading, note);
         const button = (label: string, action: () => void): HTMLButtonElement => {
             const element = document.createElement('button'); element.type = 'button'; element.textContent = label;
@@ -2131,7 +2142,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const form = document.createElement('form');
         const phaseLabel = document.createElement('label'); phaseLabel.textContent = 'New phase title';
         const phase = document.createElement('input'); phase.required = true; phase.maxLength = 200; phaseLabel.append(phase);
-        const objectiveLabel = document.createElement('label'); objectiveLabel.textContent = 'Objective (optional)';
+        const objectiveLabel = document.createElement('label'); objectiveLabel.textContent = 'Phase objective (required before structure acceptance)';
         const objective = document.createElement('input'); objective.maxLength = 8192; objectiveLabel.append(objective);
         form.onsubmit = event => { event.preventDefault(); void this.editCreate({ type: 'create-phase', title: phase.value, objective: objective.value }); };
         const addPhase = document.createElement('button'); addPhase.type = 'submit'; addPhase.textContent = 'Add phase'; addPhase.disabled = state.busy;
@@ -2227,54 +2238,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                     }
                 }
             }
-            for (const checkpoint of item.checkpoints) {
-                const edit = document.createElement('form');
-                const checkpointTitleLabel = document.createElement('label'); checkpointTitleLabel.textContent = `Edit ${checkpoint.title} title`;
-                const checkpointTitle = document.createElement('input'); checkpointTitle.value = checkpoint.title;
-                checkpointTitle.required = true; checkpointTitle.maxLength = 200; checkpointTitleLabel.append(checkpointTitle);
-                const checkpointObjectiveLabel = document.createElement('label'); checkpointObjectiveLabel.textContent = 'Checkpoint objective';
-                const checkpointObjective = document.createElement('input'); checkpointObjective.value = checkpoint.objective;
-                checkpointObjective.maxLength = 8192; checkpointObjectiveLabel.append(checkpointObjective);
-                edit.onsubmit = event => { event.preventDefault(); void this.editCreate({ type: 'edit-checkpoint', phaseId: item.id,
-                    checkpointId: checkpoint.id, title: checkpointTitle.value, objective: checkpointObjective.value }); };
-                const save = document.createElement('button'); save.type = 'submit'; save.textContent = 'Update checkpoint'; save.disabled = state.busy;
-                edit.append(checkpointTitleLabel, checkpointObjectiveLabel, save); group.append(edit);
-                const split = document.createElement('form');
-                const splitTitle = document.createElement('input'); splitTitle.required = true; splitTitle.maxLength = 200;
-                splitTitle.setAttribute('aria-label', `New checkpoint after ${checkpoint.title}`);
-                split.onsubmit = event => { event.preventDefault(); void this.previewCreateEdit({ type: 'split-checkpoint',
-                    phaseId: item.id, checkpointId: checkpoint.id, title: splitTitle.value }); };
-                const splitButton = document.createElement('button'); splitButton.type = 'submit';
-                splitButton.textContent = 'Preview split'; splitButton.disabled = state.busy;
-                split.append(splitTitle, splitButton); group.append(split);
-                const target = choose(`Move ${checkpoint.title} to phase`, state.draft.phases.map(phase =>
-                    ({ id: phase.id, label: phase.title })));
-                target.value = item.id;
-                const order = document.createElement('input'); order.type = 'number'; order.min = '0'; order.value = '0';
-                order.setAttribute('aria-label', `New order for ${checkpoint.title}`);
-                group.append(target, order, button('Preview move', () => void this.previewCreateEdit({
-                    type: 'move-checkpoint', phaseId: item.id, checkpointId: checkpoint.id,
-                    targetPhaseId: target.value, order: Number(order.value) })));
-                const choices = parentChoices.filter(choice => choice.id !== checkpoint.id &&
-                    !(checkpoint.dependencies ?? []).includes(choice.id));
-                if (choices.length) { const dependency = choose(`Dependency for ${checkpoint.title}`, choices);
-                    group.append(dependency, button('Preview dependency', () => void this.previewCreateEdit({
-                        type: 'add-dependency', checkpointId: checkpoint.id, dependencyId: dependency.value }))); }
-                for (const dependencyId of checkpoint.dependencies ?? []) {
-                    const name = parentChoices.find(choice => choice.id === dependencyId)?.label ?? dependencyId;
-                    group.append(button(`Preview removing dependency ${name}`, () => void this.previewCreateEdit({
-                        type: 'remove-dependency', checkpointId: checkpoint.id, dependencyId })));
-                }
-            }
-            const checkpointForm = document.createElement('form');
-            const checkpointLabel = document.createElement('label'); checkpointLabel.textContent = `New checkpoint in ${item.title}`;
-            const checkpointInput = document.createElement('input'); checkpointInput.required = true; checkpointInput.maxLength = 200; checkpointLabel.append(checkpointInput);
-            const checkpointObjectiveLabel = document.createElement('label'); checkpointObjectiveLabel.textContent = 'Objective (optional)';
-            const checkpointObjective = document.createElement('input'); checkpointObjective.maxLength = 8192; checkpointObjectiveLabel.append(checkpointObjective);
-            checkpointForm.onsubmit = event => { event.preventDefault(); void this.editCreate({ type: 'create-checkpoint', phaseId: item.id,
-                title: checkpointInput.value, objective: checkpointObjective.value }); };
-            const add = document.createElement('button'); add.type = 'submit'; add.textContent = 'Add checkpoint'; add.disabled = state.busy;
-            checkpointForm.append(checkpointLabel, checkpointObjectiveLabel, add); group.append(checkpointForm); section.append(group);
+            section.append(group);
         }
         const pathLabel = document.createElement('label'); pathLabel.textContent = 'Proposed Markdown path (publication requires separate approval)';
         const path = document.createElement('input'); path.value = state.path; path.maxLength = 512;
@@ -2457,7 +2421,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (this.phaseOpen && node.kind === 'phase' && !node.draftState) this.phaseId = id;
         this.schedulePresentation();
         if (node.taskSource) this.inspector.selectTask(node);
-        else if (!node.draftState) this.inspector.select(id);
+        else if (!node.draftState || node.draftState === 'accepted' &&
+            !!this.inspector.gateIndex?.phases.some(phase => phase.id === id)) this.inspector.select(id);
         this.setInspectionView('compact');
         this.setInspectionOpen(true);
         this.render();
@@ -2465,7 +2430,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.reviewedPlan?.preview ? 'Proposed plan projection; accept or reject in Roadmap' :
                 this.strategic?.review ? 'Proposed draft; accept or reject in Roadmap' :
                     'Proposed draft; accept or reject in the selected Chat' :
-            'Accepted draft; preview and approve creation in Roadmap'} · Not canonical.`;
+            this.inspector.gateIndex?.phases.some(phase => phase.id === id) ?
+                'Accepted Roadmap structure; Markdown publication remains separate' :
+                'Accepted draft; preview and approve creation in Roadmap'} · Not canonical.`;
         if (focus) {
             requestAnimationFrame(() => requestAnimationFrame(() => {
                 if (this.selectedId === id) [...this.path.querySelectorAll<HTMLButtonElement>('button[data-checkpoint-id]')]

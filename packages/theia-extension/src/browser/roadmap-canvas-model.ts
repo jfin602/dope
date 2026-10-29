@@ -15,6 +15,12 @@ export interface PhaseCardSummary {
     corrections: RoadmapCorrection[];
 }
 
+/** Keep a model-supplied designation in the title from appearing twice in Gate UI. */
+export function roadmapGateLabel(gate: Pick<RoadmapGate, 'designation' | 'title'>): string {
+    const title = gate.title.replace(new RegExp(`^${gate.designation}(?:\\s*[-—:]\\s*|\\s+)`, 'i'), '').trim();
+    return `${gate.designation} · ${title || gate.title}`;
+}
+
 /** Resolve a row against the current project and revision before changing presentation selection. */
 export function roadmapSelectableGate(index: RoadmapGateIndex | undefined, projectId: string,
     revision: number, phaseId: string, gateId: string): RoadmapGate | undefined {
@@ -60,6 +66,31 @@ export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly Roadmap
     return { projectId: index.projectId, revision: index.revision, nodes, edges: [],
         pools: { ideas: source.pools.ideas, issues: source.pools.issues }, diagnostics: source.diagnostics,
         unassignedCorrections: source.pools.corrections.map(item => ({ id: item.id, title: item.title })) };
+}
+
+/** Show unaccepted schema-two Phase/Gate drafts without treating task bullets as Gates. */
+export function projectGateDraftCards<T extends RoadmapProjection>(base: T, accepted?: GreenfieldDraft,
+    proposed?: GreenfieldDraft): T {
+    const active = proposed ?? accepted;
+    if (!active || base.revision !== 0) return base;
+    const existing = new Set(base.nodes.map(node => node.id));
+    const nodes: CheckpointNode[] = active.phases.filter(phase => !phase.kind).map((phase, number) => {
+        const gates = (phase.gates ?? []).map((gate, order) => ({
+            id: gate.id, projectId: base.projectId, parentPhaseId: phase.id, designation: gate.designation,
+            title: gate.title, purpose: gate.purpose, order, dependencies: gate.dependencies ?? [],
+            criteria: gate.criteria.map((criterion, criterionOrder) => ({ id: criterion.id, projectId: base.projectId,
+                title: criterion.title, expectedResult: criterion.expectedResult, order: criterionOrder, evidence: [] })),
+            implementationStatus: 'unknown' as const, qualificationStatus: 'unknown' as const,
+            draftAcceptance: proposed ? 'proposed' as const : 'accepted' as const,
+            status: 'unknown', proposed: !!proposed,
+        }));
+        const card: PhaseCardSummary = { number: number + 1, title: phase.title, qualification: 'unplanned',
+            qualified: 0, required: 0, gates, corrections: [] };
+        return { id: phase.id, kind: 'phase', title: phase.title, order: number, status: 'unknown',
+            statusLabel: 'Unplanned', evidence: [], readOnly: true, lane: 'path',
+            draftState: proposed ? 'proposed' : 'accepted', phaseCard: card };
+    });
+    return { ...base, nodes: [...base.nodes, ...nodes.filter(node => !existing.has(node.id))] };
 }
 
 export function currentDraftChange(change: GreenfieldChange, state: { root: string; projectId: string;
