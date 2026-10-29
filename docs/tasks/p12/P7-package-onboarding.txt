@@ -1,0 +1,20 @@
+TASK: Phase 12 / P7 — Ship Pi inside the AppImage and make local setup automatic
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.12.7`.
+
+PREFLIGHT
+Confirm P1–P6 source and gates, actual Pi license/version and build artifacts. Inspect `apps/electron/package.json` electron-builder, ASAR rules, `apps/electron/scripts/packaged-main.cjs`, `scripts/local-install.mjs`, AI Center presentation and tested rollback paths. No uncontrolled third-party Pi package/install.
+
+OBJECTIVE
+The installed Dope Linux AppImage must contain all required Pi runtime code and assets and launch in a clean user profile with NO globally installed Pi CLI, node/npm, Pi model configuration or repository checkout. User connects/selects an existing local model only ONCE using Dope AI Center. Local coding defaults to bundled Pi without a second wizard.
+
+IMPLEMENTATION
+Package runtime/dependencies/worker as necessary with deterministic lockfile, license notices, ASAR unpack/resource path and executable permissions. If SDK import works without subprocess, do not invent one. Distinguish Pi runtime ready from local inference server/model ready in existing UI: discovered, unloaded/cold, incompatible, offline, active. Show relevant recovery controls but no fake ready badge, silent model weight download, hosted fallback, global `~/.pi` writes or external extension auto-discovery. Preserve separate Codex provider and manual no-model route. Verify update/rollback keeps user project state and does not depend on arbitrary CLI.
+
+FOCUSED QUALIFICATION
+Build/package actual AppImage, install in isolated temporary user profile/root, launch/readiness, inspect required bundled files and license, remove PATH dependency on global pi/node/npm, ensure model missing remains recoverable, then test with real ready LM Studio. Check app resource resolution, clean profile, rollback, source/credential boundary and relevant builds/tests. If native GUI cannot be operated by Codex, record NATIVE PENDING and reserve P8 owner check; an Electron build is not native proof. STOP.
