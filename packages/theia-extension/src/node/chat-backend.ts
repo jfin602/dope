@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
-    ChatContextSelection } from '@dope/chat/lib/service';
+    ChatContextSelection, ChatStrategicDraftReview } from '@dope/chat/lib/service';
 import { suggestedChatTitle, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
@@ -11,12 +11,12 @@ import { ChatContextComposer } from './chat-context-composer';
 import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
-import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevision, validImplementationPlan,
+import { LocalPlanningOutputFailure, localPlanningJson, parseStrategicDraft, requestsRoadmapOwnerRevision, validImplementationPlan,
     validImplementationPlanRevision,
     roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 import { RoadmapGreenfield, reviseImplementationPlan, type ImplementationPlanRevision,
     type GreenfieldEdit, type GreenfieldEditPreview, type ImplementationPlanPreview,
-    type ImplementationPlanInput } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+    type ImplementationPlanInput, type StrategicDraftPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import { selectDopeCapabilityHelp } from './dope-capability-help';
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
@@ -106,6 +106,8 @@ export class ChatBackend implements ChatService {
         draft?: { handle: string; preview: GreenfieldEditPreview };
         plan?: { handle: string; preview: ImplementationPlanPreview } }>();
     private readonly planUndo = new Map<string, { handle: string; leaseToken: string; revision: number }>();
+    private readonly strategicReviews = new Map<string, { root: string; leaseToken: string;
+        question: string; preview: StrategicDraftPreview }>();
 
     constructor(private readonly repository: ChatRepository, private readonly client: ChatClient,
         private readonly models?: ModelConnectionsRegistry, private readonly composer?: ChatContextComposer,
@@ -290,6 +292,9 @@ export class ChatBackend implements ChatService {
                 await this.retirePending(root, request.chatId, result.token);
                 if (this.disposed) throw new Error('Disposed Chat connection');
                 this.clearProposal(request.chatId);
+                const prior = this.strategicReviews.get(request.chatId);
+                if (prior) { this.greenfield?.rejectStrategicDraft(prior.preview.token);
+                    this.strategicReviews.delete(request.chatId); }
                 this.leases.set(request.chatId, { root, token: result.token });
             } catch (error) {
                 await this.repository.release(root, request.chatId, result.token).catch(() => {});
@@ -304,7 +309,12 @@ export class ChatBackend implements ChatService {
     async release(projectHandle: string, chatId: string, token: string) {
         const root = this.active(projectHandle);
         await this.repository.release(root, chatId, token);
-        if (this.leases.get(chatId)?.token === token) { this.leases.delete(chatId); this.clearProposal(chatId); }
+        if (this.leases.get(chatId)?.token === token) {
+            this.leases.delete(chatId); this.clearProposal(chatId);
+            const review = this.strategicReviews.get(chatId);
+            if (review) { this.greenfield?.rejectStrategicDraft(review.preview.token);
+                this.strategicReviews.delete(chatId); }
+        }
     }
     publishDelta(request: ChatDeltaRequest) {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat delta request');
@@ -322,7 +332,8 @@ export class ChatBackend implements ChatService {
     private async offerRoadmap(root: string, chatId: string, messageId: string,
         leaseToken: string, opportunity: string | undefined, output: string): Promise<ChatRoadmapOffer | undefined> {
         if (!opportunity?.includes('revision zero') || !/\broadmap\b/i.test(output) ||
-            !/\bdraft\b/i.test(output) || !this.greenfield || this.proposals.has(chatId)) return undefined;
+            !/\bdraft\b/i.test(output) || !this.greenfield || this.proposals.has(chatId) ||
+            this.strategicReviews.has(chatId)) return undefined;
         const state = await this.greenfield.readOpportunity(root);
         if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation ||
             state.drafts || state.acceptedPlans || state.pendingPlans) return undefined;
@@ -336,7 +347,8 @@ export class ChatBackend implements ChatService {
     }
 
     async decideRoadmapOffer(projectHandle: string, chatId: string, leaseToken: string,
-        offerId: string, token: string, approve: boolean): Promise<'declined' | 'generation-unavailable'> {
+        offerId: string, token: string, approve: boolean, selectedModel?: { connectionId: string; modelId: string }):
+        Promise<'declined' | ChatStrategicDraftReview> {
         const root = this.active(projectHandle), pending = this.proposals.get(chatId);
         const offer = pending?.roadmapOffer;
         if (!offer || offer.id !== offerId || offer.token !== token || offer.chatId !== chatId ||
@@ -355,8 +367,96 @@ export class ChatBackend implements ChatService {
             state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts ||
             state.acceptedPlans || state.pendingPlans)
             throw new Error('Roadmap owner or draft changed; review Roadmap and request a new offer');
-        // P3 supplies the generation implementation. Consent does not create a draft or canonical file.
-        return 'generation-unavailable';
+        if (!this.models || !this.composer || !this.grounder) throw new Error('Strategic draft generation unavailable');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId)!;
+        const selection = selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ? chat.settings.modelPolicy.model : undefined);
+        if (!selection) throw new Error('Select an exact local model for strategic Roadmap generation');
+        const connection = (await this.models.list()).connections.find(item => item.id === selection.connectionId);
+        const model = connection?.ready && connection.models.find(item => item.id === selection.modelId && item.usable);
+        if (!connection || connection.providerId !== 'local' || !model)
+            throw new Error('Selected local model is unavailable for strategic Roadmap generation');
+        const outputTokens = Math.max(2048, chat.settings.context.reservedOutputTokens);
+        const budget = roadmapLocalBudget(model.capabilities.contextWindowTokens, outputTokens, model.capabilities);
+        if (budget.output < 2048) throw new Error('Selected local model has insufficient strategic draft output capacity');
+        const question = chat.messages.filter(item => item.role === 'user').slice(-3).map(item => item.content).join('\n');
+        if (!question.trim()) throw new Error('Saved Chat has no developer planning decisions');
+        const grounding = await this.grounder.ground(root, question);
+        const sourceHash = createHash('sha256').update(JSON.stringify({ messages: chat.messages,
+            evidence: grounding.blocks.map(item => item.ref) })).digest('hex');
+        const instruction = `Generate one concise whole strategic Roadmap draft for the developer's project. ` +
+            `Use saved Chat decisions and verified current project evidence; label suggestions as proposals, never as source facts. ` +
+            `Do not assert that missing evidence means an empty repository. Plan strategic phases and meaningful milestone checkpoints, ` +
+            `not implementation-level tasks. Do not force five phases or assume this is a game. ` +
+            `Return ONLY strict JSON with exactly {"type":"strategic-roadmap-draft","projectId":"${state.projectId}",` +
+            `"ownerRevision":${state.revision},"phases":[{"title":"Phase title","objective":"Outcome",` +
+            `"checkpoints":[{"title":"Milestone","objective":"Outcome","dependsOn":[]}]}]}. ` +
+            `Use 2–32 phases, 1–16 checkpoints per phase, at most 256 total. dependsOn contains one-based numbers ` +
+            `of earlier checkpoints across all phases. Keep output under 32768 UTF-8 bytes. ` +
+            `No file names, tools, approvals or publication claims.`;
+        const composed = await this.composeTurn(root, chat, question, [], model.capabilities, budget,
+            { text: instruction }, grounding);
+        const messages = this.withDraft(composed.messages, { text: instruction });
+        verifyRoadmapLocalInput(messages, budget);
+        await this.verifyLoadedCapacity(selection, budget, outputTokens);
+        const abort = new AbortController();
+        this.turns.set(chatId, { token: leaseToken, abort });
+        try {
+            if (this.pendingCancel.get(chatId) === leaseToken) abort.abort();
+            let completed: { text: string; finishReason?: string; actualModelId?: string; provenance?: {
+                connectionId: string; modelId: string } } | undefined;
+            let streamedBytes = 0;
+            for await (const event of this.models.generate(selection,
+                { messages, controls: chat.settings.reasoningControls ?? {}, signal: abort.signal,
+                    maxOutputTokens: budget.output }, { localOnly: true })) {
+                if (abort.signal.aborted) throw new ModelRuntimeFailure('Strategic draft cancelled', 'cancelled');
+                if (event.type === 'delta') {
+                    streamedBytes += Buffer.byteLength(event.text, 'utf8');
+                    if (streamedBytes > budget.maxOutputBytes)
+                        throw new LocalPlanningOutputFailure('Strategic draft exceeds the output budget', '');
+                } else completed = event;
+            }
+            if (!completed) throw new LocalPlanningOutputFailure('Strategic draft stream ended without completion', '');
+            if (completed.actualModelId && completed.actualModelId !== selection.modelId ||
+                completed.provenance && (completed.provenance.modelId !== selection.modelId ||
+                    completed.provenance.connectionId !== selection.connectionId))
+                throw new Error('Selected local model changed during strategic draft generation');
+            await this.verifyLoadedCapacity(selection, budget, outputTokens);
+            if (abort.signal.aborted) throw new ModelRuntimeFailure('Strategic draft cancelled', 'cancelled');
+            if (Buffer.byteLength(completed.text, 'utf8') > budget.maxOutputBytes)
+                throw new LocalPlanningOutputFailure('Strategic draft exceeds the output budget', '');
+            const input = parseStrategicDraft(completed.text, completed.finishReason, state.projectId, state.revision);
+            const freshChat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+            const freshGrounding = await this.grounder.ground(root, question);
+            const freshHash = createHash('sha256').update(JSON.stringify({ messages: freshChat?.messages,
+                evidence: freshGrounding.blocks.map(item => item.ref) })).digest('hex');
+            if (freshHash !== sourceHash) throw new Error('Chat decisions or project evidence changed during generation; regenerate');
+            const preview = await this.greenfield.previewStrategicDraft(root, input, sourceHash);
+            this.strategicReviews.set(chatId, { root, leaseToken, question, preview });
+            return { token: preview.token, projectId: preview.projectId, revision: preview.after.revision,
+                phases: preview.after.phases.map(phase => ({ title: phase.title, objective: phase.objective,
+                    checkpoints: phase.checkpoints.map(checkpoint => ({ id: checkpoint.id, title: checkpoint.title,
+                        objective: checkpoint.objective, dependencies: checkpoint.dependencies ?? [] })) })) };
+        } finally { this.turns.delete(chatId); this.pendingCancel.delete(chatId); }
+    }
+
+    async decideStrategicDraft(projectHandle: string, chatId: string, leaseToken: string,
+        token: string, approve: boolean): Promise<number | undefined> {
+        const root = this.active(projectHandle), pending = this.strategicReviews.get(chatId);
+        if (!pending || pending.root !== root || pending.leaseToken !== leaseToken ||
+            pending.preview.token !== token || this.leases.get(chatId)?.token !== leaseToken || this.turns.has(chatId) ||
+            typeof approve !== 'boolean')
+            throw new Error('Strategic draft review is no longer current');
+        this.strategicReviews.delete(chatId);
+        try {
+            await this.repository.renew(root, chatId, leaseToken);
+            if (!approve) return undefined;
+            const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+            if (!chat) throw new Error('Saved Chat changed before strategic draft acceptance');
+            const grounding = await this.grounder!.ground(root, pending.question);
+            const sourceHash = createHash('sha256').update(JSON.stringify({ messages: chat.messages,
+                evidence: grounding.blocks.map(item => item.ref) })).digest('hex');
+            return (await this.greenfield!.acceptStrategicDraft(root, chatId, pending.preview, sourceHash)).revision;
+        } finally { this.greenfield?.rejectStrategicDraft(token); }
     }
 
     private async retirePending(root: string, chatId: string, leaseToken: string): Promise<void> {
@@ -665,14 +765,17 @@ export class ChatBackend implements ChatService {
             const offer = this.proposals.get(request.chatId)?.roadmapOffer;
             if (!offer) throw new Error('No current Roadmap offer in this Chat; request a new offer first');
             const decision = await this.decideRoadmapOffer(request.projectHandle, request.chatId,
-                request.leaseToken, offer.id, offer.token, true);
+                request.leaseToken, offer.id, offer.token, true, request.selectedModel);
             return { refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0,
-                ...(decision === 'generation-unavailable' ? { roadmapOfferDecision: decision } : {}) };
+                ...(decision === 'declined' ? {} : { roadmapDraftReview: decision }) };
         }
         if (!this.models || this.turns.has(request.chatId)) throw new Error('Chat turn already active or runtime unavailable');
         const snapshot = await this.repository.read(root);
         const chat = snapshot.chats.find(item => item.id === request.chatId);
         if (!chat) throw new Error('Chat not found');
+        const priorReview = this.strategicReviews.get(request.chatId);
+        if (priorReview) { this.greenfield?.rejectStrategicDraft(priorReview.preview.token);
+            this.strategicReviews.delete(request.chatId); }
         await this.repository.renew(root, request.chatId, request.leaseToken);
         await this.retirePending(root, request.chatId, request.leaseToken);
         this.clearProposal(request.chatId);
@@ -1040,6 +1143,8 @@ export class ChatBackend implements ChatService {
         if (this.disposed) return;
         this.disposed = true;
         for (const chatId of this.proposals.keys()) this.clearProposal(chatId);
+        for (const review of this.strategicReviews.values()) this.greenfield?.rejectStrategicDraft(review.preview.token);
+        this.strategicReviews.clear();
         for (const turn of this.turns.values()) turn.abort.abort();
         // Browser unload cannot reliably finish an RPC release. The server still has
         // the connection's exact tokens when its socket closes. Token checks in the

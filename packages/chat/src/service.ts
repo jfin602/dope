@@ -50,11 +50,14 @@ export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: s
 /** A transient, noncanonical permission to attempt one draft generation. Never a draft or publication grant. */
 export interface ChatRoadmapOffer { id: string; token: string; projectHandle: string; projectId: string; chatId: ChatId;
     ownerId: string; ownerRevision: number; basis: 'empty-owner'; expiresAt: number }
+export interface ChatStrategicDraftReview { token: string; projectId: string; revision: number;
+    phases: { title: string; objective: string; checkpoints: { id: string; title: string; objective: string;
+        dependencies: string[] }[] }[] }
 export interface ChatPlanPreview { coverage: { id: string; text: string;
     status: 'covered' | 'needs-review' | 'missing'; explanation: string; stepNumbers: number[] }[] }
 export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal;
     proposalError?: string; planPreview?: ChatPlanPreview; roadmapOffer?: ChatRoadmapOffer;
-    roadmapOfferDecision?: 'generation-unavailable' }
+    roadmapDraftReview?: ChatStrategicDraftReview }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;
@@ -82,7 +85,9 @@ export interface ChatService {
     decidePlanningProposal(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined>;
     decideRoadmapOffer(projectHandle: string, chatId: ChatId, leaseToken: string,
-        offerId: string, token: string, approve: boolean): Promise<'declined' | 'generation-unavailable'>;
+        offerId: string, token: string, approve: boolean, selectedModel?: ChatModelSelection): Promise<'declined' | ChatStrategicDraftReview>;
+    decideStrategicDraft(projectHandle: string, chatId: ChatId, leaseToken: string,
+        token: string, approve: boolean): Promise<number | undefined>;
     undoPlanningRevision(projectHandle: string, chatId: ChatId, leaseToken: string,
         expectedRevision: number): Promise<number>;
     cancelTurn(projectHandle: string, chatId: ChatId, leaseToken: string): Promise<void>;

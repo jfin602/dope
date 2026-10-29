@@ -1873,10 +1873,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const heading = document.createElement('strong');
             heading.textContent = 'Draft Roadmap available';
             const note = document.createElement('p');
-            note.textContent = 'This is a provisional draft offer. Generation is not yet available in this version; no Roadmap file will be created.';
+            note.textContent = 'Generate one provisional strategic outline with the selected local model. You will review its phases and milestones before accepting a noncanonical draft.';
             const actions = document.createElement('div');
             actions.className = 'dope-chat-roadmap-offer-actions';
-            const decide = (approve: boolean) => void state.decideRoadmapOffer(approve).then(() =>
+            const decide = (approve: boolean) => void state.decideRoadmapOffer(approve, this.selectedModel()).then(() =>
                 this.content.querySelector<HTMLElement>('.dope-chat-roadmap-offer-status')?.focus());
             const generate = this.button('Generate Draft Roadmap', () => decide(true), state.pending || state.running);
             generate.className = 'dope-chat-roadmap-offer-primary';
@@ -1888,6 +1888,33 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const note = document.createElement('p'); note.setAttribute('role', 'status');
             note.className = 'dope-chat-roadmap-offer-status'; note.tabIndex = -1;
             note.textContent = state.roadmapOfferStatus; composer.append(note);
+        }
+        if (state.strategicDraftReview) {
+            const review = state.strategicDraftReview;
+            const section = document.createElement('section'); section.className = 'dope-chat-plan-review';
+            section.setAttribute('aria-label', 'Strategic Roadmap draft review');
+            const heading = document.createElement('strong'); heading.textContent = 'Review proposed strategic Roadmap';
+            section.append(heading);
+            const list = document.createElement('ol');
+            const titles = new Map(review.phases.flatMap(phase => phase.checkpoints.map(checkpoint =>
+                [checkpoint.id, checkpoint.title] as const)));
+            for (const phase of review.phases) {
+                const item = document.createElement('li');
+                const title = document.createElement('strong'); title.textContent = phase.title;
+                const objective = document.createElement('p'); objective.textContent = phase.objective;
+                const checkpoints = document.createElement('ul');
+                for (const checkpoint of phase.checkpoints) {
+                    const row = document.createElement('li');
+                    row.textContent = `${checkpoint.title}: ${checkpoint.objective}` +
+                        (checkpoint.dependencies.length ? ` · After ${checkpoint.dependencies.map(id =>
+                            titles.get(id) ?? id).join(', ')}` : '');
+                    checkpoints.append(row);
+                }
+                item.append(title, objective, checkpoints); list.append(item);
+            }
+            section.append(list, this.button('Accept into draft', () => void state.decideStrategicDraft(true), state.pending),
+                this.button('Reject proposal', () => void state.decideStrategicDraft(false), state.pending));
+            composer.append(section);
         }
         if (state.planningProposal) {
             const proposal = state.planningProposal;

@@ -40,6 +40,67 @@ test('read-only opportunity checks empty, competing draft and existing Roadmap w
     assert.deepEqual(await readdir(root), ['.dope']);
 }));
 
+test('whole strategic draft is one reviewed noncanonical transaction with stable dependency identities', async () => fixture(async root => {
+    const store = new RoadmapStore(), greenfield = new RoadmapGreenfield(store);
+    const sourceHash = 'a'.repeat(64), projectId = (await store.read(root)).projectId;
+    const chatId = '123e4567-e89b-42d3-a456-426614174000';
+    const phases = ['Foundation', 'First playable', 'Expansion'].map((title, phase) => ({
+        title, objective: `Deliver ${title.toLowerCase()} outcome`,
+        checkpoints: [{ title: `${title} milestone`, objective: `Verify ${title.toLowerCase()} outcome`,
+            dependsOn: phase ? [phase] : [] }] }));
+    const input = { projectId, ownerRevision: 0, phases };
+    const preview = await greenfield.previewStrategicDraft(root, input, sourceHash);
+    assert.equal(preview.after.phases.length, 3);
+    assert.equal(preview.after.phases[2].checkpoints[0].dependencies?.[0],
+        preview.after.phases[1].checkpoints[0].id);
+    assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+    assert.equal((await store.read(root)).revision, 0);
+    assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+    await assert.rejects(greenfield.acceptStrategicDraft(root, chatId, preview, 'b'.repeat(64)), /source/);
+    const review = await greenfield.previewStrategicDraft(root, input, sourceHash);
+    assert.equal((await greenfield.acceptStrategicDraft(root, chatId, review, sourceHash)).revision, 1);
+    assert.equal((await greenfield.readOpportunity(root)).drafts, 1);
+    assert.equal((await store.read(root)).revision, 0);
+    assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+    const restored = new RoadmapGreenfield(store);
+    assert.equal((await restored.restore(root))[0]?.draft.phases.length, 3);
+    await assert.rejects(greenfield.acceptStrategicDraft(root, chatId, review, sourceHash), /Stale/);
+}));
+
+test('whole strategic draft rejects missing objectives, bad dependencies, caps and foreign basis without phantom draft', async () => fixture(async root => {
+    const greenfield = new RoadmapGreenfield(new RoadmapStore());
+    const projectId = (await greenfield.owner(root)).projectId, sourceHash = 'f'.repeat(64);
+    const phase = { title: 'Discover', objective: 'Validated direction',
+        checkpoints: [{ title: 'Scope', objective: 'Agreed scope', dependsOn: [] as number[] }] };
+    const propose = (phases: typeof phase[], id = projectId) => greenfield.previewStrategicDraft(root,
+        { projectId: id, ownerRevision: 0, phases }, sourceHash);
+    await assert.rejects(propose([phase], 'foreign'), /foreign/);
+    await assert.rejects(propose([phase]), /phase count/);
+    await assert.rejects(propose([{ ...phase, objective: '' }, phase]), /objective/);
+    await assert.rejects(propose([phase, { ...phase, checkpoints: [{ ...phase.checkpoints[0], dependsOn: [2] }] }]), /dependency/);
+    await assert.rejects(propose(Array.from({ length: 33 }, (_, i) => ({ ...phase, title: `Phase ${i}` }))), /phase count/);
+    const oversized = Array.from({ length: 16 }, (_, i) => ({ title: `Large phase ${i}`,
+        objective: 'Bounded objective', checkpoints: Array.from({ length: 16 }, (_, j) => ({
+            title: `Large milestone ${i}-${j}`, objective: 'x'.repeat(8192), dependsOn: [] })) }));
+    await assert.rejects(propose(oversized), /size limits/);
+    assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+}));
+
+test('strategic review rejects an owner revision changed after generation', async () => fixture(async root => {
+    const store = new RoadmapStore(), greenfield = new RoadmapGreenfield(store);
+    const projectId = (await store.read(root)).projectId;
+    const phase = (title: string) => ({ title, objective: `${title} outcome`,
+        checkpoints: [{ title: `${title} milestone`, objective: 'Observable milestone', dependsOn: [] }] });
+    const preview = await greenfield.previewStrategicDraft(root,
+        { projectId, ownerRevision: 0, phases: [phase('Design'), phase('Build')] }, 'a'.repeat(64));
+    await store.mutate(root, 0, { type: 'create', id: 'new-owner', kind: 'milestone',
+        title: 'Concurrent owner change', objective: '', order: 0 });
+    await assert.rejects(greenfield.acceptStrategicDraft(root, '123e4567-e89b-42d3-a456-426614174000',
+        preview, 'a'.repeat(64)), /owner|Stale/);
+    assert.equal((await store.read(root)).revision, 1);
+    assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+}));
+
 test('a capped draft sequence is provisional until approved and checks each projected step', async () => fixture(async root => {
     const store = new RoadmapStore();
     const drafts = new RoadmapGreenfield(store);

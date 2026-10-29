@@ -139,14 +139,13 @@ test('one checked Roadmap offer uses identical button and exact Chat consent wit
             first.id, id(), true), /no longer current/);
         await assert.rejects(backend.decideRoadmapOffer('wrong', chatId, claim.token,
             first.id, first.token, true), /Invalid/);
-        assert.equal(await backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            first.id, first.token, true), 'generation-unavailable');
+        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
+            first.id, first.token, true), /generation unavailable/);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
             first.id, first.token, true), /no longer current/);
         const second = (await makeOffer())!;
-        const phrase = await backend.runTurn({ projectHandle, chatId, leaseToken: claim.token,
-            content: 'Yes, create the roadmap.' });
-        assert.equal(phrase.roadmapOfferDecision, 'generation-unavailable');
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: claim.token,
+            content: 'Yes, create the roadmap.' }), /generation unavailable/);
         assert.ok(reads >= 4);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
             second.id, second.token, true), /no longer current/);
@@ -155,6 +154,92 @@ test('one checked Roadmap offer uses identical button and exact Chat consent wit
             declined.id, declined.token, false), 'declined');
         assert.deepEqual(await readdir(root), ['.dope']);
         assert.equal((await readdir(join(root, '.dope'))).includes('roadmap.json'), false);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('approved offer generates one whole outline, then separate review accepts only a noncanonical draft', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    const greenfield = new RoadmapGreenfield(new RoadmapStore());
+    const projectId = (await greenfield.owner(root)).projectId;
+    const outline = { type: 'strategic-roadmap-draft', projectId, ownerRevision: 0,
+        phases: ['Foundation', 'Map and enemies', 'Combat', 'MVP polish'].map((title, index) => ({
+            title, objective: `Deliver ${title.toLowerCase()}`, checkpoints: [{ title: `${title} milestone`,
+                objective: `Verify ${title.toLowerCase()}`, dependsOn: index ? [index] : [] }] })) };
+    let calls = 0, finishReason = 'stop', actualModelId = 'q4';
+    let cancelGeneration: (() => Promise<void>) | undefined;
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [{ id: 'q4', usable: true, capabilities: { conversationalText: true, streaming: true,
+            contextWindowTokens: 32768 } }] }] }),
+    async *generate() { calls++; if (cancelGeneration) await cancelGeneration();
+        yield { type: 'complete' as const, text: JSON.stringify(outline),
+        finishReason, actualModelId }; } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Plan the game' }],
+        refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0 }) };
+    let evidenceVersion = 0;
+    const grounder = { ground: async () => ({ blocks: [{ ref: { kind: 'file', id: 'source',
+        sourceHash: String(evidenceVersion) } }] }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
+        undefined, grounder as never, undefined, greenfield);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        cancelGeneration = undefined;
+        const snapshot = await backend.read(projectHandle);
+        await backend.mutate({ projectHandle, expectedRevision: snapshot.revision, leaseToken: lease.token,
+            operation: { type: 'append-user', chatId, message: { schemaVersion: 1, id: id(), role: 'user',
+                createdAt: new Date().toISOString(), content: 'Let us build a tower defense game.', contextRefs: [] } } });
+        const makeOffer = () => (backend as unknown as { offerRoadmap(root: string, chatId: string,
+            messageId: string, leaseToken: string, opportunity: string, output: string): Promise<{
+                id: string; token: string }> }).offerRoadmap(root, chatId, id(), lease.token,
+                    'revision zero', 'I can generate a roadmap draft.');
+        const offer = await makeOffer();
+        assert.ok(offer);
+        const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            offer.id, offer.token, true, { connectionId: 'local', modelId: 'q4' });
+        assert.notEqual(review, 'declined');
+        if (review === 'declined') throw new Error('Expected review');
+        assert.equal(calls, 1);
+        assert.equal(review.phases.length, 4);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+        assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+        assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token, review.token, false), undefined);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+        finishReason = 'length';
+        const truncated = await makeOffer(); assert.ok(truncated);
+        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            truncated.id, truncated.token, true, { connectionId: 'local', modelId: 'q4' }), /truncated/);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+        finishReason = 'stop'; actualModelId = 'wrong';
+        const wrong = await makeOffer(); assert.ok(wrong);
+        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            wrong.id, wrong.token, true, { connectionId: 'local', modelId: 'q4' }), /model changed/);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+        actualModelId = 'q4';
+        cancelGeneration = () => backend.cancelTurn(projectHandle, chatId, lease.token);
+        const cancelled = await makeOffer(); assert.ok(cancelled);
+        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            cancelled.id, cancelled.token, true, { connectionId: 'local', modelId: 'q4' }), /cancelled/);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+        cancelGeneration = undefined;
+        const finalOffer = await makeOffer(); assert.ok(finalOffer);
+        const finalReview = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            finalOffer.id, finalOffer.token, true, { connectionId: 'local', modelId: 'q4' });
+        if (finalReview === 'declined') throw new Error('Expected final review');
+        evidenceVersion++;
+        await assert.rejects(backend.decideStrategicDraft(projectHandle, chatId, lease.token, finalReview.token, true), /source/);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+        const freshOffer = await makeOffer(); assert.ok(freshOffer);
+        const freshReview = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            freshOffer.id, freshOffer.token, true, { connectionId: 'local', modelId: 'q4' });
+        if (freshReview === 'declined') throw new Error('Expected fresh review');
+        assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token, freshReview.token, true), 1);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 1);
+        assert.equal((await new RoadmapStore().read(root)).revision, 0);
+        assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+        await assert.rejects(backend.decideStrategicDraft(projectHandle, chatId, lease.token, freshReview.token, true), /no longer current/);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 

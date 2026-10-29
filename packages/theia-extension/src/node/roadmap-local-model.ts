@@ -1,5 +1,6 @@
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import type { ConversationMessage, ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
+import type { StrategicDraftInput } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 
 const SYSTEM_RESERVE = 512;
 const SAFETY_RESERVE = 256;
@@ -39,6 +40,28 @@ export interface LocalImplementationPlan {
     assumptions: string[]; steps: { title: string; detail: string; deliverables: string[];
         dependsOn: number[]; reuse: { path: string; reason: string }[] }[];
     tests: string[]; guiQualification: string; risks: string[]; alternatives: string[]; question: string;
+}
+/** One completed model envelope; numbered dependencies refer to earlier checkpoints across all phases. */
+export function parseStrategicDraft(text: string, finishReason: string | undefined,
+    projectId: string, ownerRevision: number): StrategicDraftInput {
+    if (finishReason && !['stop', 'eos', 'end_turn'].includes(finishReason))
+        throw new LocalPlanningOutputFailure('Strategic draft output was truncated; generate it again', text, 'incomplete-answer');
+    if (Buffer.byteLength(text, 'utf8') > 32768)
+        throw new LocalPlanningOutputFailure('Strategic draft exceeds the model output byte limit', text);
+    let value: unknown;
+    try { value = JSON.parse(text); } catch {
+        throw new LocalPlanningOutputFailure('Strategic draft is incomplete or invalid JSON', text);
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        throw new LocalPlanningOutputFailure('Strategic draft must be one JSON object', text);
+    const raw = value as Record<string, unknown>;
+    if (Object.keys(raw).sort().join(',') !== 'ownerRevision,phases,projectId,type' ||
+        raw.type !== 'strategic-roadmap-draft' || raw.projectId !== projectId || raw.ownerRevision !== ownerRevision)
+        throw new LocalPlanningOutputFailure('Strategic draft targets a stale or foreign Roadmap owner', text);
+    const input = { projectId, ownerRevision, phases: raw.phases } as StrategicDraftInput;
+    if (!Array.isArray(input.phases) || input.phases.length < 2 || input.phases.length > 32)
+        throw new LocalPlanningOutputFailure('Strategic draft needs 2–32 complete phases', text);
+    return input;
 }
 export function validImplementationPlanRevision(value: unknown): boolean {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;

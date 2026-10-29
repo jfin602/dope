@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { localPlanningJson, requestsRoadmapOwnerRevision, roadmapLocalBudget, validImplementationPlan,
+import { localPlanningJson, parseStrategicDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget, validImplementationPlan,
     verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
@@ -13,6 +13,18 @@ const implementationPlan = { type: 'implementation-plan', objective: 'Add visual
         { title: 'Implement history view', detail: 'Wire history to existing diff editor', deliverables: ['History panel'],
             dependsOn: [1], reuse: [] }], tests: ['Unit history navigation'], guiQualification: 'Exercise checkout in GUI',
     risks: ['Stale branch state; refresh before action'], alternatives: ['Reuse existing list first'], question: '' };
+
+test('whole strategic envelope requires complete output and exact owner identity', () => {
+    const draft = { type: 'strategic-roadmap-draft', projectId: 'project', ownerRevision: 0,
+        phases: ['Foundation', 'Combat', 'MVP polish'].map((title, index) => ({ title,
+            objective: `${title} is usable`, checkpoints: [{ title: `${title} milestone`, objective: 'Observable result',
+                dependsOn: index ? [index] : [] }] })) };
+    assert.equal(parseStrategicDraft(JSON.stringify(draft), 'stop', 'project', 0).phases.length, 3);
+    assert.throws(() => parseStrategicDraft(JSON.stringify(draft), 'length', 'project', 0), /truncated/);
+    assert.throws(() => parseStrategicDraft(JSON.stringify(draft).slice(0, -5), 'stop', 'project', 0), /invalid JSON/);
+    assert.throws(() => parseStrategicDraft(JSON.stringify(draft), 'stop', 'foreign', 0), /foreign/);
+    assert.throws(() => parseStrategicDraft(JSON.stringify({ ...draft, tool: 'write' }), 'stop', 'project', 0), /foreign/);
+});
 
 test('strict plan envelope is separate from the 4000-character no-action and small Roadmap action caps', async () => {
     const signal = new AbortController().signal;
