@@ -52,7 +52,7 @@ export interface GreenfieldPreview { token: string; draftRevision: number; path:
     phases: GreenfieldPhase[]; requiresApproval: true }
 export interface GreenfieldEditPreview { token: string; draftRevision: number; before: GreenfieldDraft;
     after: GreenfieldDraft; action: GreenfieldEdit; actions?: GreenfieldEdit[]; requiresApproval: true }
-export interface StrategicDraftInput { projectId: string; ownerRevision: number; phases: {
+export interface StrategicDraftInput { projectId: string; ownerRevision: number; allowIncomplete?: true; phases: {
     title: string; objective: string; checkpoints: { title: string; objective: string; dependsOn: number[] }[] }[] }
 export interface StrategicDraftPreview { token: string; handle: string; projectId: string; ownerRevision: number;
     draftRevision: number; sourceHash: string; before: GreenfieldDraft; after: GreenfieldDraft; requiresApproval: true }
@@ -518,22 +518,26 @@ export class RoadmapGreenfield {
             throw new Error('Stale or foreign Roadmap owner or competing draft');
         if ([...this.strategicPreviews.values()].some(item => item.root === root))
             throw new Error('Another strategic draft awaits review');
-        if (!/^[0-9a-f]{64}$/.test(sourceHash) || !input || !fields(input, ['projectId', 'ownerRevision', 'phases']) ||
+        if (!/^[0-9a-f]{64}$/.test(sourceHash) || !input || !fields(input, ['projectId', 'ownerRevision', 'phases'], ['allowIncomplete']) ||
+            (input.allowIncomplete !== undefined && input.allowIncomplete !== true) ||
             !Array.isArray(input.phases) || input.phases.length < 2 || input.phases.length > 32)
             throw new Error('Invalid strategic draft phase count or source');
         const handle = randomUUID(), ids: string[] = [];
         let checkpointCount = 0;
         const phases: GreenfieldPhase[] = input.phases.map((phase, phaseIndex) => {
             if (!phase || !fields(phase, ['title', 'objective', 'checkpoints']) ||
-                !title(phase.title) || !objective(phase.objective) || !phase.objective.trim() ||
-                !Array.isArray(phase.checkpoints) || !phase.checkpoints.length || phase.checkpoints.length > 16)
+                !title(phase.title) || !objective(phase.objective) ||
+                (!input.allowIncomplete && !phase.objective.trim()) ||
+                !Array.isArray(phase.checkpoints) || (!input.allowIncomplete && !phase.checkpoints.length) ||
+                phase.checkpoints.length > 16)
                 throw new Error(`Invalid strategic phase ${phaseIndex + 1}: title, objective or checkpoints missing`);
             const phaseId = stableId(`strategic-phase:${owner.projectId}:${sourceHash}:${phaseIndex}:${phase.title}`);
             return { id: phaseId, title: phase.title, objective: phase.objective,
                 checkpoints: phase.checkpoints.map((checkpoint, index) => {
                     checkpointCount++;
                     if (!checkpoint || !fields(checkpoint, ['title', 'objective', 'dependsOn']) ||
-                        !title(checkpoint.title) || !objective(checkpoint.objective) || !checkpoint.objective.trim() ||
+                        !title(checkpoint.title) || !objective(checkpoint.objective) ||
+                        (!input.allowIncomplete && !checkpoint.objective.trim()) ||
                         !Array.isArray(checkpoint.dependsOn) || checkpoint.dependsOn.length > 128 ||
                         new Set(checkpoint.dependsOn).size !== checkpoint.dependsOn.length ||
                         checkpoint.dependsOn.some(value => !Number.isSafeInteger(value) || value < 1 || value >= checkpointCount))

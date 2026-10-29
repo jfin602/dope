@@ -443,6 +443,9 @@ export class ChatPanelController {
         if (!lease || this.running || this.pending || !this.chat || !retryMessageId && !this.draft.trim()) return false;
         const content = this.draft;
         const offerReply = !retryMessageId && /^yes,?\s+create the roadmap[.!]?$/i.test(content.trim());
+        const keepReview = !!this.strategicDraftReview && !retryMessageId &&
+            (/^roadmap[.!?]?$/i.test(content.trim()) ||
+                !/\b(?:roadmap|phase|checkpoint|tower|enemy|health|currency|money|abilit(?:y|ies))\b/i.test(content));
         this.activeRoadmapOfferId = offerReply ? this.roadmapOffer?.id : undefined;
         if (this.activeRoadmapOfferId) {
             this.roadmapGenerationProjectId = this.roadmapOffer?.projectId;
@@ -452,7 +455,8 @@ export class ChatPanelController {
         let completed = false;
         this.running = true; this.error = ''; this.stream = undefined; this.planningProgress = undefined;
         this.planningProposal = undefined; this.planningProposalError = undefined; this.planPreview = undefined;
-        this.roadmapOffer = undefined; this.strategicDraftReview = undefined; this.roadmapOfferStatus = undefined;
+        this.roadmapOffer = undefined;
+        if (!keepReview) { this.strategicDraftReview = undefined; this.roadmapOfferStatus = undefined; }
         if (!retryMessageId && chatId) this.transientUser = { chatId, content,
             previousIds: new Set(this.chat?.messages.filter(message => message.role === 'user').map(message => message.id)) };
         if (!retryMessageId) this.draft = '';

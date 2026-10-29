@@ -223,7 +223,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (state.pending || state.running) actions.append(this.button('Cancel generation', () => void state.cancel()));
         } else if (status === 'ready' && liveReview) {
             heading.textContent = 'Roadmap Ready for Review';
-            note.textContent = 'Review the proposed phases in the Roadmap editor.';
+            note.textContent = action.diagnostic ?? 'Review the proposed phases in the Roadmap editor.';
             actions.append(this.button('Open Roadmap', () => {
                 const review = state.strategicDraftReview, workspace = state.workspace, chatId = state.chatId;
                 if (review && workspace && chatId && review.projectId === action.projectId)

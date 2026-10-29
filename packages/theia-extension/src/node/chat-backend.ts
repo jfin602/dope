@@ -11,7 +11,7 @@ import { ChatContextComposer } from './chat-context-composer';
 import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
-import { LocalPlanningOutputFailure, localPlanningJson, parseStrategicDraft, requestsRoadmapOwnerRevision, validImplementationPlan,
+import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevision, validImplementationPlan,
     validImplementationPlanRevision,
     roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 import { RoadmapGreenfield, reviseImplementationPlan, type ImplementationPlanRevision,
@@ -22,6 +22,7 @@ import { selectDopeCapabilityHelp } from './dope-capability-help';
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
 import { planRequirements, planRequirementCoverage, type PlanRequirement } from './chat-plan-requirements';
+import { extractSavedRoadmap, roadmapCreationIntent } from './chat-roadmap-extract';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
@@ -107,7 +108,16 @@ export class ChatBackend implements ChatService {
         plan?: { handle: string; preview: ImplementationPlanPreview } }>();
     private readonly planUndo = new Map<string, { handle: string; leaseToken: string; revision: number }>();
     private readonly strategicReviews = new Map<string, { root: string; leaseToken: string; messageId: string; offerId: string;
-        question: string; preview: StrategicDraftPreview }>();
+        question: string; preview: StrategicDraftPreview; extractedSourceId?: string }>();
+
+    private extractedSourceHash(chat: Chat, sourceId: string): string {
+        const index = chat.messages.findIndex(item => item.id === sourceId && item.role === 'assistant');
+        if (index < 0) throw new Error('Saved planning answer changed');
+        const source = chat.messages[index];
+        return createHash('sha256').update(JSON.stringify({ sourceId, content: source.content,
+            decisions: chat.messages.slice(0, index).filter(item => item.role === 'user')
+                .map(item => ({ id: item.id, content: item.content })) })).digest('hex');
+    }
 
     private async updateRoadmapAction(root: string, chatId: string, messageId: string, leaseToken: string,
         offerId: string, expected: ChatRoadmapAction['status'], status: ChatRoadmapAction['status'],
@@ -351,16 +361,16 @@ export class ChatBackend implements ChatService {
     }
 
     private async offerRoadmap(root: string, chatId: string, messageId: string,
-        leaseToken: string, opportunity: string | undefined, output: string): Promise<ChatRoadmapOffer | undefined> {
-        if (!opportunity?.includes('revision zero') || !this.greenfield || this.proposals.has(chatId) ||
+        leaseToken: string, opportunity: string | undefined, output: string, direct = false): Promise<ChatRoadmapOffer | undefined> {
+        if ((!direct && !opportunity?.includes('revision zero')) || !this.greenfield || this.proposals.has(chatId) ||
             this.strategicReviews.has(chatId)) return undefined;
         const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
         if (!chat) return undefined;
         const lastUser = chat.messages.filter(item => item.role === 'user').at(-1)?.content ?? '';
         const requestedAgain = /\b(?:create|generate|make|offer)\b[\s\S]{0,100}\bdraft\b[\s\S]{0,60}\broadmap\b/i.test(lastUser) ||
             /\b(?:create|generate|make|offer)\b[\s\S]{0,100}\broadmap\b[\s\S]{0,60}\bdraft\b/i.test(lastUser);
-        if (!requestedAgain && (!/\broadmap\b/i.test(output) || !/\bdraft\b/i.test(output))) return undefined;
-        if (!requestedAgain && chat.messages.some(item => item.role === 'assistant' &&
+        if (!direct && !requestedAgain && (!/\broadmap\b/i.test(output) || !/\bdraft\b/i.test(output))) return undefined;
+        if (!direct && !requestedAgain && chat.messages.some(item => item.role === 'assistant' &&
             item.id !== messageId && /\broadmap\b/i.test(item.content) && /\bdraft\b/i.test(item.content)))
             return undefined;
         const state = await this.greenfield.readOpportunity(root);
@@ -371,15 +381,19 @@ export class ChatBackend implements ChatService {
             projectId: state.projectId,
             chatId, messageId, ownerId: state.projectId, ownerRevision: state.revision, basis: 'empty-owner',
             expiresAt: Date.now() + 5 * 60_000 };
+        const prior = chat.messages.find(item => item.id === messageId);
+        const retry = prior?.role === 'assistant' && prior.roadmapAction &&
+            ['offered', 'ready', 'failed', 'cancelled', 'declined', 'stale'].includes(prior.roadmapAction.status)
+            ? { offerId: prior.roadmapAction.offerId, status: prior.roadmapAction.status } : undefined;
         await this.repository.recordRoadmapAction(root, chatId, messageId, leaseToken,
             { schemaVersion: 1, offerId: offer.id, projectId: offer.projectId, chatId,
-                ownerRevision: offer.ownerRevision, status: 'offered' });
+                ownerRevision: offer.ownerRevision, status: 'offered' }, retry);
         this.proposals.set(chatId, { id: offer.id, messageId, leaseToken, changedIds: [], roadmapOffer: offer });
         return offer;
     }
 
     async decideRoadmapOffer(projectHandle: string, chatId: string, leaseToken: string,
-        offerId: string, token: string, approve: boolean, selectedModel?: { connectionId: string; modelId: string }):
+        offerId: string, token: string, approve: boolean, _selectedModel?: { connectionId: string; modelId: string }):
         Promise<'declined' | ChatStrategicDraftReview> {
         const root = this.active(projectHandle), pending = this.proposals.get(chatId);
         const offer = pending?.roadmapOffer;
@@ -407,102 +421,55 @@ export class ChatBackend implements ChatService {
             state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts ||
             state.acceptedPlans || state.pendingPlans)
             throw new Error('Roadmap owner or draft changed; review Roadmap and request a new offer');
-        if (!this.models || !this.composer || !this.grounder) throw new Error('Strategic draft generation unavailable');
-        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId)!;
-        const selection = selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ? chat.settings.modelPolicy.model : undefined);
-        if (!selection) throw new Error('Select an exact local model for strategic Roadmap generation');
-        const connection = (await this.models.list()).connections.find(item => item.id === selection.connectionId);
-        const model = connection?.ready && connection.models.find(item => item.id === selection.modelId && item.usable);
-        if (!connection || connection.providerId !== 'local' || !model)
-            throw new Error('Selected local model is unavailable for strategic Roadmap generation');
-        const outputTokens = Math.max(2048, chat.settings.context.reservedOutputTokens);
-        const budget = roadmapLocalBudget(model.capabilities.contextWindowTokens, outputTokens, model.capabilities);
-        if (budget.output < 2048) throw new Error('Selected local model has insufficient strategic draft output capacity');
-        const question = chat.messages.filter(item => item.role === 'user').slice(-3).map(item => item.content).join('\n');
-        if (!question.trim()) throw new Error('Saved Chat has no developer planning decisions');
-        const grounding = await this.grounder.ground(root, question);
-        const sourceHash = createHash('sha256').update(JSON.stringify({ messages: this.roadmapSourceMessages(chat),
-            evidence: grounding.blocks.map(item => item.ref) })).digest('hex');
-        const instruction = `Generate one concise whole strategic Roadmap draft for the developer's project. ` +
-            `Use saved Chat decisions and verified current project evidence; label suggestions as proposals, never as source facts. ` +
-            `Do not assert that missing evidence means an empty repository. Plan deliverable strategic phases and meaningful milestone checkpoints, ` +
-            `not implementation-level tasks. Keep optional post-MVP work outside the main MVP path unless requested. ` +
-            `Do not force five phases or assume this is a game. ` +
-            `Return ONLY strict JSON with exactly {"type":"strategic-roadmap-draft","projectId":"${state.projectId}",` +
-            `"ownerRevision":${state.revision},"phases":[{"title":"Phase title","objective":"Outcome",` +
-            `"checkpoints":[{"title":"Milestone","objective":"Outcome","dependsOn":[]}]}]}. ` +
-            `Use 2–32 phases, 1–16 checkpoints per phase, at most 256 total. dependsOn contains one-based numbers ` +
-            `of earlier checkpoints across all phases. Keep output under 32768 UTF-8 bytes. ` +
-            `No file names, tools, approvals or publication claims.`;
-        const composed = await this.composeTurn(root, chat, question, [], model.capabilities, budget,
-            { text: instruction }, grounding);
-        const messages = this.withDraft(composed.messages, { text: instruction });
-        verifyRoadmapLocalInput(messages, budget);
-        await this.verifyLoadedCapacity(selection, budget, outputTokens);
-        const abort = new AbortController();
-        this.turns.set(chatId, { token: leaseToken, abort });
-        try {
-            if (this.pendingCancel.get(chatId) === leaseToken) abort.abort();
-            this.planningProgress(chatId, offer.id, 'generating-draft');
-            await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
-                'generating', 'generating', { stage: 'generating-draft' });
-            let completed: { text: string; finishReason?: string; actualModelId?: string; provenance?: {
-                connectionId: string; modelId: string } } | undefined;
-            let streamedBytes = 0;
-            for await (const event of this.models.generate(selection,
-                { messages, controls: chat.settings.reasoningControls ?? {}, signal: abort.signal,
-                    maxOutputTokens: budget.output }, { localOnly: true })) {
-                if (abort.signal.aborted) throw new ModelRuntimeFailure('Strategic draft cancelled', 'cancelled');
-                if (event.type === 'delta') {
-                    streamedBytes += Buffer.byteLength(event.text, 'utf8');
-                    if (streamedBytes > budget.maxOutputBytes)
-                        throw new LocalPlanningOutputFailure('Strategic draft exceeds the output budget', '');
-                } else completed = event;
-            }
-            if (!completed) throw new LocalPlanningOutputFailure('Strategic draft stream ended without completion', '');
-            if (completed.actualModelId && completed.actualModelId !== selection.modelId ||
-                completed.provenance && (completed.provenance.modelId !== selection.modelId ||
-                    completed.provenance.connectionId !== selection.connectionId))
-                throw new Error('Selected local model changed during strategic draft generation');
-            await this.verifyLoadedCapacity(selection, budget, outputTokens);
-            if (abort.signal.aborted) throw new ModelRuntimeFailure('Strategic draft cancelled', 'cancelled');
-            if (Buffer.byteLength(completed.text, 'utf8') > budget.maxOutputBytes)
-                throw new LocalPlanningOutputFailure('Strategic draft exceeds the output budget', '');
-            this.planningProgress(chatId, offer.id, 'validating-draft');
-            await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
-                'generating', 'generating', { stage: 'validating-draft' });
-            const input = parseStrategicDraft(completed.text, completed.finishReason, state.projectId, state.revision);
-            const freshChat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
-            const freshGrounding = await this.grounder.ground(root, question);
-            const freshHash = createHash('sha256').update(JSON.stringify({ messages: freshChat && this.roadmapSourceMessages(freshChat),
-                evidence: freshGrounding.blocks.map(item => item.ref) })).digest('hex');
-            if (freshHash !== sourceHash) throw new Error('Chat decisions or project evidence changed during generation; regenerate');
-            this.planningProgress(chatId, offer.id, 'preparing-draft');
-            await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
-                'generating', 'generating', { stage: 'preparing-draft' });
-            const preview = await this.greenfield.previewStrategicDraft(root, input, sourceHash);
-            try {
-                await this.repository.renew(root, chatId, leaseToken);
-                if (abort.signal.aborted || this.disposed || this.root !== root)
-                    throw new Error('Strategic draft generation is no longer current');
-            } catch (error) { this.greenfield.rejectStrategicDraft(preview.token); throw error; }
-            this.strategicReviews.set(chatId, { root, leaseToken, question, preview,
-                messageId: pending.messageId, offerId: offer.id });
-            await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
-                'generating', 'ready', { draftRevision: preview.after.revision });
-            this.planningProgress(chatId, offer.id, 'draft-ready');
-            return { token: preview.token, projectId: preview.projectId, revision: preview.after.revision,
-                draft: preview.after,
-                phases: preview.after.phases.map(phase => ({ title: phase.title, objective: phase.objective,
-                    checkpoints: phase.checkpoints.map(checkpoint => ({ id: checkpoint.id, title: checkpoint.title,
-                        objective: checkpoint.objective, dependencies: checkpoint.dependencies ?? [] })) })) };
-        } catch (error) {
-            const status = abort.signal.aborted ? 'cancelled' : 'failed';
-            this.planningProgress(chatId, offer.id, status);
-            await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
-                'generating', status, { diagnostic: String(error).slice(0, 240) }).catch(() => {});
-            throw error;
-        } finally { this.turns.delete(chatId); this.pendingCancel.delete(chatId); }
+        const saved = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const source = saved?.messages.find(item => item.id === pending.messageId);
+        if (!saved || !source || source.role !== 'assistant') throw new Error('Saved planning answer is unavailable');
+        this.planningProgress(chatId, offer.id, 'validating-draft');
+        await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
+            'generating', 'generating', { stage: 'validating-draft' });
+        const input = extractSavedRoadmap(saved, source, state.projectId, state.revision);
+        const sourceHash = this.extractedSourceHash(saved, source.id);
+        this.planningProgress(chatId, offer.id, 'preparing-draft');
+        await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
+            'generating', 'generating', { stage: 'preparing-draft' });
+        const preview = await this.greenfield.previewStrategicDraft(root, input, sourceHash);
+        const latest = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        if (!latest || this.extractedSourceHash(latest, source.id) !== sourceHash ||
+            this.disposed || this.root !== root || this.leases.get(chatId)?.token !== leaseToken) {
+            this.greenfield.rejectStrategicDraft(preview.token);
+            throw new Error('Saved planning answer or Chat owner changed');
+        }
+        const proposed = input.phases.map(phase => [phase.title, phase.objective,
+            ...phase.checkpoints.map(item => item.title)].join(' ')).join(' ').toLowerCase();
+        const requirements = [
+            ['PixiJS 2D', /pixi\s*\.?\s*js/i, /\b2d\b/i],
+            ['fixed enemy path', /fixed.{0,20}path/i],
+            ['kill income', /(?:kill|defeat).{0,40}(?:money|currency|income)|(?:money|currency|income).{0,40}(?:kill|defeat)/i],
+            ['persistent main tower health', /(?:main|base).{0,20}(?:tower|health).{0,50}(?:persist|wave)|(?:persist).{0,50}(?:tower|health)/i],
+            ['zero health means loss', /(?:zero|0).{0,20}health.{0,35}(?:lose|loss|game over)/i],
+            ['currency buys towers and abilities', /(?:money|currency).{0,70}tower.{0,70}abilit/i],
+        ] as const;
+        const uncovered = requirements.filter(([, ...patterns]) => patterns.every(pattern => pattern.test(saved.messages
+            .filter(item => item.role === 'user').map(item => item.content).join(' '))) &&
+            !patterns.every(pattern => pattern.test(proposed))).map(([label]) => label);
+        const sourceIndex = saved.messages.findIndex(item => item.id === source.id);
+        const sourceUser = saved.messages.slice(0, sourceIndex).reverse().find(item => item.role === 'user');
+        const verifiedFile = sourceUser?.role === 'user' && sourceUser.contextRefs.some(ref =>
+            ['file', 'editor', 'selection'].includes(ref.kind));
+        const sourceCaution = /\bverified facts\b/i.test(source.content) && !verifiedFile ?
+            'Source answer labels goals as verified without file evidence; treat them as proposed. ' : '';
+        this.strategicReviews.set(chatId, { root, leaseToken, question: '', preview,
+            messageId: pending.messageId, offerId: offer.id, extractedSourceId: source.id });
+        await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
+            'generating', 'ready', { draftRevision: preview.after.revision,
+                diagnostic: `Saved answer ${source.id}. ${sourceCaution}${uncovered.length ?
+                    `Uncovered for review: ${uncovered.join(', ')}.` : 'All recognized requirements appear in phase labels.'} ` +
+                    'Confirm missing checkpoints before publication.' });
+        this.planningProgress(chatId, offer.id, 'draft-ready');
+        return { token: preview.token, projectId: preview.projectId, revision: preview.after.revision,
+            draft: preview.after, phases: preview.after.phases.map(phase => ({ title: phase.title,
+                objective: phase.objective, checkpoints: phase.checkpoints.map(item => ({
+                    id: item.id, title: item.title, objective: item.objective, dependencies: item.dependencies ?? [] })) })) };
         } catch (error) {
             this.strategicReviews.delete(chatId);
             await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
@@ -528,9 +495,9 @@ export class ChatBackend implements ChatService {
             }
             const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
             if (!chat) throw new Error('Saved Chat changed before strategic draft acceptance');
-            const grounding = await this.grounder!.ground(root, pending.question);
-            const sourceHash = createHash('sha256').update(JSON.stringify({ messages: this.roadmapSourceMessages(chat),
-                evidence: grounding.blocks.map(item => item.ref) })).digest('hex');
+            const sourceHash = pending.extractedSourceId ? this.extractedSourceHash(chat, pending.extractedSourceId) :
+                createHash('sha256').update(JSON.stringify({ messages: this.roadmapSourceMessages(chat),
+                    evidence: (await this.grounder!.ground(root, pending.question)).blocks.map(item => item.ref) })).digest('hex');
             const revision = (await this.greenfield!.acceptStrategicDraft(root, chatId, pending.preview, sourceHash)).revision;
             await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken,
                 pending.offerId, 'ready', 'accepted', { draftRevision: revision });
@@ -856,13 +823,40 @@ export class ChatBackend implements ChatService {
         const snapshot = await this.repository.read(root);
         const chat = snapshot.chats.find(item => item.id === request.chatId);
         if (!chat) throw new Error('Chat not found');
+        const roadmapIntent = !request.retryMessageId && !request.bridgeProposal && !request.planningSteps &&
+            !(request.context ?? []).length ? roadmapCreationIntent(request.content ?? '') : undefined;
+        if (roadmapIntent === 'ambiguous')
+            throw new Error('Do you want to create a reviewable Roadmap draft from the saved planning answer?');
+        if (roadmapIntent === 'create') {
+            await this.repository.renew(root, request.chatId, request.leaseToken);
+            if (!this.greenfield) throw new Error('Roadmap owner is unavailable');
+            const state = await this.greenfield.readOpportunity(root);
+            const candidates = chat.messages.filter(item => item.role === 'assistant' &&
+                item.execution.status === 'complete' && (() => {
+                    try { extractSavedRoadmap(chat, item, state.projectId, state.revision); return true; }
+                    catch { return false; }
+                })());
+            if (candidates.length !== 1)
+                throw new Error(candidates.length ? 'Multiple saved planning answers are suitable; choose one before creating a Roadmap' :
+                    'No unique completed phase sequence is available in this Chat');
+            const source = candidates[0];
+            const pending = this.proposals.get(request.chatId)?.roadmapOffer;
+            const offer = pending?.messageId === source.id ? pending : await this.offerRoadmap(root,
+                request.chatId, source.id, request.leaseToken, undefined, source.content, true);
+            if (!offer) throw new Error('Roadmap owner or competing draft prevents a new proposal; review Roadmap first');
+            const review = await this.decideRoadmapOffer(request.projectHandle, request.chatId,
+                request.leaseToken, offer.id, offer.token, true);
+            return { refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0,
+                ...(review === 'declined' ? {} : { roadmapDraftReview: review }) };
+        }
         const priorOffer = this.proposals.get(request.chatId);
         if (priorOffer?.roadmapOffer) {
             await this.updateRoadmapAction(root, request.chatId, priorOffer.messageId, request.leaseToken,
                 priorOffer.roadmapOffer.id, 'offered', 'stale').catch(() => {});
         }
         const priorReview = this.strategicReviews.get(request.chatId);
-        if (priorReview) { this.greenfield?.rejectStrategicDraft(priorReview.preview.token);
+        const relevantReviewChange = /\b(?:roadmap|phase|checkpoint|tower|enemy|health|currency|money|abilit(?:y|ies))\b/i.test(request.content ?? '');
+        if (priorReview && relevantReviewChange) { this.greenfield?.rejectStrategicDraft(priorReview.preview.token);
             await this.updateRoadmapAction(root, request.chatId, priorReview.messageId, request.leaseToken,
                 priorReview.offerId, 'ready', 'stale').catch(() => {});
             this.strategicReviews.delete(request.chatId); }
