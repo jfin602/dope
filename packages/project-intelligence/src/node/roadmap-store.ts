@@ -9,7 +9,7 @@ import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, Ro
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
 import { parseRoadmapGateIndex } from './roadmap-gate-domain';
-import type { RoadmapGateIndex } from './roadmap-gate-domain';
+import type { Criterion, RoadmapCorrection, RoadmapGate, RoadmapGateIndex, RoadmapPhase } from './roadmap-gate-domain';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
@@ -138,6 +138,29 @@ export interface RoadmapChange { root: string; projectId: string; revision: numb
 export type RoadmapMutation =
     | { type: 'create'; id: string; kind: RoadmapCheckpoint['kind']; title: string; objective: string; order: number; dependencies?: string[]; links?: RoadmapLink[] }
     | { type: 'update'; id: string; title: string; objective: string; order: number; dependencies: string[]; links: RoadmapLink[] };
+
+/** Explicit owner actions. Model suggestions must be reviewed before becoming one of these operations. */
+export type RoadmapGateMutation =
+    | { type: 'phase.create'; id: string; title: string; objective: string }
+    | { type: 'phase.edit'; id: string; title: string; objective: string }
+    | { type: 'phase.delete'; id: string }
+    | { type: 'phase.reorder'; ids: string[] }
+    | { type: 'phase.dependencies'; id: string; dependencies: string[] }
+    | { type: 'gate.create'; id: string; parentPhaseId: string; designation: string; title: string; purpose: string;
+        criteria: { id: string; title: string; expectedResult: string }[] }
+    | { type: 'gate.edit'; id: string; title: string; purpose: string }
+    | { type: 'gate.delete'; id: string }
+    | { type: 'gate.reorder'; parentPhaseId: string; ids: string[] }
+    | { type: 'gate.dependencies'; id: string; dependencies: string[] }
+    | { type: 'criterion.add'; gateId: string; id: string; title: string; expectedResult: string }
+    | { type: 'criterion.edit'; gateId: string; id: string; title: string; expectedResult: string }
+    | { type: 'criterion.remove'; gateId: string; id: string }
+    | { type: 'criterion.reorder'; gateId: string; ids: string[] }
+    | { type: 'correction.attach'; id: string; parent: RoadmapCorrection['parent']; criterionId?: string;
+        title: string; objective: string }
+    | { type: 'correction.edit'; id: string; title: string; objective: string }
+    | { type: 'correction.reparent'; id: string; parent: RoadmapCorrection['parent']; criterionId?: string }
+    | { type: 'correction.delete'; id: string };
 
 function citation(value: unknown): value is RoadmapCitation {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -412,6 +435,232 @@ export class RoadmapStore {
                 if (createHash('sha256').update(source.bytes).digest('hex') !== candidate.linkedDocument.sourceHash)
                     throw new Error('Linked Roadmap source fingerprint changed');
             }
+            await this.replace(root, candidate, expectedHash);
+            return candidate;
+        });
+        this.publish({ root, projectId: next.projectId, revision: next.revision,
+            changedIds: [...next.phases, ...next.gates, ...next.corrections].map(item => item.id) });
+        return next;
+    }
+
+    /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
+    async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
+        operation: RoadmapGateMutation): Promise<RoadmapGateIndex> {
+        if (!revision(expectedRevision) || !id(expectedProjectId) || !operation || typeof operation !== 'object')
+            throw new Error('Invalid Roadmap mutation authority');
+        const next = await this.locked(root, async () => {
+            const { file } = await this.paths(root);
+            const expectedHash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (!current.revision || current.projectId !== expectedProjectId)
+                throw new Error('Roadmap identity changed; reattach');
+            if (current.revision !== expectedRevision) throw new Error('Stale Roadmap revision');
+            if (current.linkedDocument) {
+                if (current.linkedDocument.syncState !== 'synced')
+                    throw new Error('Linked Roadmap source requires reviewed synchronization');
+                const source = await checkedRoadmapDocumentFile(root, current.linkedDocument.path);
+                if (createHash('sha256').update(source.bytes).digest('hex') !== current.linkedDocument.sourceHash)
+                    throw new Error('Linked Roadmap source fingerprint changed');
+            }
+            const candidate = structuredClone(current);
+            const owned = (entityId: string): void => {
+                if (candidate.linkedDocument?.sections.some(section => section.id === entityId))
+                    throw new Error('Source-backed Roadmap definition is read-only; use reviewed document synchronization');
+            };
+            const unique = (entityId: string): void => {
+                if ([...candidate.phases, ...candidate.gates, ...candidate.corrections,
+                    ...candidate.gates.flatMap(gate => gate.criteria.flatMap(criterion => [criterion, ...criterion.evidence]))]
+                    .some(item => item.id === entityId)) throw new Error('Duplicate Roadmap identity');
+            };
+            const phase = (entityId: string): RoadmapPhase => {
+                const found = candidate.phases.find(item => item.id === entityId);
+                if (!found) throw new Error('Missing Roadmap Phase');
+                return found;
+            };
+            const gate = (entityId: string): RoadmapGate => {
+                const found = candidate.gates.find(item => item.id === entityId);
+                if (!found) throw new Error('Missing Roadmap Gate');
+                return found;
+            };
+            const correction = (entityId: string): RoadmapCorrection => {
+                const found = candidate.corrections.find(item => item.id === entityId);
+                if (!found) throw new Error('Missing Roadmap Correction');
+                return found;
+            };
+            const parent = (value: RoadmapCorrection['parent'], criterionId?: string): void => {
+                if (value?.kind === 'phase') {
+                    phase(value.id);
+                    if (criterionId !== undefined) throw new Error('A Phase correction cannot own a criterion');
+                } else if (value?.kind === 'gate') {
+                    const target = gate(value.id);
+                    if (criterionId !== undefined && !target.criteria.some(item => item.id === criterionId))
+                        throw new Error('Missing correction criterion parent');
+                } else throw new Error('Invalid correction parent');
+            };
+            const reorder = <T extends { id: string; order: number }>(items: T[], ids: string[]): void => {
+                if (!Array.isArray(ids) || ids.length !== items.length || new Set(ids).size !== ids.length ||
+                    ids.some(entityId => !items.some(item => item.id === entityId)))
+                    throw new Error('Reorder must contain every owned identity exactly once');
+                ids.forEach((entityId, order) => {
+                    const item = items.find(entry => entry.id === entityId)!;
+                    if (item.order !== order) owned(entityId);
+                    item.order = order;
+                });
+            };
+            const nextOrder = (items: { order: number }[]): number =>
+                items.reduce((highest, item) => Math.max(highest, item.order), -1) + 1;
+            const defaults = { implementationStatus: 'unknown', qualificationStatus: 'unknown',
+                draftAcceptance: 'accepted' } as const;
+            switch (operation.type) {
+                case 'phase.create':
+                    unique(operation.id);
+                    candidate.phases.push({ id: operation.id, projectId: expectedProjectId, title: operation.title,
+                        objective: operation.objective, order: nextOrder(candidate.phases), dependencies: [], ...defaults,
+                        gateSetCoverage: { status: 'unreviewed' } });
+                    break;
+                case 'phase.edit': {
+                    const item = phase(operation.id); owned(item.id);
+                    item.title = operation.title; item.objective = operation.objective; break;
+                }
+                case 'phase.delete': {
+                    phase(operation.id); owned(operation.id);
+                    if (candidate.gates.some(item => item.parentPhaseId === operation.id) ||
+                        candidate.corrections.some(item => item.parent.kind === 'phase' && item.parent.id === operation.id) ||
+                        candidate.phases.some(item => item.dependencies.includes(operation.id)))
+                        throw new Error('Phase still has owned or dependent definitions');
+                    candidate.phases = candidate.phases.filter(item => item.id !== operation.id);
+                    candidate.phases.sort((a, b) => a.order - b.order).forEach((item, order) => {
+                        if (item.order !== order) owned(item.id);
+                        item.order = order;
+                    });
+                    break;
+                }
+                case 'phase.reorder': reorder(candidate.phases, operation.ids); break;
+                case 'phase.dependencies':
+                    owned(operation.id); phase(operation.id).dependencies = operation.dependencies; break;
+                case 'gate.create': {
+                    phase(operation.parentPhaseId); unique(operation.id);
+                    owned(operation.parentPhaseId);
+                    const siblings = candidate.gates.filter(item => item.parentPhaseId === operation.parentPhaseId);
+                    const criteria = operation.criteria.map((item, order): Criterion => {
+                        unique(item.id);
+                        return { ...item, projectId: expectedProjectId, order, evidence: [] };
+                    });
+                    candidate.gates.push({ id: operation.id, projectId: expectedProjectId,
+                        parentPhaseId: operation.parentPhaseId, designation: operation.designation,
+                        title: operation.title, purpose: operation.purpose, order: nextOrder(siblings),
+                        dependencies: [], criteria, ...defaults });
+                    break;
+                }
+                case 'gate.edit': {
+                    const item = gate(operation.id); owned(item.id);
+                    item.title = operation.title; item.purpose = operation.purpose; break;
+                }
+                case 'gate.delete': {
+                    const item = gate(operation.id); owned(item.id);
+                    if (candidate.gates.some(entry => entry.dependencies.includes(item.id)) ||
+                        candidate.corrections.some(entry => entry.parent.kind === 'gate' && entry.parent.id === item.id))
+                        throw new Error('Gate still has dependent definitions');
+                    candidate.gates = candidate.gates.filter(entry => entry.id !== item.id);
+                    candidate.gates.filter(entry => entry.parentPhaseId === item.parentPhaseId)
+                        .sort((a, b) => a.order - b.order).forEach((entry, order) => {
+                            if (entry.order !== order) owned(entry.id);
+                            entry.order = order;
+                        });
+                    break;
+                }
+                case 'gate.reorder':
+                    phase(operation.parentPhaseId);
+                    reorder(candidate.gates.filter(item => item.parentPhaseId === operation.parentPhaseId), operation.ids);
+                    break;
+                case 'gate.dependencies': owned(operation.id); gate(operation.id).dependencies = operation.dependencies; break;
+                case 'criterion.add': {
+                    const item = gate(operation.gateId); owned(item.id); unique(operation.id);
+                    item.criteria.push({ id: operation.id, projectId: expectedProjectId, title: operation.title,
+                        expectedResult: operation.expectedResult, order: nextOrder(item.criteria), evidence: [] });
+                    break;
+                }
+                case 'criterion.edit': {
+                    const item = gate(operation.gateId); owned(item.id);
+                    const criterion = item.criteria.find(entry => entry.id === operation.id);
+                    if (!criterion) throw new Error('Missing Roadmap criterion');
+                    criterion.title = operation.title; criterion.expectedResult = operation.expectedResult; break;
+                }
+                case 'criterion.remove': {
+                    const item = gate(operation.gateId); owned(item.id);
+                    if (!item.criteria.some(entry => entry.id === operation.id)) throw new Error('Missing Roadmap criterion');
+                    if (item.criteria.length === 1 || candidate.corrections.some(entry => entry.criterionId === operation.id))
+                        throw new Error('Criterion is required or owns a correction');
+                    item.criteria = item.criteria.filter(entry => entry.id !== operation.id);
+                    item.criteria.sort((a, b) => a.order - b.order).forEach((entry, order) => { entry.order = order; });
+                    break;
+                }
+                case 'criterion.reorder': {
+                    const item = gate(operation.gateId); owned(item.id); reorder(item.criteria, operation.ids); break;
+                }
+                case 'correction.attach':
+                    unique(operation.id); parent(operation.parent, operation.criterionId);
+                    candidate.corrections.push({ id: operation.id, projectId: expectedProjectId,
+                        parent: operation.parent, ...(operation.criterionId === undefined ? {} : { criterionId: operation.criterionId }),
+                        title: operation.title, objective: operation.objective,
+                        order: nextOrder(candidate.corrections), ...defaults });
+                    break;
+                case 'correction.edit': {
+                    const item = correction(operation.id); owned(item.id);
+                    item.title = operation.title; item.objective = operation.objective; break;
+                }
+                case 'correction.reparent': {
+                    const item = correction(operation.id); owned(item.id); parent(operation.parent, operation.criterionId);
+                    item.parent = operation.parent;
+                    if (operation.criterionId === undefined) delete item.criterionId;
+                    else item.criterionId = operation.criterionId;
+                    break;
+                }
+                case 'correction.delete':
+                    correction(operation.id); owned(operation.id);
+                    candidate.corrections = candidate.corrections.filter(item => item.id !== operation.id);
+                    candidate.corrections.sort((a, b) => a.order - b.order).forEach((item, order) => {
+                        if (item.order !== order) owned(item.id);
+                        item.order = order;
+                    });
+                    break;
+                default: throw new Error('Unknown Roadmap Gate mutation');
+            }
+            // A definition change cannot retain an earlier Green or approved completeness claim.
+            const affectedPhases = new Set<string>();
+            for (const item of candidate.gates) {
+                const previous = current.gates.find(entry => entry.id === item.id);
+                if (!previous || JSON.stringify(previous) !== JSON.stringify(item)) {
+                    affectedPhases.add(item.parentPhaseId);
+                    if (item.qualificationStatus === 'green') item.qualificationStatus = 'stale';
+                }
+            }
+            for (const item of current.gates) {
+                if (!candidate.gates.some(entry => entry.id === item.id)) affectedPhases.add(item.parentPhaseId);
+            }
+            for (const item of candidate.corrections) {
+                const previous = current.corrections.find(entry => entry.id === item.id);
+                if (!previous || JSON.stringify(previous) !== JSON.stringify(item)) {
+                    const owner = item.parent.kind === 'phase' ? item.parent.id : gate(item.parent.id).parentPhaseId;
+                    affectedPhases.add(owner);
+                    if (previous) affectedPhases.add(previous.parent.kind === 'phase' ? previous.parent.id :
+                        current.gates.find(entry => entry.id === previous.parent.id)!.parentPhaseId);
+                }
+            }
+            for (const item of current.corrections) {
+                if (!candidate.corrections.some(entry => entry.id === item.id))
+                    affectedPhases.add(item.parent.kind === 'phase' ? item.parent.id :
+                        current.gates.find(entry => entry.id === item.parent.id)!.parentPhaseId);
+            }
+            for (const item of candidate.phases) {
+                const previous = current.phases.find(entry => entry.id === item.id);
+                if (affectedPhases.has(item.id)) item.gateSetCoverage = { status: 'unreviewed' };
+                if ((affectedPhases.has(item.id) || previous && JSON.stringify(previous) !== JSON.stringify(item)) &&
+                    item.qualificationStatus === 'green') item.qualificationStatus = 'stale';
+            }
+            if (JSON.stringify(candidate) === JSON.stringify(current)) throw new Error('Roadmap mutation has no changes');
+            candidate.revision = current.revision + 1;
+            parseRoadmapIndex(candidate, root);
             await this.replace(root, candidate, expectedHash);
             return candidate;
         });
