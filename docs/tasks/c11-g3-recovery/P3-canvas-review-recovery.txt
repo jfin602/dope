@@ -2,7 +2,7 @@ TASK: Correction 11 / P3 — Numbered Roadmap canvas, review authority and truth
 
 CONFIGURATION
 - Recommended configuration: `GPT-6 Sol High`.
-- Browser required: no.
+- Browser required: yes.
 
 VERSIONING
 - Required unchanged project version: `0.11.8`.
@@ -27,3 +27,8 @@ IMPLEMENTATION
 
 FOCUSED GATE
 Test ordered 4/5 phase proposals, no double "Phase 1" labels, stable IDs after reorder, parent grouping, dependencies unchanged despite reduced visible edges, correction vertical branch, incomplete no-checkpoint proposals, visual pre-accept, Accept/Reject and canonical no-write. Verify failed/cancelled terminal label, retry and project switch, no false status, no duplicate canvas and Chat dock unchanged. Focused typecheck/build/Node tests plus `git diff --check`, no repeated full aggregate. Browser-only smoke may be run as supplemental evidence but P4 must actually operate native Electron; STOP and report if editor review still fails.
+
+MANDATORY REAL GOOGLE CHROME LOOP GATE
+Use the connected Codex browser to operate Dope in Google Chrome against the CURRENT rebuilt browser bundle (not a mock, JSDOM, screenshot substitute, or source-only test). Discover the actual local URL and restart/rebuild only through the documented development workflow; verify browser-served source/commit and attached project/root, saved Chat, selected provider and backend connection. Run ONE bounded local-model turn where needed. If Chrome/browser automation is unavailable, mark this loop BLOCKED and STOP; no synthetic or automated test suite can substitute. The Codex agent MUST NOT attempt native Electron computer use, since it is unavailable on the owner's machine. Use a disposable project for creation, rejection or conflict/negative testing; protect the persistent tower-defense project's files. Record browser actions, exact user prompt/response, displayed status, screenshots or accessible DOM evidence, generated/parsed phase list, backend errors, source/bundle identity and relevant local model provenance. Fix only this loop's observed defects; do not advance to the next prompt unless the real Chrome loop gate passes. The owner will manually test the native Electron package only AFTER all four Chrome loops pass. Browser PASS is not native parity or G3-wide GREEN.
+
+P3 CHROME ACCEPTANCE (R6 slice): Using a disposable no-Roadmap project, operate real Chrome from the saved Chat offer through deterministic extraction into the existing MAIN Roadmap editor. See proposed Phase 1..N left-to-right and checkpoints grouped by phase BEFORE accepting. Examine hierarchy, subdued dependency connectors and original requirement coverage; confirm no fabricated Week ranges. Verify Accept Draft and Reject Draft are inside the Roadmap editor, not the composer. Reject a fresh proposal in one safe scenario, accept an independent proposal in another, and inspect backend/project files to prove no canonical ROADMAP.md publication before separate approval. Provoke a safe parser or optional-model failure and verify a FAILED/CANCELLED terminal heading (not "Generating Roadmap"), recoverability, no phantom canvas, Chat still at its chosen dock and card history updates. Capture actual Chrome screenshot plus project/owner/source evidence; don't repeat real game destructive tests. If any of these core Chrome outcomes fails, P3 NOT GREEN and STOP.

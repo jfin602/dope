@@ -2,7 +2,7 @@ TASK: Correction 11 / P2 — Saved assistant Roadmap card and clean composer
 
 CONFIGURATION
 - Recommended configuration: `GPT-6 Sol High`.
-- Browser required: no.
+- Browser required: yes.
 
 VERSIONING
 - Required unchanged project version: `0.11.8`.
@@ -22,3 +22,8 @@ IMPLEMENTATION
 
 FOCUSED GATE
 Unit/backend-renderer integration for action source message ID/hash, multi-message, two saved Chats, multi-root, refresh/reload, completed, failed and declined/expired states, backend authority and no history resurrection. Static/dynamic renderer tests check no Roadmap widgets inside composer; keyboard and narrow layout; copy/drag unaffected. Existing P1 and G1/G2 tests pass. Build relevant packages, focused tests, `git diff --check`. Source test does not constitute actual UI Green; STOP for manual Chrome/Electron inspection of card and clean composer before P3.
+
+MANDATORY REAL GOOGLE CHROME LOOP GATE
+Use the connected Codex browser to operate Dope in Google Chrome against the CURRENT rebuilt browser bundle (not a mock, JSDOM, screenshot substitute, or source-only test). Discover the actual local URL and restart/rebuild only through the documented development workflow; verify browser-served source/commit and attached project/root, saved Chat, selected provider and backend connection. Run ONE bounded local-model turn where needed. If Chrome/browser automation is unavailable, mark this loop BLOCKED and STOP; no synthetic or automated test suite can substitute. The Codex agent MUST NOT attempt native Electron computer use, since it is unavailable on the owner's machine. Use a disposable project for creation, rejection or conflict/negative testing; protect the persistent tower-defense project's files. Record browser actions, exact user prompt/response, displayed status, screenshots or accessible DOM evidence, generated/parsed phase list, backend errors, source/bundle identity and relevant local model provenance. Fix only this loop's observed defects; do not advance to the next prompt unless the real Chrome loop gate passes. The owner will manually test the native Electron package only AFTER all four Chrome loops pass. Browser PASS is not native parity or G3-wide GREEN.
+
+P2 CHROME ACCEPTANCE (R5/G3-E slice): With P1's passing Chrome path, create a fresh saved Chat and reach a genuine assistant-originated Roadmap offer. Verify the native trusted Generate Draft Roadmap / Not now card appears immediately UNDER its source assistant response, never the composer. Send a subsequent ordinary Chat turn and verify the card stays under the original message. Decline in one disposable Chat, and in a separate safe Chat prepare/accept a draft as supported; verify backend-confirmed status moves to the same message card. Reload Chrome, reopen the saved Chat and verify durable Declined/Ready/Accepted/Rejected/Failed statuses as applicable, with no actionable replay and no duplicate card. Verify composer height/content remains messaging-only, keyboard focus, Copy Response/Transcript exclusion of action/debug metadata and selectable response text / non-text drag scrolling. Do not require P3's final canvas visual structure, but verify card-to-existing-editor status wiring if present. If any essential action card remains composer-hosted or history is lost, report P2 NOT GREEN and STOP.
