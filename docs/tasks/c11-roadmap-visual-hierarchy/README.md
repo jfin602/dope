@@ -1,5 +1,7 @@
 # c11-roadmap-visual-hierarchy — screenshot-matched Roadmap UX correction
 
+**Canonical prompt-stack handoff (2026-10-29):** The developer selected executable stack name [`c11-roadmap-redesign`](../c11-roadmap-redesign/README.md) on `main`. This earlier document remains the owner-approved **design charter only**, is not an executable runner stack and must not be separately implemented or qualified. The actual `/prompt-ass`, `/prompt-plan`, `/prompt-write`, P1–P4 and manual Chrome gating are under `c11-roadmap-redesign`. Historical design wording below is retained for context; Phase 11 remains OPEN and code is unchanged by authoring.
+
 **Owner approval:** 2026-10-29 (America/Chicago)
 **Status:** DESIGN/DOCUMENTATION ONLY. No implementation, prompt-stack activation, browser qualification or Green claim.
 **Product baseline at docs review:** `0.11.8`; Phase 11 **OPEN / NOT QUALIFIED**. Re-read live source/version before any future implementation.
