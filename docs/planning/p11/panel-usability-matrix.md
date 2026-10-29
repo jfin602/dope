@@ -14,6 +14,19 @@
 
 **Qualifying G1/G2:** Compare exact user conversation and actual saved Chat/grounded request against browser display. Synthetic tests may verify safe root/path/provider limits but cannot establish usefulness or natural phrasing. Distinguish project facts from proposed designs. Record PASS/FAIL/BLOCKED/EVIDENCE GAP/NOT RUN without extrapolating to Phase 11 Green. No scheduled broad hunt, native GUI or Work action is claimed by this documentation entry.
 
+## G3 — Concise conversational Roadmap creation and navigation (2026-10-28, design only)
+
+**Precondition:** G2 real-project current-file awareness independently qualified; this amendment does **not** relabel the authored G1/G2 `c11-greenfield-patch` P3 closeout. Reserved G3 conversational continuity now includes the proactive Roadmap workflow; G4 formal implementation-plan and G5 saved Chat continuity IDs remain unchanged. Owner-reported G1 GREEN is limited to its **single** Chrome/selected-Q4 turn. No G3 test has run. See [G3 contract](greenfield-experience-contract.md) and [UX-020](usability-issue-ledger.md).
+
+| Gate | Direct user/agent UI task | Pass evidence, not just tests | Current status |
+| --- | --- | --- | --- |
+| **G3-A — Concise and continuous** | Continue the real PixiJS project discussion with the same saved Chat; request brief plan and later a deeper technical explanation. | Recommended first milestone + useful decision without duplicated feature-and-steps lists; soft 100–170-word reference when appropriate; logged output tokens, duration, actual selected local model, and intact earlier decisions. No canned template or forced plan artifact. | **NOT RUN / EVIDENCE GAP** |
+| **G3-B — Existing Roadmap-aware offer** | Inspect project with no canonical Roadmap and no conflicting pending draft; then repeat with an already created Roadmap/draft. | Current `RoadmapStore`/Greenfield project, revision, pendingCreation and linked-document state are verified. Offer draft generation only at useful moment if absent; otherwise offer Open/Continue/Review. No assumption from missing files/map/context; no repeated nag. | **NOT RUN / EVIDENCE GAP** |
+| **G3-C — Explicit consent + complete draft** | Activate Generate Draft Roadmap button; independently test contextual "Yes, create the roadmap", plus cancel/Not now, ambiguous "yes", stale/foreign/changed project, double-click and concurrent pending offer. | Both positive paths use **same** project/Chat/proposal/revision/one-time approval authority; one consent starts bounded whole-draft generation, not canonical publish. Draft has phase/checkpoint/dependency review; missing/invalid/truncated output, stale basis and concurrent conflicts deny writes and show recovery. | **NOT RUN / EVIDENCE GAP** |
+| **G3-D — Real progress and editor focus** | On real selected Q4, observe generation with visible actual application stages, cancel/failure/retry and successful completion. | Progress remains responsive without fake percentages/reasoning or extra narration model call; after validated draft, `dope.roadmap.open` reveals same main-editor Roadmap and shows current draft fitted in view. Chat position/saved owner intact; canonical linked Markdown separately approved. Navigation failure recoverable. | **NOT RUN / EVIDENCE GAP** |
+
+Qualify in real Codex/Chrome browser with actually selected local model and source/execution provenance, plus safe disposable projects for destructive/foreign/permission/secret negatives. No fake Green from synthetic responses, Electron build, or a unit aggregate. This G3 requires a **separate future manual closeout** after G2; no editing previously authored prompt files or historical outcomes.
+
 ## Current Bridge/Phase Focus evidence — 2026-10-19 (older P4 table remains historical)
 
 | Gate | Latest source-bound observation | Current scoped disposition |
