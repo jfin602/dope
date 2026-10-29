@@ -231,6 +231,43 @@ test('saved phase outline previews, fails, cancels and accepts without another m
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('P4 saved developer wording is recognized in the actual Roadmap review diagnostic', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    const greenfield = new RoadmapGreenfield(new RoadmapStore());
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, undefined, undefined,
+        undefined, undefined, undefined, greenfield);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        let snapshot = await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        snapshot = await backend.mutate({ projectHandle, expectedRevision: snapshot.revision,
+            leaseToken: lease.token, operation: { type: 'append-user', chatId, message: {
+                schemaVersion: 1, id: id(), role: 'user', createdAt: new Date().toISOString(),
+                content: "I want to make a 2D tower defense game with PixiJS. Let's do a fixed enemy path. " +
+                    'You collect money for killing enemies. Your main tower has persistent health throughout every wave. ' +
+                    'If your tower health reaches 0 you lose. You use your money to buy more towers and abilities.',
+                contextRefs: [] } } });
+        const answer = '**Recommended Implementation Order:**\n' +
+            '1. Set up PixiJS scene with basic game loop\n' +
+            '2. Implement enemy movement along fixed path\n' +
+            '3. Build core tower functionality with shooting mechanics\n' +
+            '4. Add resource collection and UI for money display\n' +
+            '5. Create tower purchasing system and upgrade abilities';
+        const offer = await savedRoadmapOffer(backend, projectHandle, root, chatId, lease.token, answer);
+        assert.ok(offer);
+        const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            offer.id, offer.token, true);
+        if (review === 'declined') throw new Error('Expected review');
+        assert.match(review.diagnostic, /zero health means loss: Uncovered/);
+        assert.doesNotMatch(review.diagnostic, /Not in saved request/);
+        assert.equal(review.phases.length, 5);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
+        assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('ordinary Chat offers a generic project roadmap and both consent routes share reviewed noncanonical creation', async () => {
     for (const route of ['button', 'chat', 'decline'] as const) {
         const root = await folder(), repository = new ChatRepository();

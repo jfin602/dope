@@ -23,6 +23,7 @@ import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
 import { planRequirements, planRequirementCoverage, type PlanRequirement } from './chat-plan-requirements';
 import { extractSavedRoadmap, roadmapCreationIntent } from './chat-roadmap-extract';
+import { roadmapRequirementCoverage } from './chat-roadmap-requirements';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
@@ -453,20 +454,10 @@ export class ChatBackend implements ChatService {
             this.greenfield.rejectStrategicDraft(preview.token);
             throw new Error('Saved planning answer or Chat owner changed');
         }
-        const proposed = input.phases.map(phase => [phase.title, phase.objective,
-            ...phase.checkpoints.map(item => item.title)].join(' ')).join(' ').toLowerCase();
-        const requirements = [
-            ['PixiJS 2D', /pixi\s*\.?\s*js/i, /\b2d\b/i],
-            ['fixed enemy path', /fixed.{0,20}path/i],
-            ['kill income', /(?:kill|defeat).{0,40}(?:money|currency|income)|(?:money|currency|income).{0,40}(?:kill|defeat)/i],
-            ['persistent main tower health', /(?:main|base).{0,20}(?:tower|health).{0,50}(?:persist|wave)|(?:persist).{0,50}(?:tower|health)/i],
-            ['zero health means loss', /(?:zero|0).{0,20}health.{0,35}(?:lose|loss|game over)/i],
-            ['currency buys towers and abilities', /(?:money|currency|resource|income)/i, /tower/i, /abilit/i],
-        ] as const;
-        const requested = saved.messages.filter(item => item.role === 'user').map(item => item.content).join(' ');
-        const coverage = requirements.map(([label, ...patterns]) =>
-            `${label}: ${patterns.every(pattern => pattern.test(requested)) ?
-                patterns.every(pattern => pattern.test(proposed)) ? 'Covered' : 'Uncovered' : 'Not in saved request'}`);
+        const coverage = roadmapRequirementCoverage(
+            saved.messages.filter(item => item.role === 'user').map(item => item.content),
+            input.phases.map(phase => [phase.title, phase.objective,
+                ...phase.checkpoints.map(item => item.title)].join(' ')));
         const sourceIndex = saved.messages.findIndex(item => item.id === source.id);
         const sourceUser = saved.messages.slice(0, sourceIndex).reverse().find(item => item.role === 'user');
         const verifiedFile = sourceUser?.role === 'user' && sourceUser.contextRefs.some(ref =>
