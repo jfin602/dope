@@ -484,7 +484,22 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     .resolvePromptSource(project, path, fingerprint);
                 if (!isCurrent()) throw new Error('Work selection changed. Select the prompt again.');
                 await open(context.container.get(OpenerService), new URI(source));
-            }, context.container.get(ConnectionStatusService));
+            }, context.container.get(ConnectionStatusService), async (projectUri, projectId, chatId, revision) => {
+                const roadmap = context.container.get<RoadmapService>('RoadmapService');
+                const index = await roadmap.read(projectUri);
+                if (index.projectId !== projectId || index.revision !== 0)
+                    throw new Error('Roadmap project or canonical revision changed');
+                const drafts = await roadmap.recoverDrafts(projectUri);
+                if (!drafts.some(item => item.chatId === chatId && item.draft.revision === revision))
+                    throw new Error('Accepted draft is unavailable for this Chat and project');
+                const widget = await context.container.get(WidgetManager)
+                    .getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                await widget.revealAcceptedChatDraft(projectUri, projectId, chatId, revision);
+                const roots = await context.container.get(WorkspaceService).roots;
+                if (roots.length !== 1 || roots[0].resource.toString() !== projectUri)
+                    throw new Error('Project changed before Roadmap editor navigation');
+                await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
+            });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

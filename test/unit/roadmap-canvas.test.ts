@@ -56,6 +56,15 @@ test('one ordinary center tab, safe labels, recovery, semantic dark/light tokens
     assert.match(rules, /max-width: 480px/);
 });
 
+test('accepted Chat draft reveal checks project, Chat and revision before fitting existing canvas', () => {
+    const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
+    assert.match(widget, /async revealAcceptedChatDraft\(projectUri: string, projectId: string, chatId: string,/);
+    assert.match(widget, /state\.chatId !== chatId \|\| state\.draft\.revision !== revision/);
+    assert.match(widget, /this\.flow\.fitView\(\{ padding: 0\.12, maxZoom: 1 \}\)/);
+    assert.doesNotMatch(widget.slice(widget.indexOf('async revealAcceptedChatDraft'), widget.indexOf('linkedSourceChanged')),
+        /beginDraft|acceptStrategicDraft|applyPending|ROADMAP\.md/);
+});
+
 test('Plan with Chat binds the plan-only owner through the existing saved Chat RPC', () => {
     const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
     const service = read('packages/theia-extension/src/roadmap-service.ts');

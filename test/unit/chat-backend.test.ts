@@ -178,7 +178,10 @@ test('approved offer generates one whole outline, then separate review accepts o
     let evidenceVersion = 0;
     const grounder = { ground: async () => ({ blocks: [{ ref: { kind: 'file', id: 'source',
         sourceHash: String(evidenceVersion) } }] }) };
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
+    const progress: { messageId: string; stage: string }[] = [];
+    const backend = new ChatBackend(repository, { notifyChatEvent(event) {
+        if (event.kind === 'planning-progress') progress.push({ messageId: event.messageId, stage: event.stage });
+    } }, models as never, composer as never,
         undefined, grounder as never, undefined, greenfield);
     try {
         const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
@@ -199,6 +202,8 @@ test('approved offer generates one whole outline, then separate review accepts o
         assert.ok(offer);
         const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
             offer.id, offer.token, true, { connectionId: 'local', modelId: 'q4' });
+        assert.deepEqual(progress.filter(item => item.messageId === offer.id).map(item => item.stage),
+            ['checking-owner', 'generating-draft', 'validating-draft', 'preparing-draft', 'draft-ready']);
         assert.notEqual(review, 'declined');
         if (review === 'declined') throw new Error('Expected review');
         assert.equal(calls, 1);
@@ -211,6 +216,7 @@ test('approved offer generates one whole outline, then separate review accepts o
         const truncated = await makeOffer(); assert.ok(truncated);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
             truncated.id, truncated.token, true, { connectionId: 'local', modelId: 'q4' }), /truncated/);
+        assert.equal(progress.filter(item => item.messageId === truncated.id).at(-1)?.stage, 'failed');
         assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
         finishReason = 'stop'; actualModelId = 'wrong';
         const wrong = await makeOffer(); assert.ok(wrong);
@@ -222,6 +228,7 @@ test('approved offer generates one whole outline, then separate review accepts o
         const cancelled = await makeOffer(); assert.ok(cancelled);
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
             cancelled.id, cancelled.token, true, { connectionId: 'local', modelId: 'q4' }), /cancelled/);
+        assert.equal(progress.filter(item => item.messageId === cancelled.id).at(-1)?.stage, 'cancelled');
         assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
         cancelGeneration = undefined;
         const finalOffer = await makeOffer(); assert.ok(finalOffer);

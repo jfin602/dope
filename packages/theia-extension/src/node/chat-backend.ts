@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
-    ChatContextSelection, ChatStrategicDraftReview } from '@dope/chat/lib/service';
+    ChatContextSelection, ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
 import { suggestedChatTitle, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
@@ -308,6 +308,7 @@ export class ChatBackend implements ChatService {
     }
     async release(projectHandle: string, chatId: string, token: string) {
         const root = this.active(projectHandle);
+        if (this.turns.get(chatId)?.token === token) this.turns.get(chatId)?.abort.abort();
         await this.repository.release(root, chatId, token);
         if (this.leases.get(chatId)?.token === token) {
             this.leases.delete(chatId); this.clearProposal(chatId);
@@ -360,6 +361,7 @@ export class ChatBackend implements ChatService {
         this.proposals.delete(chatId);
         await this.repository.renew(root, chatId, leaseToken);
         if (!approve) return 'declined';
+        this.planningProgress(chatId, offer.id, 'checking-owner');
         if (!this.greenfield || !(await this.repository.read(root)).chats.some(chat => chat.id === chatId))
             throw new Error('Roadmap offer Chat is unavailable');
         const state = await this.greenfield.readOpportunity(root);
@@ -402,6 +404,7 @@ export class ChatBackend implements ChatService {
         this.turns.set(chatId, { token: leaseToken, abort });
         try {
             if (this.pendingCancel.get(chatId) === leaseToken) abort.abort();
+            this.planningProgress(chatId, offer.id, 'generating-draft');
             let completed: { text: string; finishReason?: string; actualModelId?: string; provenance?: {
                 connectionId: string; modelId: string } } | undefined;
             let streamedBytes = 0;
@@ -424,18 +427,29 @@ export class ChatBackend implements ChatService {
             if (abort.signal.aborted) throw new ModelRuntimeFailure('Strategic draft cancelled', 'cancelled');
             if (Buffer.byteLength(completed.text, 'utf8') > budget.maxOutputBytes)
                 throw new LocalPlanningOutputFailure('Strategic draft exceeds the output budget', '');
+            this.planningProgress(chatId, offer.id, 'validating-draft');
             const input = parseStrategicDraft(completed.text, completed.finishReason, state.projectId, state.revision);
             const freshChat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
             const freshGrounding = await this.grounder.ground(root, question);
             const freshHash = createHash('sha256').update(JSON.stringify({ messages: freshChat?.messages,
                 evidence: freshGrounding.blocks.map(item => item.ref) })).digest('hex');
             if (freshHash !== sourceHash) throw new Error('Chat decisions or project evidence changed during generation; regenerate');
+            this.planningProgress(chatId, offer.id, 'preparing-draft');
             const preview = await this.greenfield.previewStrategicDraft(root, input, sourceHash);
+            try {
+                await this.repository.renew(root, chatId, leaseToken);
+                if (abort.signal.aborted || this.disposed || this.root !== root)
+                    throw new Error('Strategic draft generation is no longer current');
+            } catch (error) { this.greenfield.rejectStrategicDraft(preview.token); throw error; }
             this.strategicReviews.set(chatId, { root, leaseToken, question, preview });
+            this.planningProgress(chatId, offer.id, 'draft-ready');
             return { token: preview.token, projectId: preview.projectId, revision: preview.after.revision,
                 phases: preview.after.phases.map(phase => ({ title: phase.title, objective: phase.objective,
                     checkpoints: phase.checkpoints.map(checkpoint => ({ id: checkpoint.id, title: checkpoint.title,
                         objective: checkpoint.objective, dependencies: checkpoint.dependencies ?? [] })) })) };
+        } catch (error) {
+            this.planningProgress(chatId, offer.id, abort.signal.aborted ? 'cancelled' : 'failed');
+            throw error;
         } finally { this.turns.delete(chatId); this.pendingCancel.delete(chatId); }
     }
 
@@ -469,7 +483,7 @@ export class ChatBackend implements ChatService {
                 { proposalId: message.planningActivity.proposalId, status: 'pending' });
         }
     }
-    private planningProgress(chatId: string, messageId: string, stage: 'waiting' | 'validating'): void {
+    private planningProgress(chatId: string, messageId: string, stage: Extract<ChatEvent, { kind: 'planning-progress' }>['stage']): void {
         if (!this.handle || this.disposed) return;
         tracePlanning(stage, chatId, messageId);
         try { this.client.notifyChatEvent({ projectHandle: this.handle, kind: 'planning-progress',

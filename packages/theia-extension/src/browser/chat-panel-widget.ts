@@ -97,7 +97,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly planningSelection?: ChatPlanningSelection,
         private readonly openPromptSource?: (project: string, path: string, promptText: string,
             isCurrent: () => boolean) => Promise<void>,
-        connectionStatus?: ConnectionStatusService) {
+        connectionStatus?: ConnectionStatusService,
+        private readonly openRoadmapDraft?: (projectUri: string, projectId: string, chatId: string,
+            revision: number) => Promise<void>) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -1840,6 +1842,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         toolbar.append(more, modelSelector, submitButton);
         composer.append(input, toolbar);
         composer.append(menu);
+        if (state.roadmapGenerationStage && (state.pending || state.running)) {
+            const progress = document.createElement('p');
+            progress.className = 'dope-chat-planning-progress';
+            progress.setAttribute('role', 'status');
+            progress.setAttribute('aria-live', 'polite');
+            const stage = state.roadmapGenerationStage;
+            progress.textContent = stage === 'generating-draft' ? 'Generating Roadmap draft with the selected local model…' :
+                stage === 'checking-owner' ? 'Checking current Roadmap and project…' :
+                stage === 'validating-draft' ? 'Validating completed Roadmap draft…' :
+                stage === 'preparing-draft' ? 'Preparing draft for review…' :
+                stage === 'draft-ready' ? 'Draft ready for review.' :
+                stage === 'cancelled' ? 'Roadmap draft generation cancelled.' :
+                stage === 'failed' ? 'Roadmap draft generation failed.' : 'Generating Roadmap draft…';
+            composer.append(progress);
+            if (state.pending && !['draft-ready', 'cancelled', 'failed'].includes(stage))
+                composer.append(this.button('Cancel generation', () => void state.cancel()));
+        }
         if (state.running && state.planningProgress) {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';
@@ -1889,6 +1908,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             note.className = 'dope-chat-roadmap-offer-status'; note.tabIndex = -1;
             note.textContent = state.roadmapOfferStatus; composer.append(note);
         }
+        if (state.roadmapOpenTarget && state.workspace === state.roadmapOpenTarget.workspace) {
+            const openDraft = async () => {
+                const target = state.roadmapOpenTarget;
+                if (!target || state.workspace !== target.workspace) return;
+                try { await this.openRoadmapDraft?.(target.workspace, target.projectId, target.chatId, target.revision); }
+                catch (error) { state.roadmapOfferStatus = `Roadmap editor could not open: ${String(error)}. The accepted draft remains available; use Open Roadmap to retry.`;
+                    this.render(); }
+            };
+            composer.append(this.button('Open Roadmap', () => void openDraft()));
+        }
         if (state.strategicDraftReview) {
             const review = state.strategicDraftReview;
             const section = document.createElement('section'); section.className = 'dope-chat-plan-review';
@@ -1912,7 +1941,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
                 item.append(title, objective, checkpoints); list.append(item);
             }
-            section.append(list, this.button('Accept into draft', () => void state.decideStrategicDraft(true), state.pending),
+            section.append(list, this.button('Accept into draft', () => void state.decideStrategicDraft(true).then(async () => {
+                const target = state.roadmapOpenTarget;
+                if (!target || state.workspace !== target.workspace) return;
+                try { await this.openRoadmapDraft?.(target.workspace, target.projectId, target.chatId, target.revision); }
+                catch (error) { state.roadmapOfferStatus = `Roadmap editor could not open: ${String(error)}. The accepted draft remains available; use Open Roadmap to retry.`;
+                    this.render(); }
+            }), state.pending),
                 this.button('Reject proposal', () => void state.decideStrategicDraft(false), state.pending));
             composer.append(section);
         }

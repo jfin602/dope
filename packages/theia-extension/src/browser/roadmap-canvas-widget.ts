@@ -588,6 +588,24 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }
     }
 
+    /** Review navigation only. Never accepts or publishes a draft. */
+    async revealAcceptedChatDraft(projectUri: string, projectId: string, chatId: string,
+        revision: number): Promise<void> {
+        await this.refresh();
+        const state = this.createState;
+        if (this.projectUri !== projectUri || this.projectId !== projectId ||
+            state?.uri !== projectUri || state.projectId !== projectId || state.mode !== 'chat' ||
+            state.chatId !== chatId || state.draft.revision !== revision || !this.projection?.nodes.length)
+            throw new Error('Accepted Roadmap draft changed or is unavailable in this project');
+        this.selectedId = this.projection.nodes.find(node => node.draftState === 'accepted')?.id;
+        this.render();
+        requestAnimationFrame(() => {
+            if (this.projectUri === projectUri && this.projectId === projectId &&
+                this.createState?.draft.revision === revision && this.flow)
+                void this.flow.fitView({ padding: 0.12, maxZoom: 1 });
+        });
+    }
+
     linkedSourceChanged(root: string, projectId: string): void {
         if (this.inspector.index?.projectRoot === root && this.inspector.index.projectId === projectId)
             void this.refresh();

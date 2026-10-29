@@ -19,6 +19,13 @@ test('N1/N5: Activity Bar delegates to the existing main Roadmap without a secon
     assert.doesNotMatch(navigation, /new RoadmapCanvasWidget|ChatPanel|\.dope\/|\.md'/);
 });
 
+test('accepted Chat draft navigation checks the owner before opening the single main editor', () => {
+    assert.match(frontend, /index\.projectId !== projectId \|\| index\.revision !== 0/);
+    assert.match(frontend, /drafts\.some\(item => item\.chatId === chatId && item\.draft\.revision === revision\)/);
+    assert.match(frontend, /widget\.revealAcceptedChatDraft\(projectUri, projectId, chatId, revision\)/);
+    assert.match(frontend, /executeCommand\('dope\.roadmap\.open'\)/);
+});
+
 test('N2: Explorer uses the native navigator and Theia fuzzy file service with workspace scoping', () => {
     assert.match(frontend, /createFileNavigatorContainer\(context\.container\)/);
     assert.match(frontend, /child\.rebind\(FileNavigatorWidget\)\.to\(ExplorerSearchWidget\)/);
