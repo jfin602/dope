@@ -22,6 +22,8 @@ export function extractSavedRoadmap(chat: Chat, source: ChatAssistantMessage, pr
     let fenced = false;
     let phaseMode = false;
     let awaitingObjective = false;
+    let gate: NonNullable<StrategicDraftInput['phases'][number]['gates']>[number] | undefined;
+    let criteriaMode = false;
     for (const line of lines) {
         if (/^```/.test(line)) { fenced = !fenced; continue; }
         if (fenced || !usable(line)) continue;
@@ -33,7 +35,28 @@ export function extractSavedRoadmap(chat: Chat, source: ChatAssistantMessage, pr
             if (!title) throw new Error('A phase has no title');
             phases.push({ title, objective: '', checkpoints: [] });
             awaitingObjective = true;
+            gate = undefined;
+            criteriaMode = false;
+        } else if (phaseMode && phases.length && /^(?:#{1,6}\s*)?(?:\*\*)?(?:required\s+)?Gate\s*(?:(?:G)?\d+)?\s*[:.\-–—]\s*(.+?)(?:\*\*)?$/i.test(line)) {
+            const title = clean(line.match(/^(?:#{1,6}\s*)?(?:\*\*)?(?:required\s+)?Gate\s*(?:(?:G)?\d+)?\s*[:.\-–—]\s*(.+?)(?:\*\*)?$/i)![1]);
+            if (!title) throw new Error('A proposed Gate needs a title');
+            const gates = phases.at(-1)!.gates ??= [];
+            if (gates.length >= 16) throw new Error('Too many proposed Gates in a phase');
+            gate = { title, purpose: '', criteria: [] };
+            gates.push(gate);
+            criteriaMode = false;
+            awaitingObjective = false;
+        } else if (gate && /^(?:#{1,6}\s*)?(?:\*\*)?(?:acceptance\s+criteria|gate\s+criteria|criteria)\s*:?\s*(?:\*\*)?$/i.test(line)) {
+            criteriaMode = true;
+        } else if (gate && criteriaMode && /^(?:[-*•]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+)(.+)$/.test(line)) {
+            const title = clean(line.replace(/^(?:[-*•]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+)/, ''));
+            if (title && gate.criteria.length < 16)
+                gate.criteria.push({ title, expectedResult: title });
+        } else if (gate && !criteriaMode && /^(?:purpose|objective)\s*:\s*(.+)$/i.test(line)) {
+            gate.purpose = clean(line.replace(/^(?:purpose|objective)\s*:\s*/i, ''));
         } else if (phaseMode && phases.length && /^(?:[-*•]\s+)(.+)$/.test(line)) {
+            gate = undefined;
+            criteriaMode = false;
             awaitingObjective = false;
             const title = clean(line.replace(/^[-*•]\s+/, ''));
             if (title && phases.at(-1)!.checkpoints.length < 16)

@@ -26,6 +26,29 @@ test('whole strategic envelope requires complete output and exact owner identity
     assert.throws(() => parseStrategicDraft(JSON.stringify({ ...draft, tool: 'write' }), 'stop', 'project', 0), /foreign/);
 });
 
+test('structured local Gate proposal requires exact criteria shape and owner', () => {
+    const phases = ['Build', 'Qualify'].map(title => ({ title, objective: '', checkpoints: [], gates: [{
+        title: `${title} acceptance`, purpose: 'Verify a stated requirement',
+        criteria: [{ title: 'Tower defeat', expectedResult: 'Main tower health reaches 0 and the player loses' }]
+    }] }));
+    const draft = { type: 'strategic-roadmap-draft', projectId: 'project', ownerRevision: 0, phases };
+    assert.equal(parseStrategicDraft(JSON.stringify(draft), 'stop', 'project', 0).phases[0].gates?.length, 1);
+    assert.throws(() => parseStrategicDraft(JSON.stringify({ ...draft, phases: [{ ...phases[0],
+        gates: [{ ...phases[0].gates[0], status: 'green' }] }, phases[1]] }), 'stop', 'project', 0), /shape/);
+    assert.throws(() => parseStrategicDraft(JSON.stringify(draft), 'stop', 'project', 1), /foreign/);
+});
+
+test('local draft action permits proposed Gates and criteria without a qualification status', async () => {
+    const signal = new AbortController().signal;
+    const action = { type: 'roadmap-draft-proposal', projectId: 'project', draftRevision: 1,
+        action: { type: 'add-criterion', phaseId: 'phase', gateId: 'gate', title: 'Tower defeat',
+            expectedResult: 'At zero health the player loses' } };
+    assert.equal((await localPlanningJson(async function* () { yield complete(JSON.stringify(action)); },
+        signal, 4096, 'draft')).text, JSON.stringify(action));
+    await assert.rejects(localPlanningJson(async function* () { yield complete(JSON.stringify({ ...action,
+        action: { ...action.action, status: 'green' } })); }, signal, 4096, 'draft'), /strict JSON/);
+});
+
 test('strict plan envelope is separate from the 4000-character no-action and small Roadmap action caps', async () => {
     const signal = new AbortController().signal;
     const valid = JSON.stringify({ ...implementationPlan, steps: implementationPlan.steps.map((step, index) => ({

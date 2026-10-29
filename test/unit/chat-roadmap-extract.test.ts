@@ -47,6 +47,22 @@ test('phase-only answer retains its saved objectives without inventing checkpoin
     assert(parsed.phases.every(item => item.checkpoints.length === 0));
 });
 
+test('explicit acceptance criteria become proposed Gates while task bullets remain separate', () => {
+    const answer = source('Phase 1: Core loop\n- Implement PixiJS rendering\n- Add enemy movement\n' +
+        'Gate G1: Fixed-path play is verifiable\nPurpose: Protect the required game rule\n' +
+        'Acceptance criteria:\n- Enemies follow the same fixed route in each wave\n' +
+        'Phase 2: Loss state\nGate 1 — Main tower defeat\nAcceptance criteria:\n' +
+        '- If the main tower health reaches 0, the player loses');
+    const parsed = extractSavedRoadmap(chat(answer), answer, 'project-1', 0);
+    assert.equal(parsed.phases[0].checkpoints.length, 2);
+    assert.equal(parsed.phases[0].gates?.length, 1);
+    assert.deepEqual(parsed.phases[0].gates?.[0].criteria, [{
+        title: 'Enemies follow the same fixed route in each wave',
+        expectedResult: 'Enemies follow the same fixed route in each wave' }]);
+    assert.match(parsed.phases[1].gates?.[0].criteria[0].expectedResult ?? '', /health reaches 0, the player loses/);
+    assert.equal(parsed.allowIncomplete, true);
+});
+
 test('incomplete, quoted and broken sequences fail closed', () => {
     for (const content of ['> Phase 1: First\n> Phase 2: Second', 'Phase 1: First\nPhase 3: Third',
         '1. First\n3. Third', 'Phase 1: First\nPhase 2: Second...']) {

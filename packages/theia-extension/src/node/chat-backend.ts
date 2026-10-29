@@ -28,7 +28,7 @@ import { roadmapRequirementCoverage } from './chat-roadmap-requirements';
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
         action: { type: 'create-phase', title: 'Example phase', objective: 'One clear objective' } });
-    return `You are discussing a noncanonical Roadmap draft. Answer questions or ask one meaningful clarifying question as {"type":"no-action","message":"your concrete answer or question"}; do not force an edit. If the user asks for an edit, ${maxSteps ? `you may propose from two to ${maxSteps} small steps in one atomic preview using {"type":"roadmap-draft-sequence","projectId":"${projectId}","draftRevision":${revision},"actions":[{"type":"create-phase","title":"First phase"},{"type":"create-phase","title":"Second phase"}]}, or propose one step` : 'propose exactly one small step'} using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. For a checkpoint, use action {"type":"create-checkpoint","phaseId":"<existing phase ID>","title":"<title>","objective":"<objective>"}; copy IDs from the current draft. Supported actions also include edit-phase, edit-checkpoint, reorder-phase, reorder-checkpoint, split-checkpoint (phaseId, checkpointId, title, optional objective), move-checkpoint (phaseId, checkpointId, targetPhaseId, order), add-dependency/remove-dependency (checkpointId, dependencyId), create-correction (parentId, title, optional objective), and attach-correction (correctionId, parentId). Never supply a new ID: Dope creates it. A correction parent must be an exact existing phase or checkpoint ID. Return only one JSON object. This requires developer approval. Never claim an edit was applied.`;
+    return `You are discussing a noncanonical Roadmap draft. Answer questions or ask one meaningful clarifying question as {"type":"no-action","message":"your concrete answer or question"}; do not force an edit. If the user asks for an edit, ${maxSteps ? `you may propose from two to ${maxSteps} small steps in one atomic preview using {"type":"roadmap-draft-sequence","projectId":"${projectId}","draftRevision":${revision},"actions":[{"type":"create-phase","title":"First phase"},{"type":"create-phase","title":"Second phase"}]}, or propose one step` : 'propose exactly one small step'} using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. A Gate is an explicit verifiable requirement, not an implementation step or feature inventory item. For a developer-requested Gate use {"type":"create-gate","phaseId":"<existing phase ID>","title":"<testable requirement>","purpose":"<why it must pass>"}; add each observable criterion separately with {"type":"add-criterion","phaseId":"<existing phase ID>","gateId":"<existing gate ID>","title":"<criterion>","expectedResult":"<observable pass result>"}. Copy IDs from the current draft; never invent an ID. Supported actions also include edit-phase, edit-gate, edit-criterion, create-correction (parentId, title, optional objective), and attach-correction (correctionId, parentId). Keep implementation tasks in the separate plan; do not convert them to required Gates. Return only one JSON object. This requires developer approval. Never claim an edit was applied or a Gate is Green.`;
 }
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
@@ -471,6 +471,9 @@ export class ChatBackend implements ChatService {
         this.strategicReviews.set(chatId, { root, leaseToken, question: '', preview,
             messageId: pending.messageId, offerId: offer.id, extractedSourceId: source.id });
         const diagnostic = `${sourceCaution}Requirement coverage — ${coverage.join('; ')}. ` +
+            `${input.phases.some(phase => (phase.gates?.length ?? 0) > 0) ?
+                'Explicit Gate criteria are proposed for developer review, with no qualification evidence. ' :
+                'The saved answer defines phases only; implementation tasks and feature lists did not become required Gates. '} ` +
             'Review unmet requirements, testable Gates and Gate-set completeness before any publication.';
         checkCancelled();
         await this.updateRoadmapAction(root, chatId, pending.messageId, leaseToken, offer.id,
@@ -889,7 +892,7 @@ export class ChatBackend implements ChatService {
                 priorOffer.roadmapOffer.id, 'offered', 'stale').catch(() => {});
         }
         const priorReview = this.strategicReviews.get(request.chatId);
-        const relevantReviewChange = /\b(?:roadmap|phase|checkpoint|tower|enemy|health|currency|money|abilit(?:y|ies))\b/i.test(request.content ?? '');
+        const relevantReviewChange = /\b(?:roadmap|phase|gate|criterion|criteria|checkpoint|tower|enemy|health|currency|money|abilit(?:y|ies))\b/i.test(request.content ?? '');
         if (priorReview && relevantReviewChange) { this.greenfield?.rejectStrategicDraft(priorReview.preview.token);
             await this.updateRoadmapAction(root, request.chatId, priorReview.messageId, request.leaseToken,
                 priorReview.offerId, 'ready', 'stale').catch(() => {});

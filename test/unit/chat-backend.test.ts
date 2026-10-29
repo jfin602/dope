@@ -261,10 +261,45 @@ test('P4 saved developer wording is recognized in the actual Roadmap review diag
             offer.id, offer.token, true);
         if (review === 'declined') throw new Error('Expected review');
         assert.match(review.diagnostic, /zero health means loss: Uncovered/);
+        assert.match(review.diagnostic, /implementation tasks and feature lists did not become required Gates/);
+        assert.equal(review.phases.every(phase => phase.gates.length === 0), true);
         assert.doesNotMatch(review.diagnostic, /Not in saved request/);
         assert.equal(review.phases.length, 5);
         assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
         assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('saved explicit Gate acceptance criteria remain proposed and do not write canonical Roadmap', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    const greenfield = new RoadmapGreenfield(new RoadmapStore());
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, undefined, undefined,
+        undefined, undefined, undefined, greenfield);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        let snapshot = await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        snapshot = await backend.mutate({ projectHandle, expectedRevision: snapshot.revision,
+            leaseToken: lease.token, operation: { type: 'append-user', chatId, message: {
+                schemaVersion: 1, id: id(), role: 'user', createdAt: new Date().toISOString(),
+                content: 'If the main tower health reaches 0, the player loses.', contextRefs: [] } } });
+        const answer = 'Phase 1: Game loop\n- Implement combat\n' +
+            'Gate: Main tower defeat\nAcceptance criteria:\n- If main tower health reaches 0, the player loses\n' +
+            'Phase 2: Polish\n- Add effects';
+        const offer = await savedRoadmapOffer(backend, projectHandle, root, chatId, lease.token, answer);
+        assert.ok(offer);
+        const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            offer.id, offer.token, true);
+        if (review === 'declined') throw new Error('Expected review');
+        assert.equal(review.phases[0].gates.length, 1);
+        assert.equal(review.phases[0].gates[0].criteria[0].expectedResult,
+            'If main tower health reaches 0, the player loses');
+        assert.match(review.diagnostic, /zero health means loss: Covered/);
+        assert.match(review.diagnostic, /no qualification evidence/);
+        assert.equal((await new RoadmapStore().read(root)).revision, 0);
+        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 

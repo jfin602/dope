@@ -41,7 +41,7 @@ export interface LocalImplementationPlan {
         dependsOn: number[]; reuse: { path: string; reason: string }[] }[];
     tests: string[]; guiQualification: string; risks: string[]; alternatives: string[]; question: string;
 }
-/** One completed model envelope; numbered dependencies refer to earlier checkpoints across all phases. */
+/** One completed model envelope; a Gate is a proposed requirement with explicit criteria, never a task. */
 export function parseStrategicDraft(text: string, finishReason: string | undefined,
     projectId: string, ownerRevision: number): StrategicDraftInput {
     if (finishReason && !['stop', 'eos', 'end_turn'].includes(finishReason))
@@ -61,6 +61,23 @@ export function parseStrategicDraft(text: string, finishReason: string | undefin
     const input = { projectId, ownerRevision, phases: raw.phases } as StrategicDraftInput;
     if (!Array.isArray(input.phases) || input.phases.length < 2 || input.phases.length > 32)
         throw new LocalPlanningOutputFailure('Strategic draft needs 2–32 complete phases', text);
+    const keys = (value: object) => Object.keys(value).sort().join(',');
+    const line = (value: unknown, max: number) => typeof value === 'string' && !!value.trim() &&
+        value.length <= max && !/[\r\n\0-\x1f]/.test(value);
+    if (!input.phases.every(phase => phase && typeof phase === 'object' &&
+        ['checkpoints,objective,title', 'checkpoints,gates,objective,title'].includes(keys(phase)) &&
+        line(phase.title, 200) && typeof phase.objective === 'string' && phase.objective.length <= 8192 &&
+        Array.isArray(phase.checkpoints) && phase.checkpoints.length <= 16 &&
+        phase.checkpoints.every(item => item && keys(item) === 'dependsOn,objective,title' &&
+            line(item.title, 200) && typeof item.objective === 'string' &&
+            Array.isArray(item.dependsOn) && item.dependsOn.every(value => Number.isSafeInteger(value) && value > 0)) &&
+        (phase.gates === undefined || Array.isArray(phase.gates) && phase.gates.length <= 16 &&
+            phase.gates.every(gate => gate && keys(gate) === 'criteria,purpose,title' &&
+                line(gate.title, 200) && typeof gate.purpose === 'string' &&
+                Array.isArray(gate.criteria) && gate.criteria.length <= 16 &&
+                gate.criteria.every(criterion => criterion && keys(criterion) === 'expectedResult,title' &&
+                    line(criterion.title, 200) && line(criterion.expectedResult, 512))))))
+        throw new LocalPlanningOutputFailure('Strategic draft Phase/Gate/Criterion shape is invalid', text);
     return input;
 }
 export function validImplementationPlanRevision(value: unknown): boolean {
@@ -255,6 +272,10 @@ function validNestedAction(value: unknown, mode: 'linked' | 'unlinked' | 'draft'
     const action = value as Record<string, unknown>;
     const specs: Record<string, [string[], string[]]> = mode === 'draft' ? {
         'create-phase': [['type', 'title'], ['objective']],
+        'create-gate': [['type', 'phaseId', 'title', 'purpose'], []],
+        'edit-gate': [['type', 'phaseId', 'gateId'], ['title', 'purpose']],
+        'add-criterion': [['type', 'phaseId', 'gateId', 'title', 'expectedResult'], []],
+        'edit-criterion': [['type', 'phaseId', 'gateId', 'criterionId'], ['title', 'expectedResult']],
         'create-checkpoint': [['type', 'phaseId', 'title'], ['objective']],
         'edit-phase': [['type', 'phaseId'], ['title', 'objective']],
         'edit-checkpoint': [['type', 'phaseId', 'checkpointId'], ['title', 'objective']],
