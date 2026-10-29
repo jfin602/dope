@@ -8,6 +8,8 @@ import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPe
 import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
+import { parseRoadmapGateIndex } from './roadmap-gate-domain';
+import type { RoadmapGateIndex } from './roadmap-gate-domain';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
@@ -222,8 +224,16 @@ function linkedDocument(value: unknown, raw: Record<string, unknown>, checkpoint
     return true;
 }
 
-/** Reject unknown versions and malformed persisted state rather than normalizing it into new authority. */
-export function parseRoadmapIndex(value: unknown, root: string): RoadmapIndex {
+/** The authoritative schema-2 validator used by both reads and writes. */
+export function parseRoadmapIndex(value: unknown, root: string): RoadmapGateIndex {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) fail('document');
+    const candidate = value as Record<string, unknown>;
+    if (candidate.schemaVersion !== 2 || !id(candidate.projectId)) fail('schema');
+    return parseRoadmapGateIndex(value, root, candidate.projectId as string);
+}
+
+/** Compile-only bridge for the checkpoint callers being removed by P17. Never reads or writes schema 1. */
+export function parseRetiredCheckpointIndex(value: unknown, root: string): RoadmapIndex {
     if (!value || typeof value !== 'object' || Array.isArray(value)) fail('document');
     const raw = value as Record<string, unknown>;
     if (Object.keys(raw).sort().join(',') !== ['checkpoints', 'projectId', 'projectRoot', 'revision', 'schemaVersion',
@@ -323,9 +333,11 @@ export class RoadmapStore {
         } catch (error) { if (missing(error)) return false; throw error; }
     }
 
-    async read(root: string): Promise<RoadmapIndex> {
+    /** Runtime value is schema 2; the generic default temporarily keeps downstream checkpoint imports compiling. */
+    async read<T extends RoadmapIndex | RoadmapGateIndex = RoadmapIndex>(root: string): Promise<T> {
         const { file } = await this.paths(root);
-        if (!(await this.regular(file))) return { schemaVersion: 1, projectId: 'uninitialized', projectRoot: root, revision: 0, checkpoints: [] };
+        if (!(await this.regular(file))) return { schemaVersion: 2, projectId: 'uninitialized', projectRoot: root,
+            revision: 0, phases: [], gates: [], corrections: [] } as unknown as T;
         const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
         try {
             const info = await handle.stat();
@@ -337,15 +349,17 @@ export class RoadmapStore {
             try { parsed = JSON.parse(bytes.toString('utf8')); }
             catch { throw new Error(`Corrupt or unsupported Roadmap index: ${file}. ${guidance}`); }
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
-                'schemaVersion' in parsed && parsed.schemaVersion !== 1)
+                'schemaVersion' in parsed && parsed.schemaVersion !== 2)
                 throw new Error(`Incompatible Roadmap index schema: ${file}. ${guidance}`);
-            try { return parseRoadmapIndex(parsed, root); }
+            try { return parseRoadmapIndex(parsed, root) as T; }
             catch { throw new Error(`Corrupt or unsupported Roadmap index: ${file}. ${guidance}`); }
         } finally { await handle.close(); }
     }
 
-    private async replace(root: string, next: RoadmapIndex): Promise<void> {
+    private async replace(root: string, next: RoadmapGateIndex | RoadmapIndex, expectedHash?: string | null): Promise<void> {
         const { directory, file } = await this.paths(root);
+        if (next.schemaVersion !== 2 || expectedHash === undefined)
+            throw new Error('Checkpoint Roadmap writes are retired; review and reimport into schema 2');
         parseRoadmapIndex(next, root);
         const bytes = Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
         if (bytes.length > MAX_BYTES) throw new Error('Roadmap index size limit exceeded');
@@ -354,7 +368,8 @@ export class RoadmapStore {
         try {
             const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
             try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
-            await this.regular(file);
+            const currentHash = await this.indexHash(file);
+            if (currentHash !== expectedHash) throw new Error('Roadmap index changed before publication; review and retry');
             await rename(temporary, file);
             replaced = true;
             const parent = await open(directory, 'r');
@@ -363,6 +378,51 @@ export class RoadmapStore {
             if (replaced) throw new Error(`Roadmap write outcome uncertain; re-read before retrying: ${String(error)}`);
             throw error;
         } finally { await rm(temporary, { force: true }); }
+    }
+
+    private async indexHash(file: string): Promise<string | null> {
+        if (!(await this.regular(file))) return null;
+        const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+        try { return createHash('sha256').update(await handle.readFile()).digest('hex'); }
+        finally { await handle.close(); }
+    }
+
+    /** Persist one reviewed schema-2 revision without changing a linked Markdown source. */
+    async saveGateIndex(root: string, expectedRevision: number, expectedProjectId: string | undefined,
+        candidate: RoadmapGateIndex): Promise<RoadmapGateIndex> {
+        if (!revision(expectedRevision) || !id(candidate.projectId) || candidate.projectId === 'uninitialized')
+            throw new Error('Invalid Roadmap owner or revision');
+        const next = await this.locked(root, async () => {
+            const { file } = await this.paths(root);
+            const expectedHash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (current.revision !== expectedRevision) throw new Error('Stale Roadmap revision');
+            if (expectedProjectId !== current.projectId) throw new Error('Roadmap identity changed; reattach');
+            if (current.revision > 0 && candidate.projectId !== current.projectId)
+                throw new Error('Roadmap identity changed; reattach');
+            if (candidate.projectRoot !== root || candidate.revision !== expectedRevision + 1)
+                throw new Error('Roadmap root or revision changed');
+            if (current.linkedDocument && JSON.stringify(candidate.linkedDocument) !== JSON.stringify(current.linkedDocument))
+                throw new Error('Linked Roadmap source requires separate reviewed synchronization');
+            parseRoadmapIndex(candidate, root);
+            if (!current.linkedDocument && candidate.linkedDocument) {
+                if (candidate.linkedDocument.syncState !== 'synced')
+                    throw new Error('A new linked Roadmap source requires a verified fingerprint');
+                const source = await checkedRoadmapDocumentFile(root, candidate.linkedDocument.path);
+                if (createHash('sha256').update(source.bytes).digest('hex') !== candidate.linkedDocument.sourceHash)
+                    throw new Error('Linked Roadmap source fingerprint changed');
+            }
+            await this.replace(root, candidate, expectedHash);
+            return candidate;
+        });
+        this.publish({ root, projectId: next.projectId, revision: next.revision,
+            changedIds: [...next.phases, ...next.gates, ...next.corrections].map(item => item.id) });
+        return next;
+    }
+
+    private async readRetired(root: string): Promise<RoadmapIndex> {
+        const current = await this.read<RoadmapGateIndex>(root);
+        throw new Error(`Checkpoint Roadmap operations are retired for schema ${current.schemaVersion}; use Gate actions`);
     }
 
     private async locked<T>(root: string, work: () => Promise<T>): Promise<T> {
@@ -415,7 +475,7 @@ export class RoadmapStore {
             linkedDocument?: RoadmapLinkedDocument }>): Promise<RoadmapIndex> {
         if (!revision(expectedRevision)) throw new Error('Invalid Roadmap revision');
         const result = await this.locked(root, async () => {
-            const current = await this.read(root);
+            const current = await this.readRetired(root);
             if (current.pendingCreation) throw new Error('Pending greenfield Roadmap creation requires recovery');
             if (current.linkedDocument?.syncState === 'pending-sync') throw new Error('Pending linked Roadmap sync requires recovery');
             if (expectedProjectId && current.projectId !== expectedProjectId) throw new Error('Roadmap identity changed; reattach');
@@ -427,7 +487,7 @@ export class RoadmapStore {
                 lastSynced: { ...proposedLink.lastSynced, sourceHash: proposedLink.sourceHash, roadmapRevision: nextRevision } } : current.linkedDocument;
             if (!changedIds.length && JSON.stringify(nextLink) === JSON.stringify(current.linkedDocument))
                 return { snapshot: current, changedIds };
-            const next = parseRoadmapIndex({ schemaVersion: 1, projectId: nextProjectId,
+            const next = parseRetiredCheckpointIndex({ schemaVersion: 1, projectId: nextProjectId,
                 projectRoot: root, revision: nextRevision, checkpoints, ...(nextLink ? { linkedDocument: nextLink } : {}),
                 ...(nextProjectId === current.projectId && current.planOrigin ?
                     { planOrigin: current.planOrigin } : {}) }, root);
@@ -526,13 +586,13 @@ export class RoadmapStore {
             (planOrigin !== undefined && !validPlanOrigin(planOrigin, true)))
             throw new Error('Invalid greenfield Roadmap creation');
         const result = await this.locked(root, async () => {
-            const current = await this.read(root);
+            const current = await this.readRetired(root);
             if (current.revision !== expectedRevision || current.linkedDocument || current.pendingCreation)
                 throw new Error('Stale Roadmap revision or pending creation');
             const file = await this.creationFile(root, path);
             try { await lstat(file); throw new Error('Greenfield Roadmap path already exists'); }
             catch (error) { if (!missing(error)) throw error; }
-            const marker = parseRoadmapIndex({ schemaVersion: 1, projectId: randomUUID(), projectRoot: root,
+            const marker = parseRetiredCheckpointIndex({ schemaVersion: 1, projectId: randomUUID(), projectRoot: root,
                 revision: 1, checkpoints: [], pendingCreation: { path, content,
                     sourceHash: createHash('sha256').update(content).digest('hex'),
                     ...(topology?.length ? { topology } : {}), ...(planOrigin ? { planOrigin } : {}) } }, root);
@@ -546,7 +606,7 @@ export class RoadmapStore {
     /** Idempotent after a crash: only the exact reserved bytes may be accepted. */
     async recoverGreenfield(root: string): Promise<RoadmapIndex> {
         const result = await this.locked(root, async () => {
-            const current = await this.read(root);
+            const current = await this.readRetired(root);
             const pending = current.pendingCreation;
             if (!pending) return { snapshot: current, changedIds: [] as string[] };
             const file = await this.creationFile(root, pending.path);
@@ -610,7 +670,7 @@ export class RoadmapStore {
                     if (!checkpointId) throw new Error('Reviewed plan step lost its Roadmap source mapping');
                     return { stepId: step.stepId, checkpointId, expectedOutputs: step.expectedOutputs };
                 }) };
-            const next = parseRoadmapIndex({ schemaVersion: 1, projectId: current.projectId, projectRoot: root,
+            const next = parseRetiredCheckpointIndex({ schemaVersion: 1, projectId: current.projectId, projectRoot: root,
                 revision: 2, checkpoints, linkedDocument: linked, ...(planOrigin ? { planOrigin } : {}) }, root);
             await this.replace(root, next);
             return { snapshot: next, changedIds: checkpoints.map(item => item.id) };
@@ -623,22 +683,22 @@ export class RoadmapStore {
     async previewDocumentSync(root: string): Promise<RoadmapSyncPreview> {
         await this.recoverGreenfield(root);
         await this.recoverDocumentSync(root);
-        return previewRoadmapDocumentSync(root, await this.read(root));
+        return previewRoadmapDocumentSync(root, await this.readRetired(root));
     }
 
     async previewPendingRecovery(root: string): Promise<RoadmapPendingRecoveryPreview> {
         await this.recoverDocumentSync(root);
-        return previewRoadmapPendingRecovery(root, await this.read(root));
+        return previewRoadmapPendingRecovery(root, await this.readRetired(root));
     }
 
     /** Explicitly accept checked source bytes after reviewing an interrupted write. */
     async applyPendingRecovery(root: string, expected: RoadmapPendingRecoveryPreview,
         approved: boolean): Promise<RoadmapIndex> {
-        if (!approved) return this.read(root);
+        if (!approved) return this.readRetired(root);
         if (expected.state !== 'ready' || !expected.sourceHash)
             throw new Error('Pending Roadmap recovery requires a safe approved preview');
         const result = await this.locked(root, async () => {
-            const current = await this.read(root);
+            const current = await this.readRetired(root);
             if (current.revision !== expected.revision || current.projectId !== expected.projectId)
                 throw new Error('Stale pending Roadmap recovery revision or project identity');
             const fresh = await previewRoadmapPendingRecovery(root, current);
@@ -658,7 +718,7 @@ export class RoadmapStore {
             });
             const nextRevision = current.revision + 1;
             const { pending: _pending, ...settled } = linked;
-            const next = parseRoadmapIndex({ ...current, revision: nextRevision, checkpoints,
+            const next = parseRetiredCheckpointIndex({ ...current, revision: nextRevision, checkpoints,
                 linkedDocument: { ...settled, sourceHash: mapped.hash, syncState: 'synced',
                     lastSynced: { sourceHash: mapped.hash, roadmapRevision: nextRevision,
                         fields: mapped.sections.map(({ line, heading, ...field }) => field) } } }, root);
@@ -690,7 +750,7 @@ export class RoadmapStore {
 
     /** Inspect a different Markdown owner without initializing, recovering or writing Roadmap state. */
     async previewReplacement(root: string, path: string): Promise<RoadmapReplacementPreview> {
-        const current = await this.read(root);
+        const current = await this.readRetired(root);
         const linked = current.linkedDocument;
         if (!linked || linked.projectRoot !== root || linked.projectId !== current.projectId)
             throw new Error('Roadmap has no linked document for this project');
@@ -780,7 +840,7 @@ export class RoadmapStore {
 
     /** Replace the active Roadmap only after the exact approved source and owner basis still match. */
     async applyReplacement(root: string, expected: RoadmapReplacementPreview, approved: boolean): Promise<RoadmapIndex> {
-        if (!approved) return this.read(root);
+        if (!approved) return this.readRetired(root);
         if (!expected || expected.state !== 'ready' || !expected.observedPreviousHash)
             throw new Error('Replacement requires a safe approved preview');
         return this.commit(root, expected.revision, expected.projectId, async current => {
@@ -823,7 +883,7 @@ export class RoadmapStore {
 
     /** Relink changes only the accepted owner reference. A changed document needs separate reconciliation. */
     async previewRelink(root: string, path: string): Promise<RoadmapRelinkPreview> {
-        const current = await this.read(root);
+        const current = await this.readRetired(root);
         const linked = current.linkedDocument;
         if (!linked || linked.projectRoot !== root || linked.projectId !== current.projectId)
             throw new Error('Roadmap has no linked document for this project');
@@ -857,7 +917,7 @@ export class RoadmapStore {
     }
 
     async applyRelink(root: string, expected: RoadmapRelinkPreview, approved: boolean): Promise<RoadmapIndex> {
-        if (!approved) return this.read(root);
+        if (!approved) return this.readRetired(root);
         if (expected.state !== 'ready' || !expected.sourceHash) throw new Error('Relink requires a safe approved preview');
         return this.commit(root, expected.revision, expected.projectId, async current => {
             const fresh = await this.previewRelink(root, expected.path);
@@ -875,13 +935,13 @@ export class RoadmapStore {
     /** Finish an approved edit after restart. Unknown source bytes are never overwritten. */
     async recoverDocumentSync(root: string): Promise<RoadmapIndex> {
         const result = await this.locked(root, async () => {
-            let current = await this.read(root);
+            let current = await this.readRetired(root);
             const linked = current.linkedDocument;
             const pending = linked?.pending;
             if (!linked || !pending) return { snapshot: current, changedIds: [] as string[] };
             const conflict = async (): Promise<RoadmapIndex> => {
                 if (pending.outcome === 'conflict') return current;
-                const next = parseRoadmapIndex({ ...current, revision: current.revision + 1,
+                const next = parseRetiredCheckpointIndex({ ...current, revision: current.revision + 1,
                     linkedDocument: { ...linked, pending: { ...pending, outcome: 'conflict' as const } } }, root);
                 await this.replace(root, next);
                 return next;
@@ -956,7 +1016,7 @@ export class RoadmapStore {
             });
             const nextRevision = current.revision + 1;
             const { pending: _resolved, ...settledLink } = linked;
-            const next = parseRoadmapIndex({ ...current, revision: nextRevision, checkpoints,
+            const next = parseRetiredCheckpointIndex({ ...current, revision: nextRevision, checkpoints,
                 linkedDocument: { ...settledLink, sourceHash: pending.afterHash, syncState: 'synced',
                     lastSynced: { sourceHash: pending.afterHash, roadmapRevision: nextRevision,
                         fields: mapped.sections.map(({ line, heading, ...field }) => field) } } }, root);
@@ -1073,7 +1133,7 @@ export class RoadmapStore {
     async transactDocument(root: string, expectedRevision: number, expectedProjectId: string,
         transform: (current: RoadmapIndex) => Promise<{ next: RoadmapIndex; patch: RoadmapDocumentPatch }>): Promise<RoadmapIndex> {
         const prepared = await this.locked(root, async () => {
-                const current = await this.read(root);
+                const current = await this.readRetired(root);
                 if (current.projectId !== expectedProjectId || current.revision !== expectedRevision)
                     throw new Error('Stale Roadmap revision or project identity');
                 if (current.linkedDocument?.syncState === 'pending-sync')
@@ -1114,7 +1174,7 @@ export class RoadmapStore {
                 if (!changedIds.includes(patch.checkpointId) || changedIds.some(id =>
                     !current.linkedDocument!.sections.some(section => section.checkpointId === id)))
                     throw new Error('Invalid linked Roadmap change set');
-                const marker = parseRoadmapIndex({ ...current, revision: current.revision + 1,
+                const marker = parseRetiredCheckpointIndex({ ...current, revision: current.revision + 1,
                     linkedDocument: { ...current.linkedDocument, syncState: 'pending-sync',
                         pending: { basisRevision: current.revision, checkpointId: patch.checkpointId,
                             beforeHash: patch.beforeHash, afterHash: patch.afterHash,
@@ -1124,7 +1184,7 @@ export class RoadmapStore {
                 await this.replace(root, marker);
                 try { await publishRoadmapDocumentPatch(root, patch); }
                 catch (error) { throw new Error(`Linked Roadmap pending sync; recover before retrying: ${String(error)}`); }
-                const written = parseRoadmapIndex({ ...marker, revision: marker.revision + 1,
+                const written = parseRetiredCheckpointIndex({ ...marker, revision: marker.revision + 1,
                     linkedDocument: { ...marker.linkedDocument, pending: { ...marker.linkedDocument!.pending!, outcome: 'document-written' } } }, root);
                 await this.replace(root, written);
                 return { marker, changedIds };

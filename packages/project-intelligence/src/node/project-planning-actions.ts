@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
-import { parseRoadmapIndex, RoadmapStore } from './roadmap-store';
+import { parseRetiredCheckpointIndex as parseRoadmapIndex, RoadmapStore } from './roadmap-store';
 import type { RoadmapCheckpoint, RoadmapIndex, RoadmapLink } from './roadmap-store';
 import { planRoadmapDocumentPatch } from './roadmap-document-patch';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
