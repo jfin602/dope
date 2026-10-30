@@ -16,6 +16,20 @@ import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/
 import type { RoadmapService } from '../../packages/theia-extension/src/roadmap-service.ts';
 import type { PlanningMapController } from '../../packages/theia-extension/src/browser/planning-map-controller.ts';
 
+test('empty schema-2 Roadmap does not become implicit Chat context', () => {
+    const workspace = 'file:///tmp/empty-roadmap-chat';
+    const index = { schemaVersion: 2 as const, projectId: 'uninitialized', projectRoot: '/tmp/empty-roadmap-chat',
+        revision: 0, phases: [], gates: [] };
+    let onRoadmapChange: (() => void) | undefined;
+    const inspector = { projectUri: workspace, gateIndex: index, selectedId: undefined,
+        onChange: (listener: () => void) => { onRoadmapChange = listener; return { dispose() {} }; } } as unknown as RoadmapInspectorModel;
+    const planning = { onChange: () => ({ dispose() {} }) } as unknown as PlanningMapController;
+    const selection = new ChatPlanningSelection(inspector, planning, {} as RoadmapService);
+    assert.equal(selection.current(workspace), undefined);
+    onRoadmapChange?.();
+    assert.equal(selection.current(workspace), undefined);
+});
+
 test('one saved Chat follows current checkpoint, pins exact owner, restores and keeps its lease', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-panel-'));
     const workspace = pathToFileURL(root).href;

@@ -34,6 +34,13 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             inputBytes > 512 * 1024 || Math.ceil(immutableBytes / 3) + maxOutputTokens + 1024 > binding.contextWindowTokens)
             throw new ModelRuntimeFailure('Local Chat context exceeds the measured model budget; shorten the turn or select a larger model',
                 'unsupported-capability');
+        if (process.env.DOPE_PI_CHAT_CONTEXT_TRACE === '1') {
+            // Qualification trace at the exact Pi handoff; never persist prompt text or credentials.
+            console.info('[dope-pi-chat-context]', JSON.stringify({ modelId: selection.modelId,
+                messages: request.messages.map(message => ({ role: message.role,
+                    bytes: Buffer.byteLength(message.content, 'utf8'),
+                    sha256: createHash('sha256').update(message.content).digest('hex') })) }));
+        }
         for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal)) {
             if (event.type === 'delta') { yield event; continue; }
             if (event.modelId !== selection.modelId)

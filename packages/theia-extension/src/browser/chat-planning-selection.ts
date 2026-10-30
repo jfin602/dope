@@ -15,10 +15,10 @@ export class ChatPlanningSelection {
         private readonly roadmapService: RoadmapService) {
         this.roadmapId = roadmap.selectedId;
         this.planningId = planning.selectedMapId;
-        this.active = roadmap.gateIndex ? 'roadmap' : roadmap.selectedId ? 'roadmap-checkpoint' :
+        this.active = roadmap.gateIndex?.revision ? 'roadmap' : roadmap.selectedId ? 'roadmap-checkpoint' :
             planning.selectedMapId ? 'planning-map' : undefined;
         roadmap.onChange(() => {
-            if (roadmap.gateIndex && (roadmap.selectedId !== this.roadmapId || !this.active)) this.active = 'roadmap';
+            if (roadmap.gateIndex?.revision && (roadmap.selectedId !== this.roadmapId || !this.active)) this.active = 'roadmap';
             else if (roadmap.selectedId && roadmap.selectedId !== this.roadmapId) this.active = 'roadmap-checkpoint';
             this.roadmapId = roadmap.selectedId;
             for (const listener of this.listeners) listener();
@@ -64,7 +64,7 @@ export class ChatPlanningSelection {
     }
 
     current(workspace: string): PlanningSelection | undefined {
-        if (this.active === 'roadmap' && this.roadmap.projectUri === workspace && this.roadmap.gateIndex) {
+        if (this.active === 'roadmap' && this.roadmap.projectUri === workspace && this.roadmap.gateIndex?.revision) {
             const index = this.roadmap.gateIndex;
             return { kind: 'roadmap', id: this.roadmap.selectedGate?.id ?? this.roadmap.selectedPhase?.id ?? 'roadmap',
                 projectId: index.projectId, ownerRevision: index.revision,

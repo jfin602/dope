@@ -21,10 +21,12 @@ const chat = (): Chat => ({ schemaVersion: 1, id: id(), revision: 0, folderPath:
     allowedSources: ['editor', 'selection', 'file', 'project-mind', 'architecture', 'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat'] } },
   messages: [] });
 
-test('ordinary Chat brevity is soft, general-purpose, and preserves source truth', () => {
-  assert.match(GROUNDED_CHAT_INSTRUCTION, /100–170 words is a soft preference, never a cap/);
+test('ordinary Chat distinguishes factual recall from requested advice and preserves source truth', () => {
+  assert.match(GROUNDED_CHAT_INSTRUCTION, /For a direct factual or conversation-recall question, answer the requested fact directly/);
+  assert.match(GROUNDED_CHAT_INSTRUCTION, /do not add an unsolicited design, implementation plan, or claimed project inspection/);
+  assert.match(GROUNDED_CHAT_INSTRUCTION, /100–170 words is a soft preference for advice requests, never a cap/);
   assert.match(GROUNDED_CHAT_INSTRUCTION, /Give more detail when the request or safety requires it/);
-  assert.match(GROUNDED_CHAT_INSTRUCTION, /one practical recommendation.*initial deliverable/);
+  assert.match(GROUNDED_CHAT_INSTRUCTION, /When the user asks for a practical approach, give one recommendation.*initial deliverable/);
   assert.match(GROUNDED_CHAT_INSTRUCTION, /never imply an unobserved file was inspected/);
   assert.doesNotMatch(GROUNDED_CHAT_INSTRUCTION, /PixiJS|tower defense|strict JSON|truncate/);
 });
