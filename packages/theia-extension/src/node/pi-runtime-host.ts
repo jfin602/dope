@@ -8,8 +8,12 @@ export interface PiRuntimeDiagnostics {
     tools: string[];
 }
 
+export type PiWorkEvent = { type: 'work'; sequence: number;
+    kind: 'agent_start' | 'turn_start' | 'turn_end' | 'agent_end' | 'agent_settled' |
+        'tool_execution_start' | 'tool_execution_end'; toolName?: string; isError?: boolean; aborted?: boolean };
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
-    onEvent?: (event: { type: 'delta'; text: string }) => void;
+    lastWorkSequence?: number;
+    onEvent?: (event: { type: 'delta'; text: string } | PiWorkEvent) => void;
     onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
 
 /** Only Dope-owned paths are considered. No PATH lookup or user Pi installation is used. */
@@ -70,8 +74,12 @@ export class PiRuntimeHost {
             ...(credential ? { credential } : {}) });
     }
 
-    runWork(prompt: string, onTool: NonNullable<Pending['onTool']>): Promise<{ text: string; modelId: string }> {
-        return this.request({ type: 'work', prompt }, undefined, onTool);
+    runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void):
+        Promise<{ text: string; modelId: string }> {
+        return this.request({ type: 'work', prompt }, event => {
+            if (event.type !== 'work') throw new Error('Invalid Pi Work stream event');
+            onEvent?.(event);
+        }, onTool);
     }
 
     closeSession(): Promise<{ closed: boolean }> {
@@ -100,6 +108,7 @@ export class PiRuntimeHost {
         const onAbort = () => this.dispose();
         signal?.addEventListener('abort', onAbort, { once: true });
         const task = this.request<typeof result>({ type: 'turn', messages, maxOutputTokens }, event => {
+            if (event.type !== 'delta') throw new Error('Invalid Pi Chat stream event');
             queue.push(event); notify();
         }).then(value => { result = value; }, error => { failure = error; })
             .finally(() => { settled = true; notify(); });
@@ -147,7 +156,7 @@ export class PiRuntimeHost {
             this.stdout = this.stdout.slice(newline + 1);
             try {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
-                    event?: { type: 'delta'; text: string };
+                    event?: { type: 'delta'; text: string } | PiWorkEvent;
                     tool?: { id: number; name: string; arguments: unknown } };
                 const pending = this.pending.get(record.id);
                 if (!pending) throw new Error('Unexpected Pi worker response');
@@ -161,7 +170,20 @@ export class PiRuntimeHost {
                     continue;
                 }
                 if (record.event) {
-                    if (record.event.type !== 'delta' || typeof record.event.text !== 'string')
+                    if (record.event.type === 'work') {
+                        const event = record.event;
+                        if (!pending.onTool || !pending.onEvent || !Number.isSafeInteger(event.sequence) ||
+                            event.sequence !== (pending.lastWorkSequence ?? 0) + 1 || event.sequence > 512 ||
+                            !['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled',
+                                'tool_execution_start', 'tool_execution_end'].includes(event.kind) ||
+                            (event.toolName !== undefined && (!['dope_read', 'dope_list', 'dope_edit', 'dope_process']
+                                .includes(event.toolName) || !event.kind.startsWith('tool_execution_'))) ||
+                            (event.kind.startsWith('tool_execution_') !== (event.toolName !== undefined)) ||
+                            (event.isError !== undefined && (event.kind !== 'tool_execution_end' || typeof event.isError !== 'boolean')) ||
+                            (event.aborted !== undefined && (event.kind !== 'agent_settled' || typeof event.aborted !== 'boolean')))
+                            throw new Error('Invalid Pi Work event');
+                        pending.lastWorkSequence = event.sequence;
+                    } else if (record.event.type !== 'delta' || typeof record.event.text !== 'string' || pending.onTool)
                         throw new Error('Invalid Pi stream event');
                     pending.onEvent?.(record.event);
                     continue;

@@ -296,12 +296,15 @@ export class AgentExecutionRuntime {
         const kind: AgentRunEvent['kind'] = observation.kind === 'file-changed' ? 'file' :
             observation.kind.startsWith('command-') ? 'process' : observation.kind === 'authority-denied' ?
                 'authority' : 'message';
-        const summary = observation.kind === 'agent-message' ? 'Agent message received' :
+        const piSummary = /^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|dope_(?:read|list|edit|process) (?:started|ended|failed))$/u
+            .test(observation.summary) ? observation.summary : undefined;
+        const summary = piSummary ?? (observation.kind === 'agent-message' ? 'Agent message received' :
             observation.kind === 'command-started' ? 'Project command started' :
             observation.kind === 'command-completed' ? 'Project command completed' :
             observation.kind === 'file-changed' ? 'Project file changed' :
             observation.kind === 'authority-denied' ? 'Execution authority denied' :
-            observation.kind === 'warning' ? 'Execution warning' : 'Provider status received';
+            observation.kind === 'warning' ? 'Execution warning' :
+            'Provider status received');
         let path: string | undefined;
         try { path = observation.kind === 'file-changed' ? projectPath(observation.path) : undefined; }
         catch {

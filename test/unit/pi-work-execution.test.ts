@@ -20,6 +20,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     const calls = [
         { name: 'dope_read', args: { path: 'README.md', maxBytes: 64 } },
         { name: 'dope_edit', args: { operation: 'modify', path: 'README.md', content: 'candidate change\n' } },
+        { name: 'dope_process', args: { kind: 'test', commandId: 'failing-sample' } },
         { name: 'dope_process', args: { kind: 'test', commandId: 'sample' } }
     ];
     const originalFetch = globalThis.fetch;
@@ -47,7 +48,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     const factory: any = { create() { return {
         async start() { return { version: '1.4.0', transport: 'supervised-worker', tools: [] }; },
         openWorkSession(model: unknown, cwd: string) { return dispatch({ type: 'open', mode: 'work', model, cwd }); },
-        async runWork(prompt: string, onTool: (call: any) => Promise<any>) {
+        async runWork(prompt: string, onTool: (call: any) => Promise<any>, onEvent: (event: any) => void) {
             const original = process.stdout.write;
             const replies: Promise<unknown>[] = [];
             process.stdout.write = function (chunk: any, ...args: any[]) {
@@ -63,7 +64,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
                 return original.call(this, chunk, ...args);
             } as typeof process.stdout.write;
             try {
-                const answer = await dispatch({ type: 'work', id: 10, prompt });
+                const answer = await dispatch({ type: 'work', id: 10, prompt, emit: onEvent });
                 await Promise.all(replies);
                 return answer;
             } finally { process.stdout.write = original; }
@@ -95,15 +96,30 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         const adapter = new PiWorkExecutionAdapter(bridge, factory, () => {
             if (!active) throw new Error('Run revoked');
             return workspace!;
-        }, () => [{ id: 'sample', kind: 'test', executable: 'node',
-            argv: ['--test', 'test/fixtures/ide-testing/sample.test.js'] }]);
+        }, () => [{ id: 'failing-sample', kind: 'test', executable: 'node',
+            argv: ['--test', 'test/fixtures/ide-testing/missing.test.js'] },
+            { id: 'sample', kind: 'test', executable: 'node',
+                argv: ['--test', 'test/fixtures/ide-testing/sample.test.js'] }]);
         const handle = await adapter.start(request);
         await handle.result;
-        assert.equal(turn, 4);
+        assert.equal(turn, 5);
         assert.equal(await readFile(join(workspace.root, 'README.md'), 'utf8'), 'candidate change\n');
         assert.equal(await readFile(join(project, 'README.md'), 'utf8'), original);
         assert.ok(events.some(event => event.kind === 'file-changed'));
         assert.ok(events.some(event => event.kind === 'command-completed' && event.status === 'completed'));
+        assert.ok(events.some(event => event.kind === 'command-completed' && event.status === 'failed'));
+        assert.ok(events.some(event => event.summary === 'Pi dope_process failed'));
+        assert.equal(events.some(event => event.kind === 'authority-denied'), false);
+        assert.ok(events.some(event => event.summary === 'Pi session started'));
+        assert.ok(events.some(event => event.summary === 'Pi model turn running'));
+        assert.ok(events.some(event => event.summary === 'Pi dope_edit started'));
+        assert.ok(events.some(event => event.summary === 'Pi dope_process ended'));
+        const commandStart = events.findIndex(event => event.kind === 'command-started');
+        const commandEnd = events.findIndex(event => event.kind === 'command-completed');
+        assert.ok(commandStart >= 0 && commandEnd > commandStart);
+        assert.equal(events[commandEnd].status, 'failed');
+        assert.equal(events[commandEnd].exitCode, undefined); // Broker reports status, not an exit code.
+        assert.ok(events.some(event => event.summary === 'Pi session settled'));
         await assert.rejects(adapter.start({ ...request, grant: undefined } as any));
         await assert.rejects(adapter.start({ ...request, taskId: 'foreign-task' }));
         await assert.rejects(adapter.start({ ...request, grant: { ...grant, revision: -1 } }));
@@ -118,5 +134,49 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         await workspace?.dispose();
         await rm(parent, { recursive: true, force: true });
         globalThis.fetch = originalFetch;
+    }
+});
+
+test('Pi Work rejects a revoked callback and ignores late Pi events after cancellation', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-cancel-'));
+    const project = join(parent, 'project');
+    let workspace: ExecutionWorkspace | undefined;
+    let callTool: ((call: any) => Promise<any>) | undefined;
+    let stream: ((event: any) => void) | undefined;
+    let rejectTurn: ((error: Error) => void) | undefined;
+    let revoked = false;
+    const host: any = { async start() {}, runWork(_prompt: string, tool: typeof callTool, event: typeof stream) {
+        callTool = tool; stream = event;
+        return new Promise((_resolve, reject) => { rejectTurn = reject; });
+    }, dispose() { rejectTurn?.(new Error('Pi session cancelled')); } };
+    const factory: any = { create() { return host; }, release() { host.dispose(); } };
+    try {
+        await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
+        workspace = await ExecutionWorkspace.create(project);
+        const grant = createDefaultExecutionGrant({ id: 'grant-cancel', revision: 0,
+            taskId: 'task-cancel', acceptedAt: new Date().toISOString() });
+        const events: any[] = [];
+        const adapter = new PiWorkExecutionAdapter({ async bind() { return { endpoint: 'http://127.0.0.1:9/v1' }; },
+            async assertWorkSelection() {} } as any, factory, () => {
+            if (revoked) throw new Error('Run revoked');
+            return workspace!;
+        }, () => []);
+        const handle = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            grant, taskId: 'task-cancel', connectionId: 'local', registrationId: 'local',
+            modelId: 'fixture-model', prompt: 'Read README', onEvent: event => events.push(event) });
+        revoked = true;
+        await assert.rejects(callTool!({ id: 1, name: 'dope_read', arguments: { path: 'README.md', maxBytes: 64 } }),
+            /denied/);
+        assert.ok(events.some(event => event.kind === 'authority-denied'));
+        await handle.cancel();
+        const count = events.length;
+        stream!({ type: 'work', sequence: 1, kind: 'agent_start' });
+        await assert.rejects(callTool!({ id: 2, name: 'dope_read', arguments: { path: 'README.md', maxBytes: 64 } }),
+            /stopped/);
+        assert.equal(events.length, count);
+        adapter.dispose();
+    } finally {
+        await workspace?.dispose();
+        await rm(parent, { recursive: true, force: true });
     }
 });

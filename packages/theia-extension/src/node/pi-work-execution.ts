@@ -6,11 +6,31 @@ import { preflightLocalToolSandbox } from '@dope/agent-core/lib/node/local-tool-
 import { ExecutionWorkspace } from '@dope/agent-core/lib/node/execution-workspace';
 import { localWorkspaceBroker } from './local-agent-turn-loop';
 import type { PiModelBridge } from './pi-model-bridge';
-import type { PiRuntimeFactory, PiRuntimeHost } from './pi-runtime-host';
+import type { PiRuntimeFactory, PiRuntimeHost, PiWorkEvent } from './pi-runtime-host';
 
 const expectedTools = ['dope_edit', 'dope_list', 'dope_process', 'dope_read'];
-const secret = /\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|api[_-]?key|password|secret|token|authorization)\s*[:=]\s*\S+|\bBearer\s+\S+/giu;
-const safe = (text: string, max = 8192) => text.replace(secret, '[redacted]').slice(0, max);
+const secret = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|api[_-]?key|password|secret|token|authorization)\s*[:=]\s*\S+|\bBearer\s+\S+|(?:^|[\s"'(])(?:\/[A-Za-z0-9._~-]+\/[^\s"')]+|[A-Za-z]:\\Users\\[^\s"')]+)/giu;
+const safe = (text: string, max = 4000) => text
+    .replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think>/gimu, '[reasoning omitted]')
+    .replace(/^.*(?:\bdebug\b|\btraceback\b|\bchain of thought\b|<think\b).*$/gimu, '[diagnostic omitted]')
+    .replace(secret, '[redacted]').replace(/[\u0000-\u001f\u007f]/gu, ' ').slice(0, max);
+
+/** Pi's structured lifecycle is advisory. Dope's run, validation and review remain authoritative. */
+export function piWorkObservation(event: PiWorkEvent):
+    { kind: 'status' | 'warning' | 'provider-event'; summary: string } {
+    switch (event.kind) {
+        case 'agent_start': return { kind: 'status', summary: 'Pi session started' };
+        case 'turn_start': return { kind: 'status', summary: 'Pi model turn running' };
+        case 'turn_end': return { kind: 'status', summary: 'Pi model turn ended' };
+        case 'agent_end': return { kind: 'status', summary: 'Pi session ended' };
+        case 'agent_settled': return event.aborted ? { kind: 'warning', summary: 'Pi session aborted' } :
+            { kind: 'status', summary: 'Pi session settled' };
+        case 'tool_execution_start': return { kind: 'provider-event', summary: `Pi ${event.toolName} started` };
+        case 'tool_execution_end': return event.isError ?
+            { kind: 'warning', summary: `Pi ${event.toolName} failed` } :
+            { kind: 'provider-event', summary: `Pi ${event.toolName} ended` };
+    }
+}
 
 /** Pi owns only the model turn. Dope owns the grant, candidate, tool broker and promotion. */
 export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
@@ -51,12 +71,17 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         let denied = false;
         const abort = new AbortController();
         let count = 0;
+        const seenTools = new Set<number>();
+        let lastPiSequence = 0;
         const result = (async () => {
             try {
                 request.onEvent({ kind: 'status', summary: 'Pi Work started' });
                 const answer = await host.runWork(request.prompt, async raw => {
                   try {
-                    if (cancelled || this.disposed || ++count > 32) throw new Error('Pi Work stopped');
+                    if (cancelled || this.disposed) throw new Error('Pi Work stopped');
+                    if (!Number.isSafeInteger(raw.id) || raw.id < 1 || seenTools.has(raw.id) || ++count > 32)
+                        throw new Error('Invalid Pi Work tool event');
+                    seenTools.add(raw.id);
                     if (!expectedTools.includes(raw.name)) throw new Error('Unsupported Pi Work tool');
                     const name = raw.name.slice(5);
                     const [call] = parseLocalToolRequests(JSON.stringify([{
@@ -70,27 +95,39 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (call.name === 'process') request.onEvent({ kind: 'command-started', summary: 'Approved candidate command started',
                         commandId: call.id, command: call.arguments.commandId, status: 'running' });
                     const response = await broker.execute(call, abort.signal);
+                    if (cancelled || this.disposed) throw new Error('Pi Work stopped');
                     if (call.name === 'process') request.onEvent({ kind: 'command-completed',
                         summary: 'Approved candidate command finished', commandId: call.id,
-                        command: call.arguments.commandId, status: response.status === 'completed' ? 'completed' : 'failed',
-                        output: safe(response.output), outputTruncated: response.truncated });
-                    if (response.status !== 'completed') {
+                        command: call.arguments.commandId, status: response.status === 'completed' ? 'completed' :
+                            response.status === 'cancelled' ? 'cancelled' : 'failed',
+                        output: safe(response.output), outputTruncated: response.truncated || safe(response.output) !== response.output });
+                    if (response.status === 'denied') {
                         denied = true;
                         request.onEvent({ kind: 'authority-denied',
                             summary: 'Pi Work tool denied by execution authority' });
+                    } else if (response.status === 'failed') {
+                        request.onEvent({ kind: 'warning', summary: 'Approved candidate tool failed' });
                     }
                     if (response.status === 'completed' && call.name === 'edit') request.onEvent({ kind: 'file-changed',
                         summary: 'Candidate file changed', path: call.arguments.path });
                     return { status: response.status, output: safe(response.output) };
                   } catch {
+                    if (cancelled || this.disposed) throw new Error('Pi Work stopped');
                     denied = true;
                     request.onEvent({ kind: 'authority-denied', summary: 'Pi Work tool denied by execution authority' });
                     throw new Error('Pi Work tool denied');
                   }
+                }, event => {
+                    if (cancelled || this.disposed) return;
+                    if (event.sequence !== lastPiSequence + 1 || event.sequence > 512)
+                        throw new Error('Pi Work event order changed');
+                    lastPiSequence = event.sequence;
+                    request.onEvent(piWorkObservation(event));
                 });
                 if (cancelled || denied || answer.modelId !== request.modelId) throw new Error('Pi Work denied or model changed');
-                request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text: safe(answer.text, 512),
-                    truncated: answer.text.length > 512, redacted: safe(answer.text) !== answer.text });
+                const text = safe(answer.text, 512);
+                if (text.trim()) request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text,
+                    truncated: answer.text.length > 512, redacted: text !== answer.text });
             } finally { this.factory.release(host); this.active.delete(host); }
         })();
         result.catch(() => {});

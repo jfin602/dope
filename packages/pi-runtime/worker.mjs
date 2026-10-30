@@ -199,8 +199,22 @@ export async function dispatch(message) {
       if (!session || !workMode || typeof message.prompt !== 'string' || !message.prompt.trim() ||
           Buffer.byteLength(message.prompt, 'utf8') > 32_000) throw new Error('Invalid Pi Work turn');
       workRequestId = message.id;
+      let sequence = 0;
+      const emitWork = (kind, extra = {}) => {
+        if (++sequence > 512) throw new Error('Pi Work event limit exceeded');
+        message.emit?.({ type: 'work', sequence, kind, ...extra });
+      };
+      const unsubscribe = session.subscribe(event => {
+        // The pinned SDK emits these structured events. Never forward message text,
+        // tool arguments, provider diagnostics or Pi's own session identity.
+        if (['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled'].includes(event.type))
+          emitWork(event.type, event.type === 'agent_settled' ? { aborted: event.aborted === true } : {});
+        if (event.type === 'tool_execution_start' || event.type === 'tool_execution_end')
+          emitWork(event.type, { toolName: event.toolName,
+            ...(event.type === 'tool_execution_end' ? { isError: event.isError === true } : {}) });
+      });
       try { await session.prompt(message.prompt, { expandPromptTemplates: false }); }
-      finally { workRequestId = undefined; }
+      finally { unsubscribe(); workRequestId = undefined; }
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (!assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted')
         throw new Error('Pi Work turn failed');
