@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
-    ChatContextSelection, ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
+    ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import { suggestedChatTitle, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
@@ -106,6 +106,10 @@ export class ChatBackend implements ChatService {
     private readonly roadmapPreparations = new Map<string, { token: string; abort: AbortController }>();
     /** Leases belong to this RPC connection, not to the reusable panel ID or backend PID. */
     private readonly leases = new Map<string, { root: string; token: string }>();
+    private readonly commandModes = new Map<string, ChatCommandMode>();
+    private readonly pendingCommands = new Map<string, { preview: ChatCommandPreview; root: string;
+        leaseToken: string; turn: AbortController; digest: string; sourceBasis: string;
+        finish: (decision: 'allow' | 'deny') => void }>();
     private readonly pendingCancel = new Map<string, string>();
     private readonly proposals = new Map<string, { id: string; messageId: string; leaseToken: string;
         handle?: string; request?: PlanningActionRequest; token?: string; changedIds: string[];
@@ -341,6 +345,7 @@ export class ChatBackend implements ChatService {
                 if (prior) { this.greenfield?.rejectStrategicDraft(prior.preview.token);
                     this.strategicReviews.delete(request.chatId); }
                 this.leases.set(request.chatId, { root, token: result.token });
+                this.commandModes.set(request.chatId, 'ask');
             } catch (error) {
                 await this.repository.release(root, request.chatId, result.token).catch(() => {});
                 throw error;
@@ -353,6 +358,10 @@ export class ChatBackend implements ChatService {
     }
     async release(projectHandle: string, chatId: string, token: string) {
         const root = this.active(projectHandle);
+        if (this.leases.get(chatId)?.token === token) {
+            this.pendingCommands.get(chatId)?.finish('deny');
+            this.commandModes.delete(chatId);
+        }
         if (this.turns.get(chatId)?.token === token) this.turns.get(chatId)?.abort.abort();
         if (this.leases.get(chatId)?.token === token)
             await this.retireRoadmapActions(root, chatId, token).catch(() => {});
@@ -363,6 +372,72 @@ export class ChatBackend implements ChatService {
             if (review) { this.greenfield?.rejectStrategicDraft(review.preview.token);
                 this.strategicReviews.delete(chatId); }
         }
+    }
+    async setCommandMode(projectHandle: string, chatId: string, leaseToken: string,
+        mode: ChatCommandMode): Promise<void> {
+        const root = this.active(projectHandle);
+        if (mode !== 'ask' && mode !== 'allow') throw new Error('Invalid command mode');
+        if (this.leases.get(chatId)?.root !== root || this.leases.get(chatId)?.token !== leaseToken)
+            throw new Error('Chat command mode is not owned by this panel');
+        await this.repository.renew(root, chatId, leaseToken);
+        if (this.leases.get(chatId)?.token !== leaseToken) throw new Error('Chat command mode is stale');
+        this.commandModes.set(chatId, mode);
+        this.pendingCommands.get(chatId)?.finish('deny');
+    }
+    async decideCommand(projectHandle: string, chatId: string, leaseToken: string,
+        requestId: string, allowOnce: boolean): Promise<void> {
+        const root = this.active(projectHandle);
+        const pending = this.pendingCommands.get(chatId);
+        if (typeof allowOnce !== 'boolean' || !pending || pending.preview.id !== requestId ||
+            pending.root !== root || pending.leaseToken !== leaseToken ||
+            this.leases.get(chatId)?.token !== leaseToken ||
+            this.turns.get(chatId)?.abort !== pending.turn || pending.turn.signal.aborted ||
+            Date.now() >= pending.preview.expiresAt || this.commandModes.get(chatId) !== 'ask' ||
+            createHash('sha256').update(pending.preview.command).digest('hex') !== pending.digest)
+            throw new Error('Command approval is stale or not owned by this Chat');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const lastUser = chat?.messages.filter(item => item.role === 'user').at(-1);
+        if (!lastUser || createHash('sha256').update(JSON.stringify(lastUser.contextRefs)).digest('hex') !==
+            pending.sourceBasis) throw new Error('Command source basis changed');
+        await this.repository.renew(root, chatId, leaseToken);
+        if (this.pendingCommands.get(chatId) !== pending || this.turns.get(chatId)?.abort !== pending.turn ||
+            pending.turn.signal.aborted || Date.now() >= pending.preview.expiresAt ||
+            this.leases.get(chatId)?.token !== leaseToken || this.commandModes.get(chatId) !== 'ask')
+            throw new Error('Command approval is stale or not owned by this Chat');
+        // Consume before resuming Pi. P3 will replace the unavailable result with a sandbox broker.
+        pending.finish(allowOnce ? 'allow' : 'deny');
+    }
+    private async requestCommand(root: string, request: ChatTurnRequest, command: string,
+        turn: AbortController, sourceBasis: string): Promise<string> {
+        if (typeof command !== 'string' || !command.trim() || Buffer.byteLength(command, 'utf8') > 2048 ||
+            /[\x00-\x08\x0b-\x1f\x7f]/u.test(command)) throw new Error('Command request denied');
+        if (this.commandModes.get(request.chatId) === 'allow') return 'commands unavailable';
+        if (this.commandModes.get(request.chatId) !== 'ask' || this.pendingCommands.has(request.chatId))
+            throw new Error('Command request unavailable');
+        const preview: ChatCommandPreview = { id: randomUUID(), command, project: root, cwd: root,
+            sandbox: 'Project read-only; temporary writes only; no network or private home (P3 broker unavailable)',
+            effect: 'Investigation command requested; no execution is available yet', expiresAt: Date.now() + 60_000 };
+        const digest = createHash('sha256').update(command).digest('hex');
+        return new Promise<string>(resolve => {
+            let settled = false;
+            const finish = (decision: 'allow' | 'deny') => {
+                if (settled) return;
+                settled = true; clearTimeout(timer); turn.signal.removeEventListener('abort', onAbort);
+                if (this.pendingCommands.get(request.chatId)?.preview.id === preview.id)
+                    this.pendingCommands.delete(request.chatId);
+                if (this.handle) this.client.notifyChatEvent({ projectHandle: this.handle,
+                    kind: 'command-settled', chatId: request.chatId, id: preview.id });
+                resolve(decision === 'allow' ? 'commands unavailable' : 'Command denied by developer; no execution occurred');
+            };
+            const onAbort = () => finish('deny');
+            const timer = setTimeout(() => finish('deny'), 60_000);
+            this.pendingCommands.set(request.chatId, { preview, root, leaseToken: request.leaseToken,
+                turn, digest, sourceBasis, finish });
+            turn.signal.addEventListener('abort', onAbort, { once: true });
+            if (turn.signal.aborted) { finish('deny'); return; }
+            this.client.notifyChatEvent({ projectHandle: request.projectHandle,
+                kind: 'command-pending', chatId: request.chatId, preview });
+        });
     }
     publishDelta(request: ChatDeltaRequest) {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat delta request');
@@ -1191,6 +1266,16 @@ export class ChatBackend implements ChatService {
                 if (signal?.aborted || this.active(request.projectHandle) !== root ||
                     this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
                 if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
+                if (name === 'dope_command') {
+                    const record = args as Record<string, unknown>;
+                    if (!record || typeof record !== 'object' || Array.isArray(record) ||
+                        Object.keys(record).length !== 1 || typeof record.command !== 'string')
+                        throw new Error('Command request denied');
+                    const basis = createHash('sha256').update(JSON.stringify(preview.refs)).digest('hex');
+                    const result = await this.requestCommand(root, request, record.command, abort, basis);
+                    toolEvents.push({ name, status: 'denied', truncated: false });
+                    return result;
+                }
                 const allowed = ['dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text'] as const;
                 if (!allowed.includes(name as typeof allowed[number]) || !args || typeof args !== 'object' ||
                     Array.isArray(args)) throw new Error('Project discovery tool denied');
@@ -1465,6 +1550,8 @@ export class ChatBackend implements ChatService {
         for (const review of this.strategicReviews.values()) this.greenfield?.rejectStrategicDraft(review.preview.token);
         this.strategicReviews.clear();
         for (const turn of this.turns.values()) turn.abort.abort();
+        for (const pending of this.pendingCommands.values()) pending.finish('deny');
+        this.commandModes.clear();
         for (const preparation of this.roadmapPreparations.values()) preparation.abort.abort();
         // Browser unload cannot reliably finish an RPC release. The server still has
         // the connection's exact tokens when its socket closes. Token checks in the

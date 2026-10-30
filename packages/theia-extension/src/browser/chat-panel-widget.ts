@@ -1987,6 +1987,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.turnModel = modelSelector.value ? JSON.parse(modelSelector.value) as ChatModelSelection : undefined;
             this.render();
         };
+        const commandLabel = document.createElement('label');
+        commandLabel.className = 'dope-chat-command-mode';
+        commandLabel.textContent = 'Commands: ';
+        const commandMode = document.createElement('select');
+        commandMode.setAttribute('aria-label', 'Commands');
+        commandMode.append(new Option('Ask', 'ask'), new Option('Allow', 'allow'));
+        commandMode.value = state.commandMode;
+        commandMode.onchange = () => void state.setCommandMode(commandMode.value as 'ask' | 'allow');
+        commandLabel.append(commandMode);
         if (selected && (state.context.length || state.activePlanning)) menuButton('Preview context', () => {
             void state.previewContext(selected).catch(error => { this.status.textContent = String(error); });
         });
@@ -2041,9 +2050,24 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 state.pending || !state.draft.trim();
             resizeChatInput(input);
         };
-        toolbar.append(more, modelSelector, submitButton);
+        toolbar.append(more, modelSelector, commandLabel, submitButton);
         composer.append(input, toolbar);
         composer.append(menu);
+        if (state.pendingCommand) {
+            const pending = state.pendingCommand;
+            const card = document.createElement('section');
+            card.className = 'dope-chat-command-preview';
+            card.setAttribute('aria-label', 'Pending command approval');
+            const heading = document.createElement('strong'); heading.textContent = 'Command approval';
+            const exact = document.createElement('pre'); exact.textContent = pending.command;
+            const scope = document.createElement('p');
+            scope.textContent = `Project: ${pending.project} · Cwd: ${pending.cwd} · Sandbox: ${pending.sandbox} · Effect: ${pending.effect}`;
+            const actions = document.createElement('div');
+            actions.append(this.button('Allow once', () => void state.decideCommand(true)),
+                this.button('Deny', () => void state.decideCommand(false)));
+            card.append(heading, exact, scope, actions);
+            composer.append(card);
+        }
         if (state.running && state.planningProgress) {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';

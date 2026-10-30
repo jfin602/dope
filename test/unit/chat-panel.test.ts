@@ -130,6 +130,10 @@ test('two panels share service changes while navigation remains panel-local and 
         await until(() => b.snapshot?.chats.length === 1);
         assert.equal(a.mode, 'chat');
         assert.equal(b.mode, 'select-chat');
+        assert.equal(a.commandMode, 'ask');
+        await a.setCommandMode('allow');
+        assert.equal(a.commandMode, 'allow');
+        assert.equal(b.commandMode, 'ask');
         const chatId = a.chatId!;
         assert.equal(b.snapshot?.chats[0].id, chatId);
         assert.equal(await b.select(chatId), false);
@@ -142,6 +146,7 @@ test('two panels share service changes while navigation remains panel-local and 
             const claim = await writer.claim({ projectHandle: attached.projectHandle, chatId, ownerId: 'test-writer' });
             assert.equal(claim.acquired, false);
             await a.select(undefined);
+            assert.equal(a.commandMode, 'ask');
             const acquired = await writer.claim({ projectHandle: attached.projectHandle, chatId, ownerId: 'test-writer' });
             assert.equal(acquired.acquired, true);
             if (!acquired.acquired) throw new Error('Expected Chat lease');
@@ -156,7 +161,11 @@ test('two panels share service changes while navigation remains panel-local and 
         } finally { writer.dispose(); }
         assert.equal(a.mode, 'select-chat');
         assert.equal(b.mode, 'select-chat');
+        assert.equal(await a.newChat('Ideas'), true);
+        assert.equal(a.commandMode, 'ask', 'a new Chat must not inherit the earlier Allow mode');
+        await a.select(undefined);
         await b.attach(pathToFileURL(second).href);
+        assert.equal(b.commandMode, 'ask');
         assert.equal(b.mode, 'select-chat');
         assert.deepEqual(b.snapshot?.chats, []);
         assert.equal(await b.select(chatId), false);

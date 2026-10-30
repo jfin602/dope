@@ -199,7 +199,8 @@ test('Pi Chat discovers a project without attachments through only brokered read
           calls.push(record.tool);
           const output = record.tool.name === 'dope_list' ? 'Project directory .: package.json\nsrc/' :
             record.tool.name === 'dope_search_paths' ? 'src/index.html' :
-            record.tool.name === 'dope_read' ? '<h1>Fixture project</h1>' : '';
+            record.tool.name === 'dope_read' ? '<h1>Fixture project</h1>' :
+            record.tool.name === 'dope_command' ? 'commands unavailable' : '';
           queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
             result: { status: 'completed', output } }); });
           return true;
@@ -211,15 +212,17 @@ test('Pi Chat discovers a project without attachments through only brokered read
       const body = JSON.parse(options.body);
       assert.equal(body.model, 'offline-fixture');
       assert.deepEqual(body.tools.map(item => item.function.name).sort(),
-        ['dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text']);
+        ['dope_command', 'dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text']);
       const steps = [
         ['dope_list', '{"path":""}'],
         ['dope_search_paths', '{"query":"index.html"}'],
-        ['dope_read', '{"path":"src/index.html"}']
+        ['dope_read', '{"path":"src/index.html"}'],
+        ['dope_command', '{"command":"node --version"}']
       ];
       const step = steps[turn++];
       if (turn === 2) assert.match(JSON.stringify(body.messages), /package.json/);
       if (turn === 4) assert.match(JSON.stringify(body.messages), /Fixture project/);
+      if (turn === 5) assert.match(JSON.stringify(body.messages), /commands unavailable/);
       const choices = step ? [
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`,
           type: 'function', function: { name: step[0], arguments: step[1] } }] }, finish_reason: null },
@@ -233,12 +236,12 @@ test('Pi Chat discovers a project without attachments through only brokered read
         'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
     };
     const opened = await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
-    assert.deepEqual(opened.tools.sort(), ['dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text']);
+    assert.deepEqual(opened.tools.sort(), ['dope_command', 'dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text']);
     const answer = await dispatch({ type: 'turn', id: 19, maxOutputTokens: 128,
       messages: [{ role: 'user', content: 'inspect this project' }] });
     assert.match(answer.text, /src\/index.html/);
-    assert.deepEqual(calls.map(call => call.name), ['dope_list', 'dope_search_paths', 'dope_read']);
-    assert.equal(turn, 4);
+    assert.deepEqual(calls.map(call => call.name), ['dope_list', 'dope_search_paths', 'dope_read', 'dope_command']);
+    assert.equal(turn, 5);
   } finally {
     process.stdout.write = originalWrite;
     globalThis.fetch = originalFetch;

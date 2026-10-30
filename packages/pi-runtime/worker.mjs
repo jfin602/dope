@@ -75,11 +75,14 @@ const CHAT_TOOLS = {
   dope_read: { path: Type.String() },
   dope_list: { path: Type.String() },
   dope_search_paths: { query: Type.String() },
-  dope_search_text: { query: Type.String() }
+  dope_search_text: { query: Type.String() },
+  dope_command: { command: Type.String() }
 };
 function chatTools() {
   return Object.entries(CHAT_TOOLS).map(([name, properties]) => ({
-    name, label: name, description: 'Read-only project discovery through Dope. Paths are project-relative. No shell, edits or network.',
+    name, label: name, description: name === 'dope_command' ?
+      'Request a sandboxed project investigation command. Dope decides whether it is available and requires approval. Never claim execution without a tool result.' :
+      'Read-only project discovery through Dope. Paths are project-relative. No shell, edits or network.',
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');

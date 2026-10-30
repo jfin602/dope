@@ -1,7 +1,8 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
 import type { Chat, ChatCollection, ChatFolderPath } from '@dope/chat';
 import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
-    ChatPlanningProposal, ChatRoadmapOffer, ChatStrategicDraftReview, ChatTurnResult } from '@dope/chat/lib/service';
+    ChatPlanningProposal, ChatRoadmapOffer, ChatStrategicDraftReview, ChatTurnResult,
+    ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 import { isDraftPlanningAction } from './chat-panel-presentation';
@@ -80,6 +81,8 @@ export class ChatPanelController {
     planningMode: 'follow' | 'pin' = 'follow';
     pinnedPlanning?: PlanningSelection;
     turnModel: ChatModelSelection | undefined;
+    commandMode: ChatCommandMode = 'ask';
+    pendingCommand?: ChatCommandPreview;
     running = false;
     stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
     planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
@@ -135,6 +138,7 @@ export class ChatPanelController {
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
         this.planPreview = undefined; this.undoPlanRevision = undefined;
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.commandMode = 'ask'; this.pendingCommand = undefined;
         this.planningProgress = undefined;
         this.roadmapGenerationStage = undefined; this.roadmapGenerationProjectId = undefined;
         this.activeRoadmapOfferId = undefined;
@@ -160,6 +164,18 @@ export class ChatPanelController {
             this.connection = connection;
             connection.setClient({ notifyChatEvent: event => {
                 if (this.disposed || generation !== this.generation || this.handle && event.projectHandle !== this.handle) return;
+                if (event.kind === 'command-pending') {
+                    if (event.chatId === this.chatId && this.running && this.lease) {
+                        this.pendingCommand = event.preview; this.changed();
+                    }
+                    return;
+                }
+                if (event.kind === 'command-settled') {
+                    if (event.chatId === this.chatId && this.pendingCommand?.id === event.id) {
+                        this.pendingCommand = undefined; this.changed();
+                    }
+                    return;
+                }
                 if (event.kind === 'planning-progress') {
                     if ((this.pending || this.running) && event.chatId === this.chatId &&
                         (this.roadmapOffer?.id === event.messageId || this.activeRoadmapOfferId === event.messageId)) {
@@ -272,6 +288,7 @@ export class ChatPanelController {
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
         this.planPreview = undefined; this.undoPlanRevision = undefined;
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
+        this.commandMode = 'ask'; this.pendingCommand = undefined;
         this.planningProgress = undefined;
         this.roadmapGenerationStage = undefined; this.roadmapGenerationProjectId = undefined;
         this.activeRoadmapOfferId = undefined;
@@ -411,6 +428,27 @@ export class ChatPanelController {
     async newChat(folderPath: ChatFolderPath): Promise<boolean> {
         return this.mutate({ type: 'create-chat', id: crypto.randomUUID(), folderPath });
     }
+    async setCommandMode(mode: ChatCommandMode): Promise<void> {
+        const lease = this.lease;
+        if (!lease || mode !== 'ask' && mode !== 'allow') return;
+        try {
+            await lease.connection.setCommandMode(lease.handle, lease.chatId, lease.token, mode);
+            if (lease !== this.lease) return;
+            this.commandMode = mode;
+            if (mode === 'ask') this.pendingCommand = undefined;
+            this.error = '';
+        } catch (error) { if (lease === this.lease) this.error = String(error); }
+        this.changed();
+    }
+    async decideCommand(allowOnce: boolean): Promise<void> {
+        const lease = this.lease, pending = this.pendingCommand;
+        if (!lease || !pending) return;
+        try {
+            await lease.connection.decideCommand(lease.handle, lease.chatId, lease.token, pending.id, allowOnce);
+            if (lease === this.lease && this.pendingCommand?.id === pending.id) this.pendingCommand = undefined;
+        } catch (error) { if (lease === this.lease) this.error = String(error); }
+        this.changed();
+    }
     get activePlanning(): PlanningSelection | undefined {
         return this.planningMode === 'pin' ? this.pinnedPlanning : this.workspace ? this.planning?.current(this.workspace) : undefined;
     }
@@ -507,6 +545,7 @@ export class ChatPanelController {
         } finally {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {
                 this.running = false; this.stream = undefined; this.planningProgress = undefined;
+                this.pendingCommand = undefined;
                 this.roadmapGenerationStage = undefined; this.activeRoadmapOfferId = undefined; this.changed();
                 await this.refresh(true);
                 if (!completed && this.transientUser?.chatId === chatId) {

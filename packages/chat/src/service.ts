@@ -69,13 +69,18 @@ export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlan
     roadmapFocus?: { projectId: string; revision: number; id: string };
     proposalError?: string; planPreview?: ChatPlanPreview; roadmapOffer?: ChatRoadmapOffer;
     roadmapDraftReview?: ChatStrategicDraftReview }
+export type ChatCommandMode = 'ask' | 'allow';
+export interface ChatCommandPreview { id: string; command: string; project: string; cwd: string;
+    sandbox: string; effect: string; expiresAt: number }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;
         stage: 'waiting' | 'validating' | 'checking-owner' | 'generating-draft' | 'validating-draft' | 'preparing-draft' | 'draft-ready' | 'cancelled' | 'failed' }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
     | { projectHandle: string; revision: number; kind: 'assistant-delta'; chatId: ChatId;
-        messageId: string; executionId: string; sequence: number; delta: string };
+        messageId: string; executionId: string; sequence: number; delta: string }
+    | { projectHandle: string; kind: 'command-pending'; chatId: ChatId; preview: ChatCommandPreview }
+    | { projectHandle: string; kind: 'command-settled'; chatId: ChatId; id: string };
 export interface ChatClient { notifyChatEvent(event: ChatEvent): void }
 
 /** Transport-neutral service. The backend owns persistence, revisions and lease enforcement. */
@@ -93,6 +98,9 @@ export interface ChatService {
     release(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     publishDelta(request: ChatDeltaRequest): Promise<void>;
     runTurn(request: ChatTurnRequest): Promise<ChatTurnResult>;
+    setCommandMode(projectHandle: string, chatId: ChatId, leaseToken: string, mode: ChatCommandMode): Promise<void>;
+    decideCommand(projectHandle: string, chatId: ChatId, leaseToken: string,
+        requestId: string, allowOnce: boolean): Promise<void>;
     decidePlanningProposal(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined>;
     decideRoadmapOffer(projectHandle: string, chatId: ChatId, leaseToken: string,
