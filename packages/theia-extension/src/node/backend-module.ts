@@ -43,6 +43,7 @@ import { AgentRuntimeBackend } from './agent-runtime-backend';
 import { AgentExecutionRuntime } from './agent-execution-runtime';
 import { CodexAgentExecutionAdapter } from './codex-agent-execution';
 import { LocalAgentExecutionAdapter } from './local-agent-execution';
+import { PiRuntimeFactory } from './pi-runtime-host';
 import type { AgentExecutionAdapter } from '@dope/agent-core';
 import { historyServicePath, historyFocusServicePath, historyPlanningServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
@@ -61,6 +62,10 @@ import { createRoadmapActionRuntime } from './roadmap-action-runtime';
 import { RoadmapPlanningLinks } from './roadmap-planning-links';
 
 export default new ContainerModule(bind => {
+    bind(PiRuntimeFactory).toSelf().inSingletonScope();
+    bind(BackendApplicationContribution).toDynamicValue(context => ({
+        onStop: () => context.container.get(PiRuntimeFactory).dispose()
+    })).inSingletonScope();
     bind(NoteStore).toSelf().inSingletonScope();
     bind(ProjectMindStore).toSelf().inSingletonScope();
     bind(AgentStore).toSelf().inSingletonScope();
