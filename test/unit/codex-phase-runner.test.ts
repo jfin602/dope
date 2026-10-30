@@ -520,29 +520,48 @@ test('incompatible GPT-5.6 CLI versions fail before Codex or run artifacts', asy
   }
 });
 
-test('runner rejects edited authored prompt bytes before any execution', async () => {
-  const rootDirectory = await createPhaseRepository(1);
-  try {
-    const file = path.join(rootDirectory, 'docs', 'tasks', 'p8', 'P1-task-1.txt');
-    const names = await readdir(path.dirname(file));
-    const actual = path.join(path.dirname(file), names.find(name => name.startsWith('P1-'))!);
-    await writeFile(actual, `${await readFile(actual, 'utf8')}\nExternal reorder or edit.\n`);
-    await assert.rejects(runCli(['p8'], { rootDirectory, stdout: testOutput(false),
-      runCodexProcess: async () => { throw new Error('must not execute'); } }), /Authored prompt source drift/);
-  } finally { await rm(rootDirectory, { recursive: true, force: true }); }
-});
-
-test('runner rejects a later committed rewrite of the original authored prompt', async () => {
+test('runner permits edited prompt after explicit dirty-tree approval', async () => {
   const rootDirectory = await createPhaseRepository(1);
   try {
     const directory = path.join(rootDirectory, 'docs', 'tasks', 'p8');
     const filename = (await readdir(directory)).find(name => name.startsWith('P1-'))!;
     const file = path.join(directory, filename);
-    await writeFile(file, `${await readFile(file, 'utf8')}\nLater rewrite.\n`);
+    await writeFile(file, `${await readFile(file, 'utf8')}\nOwner edit.\n`);
+    let launched = false;
+    await assert.rejects(runCli(['p8'], {
+      rootDirectory,
+      stdout: testOutput(false),
+      confirmDirtyTree: async () => true,
+      resolveLauncher: async () => {
+        launched = true;
+        throw new Error('launcher reached');
+      },
+      runCodexProcess: async () => { throw new Error('not required'); },
+    }), /launcher reached/);
+    assert.equal(launched, true);
+  } finally { await rm(rootDirectory, { recursive: true, force: true }); }
+});
+
+test('runner permits later committed rewrite of an unrun prompt', async () => {
+  const rootDirectory = await createPhaseRepository(1);
+  try {
+    const directory = path.join(rootDirectory, 'docs', 'tasks', 'p8');
+    const filename = (await readdir(directory)).find(name => name.startsWith('P1-'))!;
+    const file = path.join(directory, filename);
+    await writeFile(file, `${await readFile(file, 'utf8')}\nCommitted owner edit.\n`);
     gitResult(rootDirectory, ['add', '--', `docs/tasks/p8/${filename}`]);
     gitResult(rootDirectory, ['commit', '--quiet', '-m', 'rewrite prompt']);
-    await assert.rejects(runCli(['p8'], { rootDirectory, stdout: testOutput(false),
-      runCodexProcess: async () => { throw new Error('must not execute'); } }), /Authored prompt source drift/);
+    let launched = false;
+    await assert.rejects(runCli(['p8'], {
+      rootDirectory,
+      stdout: testOutput(false),
+      resolveLauncher: async () => {
+        launched = true;
+        throw new Error('launcher reached');
+      },
+      runCodexProcess: async () => { throw new Error('not required'); },
+    }), /launcher reached/);
+    assert.equal(launched, true);
   } finally { await rm(rootDirectory, { recursive: true, force: true }); }
 });
 

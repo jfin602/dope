@@ -870,25 +870,8 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
     })),
   );
   const plan = buildPlan(entries, folderName);
-  // The first committed executable source is the authored identity. A changed
-  // P*.txt must be reviewed as a separate stack, even when no prompt has run.
-  for (const entry of entries) {
-    const relative = `docs/tasks/${folderName}/${entry.filename}`;
-    const additions = successfulGit(
-      runGit(['log', '--diff-filter=A', '--format=%H', '--', relative]),
-      `Unable to inspect authored source ${relative}`,
-    );
-    const authoredAt = additions.split(/\r?\n/u).filter(Boolean).at(-1);
-    if (authoredAt) {
-      const authored = successfulGit(
-        runGit(['show', `${authoredAt}:${relative}`]),
-        `Unable to read authored source ${relative}`,
-        { trim: false },
-      );
-      if (authored !== entry.text)
-        throw new Error(`Authored prompt source drift: ${relative}; use a reviewed new-stack supersession.`);
-    }
-  }
+  // Current on-disk prompts are authoritative when a run starts. Keep the
+  // ordinary grammar, Git history, worktree, version and in-run snapshot gates.
   const interruptionMessage =
     plan.mode === 'correction'
       ? 'Correction stack run was interrupted.'
@@ -1060,7 +1043,7 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
   for (const prompt of plan.implementations.slice(resume.completedCount)) {
     if (interrupted) throw new Error(interruptionMessage);
     if (await readFile(path.join(taskDirectory, prompt.filename), 'utf8') !== prompt.text)
-      throw new Error(`Authored prompt source changed during run: ${prompt.filename}`);
+      throw new Error(`Prompt file changed after runner snapshot: ${prompt.filename}`);
     if (prompt.browserRequired) throw await stopForBrowserRequirement(prompt);
     activePrompt = prompt;
     assertVersionCompatible(
@@ -1208,7 +1191,7 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
   if (closeoutAutoRun) {
     const closeout = plan.closeout;
     if (await readFile(path.join(taskDirectory, closeout.filename), 'utf8') !== closeout.text)
-      throw new Error(`Authored prompt source changed during run: ${closeout.filename}`);
+      throw new Error(`Prompt file changed after runner snapshot: ${closeout.filename}`);
     if (closeout.browserRequired)
       throw await stopForBrowserRequirement(closeout);
     const preCloseoutStatus = successfulGit(
