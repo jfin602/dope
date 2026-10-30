@@ -16,17 +16,17 @@ OBJECTIVE — T1
 Prevent materially outdated prepared work from starting while preserving unrelated work and immutable running/completed evidence.
 
 IMPLEMENT
-Recheck the documentation basis immediately before existing direct/WorkItem/sequence start. Compare the relevant sources actually supplied; compatible refresh updates a new inspectable preparation, material contradiction or changed acceptance criteria exposes a concrete needs-review result through existing Work controls. Unrelated doc changes must not globally block tasks.
-Refresh pending task/source snapshots using existing owners and current prompt-content policy. Valid pending P*.txt content edits before execution remain supported; this adds no reorder permission or first-authored-byte lock. Never alter in-flight/completed instructions, records, checkpoints or historical results. Changed active work uses existing explicit steering/cancel behavior.
-Bind approval/grants to the refreshed task identity/basis where required; an old grant cannot silently authorize a changed task. Recheck across candidate creation/start and project switches; show stale evidence instead of executing with a mismatched packet. Docs apply itself never starts Work. Keep source changes by external editors distinguishable from Dope application receipts.
-If semantic compatibility is unresolved, request a reviewed preparation rather than fabricate a deterministic proof; no background LLM scheduler.
+Recheck applicable context before existing start paths. WC3: unrelated files, unchanged selected sections and demonstrably nonsemantic formatting introduce no documentation-specific block/reapproval. A whole-file hash change alone is not semantic conflict. Keep true fingerprints and comparison evidence; no blanket whitespace stripping. Preserve existing clean-worktree/accepted-dirty/source checks. Material or ambiguous relevant changes require targeted resolution.
+Respect current sequence-Pn task IDs, full candidate JSON equality, AgentStore.createTask's rejection of overwrite and updateSequence's prohibition on swapping taskId before checkpoint advance. For a genuinely changed relevant basis, retain prior immutable tasks/runs and create a distinct preparation identity. Add a narrow owner-controlled pending-preparation transition with expected-state/revision checks to update existing pending linkage and bind approval/grants to the changed basis. No ad hoc taskId swap, generic migration, global invariant relaxation or fake checkpoint advance.
+Make replacement/link publication restart-safe and idempotent; prevent competing start/project-switch races. Preserve prior linkage evidence, logical prompt/step, original prompt text for docs-only refresh, original WorkItem request-key mapping and completed checkpoints. New checkpoints must reference their actual task/run. Never rewrite running/completed snapshots. Valid pending P*.txt content edits still use current reviewed preparation policy; no reorder permission or first-authored-byte lock.
+WC1/WC2 metadata absence alone preserves eligible legacy identity/grants and current supported retry/resume/new-launch paths. Keep WorkItem's one-run rule and restart interruption of orphan runs; no automatic resume. Genuine changed requirements still require the appropriate refreshed basis. Docs apply never starts Work; external edits fabricate no receipt.
 
 FOCUSED VALIDATION
-Create test/unit/documentation-work-freshness.test.ts for changed relevant requirements, compatible refresh, unrelated edit, prepared-stack content revision, grant/task mismatch, start race, active/completed preservation and external edit without receipt.
+In test/unit/documentation-work-freshness.test.ts, use parameterized real-owner fixtures for WC2 legacy resume, WC3 irrelevant/section/format controls versus material/ambiguous change, immutable replacement/restart, stale transition/start race, changed-grant rejection and pending prompt-content revision. Assert prior tasks/runs/checkpoints survive, supported cancellation/retry/resume stays legal, and invalid task/sequence transitions remain rejected.
 Build changed agent-core then theia-extension once; rebuild other changed owner outputs only as traced.
-node --test test/unit/documentation-work-freshness.test.ts test/unit/agent-sequence.test.ts
+node --test test/unit/documentation-work-freshness.test.ts test/unit/agent-sequence-persistence.test.ts
 git diff --check
-DONE: work starts only from the inspected applicable current basis; old snapshots remain explainable and unrelated work remains usable.
+DONE: targeted freshness and guarded replacement pass without metadata-only/irrelevant-edit regressions; broader WC4 lifecycle coverage is P14.
 
 Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
 

@@ -17,14 +17,16 @@ Prove the connected owners before the manual gate and register the correction's 
 IMPLEMENT / VERIFY
 Use the real documentation service/store, Chat adapter, History metadata path and captured Work adapter on disposable projects. Add test/unit/documentation-workflow-integration.test.ts covering review -> approved multi-doc apply -> exactly one History event -> fresh Work requirements, with linked schema-2 Roadmap participation. Include review/no-op/reject/failed-zero effects, stale source, late project switch, controlled crash/retry/partial recovery, old diff after later edits, pending prompt conflict and unrelated source edit.
 Use Dope-owned fault fixtures; no test-only bypass of production approvals. Assert metadata/History reads are byte-preserving and zero inference. Preserve ordinary Chat/Work/Git events and independent qualification/grant states.
+Make WC1-WC4 mandatory subcases of DW7/DW8/DW10 in this same test file, using a bounded parameterized matrix: empty/unrelated-only, populated and otherwise valid legacy contexts across direct/WorkItem/stack origins and each origin's currently supported paths. Include required-missing/read-failure controls; irrelevant file, unchanged section and nonsemantic formatting versus material/ambiguous change; immutable replacement/linkage restart and stale-start rejection.
+For empty and populated contexts, drive ordinary prepare -> run -> allowed tool -> required Dope validation -> candidate review through both accept and reject using valid separate attempts. Cover cancellation, existing sequence-only capacity retry and stack resume/restart. Preserve WorkItem request-key idempotency/new-launch rules, orphan-run interruption, exact provider/model/grants, original prompt, supplied retry snapshot and capacity overhead, candidate disposition and ordinary History. Missing metadata alone must not break eligible legacy paths; current invalid/unapproved records must still fail. Prove requirement-following behavior separately from metadata presence. No feature toggle or extra activation approval substitutes for passing compatibility.
 Register all new documentation-* test files from P1-P13 and this integration file in package.json test:product without changing version, dependencies, script semantics or adding a broad runner. Check names against actual files; tests import lib outputs, never stale code.
 
 FOCUSED INTEGRATION COMMAND
 Verify changed owner outputs are current from prior prompts; rebuild only owners changed in this prompt in dependency order.
-node --test test/unit/documentation-workflow-integration.test.ts test/unit/history-integration.test.ts test/unit/roadmap-gate-document.test.ts test/unit/workitem-delegation.test.ts test/unit/pi-work-execution.test.ts test/unit/agent-sequence.test.ts
+node --test test/unit/documentation-workflow-integration.test.ts test/unit/history-integration.test.ts test/unit/roadmap-gate-document.test.ts test/unit/workitem-delegation.test.ts test/unit/pi-work-execution.test.ts test/unit/agent-sequence-persistence.test.ts test/unit/agent-execution-runtime.test.ts
 git diff --check
 Do not run npm run check, app builds or packaging here; final aggregate/browser/native evidence is P15.
-DONE: integrated contract and registration pass; report DW1-DW10 automated evidence versus remaining live gaps, with no correction/phase Green claim.
+DONE: integrated contract, WC1-WC4 compatibility and registration pass; report each automated outcome and remaining live gaps. Any mandatory compatibility failure blocks feature acceptance; no correction/phase Green claim here.
 
 Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
 

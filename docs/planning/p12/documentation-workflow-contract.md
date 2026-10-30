@@ -6,6 +6,8 @@
 
 The owner's `/docs-apply + /prompt-ass + /prompt-plan + /prompt-write c12-docs-workflow` authorizes documentation reconciliation and stack authoring. Implementation requires a later deliberate Run of that stack, with normal source, dependency and dirty-tree preflight; no additional `/activate`. Neither this contract nor authored prompts establish implementation, qualification or a version transition.
 
+**Compatibility amendment:** The owner's later instruction to strengthen the gates adds mandatory **WC1-WC4** evidence within existing DW7/DW8/DW10, on documentation baseline `5daccac5744b8e2bbb6a3c9e1dc79931b79072be`. It preserves the 15-prompt stack and unchanged `0.12.7`. These cases qualify the new feature; they do not add an activation step or a runtime prerequisite for ordinary unrelated Work.
+
 ## Intended developer outcome
 
 An agreed Planning decision becomes reviewed project documentation. Only its actual application appears as a documentation change in Project History. Subsequent coding work receives and follows the relevant updated requirement without the developer repeating or manually attaching it.
@@ -132,20 +134,27 @@ Recovery must not silently rerun model reasoning, approve new content, start Wor
 
 Before preparing or starting affected coding work, resolve the applicable current project instructions, accepted requirements/decisions, architecture constraints and Gate/acceptance criteria. Supply bounded source-backed material through existing WorkItem/task/prompt/execution contracts, rather than depending on a model to happen to read the correct files.
 
+Successful bounded discovery with no applicable documentation yields empty documentation context and the current ordinary execution path, without a new documentation approval. An explicitly required source that is missing or unreadable, or a failed discovery operation, is a distinct condition; never label it as a successful empty result. Resolve only the affected correctness limitation through the existing preparation flow.
+
 Each supplied source identifies its project, document, relevant section, role and source version/fingerprint. The developer can inspect which sources guided the task and any relevant omissions. Summaries may aid context sizing but cannot discard material constraints or present omitted requirements as supplied. Preserve enough provenance with the prepared task/run to explain its original instructions later.
 
 Use actual selected-model capability/context limits. Do not hardcode the current Pi byte limit or a global context size into this product contract, load every document into every turn, silently switch providers, or enable Pi's unrestricted project resource discovery. Requirements selection and application authority remain Dope-owned and provider-independent.
 
-Applicable documentation can be edited by Dope or conventional external tools. Freshness checks use current source evidence; external edits do not fabricate a Dope application receipt or automatic author attribution. If required material is missing, stale, inaccessible or omitted, state the actual limitation and resolve material correctness conflicts before starting the affected work. Do not block unrelated work merely because any documentation file changed.
+Applicable documentation can be edited by Dope or conventional external tools. Freshness checks use current source evidence; external edits do not fabricate a Dope application receipt or automatic author attribution. If required material is missing, stale, inaccessible or omitted, state the actual limitation and resolve material correctness conflicts before starting the affected work. A whole-file hash change signals that applicability must be checked; it does not prove a semantic conflict. Unrelated files, changes outside the selected requirements/sections, and demonstrably nonsemantic formatting changes add no documentation-specific block or repeated approval. Preserve exact source provenance and meaningful whitespace/structure; do not obtain compatibility by blindly stripping content or normalizing away requirements. Unresolved relevant meaning receives targeted review. Existing Git clean/accepted-dirty, source-basis and permission checks still apply independently.
 
 ## Prepared, running and completed work
 
+Otherwise valid legacy direct, WorkItem and prompt-stack tasks remain usable through each origin's currently supported run, retry, resume or new-launch path, not merely readable. Absence of the new documentation metadata alone must not invalidate existing grants, replace the original task identity/instructions, or force review. Label unrecorded context honestly rather than inventing historical provenance. Preserve current eligibility and approved-validation rules: this does not admit malformed/unapproved WorkItems, permit another run on a one-run WorkItem task, expand sequence-only capacity retry to other origins, or automatically resume orphaned running/cancelling runs after restart.
+
 When relevant documentation changes after preparation:
 
-1. Compare the new source basis with the requirements actually supplied to the prepared work.
-2. Identify material contradictions or changed acceptance criteria in pending WorkItems/prompts.
-3. Refresh or explicitly resolve the affected pending preparation through existing owners; show the source of the change.
-4. Recheck the refreshed basis before execution. No documentation action automatically starts Work.
+1. Compare the current applicable requirements with the recorded preparation and distinguish material changes from compatible source changes. Missing legacy metadata alone is not evidence of a changed requirement.
+2. Identify material contradictions or changed acceptance criteria in pending WorkItems/prompts and resolve the affected preparation explicitly; show the source of the change.
+3. Keep the saved task immutable. A changed applicable requirement uses a distinct, versioned preparation/task identity linked through the existing task, WorkItem or sequence owner as applicable, preserving the original prompt, logical step, order, prior runs and completed checkpoints.
+4. Bind the reviewed execution grant to the replacement task ID and actual requirement basis. An old grant cannot authorize materially changed requirements; unchanged compatible requirements do not acquire a new documentation approval ritual.
+5. Recheck source, project, pending-owner linkage and grant basis at execution. No documentation action automatically starts Work.
+
+Current stable sequence/Pn IDs, whole-task equality, `AgentStore.createTask` overwrite rejection and `updateSequence` task-ID guards require a narrow pending-preparation transition in the existing owner. Preserve expected-prior linkage, durable crash recovery and idempotent replacement retry/restart; original WorkItem request keys still refer to their original launch. A crash after task creation cannot execute an unlinked replacement; stale concurrent prepare/start loses safely. Keep each actual checkpoint bound to its actual task/run. Do not repoint ad hoc, weaken invariants globally or advance/duplicate checkpoints to permit replacement. Compatible freshness observations can retain new provenance separately without changing original task/run snapshots.
 
 Preserve in-flight instructions, completed prompt snapshots, results, checkpoints and historical evidence. Changes requiring different behavior during an active run use the existing explicit steering/cancellation mechanisms; do not mutate its instructions invisibly.
 
@@ -169,7 +178,7 @@ The initial scope is explicit documentation changes through this workflow and th
 
 ## Qualification gates
 
-All gates are source-bound. Focused implementation tests and explicit integration checks provide narrow evidence; actual browser/native task observation belongs to the designated manual qualification prompt. Browser results do not silently prove native parity. Preserve unobserved, failed and owner-dispositioned cases honestly; no gate passes by documentation authoring.
+All gates are source-bound. Focused implementation tests and explicit integration checks provide narrow evidence; actual browser/native task observation belongs to the designated manual qualification prompt. Browser results do not silently prove native parity. Preserve unobserved, failed and owner-dispositioned cases honestly; no gate passes by documentation authoring. WC1-WC4 preserve current supported Work behavior; they do not revive removed domains, promise unsupported reruns, or create a general compatibility platform.
 
 | Gate | Required evidence |
 | --- | --- |
@@ -179,9 +188,26 @@ All gates are source-bound. Focused implementation tests and explicit integratio
 | **DW4 — Freshness and project isolation** | Concurrent edits, stale proposals, new-file collisions, unsafe/symlink/outside-root paths, project switches and late responses preserve newer/foreign content and cannot misattribute an application. |
 | **DW5 — Recovery and deduplication** | Controlled failure before writes, after a file write and before acknowledgement demonstrates verified recovery, truthful zero/partial/full effects, no unsafe rollback, stable identity/time and no duplicate on retry/restart. History reads remain non-mutating. |
 | **DW6 — Historical diff accuracy** | Later edits or deletion do not change an earlier applied diff/summary. Entry navigation opens its original evidence and existing owner views, with truthful unavailable targets and no replay or Work start. |
-| **DW7 — Fresh Work handoff** | Apply a requirement, start fresh Work without manually repeating/attaching it, inspect source/version-bound supplied context, and demonstrate resulting behavior follows the requirement. Application success and coding-test success remain separate evidence. |
-| **DW8 — Pending work reconciliation** | A relevant conflicting update is detected and resolved before pending work runs; compatible refresh is inspectable; an unrelated doc change does not block it; active/completed snapshots and current prompt-content/order rules survive. |
+| **DW7 — Fresh Work handoff** | Apply a requirement, start fresh Work without manually repeating/attaching it, inspect source/version-bound supplied context, and demonstrate resulting behavior follows the requirement. WC1/WC4 additionally prove ordinary coding with empty/populated context. Application success and coding-test success remain separate evidence. |
+| **DW8 — Pending work reconciliation** | A relevant conflicting update is detected and resolved before pending work runs through a guarded replacement preparation; compatible freshness is inspectable without a new documentation block. WC2/WC3 prove legacy operation, correct identity/grant/checkpoint handling and relevant-only review; active/completed snapshots and current prompt-content/order rules survive. |
 | **DW9 — Roadmap and status integrity** | Linked Markdown changes use its existing writer, revision/mapping/recovery behavior and Phase/Gate/Criterion semantics. Acceptance without document publication creates no documentation event; no automatic Architecture adoption, Work/grant, completion or Gate Green occurs. |
-| **DW10 — Existing experience and local operation** | Real saved Chat/diff/History task flow, normal/narrow keyboard/focus, copy/scroll and restart are observed with the selected eligible local model and a bounded-context/omission case; manual/no-model operation and provider choices survive. Record native/browser evidence independently. |
+| **DW10 — Existing experience and local operation** | Real saved Chat/diff/History task flow, normal/narrow keyboard/focus, copy/scroll and restart are observed with the selected eligible local model and a bounded-context/omission case; manual/no-model operation and provider choices survive. WC1/WC2/WC4 include existing coding execution and recovery, not only documentation UI. Record native/browser evidence independently. |
+
+### Mandatory Work compatibility cases
+
+| Case | Existing gates | Required evidence |
+| --- | --- | --- |
+| **WC1 — Empty context** | DW7, DW10 | Successful discovery with no applicable docs preserves ordinary prepare/run and existing approvals with empty context. Contrast an explicitly required missing/unreadable source and discovery failure: each is reported truthfully and handled only for the affected work, never disguised as empty success. |
+| **WC2 — Legacy and pending preparation** | DW8, DW10 | Otherwise valid persisted direct, WorkItem and stack tasks lacking new metadata exercise their currently supported run/retry/resume or new-launch paths after reload; missing metadata alone changes neither identity nor grants. A material requirement change instead proves the guarded versioned replacement, correct pending-owner/sequence/grant binding, and crash/concurrent-start recovery without overwriting old tasks, duplicating runs or advancing prior checkpoints. Existing one-run, approval, validation and interrupted-run rules remain. |
+| **WC3 — Relevant semantic changes** | DW8 | Unrelated file edits, unchanged selected requirements/sections and demonstrably nonsemantic formatting edits produce no new documentation-specific block or repeat approval, including on repeated checks. Exact provenance remains inspectable and existing Git/source rules still apply. Meaningful whitespace/structure, changed acceptance criteria and unresolved relevant semantics cannot disappear through normalization; only affected requirements receive review. |
+| **WC4 — Ordinary coding lifecycle** | DW7, DW10 | With empty and populated context, exercise current prepare -> run -> permitted tool use -> validation -> candidate review -> accept or reject, plus supported cancellation, retry and stack resume. Use the selected eligible local model; prove bounded context and retry delivery without duplicate injection, unchanged permissions/model/candidate/History semantics, and immutable running/completed snapshots. Sequence capacity retry retains its existing task/run/workspace/grant and one continuation prefix. |
+
+Allocate this evidence within the existing stack:
+
+- **T1, P1/P11-P13:** the smallest focused cases for discovery, empty/required-missing distinction, legacy serialization/preparation, bounded delivery and guarded relevant-change transitions. Keep ordinary implementation validation bounded; do not add an aggregate per prompt.
+- **T2, P14:** source-bound integration covers the direct/WorkItem/stack origins, applicable requirement changes, supported retries/restart/resume, replacement linkage/grants, crash/concurrent-start cases and unchanged candidate/History behavior. Reuse focused evidence where its source and seam remain applicable.
+- **T3, P15 only:** observe representative empty/populated documentation coding journeys with the selected local model and actual candidate review, cancellation/recovery and existing UI. Cite source-applicable T1/T2 evidence for remaining origin/failure cases instead of replaying every permutation in the GUI. P15 remains the sole manual closeout and final aggregate; record missing required cases as gaps.
+
+Actual WC evidence is required to accept this feature. It is not a runtime checklist that blocks ordinary unrelated Work, a second Run approval, a new prompt, or a claim of Green from authored instructions.
 
 Qualification uses disposable projects for destructive/interruption negatives and preserves the owner's working projects. Evidence identifies exact source, relevant document hashes, application identity, context sources, observed runtime/provider and actual outcomes. The stack's final disposition must identify any remaining gate gaps; it cannot declare broader Phase 12 Green or waive existing Pi obligations.

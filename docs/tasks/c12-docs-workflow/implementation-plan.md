@@ -4,13 +4,15 @@
 
 [Assessment](prompt-assessment.md) · [Contract](../../planning/p12/documentation-workflow-contract.md) · [Prompt index](README.md)
 
+**Owner-requested compatibility amendment (2026-10-30):** Strengthen the authored stack at `5daccac5744b8e2bbb6a3c9e1dc79931b79072be` with WC1–WC4 below. These are mandatory subcases of existing DW7/DW8/DW10. The runtime assessment source, 15-prompt sequence, product version and authored-only status remain unchanged.
+
 ## Fixed ownership and dependency decisions
 
 The existing saved Chat requests review and presents the result. A small documentation owner in the existing product/domain/application boundaries holds proposal identity, approved bases, recovery journal and verified application evidence beneath `.dope/documentation-workflow/`. Actual project documents remain live canonical text. History projects that owner's applied records; it never becomes a writer or recovery trigger.
 
 Use `packages/contracts` for public documentation DTO/RPC contracts, `packages/project-intelligence` for presentation-independent selection/proposal/application logic, and thin `packages/theia-extension` adapters for existing project-reader, Chat/Work, DI/RPC, editor and History services. Proposed module names below are planned implementation locations; an equivalent coherent existing owner is acceptable when the executor documents the source fit. Do not create a new package/platform merely for this feature.
 
-Work owns its supplied requirements snapshot as part of the existing task/run provenance. Because `contracts -> agent-core` already exists, `agent-core` must not import `contracts`, `project-intelligence` or Theia. Map document-domain results into a small serializable Work contract at the extension boundary. Preserve the original prompt text and existing task/sequence/source identity.
+Work owns its supplied requirements snapshot as part of the existing task/run provenance. Because `contracts -> agent-core` already exists, `agent-core` must not import `contracts`, `project-intelligence` or Theia. Map document-domain results into a small serializable Work contract at the extension boundary. Preserve original prompt text, logical sequence/source identity and prior task/run records. A materially changed pending preparation has its own immutable identity under WC2; it does not replace historical task bytes.
 
 The generic document writer must reject or delegate an active linked Roadmap path. Its schema-2 `RoadmapStore` writer remains authoritative; changes must preserve Phase/Gate/Criterion identity, source mapping, pending sync and evidence/qualification boundaries. Do not build on retired checkpoint semantics merely because old helpers remain in the source file.
 
@@ -28,7 +30,7 @@ New `documentation-*.test.ts` names below are planned tests to implement, not te
 
 | Prompt | Producer/consumer and likely source | Focused behavior and test |
 | --- | --- | --- |
-| P1 | New `contracts/src/documentation.ts`; `project-intelligence/src/node/documentation-sources.ts`; injected approved reader. | Declared roles, sections, fingerprints, relevance and bounded omissions. `documentation-sources.test.ts`. |
+| P1 | New `contracts/src/documentation.ts`; `project-intelligence/src/node/documentation-sources.ts`; injected approved reader. | Declared roles, sections, fingerprints, relevance and bounded omissions; WC1 successful empty selection distinct from required missing/unreadable sources. `documentation-sources.test.ts`. |
 | P2 | New `documentation-workflow-store.ts` and typed proposal records; existing project-local persistence patterns. | Stable proposal/revision, source/absence basis, reject/revise/restart and no canonical effects. `documentation-proposals.test.ts`. |
 | P3 | New `documentation-file-apply.ts`; guarded publication patterns in `roadmap-document-patch.ts`. | Eligible single-file create/update, race checks, durable journal and exact byte evidence. `documentation-file-apply.test.ts`. No public service yet. |
 | P4 | New `documentation-application.ts` using P2/P3. | Coherent approved set, stable application ID, crash/retry and actual zero/partial/full effects. `documentation-application.test.ts`. |
@@ -38,11 +40,11 @@ New `documentation-*.test.ts` names below are planned tests to implement, not te
 | P8 | `chat-panel-controller.ts`, `chat-panel-widget.ts`, current Chat presentation and editor/diff callbacks. | Concrete reviewed set, apply/revise/reject/recovery, copy/scroll, no-model proposal and existing docking. `documentation-chat-panel.test.ts` plus `chat-panel.test.ts`. |
 | P9 | `contracts/src/history.ts`, `history-backend.ts`, new bounded `history-documentation.ts`. | Owner-backed eligible events only, one application ID, exact time/outcome, read-only/project isolation. `documentation-history.test.ts` plus `history-projection.test.ts`. |
 | P10 | `history-widget.ts`, `history-presentation.ts`, `history-navigation.ts`, existing owner-navigation/frontend editor/diff callbacks. | Original applied evidence despite later edits/deletion, optional origin and safe async navigation. `documentation-history-navigation.test.ts` plus existing navigation/panel tests. |
-| P11 | `agent-core/src/contracts.ts` task schema/parser; existing task store; `AgentRuntimeBackend.createTask/launchWorkItem/prepareSequenceTask`. | Current source packet captured for direct/WorkItem/stack preparations, bounded roundtrip and immutable original prompt. `documentation-work-context.test.ts` plus `workitem-delegation.test.ts`. |
-| P12 | `agent-execution-runtime.ts` initial/retry adapter requests; `pi-work-execution.ts` capacity boundary; current `ChatPanelWidget` Work task/run detail. | Actual bounded requirements delivery, no duplicated retry injection, source/omission disclosure and provider parity. `documentation-work-delivery.test.ts` plus `pi-work-execution.test.ts`. |
-| P13 | Existing task/sequence preparation and start/reconciliation owners; Work status controls. | Relevant source recheck, refreshed pending snapshots, material conflict, unrelated change and preserved active/completed history. `documentation-work-freshness.test.ts` plus `agent-sequence.test.ts`. |
-| P14 | New `documentation-workflow-integration.test.ts`; actual new test registration in `package.json`. | Connected review/apply/History/Work and controlled recovery/project/linked-source negatives. No package version/dependency change. |
-| P15 | Existing browser and installed Electron, disposable projects, final package; later evidence and `closeout.md`. | All DW1–DW10 with source-bound live local-model task and real coding behavior; one final aggregate and honest platform limits. |
+| P11 | `agent-core/src/contracts.ts` task schema/parser; existing task store; `AgentRuntimeBackend.createTask/launchWorkItem/prepareSequenceTask`. | Current source packet captured for direct/WorkItem/stack preparations, WC1 empty context, WC2 otherwise-valid legacy identity/grant preservation and immutable original prompt. `documentation-work-context.test.ts` plus `workitem-delegation.test.ts`. |
+| P12 | `agent-execution-runtime.ts` initial/retry adapter requests; `pi-work-execution.ts` capacity boundary; current `ChatPanelWidget` Work task/run detail. | WC1 unchanged empty-context input, WC4 bounded exact delivery and supported retry without duplication, capacity including adapter/retry overhead, source disclosure and provider parity. `documentation-work-delivery.test.ts` plus `pi-work-execution.test.ts`. |
+| P13 | Existing task/sequence preparation, guarded pending linkage and start/reconciliation owners; Work status controls. | WC2 reviewed immutable replacement, grant/link/restart/race integrity; WC3 relevant-section checks with no new documentation approval for unrelated/known nonsemantic edits; retained current Git guards and active/completed history. `documentation-work-freshness.test.ts` plus `agent-sequence-persistence.test.ts`. |
+| P14 | New `documentation-workflow-integration.test.ts`; actual new test registration in `package.json`; existing runtime/persistence regressions. | Connected review/apply/History/Work, recovery/project/linked-source negatives and automated WC1–WC4 ordinary coding-flow matrix. No package version/dependency change. |
+| P15 | Existing browser and installed Electron, disposable projects, final package; later evidence and `closeout.md`. | All DW1–DW10 including required WC1–WC4 live observations, an empty-context baseline and populated-context real local coding behavior; one final aggregate and honest platform limits. |
 
 P1–P5 are domain/application work, P6 is the authority boundary, P7/P8 are existing Chat integration, P9/P10 existing History, P11–P13 existing Work, and P14/P15 cross-system evidence. P11 owns task capture/serialization; P12 owns delivery/disclosure; P13 owns freshness. Keep subsequent dependencies one-way. Do not expose P3 writes before P4 recovery or an Apply control before P6 validates authority.
 
@@ -62,11 +64,34 @@ Application success means documents changed. It does not confer implementation, 
 
 Use P1's applicable source resolution for both Planning and Work. Project-wide instructions, task-relevant current/accepted future requirements, decisions and acceptance criteria become bounded supplied context. Treat historical/draft/background material according to its role; arbitrary doc text never grants tool authority.
 
-Store source/version/section references and the included requirements text in a separately bounded task snapshot. `parseAgentTask` currently strictly validates allowed fields and bounds original instructions at 20,000 characters; extend that owner coherently without raising the original prompt limit to hide context injection. Preserve readable historical records with context not recorded rather than fabricated provenance. P11 adds preparation/serialization only. P12 supplies that snapshot through the common Dope execution path and adds a small disclosure to the existing `ChatPanelWidget` Work task/run detail; no dedicated context panel currently exists. The current Pi adapter byte bound and appended execution/retry text are runtime constraints to honor, not a constant to impose on all providers. Required omissions must be visible and resolved before affected work claims readiness.
+Store source/version/section references and the included requirements text in a separately bounded task snapshot. `parseAgentTask` currently strictly validates allowed fields and bounds original instructions at 20,000 characters; extend that owner coherently without raising the original prompt limit to hide context injection. Otherwise valid records without the new snapshot retain their supported execution paths and show context not recorded, without fabricated provenance or metadata-only grant invalidation. P11 adds preparation/serialization only. P12 supplies that snapshot through the common Dope execution path and adds a small disclosure to the existing `ChatPanelWidget` Work task/run detail; no dedicated context panel currently exists. The current Pi adapter byte bound and appended execution/retry text are runtime constraints to honor, not a constant to impose on all providers. Account for that overhead before claiming readiness; required omissions must be visible and resolved for affected work.
 
-At start, compare the sources actually supplied to their current relevant basis. Compatible refresh produces a new inspectable preparation. Material contradictions or changed acceptance criteria require reviewed resolution. Unrelated docs do not invalidate all tasks. External edits can stale work without inventing a Dope application event.
+At start, compare the sources actually supplied to their current relevant basis. Rechecking an unchanged relevant requirement does not rewrite its accepted task or create a new documentation approval. Retain original supplied provenance and truthful evidence of the current check. Material contradictions, changed acceptance criteria or other changed applicable requirements use the reviewed preparation transition below. Unrelated docs do not invalidate all tasks; ordinary Git/dirty-basis checks still apply. External edits can stale work without inventing a Dope application event.
 
 Pending `P*.txt` content follows the current workflow's valid before-run edit rule; no blanket reordering or restored first-authored-byte lock. Preserve in-flight/completed prompt snapshots, results, checkpoints and run records. Relevant edits cannot mutate an active agent's instructions invisibly; use existing steering/cancellation when needed.
+
+### WC2 pending-preparation transition
+
+The current `prepareSequenceTask` derives a stable step task ID and compares the entire saved task; `AgentStore.createTask` rejects overwrites, and `updateSequence` rejects changing a current task link before checkpoint advancement. Grants bind task identity/project/acceptance time rather than an independent documentation fingerprint. Preserve those general protections. P13 adds only the necessary guarded transition for a reviewed, still-pending preparation:
+
+1. Verify the current project, sequence/owner revision, selected step, old preparation and changed relevant source basis; reject active/completed or stale transitions. Missing documentation metadata alone does not trigger this path.
+2. Persist a distinct immutable preparation for the reviewed changed requirements, retaining original objective/prompt/step identity and all prior records. Use one stable replacement identity for retries of that reviewed transition.
+3. Publish the pending owner/sequence link with expected-revision/old-identity checks. Do not advance or duplicate a checkpoint merely to make the link writable. A crash between task creation and linkage must leave a recoverable consistent selection; an unlinked replacement cannot silently start.
+4. Require authorization genuinely bound to the replacement. An old task's grant cannot authorize materially changed instructions. Keep unchanged-task grants valid where only the new metadata is absent or relevant requirements are equivalent.
+5. Recheck the linked preparation/source/grant at start. A stale competing prepare/start loses safely. Retry/restart resolves the same transition; successful later checkpoints refer to the actual selected task/run while previous checkpoints remain byte-preserved.
+
+Keep existing origin-specific behavior: WorkItem launch request keys remain idempotent, one run per WorkItem task still applies and another attempt uses the existing new-launch path. Sequence capacity continuation keeps the same task/run/workspace/grant and one continuation prefix; it does not refresh instructions mid-run or become a new retry mechanism for every task origin. Restart reconciliation still marks orphan running/cancelling records interrupted and does not auto-resume them. Invalid or unapproved records retain their current rejection.
+
+### Required compatibility matrix
+
+| Case / existing DW gates | Focused acceptance | Integration and live evidence |
+| --- | --- | --- |
+| **WC1 / DW7, DW10** | No declared/selected/task-linked documentation, and unrelated docs only, both yield valid empty context after successful discovery. Exact original adapter prompt, existing permissions and ordinary preparation/start remain unchanged; no empty preamble, documentation proposal/event or extra approval. Required missing/inaccessible sources and reader failure are distinct. | P14 runs the ordinary empty-context control; P15 completes an actual local-model coding task on a project without applicable docs. |
+| **WC2 / DW8, DW10** | Load old-format valid direct/WorkItem/stack fixtures through real parser/store/backend/runtime. Preserve their supported launch/retry/resume and unchanged identity/grants. Test reviewed replacement, old/new grant binding, repeated prepare, launch idempotency, crash between creation/linkage, stale concurrent start and retained checkpoints. | P14 exercises the supported origin/state matrix; P15 observes saved-task use and pending stack refresh/resume with task/run/checkpoint identity evidence. |
+| **WC3 / DW8** | Separate controls for another file, another section of the same file and known nonsemantic formatting. They add no documentation-specific block/reapproval. A changed criterion or unresolved relevant change gets targeted resolution; missing/moved/ownership-changed sources and another change before start remain guarded. Preserve true source hashes and current Git checks; never infer semantic equality through blanket whitespace stripping. | P14 contrasts the three harmless controls with a material change; P15 shows the resulting ordinary or needs-review state and recovery without an approval loop. |
+| **WC4 / DW7, DW10** | Capture initial and supported retry requests with empty/populated context. Assert original instructions, one inclusion of supplied requirements, selected provider/model, permissions and current capacity accounting including appended provenance/continuation overhead. | P14 exercises prepare → Run → allowed tool/candidate write → validation → candidate Accept/Reject, cancellation, supported continuation, checkpoint/next-step and restart disposition. P15 proves actual local coding behavior with empty and populated context; browser/native observations are independently attributed. |
+
+Use parameterized fixtures within the already planned tests and existing owner APIs; do not introduce a general migration/compatibility service or production test bypass. P14 must separately report automated WC1–WC4 results and outstanding P15 observations. The final evidence ledger records case/source/project/task/preparation/run/model, expected behavior, actual outcome and evidence location. A required failure or gap prevents the associated DW gate and correction from being declared Green. These gates qualify the feature; they do not make unrelated user tasks perform qualification or add another activation approval.
 
 ## Compilation and focused command plan
 
@@ -93,10 +118,12 @@ On a cold checkout before P1, inspect the `@dope/ai` and `@dope/agent-core` `lib
 Each P1–P13 prompt names its exact smallest Node invocation and `git diff --check`. The P14 integration invocation is:
 
 ```sh
-node --test test/unit/documentation-workflow-integration.test.ts test/unit/history-integration.test.ts test/unit/roadmap-gate-document.test.ts test/unit/workitem-delegation.test.ts test/unit/pi-work-execution.test.ts test/unit/agent-sequence.test.ts
+node --test test/unit/documentation-workflow-integration.test.ts test/unit/history-integration.test.ts test/unit/roadmap-gate-document.test.ts test/unit/workitem-delegation.test.ts test/unit/pi-work-execution.test.ts test/unit/agent-sequence-persistence.test.ts test/unit/agent-execution-runtime.test.ts
 ```
 
 P14 registers the actual P1–P13 new tests and its new integration test in the existing `test:product` list. It does not run that aggregate merely to check registration. P15's final `npm run check` consumes it once.
+
+The persistence and execution-runtime companions are required for WC2/WC4 because parsing-only sequence tests cannot establish safe task linkage, capacity continuation, candidate review/promotion or restart behavior. P13 uses the narrower sequence-persistence companion; P14 owns the combined runtime flow. Keep this one targeted T2 invocation rather than adding repeated whole-product runs to T1.
 
 For final native evidence, `corepack yarn workspace @dope/electron package:linux` packages the already built Electron output and executes established Pi preparation/check and AppImage verification. Do not use root `npm run package:linux` immediately after the final aggregate because it rebuilds Electron unnecessarily. Required plugin/assets must match the final source/package; do not omit those prerequisites or claim a package exists when packaging failed.
 
@@ -120,10 +147,10 @@ Controller/presentation tests are T1 evidence. Actual visual/keyboard/copy/scrol
 | DW4 freshness/isolation | P2/P3/P5/P6/P13/P14 | Stale/foreign/late-source no overwrite or misattribution. |
 | DW5 recovery/dedup | P3/P4/P5/P9/P14 | Disposable interruption and restart/retry, exact effects and one identity. |
 | DW6 original historical diff | P4/P9/P10/P14 | Later file edit/deletion retains original evidence and safe navigation. |
-| DW7 fresh coding handoff | P1/P11/P12/P14 | Fresh actual Work follows applied requirement without repetition/attachment. |
-| DW8 pending work | P11/P12/P13/P14 | Conflict resolution, unrelated-doc control, active/completed preservation. |
+| DW7 fresh coding handoff | P1/P11/P12/P14 | Fresh actual Work follows applied requirement without repetition/attachment; WC1 empty-context control and WC4 preserved coding flow. |
+| DW8 pending work | P11/P12/P13/P14 | WC2 valid legacy use and reviewed preparation/link/grant integrity; WC3 irrelevant-edit controls versus material conflict; active/completed preservation. |
 | DW9 Roadmap/status integrity | P5/P6/P14 | Current linked writer, no-doc acceptance excluded, no false qualification. |
-| DW10 existing/local experience | P7/P8/P10/P11/P12/P13/P14 | Actual local, no-model, bounded-context, copy/scroll, keyboard/narrow and platform evidence. |
+| DW10 existing/local experience | P7/P8/P10/P11/P12/P13/P14 | Actual local, no-model, bounded-context, copy/scroll, keyboard/narrow and platform evidence, including WC1/WC2/WC4 current Work behavior. |
 
 ## Authoring verification and final routing
 

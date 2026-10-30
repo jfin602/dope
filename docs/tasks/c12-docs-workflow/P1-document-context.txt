@@ -17,17 +17,18 @@ Introduce the deterministic documentation-source model used by review and later 
 
 IMPLEMENT
 Add small provider-independent DTOs in packages/contracts/src/documentation.ts and deterministic selection/section/budget logic under packages/project-intelligence/src/node/documentation-sources.ts. Inputs use the current approved reader boundary through an injected adapter; do not move Theia's ChatProjectGrounder into a domain package or broaden its filesystem policy.
-Resolve project-declared instructions, explicitly selected documents and task-linked requirements/decisions. Keep current accepted, accepted future, observed claims, draft/rejected/historical and background roles distinct. Preserve path/section, actual source fingerprint, included bytes and omissions. A suffix, newest timestamp or imperative prose does not establish authority. Exclude protected/runtime artifacts and unsupported sources; no project-specific mandatory folder template. Treat missing required evidence as an explicit diagnostic, and retain deterministic order and bounded output.
+Resolve project-declared instructions, explicitly selected documents and task-linked requirements/decisions. Keep current accepted, accepted future, observed claims, draft/rejected/historical and background roles distinct. Preserve path/selected section, true file/section fingerprints, included bytes and omissions. A suffix, newest timestamp or imperative prose does not establish authority. Exclude protected/runtime artifacts; no mandatory folder template.
+WC1: successful discovery with no applicable documentation returns an empty context, preserving ordinary Work without a new approval or setup requirement. An explicitly required missing source or a read failure is a distinct diagnostic, never disguised as empty context. Retain deterministic order and bounded output. Preserve evidence needed for WC3 section/semantic comparisons; do not equate any whole-file hash change with changed requirements or erase meaningful whitespace globally.
 No writes, application receipts, History events, Work task mutation or automatic inference. Keep contracts -> agent-core dependency direction; do not add a core -> contracts/project-intelligence import.
 
 FOCUSED VALIDATION
-Create test/unit/documentation-sources.test.ts for declared authority, explicit references, stale/historical conflict, absent source, deterministic budget/omission and two-project separation. Use fixture reader adapters rather than granting a test-only production bypass.
+Create test/unit/documentation-sources.test.ts with parameterized fixtures for declared authority, explicit references, stale/historical conflict, empty/unrelated-only docs versus required-missing/read-error, true file/section fingerprints, bounded omissions and two-project separation. Use approved fixture reader adapters, never a production bypass.
 Build changed outputs once in order:
 corepack yarn workspace @dope/contracts build
 corepack yarn workspace @dope/project-intelligence build
 node --test test/unit/documentation-sources.test.ts
 git diff --check
-DONE: a bounded inspectable source packet is reproducible without modifying project bytes.
+DONE: reproducible source packets and WC1 empty-context behavior preserve project bytes and distinguish required-source failures.
 
 Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
 

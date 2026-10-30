@@ -10,6 +10,8 @@ Planning turns an agreed decision into a reviewed documentation change. Only ver
 
 The owner authorized documentation changes and this stack's assessment, planning and authoring. These files do not execute the implementation or establish new qualification. A later deliberate owner Run of this stack supplies implementation authorization; no `/activate` or second activation-only approval is required.
 
+**Compatibility amendment (2026-10-30):** The owner requested stronger gates after reviewing possible effects on the current agent. This amendment is based on the authored stack at `5daccac5744b8e2bbb6a3c9e1dc79931b79072be`; its runtime source remains the original assessment basis. The required WC1–WC4 cases below strengthen existing DW7/DW8/DW10 acceptance without adding a prompt, activation step or product execution.
+
 ## Stack
 
 | Prompt | Primary deliverable | Model | Tier |
@@ -68,6 +70,19 @@ The normal runner handles P1–P14 and its Git checkpoints. **P15 is browser-req
 ## Evidence and qualification
 
 The product contract defines DW1–DW10. P1–P13 add focused behavioral regression tests, P14 joins the owner boundaries, and P15 supplies real developer-task, local-model, restart and native/browser evidence on the final source.
+
+### Required Work compatibility cases
+
+WC1–WC4 are mandatory feature-acceptance cases within the [product contract](../../planning/p12/documentation-workflow-contract.md). They preserve current supported Work behavior and do not add runtime approval requirements for unaffected work.
+
+| Case | Required result | Evidence owners |
+| --- | --- | --- |
+| **WC1 — No applicable docs** | Successful discovery with nothing applicable supplies empty context and preserves original task input and ordinary execution. Missing required sources or failed reads remain distinct diagnostics. | P1/P11/P12 T1; P14 integration; P15 live control. |
+| **WC2 — Existing tasks and preparation** | Otherwise valid saved direct, WorkItem and stack tasks retain their supported launch/retry/resume paths. Missing new metadata alone does not invalidate grants. Changed material requirements use an explicitly linked new preparation; prior tasks/runs/checkpoints remain immutable. | P11/P13 T1; P14 origin/state cases; P15 saved-task and stack evidence. |
+| **WC3 — Relevant changes only** | Unrelated files, unchanged selected requirements and demonstrably nonsemantic edits add no documentation-specific block or approval loop. Existing Git/dirty-state and source checks still apply; actual relevant conflicts require resolution. | P1/P13 T1; P14 controls; P15 visible pending-work behavior. |
+| **WC4 — Current coding flow** | Empty and populated context preserve preparation, allowed tools, validation, candidate Accept/Reject, cancellation and supported retry/resume, with selected model/grants and ordinary History intact. | P12 T1 adapter requests; P14 integrated flow; P15 actual local-model/browser/native evidence. |
+
+P14 must report automated WC1–WC4 results separately from remaining P15 observations. P15's evidence ledger records each case, source, task/preparation/run identity, selected model, checks and actual outcome; any missing or failing mandatory case keeps its associated DW gate unqualified. The strengthened gates themselves are **specified, not run or passed**.
 
 At authoring, only documentation/grammar/efficiency consistency may be checked. Product tests, UI observations and actual execution times are **not** claimed. A later `closeout.md` is written from actual P15 observations; absent or failed mandatory evidence remains NOT GREEN / EVIDENCE GAP. Correction Green does not close Phase 12 or waive existing Pi B1–B9 obligations.
 
