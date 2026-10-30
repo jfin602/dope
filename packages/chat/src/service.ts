@@ -1,5 +1,5 @@
 import type { Chat, ChatCollection, ChatColor, ChatContextKind, ChatContextRef, ChatFolderPath, ChatId, ChatMessage,
-    ChatModelProvenance, ChatModelSelection, ChatSettings } from './index';
+    ChatExecution, ChatModelProvenance, ChatModelSelection, ChatSettings } from './index';
 import type { RoutingProvenance } from '@dope/ai';
 
 export const chatServicePath = '/services/dope/chat';
@@ -23,7 +23,8 @@ export type ChatOperation =
     | { type: 'start-assistant'; chatId: ChatId; messageId: string; actualModel: ChatModelProvenance;
         routingProvenance?: RoutingProvenance }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
-        content: string; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string };
+        content: string; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;
+        contextUsage?: ChatExecution['contextUsage']; tokenUsage?: ChatExecution['tokenUsage']; finishReason?: string };
 export interface ChatMutation { projectHandle: string; expectedRevision: number; operation: ChatOperation; leaseToken?: string }
 export interface ChatSearchRequest { projectHandle: string; query: string; limit: number; excludeChatId?: ChatId }
 export interface ChatSearchHit { chatId: ChatId; messageId: string; title: string; excerpt: string; createdAt: string }

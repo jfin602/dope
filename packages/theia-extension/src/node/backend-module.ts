@@ -351,7 +351,9 @@ export default new ContainerModule(bind => {
         return backend;
     })).inSingletonScope();
     bind(ModelConnectionsRegistry).toDynamicValue(context => new ModelConnectionsRegistry(undefined,
-        context.container.get(AIRegistryStore), context.container.get(AICredentialManager))).inSingletonScope();
+        context.container.get(AIRegistryStore), context.container.get(AICredentialManager),
+        () => ({ bridge: context.container.get(PiModelBridge),
+            factory: context.container.get(PiRuntimeFactory) }))).inSingletonScope();
     bind(AIInventoryController).toDynamicValue(context => new AIInventoryController(context.container.get(AIRegistryStore),
         context.container.get(ModelConnectionsRegistry), context.container.get(AICredentialManager),
         context.container.get(CodexAppServer))).inSingletonScope();

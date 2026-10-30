@@ -85,6 +85,37 @@ test('AI Center model state controls Chat inventory and exact turn execution liv
     assert.equal(executions, 1);
 });
 
+test('eligible Local Chat uses Pi by default and never falls back to direct Local inference', async () => {
+    const snapshot = { version: 1, revision: 1, connections: [{ id: 'desk', alias: 'Desk',
+        lifecycle: 'enabled', config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://localhost:1234/v1' } }],
+        models: [{ connectionId: 'desk', providerModelKey: 'chat', enabled: true, state: 'ready' }] };
+    let directCalls = 0, piCalls = 0;
+    const store = { async read() { return snapshot; }, onChange() { return () => {}; } };
+    const host = { start: async () => ({}), async *streamTurn() {
+        piCalls++;
+        yield { type: 'complete', text: 'Pi answer', modelId: 'chat', finishReason: 'stop',
+            usage: { tokenMeasurement: 'unavailable' } };
+    } };
+    const registry = new ModelConnectionsRegistry(undefined, store as never, undefined,
+        () => ({ bridge: { bind: async () => ({ contextWindowTokens: 8192, maxOutputTokens: 2048 }) } as never,
+            factory: { create: () => host, release: () => {} } as never }));
+    await registry.connect('desk', { async discoverModels() { return [model('chat')]; },
+        async *generateConversation() { directCalls++; yield { type: 'complete' as const, text: 'Direct answer' }; } });
+    const events = [];
+    for await (const event of registry.generate({ connectionId: 'desk', modelId: 'chat' }, request)) events.push(event);
+    assert.equal(piCalls, 1);
+    assert.equal(directCalls, 0);
+    assert.equal((events.at(-1) as { text: string }).text, 'Pi answer');
+    const bad = new ModelConnectionsRegistry(undefined, store as never, undefined,
+        () => ({ bridge: { bind: async () => { throw new ModelRuntimeFailure('Local server unavailable', 'model-unavailable'); } } as never,
+            factory: { create: () => host, release: () => {} } as never }));
+    await bad.connect('desk', { async discoverModels() { return [model('chat')]; },
+        async *generateConversation() { directCalls++; yield { type: 'complete' as const, text: 'Unsafe fallback' }; } });
+    await assert.rejects(async () => { for await (const _ of bad.generate({ connectionId: 'desk', modelId: 'chat' }, request)) {} },
+        /Local server unavailable/);
+    assert.equal(directCalls, 0);
+});
+
 test('late discovery cannot restore a replaced connection', async () => {
     const registry = new ModelConnectionsRegistry({ async read() { return []; }, async write() {} });
     await registry.upsert({ id: 'one', providerId: 'example', label: 'One' });

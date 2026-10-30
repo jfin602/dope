@@ -57,7 +57,9 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
             contextWindowTokens: 8192, maxInputTokens: 8192 } }] }] }),
     async *generate(_selection: unknown, request: { messages: { role: string; content: string }[] }) {
         sent = request.messages;
-        yield { type: 'complete' as const, text: 'Start with one map, one tower, and one enemy.', actualModelId: 'q4' };
+        yield { type: 'complete' as const, text: 'Start with one map, one tower, and one enemy.', actualModelId: 'q4',
+            finishReason: 'stop', usage: { tokenMeasurement: 'provider-reported' as const,
+                inputTokens: 32, outputTokens: 10, totalTokens: 42 } };
     } };
     const greenfield = { ensureRestored: async () => {}, chatDraft: () => undefined,
         chatImplementationPlan: () => undefined,
@@ -91,6 +93,9 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
         assert.equal(saved[0].contextRefs[0]?.kind, 'project-orientation');
         assert.equal(saved[1].role, 'assistant');
         assert.equal(saved[1].execution?.selectedModel.modelId, 'q4');
+        assert.equal(saved[1].execution?.tokenUsage?.totalTokens, 42);
+        assert.equal(saved[1].execution?.finishReason, 'stop');
+        assert.equal(saved[1].execution?.contextUsage?.usedTokens, result.usedTokens);
         assert.equal(saved[1].planningActivity, undefined);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

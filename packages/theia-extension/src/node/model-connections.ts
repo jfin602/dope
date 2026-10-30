@@ -12,6 +12,9 @@ import type { AIRegistryMutation, AIRegistrySnapshot } from '@dope/ai';
 import { AIRegistryStore } from './ai-registry-store';
 import type { AICredentialManager } from './ai-credential-manager';
 import { providerSetup, providerSetupAdapters } from './provider-setup';
+import { piConversation } from './pi-conversation-runtime';
+import type { PiModelBridge } from './pi-model-bridge';
+import type { PiRuntimeFactory } from './pi-runtime-host';
 
 export interface ModelConnectionStore {
     read(): Promise<ModelConnectionMetadata[]>;
@@ -73,7 +76,8 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
 
     constructor(store?: ModelConnectionStore,
         private readonly globalStore: AIRegistryStore | undefined = store ? undefined : new AIRegistryStore(),
-        private readonly credentialManager?: AICredentialManager) {
+        private readonly credentialManager?: AICredentialManager,
+        private readonly pi?: () => { bridge: PiModelBridge; factory: PiRuntimeFactory }) {
         this.store = store ?? new FileModelConnectionStore();
         credentialManager?.onChange(id => this.disconnect(id));
         if (globalStore) {
@@ -273,7 +277,10 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         }
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         try {
-            for await (const event of live.runtime.generateConversation({ ...request, modelId: selection.modelId })) {
+            const pi = connection.providerId === 'local' ? this.pi?.() : undefined;
+            const events = pi ? piConversation(selection, request, pi.bridge, pi.factory) :
+                live.runtime.generateConversation({ ...request, modelId: selection.modelId });
+            for await (const event of events) {
                 if (this.live.get(selection.connectionId) !== live || !live.ready)
                     throw new ModelRuntimeFailure('Connection changed during generation', 'connection-unavailable');
                 if (guard?.localOnly && this.connections.get(selection.connectionId)?.providerId !== 'local')

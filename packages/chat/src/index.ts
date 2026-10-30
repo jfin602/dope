@@ -59,6 +59,10 @@ export interface ChatExecution {
     startedAt: string;
     finishedAt?: string;
     failure?: string; // User-safe summary; no raw provider payload.
+    contextUsage?: { usedTokens: number; budgetTokens: number };
+    tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number;
+        tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable' };
+    finishReason?: string;
 }
 export interface ChatUserMessage {
     schemaVersion: 1;
@@ -273,7 +277,7 @@ export function availableChatContextTokens(policy: ChatContextPolicy, modelWindo
 }
 
 function parseExecution(value: unknown): ChatExecution {
-    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure'],
+    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'contextUsage', 'tokenUsage', 'finishReason'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported execution schema');
     const execution: ChatExecution = { schemaVersion: 1, id: identifier(v.id), status: choice(v.status, statuses, 'assistant status'),
@@ -284,6 +288,26 @@ function parseExecution(value: unknown): ChatExecution {
     if (v.routingProvenance !== undefined) execution.routingProvenance = parseRoutingProvenance(v.routingProvenance);
     if (v.finishedAt !== undefined) execution.finishedAt = time(v.finishedAt);
     if (v.failure !== undefined) execution.failure = string(v.failure, 'failure');
+    const tokens = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 &&
+        (value as number) <= 1_000_000_000;
+    if (v.contextUsage !== undefined) {
+        const context = record(v.contextUsage, ['usedTokens', 'budgetTokens'], ['usedTokens', 'budgetTokens']);
+        if (!tokens(context.usedTokens) || !tokens(context.budgetTokens) ||
+            (context.usedTokens as number) > (context.budgetTokens as number)) throw new Error('Invalid Chat context usage');
+        execution.contextUsage = { usedTokens: context.usedTokens as number, budgetTokens: context.budgetTokens as number };
+    }
+    if (v.tokenUsage !== undefined) {
+        const usage = record(v.tokenUsage, ['inputTokens', 'outputTokens', 'totalTokens', 'tokenMeasurement'], ['tokenMeasurement']);
+        if (usage.inputTokens !== undefined && !tokens(usage.inputTokens) ||
+            usage.outputTokens !== undefined && !tokens(usage.outputTokens) ||
+            usage.totalTokens !== undefined && !tokens(usage.totalTokens)) throw new Error('Invalid Chat token usage');
+        execution.tokenUsage = { ...(usage.inputTokens === undefined ? {} : { inputTokens: usage.inputTokens as number }),
+            ...(usage.outputTokens === undefined ? {} : { outputTokens: usage.outputTokens as number }),
+            ...(usage.totalTokens === undefined ? {} : { totalTokens: usage.totalTokens as number }),
+            tokenMeasurement: choice(usage.tokenMeasurement,
+                ['provider-reported', 'tokenizer', 'estimated', 'unavailable'] as const, 'token measurement') };
+    }
+    if (v.finishReason !== undefined) execution.finishReason = string(v.finishReason, 'finish reason');
     if (execution.actualModel && execution.actualModel.connectionId !== execution.selectedModel.connectionId &&
         execution.resolutionSource !== 'role-policy')
         throw new Error('Execution connection differs from selection');

@@ -8,7 +8,8 @@ export interface PiRuntimeDiagnostics {
     tools: string[];
 }
 
-type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout };
+type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
+    onEvent?: (event: { type: 'delta'; text: string }) => void };
 
 /** Only Dope-owned paths are considered. No PATH lookup or user Pi installation is used. */
 export function resolvePiWorkerPath(): string {
@@ -71,7 +72,41 @@ export class PiRuntimeHost {
         return this.request({ type: 'complete', prompt });
     }
 
-    private request<T>(record: Record<string, unknown>): Promise<T> {
+    async *streamTurn(messages: readonly { role: 'system' | 'user' | 'assistant'; content: string }[],
+        maxOutputTokens: number, signal?: AbortSignal): AsyncIterable<
+        { type: 'delta'; text: string } | { type: 'complete'; text: string; modelId: string;
+            finishReason: string; usage: { inputTokens?: number; outputTokens?: number;
+                totalTokens?: number; tokenMeasurement: 'provider-reported' | 'unavailable' } }> {
+        if (signal?.aborted) throw new Error('Pi turn cancelled');
+        const queue: { type: 'delta'; text: string }[] = [];
+        let wake: (() => void) | undefined;
+        let settled = false;
+        let result: { text: string; modelId: string; finishReason: string;
+            usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number;
+                tokenMeasurement: 'provider-reported' | 'unavailable' } } | undefined;
+        let failure: unknown;
+        const notify = () => { wake?.(); wake = undefined; };
+        const onAbort = () => this.dispose();
+        signal?.addEventListener('abort', onAbort, { once: true });
+        const task = this.request<typeof result>({ type: 'turn', messages, maxOutputTokens }, event => {
+            queue.push(event); notify();
+        }).then(value => { result = value; }, error => { failure = error; })
+            .finally(() => { settled = true; notify(); });
+        try {
+            while (!settled || queue.length) {
+                if (signal?.aborted) throw new Error('Pi turn cancelled');
+                if (queue.length) { yield queue.shift()!; continue; }
+                await new Promise<void>(resolve => { wake = resolve; });
+            }
+            await task;
+            if (signal?.aborted) throw new Error('Pi turn cancelled');
+            if (failure) throw failure;
+            if (!result) throw new Error('Pi turn ended without completion');
+            yield { type: 'complete', ...result };
+        } finally { signal?.removeEventListener('abort', onAbort); }
+    }
+
+    private request<T>(record: Record<string, unknown>, onEvent?: Pending['onEvent']): Promise<T> {
         const child = this.child;
         if (!child || child.exitCode !== null || child.killed) return Promise.reject(new Error('Pi worker unavailable'));
         const id = ++this.nextId;
@@ -80,8 +115,8 @@ export class PiRuntimeHost {
                 this.pending.delete(id);
                 reject(new Error('Pi worker response timed out'));
                 this.dispose();
-            }, record.type === 'complete' ? 300_000 : 10_000);
-            this.pending.set(id, { resolve: value => resolve(value as T), reject, timer });
+            }, record.type === 'complete' || record.type === 'turn' ? 300_000 : 10_000);
+            this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent });
             child.stdin.write(`${JSON.stringify({ ...record, id })}\n`, error => {
                 if (error) this.fail(error);
             });
@@ -99,9 +134,16 @@ export class PiRuntimeHost {
             const line = this.stdout.slice(0, newline);
             this.stdout = this.stdout.slice(newline + 1);
             try {
-                const record = JSON.parse(line) as { id: number; ok: boolean; data?: unknown; error?: string };
+                const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
+                    event?: { type: 'delta'; text: string } };
                 const pending = this.pending.get(record.id);
                 if (!pending) throw new Error('Unexpected Pi worker response');
+                if (record.event) {
+                    if (record.event.type !== 'delta' || typeof record.event.text !== 'string')
+                        throw new Error('Invalid Pi stream event');
+                    pending.onEvent?.(record.event);
+                    continue;
+                }
                 this.pending.delete(record.id);
                 clearTimeout(pending.timer);
                 if (record.ok) pending.resolve(record.data);
@@ -135,6 +177,11 @@ export class PiRuntimeFactory {
         const host = new PiRuntimeHost();
         this.hosts.add(host);
         return host;
+    }
+
+    release(host: PiRuntimeHost): void {
+        host.dispose();
+        this.hosts.delete(host);
     }
 
     dispose(): void {

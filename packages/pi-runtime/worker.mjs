@@ -83,7 +83,8 @@ export async function dispatch(message) {
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           sessionManager: SessionManager.inMemory(message.cwd),
-          settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
+          settingsManager: SettingsManager.inMemory({ compaction: { enabled: false },
+            retry: { enabled: false } }),
           resourceLoader: emptyResources, tools: [], noTools: 'all', customTools: [],
           scopedModels: [{ model: message.model }]
         });
@@ -109,6 +110,53 @@ export async function dispatch(message) {
       if (!assistant || assistant.stopReason === 'error') throw new Error('Local Pi completion failed');
       return { text: assistant.content.filter(item => item.type === 'text').map(item => item.text).join('') };
     }
+    case 'turn': {
+      if (!session || !Array.isArray(message.messages) || !message.messages.length ||
+          message.messages.at(-1)?.role !== 'user' ||
+          message.messages.some(item => !['system', 'user', 'assistant'].includes(item?.role) ||
+            typeof item.content !== 'string') ||
+          Buffer.byteLength(JSON.stringify(message.messages), 'utf8') > 512 * 1024 ||
+          !Number.isSafeInteger(message.maxOutputTokens) || message.maxOutputTokens < 1 ||
+          message.maxOutputTokens > session.model.maxTokens)
+        throw new Error('Invalid bounded Pi turn');
+      const zeroUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
+        totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
+      const systems = message.messages.filter(item => item.role === 'system').map(item => item.content).join('\n\n');
+      if (systems) session.sessionManager.appendMessage({ role: 'system', content: systems, timestamp: Date.now() });
+      for (const item of message.messages.slice(0, -1).filter(item => item.role !== 'system')) {
+        session.sessionManager.appendMessage(item.role === 'user' ?
+          { role: 'user', content: item.content, timestamp: Date.now() } :
+          { role: 'assistant', content: [{ type: 'text', text: item.content }],
+            api: 'openai-completions', provider: 'dope-local', model: session.model.id,
+            usage: zeroUsage, stopReason: 'stop', timestamp: Date.now() });
+      }
+      session.refreshContext();
+      session.agent.state.model = { ...session.model, maxTokens: message.maxOutputTokens };
+      let attemptedTool = false;
+      const unsubscribe = session.subscribe(event => {
+        if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta')
+          message.emit?.({ type: 'delta', text: event.assistantMessageEvent.delta });
+        if (event.type === 'message_update' && event.assistantMessageEvent?.type.startsWith('toolcall_') ||
+            event.type === 'tool_execution_start') {
+          attemptedTool = true;
+          void session.abort();
+        }
+      });
+      try {
+        await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
+      } finally { unsubscribe(); }
+      const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
+      if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
+          assistant.stopReason === 'toolUse' || assistant.content.some(item => item.type === 'toolCall'))
+        throw new Error('Local Pi completion failed or attempted a tool call');
+      const text = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
+      if (Buffer.byteLength(text, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
+      return { text, modelId: assistant.responseModel ?? assistant.model,
+        finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
+        usage: { inputTokens: assistant.usage?.input, outputTokens: assistant.usage?.output,
+          totalTokens: assistant.usage?.totalTokens,
+          tokenMeasurement: assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' } };
+    }
     default:
       throw new Error('Unsupported Pi runtime command');
   }
@@ -120,10 +168,11 @@ async function accept(line) {
   try {
     message = JSON.parse(line);
     id = message.id;
-    const data = await dispatch(message);
+    const data = await dispatch({ ...message, emit: event =>
+      process.stdout.write(`${JSON.stringify({ id, event })}\n`) });
     process.stdout.write(`${JSON.stringify({ id, ok: true, data })}\n`);
   } catch (error) {
-    const safe = message?.type === 'open' || message?.type === 'complete' ?
+    const safe = message?.type === 'open' || message?.type === 'complete' || message?.type === 'turn' ?
       'Local Pi session failed; check the selected AI Center model and local server' :
       String(error?.message ?? error);
     process.stdout.write(`${JSON.stringify({ id, ok: false, error: safe })}\n`);

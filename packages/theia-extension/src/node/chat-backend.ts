@@ -1301,7 +1301,9 @@ export class ChatBackend implements ChatService {
                         actual.modelId !== selectedModel!.modelId || actual.providerId !== 'local'))
                         throw new ModelRuntimeFailure('Selected local planning model changed during inference', 'model-unavailable');
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
-                        outcome: 'complete', content: output, actualModel: actual, routingProvenance });
+                        outcome: 'complete', content: output, actualModel: actual, routingProvenance,
+                        contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
+                        tokenUsage: event.usage, ...(event.finishReason ? { finishReason: event.finishReason } : {}) });
                     const titledChat = completed.chats.find(item => item.id === key);
                     const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
                     const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;
@@ -1351,6 +1353,7 @@ export class ChatBackend implements ChatService {
                 const failure = error instanceof ModelRuntimeFailure ? error.message : 'Conversation failed';
                 try { await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: output,
+                    contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                     ...(!cancelled ? { failure } : {}) }); }
                 catch { /* A lost lease or newer revision is recovered by ChatRepository. */ }
                 if (localRoadmap) try {

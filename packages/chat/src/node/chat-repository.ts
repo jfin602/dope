@@ -462,7 +462,10 @@ export class ChatRepository {
                     messages[at] = parseChatMessage({ ...message, content: operation.content, execution: {
                         ...message.execution, status: operation.outcome, actualModel: operation.actualModel ?? message.execution.actualModel,
                         routingProvenance: operation.routingProvenance ?? message.execution.routingProvenance,
-                        finishedAt: now, ...(operation.outcome === 'failed' ? { failure: operation.failure } : {}) } });
+                        finishedAt: now, ...(operation.contextUsage ? { contextUsage: operation.contextUsage } : {}),
+                        ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}),
+                        ...(operation.finishReason ? { finishReason: operation.finishReason } : {}),
+                        ...(operation.outcome === 'failed' ? { failure: operation.failure } : {}) } });
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;
                 default: throw new Error('Invalid Chat operation');

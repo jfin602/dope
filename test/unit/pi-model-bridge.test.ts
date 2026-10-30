@@ -30,7 +30,7 @@ test('Pi bridge binds only the exact refreshed AI Center Local model and measure
         registryRevision: 3, loadedContextTokens: 32768 }, host as any, '/tmp');
     assert.equal(binding.modelId, 'exact-model');
     assert.equal(binding.contextWindowTokens, 32768);
-    assert.equal(binding.maxOutputTokens, 512);
+    assert.equal(binding.maxOutputTokens, 4096);
     assert.equal(calls[0][0].id, 'exact-model');
     assert.equal(calls[0][0].provider, 'dope-local');
     assert.equal(calls[0][0].baseUrl, 'http://127.0.0.1:1234/v1');

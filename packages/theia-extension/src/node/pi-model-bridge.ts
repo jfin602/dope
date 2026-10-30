@@ -73,7 +73,7 @@ export class PiModelBridge {
         if (options.tools)
             throw unavailable('Pi tool mode requires a Dope Work grant; use no-tool mode until Work is connected');
         const declared = model.limits.maxOutputTokens.value;
-        const maxOutputTokens = Math.min(512, loaded - 1536,
+        const maxOutputTokens = Math.min(4096, loaded - 1536,
             Number.isSafeInteger(declared) && declared! > 0 ? declared! : Infinity);
         if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1)
             throw unavailable('Selected Local model has insufficient output budget');
