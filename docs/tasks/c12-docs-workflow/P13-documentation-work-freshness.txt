@@ -1,4 +1,4 @@
-TASK: Correction 12 / P13 — Reconcile documentation changes before pending work starts
+TASK: Correction 12 / P13 — Resolve changed accepted requirements before pending Work
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
@@ -13,20 +13,19 @@ Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documenta
 Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
 
 OBJECTIVE — T1
-Prevent materially outdated prepared work from starting while preserving unrelated work and immutable running/completed evidence.
+Resolve material conflicts in an actually accepted task/WorkItem requirement basis without treating advisory pointers as frozen requirements.
 
 IMPLEMENT
-Recheck applicable context before existing start paths. WC3: unrelated files, unchanged selected sections and demonstrably nonsemantic formatting introduce no documentation-specific block/reapproval. A whole-file hash change alone is not semantic conflict. Keep true fingerprints and comparison evidence; no blanket whitespace stripping. Preserve existing clean-worktree/accepted-dirty/source checks. Material or ambiguous relevant changes require targeted resolution.
-Respect current sequence-Pn task IDs, full candidate JSON equality, AgentStore.createTask's rejection of overwrite and updateSequence's prohibition on swapping taskId before checkpoint advance. For a genuinely changed relevant basis, retain prior immutable tasks/runs and create a distinct preparation identity. Add a narrow owner-controlled pending-preparation transition with expected-state/revision checks to update existing pending linkage and bind approval/grants to the changed basis. No ad hoc taskId swap, generic migration, global invariant relaxation or fake checkpoint advance.
-Make replacement/link publication restart-safe and idempotent; prevent competing start/project-switch races. Preserve prior linkage evidence, logical prompt/step, original prompt text for docs-only refresh, original WorkItem request-key mapping and completed checkpoints. New checkpoints must reference their actual task/run. Never rewrite running/completed snapshots. Valid pending P*.txt content edits still use current reviewed preparation policy; no reorder permission or first-authored-byte lock.
-WC1/WC2 metadata absence alone preserves eligible legacy identity/grants and current supported retry/resume/new-launch paths. Keep WorkItem's one-run rule and restart interruption of orphan runs; no automatic resume. Genuine changed requirements still require the appropriate refreshed basis. Docs apply never starts Work; external edits fabricate no receipt.
+Recheck only a recorded accepted requirement/source basis through existing owners when relevant evidence indicates change. Offered refs, unread documents, index/version hints or read receipts alone neither adopt requirements nor trigger replacement, grant resets or review. No corpus/body reread at every preparation/start/turn, semantic-model pass or broad source watcher. Current agent reads can inspect applicable docs normally.
+WC3: unrelated files, unchanged bound sections and demonstrably nonsemantic formatting introduce no documentation-specific block/reapproval. Retain true observed fingerprints; a whole-file hash change is not semantic conflict and blanket whitespace stripping is unsafe. A material/ambiguous change to the actually bound requirement receives targeted resolution. Existing Git clean/accepted-dirty/source checks remain independent.
+For a reviewed changed accepted basis, respect stable sequence-Pn IDs, full task equality, createTask overwrite rejection and updateSequence taskId guards. Retain old tasks/runs; create one distinct immutable preparation through a narrow expected-state/revision-checked pending-link transition with correctly bound grant. No ad hoc swap, generic migration, invariant relaxation or fake checkpoint advance. Preserve original prompt/logical step, WorkItem request-key mapping and completed checkpoints; new checkpoints identify their actual task/run. Make publication/retry/restart idempotent and reject stale competing starts/project switches.
+WC1/WC2 preserve valid legacy identity/grants and current supported paths, WorkItem one-run/new-launch behavior and interrupted orphan-run recovery; no automatic resume. Valid pending P*.txt content edits keep their existing reviewed path, without reorder permission or first-authored-byte lock. Active/completed snapshots remain immutable. External edits fabricate no documentation receipt.
 
 FOCUSED VALIDATION
-In test/unit/documentation-work-freshness.test.ts, use parameterized real-owner fixtures for WC2 legacy resume, WC3 irrelevant/section/format controls versus material/ambiguous change, immutable replacement/restart, stale transition/start race, changed-grant rejection and pending prompt-content revision. Assert prior tasks/runs/checkpoints survive, supported cancellation/retry/resume stays legal, and invalid task/sequence transitions remain rejected.
-Build changed agent-core then theia-extension once; rebuild other changed owner outputs only as traced.
+In documentation-work-freshness.test.ts, use real-owner fixtures contrasting offered/unread/read-only metadata changes with changed actually accepted criteria. Cover legacy resume, unrelated/section/format controls, immutable replacement/restart, stale transition/start race, changed-grant rejection and pending prompt-content revision. Assert no eager body reads or metadata-only approval loop; retained tasks/runs/checkpoints and existing invalid-transition rejection remain intact.
+Build changed agent-core then theia-extension once; rebuild other owners only as traced.
 node --test test/unit/documentation-work-freshness.test.ts test/unit/agent-sequence-persistence.test.ts
 git diff --check
-DONE: targeted freshness and guarded replacement pass without metadata-only/irrelevant-edit regressions; broader WC4 lifecycle coverage is P14.
+DONE: genuine accepted-basis conflicts resolve safely while advisory discovery and read evidence remain non-authoritative.
 
 Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
-

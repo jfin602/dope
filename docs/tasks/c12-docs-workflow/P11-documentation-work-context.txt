@@ -1,4 +1,4 @@
-TASK: Correction 12 / P11 — Capture current documentation context in prepared Work
+TASK: Correction 12 / P11 — Record optional documentation references and access evidence
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
@@ -13,19 +13,19 @@ Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documenta
 Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
 
 OBJECTIVE — T1
-Capture applicable requirements and provenance in the existing prepared-task owner without changing runtime delivery yet.
+Carry optional reference/provenance metadata through existing Work and disclose what was offered versus observably read.
 
 IMPLEMENT
-Resolve P1 sources at AgentRuntimeBackend.createTask, launchWorkItem and prepareSequenceTask through one small preparation helper. Add a separately bounded context/provenance snapshot to agent-core/src/contracts.ts AgentTask/parseAgentTask and the existing store roundtrip; preserve the original 20,000-character instruction bound. Map documentation-domain data at the extension boundary; do not introduce agent-core -> contracts/project-intelligence or Theia coupling.
-Retain document/section/role/source fingerprint, included requirements text, omissions and preparation identity. Preserve original objective/instructions, task origin and phase-stack prompt bytes. WC1 empty context adds no setup/approval requirement. WC2 otherwise valid legacy direct/WorkItem/stack records must roundtrip without synthesized metadata changing their saved identity; metadata absence alone cannot invalidate grants or require review. Preserve each origin's existing run/retry/resume/new-launch eligibility, including WorkItem request-key idempotency: the same key returns its original launch; a new attempt uses the existing new-launch path. Current invalid/unapproved tasks remain invalid.
-Use current applicable project requirements; draft/rejected/history-only material cannot override accepted requirements. External edits are readable current source, not fabricated Dope application receipts. No automatic inference, Work start, grant expansion or mutation of active/completed task snapshots.
-This prompt owns capture/serialization and preparation parity. Do not overwrite immutable saved tasks or force migration. P12 owns delivery; P13 owns any genuinely changed-basis replacement/linkage. Missing metadata alone must not trigger that transition. P14 proves complete existing execution paths; a captured reference alone does not reach the coding agent.
+Map P1 refs at AgentRuntimeBackend.createTask/launchWorkItem/prepareSequenceTask into a small optional Work representation. Extend agent-core/src/contracts.ts parser/store only as needed; no document bodies, digest or frozen requirements packet, reverse package imports, raised 20,000-character instruction limit or prep-time corpus reads.
+Prefer existing ancillary task/run provenance outside immutable accepted-task equality. If optional refs are stored on a new task, repeated prepare preserves those saved fields; later offers are separate observations. Preserve full equality protections for original instructions/scope/grants; no advisory hint churn. Advisory refs are not an accepted requirement basis. Retain known version evidence honestly; actual source access belongs in bounded existing run/provenance observations where available. Offered, read and followed are distinct: a read observation does not adopt every statement or prove implementation; unobservable native reads stay unknown.
+WC1/WC2: absent refs or legacy metadata add no approval, forced migration or synthesized-field identity mismatch. Otherwise valid direct/WorkItem/stack tasks retain current supported paths; the same WorkItem request key returns its original launch, another attempt uses the existing new-launch path. Invalid/unapproved records remain rejected. Do not overwrite saved tasks because advisory metadata changes.
+Add a small disclosure beside ChatPanelWidget Work task/run provenance, using selectedTask/current run observations: offered paths, observable access and explicit unknowns. Use existing editor navigation/theme/focus. No body viewer or new panel. P12 supplies the session hint/read observations; P13 handles only changed actual accepted requirements. No automatic Work, inference, grant expansion or documentation History.
 
 FOCUSED VALIDATION
-In test/unit/documentation-work-context.test.ts, parameterize direct/WorkItem/stack preparation over valid legacy, empty and populated context. Cover restart roundtrip, exact original prompt/origin, bounded omissions, request-key reuse and existing-task reuse without synthetic-field JSON mismatches. Assert metadata-only compatibility preserves identity/grant eligibility and creates no History/Run side effect; genuine changed-basis transitions remain P13.
-Build changed agent-core then theia-extension once; compile other owner outputs only if their source actually changed.
+In test/unit/documentation-work-context.test.ts, parameterize legacy/empty/relevant refs across preparation routes. Verify optional roundtrip, original instructions, request-key reuse, no-body persistence, truthful offered/read/unknown presentation and unchanged identity/grants when only refs differ, while substantive instruction/scope changes still fail existing checks. Model response prose alone cannot certify a read or successful implementation.
+Build changed agent-core then theia-extension once; rebuild another owner only for actual source changes.
 node --test test/unit/documentation-work-context.test.ts test/unit/workitem-delegation.test.ts
 git diff --check
-DONE: preparation captures applicable requirements while WC1/WC2 preserve empty and otherwise valid legacy task behavior; delivery is next.
+DONE: optional reference evidence is inspectable without changing ordinary or legacy execution; no requirement-body snapshot is created.
 
 Report only actual changes/checks and the next supported step; STOP at this prompt's scope.

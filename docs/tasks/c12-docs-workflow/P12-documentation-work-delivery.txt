@@ -1,4 +1,4 @@
-TASK: Correction 12 / P12 — Deliver prepared documentation requirements to coding agents
+TASK: Correction 12 / P12 — Offer references and preserve safe agent-led documentation reads
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
@@ -13,19 +13,20 @@ Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documenta
 Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
 
 OBJECTIVE — T1
-Supply P11's prepared requirements through the common execution request and disclose the actual supplied context in existing Work detail.
+Offer a compact relevant hint at session handoff and let the selected agent read/digest applicable docs through its existing safe tools.
 
 IMPLEMENT
-At agent-execution-runtime.ts, compose prepared requirements and provenance with the original objective/instructions, preserving the original text separately. WC1/WC2: empty context or absent legacy metadata leaves the original adapter prompt unchanged, without synthetic context prose, new approval or grant invalidation. Otherwise valid legacy work retains its current supported paths.
-Populated context reaches the initial request and existing sequence-only capacity retries as the exact approved snapshot: no duplicate injection, hidden refresh or stacked continuation prefixes. Preserve the same task/run/workspace/grant during those retries; do not introduce capacity retry for other origins. WorkItem's one-run-per-task/new-launch rule remains intact.
-Honor actual selected-provider capacity including documentation, provenance, adapter execution reference and retry-prefix overhead. Preserve original instructions; surface material omitted requirements or an actionable capacity conflict, never silently ignore/truncate them. Keep selected model, consent, validation and grants unchanged. Pi resource discovery stays disabled; no fallback or background inference. Documentation never confers tool authority. Legacy disclosure says context not recorded without implying a new execution blocker.
-Add a narrow supplied-source disclosure to ChatPanelWidget's existing Work task/run detail beside instructions/provenance, using selectedTask from WorkSelectionController. Show supplied sections/source versions and omissions. Reuse theme tokens, keyboard focus and existing editor navigation; no new Work screen or forced Chat attachment. P13 separately owns source freshness and refreshed preparations.
+At the common execution handoff, offer P11's small refs once per applicable native session/basis, only if absent from restored/replayed context; send relevant deltas only at an existing relevant handoff or explicit steering, never unsolicited into an active run. Preserve original instructions; no refs means byte-identical prompt and zero feature-initiated content prefetch/auxiliary model calls; independent native reads remain allowed. No body prefill, selector/summarizer inference, per-call corpus scan/reinjection, new context manager or cache. Ordinary native transcript replay is allowed.
+Use native project retrieval where supported: Codex retains sandboxed shell reads; Pi retains its Dope broker. A fresh Pi retry session may reoffer pinned refs if absent; if the retry prompt already contains the hint, retain it once. Never claim persistent native memory. Preserve current sequence-only retry task/run/workspace/grant, cancellation and exact-dedup/overflow semantics. Do not rework compaction, enable host resources, change provider/model or add retries.
+Repair only the required bounded-read path in existing local-tool-contracts/broker, Pi worker schema and pi-work-execution bridge: safe range/section/continuation, preserved text formatting, honest truncation/continuation and useful output beyond the current safe(output,1024) prefix. Preserve grant, candidate/root, private-path, symlink and revocation checks; no shell bypass or unrestricted loading. Honor actual prompt/tool/context bounds including provenance/retry overhead. Agent-issued reads choose material; they may incur normal tool/model cost.
+Record actual returned path/range/version evidence only where observable; Codex shell observations do not promise complete per-document receipts. Missing observability alone adds no execution block or forced preloading. P11 renders unknowns honestly; actual unavailable explicitly required access gets a targeted limitation.
 
 FOCUSED VALIDATION
-In test/unit/documentation-work-delivery.test.ts, parameterize legacy/empty/populated initial requests across existing origins; exercise retries only where currently supported. Assert exact empty-input parity, original text, same supplied snapshot and grant, one continuation prefix, actual initial/retry capacity boundaries and accurate disclosure. Preserve invalid-task rejection and current tool/validation/candidate authority; full WC4 flow is P14/P15.
+In documentation-work-delivery.test.ts, parameterize empty/relevant refs, fresh/restored Chat sessions, retry prompts already containing hints and unsupported observation. Verify no repeated hints/body prefill/auxiliary inference. Extend existing read fixtures for a requirement beyond 1,024 characters, continuation/Unicode/format preservation, truthful limits and unchanged security negatives. pi-work-execution.test.ts already exercises the real worker dispatch.
+corepack yarn workspace @dope/agent-core build
 corepack yarn workspace @dope/theia-extension build
-node --test test/unit/documentation-work-delivery.test.ts test/unit/pi-work-execution.test.ts
+node --test test/unit/documentation-work-delivery.test.ts test/unit/local-tool-broker-read.test.ts test/unit/pi-work-execution.test.ts
 git diff --check
-DONE: WC1/WC2 input parity and populated initial/retry delivery pass with honest capacity handling; actual coding behavior remains DW7/WC4/P15.
+DONE: a model-issued bounded read can reach the late requirement safely; hints do not replace agent context management. Full flow/performance evidence is P14/P15.
 
 Report only actual changes/checks and the next supported step; STOP at this prompt's scope.

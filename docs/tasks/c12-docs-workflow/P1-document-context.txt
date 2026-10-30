@@ -1,4 +1,4 @@
-TASK: Correction 12 / P1 — Resolve bounded project documentation context
+TASK: Correction 12 / P1 — Discover task-relevant documentation references
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol Medium`.
@@ -13,22 +13,20 @@ Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documenta
 Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
 
 OBJECTIVE — T1
-Introduce the deterministic documentation-source model used by review and later Work preparation, without publication or a new model loop.
+Discover small applicable documentation pointers without extracting a requirements packet or adding model calls.
 
 IMPLEMENT
-Add small provider-independent DTOs in packages/contracts/src/documentation.ts and deterministic selection/section/budget logic under packages/project-intelligence/src/node/documentation-sources.ts. Inputs use the current approved reader boundary through an injected adapter; do not move Theia's ChatProjectGrounder into a domain package or broaden its filesystem policy.
-Resolve project-declared instructions, explicitly selected documents and task-linked requirements/decisions. Keep current accepted, accepted future, observed claims, draft/rejected/historical and background roles distinct. Preserve path/selected section, true file/section fingerprints, included bytes and omissions. A suffix, newest timestamp or imperative prose does not establish authority. Exclude protected/runtime artifacts; no mandatory folder template.
-WC1: successful discovery with no applicable documentation returns an empty context, preserving ordinary Work without a new approval or setup requirement. An explicitly required missing source or a read failure is a distinct diagnostic, never disguised as empty context. Retain deterministic order and bounded output. Preserve evidence needed for WC3 section/semantic comparisons; do not equate any whole-file hash change with changed requirements or erase meaningful whitespace globally.
-No writes, application receipts, History events, Work task mutation or automatic inference. Keep contracts -> agent-core dependency direction; do not add a core -> contracts/project-intelligence import.
+Add provider-independent reference DTOs in contracts/src/documentation.ts and deterministic discovery under project-intelligence/src/node/documentation-sources.ts, using injected existing approved metadata/read boundaries. Use project declarations, explicit selections and task/owner links; do not move ChatProjectGrounder into the domain or broaden filesystem authority.
+Return bounded relative paths, known section/role, applicability reason and already-known source/version evidence. Unknown versions remain unknown until observed; do not read/hash entire files merely to populate metadata. Distinguish accepted/current, accepted future, draft/rejected/history and background using known ownership. No corpus walk, body extraction, summary/digest, selector model call, new index/cache or mandatory folder template. Explicit document review may later read its actual targets.
+WC1: no applicable refs yields no documentation preamble, feature-initiated content prefetch or extra Dope model calls; independent native agent reads remain allowed. Required-missing references and discovery/read failures remain distinguishable; a normal advisory ref is not a mandatory task requirement. Discovery runs at the applicable task/explicit refresh boundary, not each model call or every start/turn. Reuse known owner links; unrelated turns do no documentation work.
+Keep pointer discovery separate from actual read evidence and accepted requirement binding. A hash/index change or imperative prose grants no authority. No publication, History, task mutation or inference; preserve contracts -> agent-core layering.
 
 FOCUSED VALIDATION
-Create test/unit/documentation-sources.test.ts with parameterized fixtures for declared authority, explicit references, stale/historical conflict, empty/unrelated-only docs versus required-missing/read-error, true file/section fingerprints, bounded omissions and two-project separation. Use approved fixture reader adapters, never a production bypass.
-Build changed outputs once in order:
+In test/unit/documentation-sources.test.ts, parameterize empty/unrelated/linked/explicit refs, known versus unknown versions, bounded metadata, required-missing/read-error and project isolation. Spy on reader/model boundaries: discovery does not open bodies, scan the corpus or infer summaries; repeated unrelated turns add no reads/calls. Actual targeted reads are P12.
 corepack yarn workspace @dope/contracts build
 corepack yarn workspace @dope/project-intelligence build
 node --test test/unit/documentation-sources.test.ts
 git diff --check
-DONE: reproducible source packets and WC1 empty-context behavior preserve project bytes and distinguish required-source failures.
+DONE: cheap task-relevant refs are truthful and optional; WC1 preserves zero added doc prompt bytes/forced content reads/auxiliary model calls.
 
 Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
-
