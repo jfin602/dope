@@ -106,6 +106,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         await handle.result;
         assert.equal(turn, 5);
         assert.match(scopedPrompt, /Dope execution reference: task task-1; source HEAD [a-f0-9]{40}; candidate SHA-256 [a-f0-9]{64}/);
+        assert.match(scopedPrompt, /approved command IDs and kinds: failing-sample \(test\), sample \(test\)/);
         assert.equal(await readFile(join(workspace.root, 'README.md'), 'utf8'), 'candidate change\n');
         assert.equal(await readFile(join(project, 'README.md'), 'utf8'), original);
         assert.ok(events.some(event => event.kind === 'file-changed'));
@@ -113,7 +114,8 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         assert.ok(events.some(event => /^Pi candidate SHA-256 [a-f0-9]{64}; delta SHA-256 [a-f0-9]{64}$/.test(event.summary)));
         assert.ok(events.some(event => event.kind === 'command-completed' && event.status === 'completed'));
         assert.ok(events.some(event => event.kind === 'command-completed' && event.status === 'failed'));
-        assert.ok(events.some(event => event.summary === 'Pi dope_process failed'));
+        assert.ok(events.some(event => event.kind === 'warning' &&
+            event.summary === 'Approved candidate tool failed'));
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.ok(events.some(event => event.summary === 'Pi session started'));
         assert.ok(events.some(event => event.summary === 'Pi model turn running'));
@@ -172,7 +174,10 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
         revoked = true;
         await assert.rejects(callTool!({ id: 1, name: 'dope_read', arguments: { path: 'README.md', maxBytes: 64 } }),
             /denied/);
-        assert.ok(events.some(event => event.kind === 'authority-denied'));
+        assert.ok(events.some(event => event.kind === 'authority-denied' &&
+            event.summary === 'Pi Work tool denied at workspace-check'));
+        assert.ok(events.some(event => event.kind === 'provider-event' &&
+            event.summary === 'Pi Work tool stopped at workspace-check'));
         await handle.cancel();
         const count = events.length;
         stream!({ type: 'work', sequence: 1, kind: 'agent_start' });

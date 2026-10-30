@@ -95,6 +95,12 @@ test('held candidate and stale or foreign identities never earn acceptance or co
         eligible: { 'review-candidate': true, 'accept-candidate': true, 'reject-candidate': true } });
     assert.equal(held.status, 'Candidate ready for review');
     assert.equal(held.promotion, 'held');
+    const directHeld = selectWorkView({ selection: selected,
+        task: { ...candidateTask, projectId: undefined, origin: { kind: 'direct' } },
+        run: { ...candidateRun, projectId: undefined },
+        eligible: { 'review-candidate': true, 'reject-candidate': true } });
+    assert.equal(directHeld.status, 'Candidate ready for review');
+    assert.deepEqual(directHeld.actions, ['review-candidate', 'reject-candidate']);
     assert.deepEqual(held.actions, ['review-candidate', 'reject-candidate']);
     const stale = selectWorkView({ selection: selected, task: candidateTask,
         run: { ...candidateRun, candidateFingerprint: 'other' }, eligible: { 'accept-candidate': true } });

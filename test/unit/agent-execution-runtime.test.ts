@@ -487,6 +487,30 @@ test('pre-existing project edits fail clean-tree preflight before run metadata i
     assert.equal(await readFile(join(f.root, 'already-dirty.txt'), 'utf8'), 'owner work');
 }));
 
+test('reviewed direct Work holds its validated candidate without canonical promotion', async () => fixture(async f => {
+    await writeFile(join(f.root, 'review-fixture.txt'), 'original\n');
+    await git('git', ['-C', f.root, 'add', 'review-fixture.txt']);
+    await git('git', ['-C', f.root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+        'commit', '-m', 'Add review fixture']);
+    const task = await f.backend.createTask(f.handle, { ...baseTask(), id: 'reviewed-direct',
+        reviewPolicy: { kind: 'required' }, completion: { validation: [
+            { kind: 'test', label: 'Focused', command: 'node --test test/fixtures/ide-testing/sample.test.js' } ],
+            requireValidationPass: true } });
+    const accepted = createDefaultExecutionGrant({ id: 'reviewed-grant', revision: 0,
+        taskId: task.id, acceptedAt: new Date().toISOString() });
+    const original = await readFile(join(f.root, 'review-fixture.txt'), 'utf8');
+    const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'review-fixture.txt'), 'candidate only\n');
+    f.adapter.complete();
+    const held = await f.runtime.waitForRun(f.root, run.id);
+    assert.equal(held.status, 'blocked');
+    assert.equal(held.candidateReview?.state, 'ready');
+    assert.deepEqual(held.candidateReview?.changedPaths, ['review-fixture.txt']);
+    assert.equal(held.candidateReview?.validation[0]?.status, 'passed');
+    assert.deepEqual(held.appliedFiles, undefined);
+    assert.equal(await readFile(join(f.root, 'review-fixture.txt'), 'utf8'), original);
+}));
+
 test('Follow Coding Agent resolves policy and persists immutable actual provenance before adapter effects', async () => fixture(async f => {
     const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
     assert.deepEqual(f.routing.calls[0][0], 'coding-agent');
@@ -667,10 +691,14 @@ test('provider failure after output and authority denial terminate without fallb
     assert.equal((await terminal(f.store, f.root, run.id)).status, 'failed');
     assert.equal(f.adapter.starts.length, 1);
     const second = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
+    f.adapter.onEvent!({ kind: 'provider-event', summary: 'Pi Work tool stopped at request-parse' });
     f.adapter.onEvent!({ kind: 'authority-denied', summary: 'secret authority detail' });
     const denied = await terminal(f.store, f.root, second.id);
     assert.equal(denied.status, 'failed');
     assert.equal(denied.outcome?.code, 'authority-denied');
+    const events = (await f.store.readEvents(f.root, second.id, 0, 20)).events;
+    assert.ok(events.some(event => event.summary === 'Pi Work tool stopped at request-parse'));
+    assert.ok(events.every(event => !event.summary.includes('secret authority detail')));
     assert.equal(f.adapter.starts.length, 2);
     assert.equal(f.adapter.cancels, 1);
 }));

@@ -137,7 +137,8 @@ export class AgentRunController {
                 modelPolicy: this.policy, controls: {}, authority: { profile: 'phase-8b-project' },
                 completion: { validation: this.validationCommand.trim() ?
                     [{ kind: 'test', label: 'Required validation', command: this.validationCommand.trim() }] : [],
-                    requireValidationPass: Boolean(this.validationCommand.trim()) }, origin: { kind: 'direct' } });
+                    requireValidationPass: Boolean(this.validationCommand.trim()) }, origin: { kind: 'direct' },
+                ...(this.validationCommand.trim() ? { reviewPolicy: { kind: 'required' as const } } : {}) });
             this.task = await this.runtime.createTask(this.handle, task);
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString() });

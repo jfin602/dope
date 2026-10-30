@@ -304,7 +304,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     widgets.tryGetWidget(workLauncherIds[side])])].filter(Boolean) as ChatPanelWidget[])
                 void widget.refreshWork();
             for (const widget of widgets.getWidgets(AGENT_TRANSCRIPT_ID) as AgentTranscriptWidget[])
-                if ((change.kind === 'run' || change.kind === 'transcript') && widget.options.runId === change.id)
+                if ((change.kind === 'run' || change.kind === 'event' || change.kind === 'transcript') && widget.options.runId === change.id)
                     void widget.refresh();
         });
     bind(ChatOpenOwners).toSelf().inSingletonScope();

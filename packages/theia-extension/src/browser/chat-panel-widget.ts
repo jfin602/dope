@@ -1095,7 +1095,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     scope.textContent = controller.selectedTask.origin.kind === 'work-item' ?
                         `Delegated paths: ${controller.selectedTask.origin.scope.delegablePaths.join(', ')} · ` +
                         `Human reserved: ${controller.selectedTask.origin.scope.humanReservedPaths.join(', ') || 'none'}` :
-                        'Phase-stack candidate: inspect changed paths against the authored prompt and accepted grant.';
+                        controller.selectedTask.origin.kind === 'phase-stack' ?
+                            'Phase-stack candidate: inspect changed paths against the authored prompt and accepted grant.' :
+                            'Direct Work candidate: inspect changed paths against your instructions and accepted grant.';
                     section.append(scope);
                     const paths = document.createElement('p'); paths.className = 'dope-work-detail';
                     paths.textContent = `Changed paths: ${review.changedPaths.join(', ') || 'none'}`; section.append(paths);

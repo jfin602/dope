@@ -81,7 +81,8 @@ test('WorkItem task freezes project, map, basis and delegated scope with require
     assert.deepEqual(parseAgentTask({ ...derived, origin: { ...origin,
         scope: { assignment: 'AI', workingSet: ['src'], delegablePaths: ['src/agent'],
             humanReservedPaths: [] } } }).reviewPolicy, { kind: 'required' });
-    assert.throws(() => parseAgentTask({ ...task(), reviewPolicy: { kind: 'required' } }));
+    assert.deepEqual(parseAgentTask({ ...task(), reviewPolicy: { kind: 'required' } }).reviewPolicy,
+        { kind: 'required' });
     assert.throws(() => parseAgentTask({ ...task(), origin: { kind: 'work-item', workItemId: 'legacy' } }));
 });
 

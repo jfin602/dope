@@ -32,6 +32,7 @@ test('Pi bridge binds only the exact refreshed AI Center Local model and measure
     const binding = await bridge.bind({ connectionId: 'desk', modelId: 'exact-model',
         registryRevision: 3, loadedContextTokens: 32768 }, host as any, '/tmp');
     assert.equal(binding.modelId, 'exact-model');
+    assert.equal(binding.registryRevision, 3);
     assert.equal(binding.contextWindowTokens, 32768);
     assert.equal(binding.maxOutputTokens, 4096);
     assert.equal(calls[0][0].id, 'exact-model');
@@ -108,6 +109,22 @@ test('Pi bridge caps output and opens Work mode only after tool verification', a
     await bridge.assertWorkSelection(selection, 'http://127.0.0.1:1234/v1');
     verified.state.registry.revision++;
     await assert.rejects(bridge.assertWorkSelection(selection, 'http://127.0.0.1:1234/v1'));
+});
+
+test('Pi Work binding returns the refreshed registry revision for subsequent tool checks', async () => {
+    const f = fixture();
+    const bridge = new PiModelBridge({ inventory: async () => f.state,
+        refreshModels: async () => { f.state.registry.revision++;
+            f.state.registry.models[0].capabilities.agentExecution = known(true);
+            return f.state; },
+        credential: async () => undefined,
+        verifyLocalAgentExecution: async () => 'supported' });
+    const selected = { connectionId: 'desk', modelId: 'exact-model', registryRevision: 3,
+        loadedContextTokens: 32768 };
+    const binding = await bridge.bind(selected, f.host as any, '/tmp', { tools: true });
+    assert.equal(binding.registryRevision, 4);
+    await bridge.assertWorkSelection({ ...selected, registryRevision: binding.registryRevision }, binding.endpoint);
+    await assert.rejects(bridge.assertWorkSelection(selected, binding.endpoint), /changed during execution/);
 });
 
 test('a stopped Local service fails closed and a fresh selected binding can resume', async () => {

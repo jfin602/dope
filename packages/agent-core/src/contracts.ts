@@ -183,8 +183,8 @@ export function parseAgentTask(value: unknown): AgentTask {
         { kind, promptId: id(origin.promptId) } : kind === 'work-item' ?
             parseWorkItemOrigin(origin) : { kind, sessionId: id(origin.sessionId) };
     if (kind === 'work-item' && x.reviewPolicy === undefined ||
-        x.reviewPolicy !== undefined && !['work-item', 'phase-stack'].includes(kind))
-        throw new Error('Review policy requires a WorkItem or phase-stack task');
+        x.reviewPolicy !== undefined && !['direct', 'work-item', 'phase-stack'].includes(kind))
+        throw new Error('Review policy requires a direct, WorkItem or phase-stack task');
     const reviewPolicy = x.reviewPolicy === undefined ? undefined : record(x.reviewPolicy, ['kind']);
     if (reviewPolicy && reviewPolicy.kind !== 'required') throw new Error('Invalid review policy');
     if (parsedOrigin.kind === 'work-item' && (x.projectId !== parsedOrigin.projectId ||

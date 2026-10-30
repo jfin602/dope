@@ -61,6 +61,7 @@ test('direct task displays eligible target and requires explicit grant before st
     h.controller.acceptGrant(true); assert.equal(h.controller.canStart, false);
     h.controller.authorizeHostedProjectData(true); assert.equal(h.controller.canStart, true);
     await h.controller.start(); assert.equal((h.task as { origin: { kind: string } }).origin.kind, 'direct');
+    assert.equal((h.task as { reviewPolicy?: unknown }).reviewPolicy, undefined);
     assert.equal((h.task as { modelPolicy: { kind: string } }).modelPolicy.kind, 'follow-coding-agent');
     assert.equal((h.grant as { permissions: { network: boolean; 'project-modify': boolean } }).permissions.network, false);
     assert.equal((h.grant as { permissions: { network: boolean; 'project-modify': boolean } }).permissions['project-modify'], true);
@@ -77,6 +78,7 @@ test('direct task keeps validation bounded and requires a fresh grant after edit
     h.controller.acceptGrant(true); h.controller.authorizeHostedProjectData(true); await h.controller.start();
     assert.deepEqual((h.task as { completion: unknown }).completion, { validation: [
         { kind: 'test', label: 'Required validation', command: 'npm test' }], requireValidationPass: true });
+    assert.deepEqual((h.task as { reviewPolicy: unknown }).reviewPolicy, { kind: 'required' });
 });
 
 test('Resume requests backend gate reconciliation and restart keeps the same pending prompt', async () => {
@@ -165,7 +167,7 @@ test('Work candidate review preserves held evidence and submits only a fresh exp
     assert.notEqual(controller.selectedRun, shown);
     assert.equal(workReviewState({ ...run, status: 'completed' } as AgentRun, task as any), 'stale');
     assert.equal(workReviewState({ ...run, reviewDecision: { kind: 'reject' } } as AgentRun, task as any), 'rejected');
-    assert.equal(workReviewState(run as AgentRun, { ...task, origin: { kind: 'direct' } } as any), 'unavailable');
+    assert.equal(workReviewState(run as AgentRun, { ...task, origin: { kind: 'direct' } } as any), 'pending');
     assert.equal(workReviewCanAccept({ ...run, reviewDecision: undefined } as AgentRun,
         { ...task, completion: { validation: [] } } as any), false);
     run = { ...run, status: 'blocked', reviewDecision: undefined,

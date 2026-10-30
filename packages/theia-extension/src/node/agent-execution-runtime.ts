@@ -149,7 +149,7 @@ export class AgentExecutionRuntime {
                 !run.executionWorkspace || run.executionWorkspace.basisHead !== run.basis.head)
                 throw new Error('Candidate review is not ready');
             const task = await this.store.readTask(root, run.taskId);
-            if (!task || !['work-item', 'phase-stack'].includes(task.origin.kind) ||
+            if (!task || !['direct', 'work-item', 'phase-stack'].includes(task.origin.kind) ||
                 task.reviewPolicy?.kind !== 'required' || task.projectId !== run.projectId ||
                 task.origin.kind === 'work-item' && task.origin.projectId !== run.projectId)
                 throw new Error('Review task identity changed');
@@ -184,7 +184,7 @@ export class AgentExecutionRuntime {
                 candidateFingerprint, acceptedDirty);
             const within = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);
             const scope = task.origin.kind === 'work-item' ? task.origin.scope :
-                phaseStackReviewScope(task.instructions);
+                task.origin.kind === 'phase-stack' ? phaseStackReviewScope(task.instructions) : undefined;
             if (run.candidateDelta.effects.some(effect => !['create', 'modify'].includes(effect.kind) ||
                 scope && !scope.delegablePaths.some(path => within(path, effect.path)) ||
                 scope?.humanReservedPaths.some(path => within(path, effect.path) || within(effect.path, path)) ||
@@ -296,7 +296,7 @@ export class AgentExecutionRuntime {
         const kind: AgentRunEvent['kind'] = observation.kind === 'file-changed' ? 'file' :
             observation.kind.startsWith('command-') ? 'process' : observation.kind === 'authority-denied' ?
                 'authority' : 'message';
-        const piSummary = /^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|dope_(?:read|list|edit|process) (?:started|ended|failed))$/u
+        const piSummary = /^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|dope_(?:read|list|edit|process) (?:started|ended|failed)|Work tool stopped at (?:request-check|request-parse|workspace-check|model-check|candidate-check|broker-execute))$/u
             .test(observation.summary) ? observation.summary : undefined;
         const summary = piSummary ?? (observation.kind === 'agent-message' ? 'Agent message received' :
             observation.kind === 'command-started' ? 'Project command started' :
@@ -599,8 +599,9 @@ export class AgentExecutionRuntime {
         let candidateChanged = false;
         let reviewHoldError = false;
         let reviewScopeDenied = false;
+        let reviewStage = 'candidate-check';
         const reviewRequired = task?.reviewPolicy?.kind === 'required' &&
-            (task.origin.kind === 'work-item' || task.origin.kind === 'phase-stack');
+            ['direct', 'work-item', 'phase-stack'].includes(task.origin.kind);
         if (active.workspace && active.run) {
             try {
                 const { delta, fingerprint } = await active.workspace.freezeCandidate();
@@ -632,7 +633,7 @@ export class AgentExecutionRuntime {
                     if (reviewRequired) {
                         await active.workspace.assertActiveBasis(active.root, active.workspace.root);
                         const scope = task.origin.kind === 'work-item' ? task.origin.scope :
-                            phaseStackReviewScope(task.instructions);
+                            task.origin.kind === 'phase-stack' ? phaseStackReviewScope(task.instructions) : undefined;
                         const within = (parent: string, child: string): boolean =>
                             child === parent || child.startsWith(`${parent}/`);
                         const scopeBlocked = delta.effects.filter(effect =>
@@ -648,11 +649,15 @@ export class AgentExecutionRuntime {
                                     'human-reserved-scope' : 'delegation-scope');
                             throw new Error('Review candidate exceeds delegation or execution authority');
                         }
+                        reviewStage = 'diff-preview';
                         const preview = await active.workspace.reviewDiff(delta);
+                        reviewStage = 'candidate-save';
                         await this.store.saveReviewCandidate(active.root, active.run.id, active.workspace.root, delta);
+                        reviewStage = 'post-save-check';
                         if (await active.workspace.fingerprint() !== fingerprint)
                             throw new Error('Frozen candidate changed after validation');
                         await active.workspace.assertActiveBasis(active.root, active.workspace.root);
+                        reviewStage = 'review-record';
                         await this.serial(active, async () => {
                             await this.update(active, run => ({ ...run, status: 'blocked',
                                 candidateReview: { state: 'ready', revision: 0, candidateFingerprint: fingerprint,
@@ -689,7 +694,7 @@ export class AgentExecutionRuntime {
                 }
                 if (error instanceof PromotionFailure) await this.serial(active, () => this.update(active, run => ({ ...run,
                     authorityDecision: { allowed: true, blocked: [] }, appliedFiles: error.appliedFiles })));
-                await this.event(active, 'authority', reviewHoldError ? 'Candidate review hold failed' :
+                await this.event(active, 'authority', reviewHoldError ? `Candidate review hold failed at ${reviewStage}` :
                     'Candidate classification or promotion failed');
             }
         }

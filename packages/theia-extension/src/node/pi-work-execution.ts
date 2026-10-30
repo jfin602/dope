@@ -60,12 +60,14 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         const host = this.factory.create();
         this.active.add(host);
         let endpoint: string;
+        let boundRegistryRevision: number;
         try {
             await host.start();
             const binding = await this.bridge.bind({ connectionId: request.connectionId,
                 modelId: request.modelId, registryRevision: request.selectedRegistryRevision,
                 loadedContextTokens: request.selectedLoadedContextTokens }, host, workspace.root, { tools: true });
             endpoint = binding.endpoint;
+            boundRegistryRevision = binding.registryRevision;
         } catch (error) {
             this.factory.release(host); this.active.delete(host); throw error;
         }
@@ -80,10 +82,12 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 request.onEvent({ kind: 'status', summary: 'Pi Work started' });
                 request.onEvent({ kind: 'provider-event',
                     summary: `Pi source HEAD ${workspace.head}; candidate SHA-256 ${initialFingerprint}` });
-                const scopedPrompt = `${request.prompt}\n\nDope execution reference: task ${request.taskId}; source HEAD ${workspace.head}; candidate SHA-256 ${initialFingerprint}. Dope grants, review and validation remain authoritative.`;
+                const approvedCommands = commands.map(command => `${command.id} (${command.kind})`).join(', ');
+                const scopedPrompt = `${request.prompt}\n\nDope execution reference: task ${request.taskId}; source HEAD ${workspace.head}; candidate SHA-256 ${initialFingerprint}. Dope grants, review and validation remain authoritative. ${approvedCommands ? `If you call dope_process, use only these approved command IDs and kinds: ${approvedCommands}.` : 'No dope_process command is approved; Dope runs required validation after your final answer.'}`;
                 if (Buffer.byteLength(scopedPrompt, 'utf8') > 32_000)
                     throw new Error('Pi Work prompt and source reference exceed bounded context');
                 const answer = await host.runWork(scopedPrompt, async raw => {
+                  let stage = 'request-check';
                   try {
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
                     if (!Number.isSafeInteger(raw.id) || raw.id < 1 || seenTools.has(raw.id) || ++count > 32)
@@ -91,14 +95,19 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     seenTools.add(raw.id);
                     if (!expectedTools.includes(raw.name)) throw new Error('Unsupported Pi Work tool');
                     const name = raw.name.slice(5);
+                    stage = 'request-parse';
                     const [call] = parseLocalToolRequests(JSON.stringify([{
                         id: `pi-${raw.id}`, name, arguments: raw.arguments }]));
+                    stage = 'workspace-check';
                     this.workspace(request); // Revocation, run status and ownership are checked on every invocation.
+                    stage = 'model-check';
                     await this.bridge.assertWorkSelection({ connectionId: request.connectionId,
-                        modelId: request.modelId, registryRevision: request.selectedRegistryRevision,
+                        modelId: request.modelId, registryRevision: boundRegistryRevision,
                         loadedContextTokens: request.selectedLoadedContextTokens }, endpoint);
+                    stage = 'candidate-check';
                     await broker.assertActive();
                     this.workspace(request);
+                    stage = 'broker-execute';
                     if (call.name === 'process') request.onEvent({ kind: 'command-started', summary: 'Approved candidate command started',
                         commandId: call.id, command: call.arguments.commandId, status: 'running' });
                     const response = await broker.execute(call, abort.signal);
@@ -121,7 +130,9 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                   } catch {
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
                     denied = true;
-                    request.onEvent({ kind: 'authority-denied', summary: 'Pi Work tool denied by execution authority' });
+                    request.onEvent({ kind: 'provider-event', summary: `Pi Work tool stopped at ${stage}` });
+                    request.onEvent({ kind: 'authority-denied',
+                        summary: `Pi Work tool denied at ${stage}` });
                     throw new Error('Pi Work tool denied');
                   }
                 }, event => {
@@ -133,7 +144,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 });
                 if (cancelled || denied || answer.modelId !== request.modelId) throw new Error('Pi Work denied or model changed');
                 await this.bridge.assertWorkSelection({ connectionId: request.connectionId,
-                    modelId: request.modelId, registryRevision: request.selectedRegistryRevision,
+                    modelId: request.modelId, registryRevision: boundRegistryRevision,
                     loadedContextTokens: request.selectedLoadedContextTokens }, endpoint);
                 await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
                 const delta = await workspace.delta();

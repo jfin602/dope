@@ -1,6 +1,6 @@
 import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
-import type { AgentTranscriptEntry } from '@dope/agent-core';
+import type { AgentRunEvent, AgentTranscriptEntry } from '@dope/agent-core';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { ChatScrollFollow } from './chat-panel-presentation';
@@ -15,6 +15,7 @@ export class AgentTranscriptWidget extends BaseWidget {
     private readonly content = document.createElement('div');
     private readonly follow = new ChatScrollFollow();
     private entries: AgentTranscriptEntry[] = [];
+    private events: AgentRunEvent[] = [];
     private request = 0;
     private scrollTop = 0;
     private state: 'recorded' | 'not-recorded' = 'not-recorded';
@@ -66,6 +67,7 @@ export class AgentTranscriptWidget extends BaseWidget {
                 this.status.textContent = 'Open the original project to view this transcript.';
                 this.content.replaceChildren();
                 this.entries = [];
+                this.events = [];
                 this.expandedCommands.clear();
                 this.scrollTop = 0;
                 this.follow.select(undefined);
@@ -75,6 +77,16 @@ export class AgentTranscriptWidget extends BaseWidget {
             const run = await this.runtime.readRun(projectHandle, this.options.runId);
             if (!run) throw new Error('Work run could not be found.');
             const task = await this.runtime.readTask(projectHandle, run.taskId);
+            const events: AgentRunEvent[] = [];
+            let eventCursor = 0;
+            while (true) {
+                const page = await this.runtime.readEvents(projectHandle, run.id, eventCursor, 100);
+                if (request !== this.request || this.isDisposed) return;
+                events.push(...page.events);
+                if (!page.hasMore) break;
+                if (page.nextSequence <= eventCursor) throw new Error('Activity pagination did not advance.');
+                eventCursor = page.nextSequence;
+            }
             const entries: AgentTranscriptEntry[] = [];
             let cursor = 0;
             let state: 'recorded' | 'not-recorded' = 'not-recorded';
@@ -89,7 +101,7 @@ export class AgentTranscriptWidget extends BaseWidget {
                 cursor = page.nextSequence;
             }
             if (request !== this.request || this.isDisposed) return;
-            this.entries = entries; this.state = state; this.incomplete = incomplete;
+            this.entries = entries; this.events = events.slice(-100); this.state = state; this.incomplete = incomplete;
             this.follow.select(this.id);
             this.title.label = this.title.caption = workTitle({ kind: 'run', id: run.id }, run, task);
             this.status.textContent = `Work transcript · Run ${run.status}`;
@@ -130,6 +142,16 @@ export class AgentTranscriptWidget extends BaseWidget {
             latest.hidden = !this.follow.latestBelow; };
         const transcript = document.createElement('div');
         transcript.className = 'dope-chat-transcript dope-work-transcript';
+        if (this.events.length) {
+            const activity = document.createElement('section'); activity.className = 'dope-work-activity';
+            const heading = document.createElement('h3'); heading.textContent = 'Live activity'; activity.append(heading);
+            for (const event of this.events) {
+                const note = document.createElement('p'); note.className = 'dope-work-system';
+                note.textContent = `${event.summary}${event.path ? ` · ${event.path}` : ''}`;
+                activity.append(note);
+            }
+            transcript.append(activity);
+        }
         if (this.state === 'not-recorded') {
             const note = document.createElement('p'); note.className = 'dope-work-system';
             note.textContent = 'Transcript not recorded for this historical run.';

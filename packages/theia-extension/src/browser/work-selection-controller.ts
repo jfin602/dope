@@ -194,7 +194,7 @@ export interface WorkRow {
 
 export function workReviewState(run?: AgentRun, task?: AgentTask, busy = false):
     'pending' | 'busy' | 'stale' | 'accepted' | 'rejected' | 'unavailable' {
-    if (!run?.candidateReview || !task || !['work-item', 'phase-stack'].includes(task.origin.kind) ||
+    if (!run?.candidateReview || !task || !['direct', 'work-item', 'phase-stack'].includes(task.origin.kind) ||
         task.reviewPolicy?.kind !== 'required' || task.id !== run.taskId || task.projectId !== run.projectId) return 'unavailable';
     if (run.reviewDecision) return run.reviewDecision.kind === 'accept' ? 'accepted' : 'rejected';
     if (busy) return 'busy';

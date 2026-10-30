@@ -157,9 +157,11 @@ function supportedCommand(value: LocalProcessCommand): boolean {
             /[;&|`$<>*?{}()[\]\\\s\u0000-\u001f]/u.test(arg))) return false;
     const safePath = (path: string, pattern: RegExp) => pattern.test(path) &&
         path.split('/').every(part => part !== '.' && part !== '..' && !privatePart(part));
-    if (value.kind === 'test')
-        return value.argv.length === 2 && value.argv[0] === '--test' &&
-            safePath(value.argv[1], SCRIPT_PATH) && /\.test\.(?:c|m)?js$/u.test(value.argv[1]);
+    if (value.kind === 'test') {
+        const args = value.argv[0] === '--experimental-strip-types' ? value.argv.slice(1) : value.argv;
+        return args.length === 2 && args[0] === '--test' &&
+            safePath(args[1], SCRIPT_PATH) && /\.test\.(?:c|m)?js$/u.test(args[1]);
+    }
     if (value.kind === 'build')
         return (value.argv.length === 1 && safePath(value.argv[0], SCRIPT_PATH)) ||
             (value.argv.length === 3 && value.argv[0] === 'node_modules/typescript/bin/tsc' &&

@@ -7,6 +7,7 @@ export interface PiLocalSelection { connectionId: string; modelId: string; regis
 export interface PiLocalBinding {
     connectionId: string;
     modelId: string;
+    registryRevision: number;
     endpoint: string;
     contextWindowTokens: number;
     maxOutputTokens: number;
@@ -115,7 +116,8 @@ export class PiModelBridge {
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
             JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected))
             throw unavailable('Pi tool boundary changed; restart Dope');
-        return { connectionId: selection.connectionId, modelId: selection.modelId, endpoint,
+        return { connectionId: selection.connectionId, modelId: selection.modelId,
+            registryRevision: latest.registry.revision, endpoint,
             contextWindowTokens: loaded, maxOutputTokens,
             ...(connection.credential ? { credentialReference: { source: connection.credential.source,
                 ...(connection.credential.source === 'environment' ? { name: connection.credential.name } : {}) } } : {}) };

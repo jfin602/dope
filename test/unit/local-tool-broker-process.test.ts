@@ -59,6 +59,9 @@ test('OS containment', () => {
         await writeFile(join(root, 'containment.test.mjs'), probe);
         await writeFile(join(root, 'build.mjs'),
             "import fs from 'node:fs'; fs.writeFileSync('/work/built', 'candidate build'); console.log('build ok');");
+        await writeFile(join(root, 'label.ts'), 'export const label: string = "ready";\n');
+        await writeFile(join(root, 'label.test.mjs'),
+            'import test from "node:test"; import assert from "node:assert/strict"; import { label } from "./label.ts"; test("typed source", () => assert.equal(label, "ready"));');
         await writeFile(join(root, 'linger.test.mjs'), `import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 spawn(process.execPath, ['-e', "setTimeout(() => require('fs').writeFileSync('/work/orphan', 'bad'), 2000); setInterval(() => {}, 1000)"], { stdio: 'ignore' });
@@ -129,6 +132,10 @@ setInterval(() => {}, 1000);`);
         await pause(2300);
         await assert.rejects(readFile(join(root, 'orphan')));
         assert.equal(await readFile(outside, 'utf8'), 'original');
+        const typed = await run('typed', [{ id: 'typed', kind: 'test', executable: 'node',
+            argv: ['--experimental-strip-types', '--test', 'label.test.mjs'] }]);
+        assert.equal(typed.status, 'completed', typed.output);
+        assert.match(typed.output, /pass 1/u);
     } finally {
         await workspace?.dispose();
         await rm(parent, { recursive: true, force: true });
