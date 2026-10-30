@@ -1,6 +1,7 @@
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import type { ConversationMessage, ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import type { StrategicDraftInput } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import { validGateChatEnvelope } from './roadmap-gate-chat';
 
 const SYSTEM_RESERVE = 512;
 const SAFETY_RESERVE = 256;
@@ -179,7 +180,7 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
     generate: (retryInstruction?: string) => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
-    mode: 'linked' | 'unlinked' | 'draft' | 'help' | 'bridge' | 'plan' | 'plan-revision' = 'unlinked', eligibleObjective = true,
+    mode: 'linked' | 'unlinked' | 'draft' | 'gate' | 'help' | 'bridge' | 'plan' | 'plan-revision' = 'unlinked', eligibleObjective = true,
     check: LocalPlanningAnswerCheck = {}): Promise<T> {
     let lastInvalid = '';
     let retryInstruction: string | undefined;
@@ -206,6 +207,10 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const value: unknown = JSON.parse(complete.text);
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object required');
             const raw = value as Record<string, unknown>;
+            if (mode === 'gate' && (validGateChatEnvelope(raw) ||
+                raw.type === 'roadmap-gate-undo' && Object.keys(raw).sort().join(',') === 'type' ||
+                raw.type === 'roadmap-gate-focus' && Object.keys(raw).sort().join(',') === 'id,type' &&
+                typeof raw.id === 'string')) return complete;
             if (mode === 'plan' && validImplementationPlan(raw)) {
                 missingPlanCoverage = check.validatePlan?.(raw) ?? [];
                 if (!missingPlanCoverage.length) return complete;

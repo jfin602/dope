@@ -3,11 +3,11 @@ import type { RoadmapService } from '../roadmap-service';
 import type { RoadmapInspectorModel } from './roadmap-inspector-model';
 import type { PlanningMapController } from './planning-map-controller';
 
-export type PlanningSelection = ChatContextSelection & { kind: 'roadmap-checkpoint' | 'planning-map'; projectId: string };
+export type PlanningSelection = ChatContextSelection & { kind: 'roadmap-checkpoint' | 'roadmap' | 'planning-map'; projectId: string };
 
 /** Reads the existing map owners. This has no Chat or widget lifecycle effects. */
 export class ChatPlanningSelection {
-    private active?: 'roadmap-checkpoint' | 'planning-map';
+    private active?: 'roadmap-checkpoint' | 'roadmap' | 'planning-map';
     private roadmapId?: string;
     private planningId?: string;
     private readonly listeners = new Set<() => void>();
@@ -15,9 +15,11 @@ export class ChatPlanningSelection {
         private readonly roadmapService: RoadmapService) {
         this.roadmapId = roadmap.selectedId;
         this.planningId = planning.selectedMapId;
-        this.active = roadmap.selectedId ? 'roadmap-checkpoint' : planning.selectedMapId ? 'planning-map' : undefined;
+        this.active = roadmap.gateIndex ? 'roadmap' : roadmap.selectedId ? 'roadmap-checkpoint' :
+            planning.selectedMapId ? 'planning-map' : undefined;
         roadmap.onChange(() => {
-            if (roadmap.selectedId && roadmap.selectedId !== this.roadmapId) this.active = 'roadmap-checkpoint';
+            if (roadmap.gateIndex && (roadmap.selectedId !== this.roadmapId || !this.active)) this.active = 'roadmap';
+            else if (roadmap.selectedId && roadmap.selectedId !== this.roadmapId) this.active = 'roadmap-checkpoint';
             this.roadmapId = roadmap.selectedId;
             for (const listener of this.listeners) listener();
         });
@@ -30,6 +32,19 @@ export class ChatPlanningSelection {
     onChange(listener: () => void): { dispose(): void } {
         this.listeners.add(listener);
         return { dispose: () => { this.listeners.delete(listener); } };
+    }
+
+    async focusRoadmap(workspace: string, target: { projectId: string; revision: number; id: string }): Promise<PlanningSelection> {
+        const index = await this.roadmapService.read(workspace) as unknown as import('@dope/project-intelligence/lib/node/roadmap-gate-domain').RoadmapGateIndex;
+        if (index.schemaVersion !== 2 || index.projectId !== target.projectId || index.revision !== target.revision ||
+            !index.phases.some(item => item.id === target.id) && !index.gates.some(item => item.id === target.id))
+            throw new Error('Roadmap focus became stale');
+        if (this.roadmap.projectUri !== workspace || this.roadmap.gateIndex?.projectId !== target.projectId)
+            throw new Error('Open the current Roadmap before focusing an item');
+        this.roadmap.select(target.id);
+        this.active = 'roadmap';
+        return { kind: 'roadmap', id: target.id, projectId: index.projectId, ownerRevision: index.revision,
+            ...(index.linkedDocument ? { sourceHash: index.linkedDocument.sourceHash } : {}) };
     }
 
     bridge(workspace: string, branchIds: string[]) {
@@ -49,6 +64,12 @@ export class ChatPlanningSelection {
     }
 
     current(workspace: string): PlanningSelection | undefined {
+        if (this.active === 'roadmap' && this.roadmap.projectUri === workspace && this.roadmap.gateIndex) {
+            const index = this.roadmap.gateIndex;
+            return { kind: 'roadmap', id: this.roadmap.selectedGate?.id ?? this.roadmap.selectedPhase?.id ?? 'roadmap',
+                projectId: index.projectId, ownerRevision: index.revision,
+                ...(index.linkedDocument ? { sourceHash: index.linkedDocument.sourceHash } : {}) };
+        }
         if (this.active === 'roadmap-checkpoint' && this.roadmap.projectUri === workspace && this.roadmap.selected && this.roadmap.index) {
             const item = this.roadmap.selected;
             return { kind: 'roadmap-checkpoint', id: item.id, projectId: this.roadmap.index.projectId,
@@ -61,6 +82,20 @@ export class ChatPlanningSelection {
     }
 
     async resolve(workspace: string, selection: PlanningSelection, pinned: boolean): Promise<PlanningSelection> {
+        if (selection.kind === 'roadmap') {
+            const index = await this.roadmapService.read(workspace) as unknown as import('@dope/project-intelligence/lib/node/roadmap-gate-domain').RoadmapGateIndex;
+            if (index.schemaVersion !== 2 || index.projectId !== selection.projectId)
+                throw new Error('Roadmap selection belongs to another project');
+            if (selection.id !== 'roadmap' && !index.phases.some(item => item.id === selection.id) &&
+                !index.gates.some(item => item.id === selection.id))
+                throw new Error('Selected Roadmap item is missing');
+            if (pinned && (index.revision !== selection.ownerRevision ||
+                index.linkedDocument?.sourceHash !== selection.sourceHash))
+                throw new Error('Pinned Roadmap selection is stale; pin the current selection again');
+            return { kind: 'roadmap', id: selection.id, projectId: index.projectId,
+                ownerRevision: index.revision,
+                ...(index.linkedDocument ? { sourceHash: index.linkedDocument.sourceHash } : {}) };
+        }
         if (selection.kind === 'roadmap-checkpoint') {
             const index = await this.roadmapService.read(workspace);
             if (index.projectId !== selection.projectId) throw new Error('Roadmap selection belongs to another project');

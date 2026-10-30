@@ -294,7 +294,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const active = state.activePlanning;
         const label = this.content.querySelector<HTMLElement>('.dope-chat-planning-context');
         if (label) label.textContent = `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
-            (active ? `${active.kind === 'roadmap-checkpoint' ? 'checkpoint' : 'Planning Map'} ${active.id}` : 'none');
+            (active ? `${active.kind === 'roadmap-checkpoint' ? 'checkpoint' : active.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${active.id}` : 'none');
         const pin = this.content.querySelector<HTMLButtonElement>('.dope-chat-pin-planning');
         if (pin) pin.disabled = !state.workspace || !this.planningSelection?.current(state.workspace);
     }
@@ -1421,7 +1421,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             field(label, input);
         }
         const sources: ChatContextKind[] = ['editor', 'selection', 'file', 'project-mind', 'architecture',
-            'physical-map', 'flow', 'planning-map', 'work-item', 'roadmap-checkpoint', 'saved-chat'];
+            'physical-map', 'flow', 'planning-map', 'work-item', 'roadmap-checkpoint', 'roadmap', 'saved-chat'];
         for (const source of sources) {
             const input = document.createElement('input'); input.type = 'checkbox';
             input.checked = draft.context.allowedSources.includes(source);
@@ -2054,7 +2054,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         planning.className = 'dope-chat-planning-context';
         const activePlanning = state.activePlanning;
         planning.textContent = `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
-            (activePlanning ? `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : 'Planning Map'} ${activePlanning.id}` : 'none');
+            (activePlanning ? `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : activePlanning.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${activePlanning.id}` : 'none');
         composer.append(planning);
         if (state.context.length) {
             const selectedContext = document.createElement('ul');
@@ -2082,7 +2082,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             affected.textContent = planProposal ? 'Review each proposed change before accepting.' :
                 `Affected: ${proposal.changedIds.join(', ')}`;
             const diff = document.createElement('details');
-            diff.open = planProposal;
+            diff.open = planProposal || proposal.action.type.includes('.') ||
+                ['gate-sequence', 'gate-undo'].includes(proposal.action.type);
             const diffLabel = document.createElement('summary'); diffLabel.textContent = 'Review before and after';
             const rows = planProposal ? implementationPlanDiff(proposal.summary) : undefined;
             if (rows) {

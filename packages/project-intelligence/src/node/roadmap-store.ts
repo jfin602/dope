@@ -155,6 +155,7 @@ export type RoadmapGateMutation =
         criteria: { id: string; title: string; expectedResult: string }[] }
     | { type: 'gate.edit'; id: string; title: string; purpose: string }
     | { type: 'gate.delete'; id: string }
+    | { type: 'gate.reparent'; id: string; parentPhaseId: string; order: number }
     | { type: 'gate.reorder'; parentPhaseId: string; ids: string[] }
     | { type: 'gate.dependencies'; id: string; dependencies: string[] }
     | { type: 'criterion.add'; gateId: string; id: string; title: string; expectedResult: string }
@@ -565,8 +566,10 @@ export class RoadmapStore {
 
     /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
-        operation: RoadmapGateMutation, previewOnly = false): Promise<RoadmapGateIndex> {
-        if (!revision(expectedRevision) || !id(expectedProjectId) || !operation || typeof operation !== 'object')
+        operation: RoadmapGateMutation | RoadmapGateMutation[], previewOnly = false): Promise<RoadmapGateIndex> {
+        const operations = Array.isArray(operation) ? operation : [operation];
+        if (!revision(expectedRevision) || !id(expectedProjectId) || !operations.length || operations.length > 3 ||
+            operations.some(item => !item || typeof item !== 'object'))
             throw new Error('Invalid Roadmap mutation authority');
         const next = await this.locked(root, async () => {
             const { file } = await this.paths(root);
@@ -636,6 +639,7 @@ export class RoadmapStore {
                 items.reduce((highest, item) => Math.max(highest, item.order), -1) + 1;
             const defaults = { implementationStatus: 'unknown', qualificationStatus: 'unknown',
                 draftAcceptance: 'accepted' } as const;
+            for (const operation of operations) {
             switch (operation.type) {
                 case 'phase.create':
                     unique(operation.id);
@@ -680,6 +684,22 @@ export class RoadmapStore {
                 case 'gate.edit': {
                     const item = gate(operation.id); owned(item.id);
                     item.title = operation.title; item.purpose = operation.purpose; break;
+                }
+                case 'gate.reparent': {
+                    const item = gate(operation.id); owned(item.id); phase(operation.parentPhaseId);
+                    owned(operation.parentPhaseId);
+                    if (!Number.isSafeInteger(operation.order) || operation.order < 0)
+                        throw new Error('Invalid Gate destination order');
+                    const former = item.parentPhaseId;
+                    const siblings = candidate.gates.filter(entry => entry.parentPhaseId === operation.parentPhaseId && entry.id !== item.id)
+                        .sort((a, b) => a.order - b.order);
+                    if (operation.order > siblings.length) throw new Error('Gate destination order exceeds Phase');
+                    item.parentPhaseId = operation.parentPhaseId;
+                    siblings.splice(operation.order, 0, item);
+                    siblings.forEach((entry, order) => { entry.order = order; });
+                    candidate.gates.filter(entry => entry.parentPhaseId === former && entry.id !== item.id)
+                        .sort((a, b) => a.order - b.order).forEach((entry, order) => { entry.order = order; });
+                    break;
                 }
                 case 'gate.delete': {
                     const item = gate(operation.id); owned(item.id);
@@ -921,6 +941,7 @@ export class RoadmapStore {
                     previous?.qualificationStatus === 'green' || previous?.gateSetCoverage.status === 'approved' &&
                     item.gateSetCoverage.status !== 'approved' ? 'stale' :
                     result.status === 'not-green' ? 'not-green' : 'unknown';
+            }
             }
             if (JSON.stringify(candidate) === JSON.stringify(current)) throw new Error('Roadmap mutation has no changes');
             candidate.revision = current.revision + 1;

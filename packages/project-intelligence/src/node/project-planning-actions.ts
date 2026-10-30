@@ -13,9 +13,10 @@ export interface RoadmapPlanningLinks {
     resolve(root: string, link: RoadmapLink): Promise<RoadmapPlanningRecord | undefined>;
 }
 export type GatePlanningAction = Extract<RoadmapGateMutation, { type:
-    'phase.create' | 'phase.edit' | 'phase.reorder' | 'phase.dependencies' |
-    'gate.create' | 'gate.edit' | 'gate.reorder' | 'gate.dependencies' |
-    'criterion.add' | 'criterion.edit' | 'criterion.reorder' }> & { id?: string };
+    'phase.create' | 'phase.edit' | 'phase.delete' | 'phase.reorder' | 'phase.dependencies' |
+    'gate.create' | 'gate.edit' | 'gate.delete' | 'gate.reparent' | 'gate.reorder' | 'gate.dependencies' |
+    'criterion.add' | 'criterion.edit' | 'criterion.remove' | 'criterion.reorder' |
+    'correction.attach' | 'correction.edit' | 'correction.reparent' | 'correction.delete' }> & { id?: string };
 type RuntimeSnapshot = RoadmapIndex & Pick<RoadmapGateIndex, 'phases' | 'gates' | 'corrections'>;
 /** Legacy compile seam for consumers migrated in P8–P17. Runtime rejects these operations. */
 type RetiredAction =
@@ -51,15 +52,23 @@ export type PlanningLinkResolver = (root: string, link: RoadmapLink) => Promise<
 const specification: Record<GatePlanningAction['type'], readonly string[]> = {
     'phase.create': ['type', 'id', 'title', 'objective'],
     'phase.edit': ['type', 'id', 'title', 'objective'],
+    'phase.delete': ['type', 'id'],
     'phase.reorder': ['type', 'ids'],
     'phase.dependencies': ['type', 'id', 'dependencies'],
     'gate.create': ['type', 'id', 'parentPhaseId', 'designation', 'title', 'purpose', 'criteria'],
     'gate.edit': ['type', 'id', 'title', 'purpose'],
+    'gate.delete': ['type', 'id'],
+    'gate.reparent': ['type', 'id', 'parentPhaseId', 'order'],
     'gate.reorder': ['type', 'parentPhaseId', 'ids'],
     'gate.dependencies': ['type', 'id', 'dependencies'],
     'criterion.add': ['type', 'gateId', 'id', 'title', 'expectedResult'],
     'criterion.edit': ['type', 'gateId', 'id', 'title', 'expectedResult'],
-    'criterion.reorder': ['type', 'gateId', 'ids']
+    'criterion.remove': ['type', 'gateId', 'id'],
+    'criterion.reorder': ['type', 'gateId', 'ids'],
+    'correction.attach': ['type', 'id', 'parent', 'title', 'objective'],
+    'correction.edit': ['type', 'id', 'title', 'objective'],
+    'correction.reparent': ['type', 'id', 'parent'],
+    'correction.delete': ['type', 'id']
 };
 const digest = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const copy = <T>(value: T): T => structuredClone(value);
@@ -119,22 +128,25 @@ export class ProjectPlanningActions {
         return (await this.owners.list(root)).filter(record =>
             record.owner === 'issue' || record.artifact.type === 'idea');
     }
-    private checked(request: PlanningActionRequest): { root: string; operation: GatePlanningAction } {
+    private checked(request: PlanningActionRequest): { root: string; operations: GatePlanningAction[] } {
         if (!record(request) || Object.keys(request).some(key => !['projectHandle', 'ownerId', 'expectedRevision', 'sourceHashes', 'actions'].includes(key)) ||
             !validId(request.ownerId) || !Number.isSafeInteger(request.expectedRevision) || request.expectedRevision < 1 ||
-            !Array.isArray(request.actions) || request.actions.length !== 1)
+            !Array.isArray(request.actions) || !request.actions.length || request.actions.length > 3)
             throw new Error('Invalid planning action request');
         const { root } = this.binding(request.projectHandle, request.ownerId);
-        const action = request.actions[0];
-        if (!record(action) || typeof action.type !== 'string' || !Object.hasOwn(specification, action.type))
-            throw new Error('Unknown or retired planning action type');
-        const fields = specification[action.type as GatePlanningAction['type']];
-        if (Object.keys(action).length !== fields.length || fields.some(key => !Object.hasOwn(action, key)))
-            throw new Error('Invalid Gate planning action fields');
+        for (const action of request.actions) {
+            if (!record(action) || typeof action.type !== 'string' || !Object.hasOwn(specification, action.type))
+                throw new Error('Unknown or retired planning action type');
+            const fields = specification[action.type as GatePlanningAction['type']];
+            const optional = ['correction.attach', 'correction.reparent'].includes(action.type) ? ['criterionId'] : [];
+            if (fields.some(key => !Object.hasOwn(action, key)) ||
+                Object.keys(action).some(key => !fields.includes(key) && !optional.includes(key)))
+                throw new Error('Invalid Gate planning action fields');
+        }
         if (request.sourceHashes !== undefined && (!record(request.sourceHashes) ||
             Object.entries(request.sourceHashes).some(([key, hash]) => !validId(key) || typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))))
             throw new Error('Invalid planning source hashes');
-        return { root, operation: action as GatePlanningAction };
+        return { root, operations: request.actions as GatePlanningAction[] };
     }
     private sourceCheck(current: RoadmapGateIndex, request: PlanningActionRequest, operation: GatePlanningAction): void {
         if (!current.linkedDocument) return;
@@ -146,28 +158,31 @@ export class ProjectPlanningActions {
             throw new Error('Stale or missing linked Roadmap source hash');
     }
     async preview(request: PlanningActionRequest): Promise<PlanningActionPreview> {
-        const { root, operation } = this.checked(request);
+        const { root, operations } = this.checked(request);
         const current = await this.store.read<RoadmapGateIndex>(root);
         if (current.projectId !== request.ownerId || current.revision !== request.expectedRevision)
             throw new Error('Stale or foreign planning owner revision');
-        this.sourceCheck(current, request, operation);
-        const next = await this.store.mutateGateIndex(root, current.revision, current.projectId, operation, true);
-        const changedIds = [...next.phases, ...next.gates, ...next.corrections]
-            .filter(item => JSON.stringify(item) !== JSON.stringify([...current.phases, ...current.gates, ...current.corrections]
-                .find(previous => previous.id === item.id))).map(item => item.id);
-        const token = digest({ ownerId: current.projectId, revision: current.revision, operation,
+        for (const operation of operations) this.sourceCheck(current, request, operation);
+        const next = await this.store.mutateGateIndex(root, current.revision, current.projectId, operations, true);
+        const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates, ...index.corrections,
+            ...index.gates.flatMap(gate => gate.criteria)];
+        const before = new Map(entities(current).map(item => [item.id, item]));
+        const after = new Map(entities(next).map(item => [item.id, item]));
+        const changedIds = [...new Set([...before.keys(), ...after.keys()])].filter(id =>
+            JSON.stringify(before.get(id)) !== JSON.stringify(after.get(id)));
+        const token = digest({ ownerId: current.projectId, revision: current.revision, operations,
             sourceHashes: request.sourceHashes, current, next });
         return { token, ownerId: current.projectId, revision: current.revision,
             changedIds, requiresApproval: true, next: next as unknown as RuntimeSnapshot };
     }
     async apply(request: PlanningActionRequest, token: string, approved = false): Promise<RuntimeSnapshot> {
         if (!approved) throw new Error('Planning action approval required');
-        const { root, operation } = this.checked(request);
+        const { root, operations } = this.checked(request);
         const current = await this.store.read<RoadmapGateIndex>(root);
         const preview = await this.preview(request);
         if (preview.token !== token) throw new Error('Stale or foreign planning preview token');
-        this.sourceCheck(current, request, operation);
-        const next = await this.store.mutateGateIndex(root, request.expectedRevision, request.ownerId, operation);
+        for (const operation of operations) this.sourceCheck(current, request, operation);
+        const next = await this.store.mutateGateIndex(root, request.expectedRevision, request.ownerId, operations);
         const undoToken = randomUUID();
         this.undo.set(request.projectHandle, { ownerId: request.ownerId, revision: next.revision,
             before: current, after: next, token: undoToken });
@@ -176,6 +191,16 @@ export class ProjectPlanningActions {
     undoToken(projectHandle: string, ownerId: string): string | undefined {
         this.binding(projectHandle, ownerId);
         return this.undo.get(projectHandle)?.token;
+    }
+    async previewUndoEligible(request: PlanningUndoRequest): Promise<{ before: RoadmapGateIndex; after: RoadmapGateIndex }> {
+        const { root } = this.binding(request.projectHandle, request.ownerId);
+        const entry = this.undo.get(request.projectHandle);
+        if (!entry || entry.ownerId !== request.ownerId || entry.token !== request.token)
+            throw new Error('Undo conflict');
+        const current = await this.store.read<RoadmapGateIndex>(root);
+        if (current.revision !== request.expectedRevision || current.revision !== entry.revision ||
+            JSON.stringify(current) !== JSON.stringify(entry.after)) throw new Error('Stale Roadmap revision');
+        return { before: copy(current), after: { ...copy(entry.before), revision: current.revision + 1 } };
     }
     async undoEligible(request: PlanningUndoRequest): Promise<RuntimeSnapshot> {
         const { root } = this.binding(request.projectHandle, request.ownerId);

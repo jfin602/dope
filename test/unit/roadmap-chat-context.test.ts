@@ -70,7 +70,7 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     const chatId = randomUUID();
     let state = await backend.mutate({ projectHandle, expectedRevision: 0,
       operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Roadmap review' } });
-    assert.deepEqual(state.chats[0].settings.context.allowedSources, ['roadmap-checkpoint']);
+    assert.deepEqual(state.chats[0].settings.context.allowedSources, ['roadmap-checkpoint', 'roadmap']);
     const settings = structuredClone(state.chats[0].settings);
     settings.context = { maxInputTokens: 4096, reservedOutputTokens: 1024, history: 'none',
       savedChatSearch: false, allowedSources: [] };

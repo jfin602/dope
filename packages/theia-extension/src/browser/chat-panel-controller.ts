@@ -416,14 +416,14 @@ export class ChatPanelController {
     }
     pinPlanning(): boolean {
         const selection = this.workspace && this.planning?.current(this.workspace);
-        if (!selection) { this.error = 'Select a Roadmap checkpoint or Planning Map first.'; this.changed(); return false; }
+        if (!selection) { this.error = 'Select Roadmap or a Planning Map first.'; this.changed(); return false; }
         this.pinnedPlanning = selection; this.planningMode = 'pin'; this.lastContext = undefined; this.error = ''; this.changed();
         return true;
     }
     followPlanning(): void { this.planningMode = 'follow'; this.pinnedPlanning = undefined; this.lastContext = undefined; this.error = ''; this.changed(); }
     restorePlanning(mode: 'follow' | 'pin', selection?: PlanningSelection, workspace?: string): void {
         if (mode === 'pin' && selection && selection.projectId && selection.id &&
-            (selection.kind === 'roadmap-checkpoint' || selection.kind === 'planning-map')) {
+            (selection.kind === 'roadmap-checkpoint' || selection.kind === 'roadmap' || selection.kind === 'planning-map')) {
             this.planningMode = 'pin'; this.pinnedPlanning = selection;
             if (workspace && this.workspace !== workspace) this.restoredPlanning = { workspace, selection };
         } else { this.restoredPlanning = undefined; this.followPlanning(); }
@@ -485,6 +485,10 @@ export class ChatPanelController {
                 throw new Error('Chat changed during the turn');
             this.lastContext = result;
             this.planningProposal = result.proposal;
+            if (result.roadmapFocus && this.workspace && this.planning) {
+                const focused = await this.planning.focusRoadmap(this.workspace, result.roadmapFocus);
+                if (this.planningMode === 'pin') this.pinnedPlanning = focused;
+            }
             this.roadmapOffer = result.roadmapOffer;
             if (result.roadmapDraftReview) { this.transientUser = undefined;
                 this.strategicDraftReview = result.roadmapDraftReview; }

@@ -13,11 +13,14 @@ import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { RoadmapStore, type RoadmapCheckpoint, type RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
+import { evaluateGateQualification, evaluatePhaseQualification,
+    type RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { GroundingResult } from './chat-project-grounder';
 import { DOPE_CAPABILITY_HELP_VERSION, projectDopeCapabilityHelp, selectDopeCapabilityHelp, type DopeHelpId } from './dope-capability-help';
 
 export const GROUNDED_CHAT_INSTRUCTION = "Ground claims about existing project files, packages, architecture and canonical state in current supplied evidence; never imply an unobserved file was inspected. No file evidence in this turn means files were not inspected or included, NOT that the attached project is empty. Describe an empty directory only from a current listing; limit the claim to the listed scope. Separate verified facts, developer goals and provisional recommendations. A developer's requested game mechanics are goals, not verified or implemented systems; label them as requested until current file evidence proves implementation. You may suggest prospective designs, steps, tests and tradeoffs without code. For a straightforward ordinary request, give one practical recommendation, a short ordered approach and an initial deliverable. Around 100–170 words is a soft preference, never a cap. Give more detail when the request or safety requires it; avoid repeating systems and steps. When asked to begin planning a software project, recommend a feasible starting approach, a short implementation order and a first milestone or vertical slice suited to the idea. Ask at most one consequential question when useful for the next decision. Mention unavailable evidence only when relevant; do not require repository inspection, Architecture or Physical Map for brainstorming. Use natural conversation without required headings; give a formal plan only when explicitly requested.";
 const ROADMAP_ACTION_INSTRUCTION = 'Use the supplied checkpoint capabilities to determine whether its Objective is editable; a request to read does not make a linked checkpoint unlinked or read-only. For a factual or decision question without an edit request, choose type no-action and put the concrete answer in its message field. Answer from the supplied evidence, including owner and document revisions when present, and distinguish those counters. If a fact is absent, say so without inventing it; do not replace available facts with a generic missing-evidence or edit-capability reason. Never copy an instruction phrase as the answer. For a linked Markdown checkpoint, only if capabilities.objective.editable is true and the user requests an Objective change, propose {"type":"roadmap-intent","intent":"set-objective","value":"one line"}. Otherwise choose type no-action with a concrete source-backed reason in its message field. For an unlinked checkpoint, a validated roadmap-proposal action may be used. All proposals require developer approval. Never claim an edit was applied.';
+const GATE_ACTION_INSTRUCTION = 'Use only the current schema-2 Roadmap context. For a question, unsupported action, ambiguous target, qualification without reviewed proof, or missing source, return strict JSON {"type":"no-action","message":"concise useful answer or one clarification"}. For a request to select/focus an existing Phase or Gate return {"type":"roadmap-gate-focus","id":"exact existing ID"}; selection writes no Roadmap data. For an edit return strict JSON {"type":"roadmap-gate-proposal","projectId":"exact supplied ID","ownerRevision":1,"actions":[...]}. For an explicit request to undo the last accepted Chat edit return {"type":"roadmap-gate-undo"}; it still needs review and may be stale. Use the supplied numeric revision and exact existing IDs. One to three atomic actions only; report if the request needs more. New entities use unique temporary IDs new:1, new:2, etc.; later actions in this batch may reference them. Supported action types and fields: phase.create(id,title,objective), phase.edit(id,title,objective), phase.delete(id), phase.reorder(ids complete ordered phase ID list), phase.dependencies(id,dependencies complete ID list), gate.create(id,parentPhaseId,designation,title,purpose,criteria array of {id,title,expectedResult}), gate.edit(id,title,purpose), gate.delete(id), gate.reparent(id,parentPhaseId,order zero-based), gate.reorder(parentPhaseId,ids complete ordered sibling list), gate.dependencies(id,dependencies complete ID list), criterion.add(gateId,id,title,expectedResult), criterion.edit(gateId,id,title,expectedResult), criterion.remove(gateId,id), criterion.reorder(gateId,ids complete ordered list), correction.attach(id,parent {kind,id},title,objective,optional criterionId), correction.edit(id,title,objective), correction.reparent(id,parent {kind,id},optional criterionId), correction.delete(id). Edits require all listed fields; copy unchanged values from current context. A Gate is a testable requirement, not a task. Source-owned linked Markdown definitions use a separate reviewed patch; only a single field edit can be proposed there. Never output a status, evidence approval, waiver approval, Work run, tool grant, or claim Green. Do not claim any proposal was applied. Return one JSON object without fences.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
     diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number;
@@ -40,7 +43,7 @@ export class ChatContextComposer {
                 const value: unknown = JSON.parse(message.content);
                 if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
                 const action = value as Record<string, unknown>;
-                if (!['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence',
+                if (!['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal',
                     'roadmap-draft-proposal', 'roadmap-draft-sequence'].includes(message.planningActivity!.kind)) return undefined;
                 return { appliedRevision: message.planningActivity!.appliedRevision,
                     action: JSON.stringify(action).slice(0, 600) };
@@ -65,7 +68,7 @@ export class ChatContextComposer {
         if (id.startsWith('roadmap-')) {
             if (!this.roadmap) projectOpen = false;
             else {
-                const index = await this.roadmap.read(root);
+                const index = await this.roadmap.read(root) as import('@dope/project-intelligence/lib/node/roadmap-store').RoadmapIndex | RoadmapGateIndex;
                 if (index.projectRoot !== root || index.linkedDocument &&
                     (index.linkedDocument.projectRoot !== root || index.linkedDocument.projectId !== index.projectId))
                     throw new Error('Stale or foreign Roadmap help context');
@@ -81,16 +84,23 @@ export class ChatContextComposer {
                             syncState = 'source-changed';
                     } catch { syncState = 'unavailable'; }
                 }
-                const active = index.checkpoints.filter(item => item.status === 'active');
-                roadmapSummary = `Roadmap owner revision ${index.revision}; ${index.checkpoints.length} checkpoint(s), ` +
-                    `${active.length} active${active.length ? ` (${active.slice(0, 3).map(item => item.title.slice(0, 100)).join(', ')}` +
-                    `${active.length > 3 ? ', …' : ''})` : ''}.`;
+                if (index.schemaVersion === 2) {
+                    const gateIndex = index as unknown as RoadmapGateIndex;
+                    roadmapSummary = `Roadmap owner revision ${gateIndex.revision}; ${gateIndex.phases.length} Phase(s), ` +
+                        `${gateIndex.gates.length} Gate(s), ${gateIndex.gates.reduce((n, gate) => n + gate.criteria.length, 0)} criteria.`;
+                } else {
+                    const active = index.checkpoints.filter(item => item.status === 'active');
+                    roadmapSummary = `Roadmap owner revision ${index.revision}; ${index.checkpoints.length} checkpoint(s), ` +
+                        `${active.length} active${active.length ? ` (${active.slice(0, 3).map(item => item.title.slice(0, 100)).join(', ')}` +
+                        `${active.length > 3 ? ', …' : ''})` : ''}.`;
+                }
                 linkState = linked ? `Current project records linked Roadmap Markdown ${linked.path.length <= 120 ? linked.path : '(path omitted)'} (${syncState}); Refresh Roadmap to verify the live source.` :
                     `Current project has no linked Roadmap Markdown file (${index.revision ? 'existing Roadmap' : 'empty Roadmap'}).`;
             }
         }
         const entry = projectDopeCapabilityHelp({ projectOpen, canWriteRoadmap: projectOpen,
-            hasPlanningSelection: selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'planning-map') })
+            hasPlanningSelection: selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap' ||
+                item.kind === 'planning-map') })
             .find(item => item.id === id)!;
         const route = id === 'roadmap-change-file' && unlinkedImport ?
             'Roadmap > Roadmap Markdown and setup > Import Roadmap' : entry.uiPath;
@@ -118,6 +128,9 @@ export class ChatContextComposer {
                 `The recorded Roadmap source state is ${syncState ?? 'unlinked'}${pendingSync ? ' with pending sync' : ''}. Open Roadmap and use Refresh Roadmap to check the current source, then open Roadmap Markdown and setup to review the result. Refresh does not approve source changes. Nothing changed in this Chat turn.` :
             id === 'roadmap-status' ?
                 `${roadmapSummary} The recorded linked Markdown source state is ${syncState ?? 'unlinked'}${pendingSync ? ' with pending sync' : ''}. Refresh Roadmap to check for later external changes. Nothing changed in this Chat turn.` :
+            id === 'roadmap-objective' && this.roadmap &&
+                (await this.roadmap.read<RoadmapGateIndex>(root)).schemaVersion === 2 ?
+                'Select the Phase or Gate in Roadmap and ask the existing saved Chat to propose a title or objective change. Review its exact diff, then Accept or Reject. A linked Markdown field uses a separate source-aware preview and publication approval. Nothing changed in this help turn.' :
             id === 'roadmap-objective' ?
                 `Open Roadmap and select the checkpoint. In its inspector, edit Objective, then use Preview and save and review any required approval. A linked Objective may be read-only when its source cannot be safely edited; review Roadmap Markdown and setup and Refresh Roadmap if blocked. Chat cannot apply an Objective change from this help request. Nothing changed.` :
             id === 'planning-map-link' ?
@@ -207,6 +220,42 @@ export class ChatContextComposer {
                 { omitted: 'Roadmap objective, neighbors, links or evidence omitted by compact query bound' } : {}) };
     }
 
+    private async gateContext(root: string, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
+        if (!this.roadmap) throw new Error('Roadmap context unavailable');
+        const index = await this.roadmap.read<RoadmapGateIndex>(root);
+        if (index.schemaVersion !== 2 || !index.revision || index.projectRoot !== root ||
+            index.projectId !== source.projectId || index.revision !== source.ownerRevision ||
+            index.linkedDocument?.sourceHash !== source.sourceHash)
+            throw new Error('Stale or foreign Roadmap context; select it again');
+        if (index.linkedDocument && (await this.roadmap.previewGateDocumentSync(root)).state !== 'unchanged')
+            throw new Error('Linked Roadmap source changed; review synchronization first');
+        const selected = index.phases.find(item => item.id === source.id) ?? index.gates.find(item => item.id === source.id);
+        if (source.id !== 'roadmap' && !selected) throw new Error('Selected Roadmap item is missing');
+        const phases = [...index.phases].sort((a, b) => a.order - b.order);
+        const gates = [...index.gates].sort((a, b) => a.parentPhaseId.localeCompare(b.parentPhaseId) || a.order - b.order);
+        const compactGate = (gate: RoadmapGateIndex['gates'][number]) => ({ id: gate.id, parentPhaseId: gate.parentPhaseId,
+            designation: gate.designation, title: gate.title, purpose: gate.purpose.slice(0, 300), order: gate.order,
+            dependencies: gate.dependencies, qualification: evaluateGateQualification(gate, gate.qualificationSource),
+            criteria: gate.criteria.slice(0, 12).map(item => ({ id: item.id, title: item.title,
+                expectedResult: item.expectedResult.slice(0, 300), order: item.order,
+                evidence: item.evidence.map(e => ({ id: e.id, result: e.result, review: e.review.status,
+                    stale: e.validation?.reason })).slice(-3) })) });
+        return { label: selected ? `Roadmap ${'parentPhaseId' in selected ? 'Gate' : 'Phase'}: ${selected.title}` : 'Roadmap',
+            text: JSON.stringify({ projectId: index.projectId, ownerRevision: index.revision,
+                selectedId: source.id, linkedDocument: index.linkedDocument && { path: index.linkedDocument.path,
+                    sourceHash: index.linkedDocument.sourceHash, syncState: index.linkedDocument.syncState,
+                    sourceOwnedIds: index.linkedDocument.sections.map(item => item.id) },
+                phases: phases.slice(0, 24).map(item => ({ id: item.id, title: item.title,
+                    objective: item.objective.slice(0, 400), order: item.order, dependencies: item.dependencies,
+                    qualification: evaluatePhaseQualification(index, item.id, item.qualificationSource) })),
+                gates: gates.slice(0, 48).map(compactGate),
+                corrections: index.corrections.slice(0, 24).map(item => ({ id: item.id, parent: item.parent,
+                    criterionId: item.criterionId, title: item.title, objective: item.objective.slice(0, 300) })) }),
+            ...(phases.length > 24 || gates.length > 48 || index.corrections.length > 24 ||
+                gates.some(item => item.criteria.length > 12) ?
+                { omitted: 'Roadmap entities or criteria omitted by bounded context; ask to narrow the target' } : {}) };
+    }
+
     private async file(root: string, path: string, maxBytes = 1_000_000): Promise<string> {
         projectPath(path);
         if (path.startsWith('.dope/')) throw new Error('Use a typed project context source for .dope data');
@@ -222,7 +271,9 @@ export class ChatContextComposer {
 
     private async resolve(root: string, active: Chat, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
         if (!source || typeof source.id !== 'string' || !source.id.trim()) throw new Error('Invalid context selection');
-        if (!active.settings.context.allowedSources.includes(source.kind)) throw new Error(`Context source disabled: ${source.kind}`);
+        if (!active.settings.context.allowedSources.includes(source.kind) &&
+            !(source.kind === 'roadmap' && active.settings.context.allowedSources.includes('roadmap-checkpoint')))
+            throw new Error(`Context source disabled: ${source.kind}`);
         if (source.kind === 'editor' || source.kind === 'selection' || source.kind === 'file') {
             const path = projectPath(source.id);
             const file = await this.file(root, path);
@@ -241,6 +292,7 @@ export class ChatContextComposer {
             return { label: `${artifact.type}: ${artifact.title}`, text: JSON.stringify(artifact) };
         }
         if (source.kind === 'roadmap-checkpoint') return this.roadmapContext(root, source);
+        if (source.kind === 'roadmap') return this.gateContext(root, source);
         if (source.kind === 'architecture') {
             const state = await readInitialization(root);
             if (!state.initialized) throw new Error('Canonical Architecture unavailable');
@@ -333,18 +385,20 @@ export class ChatContextComposer {
         };
         const helpId = selectDopeCapabilityHelp(content);
         const help = helpId ? await this.helpContext(root, helpId, selections, strictHelpJson) : undefined;
+        const gateAction = !help && selections.some(source => source.kind === 'roadmap');
         const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
         const roadmapInstruction = roadmapAction && !bridgeMode;
         let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0) -
             (roadmapOpportunity ? tokens(roadmapOpportunity) : 0) -
-            (roadmapInstruction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) - (help ? tokens(help.instruction) : 0);
+            (roadmapInstruction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) -
+            (gateAction ? tokens(GATE_ACTION_INSTRUCTION) : 0) - (help ? tokens(help.instruction) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
         if (grounding) for (const diagnostic of grounding.diagnostics)
             diagnostics.push({ kind: diagnostic.kind === 'truncated' ? 'truncated' : 'omitted',
                 source: diagnostic.source, message: diagnostic.message });
-        const orderedSelections = [...selections.filter(source => source.kind === 'roadmap-checkpoint'),
-            ...selections.filter(source => source.kind !== 'roadmap-checkpoint')];
+        const orderedSelections = [...selections.filter(source => source.kind === 'roadmap' || source.kind === 'roadmap-checkpoint'),
+            ...selections.filter(source => source.kind !== 'roadmap' && source.kind !== 'roadmap-checkpoint')];
         const memory = !help && (roadmapAction || chat.messages.some(message => message.role === 'assistant' &&
             message.planningActivity?.status === 'applied')) ? this.decisionContext(chat) : undefined;
         const wrapperTokens = selections.length || grounding?.blocks.length || memory ? tokens('\n\nProject context:\n') : 0;
@@ -358,12 +412,12 @@ export class ChatContextComposer {
             const prefix = `[${source.kind}: ${resolved.label}]\n`;
             let text = resolved.text;
             if (tokens(prefix) >= remaining) {
-                if (source.kind === 'roadmap-checkpoint')
+                if (source.kind === 'roadmap-checkpoint' || source.kind === 'roadmap')
                     throw new Error('Selected Roadmap identity and field capability do not fit; shorten the request or select a larger local model');
                 diagnostics.push({ kind: 'omitted', source: `${source.kind}:${source.id}`, message: 'Context budget exhausted' });
                 continue;
             }
-            if (tokens(prefix + text) > remaining && source.kind === 'roadmap-checkpoint')
+            if (tokens(prefix + text) > remaining && (source.kind === 'roadmap-checkpoint' || source.kind === 'roadmap'))
                 throw new Error('Selected Roadmap identity, field capability or source does not fit; shorten the request or select a larger local model');
             if (tokens(prefix + text) > remaining) {
                 text = fit(prefix, text, remaining);
@@ -405,6 +459,7 @@ export class ChatContextComposer {
         const messages: ConversationMessage[] = grounding ? [{ role: 'system', content: GROUNDED_CHAT_INSTRUCTION }] : [];
         if (roadmapOpportunity) messages.push({ role: 'system', content: roadmapOpportunity });
         if (roadmapInstruction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
+        if (gateAction) messages.push({ role: 'system', content: GATE_ACTION_INSTRUCTION });
         if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];
         if (policy.history === 'recent' && !help) {

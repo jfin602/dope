@@ -63,6 +63,7 @@ export interface ChatStrategicDraftReview { token: string; projectId: string; re
 export interface ChatPlanPreview { coverage: { id: string; text: string;
     status: 'covered' | 'needs-review' | 'missing'; explanation: string; stepNumbers: number[] }[] }
 export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal;
+    roadmapFocus?: { projectId: string; revision: number; id: string };
     proposalError?: string; planPreview?: ChatPlanPreview; roadmapOffer?: ChatRoadmapOffer;
     roadmapDraftReview?: ChatStrategicDraftReview }
 export type ChatEvent =

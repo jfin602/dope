@@ -358,7 +358,7 @@ export default new ContainerModule(bind => {
             context.container.get(AIRoleRoutingService), context.container.get(ChatProjectGrounder),
             actions, context.container.get(RoadmapGreenfield),
             new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex),
-                context.container.get(RoadmapStore)));
+                context.container.get(RoadmapStore)), context.container.get(RoadmapStore));
         client.onDidCloseConnection(() => { backend.dispose(); dispose(); });
         return backend;
     })).inSingletonScope();

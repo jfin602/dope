@@ -69,3 +69,40 @@ test('invalid identity, permission, stale owner and approval denials leave the i
     await assert.rejects(actions.apply(good, preview.token, true), /Stale/);
     assert.equal((await store.read<RoadmapGateIndex>(root)).gates.length, 0);
 }));
+
+test('one reviewed Chat batch creates related Gate structure atomically and remains undoable', async () => fixture(async (root, store, actions) => {
+    const { projectHandle } = await actions.attach(root);
+    const before = await readFile(join(root, '.dope', 'roadmap.json'));
+    const batch: PlanningActionRequest = { projectHandle, ownerId: 'owner-1', expectedRevision: 2, actions: [
+        { type: 'phase.create', id: 'phase-2', title: 'Combat Systems', objective: 'Review combat behavior' },
+        { type: 'gate.create', id: 'gate-2', parentPhaseId: 'phase-2', designation: 'G2',
+            title: 'Defeat and Health', purpose: 'Persistent tower health determines defeat', criteria: [
+                { id: 'criterion-2', title: 'Health persists', expectedResult: 'Health remains after reload' },
+                { id: 'criterion-3', title: 'Zero health defeats', expectedResult: 'Zero health ends the game' }] },
+        { type: 'gate.dependencies', id: 'gate-2', dependencies: [] }
+    ] };
+    const preview = await actions.preview(batch);
+    assert.equal(preview.next.gates[0].criteria.length, 2);
+    assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
+    await assert.rejects(actions.apply(batch, 'wrong', true), /token/);
+    const applied = await actions.apply(batch, preview.token, true);
+    assert.equal(applied.revision, 3);
+    assert.equal(applied.gates[0].criteria[1].expectedResult, 'Zero health ends the game');
+    const undoToken = actions.undoToken(projectHandle, 'owner-1')!;
+    const undo = { projectHandle, ownerId: 'owner-1', expectedRevision: 3, token: undoToken };
+    const undoPreview = await actions.previewUndoEligible(undo);
+    assert.equal(undoPreview.after.gates.length, 0);
+    assert.equal((await actions.undoEligible(undo)).revision, 4);
+    assert.equal((await store.read<RoadmapGateIndex>(root)).gates.length, 0);
+}));
+
+test('a failing later step rejects the entire reviewed batch without writing', async () => fixture(async (root, store, actions) => {
+    const { projectHandle } = await actions.attach(root);
+    const before = await readFile(join(root, '.dope', 'roadmap.json'));
+    await assert.rejects(actions.preview({ projectHandle, ownerId: 'owner-1', expectedRevision: 2,
+        actions: [{ type: 'phase.create', id: 'phase-2', title: 'Second', objective: 'Deliver' },
+            { type: 'gate.create', id: 'gate-2', parentPhaseId: 'missing', designation: 'G2',
+                title: 'Blocked', purpose: 'Invalid parent', criteria: [] }] }), /Missing Roadmap Phase/);
+    assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
+    assert.equal((await store.read<RoadmapGateIndex>(root)).revision, 2);
+}));

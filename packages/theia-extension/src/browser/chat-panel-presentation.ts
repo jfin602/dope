@@ -10,7 +10,7 @@ export function isDraftPlanningAction(type: string): boolean {
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
-    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action'].includes(activity.kind))
+    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action'].includes(activity.kind))
         return undefined;
     const label = activity.verifiedGuidance && noActionEnvelope(message) ? 'Verified Dope guidance' :
         activity.kind === 'no-action' ? 'No planning action' :
@@ -18,6 +18,9 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
         activity.kind === 'implementation-plan-revision' ? 'Plan revision' :
         activity.kind === 'bridge-proposal' ? 'Bridge suggestion' :
         activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence' ? 'Roadmap steps' :
+        activity.kind === 'roadmap-gate-proposal' ? 'Roadmap change' :
+        activity.kind === 'roadmap-gate-undo' ? 'Roadmap undo' :
+        activity.kind === 'roadmap-gate-focus' ? 'Roadmap selection' :
         activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
         activity.kind === 'roadmap-proposal' ? 'Roadmap proposal' : 'Roadmap intent';
     const statuses: Record<typeof activity.status, string> = {
@@ -151,8 +154,9 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                 questions: raw.questions };
         } catch { return { summary: 'Bridge suggestion is unavailable for review. Nothing was written.', questions: [] }; }
     }
-    const ref = activity.refs.find(item => item.kind === 'roadmap-checkpoint');
-    const target = ref ? `checkpoint ${ref.label}` : activity.kind.startsWith('roadmap-draft') ? 'Roadmap draft' : 'Roadmap';
+    const ref = activity.refs.find(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap');
+    const target = ref ? ref.kind === 'roadmap' ? ref.label : `checkpoint ${ref.label}` :
+        activity.kind.startsWith('roadmap-draft') ? 'Roadmap draft' : 'Roadmap';
     let change = `change ${target}`;
     // This detail is only displayed alongside a backend-verified preview or confirmed apply.
     if (activity.status === 'pending' || activity.status === 'applied') {
@@ -162,7 +166,8 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                 const value = raw as Record<string, unknown>;
                 const action = value.action && typeof value.action === 'object' && !Array.isArray(value.action) ?
                     value.action as Record<string, unknown> : undefined;
-                if ((activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence') && Array.isArray(value.actions))
+                if ((activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence' ||
+                    activity.kind === 'roadmap-gate-proposal') && Array.isArray(value.actions))
                     change = `review ${value.actions.length} Roadmap steps near ${target}`;
                 const objective = activity.kind === 'roadmap-intent' ? value.value : action?.objective;
                 const normalized = typeof objective === 'string' ? objective.replace(/\s+/g, ' ') : undefined;
@@ -188,7 +193,9 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         } catch { /* A damaged saved payload never grants authority or breaks the transcript. */ }
     }
     const revision = activity.appliedRevision;
-    if (activity.status === 'applied' && revision !== undefined) return activity.kind.startsWith('roadmap-draft') ? {
+    if (activity.status === 'applied' && revision !== undefined) return activity.kind === 'roadmap-gate-undo' ? {
+        summary: `The reviewed Roadmap change was undone at revision ${revision}.`, questions: []
+    } : activity.kind.startsWith('roadmap-draft') ? {
         summary: `The approved proposal to ${change} was saved in the accepted draft at revision ${revision}. It is not yet canonical.`,
         questions: ['Does the draft match your intent?', 'Would you like to preview the linked Markdown before publishing?'],
     } : {
@@ -198,6 +205,9 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
     if (activity.status === 'pending') return {
         summary: `A proposal to ${change} was previewed and is awaiting approval; ${activity.kind.startsWith('roadmap-draft') ? 'the accepted draft and canonical Roadmap are unchanged' : 'no write yet'}.`,
         questions: ['Does the proposed change match your intent?', 'Should you review the affected source before deciding?'],
+    };
+    if (activity.kind === 'roadmap-gate-focus' && activity.status === 'no-action') return {
+        summary: 'Selected the requested Roadmap item. The Roadmap was not changed.', questions: []
     };
     if (activity.status === 'no-action') return {
         summary: (noActionEnvelope(message) ? activity.verifiedGuidance?.text : undefined) ??
