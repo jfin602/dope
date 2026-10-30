@@ -18,7 +18,8 @@ const git = promisify(execFile);
 const baseTask = (policy: any = { kind: 'follow-coding-agent' }) => ({ version: 1, id: 'task-1',
     createdAt: now, objective: 'Edit a file', instructions: 'Make the requested edit', projectRoot: '.',
     modelPolicy: policy, controls: {}, authority: { profile: 'phase-8b-project' },
-    completion: { validation: [], requireValidationPass: false }, origin: { kind: 'direct' } });
+    completion: { validation: [{ kind: 'test', label: 'Required validation', command: 'node --test test/fixture.test.mjs' }],
+        requireValidationPass: true }, origin: { kind: 'direct' }, reviewPolicy: { kind: 'required' } });
 const grant = () => createDefaultExecutionGrant({ id: 'grant-1', revision: 0, taskId: 'task-1', acceptedAt: now });
 
 class FakeAdapter {
@@ -96,7 +97,7 @@ async function fixture(work: (f: {
 async function terminal(store: AgentStore, root: string, runId: string) {
     for (let i = 0; i < 300; i++) {
         const run = await store.readRun(root, runId);
-        if (run && ['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status)) return run;
+        if (run && ['completed', 'cancelled', 'failed', 'interrupted', 'blocked'].includes(run.status)) return run;
         await new Promise(resolve => setTimeout(resolve, 10));
     }
     throw new Error('Run did not terminate');
@@ -108,6 +109,15 @@ async function released(runtime: AgentExecutionRuntime, root: string): Promise<v
         await new Promise(resolve => setTimeout(resolve, 10));
     }
     throw new Error('Project execution slot was not released');
+}
+
+async function rejectHeldDirect(f: { backend: AgentRuntimeBackend; handle: string; runtime: AgentExecutionRuntime;
+    root: string }, run: any): Promise<void> {
+    if (run.status === 'blocked' && run.candidateReview?.state === 'ready') {
+        await released(f.runtime, f.root);
+        await f.backend.decideCandidate(f.handle, run.id, run.candidateReview.revision,
+            run.candidateReview.candidateFingerprint, 'reject');
+    }
 }
 
 async function sequenceTerminal(store: AgentStore, root: string, sequenceId: string) {
@@ -511,6 +521,18 @@ test('reviewed direct Work holds its validated candidate without canonical promo
     assert.equal(await readFile(join(f.root, 'review-fixture.txt'), 'utf8'), original);
 }));
 
+test('unvalidated direct Work is denied before adapter execution or canonical writes', async () => fixture(async f => {
+    const task = await f.backend.createTask(f.handle, { ...baseTask(), id: 'unvalidated-direct',
+        completion: { validation: [], requireValidationPass: false }, reviewPolicy: undefined });
+    const offered = createDefaultExecutionGrant({ id: 'unvalidated-grant', revision: 0,
+        taskId: task.id, acceptedAt: new Date().toISOString() });
+    await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, offered, true),
+        /validation command and candidate review/);
+    assert.equal(f.adapter.starts.length, 0);
+    assert.deepEqual(await f.store.listRuns(f.root), []);
+    assert.equal((await captureGitBasis(f.root)).clean, true);
+}));
+
 test('Follow Coding Agent resolves policy and persists immutable actual provenance before adapter effects', async () => fixture(async f => {
     const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
     assert.deepEqual(f.routing.calls[0][0], 'coding-agent');
@@ -531,8 +553,9 @@ test('Follow Coding Agent resolves policy and persists immutable actual provenan
     f.adapter.onEvent!({ kind: 'agent-message', summary: 'Bearer secret' });
     f.adapter.complete();
     const done = await terminal(f.store, f.root, run.id);
-    assert.equal(done.status, 'completed');
-    assert.deepEqual(done.changedFiles, ['edited.txt']);
+    assert.equal(done.status, 'blocked');
+    assert.deepEqual(done.changedFiles, []);
+    assert.deepEqual(done.candidateReview?.changedPaths, ['edited.txt']);
     const events = (await f.store.readEvents(f.root, run.id, 0, 20)).events;
     assert.deepEqual(events.slice(0, 4).map(event => event.kind), ['status', 'process', 'file', 'message']);
     assert.ok(!JSON.stringify(events).includes('secret'));
@@ -666,6 +689,7 @@ test('post-effect stop preserves workspace bytes and recorded file evidence', as
 }));
 
 test('one denied candidate deletion blocks all project promotion and persists the decision', async () => fixture(async f => {
+    const originalBoot = await readFile(join(f.root, 'BOOT.md'), 'utf8');
     const run = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true);
     const work = f.adapter.starts[0].executionRoot;
     await writeFile(join(work, 'candidate.ts'), 'candidate');
@@ -676,10 +700,10 @@ test('one denied candidate deletion blocks all project promotion and persists th
     assert.equal(done.status, 'failed');
     assert.equal(done.outcome?.code, 'authority-denied');
     assert.equal(done.candidateDelta?.effects.some(effect => effect.kind === 'delete' && effect.path === 'BOOT.md'), true);
-    assert.equal(done.authorityDecision?.allowed, false);
-    assert.deepEqual(done.appliedFiles, []);
+    assert.equal(done.candidateReview, undefined);
+    assert.deepEqual(done.appliedFiles, undefined);
     assert.deepEqual(done.changedFiles, []);
-    assert.equal((await readFile(join(f.root, 'BOOT.md'), 'utf8')).startsWith('# Dope'), true);
+    assert.equal(await readFile(join(f.root, 'BOOT.md'), 'utf8'), originalBoot);
     await assert.rejects(readFile(join(f.root, 'candidate.ts')), { code: 'ENOENT' });
     assert.equal((await new AgentStore().readRun(f.root, run.id))?.candidateDelta?.effects.length, 2);
 }));
@@ -753,7 +777,7 @@ test('execution-root command cwd survives durable transcript storage and complet
         cwd: '.', exitCode: 0, status: 'completed', output: 'hello', summary: 'completed' });
     f.adapter.complete();
     const done = await terminal(f.store, f.root, run.id);
-    assert.equal(done.status, 'completed');
+    assert.equal(done.status, 'blocked');
     assert.notEqual(done.outcome?.code, 'authority-denied');
     const transcript = await f.store.readTranscript(f.root, run.id, 0, 100);
     const command = transcript.entries.find(entry => entry.kind === 'command');
@@ -772,21 +796,23 @@ test('provider command evidence never substitutes for Dope-owned required valida
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'one', exitCode: 0, summary: 'completed' });
     f.adapter.complete();
     const passed = await terminal(f.store, f.root, first.id);
-    assert.equal(passed.status, 'completed');
+    assert.equal(passed.status, 'blocked');
     assert.equal(passed.validationResults[0].status, 'passed');
     assert.equal(passed.validationResults[0].owner, 'dope');
     assert.equal(f.validation.calls.length, 1);
     assert.deepEqual(passed.commandEvidence?.[0].matchedTargets, ['unit']);
     assert.equal(passed.commandEvidence?.[0].exitCode, 0);
+    await rejectHeldDirect(f, passed);
     await released(f.runtime, f.root);
     const second = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'two', command: 'echo narrated success', summary: 'started' });
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'two', exitCode: 0, summary: 'completed' });
     f.adapter.complete();
     const unmatched = await terminal(f.store, f.root, second.id);
-    assert.equal(unmatched.status, 'completed');
+    assert.equal(unmatched.status, 'blocked');
     assert.equal(f.validation.calls.length, 2);
     assert.deepEqual(unmatched.commandEvidence?.[0].matchedTargets, []);
+    await rejectHeldDirect(f, unmatched);
     await released(f.runtime, f.root);
     const third = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
     f.validation.nextStatus = 'failed';
@@ -804,8 +830,9 @@ test('provider command evidence never substitutes for Dope-owned required valida
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'four', exitCode: 0, summary: 'completed' });
     f.adapter.complete();
     const wrapped = await terminal(f.store, f.root, fourth.id);
-    assert.equal(wrapped.status, 'completed');
+    assert.equal(wrapped.status, 'blocked');
     assert.deepEqual(wrapped.commandEvidence?.[0].matchedTargets, ['unit']);
+    await rejectHeldDirect(f, wrapped);
     await released(f.runtime, f.root);
     const fifth = await f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, accepted, true);
     f.adapter.onEvent!({ kind: 'command-started', commandId: 'five',
@@ -813,7 +840,7 @@ test('provider command evidence never substitutes for Dope-owned required valida
     f.adapter.onEvent!({ kind: 'command-completed', commandId: 'five', exitCode: 0, summary: 'completed' });
     f.adapter.complete();
     const extended = await terminal(f.store, f.root, fifth.id);
-    assert.equal(extended.status, 'completed');
+    assert.equal(extended.status, 'blocked');
     assert.deepEqual(extended.commandEvidence?.[0].matchedTargets, []);
 }));
 

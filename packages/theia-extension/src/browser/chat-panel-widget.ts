@@ -606,8 +606,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             controller.setPolicy(target ? { kind: 'exact', connectionId: target.connectionId, modelId: target.modelId } :
                 { kind: 'follow-coding-agent' }); };
         const validation = document.createElement('input'); validation.type = 'text'; validation.maxLength = 160;
-        validation.value = controller.validationCommand; validation.setAttribute('aria-label', 'Required validation command (optional)');
-        validation.placeholder = 'Optional test command';
+        validation.value = controller.validationCommand; validation.setAttribute('aria-label', 'Required validation command');
+        validation.placeholder = 'Required test command before Work can start';
         validation.oninput = () => { controller.setValidation(validation.value); start.disabled = !controller.canStart; };
         const grant = createDefaultExecutionGrant({ id: 'preview', revision: 1, taskId: 'preview',
             acceptedAt: new Date().toISOString() });

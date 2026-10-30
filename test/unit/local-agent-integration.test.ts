@@ -32,7 +32,7 @@ function inventory(eligible: boolean): any {
     loadedLocalModels: [{ connectionId: 'local', providerModelKey: 'fixture-model@q3_k_l', contextWindowTokens }] };
 }
 
-test('synthetic Local probe gates exact routing; real broker edit reaches Dope validation and direct promotion',
+test('synthetic Local probe gates exact routing; real broker edit reaches Dope validation and reviewed promotion',
     { timeout: 120_000 }, async () => {
         const sandbox = await preflightLocalToolSandbox();
         assert.equal(sandbox.available, true, `P14 Not Green: Local OS isolation unavailable: ${sandbox.reason}`);
@@ -90,6 +90,7 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
                 objective: 'Create local-p13.txt', instructions: 'Use the edit tool to write changed',
                 projectRoot: '.', modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
                 authority: { profile: 'phase-8b-project' }, origin: { kind: 'direct' },
+                reviewPolicy: { kind: 'required' },
                 completion: { validation: [{ kind: 'test', label: 'candidate contents',
                     command: 'test "$(cat local-p13.txt)" = changed && python3 -c "import socket; s=socket.socket(); s.bind((\'127.0.0.1\',0))"' }],
                 requireValidationPass: true } } as any);
@@ -112,12 +113,18 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
             assert.equal(started.provenance?.runtimeKind, 'local');
             assert.equal(started.provenance?.adapterId, 'local-lm-studio');
             const done = await runtime.waitForRun(root, started.id);
-            assert.equal(done.status, 'completed', JSON.stringify({ outcome: done.outcome, validation: done.validationResults }));
+            assert.equal(done.status, 'blocked', JSON.stringify({ outcome: done.outcome, validation: done.validationResults }));
             assert.equal(toolCalls, 1);
             assert.equal(done.validationResults[0].owner, 'dope');
             assert.equal(done.validationResults[0].status, 'passed');
             assert.equal(done.validationResults[0].candidateFingerprint, done.candidateFingerprint);
-            assert.deepEqual(done.appliedFiles, ['local-p13.txt']);
+            assert.equal(done.candidateReview?.state, 'ready');
+            await assert.rejects(readFile(join(root, 'local-p13.txt')), { code: 'ENOENT' });
+            for (let attempt = 0; attempt < 100 && runtime.activeRunId(root); attempt++)
+                await new Promise(resolve => setTimeout(resolve, 10));
+            const accepted = await backend.decideCandidate(handle, started.id, done.candidateReview!.revision,
+                done.candidateReview!.candidateFingerprint, 'accept', grant);
+            assert.deepEqual(accepted.appliedFiles, ['local-p13.txt']);
             assert.equal(await readFile(join(root, 'local-p13.txt'), 'utf8'), 'changed\n');
             await runtime.reconcile(root);
             assert.equal((await new AgentStore().readRun(root, started.id))?.status, 'completed');

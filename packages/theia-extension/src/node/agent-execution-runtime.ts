@@ -473,6 +473,10 @@ export class AgentExecutionRuntime {
                 (!task.completion.requireValidationPass || !task.completion.validation.length ||
                     task.completion.validation.some(target => !target.command)))
                 throw new Error('WorkItem task requires approved Dope validation before Start');
+            if (task.origin.kind === 'direct' &&
+                (task.reviewPolicy?.kind !== 'required' || !task.completion.requireValidationPass ||
+                    !task.completion.validation.length || task.completion.validation.some(target => !target.command?.trim())))
+                throw new Error('Direct Work requires a validation command and candidate review before Start');
             const grant = parseExecutionGrant(offeredGrant);
             if (grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
                 grant.acceptedAt < task.createdAt)

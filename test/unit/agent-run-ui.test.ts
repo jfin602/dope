@@ -59,9 +59,12 @@ test('direct task displays eligible target and requires explicit grant before st
     h.controller.setPolicy({ kind: 'follow-coding-agent' }); await h.controller.resolveTarget();
     h.controller.edit('Objective', 'Instructions'); assert.equal(h.controller.canStart, false);
     h.controller.acceptGrant(true); assert.equal(h.controller.canStart, false);
-    h.controller.authorizeHostedProjectData(true); assert.equal(h.controller.canStart, true);
+    h.controller.authorizeHostedProjectData(true); assert.equal(h.controller.canStart, false);
+    await h.controller.start(); assert.equal(h.task, undefined);
+    h.controller.setValidation('npm test'); h.controller.acceptGrant(true);
+    assert.equal(h.controller.canStart, true);
     await h.controller.start(); assert.equal((h.task as { origin: { kind: string } }).origin.kind, 'direct');
-    assert.equal((h.task as { reviewPolicy?: unknown }).reviewPolicy, undefined);
+    assert.deepEqual((h.task as { reviewPolicy?: unknown }).reviewPolicy, { kind: 'required' });
     assert.equal((h.task as { modelPolicy: { kind: string } }).modelPolicy.kind, 'follow-coding-agent');
     assert.equal((h.grant as { permissions: { network: boolean; 'project-modify': boolean } }).permissions.network, false);
     assert.equal((h.grant as { permissions: { network: boolean; 'project-modify': boolean } }).permissions['project-modify'], true);
@@ -102,7 +105,7 @@ test('Resume requests backend gate reconciliation and restart keeps the same pen
 
 test('persisted terminal run is inspectable after attach with change and validation evidence', async () => {
     const h = harness(); await h.controller.attach('file:///project'); h.controller.edit('Objective', 'Instructions');
-    h.controller.acceptGrant(true); h.controller.authorizeHostedProjectData(true); await h.controller.start(); h.finish('interrupted');
+    h.controller.setValidation('npm test'); h.controller.acceptGrant(true); h.controller.authorizeHostedProjectData(true); await h.controller.start(); h.finish('interrupted');
     const reopened = new AgentRunController(h.runtime as unknown as AgentRuntimeService,
         { inventory: async () => { throw new Error('offline'); } } as unknown as AIRegistryService,
         { list: async () => { throw new Error('offline'); } } as unknown as AIRolePolicyService, () => {});
@@ -198,7 +201,7 @@ test('Local exact and role targets require observed readiness and never grant ho
     assert.match(h.controller.targetMessage, /observed context 4096/);
     h.controller.setPolicy({ kind: 'exact', connectionId: 'local', modelId: 'qwen' });
     await h.controller.resolveTarget();
-    h.controller.edit('Local change', 'Modify the candidate'); h.controller.acceptGrant(true);
+    h.controller.edit('Local change', 'Modify the candidate'); h.controller.setValidation('npm test'); h.controller.acceptGrant(true);
     assert.equal(h.controller.canStart, true);
     await h.controller.start();
     assert.equal(h.authorized, false);

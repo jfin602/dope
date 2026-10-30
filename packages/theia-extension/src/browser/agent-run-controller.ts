@@ -120,7 +120,7 @@ export class AgentRunController {
     acceptGrant(accepted: boolean): void { this.accepted = accepted; this.changed(); }
     authorizeHostedProjectData(authorized: boolean): void { this.hostedProjectDataAuthorized = authorized; this.changed(); }
     get canStart(): boolean { return Boolean((this.resolved?.locality !== 'hosted' || this.hostedProjectDataAuthorized) && this.handle && this.project && this.resolved && this.accepted &&
-        this.objective.trim() && this.instructions.trim() && !this.busy && !this.runs.some(run =>
+        this.objective.trim() && this.instructions.trim() && this.validationCommand.trim() && !this.busy && !this.runs.some(run =>
             ['pending', 'running', 'blocked', 'cancelling'].includes(run.status))); }
     async start(): Promise<AgentRun | undefined> {
         if (!this.canStart || !this.handle || !this.project) return;
@@ -135,10 +135,9 @@ export class AgentRunController {
             const task = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id: crypto.randomUUID(), createdAt: new Date().toISOString(),
                 objective: this.objective.trim(), instructions: this.instructions.trim(), projectRoot: '.',
                 modelPolicy: this.policy, controls: {}, authority: { profile: 'phase-8b-project' },
-                completion: { validation: this.validationCommand.trim() ?
-                    [{ kind: 'test', label: 'Required validation', command: this.validationCommand.trim() }] : [],
-                    requireValidationPass: Boolean(this.validationCommand.trim()) }, origin: { kind: 'direct' },
-                ...(this.validationCommand.trim() ? { reviewPolicy: { kind: 'required' as const } } : {}) });
+                completion: { validation: [{ kind: 'test', label: 'Required validation', command: this.validationCommand.trim() }],
+                    requireValidationPass: true }, origin: { kind: 'direct' },
+                reviewPolicy: { kind: 'required' as const } });
             this.task = await this.runtime.createTask(this.handle, task);
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString() });

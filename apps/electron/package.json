@@ -57,6 +57,10 @@
       {
         "from": "../../packages/pi-runtime",
         "to": "app/pi-runtime"
+      },
+      {
+        "from": "../../packages/pi-runtime/node_modules",
+        "to": "app/pi-runtime/node_modules"
       }
     ],
     "linux": {
