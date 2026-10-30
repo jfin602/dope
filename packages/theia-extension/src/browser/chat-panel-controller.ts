@@ -438,6 +438,14 @@ export class ChatPanelController {
     async newChat(folderPath: ChatFolderPath): Promise<boolean> {
         return this.mutate({ type: 'create-chat', id: crypto.randomUUID(), folderPath });
     }
+    async deleteChat(chatId: string): Promise<boolean> {
+        if (this.mode !== 'select-chat') return false;
+        await this.refresh();
+        if (!this.snapshot?.chats.some(chat => chat.id === chatId)) return false;
+        const deleted = await this.mutate({ type: 'delete-chat', chatId });
+        if (deleted) await this.refresh();
+        return deleted;
+    }
     async setCommandMode(mode: ChatCommandMode): Promise<void> {
         const lease = this.lease;
         if (!lease || mode !== 'ask' && mode !== 'allow') return;

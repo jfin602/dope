@@ -112,6 +112,27 @@ test('nested selector sorts saved Chats by real interaction within each folder',
     assert.equal(tree.chats[0].id, 'root');
 });
 
+test('deleting a saved Chat refreshes the selector and removes its durable entry', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-chat-delete-selector-'));
+    const workspace = pathToFileURL(root).href;
+    const repository = new ChatRepository();
+    const panel = new ChatPanelController(() => connect(repository), () => {});
+    try {
+        await panel.attach(workspace);
+        assert.equal(await panel.newChat(''), true);
+        const chatId = panel.chatId!;
+        await panel.select(undefined);
+        assert.equal(panel.snapshot?.chats.some(chat => chat.id === chatId), true);
+        assert.equal(await panel.deleteChat(chatId), true);
+        assert.equal(panel.mode, 'select-chat');
+        assert.equal(panel.snapshot?.chats.some(chat => chat.id === chatId), false);
+        assert.equal((await repository.read(root)).chats.some(chat => chat.id === chatId), false);
+    } finally {
+        panel.dispose();
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
 test('two panels share service changes while navigation remains panel-local and project scoped', async () => {
     const first = await mkdtemp(join(tmpdir(), 'dope-chat-panel-'));
     const second = await mkdtemp(join(tmpdir(), 'dope-chat-panel-'));
@@ -447,7 +468,7 @@ test('selector and transcript retain keyboard and dark theme surfaces', async ()
     assert.match(css, /var\(--theia-editor-background\)/);
     assert.match(source, /document\.createElement\('button'\)/);
     assert.match(source, /document\.createElement\('summary'\)/);
-    assert.match(source, /Back \/ Chats/);
+    assert.match(source, /Back to Chats/);
     assert.match(source, /message\.content/);
     assert.match(source, /dope-chat-settings/);
 });

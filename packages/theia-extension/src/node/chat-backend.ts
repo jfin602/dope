@@ -3,6 +3,7 @@ import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, Chat
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
     ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import { suggestedChatTitle, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
+import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import type { AIRoleHardConstraints, RoutingProvenance } from '@dope/ai';
@@ -397,6 +398,7 @@ export class ChatBackend implements ChatService {
             Date.now() >= pending.preview.expiresAt || this.commandModes.get(chatId) !== 'ask' ||
             createHash('sha256').update(pending.preview.command).digest('hex') !== pending.digest)
             throw new Error('Command approval is stale or not owned by this Chat');
+        if (!allowOnce) { pending.finish('deny'); return; }
         const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
         const lastUser = chat?.messages.filter(item => item.role === 'user').at(-1);
         if (!lastUser || createHash('sha256').update(JSON.stringify(lastUser.contextRefs)).digest('hex') !==
@@ -1300,7 +1302,9 @@ export class ChatBackend implements ChatService {
                         toolEvents.push({ name, status: 'denied', truncated: false });
                         return 'Command denied: Chat tool output limit reached';
                     }
-                    const basis = createHash('sha256').update(JSON.stringify(preview.refs)).digest('hex');
+                    // The repository canonicalizes context references before saving the user turn.
+                    // Bind approval to those canonical bytes, not the composer's field order.
+                    const basis = createHash('sha256').update(JSON.stringify(preview.refs.map(parseChatContextRef))).digest('hex');
                     let approved: boolean;
                     try { approved = await this.requestCommand(root, request, record.command, abort, basis); }
                     catch {

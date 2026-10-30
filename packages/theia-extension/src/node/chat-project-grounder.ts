@@ -140,6 +140,8 @@ export class ChatProjectGrounder {
     }
     async listDirectory(root: string, path = ''): Promise<GroundingResult> {
         const canonical = await this.root(root);
+        // Pi commonly names the project root "."; normalize only this listing alias.
+        if (path === '.') path = '';
         safePath(path);
         let actual: string;
         try { actual = await this.target(canonical, path); }

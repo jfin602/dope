@@ -82,7 +82,9 @@ function chatTools() {
   return Object.entries(CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'dope_command' ?
       'Request a sandboxed project investigation command. Dope decides whether it is available and requires approval. Never claim execution without a tool result.' :
-      'Read-only project discovery through Dope. Paths are project-relative. No shell, edits or network.',
+      name === 'dope_list' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
+      name === 'dope_read' ? 'Read one real project file using a relative path returned by dope_list or dope_search_paths. An absent result is not evidence of an empty project.' :
+      'Search eligible project paths or text. Search may omit protected entries; use dope_list on the root before concluding which files exist.',
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
@@ -269,10 +271,19 @@ export async function dispatch(message) {
       session.agent.state.model = { ...session.model, maxTokens: message.maxOutputTokens };
       let attemptedTool = false;
       let toolCount = 0;
+      let streamedText = '';
+      let resumeAfterTool = false;
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
-        if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta')
-          message.emit?.({ type: 'delta', text: event.assistantMessageEvent.delta });
+        if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
+          const delta = event.assistantMessageEvent.delta;
+          const gap = resumeAfterTool && streamedText.trim() &&
+            !streamedText.endsWith('\n') && !delta.startsWith('\n') ? '\n\n' : '';
+          const text = gap + delta;
+          streamedText += text;
+          resumeAfterTool = false;
+          message.emit?.({ type: 'delta', text });
+        }
         if (!chatToolsMode && (event.type === 'message_update' && event.assistantMessageEvent?.type.startsWith('toolcall_') ||
             event.type === 'tool_execution_start')) {
           attemptedTool = true;
@@ -282,6 +293,7 @@ export async function dispatch(message) {
           attemptedTool = true;
           void session.abort();
         }
+        if (chatToolsMode && event.type === 'tool_execution_end') resumeAfterTool = true;
       });
       try {
         await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
@@ -291,7 +303,8 @@ export async function dispatch(message) {
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
           assistant.stopReason === 'toolUse' || assistant.content.some(item => item.type === 'toolCall'))
         throw new Error('Local Pi completion failed or attempted a tool call');
-      const text = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
+      const text = chatToolsMode && toolCount && streamedText ? streamedText :
+        assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
       if (Buffer.byteLength(text, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
       return { text, modelId: assistant.responseModel ?? assistant.model,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',

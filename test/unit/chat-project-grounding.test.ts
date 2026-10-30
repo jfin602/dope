@@ -152,6 +152,7 @@ test('path/text search is stable, skips generated trees and reports bounds', asy
     assert.match(located.blocks.find(block => block.ref.kind === 'file')!.text, /ChatRepository/);
     for (let i = 0; i < GROUNDING_LIMITS.entries + 4; i++) await writeFile(join(root, `file-${String(i).padStart(3, '0')}`), 'x');
     const listing = await grounder.listDirectory(root);
+    assert.equal((await grounder.listDirectory(root, '.')).blocks[0].text, listing.blocks[0].text);
     assert.ok(listing.diagnostics.some(item => item.kind === 'truncated'));
     await writeFile(join(root, 'large.txt'), 'x'.repeat(GROUNDING_LIMITS.fileBytes + 100));
     assert.ok((await grounder.readFile(root, 'large.txt')).diagnostics.some(item => item.kind === 'truncated'));

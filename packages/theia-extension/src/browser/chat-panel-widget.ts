@@ -282,6 +282,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (actions.childElementCount) card.append(actions);
         return card;
     }
+    private commandApprovalCard(): HTMLElement | undefined {
+        const state = this.controller;
+        const pending = state.pendingCommand;
+        if (!pending) return undefined;
+        const card = document.createElement('section');
+        card.className = 'dope-chat-command-preview';
+        card.setAttribute('aria-label', 'Pending command approval');
+        const heading = document.createElement('strong'); heading.textContent = 'Command approval';
+        const exact = document.createElement('pre'); exact.textContent = pending.command;
+        const scope = document.createElement('p');
+        scope.textContent = `Project: ${pending.project} · Cwd: ${pending.cwd} · Sandbox: ${pending.sandbox} · Effect: ${pending.effect}`;
+        const actions = document.createElement('div'); actions.className = 'dope-chat-roadmap-offer-actions';
+        actions.append(this.button('Allow once', () => void state.decideCommand(true)),
+            this.button('Deny', () => void state.decideCommand(false)));
+        card.append(heading, exact, scope, actions);
+        return card;
+    }
     private scrollToLatest(): void {
         const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
         if (!scroll) return;
@@ -1516,8 +1533,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             menu.id = `${this.id}-chat-actions-${chat.id}`;
             menu.setAttribute('role', 'menu');
             menu.setAttribute('aria-label', `Actions for Chat ${chat.title}`);
+            let openOnPointerDown = false;
             const more = this.button('⋯', () => {
-                if (menu.matches(':popover-open')) { menu.hidePopover(); return; }
+                if (openOnPointerDown || menu.matches(':popover-open')) {
+                    openOnPointerDown = false;
+                    if (menu.matches(':popover-open')) menu.hidePopover();
+                    return;
+                }
                 menu.showPopover();
                 const bounds = more.getBoundingClientRect();
                 const width = menu.offsetWidth, height = menu.offsetHeight;
@@ -1527,6 +1549,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 menu.querySelector<HTMLButtonElement>('button')?.focus();
             });
             more.className = 'dope-chat-row-more';
+            more.addEventListener('pointerdown', () => { openOnPointerDown = menu.matches(':popover-open'); });
             more.setAttribute('aria-label', `Actions for Chat ${chat.title}`);
             more.setAttribute('aria-haspopup', 'menu');
             more.setAttribute('aria-controls', menu.id);
@@ -1583,7 +1606,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 () => void this.folderChoice('Move Chat', chat.folderPath).then(folderPath => {
                     if (folderPath !== undefined) this.mutate({ type: 'move-chat', chatId: chat.id, folderPath });
                 }));
-            menu.append(rename, move);
+            const remove = menuEntry('Delete Chat', 'trash-2',
+                ['M3 6h18', 'M8 6V4h8v2', 'M5 6l1 15h12l1-15', 'M10 10v7', 'M14 10v7'],
+                () => {
+                    if (window.confirm(`Permanently delete “${chat.title}” and its saved Chat file? This cannot be undone.`))
+                        void this.controller.deleteChat(chat.id);
+                });
+            menu.append(rename, move, remove);
             row.append(select, more, menu);
             item.append(row);
             list.append(item);
@@ -1708,7 +1737,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 });
         };
         const header = document.createElement('header');
-        const back = this.button('Back / Chats', () => state.select(undefined));
+        const back = this.button('', () => state.select(undefined));
+        back.className = 'dope-chat-back';
+        back.setAttribute('aria-label', 'Back to Chats');
+        back.title = 'Back to Chats';
+        const backIcon = document.createElement('span');
+        backIcon.className = codicon('arrow-left'); backIcon.setAttribute('aria-hidden', 'true');
+        back.append(backIcon);
         const heading = document.createElement('h2');
         heading.textContent = chat.title;
         const settings = this.button('⚙', () => {
@@ -1757,6 +1792,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         };
         const transcript = document.createElement('ol');
         transcript.className = 'dope-chat-transcript';
+        const lastUserIndex = chat.messages.map(message => message.role).lastIndexOf('user');
+        const activeAssistant = [...chat.messages.slice(lastUserIndex + 1)].reverse().find(message =>
+            message.role === 'assistant');
         for (const message of chat.messages) {
             const item = document.createElement('li');
             item.className = `dope-chat-message dope-chat-message-${message.role}`;
@@ -1834,6 +1872,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             time.textContent = new Date(message.createdAt).toLocaleString();
             item.append(content);
             if (message.role === 'assistant') {
+                if (state.running && message.id === activeAssistant?.id && body && !state.pendingCommand) {
+                    const working = document.createElement('p');
+                    working.className = 'dope-chat-working dope-chat-working-status';
+                    working.setAttribute('role', 'status'); working.textContent = 'Working…';
+                    item.append(working);
+                }
                 const events = state.toolProgress?.messageId === message.id && state.running ?
                     state.toolProgress.events : message.execution.toolEvents;
                 if (events?.length) {
@@ -1854,6 +1898,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
                 const action = this.roadmapActionCard(message);
                 if (action) item.append(action);
+                if (state.pendingCommand && message.id === activeAssistant?.id) {
+                    const command = this.commandApprovalCard();
+                    if (command) item.append(command);
+                }
                 if (this.prepareWorkDraft && message.execution.status === 'complete' && message.content.trim() &&
                     (!message.planningActivity || ['applied', 'no-action'].includes(message.planningActivity.status))) {
                     const prepare = this.button('Prepare Work', () => {
@@ -1969,6 +2017,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 content.append(dots);
             }
             item.append(content); transcript.append(item);
+            if (state.pendingCommand && !activeAssistant) {
+                const command = this.commandApprovalCard();
+                if (command) item.append(command);
+            } else if (state.stream?.content && !activeAssistant) {
+                const working = document.createElement('p');
+                working.className = 'dope-chat-working dope-chat-working-status';
+                working.setAttribute('role', 'status'); working.textContent = 'Working…';
+                item.append(working);
+            }
         }
         scroll.append(transcript);
         if (this.settingsOpen) scroll.prepend(this.renderSettings(chat.id));
@@ -2100,21 +2157,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         toolbar.append(more, modelSelector, commandLabel, submitButton);
         composer.append(input, toolbar);
         composer.append(menu);
-        if (state.pendingCommand) {
-            const pending = state.pendingCommand;
-            const card = document.createElement('section');
-            card.className = 'dope-chat-command-preview';
-            card.setAttribute('aria-label', 'Pending command approval');
-            const heading = document.createElement('strong'); heading.textContent = 'Command approval';
-            const exact = document.createElement('pre'); exact.textContent = pending.command;
-            const scope = document.createElement('p');
-            scope.textContent = `Project: ${pending.project} · Cwd: ${pending.cwd} · Sandbox: ${pending.sandbox} · Effect: ${pending.effect}`;
-            const actions = document.createElement('div');
-            actions.append(this.button('Allow once', () => void state.decideCommand(true)),
-                this.button('Deny', () => void state.decideCommand(false)));
-            card.append(heading, exact, scope, actions);
-            composer.append(card);
-        }
         if (state.running && state.planningProgress) {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';

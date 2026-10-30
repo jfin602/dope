@@ -230,11 +230,12 @@ test('Pi Chat discovers a project without attachments through only brokered read
       if (turn === 4) assert.match(JSON.stringify(body.messages), /Fixture project/);
       if (turn === 5) assert.match(JSON.stringify(body.messages), /Sandboxed command exited 0/);
       const choices = step ? [
+        ...(turn === 4 ? [{ index: 0, delta: { role: 'assistant', content: 'Checking the sandbox directory.' }, finish_reason: null }] : []),
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`,
           type: 'function', function: { name: step[0], arguments: step[1] } }] }, finish_reason: null },
         { index: 0, delta: {}, finish_reason: 'tool_calls' }
       ] : [
-        { index: 0, delta: { role: 'assistant', content: 'This fixture has package.json and src/index.html.' }, finish_reason: null },
+        { index: 0, delta: { role: 'assistant', content: 'The command completed. This fixture has package.json and src/index.html.' }, finish_reason: null },
         { index: 0, delta: {}, finish_reason: 'stop' }
       ];
       return new Response(choices.map((choice, i) => `data: ${JSON.stringify({ id: `discover-${turn}-${i}`,
@@ -246,6 +247,7 @@ test('Pi Chat discovers a project without attachments through only brokered read
     const answer = await dispatch({ type: 'turn', id: 19, maxOutputTokens: 128,
       messages: [{ role: 'user', content: 'inspect this project' }] });
     assert.match(answer.text, /src\/index.html/);
+    assert.match(answer.text, /Checking the sandbox directory\.\n\nThe command completed\./);
     assert.deepEqual(calls.map(call => call.name), ['dope_list', 'dope_search_paths', 'dope_read', 'dope_command']);
     assert.equal(turn, 5);
   } finally {

@@ -260,7 +260,9 @@ test('Select Chat keeps folder disclosure and keyboard accessible contextual act
     assert.match(tree, /row\.append\(select, more, menu\)/);
     assert.match(tree, /type: 'rename-chat'/);
     assert.match(tree, /type: 'move-chat'/);
+    assert.match(tree, /this\.controller\.deleteChat\(chat\.id\)/);
     assert.match(widget, /navigation\.setAttribute\('aria-label', 'Chats and folders'\)/);
+    assert.match(widget, /back\.setAttribute\('aria-label', 'Back to Chats'\)/);
     assert.match(css, /\.dope-chat-selector-list \{[^}]*overflow: auto/);
     assert.match(css, /\.dope-chat-panel button:focus-visible, \.dope-chat-panel summary:focus-visible/);
 });

@@ -354,6 +354,10 @@ export class ChatRepository {
         return this.locked(root, async base => {
             const current = await this.recover(root, base);
             if (current.revision !== expectedRevision) throw new Error(`Stale Chat revision; current ${current.revision}`);
+            if (operation.type === 'delete-chat') {
+                const lease = await this.lease(base, uuid(operation.chatId));
+                if (this.active(lease)) throw new Error('Cannot delete an open Chat');
+            }
             if (['append-user', 'begin-assistant', 'start-assistant', 'finish-assistant'].includes(operation.type)) {
                 const chatId = (operation as Extract<ChatOperation, { chatId: string }>).chatId;
                 const lease = await this.lease(base, chatId);
@@ -400,6 +404,11 @@ export class ChatRepository {
                 }
                 case 'move-chat': update(c => ({ ...c, folderPath: parseChatFolderPath(operation.folderPath) })); break;
                 case 'rename-chat': update(c => ({ ...c, title: operation.title.trim(), titleSource: 'developer' })); break;
+                case 'delete-chat': {
+                    if (index < 0) throw new Error('Chat not found');
+                    chats.splice(index, 1);
+                    break;
+                }
                 case 'automatic-title': {
                     const chat = chats[index];
                     const assistantIndex = chat?.messages.findIndex(message => message.id === operation.firstAssistantMessageId) ?? -1;
@@ -475,6 +484,10 @@ export class ChatRepository {
             }
             const next = parseChatCollection({ schemaVersion: 1, revision: current.revision + 1, folders, chats });
             await this.write(root, next);
+            if (operation.type === 'delete-chat') {
+                const leaseFile = join(base, '.leases', `${operation.chatId}.json`);
+                if (await regular(leaseFile)) await rm(leaseFile);
+            }
             this.emit(root, { revision: next.revision, kind: 'changed',
                 ...('chatId' in operation ? { chatId: operation.chatId } : {}) });
             return next;

@@ -725,6 +725,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-row time { color: var(--theia-descriptionForeground); font-size: 11px; }
 .dope-chat-shell { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; }
 .dope-chat-shell > header { flex: none; padding: 8px 12px; border-bottom: 1px solid var(--theia-widget-border); }
+.dope-chat-panel button.dope-chat-back { display: grid; place-items: center; flex: none; width: 28px; height: 28px; padding: 0; }
 .dope-chat-panel header { display: flex; align-items: center; gap: 8px; }
 .dope-chat-content-conversation .dope-chat-shell > header { min-width: 0; flex-wrap: wrap; }
 .dope-chat-content-conversation .dope-chat-shell > header h2 { min-width: 8ch; flex: 1; font-size: 14px; }
@@ -924,6 +925,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-message-alert .dope-chat-message-meta { color: var(--theia-errorForeground); font-weight: 600; }
 .dope-chat-provenance { margin-left: 5px; }
 .dope-chat-working { color: var(--theia-descriptionForeground); }
+.dope-chat-working-status { margin: 6px 0; font-size: 12px; }
 .dope-chat-working span { display: inline-block; animation: dope-chat-working 1s ease-in-out infinite; }
 @keyframes dope-chat-working { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .dope-chat-working span { animation: none; } }
@@ -943,7 +945,8 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-composer-toolbar select { min-width: 0; max-width: min(65%, 240px); margin-left: auto; }
 .dope-chat-command-mode { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 12px; }
 .dope-chat-composer-toolbar .dope-chat-command-mode select { margin-left: 0; max-width: 76px; }
-.dope-chat-command-preview { padding: 8px; border: 1px solid var(--theia-focusBorder); border-radius: 6px; }
+.dope-chat-command-preview { padding: 10px 12px; margin: 8px 0; border: 1px solid var(--theia-focusBorder); border-radius: 8px; background: var(--theia-editor-background); }
+.dope-chat-command-preview strong { display: block; font-size: 12px; }
 .dope-chat-command-preview pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 96px; overflow: auto; }
 .dope-chat-command-preview p { margin: 4px 0; font-size: 12px; }
 .dope-chat-command-preview button { margin-right: 6px; }

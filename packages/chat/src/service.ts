@@ -13,6 +13,7 @@ export type ChatOperation =
     | { type: 'create-chat'; id: ChatId; folderPath: ChatFolderPath; title?: string }
     | { type: 'move-chat'; chatId: ChatId; folderPath: ChatFolderPath }
     | { type: 'rename-chat'; chatId: ChatId; title: string }
+    | { type: 'delete-chat'; chatId: ChatId }
     | { type: 'automatic-title'; chatId: ChatId; title: string; firstUserMessageId: string; firstAssistantMessageId: string }
     | { type: 'set-settings'; chatId: ChatId; settings: ChatSettings }
     | { type: 'set-color'; chatId: ChatId; color: ChatColor }

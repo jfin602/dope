@@ -61,7 +61,9 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
             finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
     } };
     const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Investigate' }],
-        refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 8192 }) };
+        refs: [{ kind: 'file', id: 'index.html', label: 'index.html', schemaVersion: 1,
+            estimatedTokens: 10, origin: 'automatic', contentHash: 'a'.repeat(64) }],
+        diagnostics: [], usedTokens: 10, budgetTokens: 8192 }) };
     const grounder = { ground: async () => ({ blocks: [], diagnostics: [] }) };
     const backend = new ChatBackend(repository, client, models as never, composer as never,
         undefined, grounder as never);

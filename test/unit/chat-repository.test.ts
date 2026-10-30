@@ -32,6 +32,29 @@ test('simultaneous claims across repository instances have exactly one writer', 
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('delete Chat removes its saved file and index entry after the writer releases it', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id(), keptId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '', title: 'Disposable' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: keptId, folderPath: '', title: 'Keep' });
+    const manifestPath = join(root, '.dope/chats/index.json');
+    const entry = JSON.parse(await readFile(manifestPath, 'utf8')).entries.find((item: { id: string }) => item.id === chatId);
+    const savedFile = join(root, '.dope/chats/folders', entry.file);
+    const lease = await repo.claim(root, chatId, 'owner');
+    if (!lease.acquired) throw new Error('Chat claim missing');
+    await assert.rejects(repo.mutate(root, state.revision, { type: 'delete-chat', chatId }), /open Chat/);
+    assert.ok((await lstat(savedFile)).isFile());
+    await repo.release(root, chatId, lease.token);
+    state = await repo.mutate(root, state.revision, { type: 'delete-chat', chatId });
+    assert.deepEqual(state.chats.map(chat => chat.id), [keptId]);
+    await assert.rejects(lstat(savedFile), { code: 'ENOENT' });
+    await assert.rejects(lstat(join(root, '.dope/chats/.leases', `${chatId}.json`)), { code: 'ENOENT' });
+    assert.equal(JSON.parse(await readFile(manifestPath, 'utf8')).entries.some((item: { id: string }) =>
+      item.id === chatId), false);
+    await assert.rejects(repo.mutate(root, state.revision, { type: 'delete-chat', chatId }), /not found/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('nested folders and chats survive copy/reopen with stable ID, revisions and bounded search', async () => {
   const root = await folder(), copyRoot = await folder();
   const repo = new ChatRepository(), chatId = id(), messageId = id();
