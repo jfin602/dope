@@ -133,7 +133,7 @@ test('selection resolver rejects missing and foreign owner state; map views neve
     assert.match(widget, /Follow active planning selection/);
     assert.match(widget, /Pin selected checkpoint \/ Planning Map/);
     assert.match(widget, /planningContext: this\.controller\.planningMode/);
-    assert.match(widget, /'work-item', 'roadmap-checkpoint', 'saved-chat'/);
+    assert.match(widget, /'work-item', 'roadmap-checkpoint', 'roadmap', 'saved-chat'/);
     assert.match(widget, /state\.context\.length \|\| state\.activePlanning/);
 });
 

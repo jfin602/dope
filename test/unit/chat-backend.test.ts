@@ -10,8 +10,6 @@ import { ChatBackend, requestsImplementationPlan } from '../../packages/theia-ex
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
-import { PlanningBridgeApprovals } from '../../packages/theia-extension/lib/node/planning-bridge-approvals.js';
-import { projectWorkflowLineage } from '../../packages/theia-extension/lib/node/workflow-lineage.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import type { ChatEvent } from '../../packages/chat/lib/service.js';
@@ -846,27 +844,14 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         const publication = greenfield.preview(handle, 'ROADMAP.md');
         await assert.rejects(greenfield.accept(handle, publication, false), /approval/);
         const canonical = await greenfield.accept(handle, publication, true);
-        assert.equal(canonical.planOrigin?.planRevision, 3);
-        assert.equal(canonical.linkedDocument?.syncState, 'synced');
-        assert.equal(await readFile(join(root, 'ROADMAP.md'), 'utf8'), publication.markdown);
-        assert.equal((await new RoadmapStore().read(root)).planOrigin?.planHash, canonical.planOrigin?.planHash);
+        assert.equal(canonical.schemaVersion, 2);
+        assert.equal(canonical.revision, 1);
+        assert.equal(canonical.phases.length, 3);
+        assert.equal(canonical.gates.length, 0);
+        assert.equal(canonical.phases.every(item => item.qualificationStatus !== 'green'), true);
+        assert.equal(canonical.linkedDocument, undefined);
+        assert.deepEqual(await new RoadmapStore().read(root), canonical);
         assert.equal((await new ChatRepository().read(root)).chats[0].messages.length > 0, true);
-        const checkpoint = canonical.checkpoints.find(item => item.kind === 'milestone')!;
-        assert.equal(canonical.planOrigin?.steps.some(step => step.checkpointId === checkpoint.id), true);
-        const basis = { architectureRevision: 1, architectureFingerprint: 'architecture',
-            physicalInputFingerprint: 'physical', physicalGeneration: 1 };
-        const bridge = new PlanningBridgeApprovals(async () => ({ roadmap: await store.read(root), basis }));
-        const scope = await bridge.preview(root, checkpoint.id, 'scope');
-        await assert.rejects(bridge.approve(root, scope.token, false), /Explicit developer/);
-        assert.equal(await bridge.approved(root, checkpoint.id, 'scope'), false);
-        await bridge.approve(root, scope.token, true);
-        assert.equal(await new PlanningBridgeApprovals(async () => ({ roadmap: await store.read(root), basis }))
-            .approved(root, checkpoint.id, 'scope'), true);
-        assert.equal(await bridge.approved(root, checkpoint.id, 'target'), false);
-        await assert.rejects(bridge.preview(root, checkpoint.id, 'target'), /Planning target is unavailable/);
-        const lineage = projectWorkflowLineage({ roadmap: canonical });
-        assert.equal(lineage.find(item => item.checkpoint.id === checkpoint.id)?.stage, 'Roadmapped');
-        assert.equal(canonical.checkpoints.every(item => item.status === 'not-implemented'), true);
-        assert.deepEqual((await readdir(root)).sort(), ['.dope', 'ROADMAP.md', 'src'].sort());
+        assert.deepEqual((await readdir(root)).sort(), ['.dope', 'src'].sort());
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

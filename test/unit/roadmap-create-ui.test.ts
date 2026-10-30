@@ -12,8 +12,6 @@ test('blank Roadmap exposes model-free draft, preview, approval, cancellation an
     assert.match(widget, /button\('Create Manually', \(\) => \{ void this\.beginCreate\('manual'\)/);
     assert.match(widget, /editDraft\(state\.handle, state\.draft\.revision, action\)/);
     assert.match(widget, /type: 'create-phase'/);
-    assert.match(widget, /type: 'create-checkpoint'/);
-    assert.match(widget, /type: 'edit-checkpoint'/);
     assert.match(widget, /previewDraft\(state\.handle, state\.path\)/);
     assert.match(widget, /acceptDraft\(state\.handle, state\.preview, true\)/);
     assert.match(widget, /this\.createState = undefined;\s*await this\.refresh\(\)/);
@@ -51,7 +49,7 @@ test('creation controls have labels, keyboard forms, narrow layout and semantic 
     const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(widget, /form\.onsubmit = event => \{ event\.preventDefault\(\)/);
-    assert.match(widget, /checkpointForm\.onsubmit = event => \{ event\.preventDefault\(\)/);
+    assert.match(widget, /gateForm\.onsubmit = event => \{ event\.preventDefault\(\)/);
     assert.match(widget, /Roadmap creation preview/);
     assert.match(widget, /Proposed Markdown path \(publication requires separate approval\)/);
     assert.match(css, /\.dope-roadmap-create \{ display: grid/);

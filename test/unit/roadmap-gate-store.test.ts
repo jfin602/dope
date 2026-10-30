@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -95,6 +95,32 @@ test('wrong root, project, revision and source fingerprint cannot overwrite a va
         await writeFile(join(other, '.dope', 'roadmap.json'), await readFile(file));
         await assert.rejects(store.read(other), /Corrupt/);
     } finally { await rm(other, { recursive: true, force: true }); }
+}));
+
+test('schema-2 lock recovery and symlink root checks preserve owner bytes', async () => fixture(async (root, file) => {
+    const store = new RoadmapStore();
+    await store.saveGateIndex(root, 0, 'uninitialized', {
+        schemaVersion: 2, projectId: 'owner-1', projectRoot: root, revision: 1,
+        phases: [], gates: [], corrections: [],
+    });
+    const before = await readFile(file);
+    const lock = join(root, '.dope', 'roadmap.lock');
+    await writeFile(lock, `${process.pid}\n`);
+    await assert.rejects(store.mutateGateIndex(root, 1, 'owner-1', {
+        type: 'phase.create', id: 'phase-1', title: 'One', objective: 'One',
+    }), /Roadmap locked/);
+    assert.deepEqual(await readFile(file), before);
+    await writeFile(lock, '99999999\n');
+    const recovered = await store.mutateGateIndex(root, 1, 'owner-1', {
+        type: 'phase.create', id: 'phase-1', title: 'One', objective: 'One',
+    });
+    assert.equal(recovered.revision, 2);
+    await assert.rejects(readFile(lock), /ENOENT/);
+    const alias = `${root}-alias`;
+    await symlink(root, alias);
+    try { await assert.rejects(store.read(alias), /canonical local root/); }
+    finally { await rm(alias); }
+    assert.equal((await store.read(root)).phases[0].id, 'phase-1');
 }));
 
 test('typed Phase, Gate, criterion and correction mutations persist across store restart', async () => fixture(async (root, file) => {

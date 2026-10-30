@@ -7,6 +7,7 @@ import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
+import type { GateDocumentSyncPreview, GateDocumentRelinkPreview } from '@dope/project-intelligence/lib/node/roadmap-gate-document';
 import { projectRoadmapTasks, selectPhaseFocus, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { RoadmapService } from '../roadmap-service';
@@ -247,6 +248,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private importSerial = 0;
     private replacementSerial = 0;
     private syncPreview?: RoadmapSyncPreview;
+    private gateSyncPreview?: GateDocumentSyncPreview;
+    private gateRelink?: { path: string; preview?: GateDocumentRelinkPreview; busy: boolean; error?: string };
     private recovery?: { uri: string; preview?: RoadmapPendingRecoveryPreview; error?: string; busy: boolean };
     private relink?: { uri: string; path: string; preview?: RoadmapRelinkPreview; error?: string; busy: boolean };
     private replacement?: RoadmapReplacementState;
@@ -502,6 +505,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (oldDraft && oldDraft.uri !== this.projectUri) this.createState = undefined;
         this.importState = undefined;
         this.syncPreview = undefined;
+        this.gateSyncPreview = undefined;
+        this.gateRelink = undefined;
         this.syncChecking = !!this.inspector.index?.linkedDocument;
         this.importEntry.replaceChildren();
         this.projection = undefined;
@@ -635,7 +640,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.queueInitialCamera();
             if (index.linkedDocument) {
                 try {
-                    const sync = await this.service.previewDocumentSync(projectUri);
+                    const gateSchema = (index as unknown as RoadmapGateIndex).schemaVersion === 2;
+                    const sync = gateSchema ? await this.service.previewGateDocumentSync(projectUri) :
+                        await this.service.previewDocumentSync(projectUri);
                     if (this.isDisposed || request !== this.request || this.projectUri !== projectUri) return;
                     if (sync.revision !== index.revision) {
                         const recovered = await this.service.read(projectUri);
@@ -644,10 +651,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
                         this.projection = this.projectIndex(recovered, tasks, owners);
                         this.render();
                     }
-                    this.syncPreview = sync;
+                    if (gateSchema) { this.gateSyncPreview = sync as GateDocumentSyncPreview; this.syncPreview = undefined; }
+                    else { this.syncPreview = sync as RoadmapSyncPreview; this.gateSyncPreview = undefined; }
                     this.syncChecking = false;
                     this.sourceError = undefined;
                     this.renderImportEntry();
+                    this.render();
                     await this.service.observeLinkedDocument(projectUri);
                 } catch (error) {
                     if (this.isDisposed || request !== this.request || this.projectUri !== projectUri) return;
@@ -656,7 +665,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
                     this.status.textContent = this.sourceError;
                     this.renderImportEntry();
                 }
-            } else { this.syncChecking = false; this.sourceError = undefined; this.renderImportEntry(); }
+            } else { this.syncChecking = false; this.sourceError = undefined;
+                this.syncPreview = undefined; this.gateSyncPreview = undefined; this.renderImportEntry(); }
         } catch (error) {
             if (this.isDisposed || request !== this.request) return;
             this.status.textContent = `Roadmap unavailable: ${error instanceof Error ? error.message : 'Unable to read Roadmap'}. Use Refresh to retry.`;
@@ -864,6 +874,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private openPhaseFocus(): void {
+        if (this.inspector.gateIndex) return;
         const selected = this.projection?.nodes.find(node => node.id === this.selectedId);
         if (selected?.kind !== 'phase' || selected.draftState || !this.inspector.index) {
             this.status.textContent = 'Select a canonical phase checkpoint, then choose Open Phase.';
@@ -1035,7 +1046,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.renderDraftInspection();
         this.renderPhaseFocus();
         this.renderImplementationSummary(visible);
-        this.renderPools();
+        // Checkpoint linking belongs to the retired Roadmap shape. Keep the
+        // shared owner records intact, but do not expose its unusable control.
+        this.poolButton.hidden = !!this.inspector.gateIndex;
+        if (this.inspector.gateIndex) {
+            this.poolOpen = false;
+            this.pools.hidden = true;
+        } else this.renderPools();
         this.renderImportEntry();
         const displayedCount = visible.nodes.length;
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
@@ -1045,7 +1062,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.proposedDraft ? `Proposed draft on canvas · Review and accept or reject ${this.createState?.mode === 'manual' ? 'in Roadmap' : 'in the selected Chat'}. Nothing has been published.` :
                 this.createState ? `Accepted draft revision ${this.createState.draft.revision} on canvas · Review Phase and Gate definitions before accepting Roadmap structure. Markdown publication requires separate approval.` :
                     'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
-            `${displayedCount} displayed Roadmap cards · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.inspector.index.linkedDocument.syncState})` : ' · Accepted structure; Markdown not published'}${this.reviewedPlan ? ' · Reviewed plan remains noncanonical; bulk projection into this Roadmap is unavailable.' : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
+            `${displayedCount} displayed Roadmap cards · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.gateSyncPreview?.state ?? this.inspector.index.linkedDocument.syncState})` : ' · Accepted structure; Markdown not published'}${this.reviewedPlan ? ' · Reviewed plan remains noncanonical; bulk projection into this Roadmap is unavailable.' : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
     }
 
     private renderStrategicBar(): void {
@@ -1165,6 +1182,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const stacks = this.selectedId && projection ? roadmapImplementationStacks(projection, this.selectedId) : [];
         this.expandButton.disabled = this.collapseButton.disabled = !stacks.length;
         this.focusButton.disabled = !projection?.nodes.some(item => item.id === this.selectedId);
+        this.phaseButton.hidden = !!this.inspector.gateIndex;
         const visible = visibleGraph ?? (projection ? roadmapVisibleGraph(projection, this.detail, this.selectedId,
             this.expanded, this.collapsed, 96, this.promptWindow) : undefined);
         this.nextPromptsButton.disabled = !this.expanded.has(this.selectedId ?? '') ||
@@ -1412,9 +1430,100 @@ export class RoadmapCanvasWidget extends BaseWidget {
         super.onBeforeDetach(msg);
     }
 
+    private renderGateLinkedSource(): void {
+        const index = this.inspector.gateIndex;
+        const linked = index?.linkedDocument;
+        const uri = this.projectUri;
+        if (!index || !linked || !uri) return;
+        const sync = this.gateSyncPreview;
+        const state = sync?.state ?? linked.syncState;
+        const notice = this.sourceError ? 'source check failed' : this.syncChecking ? 'checking source' :
+            state.replaceAll('-', ' ');
+        this.sourceLabel.textContent = `Markdown · ${notice}`;
+        this.sourceButton.setAttribute('aria-label', `Roadmap Markdown ${linked.path}: ${notice}`);
+        this.sourceButton.dataset.review = String(!!this.sourceError || !!linked.pending ||
+            (state !== 'unchanged' && state !== 'synced'));
+        this.sourceSummary.textContent = `Linked Markdown · ${linked.path} · ${notice}`;
+        const detail = document.createElement('p');
+        detail.textContent = `Linked source: ${linked.path} · accepted SHA-256 ${linked.sourceHash}. ` +
+            'Canonical Roadmap acceptance and Markdown publication are separate approvals.';
+        this.importEntry.append(detail);
+        if (this.sourceError) {
+            const error = document.createElement('p'); error.setAttribute('role', 'alert');
+            error.textContent = this.sourceError; this.importEntry.append(error);
+        }
+        if (this.syncChecking) {
+            const pending = document.createElement('p'); pending.textContent = 'Checking linked source…';
+            this.importEntry.append(pending);
+        }
+        if (sync?.sourceHash && sync.sourceHash !== sync.acceptedHash) {
+            const hash = document.createElement('p'); hash.textContent = `Observed SHA-256 ${sync.sourceHash}`;
+            this.importEntry.append(hash);
+        }
+        if (sync?.diagnostics.length) this.appendImportDiagnostics('Linked source needs review', sync.diagnostics);
+        if (sync?.state === 'source-changed') {
+            const changes = document.createElement('p');
+            changes.textContent = sync.changes.map(change =>
+                `${change.kind} ${change.id} ${change.field}: ${change.accepted} → ${change.source}`).join('; ');
+            this.importEntry.append(changes);
+            const apply = document.createElement('button'); apply.type = 'button';
+            apply.textContent = 'Accept source changes'; apply.disabled = this.syncApplying;
+            apply.onclick = () => { if (this.syncApplying || this.gateSyncPreview !== sync) return;
+                this.syncApplying = true; this.renderImportEntry();
+                void this.service.applyGateDocumentSync(uri, sync, true).then(() => this.refresh()).catch(error => {
+                    this.sourceError = `Linked Gate source was not accepted: ${String(error)}`;
+                }).finally(() => { this.syncApplying = false; this.renderImportEntry(); }); };
+            this.importEntry.append(apply);
+        }
+        if (sync?.state === 'relink-needed' && !linked.pending) {
+            const relink = this.gateRelink ?? { path: '', busy: false };
+            this.gateRelink = relink;
+            const label = document.createElement('label'); label.textContent = 'Replacement project-relative Markdown path';
+            const input = document.createElement('input'); input.value = relink.path;
+            input.setAttribute('aria-label', 'Replacement project-relative Markdown path');
+            input.oninput = () => { relink.path = input.value; relink.preview = undefined; };
+            label.append(input); this.importEntry.append(label);
+            const preview = document.createElement('button'); preview.type = 'button';
+            preview.textContent = 'Preview Gate relink'; preview.disabled = relink.busy || !relink.path;
+            preview.onclick = () => { relink.busy = true; relink.error = undefined; this.renderImportEntry();
+                void this.service.previewGateRelink(uri, relink.path).then(value => { relink.preview = value; })
+                    .catch(error => { relink.error = String(error); }).finally(() => {
+                        relink.busy = false; this.renderImportEntry(); }); };
+            this.importEntry.append(preview);
+            if (relink.preview) {
+                const result = document.createElement('p');
+                result.textContent = `${relink.preview.previousPath} → ${relink.preview.path} · ${relink.preview.state}`;
+                this.importEntry.append(result);
+                if (relink.preview.diagnostics.length)
+                    this.appendImportDiagnostics('Relink diagnostics', relink.preview.diagnostics);
+                if (relink.preview.state === 'ready') {
+                    const approve = document.createElement('button'); approve.type = 'button';
+                    approve.textContent = 'Approve Gate relink'; approve.disabled = relink.busy;
+                    approve.onclick = () => { if (!relink.preview || relink.busy) return;
+                        relink.busy = true; this.renderImportEntry();
+                        void this.service.applyGateRelink(uri, relink.preview, true).then(() => this.refresh())
+                            .catch(error => { relink.error = String(error); }).finally(() => {
+                                relink.busy = false; this.renderImportEntry(); }); };
+                    this.importEntry.append(approve);
+                }
+            }
+            if (relink.error) this.appendImportDiagnostics('Relink was not accepted', [relink.error]);
+        }
+        if (linked.pending) {
+            const caution = document.createElement('p'); caution.setAttribute('role', 'alert');
+            caution.textContent = 'A linked edit is pending. Review the original Markdown and its backup before recovery.';
+            this.importEntry.append(caution);
+        }
+    }
+
     private renderImportEntry(): void {
         this.importEntry.replaceChildren();
         this.importEntry.append(this.sourceHeader);
+        if ((this.inspector.index as unknown as RoadmapGateIndex | undefined)?.schemaVersion === 2 &&
+            this.inspector.index?.linkedDocument) {
+            this.renderGateLinkedSource();
+            return;
+        }
         const linkedDocument = this.inspector.index?.linkedDocument;
         const sourceState = this.syncPreview?.state ?? linkedDocument?.syncState;
         const approvalPending = !!this.importState?.preview || !!this.createState?.preview ||
@@ -1661,27 +1770,26 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (!state.preview) return;
         const preview = state.preview;
         const summary = document.createElement('p');
-        const unsupported = preview.diagnostics.filter(item => /unsupported/i.test(item)).length;
-        const notGreen = preview.checkpoints.filter(item => item.status === 'not-green').length;
-        summary.textContent = `Preview ${preview.roadmapPath}: ${preview.checkpoints.length} checkpoints, ${preview.sources.length} source files, ${unsupported} unsupported section(s), ${notGreen} Not Green checkpoint(s). ${preview.checkpoints.filter(item => item.readOnly).length} read-only checkpoint(s).`;
+        const gates = preview.gateSource;
+        summary.textContent = `Preview ${preview.roadmapPath}: ${gates.phases.length} Phases, ${gates.gates.length} Gates, ` +
+            `${gates.gates.reduce((count, gate) => count + gate.criteria.length, 0)} criteria. ` +
+            'Imported definitions start unqualified; Markdown remains at its source path.';
         this.importEntry.append(summary);
         const mapped = document.createElement('details');
-        const mappedHeading = document.createElement('summary'); mappedHeading.textContent = 'Imported checkpoints and source mapping';
+        const mappedHeading = document.createElement('summary'); mappedHeading.textContent = 'Phase and Gate source mapping';
         const mappedList = document.createElement('ul');
-        for (const item of preview.checkpoints.slice(0, 50)) {
+        for (const item of [...gates.phases, ...gates.gates].slice(0, 50)) {
             const row = document.createElement('li');
-            row.textContent = `${item.kind}: ${item.title} · ${item.status} · ${item.readOnly ? 'read-only' : 'mapped'} · ${item.source.path}:${item.source.line}`;
+            row.textContent = `${'designation' in item ? item.designation + ' Gate' : 'Phase'}: ${item.title} · ${item.source.path}:${item.source.line}`;
             mappedList.append(row);
         }
-        if (preview.checkpoints.length > 50) { const rest = document.createElement('li');
-            rest.textContent = `${preview.checkpoints.length - 50} more checkpoint(s); review the source Markdown before approval.`;
+        if (gates.phases.length + gates.gates.length > 50) { const rest = document.createElement('li');
+            rest.textContent = `${gates.phases.length + gates.gates.length - 50} more Phase or Gate definitions; review the source Markdown before approval.`;
             mappedList.append(rest); }
         mapped.append(mappedHeading, mappedList); this.importEntry.append(mapped);
-        if (preview.diagnostics.length) this.appendImportDiagnostics('Import diagnostics', preview.diagnostics);
-        const caution = preview.checkpoints.flatMap(item => item.diagnostics.map(detail => `${item.title}: ${detail}`));
-        if (caution.length) this.appendImportDiagnostics('Checkpoint diagnostics', caution);
+        if (gates.diagnostics.length) this.appendImportDiagnostics('Gate source diagnostics', gates.diagnostics);
         const accept = button('Accept Import', () => void this.acceptImport());
-        accept.disabled = state.busy || !preview.checkpoints.length || !preview.checkpoints.some(item => !item.sectionKey.includes('/checklist-'));
+        accept.disabled = state.busy || !gates.phases.length || !!gates.diagnostics.length;
         this.importEntry.append(accept);
     }
 
@@ -1922,7 +2030,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private async acceptImport(): Promise<void> {
         const state = this.importState;
-        if (!state?.preview || state.busy || !state.preview.checkpoints.length) return;
+        if (!state?.preview || state.busy || !state.preview.gateSource.phases.length ||
+            state.preview.gateSource.diagnostics.length) return;
         const serial = ++this.importSerial;
         this.importState = { ...state, busy: true, message: 'Checking Roadmap revision and source…' };
         this.renderImportEntry();
@@ -1931,9 +2040,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (!this.currentImport(serial, state.uri, state.projectId, state.revision) ||
                 current.projectId !== state.projectId || current.revision !== state.revision)
                 throw new Error('Roadmap changed. Refresh, choose the file and preview again');
-            const result = await this.service.acceptImport(state.uri, state.revision, state.projectId, state.preview);
+            const result = await this.service.acceptGateImport(state.uri, state.revision, state.projectId, state.preview);
             if (!this.currentImport(serial, state.uri, state.projectId, state.revision)) return;
-            this.inspector.setSnapshot(state.uri, result);
+            this.inspector.setSnapshot(state.uri, result as unknown as RoadmapIndex);
             await this.refresh();
             if (this.projectUri === state.uri && this.inspector.index?.revision === result.revision)
                 this.status.textContent = `Imported and linked ${result.linkedDocument?.path ?? state.preview.roadmapPath} · ${result.linkedDocument?.syncState ?? 'no supported sections'}.`;

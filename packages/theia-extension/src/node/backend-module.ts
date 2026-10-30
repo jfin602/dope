@@ -1,4 +1,5 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
+import { randomUUID } from 'node:crypto';
 import { ConnectionHandler, RpcConnectionHandler } from '@theia/core/lib/common';
 import { NoteClient, noteServicePath } from '@dope/contracts/lib/note-service';
 import { NoteBackend } from './note-backend';
@@ -221,7 +222,8 @@ export default new ContainerModule(bind => {
                 discoverImports: async uri => discoverRoadmapCandidates(await context.container.get(PlanningStore).root(uri)),
                 previewImport: async (uri, path) => previewRoadmapImport(await context.container.get(PlanningStore).root(uri), path),
                 acceptGateImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
-                    .acceptGateImport(await context.container.get(PlanningStore).root(uri), revision, projectId, importPreview),
+                    .acceptGateImport(await context.container.get(PlanningStore).root(uri), revision,
+                        projectId === 'uninitialized' ? randomUUID() : projectId, importPreview),
                 previewGateDocumentPatch: async (uri, edit) => store.previewGateDocumentPatch(
                     await context.container.get(PlanningStore).root(uri), edit),
                 publishGateDocumentPatch: async (uri, preview, approved) => store.publishGateDocumentPatch(

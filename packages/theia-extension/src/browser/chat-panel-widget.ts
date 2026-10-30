@@ -2056,6 +2056,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         planning.textContent = `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
             (activePlanning ? `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : activePlanning.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${activePlanning.id}` : 'none');
         composer.append(planning);
+        if (activePlanning?.kind === 'roadmap') {
+            const notice = document.createElement('p');
+            notice.className = 'dope-chat-context-diagnostics';
+            notice.textContent = 'Roadmap Chat editing is not yet qualified. Review any proposed change before applying it; use Roadmap manual controls for dependable structure edits.';
+            composer.append(notice);
+        }
         if (state.context.length) {
             const selectedContext = document.createElement('ul');
             selectedContext.className = 'dope-chat-selected-context';

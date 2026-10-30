@@ -165,7 +165,9 @@ export class RoadmapInspectorWidget extends BaseWidget {
         prepare.id = 'dope-roadmap-prepare-work'; prepare.disabled = true;
         prepare.setAttribute('aria-label', `Prepare Work for Gate ${gate.designation}: unavailable`);
         this.content.append(prepare, this.element('p', this.model.prepareWorkBlockedReason));
-        if (this.editable && this.model.gateDraft) {
+        if (this.editable && index?.linkedDocument) {
+            this.content.append(this.element('p', `This Gate is linked to ${index.linkedDocument.path}. Edit the Markdown source, then review its changes in Roadmap.`));
+        } else if (this.editable && this.model.gateDraft) {
             const form = this.element('form');
             form.onsubmit = event => { event.preventDefault(); void this.model.saveGate(); };
             form.append(this.element('h3', 'Edit Gate definition'));

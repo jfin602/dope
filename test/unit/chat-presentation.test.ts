@@ -229,7 +229,8 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
     assert.match(widget, /document\.createElement\('details'\)/);
     assert.match(widget, /summary\.setAttribute\('aria-label', `\$\{activity\.label\}: \$\{activity\.status\}\. Original JSON`\)/);
     assert.match(widget, /raw\.textContent = body/);
-    assert.match(widget, /navigator\.clipboard\?\.writeText\(body\)/);
+    assert.match(widget, /navigator\.clipboard\?\.writeText\(text\)/);
+    assert.match(widget, /copyChatText\(body\)/);
     assert.match(widget, /summary\.textContent = outcome\.summary/);
     assert.match(widget, /if \(outcome\) \{/);
     assert.doesNotMatch(widget, /body\.replace\(\/\\s\+\/g, ' '\)\.slice\(0, 160\)/);
@@ -242,7 +243,7 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
     assert.match(css, /\.dope-chat-panel button:focus-visible, \.dope-chat-panel summary:focus-visible/);
 });
 
-test('Select Chat keeps nested disclosure and contextual actions separate from selection', async () => {
+test('Select Chat keeps folder disclosure and keyboard accessible contextual actions separate from selection', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     const tree = widget.slice(widget.indexOf('private renderTree('), widget.indexOf('private render():'));
@@ -253,8 +254,10 @@ test('Select Chat keeps nested disclosure and contextual actions separate from s
     assert.match(tree, /title\.textContent = chat\.title/);
     assert.match(tree, /dot\.dataset\.color = chat\.color/);
     assert.match(tree, /time\.dateTime = chat\.lastInteractedAt/);
-    assert.match(tree, /menuLabel\.setAttribute\('aria-label', `Actions for Chat \$\{chat\.title\}`\)/);
-    assert.match(tree, /menu\.append\(menuLabel, actions\);\s*row\.append\(select, menu\)/);
+    assert.match(tree, /menu\.setAttribute\('aria-label', `Actions for Chat \$\{chat\.title\}`\)/);
+    assert.match(tree, /more\.setAttribute\('aria-haspopup', 'menu'\)/);
+    assert.match(tree, /if \(event\.key === 'Escape'\) \{ event\.preventDefault\(\); menu\.hidePopover\(\); more\.focus\(\)/);
+    assert.match(tree, /row\.append\(select, more, menu\)/);
     assert.match(tree, /type: 'rename-chat'/);
     assert.match(tree, /type: 'move-chat'/);
     assert.match(widget, /navigation\.setAttribute\('aria-label', 'Chats and folders'\)/);

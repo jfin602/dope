@@ -22,21 +22,21 @@ test('candidate choice is preview only; cancel and unsupported content cannot ac
     assert.match(widget, /select\.onchange = \(\) => void this\.previewImport\(select\.value\)/);
     assert.match(widget, /this\.service\.previewImport\(state\.uri, path\)/);
     assert.match(widget, /private cancelImport\(\): void \{ \+\+this\.importSerial; this\.importState = undefined/);
-    assert.match(widget, /!preview\.checkpoints\.length \|\| !preview\.checkpoints\.some/);
-    assert.match(widget, /Import diagnostics/);
-    assert.match(widget, /Not Green checkpoint/);
-    assert.match(widget, /Linked Markdown:/);
+    assert.match(widget, /!gates\.phases\.length \|\| !!gates\.diagnostics\.length/);
+    assert.match(widget, /Gate source diagnostics/);
+    assert.match(widget, /Imported definitions start unqualified/);
+    assert.match(widget, /Linked source:/);
 });
 
 test('acceptance is checked at UI and store boundaries; stale project or preview cannot write', () => {
     assert.match(widget, /current\.projectId !== state\.projectId \|\| current\.revision !== state\.revision/);
-    assert.match(widget, /this\.service\.acceptImport\(state\.uri, state\.revision, state\.projectId, state\.preview\)/);
+    assert.match(widget, /this\.service\.acceptGateImport\(state\.uri, state\.revision, state\.projectId, state\.preview\)/);
     assert.match(widget, /serial === this\.importSerial && this\.projectUri === uri/);
-    assert.match(service, /acceptImport\(projectUri: string, expectedRevision: number, expectedProjectId: string, preview: RoadmapImportPreview\)/);
-    assert.match(backend, /\.acceptImport\(await context\.container\.get\(PlanningStore\)\.root\(uri\), revision, importPreview, projectId\)/);
+    assert.match(service, /acceptGateImport\(projectUri: string, expectedRevision: number, projectId: string,/);
+    assert.match(backend, /projectId === 'uninitialized' \? randomUUID\(\) : projectId, importPreview/);
     const store = read('packages/project-intelligence/src/node/roadmap-store.ts');
-    assert.match(store, /JSON\.stringify\(preview\) !== JSON\.stringify\(fresh\)/);
-    assert.match(store, /linked document differs; explicit relink is required/);
+    assert.match(store, /JSON\.stringify\(fresh\) !== JSON\.stringify\(preview\)/);
+    assert.match(store, /Roadmap Gate source is incomplete or ambiguous/);
 });
 
 test('chooser uses native keyboard controls and semantic focus tokens at narrow width', () => {
