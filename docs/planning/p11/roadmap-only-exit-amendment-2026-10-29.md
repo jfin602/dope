@@ -1,5 +1,9 @@
 # Phase 11 narrowed exit — Roadmap-qualified handoff to Pi phase
 
+**Final owner disposition:** The later [final closeout](phase-11-final-closeout-2026-10-29.md) records the actual narrowed-scope owner close and evidence limits. The execution sequence below remains historical.
+
+**Forward supersession (2026-10-29):** The owner approved a further [final stabilization exit](final-stabilization-scope-amendment-2026-10-29.md). M2/M3 and the M1–M3/P14→P15–P17 sequence below are historical design, not the current execution route. Preserve their original results.
+
 **Owner decision:** 2026-10-29 (America/Chicago), immediately after `c11-roadmap-redesign-v2` P14 NOT GREEN and authorization of manual M1–M3. **Status:** APPROVED SCOPE / PROMPT AUTHORING ONLY — NO PRODUCT CODE OR PHASE CLOSEOUT.
 **Effective authority:** This forward scope amendment supersedes older Phase 11 *exit* requirements where they conflict, without rewriting historical failure reports, changing prior test truth, or modifying already-executed prompt source. [V2 Roadmap](../../tasks/c11-roadmap-redesign-v2/README.md), [manual P14 recovery](../../tasks/c11-roadmap-redesign-v2/manual/README.md), [Phase 12 Pi plan](../p12/phase-12-plan.md).
 

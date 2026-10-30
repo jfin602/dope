@@ -1,0 +1,27 @@
+# Phase 11 final closeout — narrowed Roadmap scope
+
+**Owner decision:** 2026-10-29 (America/Chicago). **Disposition:** **OWNER-CLOSED for the narrowed deterministic Roadmap scope**, with the remaining Chrome interaction checks expressly treated as nonblocking by the owner's final instruction. This is an owner disposition, not a claim that every check in the earlier [final stabilization contract](final-stabilization-scope-amendment-2026-10-29.md) passed. **Phase 11 broad Bridge/Work/Hunts/G3 qualification remains NOT GREEN.**
+
+**Qualified product/test source:** `203d76b3305cac33037001594cb866977bf13579` (tree `8ceda346d7af51ff24c6cbb2caf39afb5abb51bb`) at `0.11.8`. The validation log `/tmp/dope-phase11-check-recovery-cycle2.log` was produced on the byte-identical product/test tree before this commit; subsequent changes through this closeout are documentation only. A separate version-only `0.12.0` baseline follows this closeout. It does not convert this evidence into a fresh test run on changed manifest bytes.
+
+## Source and test recovery
+
+- Kept schema 2 authoritative and legacy schema 1 inputs fail closed. The active product test matrix now names the current Phase/Gate/Criterion domain, store, projection, import, document, greenfield, qualification, phase qualification and Chat suites. Six retired full schema-1 suite files and obsolete cases in three mixed suites were removed from the active matrix. Historical Bridge/legacy integration assertions from those suites are **not claimed as equivalent current coverage** or as broad qualification. Current gate tests include explicit unsupported-schema rejection and no-write coverage, plus store lock recovery and symlink-root denial.
+- Corrected the asynchronous Chat fixture teardown by awaiting lease release before disposing its backend and removing its directory. The focused test passed ten consecutive runs without a sleep or retry in the test.
+- Updated current source assertions for Chat presentation and the Roadmap pool control. The pool control is hidden in schema-2 Gate mode; deferred Chat authoring is labelled as unqualified. The source changes also include the existing pending Phase 11 Roadmap, Chat and backend stabilization edits.
+
+## Exact-source qualification
+
+`npm run check` **passed** on the above product/test tree: runner 105/105, baseline 13/13, local install 1/1, product groups 659/659 and 28/28, IDE fixture 1/1 — **807 passed, 0 failed, 0 skipped**. The same command completed TypeScript typecheck, browser build and Electron build successfully. `git diff --check` passed. The first recovery cycle found a missing test import; it was fixed before this final passing run. No product/test source changed after the final run.
+
+The connected real Google Chrome session served the built bundle at `http://127.0.0.1:3000` without local-model inference. Bundle SHA-256 `5cebb69a27d907415fdc7f2f1c248abb66224ab2c77e9ba35cd3b57376a5f5fc` matched the served response. Backend main SHA-256 `6c6ae8a507abeec952c916da374433792a04a33d440a2de792366c2ceb92281d`; compiled Chat backend SHA-256 `6cd32fdc350cdbc6eccdfc4df92c0856b79e5757e0c00f41be2840d5d3ce61cf`. Roadmap canvas source SHA-256 `4e546b7b7c0006ee0640980ccf2a26d46d8d898a70ddcf961ad36c3bd3498958`; Inspector source SHA-256 `0a3b56c36e3fa216412c157c083c8634bddaf44e427ad4e0121401a4f1c54cc3`.
+
+In Chrome, a disposable schema-2 project rendered three large horizontal Phase cards with nested Gate detail, criteria, qualification counts, Inspector content and deferred Chat messaging. Fit, narrower viewport and reload retained the Roadmap. [Screenshot](qualification-evidence/phase11-three-cards-chrome.png) SHA-256 `49f5902492552ef21b201a3af0586550c5d627b0bcab740e9b6ec7276a37faee` records the three-card view. A linked Markdown change produced a separate source-change preview. A second file change while preview was open replaced the stale preview; the old button detached. The canonical Roadmap file stayed byte-identical while the preview was unaccepted, and Markdown was restored afterward.
+
+A second disposable project demonstrated Phase creation, Gate preview/reject with no canonical Roadmap or Markdown file, then Gate and criterion approval. Accepting Roadmap structure created `.dope/roadmap.json` without `ROADMAP.md`, and Chrome reported revision 1 and “Accepted structure; Markdown not published.” The Phase card still displayed “Accepted draft · not yet canonical” after Refresh. **That label remains a known UI truth defect.** This closeout does not mark it fixed.
+
+## Owner-waived and deferred evidence
+
+At the owner's instruction to mark the remaining parts nonimportant and close, the following checks were not completed: a direct stale-apply denial after the preview was replaced, foreign-owner no-write through Chrome, and independent native Electron GUI parity. Source tests/builds and the observed browser flow are the evidence above; they do not prove these missing cases. The stale card label is also accepted as a known issue for this owner close. No local-model Chat authoring or Inspector Edit qualification is asserted: M2 and M3 remain deferred, the original M2/P14 NOT GREEN records stay intact, and no unrun runner prompt is marked PASS.
+
+Phase 12 Pi P1 remains separate and unstarted. Its standalone Pi/Qwen qualification, preflight and deliberate owner Run are still required. Deferred Gate-to-Work/prompt integration and broader Phase 11 historical gaps require separate scope and evidence.
