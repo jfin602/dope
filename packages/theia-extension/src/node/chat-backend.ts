@@ -764,6 +764,12 @@ export class ChatBackend implements ChatService {
             const raw = value as Record<string, unknown>;
             if (raw.type === 'no-action' && Object.keys(raw).sort().join(',') === 'message,type' &&
                 typeof raw.message === 'string' && raw.message.length <= 4000) return {};
+            for (const ref of refs.filter(item => item.kind === 'file' && item.sourceHash && item.includedBytes)) {
+                const current = await this.grounder?.readFile(root, ref.id);
+                if (!current || current.blocks[0]?.ref.sourceHash !== ref.sourceHash || current.diagnostics.length ||
+                    ref.projectId && current.blocks[0].ref.projectId !== ref.projectId)
+                    throw new Error('Project source changed during planning');
+            }
             if (draft) {
                 const single = raw.type === 'roadmap-draft-proposal' &&
                     Object.keys(raw).sort().join(',') === 'action,draftRevision,projectId,type' &&
@@ -869,11 +875,15 @@ export class ChatBackend implements ChatService {
             if (owner.projectId !== this.greenfield.draftProjectId(bound.handle) ||
                 owner.revision !== (bound.ownerRevision ?? 0) || owner.pendingCreation)
                 throw new Error('Implementation plan owner changed');
-            const verified = new Map(refs.filter(ref => ref.kind === 'file' && ref.sourceHash && ref.includedBytes)
-                .map(ref => [ref.id, ref.sourceHash!]));
+            const verified = new Map<string, string>();
+            for (const ref of refs.filter(ref => ref.kind === 'file' && ref.sourceHash && ref.includedBytes)) {
+                if (verified.has(ref.id) && verified.get(ref.id) !== ref.sourceHash)
+                    throw new Error('Project source changed during planning');
+                verified.set(ref.id, ref.sourceHash!);
+            }
             for (const [path, expected] of verified) {
                 const current = await this.grounder?.readFile(root, path);
-                if (current?.blocks[0]?.ref.contentHash !== expected || current.diagnostics.length)
+                if (current?.blocks[0]?.ref.sourceHash !== expected || current.diagnostics.length)
                     throw new Error('Project source changed during planning');
                 const supplied = refs.find(ref => ref.kind === 'file' && ref.id === path);
                 if (supplied?.projectId && current.blocks[0].ref.projectId !== supplied.projectId)
@@ -1265,6 +1275,17 @@ export class ChatBackend implements ChatService {
         let toolBytes = 0;
         const projectTools = this.grounder ? { root,
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
+                const toolName = name as NonNullable<ChatAssistantMessage['execution']['toolEvents']>[number]['name'];
+                const notify = (status: 'running' | 'completed' | 'failed' | 'denied', truncated?: boolean) => {
+                    if (!this.handle || !assistant || !['dope_read', 'dope_list', 'dope_search_paths',
+                        'dope_search_text', 'dope_command'].includes(name)) return;
+                    try { this.client.notifyChatEvent({ projectHandle: this.handle, kind: 'tool-progress',
+                        chatId: key, messageId: assistant.id, name: toolName, status, truncated }); }
+                    catch { /* Transient progress never controls tool authority. */ }
+                };
+                const count = toolEvents.length;
+                notify('running');
+                try { return await (async () => {
                 if (signal?.aborted || this.active(request.projectHandle) !== root ||
                     this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
                 if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
@@ -1312,7 +1333,7 @@ export class ChatBackend implements ChatService {
                     const truncated = result.truncated || output.length > remaining;
                     const bounded = output.subarray(0, remaining).toString('utf8');
                     toolBytes += Buffer.byteLength(bounded);
-                    toolEvents.push({ name, status: result.executed ? 'completed' : 'denied',
+                    toolEvents.push({ name, status: !result.executed ? 'denied' : result.succeeded ? 'completed' : 'failed',
                         truncated });
                     return bounded;
                 }
@@ -1347,6 +1368,10 @@ export class ChatBackend implements ChatService {
                 } catch {
                     toolEvents.push({ name: toolName, status: 'denied', truncated: false });
                     throw new Error('Project discovery denied or unavailable');
+                }
+                })(); } finally {
+                    const result = toolEvents.length > count ? toolEvents.at(-1) : undefined;
+                    notify(result?.status ?? 'denied', result?.truncated);
                 }
             } } : undefined;
         try {
@@ -1482,17 +1507,18 @@ export class ChatBackend implements ChatService {
                             message.role === 'assistant' && message.execution.status === 'complete'))
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted && !localRoadmap) return preview;
+                    const proposalRefs = [...preview.refs, ...sourceRefs];
                     const result = planOnly ? localMode === 'plan-revision' ?
                         (JSON.parse(output) as { type: string }).type === 'no-action' ? {} :
                             await this.planRevisionProposal(root, key, assistant.id, request.leaseToken, output,
-                                planBinding!.plan!.revision, preview.refs) :
-                        await this.planProposal(root, key, assistant.id, request.leaseToken, output, preview.refs, requirements) :
+                                planBinding!.plan!.revision, proposalRefs) :
+                        await this.planProposal(root, key, assistant.id, request.leaseToken, output, proposalRefs, requirements) :
                         helpTurn || bridge ? {} : await this.proposal(root, key, assistant.id,
-                            request.leaseToken, output, preview.refs, draft);
+                            request.leaseToken, output, proposalRefs, draft);
                     if (localRoadmap) {
                         const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
-                            { schemaVersion: 1, kind, refs: preview.refs,
+                            { schemaVersion: 1, kind, refs: proposalRefs,
                                 status: kind === 'no-action' || kind === 'roadmap-gate-focus' &&
                                     'roadmapFocus' in result && result.roadmapFocus ?
                                     'no-action' : bridge && kind === 'bridge-proposal' ? 'suggested' :

@@ -83,6 +83,8 @@ export class ChatPanelController {
     turnModel: ChatModelSelection | undefined;
     commandMode: ChatCommandMode = 'ask';
     pendingCommand?: ChatCommandPreview;
+    toolProgress?: { messageId: string; events: { name: NonNullable<import('@dope/chat').ChatExecution['toolEvents']>[number]['name'];
+        status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean }[] };
     running = false;
     stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
     planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
@@ -138,7 +140,7 @@ export class ChatPanelController {
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
         this.planPreview = undefined; this.undoPlanRevision = undefined;
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
-        this.commandMode = 'ask'; this.pendingCommand = undefined;
+        this.commandMode = 'ask'; this.pendingCommand = undefined; this.toolProgress = undefined;
         this.planningProgress = undefined;
         this.roadmapGenerationStage = undefined; this.roadmapGenerationProjectId = undefined;
         this.activeRoadmapOfferId = undefined;
@@ -175,6 +177,14 @@ export class ChatPanelController {
                         this.pendingCommand = undefined; this.changed();
                     }
                     return;
+                }
+                if (event.kind === 'tool-progress') {
+                    if (event.chatId !== this.chatId || !this.running) return;
+                    const current = this.toolProgress?.messageId === event.messageId ? this.toolProgress.events : [];
+                    const next = event.status === 'running' ? [...current, { name: event.name, status: event.status }] :
+                        [...current.slice(0, -1), { name: event.name, status: event.status, truncated: event.truncated }];
+                    this.toolProgress = { messageId: event.messageId, events: next.slice(-16) };
+                    this.changed(); return;
                 }
                 if (event.kind === 'planning-progress') {
                     if ((this.pending || this.running) && event.chatId === this.chatId &&
@@ -493,6 +503,7 @@ export class ChatPanelController {
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
         this.running = true; this.error = ''; this.stream = undefined; this.planningProgress = undefined;
+        this.toolProgress = undefined;
         this.planningProposal = undefined; this.planningProposalError = undefined;
         this.planningProposalErrorMessageId = undefined; this.planPreview = undefined;
         this.roadmapOffer = undefined;

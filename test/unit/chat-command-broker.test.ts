@@ -23,12 +23,14 @@ test('real Chat sandbox permits investigation while OS denies canonical, private
             runChatInvestigationCommand(work, command, signal);
         const read = await run('grep project-source source.txt');
         assert.equal(read.executed, true, read.output);
+        assert.equal(read.succeeded, true);
         assert.match(read.output, /project-source/);
         const check = await run('node --test sample.test.js');
         assert.equal(check.executed, true, check.output);
         assert.match(check.output, /exited 0/);
         const write = await run('printf changed > source.txt');
         assert.equal(write.executed, true, write.output);
+        assert.equal(write.succeeded, false);
         assert.match(write.output, /exited [1-9]/);
         assert.equal(await readFile(join(work, 'source.txt'), 'utf8'), 'project-source');
         const privateRead = await run('cat .env .git/secret private-notes.txt');

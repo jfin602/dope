@@ -80,7 +80,10 @@ export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'assistant-delta'; chatId: ChatId;
         messageId: string; executionId: string; sequence: number; delta: string }
     | { projectHandle: string; kind: 'command-pending'; chatId: ChatId; preview: ChatCommandPreview }
-    | { projectHandle: string; kind: 'command-settled'; chatId: ChatId; id: string };
+    | { projectHandle: string; kind: 'command-settled'; chatId: ChatId; id: string }
+    | { projectHandle: string; kind: 'tool-progress'; chatId: ChatId; messageId: string;
+        name: NonNullable<ChatExecution['toolEvents']>[number]['name'];
+        status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean };
 export interface ChatClient { notifyChatEvent(event: ChatEvent): void }
 
 /** Transport-neutral service. The backend owns persistence, revisions and lease enforcement. */

@@ -67,7 +67,7 @@ export interface ChatExecution {
     finishReason?: string;
     sourceRefs?: ChatContextRef[];
     toolEvents?: { name: 'dope_read' | 'dope_list' | 'dope_search_paths' | 'dope_search_text' | 'dope_command';
-        status: 'completed' | 'denied'; truncated: boolean }[];
+        status: 'completed' | 'failed' | 'denied'; truncated: boolean }[];
 }
 export interface ChatUserMessage {
     schemaVersion: 1;
@@ -333,7 +333,7 @@ function parseExecution(value: unknown): ChatExecution {
             const event = record(item, ['name', 'status', 'truncated'], ['name', 'status', 'truncated']);
             if (typeof event.truncated !== 'boolean') throw new Error('Invalid Chat tool truncation');
             return { name: choice(event.name, ['dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command'] as const,
-                'Chat tool'), status: choice(event.status, ['completed', 'denied'] as const, 'Chat tool status'),
+                'Chat tool'), status: choice(event.status, ['completed', 'failed', 'denied'] as const, 'Chat tool status'),
                 truncated: event.truncated };
         });
     }

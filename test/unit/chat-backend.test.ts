@@ -816,15 +816,21 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         tests: ['Unit history, diff editor reuse, checkout and commit permission checks'],
         guiQualification: 'Exercise history, checkout, commit and diff in browser',
         risks: ['Stale branch; refresh before checkout'], alternatives: ['Start with read-only history'], question: '' });
-    let calls = 0, reportedModel = 'q4', interrupted = false;
+    let calls = 0, reportedModel = 'q4', interrupted = false, inspectWithPi = false,
+        changeSourceAfterInspect = false;
+    let inspectedSource = '';
     const sent: string[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'q4', label: 'Fixture', usable: true, capabilities: { conversationalText: true,
             streaming: true, contextWindowTokens: 8192 } }] },
         { id: 'hosted', ready: true, providerId: 'gemini', models: [{ id: 'remote', usable: true,
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192 } }] }] }),
-        async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
+        async *generate(_selection: unknown, request: { messages: { content: string }[];
+            projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
             calls++; sent.push(request.messages.map(message => message.content).join('\n'));
+            if (inspectWithPi) inspectedSource = JSON.parse(await request.projectTools!.execute('dope_read',
+                { path: sourcePath })).text;
+            if (changeSourceAfterInspect) await writeFile(join(root, sourcePath), 'changed during turn\n');
             yield { type: 'delta' as const, text: plan.slice(0, 30) };
             if (interrupted) return;
             yield { type: 'complete' as const, text: plan, actualModelId: reportedModel }; } };
@@ -871,11 +877,22 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.equal(greenfield.readImplementationPlan(handle), undefined);
         assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.planningActivity?.status, 'rejected');
         plan = completePlan;
+        inspectWithPi = true;
         calls = 0;
         const before = await store.read(root);
+        changeSourceAfterInspect = true;
+        const stale = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest });
+        assert.equal(stale.proposal, undefined);
+        assert.match(stale.proposalError ?? '', /source changed/i);
+        assert.deepEqual(await store.read(root), before);
+        changeSourceAfterInspect = false;
+        await writeFile(join(root, sourcePath), source);
+        calls = 0;
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest });
         assert.equal(calls, 1);
+        assert.match(inspectedSource, /current history owner/);
         assert.ok(investigations > 0);
         assert.match(sent.at(-1)!, /current history owner/);
         assert.equal(turn.proposal?.action.type, 'implementation-plan', JSON.stringify(turn.planPreview ?? turn.proposalError));
@@ -885,6 +902,11 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.deepEqual(await store.read(root), before);
         const message = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
         assert.equal(message.role === 'assistant' && message.planningActivity?.status, 'pending');
+        if (message.role === 'assistant') {
+            assert.deepEqual(message.execution.toolEvents?.map(event => [event.name, event.status]),
+                [['dope_read', 'completed']]);
+            assert.ok(message.planningActivity?.refs.some(ref => ref.id === sourcePath && ref.sourceHash));
+        }
         await backend.decidePlanningProposal(projectHandle, chatId, lease.token, turn.proposal!.id, true);
         const accepted = greenfield.readImplementationPlan(handle)!;
         assert.equal(accepted.steps.length, 3);

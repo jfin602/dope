@@ -126,7 +126,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly presentStrategicRoadmap?: (projectUri: string, projectId: string, chatId: string,
             state: { stage?: Extract<ChatEvent, { kind: 'planning-progress' }>['stage'];
                 review?: ChatStrategicDraftReview; error?: string; clear?: boolean; busy?: boolean },
-            decide: (approve: boolean) => Promise<void>, open: boolean) => Promise<void>) {
+            decide: (approve: boolean) => Promise<void>, open: boolean) => Promise<void>,
+        private readonly prepareWorkDraft?: (workspace: string, model: ChatModelSelection, instructions: string) => Promise<void>) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -539,6 +540,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (selection) await this.selectWork(selection, navigationOnly);
         else this.render();
         if (!navigationOnly) await this.refreshWork();
+    }
+    /** The existing Work composer owns all later model, validation, grant and Start decisions. */
+    async receiveChatWorkDraft(workspace: string, model: ChatModelSelection, instructions: string): Promise<void> {
+        await this.initialAttach;
+        const controller = this.directController;
+        if (this.module !== 'work' || this.panel.workspace !== workspace || controller?.project !== workspace ||
+            !controller.handle || !instructions.trim()) throw new Error('Work project changed; prepare the draft again.');
+        await this.selectWorkLauncher();
+        await this.selectWork();
+        if (this.panel.workspace !== workspace || controller.project !== workspace) throw new Error('Work project changed.');
+        controller.setPolicy({ kind: 'exact', connectionId: model.connectionId, modelId: model.modelId });
+        controller.edit(instructions.trim().split('\n')[0].slice(0, 1000), instructions.trim().slice(0, 20000));
+        controller.setValidation('');
+        controller.acceptGrant(false); controller.authorizeHostedProjectData(false);
+        this.composingWork = true; this.render();
     }
     /** Exact owner navigation; never starts a task or changes the Chat conversation. */
     async navigateWork(selection: WorkSelection, workspace: string): Promise<boolean> {
@@ -1818,8 +1834,39 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             time.textContent = new Date(message.createdAt).toLocaleString();
             item.append(content);
             if (message.role === 'assistant') {
+                const events = state.toolProgress?.messageId === message.id && state.running ?
+                    state.toolProgress.events : message.execution.toolEvents;
+                if (events?.length) {
+                    const activity = document.createElement('details'); activity.className = 'dope-chat-tool-activity';
+                    const heading = document.createElement('summary');
+                    heading.textContent = `Project activity · ${events.length} tool ${events.length === 1 ? 'step' : 'steps'}`;
+                    const list = document.createElement('ul');
+                    for (const event of events) {
+                        const row = document.createElement('li');
+                        const label = { dope_read: 'Read', dope_list: 'List', dope_search_paths: 'Find paths',
+                            dope_search_text: 'Search text', dope_command: 'Command' }[event.name];
+                        const outcome = event.name === 'dope_command' && event.status === 'completed' ? 'allowed · completed' :
+                            event.name === 'dope_command' && event.status === 'failed' ? 'allowed · failed' : event.status;
+                        row.textContent = `${label} · ${outcome}${event.truncated ? ' · truncated' : ''}`;
+                        list.append(row);
+                    }
+                    activity.append(heading, list); item.append(activity);
+                }
                 const action = this.roadmapActionCard(message);
                 if (action) item.append(action);
+                if (this.prepareWorkDraft && message.execution.status === 'complete' && message.content.trim() &&
+                    (!message.planningActivity || ['applied', 'no-action'].includes(message.planningActivity.status))) {
+                    const prepare = this.button('Prepare Work', () => {
+                        const workspace = state.workspace;
+                        if (!workspace || state.chatId !== chat.id || state.running || state.pending) return;
+                        const instructions = implementationPlanAnswer(message) ||
+                            planningOutcome(message)?.summary || message.content;
+                        void this.prepareWorkDraft!(workspace, message.execution.selectedModel, instructions)
+                            .catch(error => { this.status.textContent = String(error); });
+                    }, state.running || state.pending);
+                    prepare.setAttribute('aria-label', 'Prepare Work draft from this response');
+                    item.append(prepare);
+                }
             }
             const meta = document.createElement('small'); meta.className = 'dope-chat-message-meta';
             meta.append(time);

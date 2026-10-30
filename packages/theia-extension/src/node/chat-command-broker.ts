@@ -7,8 +7,8 @@ const READY = 'DOPE_CHAT_SANDBOX_READY\n';
 
 /** Only the trusted root is passed to the launcher. The model text is parsed by a shell
  * after bwrap has installed the read-only mount, private tmpfs and socket filter. */
-export interface ChatCommandResult { executed: boolean; output: string; truncated: boolean }
-const denied = (output: string): ChatCommandResult => ({ executed: false, output, truncated: false });
+export interface ChatCommandResult { executed: boolean; succeeded: boolean; output: string; truncated: boolean }
+const denied = (output: string): ChatCommandResult => ({ executed: false, succeeded: false, output, truncated: false });
 
 export async function runChatInvestigationCommand(root: string, command: string,
     signal?: AbortSignal): Promise<ChatCommandResult> {
@@ -29,7 +29,7 @@ export async function runChatInvestigationCommand(root: string, command: string,
         const bytes = Buffer.from(output, 'utf8');
         const truncated = bytes.length > MAX_RESULT_BYTES;
         const bounded = bytes.subarray(0, MAX_RESULT_BYTES).toString('utf8');
-        return { executed: true, truncated,
+        return { executed: true, succeeded: result.exitCode === 0 && !result.timedOut, truncated,
             output: `Sandboxed command exited ${result.exitCode}${result.timedOut ? ' (time limit)' : ''}.` +
                 `${truncated ? ' Output truncated.' : ''}\n${bounded}` };
     } catch (error) {
