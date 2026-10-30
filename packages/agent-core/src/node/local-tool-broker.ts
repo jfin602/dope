@@ -169,7 +169,7 @@ function supportedCommand(value: LocalProcessCommand): boolean {
 
 /** The adapter passes the runtime's execution request, never a model-selected root. */
 export async function brokerLocalRead(request: AgentExecutionRequest, untrusted: LocalToolRequest,
-    signal?: AbortSignal): Promise<LocalToolResult> {
+    signal?: AbortSignal, workspace?: ExecutionWorkspace): Promise<LocalToolResult> {
     let call: LocalToolRequest;
     try { [call] = parseLocalToolRequests(JSON.stringify([untrusted])); }
     catch { return result({ id: 'invalid', name: 'read', arguments: { path: 'invalid', maxBytes: 1 } }, 'denied'); }
@@ -180,10 +180,13 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
         return result(call, 'denied');
     try {
         const grant = parseExecutionGrant(request.grant);
-        if (grant.taskId !== request.taskId ||
+        if (grant.taskId !== request.taskId || !workspace ||
+            workspace.projectRoot !== request.projectRoot || workspace.root !== request.executionRoot ||
             !checkEffect(grant, { kind: 'workspace-read', scope: 'workspace',
                 path: call.arguments.path }).allowed)
             return result(call, 'denied');
+        await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
+        if (signal?.aborted) return result(call, 'cancelled');
     } catch { return result(call, 'denied'); }
     const limit = call.name === 'read' ? call.arguments.maxBytes : call.arguments.maxEntries;
     try {

@@ -46,7 +46,7 @@ export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: 
     return {
         assertActive: () => workspace.assertActiveBasis(request.projectRoot, request.executionRoot),
         execute: (call, signal) => call.name === 'read' || call.name === 'list' ?
-            brokerLocalRead(request, call, signal) : call.name === 'edit' ?
+            brokerLocalRead(request, call, signal, workspace) : call.name === 'edit' ?
                 brokerLocalEdit(request, workspace, call, signal) :
                 brokerLocalProcess(request, workspace, call, commands, signal)
     };

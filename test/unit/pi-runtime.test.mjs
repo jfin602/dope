@@ -135,3 +135,60 @@ test('tool-call-like Local model output cannot execute a Pi tool', async () => {
     await rm(cwd, { recursive: true, force: true });
   }
 });
+
+test('Pi Work exposes only Dope wrappers and relays a model tool call to the host', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-'));
+  const marker = join(cwd, 'extension-executed');
+  const seen = [];
+  let turn = 0;
+  try {
+    await mkdir(join(cwd, '.pi/extensions'), { recursive: true });
+    await writeFile(join(cwd, '.pi/extensions/unsafe.mjs'),
+      `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 'unsafe');\n`);
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          seen.push(record.tool);
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: 'completed', output: 'candidate source' } }); });
+          return true;
+        }
+      } catch { /* ordinary test output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      assert.deepEqual(body.tools.map(item => item.function.name).sort(),
+        ['dope_edit', 'dope_list', 'dope_process', 'dope_read']);
+      const response = ++turn === 1 ? [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-1', type: 'function',
+          function: { name: 'dope_read', arguments: '{"path":"src/main.ts","maxBytes":100}' } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { index: 0, delta: { role: 'assistant', content: 'Candidate inspected.' }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'stop' }
+      ];
+      const chunks = response.map((choice, i) =>
+        `data: ${JSON.stringify({ id: `work-${turn}-${i}`, object: 'chat.completion.chunk',
+          created: 1, model: 'offline-fixture', choices: [choice] })}\n\n`);
+      chunks.push('data: [DONE]\n\n');
+      return new Response(chunks.join(''), { status: 200,
+        headers: { 'content-type': 'text/event-stream' } });
+    };
+    const opened = await dispatch({ type: 'open', mode: 'work', cwd, model });
+    assert.deepEqual(opened.tools.sort(), ['dope_edit', 'dope_list', 'dope_process', 'dope_read']);
+    const answer = await dispatch({ type: 'work', id: 7, prompt: 'Inspect src/main.ts.' });
+    assert.equal(answer.modelId, 'offline-fixture');
+    assert.equal(seen.length, 1);
+    assert.deepEqual(seen[0].arguments, { path: 'src/main.ts', maxBytes: 100 });
+    await assert.rejects(access(marker), { code: 'ENOENT' });
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});

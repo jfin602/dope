@@ -9,7 +9,8 @@ export interface PiRuntimeDiagnostics {
 }
 
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
-    onEvent?: (event: { type: 'delta'; text: string }) => void };
+    onEvent?: (event: { type: 'delta'; text: string }) => void;
+    onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
 
 /** Only Dope-owned paths are considered. No PATH lookup or user Pi installation is used. */
 export function resolvePiWorkerPath(): string {
@@ -63,6 +64,16 @@ export class PiRuntimeHost {
         return this.request({ type: 'open', model, cwd, ...(credential ? { credential } : {}) });
     }
 
+    openWorkSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string):
+        Promise<{ version: string; tools: string[]; resources: string }> {
+        return this.request({ type: 'open', mode: 'work', model, cwd,
+            ...(credential ? { credential } : {}) });
+    }
+
+    runWork(prompt: string, onTool: NonNullable<Pending['onTool']>): Promise<{ text: string; modelId: string }> {
+        return this.request({ type: 'work', prompt }, undefined, onTool);
+    }
+
     closeSession(): Promise<{ closed: boolean }> {
         return this.request({ type: 'close' });
     }
@@ -106,7 +117,8 @@ export class PiRuntimeHost {
         } finally { signal?.removeEventListener('abort', onAbort); }
     }
 
-    private request<T>(record: Record<string, unknown>, onEvent?: Pending['onEvent']): Promise<T> {
+    private request<T>(record: Record<string, unknown>, onEvent?: Pending['onEvent'],
+        onTool?: Pending['onTool']): Promise<T> {
         const child = this.child;
         if (!child || child.exitCode !== null || child.killed) return Promise.reject(new Error('Pi worker unavailable'));
         const id = ++this.nextId;
@@ -115,8 +127,8 @@ export class PiRuntimeHost {
                 this.pending.delete(id);
                 reject(new Error('Pi worker response timed out'));
                 this.dispose();
-            }, record.type === 'complete' || record.type === 'turn' ? 300_000 : 10_000);
-            this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent });
+            }, ['complete', 'turn', 'work'].includes(String(record.type)) ? 300_000 : 10_000);
+            this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent, onTool });
             child.stdin.write(`${JSON.stringify({ ...record, id })}\n`, error => {
                 if (error) this.fail(error);
             });
@@ -135,9 +147,19 @@ export class PiRuntimeHost {
             this.stdout = this.stdout.slice(newline + 1);
             try {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
-                    event?: { type: 'delta'; text: string } };
+                    event?: { type: 'delta'; text: string };
+                    tool?: { id: number; name: string; arguments: unknown } };
                 const pending = this.pending.get(record.id);
                 if (!pending) throw new Error('Unexpected Pi worker response');
+                if (record.tool) {
+                    if (!pending.onTool || !Number.isSafeInteger(record.tool.id) || record.tool.id < 1 ||
+                        typeof record.tool.name !== 'string') throw new Error('Unexpected Pi tool call');
+                    void pending.onTool(record.tool).then(result =>
+                        this.request({ type: 'tool-result', toolId: record.tool!.id, result }),
+                    () => this.request({ type: 'tool-result', toolId: record.tool!.id,
+                        result: { status: 'denied', output: '' } })).catch(() => this.fail(new Error('Pi tool reply failed')));
+                    continue;
+                }
                 if (record.event) {
                     if (record.event.type !== 'delta' || typeof record.event.text !== 'string')
                         throw new Error('Invalid Pi stream event');

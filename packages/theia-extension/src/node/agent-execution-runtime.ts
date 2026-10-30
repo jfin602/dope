@@ -78,7 +78,9 @@ export class AgentExecutionRuntime {
     localWorkspace(request: AgentExecutionRequest): ExecutionWorkspace {
         const active = this.active.get(request.projectRoot);
         if (!active?.workspace || active.workspace.root !== request.executionRoot ||
-            active.task?.id !== request.taskId || active.grant?.id !== request.grant.id)
+            active.task?.id !== request.taskId || active.grant?.id !== request.grant.id ||
+            active.grant.revision !== request.grant.revision || active.stopping || active.denied ||
+            active.run?.status !== 'running')
             throw new Error('Active Local execution workspace unavailable');
         return active.workspace;
     }

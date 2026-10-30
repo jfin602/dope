@@ -42,7 +42,7 @@ import { agentRuntimeServicePath, type AgentRuntimeClient } from '@dope/contract
 import { AgentRuntimeBackend } from './agent-runtime-backend';
 import { AgentExecutionRuntime } from './agent-execution-runtime';
 import { CodexAgentExecutionAdapter } from './codex-agent-execution';
-import { LocalAgentExecutionAdapter } from './local-agent-execution';
+import { PiWorkExecutionAdapter } from './pi-work-execution';
 import { PiRuntimeFactory } from './pi-runtime-host';
 import { PiModelBridge } from './pi-model-bridge';
 import type { AgentExecutionAdapter } from '@dope/agent-core';
@@ -83,12 +83,9 @@ export default new ContainerModule(bind => {
     bind(AgentExecutionRuntime).toDynamicValue(context => {
         const inventory = context.container.get(AIInventoryController);
         let runtime!: AgentExecutionRuntime;
-        const local = new LocalAgentExecutionAdapter({
-            inventory: () => inventory.inventory(),
-            workspace: async request => runtime.localWorkspace(request),
-            commands: request => runtime.localCommands(request),
-            credential: id => context.container.get(AICredentialManager).readForExecution(id)
-        });
+        const local = new PiWorkExecutionAdapter(context.container.get(PiModelBridge),
+            context.container.get(PiRuntimeFactory), request => runtime.localWorkspace(request),
+            request => runtime.localCommands(request));
         runtime = new AgentExecutionRuntime(context.container.get(AgentStore),
             context.container.get(AIRoleRoutingService), inventory,
             new Map<string, AgentExecutionAdapter>([

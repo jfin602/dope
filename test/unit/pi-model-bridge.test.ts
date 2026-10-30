@@ -20,7 +20,9 @@ function fixture() {
     const bridge = new PiModelBridge({ inventory: async () => state,
         refreshModels: async () => { if (refreshError) throw new Error('secret transport error'); return state; },
         credential: async () => undefined });
-    const host = { async openNoToolSession(...args: any[]) { calls.push(args); return { version: '1.4.0', tools: [], resources: 'isolated' }; } };
+    const host = { async openNoToolSession(...args: any[]) { calls.push(args); return { version: '1.4.0', tools: [], resources: 'isolated' }; },
+        async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
+            tools: ['dope_read', 'dope_list', 'dope_edit', 'dope_process'], resources: 'isolated' }; } };
     return { state, bridge, host, calls, failRefresh: () => { refreshError = true; } };
 }
 
@@ -85,7 +87,7 @@ test('Pi bridge denies unverified tools and returns only credential reference', 
     assert.equal(f.calls[0][2], 'private-token');
 });
 
-test('Pi bridge caps output to an AI Center known limit and never opens tool mode', async () => {
+test('Pi bridge caps output and opens Work mode only after tool verification', async () => {
     const f = fixture();
     f.state.registry.models[0].limits.maxOutputTokens = known(128);
     const binding = await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp');
@@ -96,7 +98,13 @@ test('Pi bridge caps output to an AI Center known limit and never opens tool mod
     const bridge = new PiModelBridge({ inventory: async () => verified.state,
         refreshModels: async () => verified.state, credential: async () => undefined,
         verifyLocalAgentExecution: async () => 'supported' });
-    await assert.rejects(bridge.bind({ connectionId: 'desk', modelId: 'exact-model' },
-        verified.host as any, '/tmp', { tools: true }), /Work grant/);
-    assert.equal(verified.calls.length, 0);
+    const work = await bridge.bind({ connectionId: 'desk', modelId: 'exact-model' },
+        verified.host as any, '/tmp', { tools: true });
+    assert.equal(work.modelId, 'exact-model');
+    assert.equal(verified.calls.length, 1);
+    const selection = { connectionId: 'desk', modelId: 'exact-model', registryRevision: 3,
+        loadedContextTokens: 32768 };
+    await bridge.assertWorkSelection(selection, 'http://127.0.0.1:1234/v1');
+    verified.state.registry.revision++;
+    await assert.rejects(bridge.assertWorkSelection(selection, 'http://127.0.0.1:1234/v1'));
 });
