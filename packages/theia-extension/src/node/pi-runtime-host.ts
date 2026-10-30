@@ -20,11 +20,17 @@ type Pending = { resolve(value: unknown): void; reject(error: Error): void; time
     onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
 
 /** Only Dope-owned paths are considered. No PATH lookup or user Pi installation is used. */
-export function resolvePiWorkerPath(): string {
-    const packaged = process.resourcesPath && join(process.resourcesPath, 'app/pi-runtime/worker.mjs');
+export function resolvePiWorkerPath(runtimeDir = __dirname, resourcesPath = process.resourcesPath): string {
+    const packaged = resourcesPath && join(resourcesPath, 'app/pi-runtime/worker.mjs');
     if (packaged && existsSync(packaged)) return packaged;
-    const development = resolve(__dirname, '../../../pi-runtime/worker.mjs');
-    if (existsSync(development)) return development;
+    // The extension runs from packages/theia-extension/lib/node in unit tests,
+    // but Theia bundles it into apps/{browser,electron}/lib/backend at runtime.
+    for (const development of [
+        resolve(runtimeDir, '../../../pi-runtime/worker.mjs'),
+        resolve(runtimeDir, '../../../../packages/pi-runtime/worker.mjs')
+    ]) {
+        if (existsSync(development)) return development;
+    }
     throw new Error('Bundled Pi runtime unavailable');
 }
 
@@ -142,7 +148,8 @@ export class PiRuntimeHost {
                 this.pending.delete(id);
                 reject(new Error('Pi worker response timed out'));
                 this.dispose();
-            }, ['complete', 'turn', 'work'].includes(String(record.type)) ? 300_000 : 10_000);
+            }, record.type === 'work' ? 1_800_000 :
+                ['complete', 'turn'].includes(String(record.type)) ? 900_000 : 10_000);
             this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent, onTool });
             child.stdin.write(line, error => {
                 if (error) this.fail(error);

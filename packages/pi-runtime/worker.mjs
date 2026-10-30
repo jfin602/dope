@@ -83,8 +83,11 @@ function workTools() {
       process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params } })}\n`);
       try {
         const result = await answer;
-        if (result.status !== 'completed') throw new Error(`Dope Work tool ${result.status}`);
-        return { content: [{ type: 'text', text: result.output || result.status }] };
+        // A failed approved test is feedback for the coding agent, not a provider
+        // failure. Denied/cancelled effects still stop at the Dope boundary.
+        if (result.status !== 'completed' && result.status !== 'failed')
+          throw new Error(`Dope Work tool ${result.status}`);
+        return { content: [{ type: 'text', text: `status: ${result.status}\n${result.output || ''}` }] };
       } finally { signal?.removeEventListener('abort', onAbort); pendingTools.delete(id); }
     }
   }));

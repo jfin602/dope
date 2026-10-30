@@ -2,8 +2,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { dispatch, compactExact } from '../../packages/pi-runtime/worker.mjs';
+import { resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
+
+test('Pi worker resolves from the bundled browser backend and extension development layouts', () => {
+  const root = resolve(import.meta.dirname, '../..');
+  const expected = join(root, 'packages/pi-runtime/worker.mjs');
+  assert.equal(resolvePiWorkerPath(join(root, 'packages/theia-extension/lib/node'), undefined), expected);
+  assert.equal(resolvePiWorkerPath(join(root, 'apps/browser/lib/backend'), undefined), expected);
+  assert.equal(resolvePiWorkerPath(join(root, 'apps/electron/lib/backend'), undefined), expected);
+});
 
 const model = {
   id: 'offline-fixture', name: 'Offline Fixture', api: 'openai-completions',
@@ -243,6 +252,54 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
     assert.equal(seen.length, 1);
     assert.deepEqual(seen[0].arguments, { path: 'src/main.ts', maxBytes: 100 });
     await assert.rejects(access(marker), { code: 'ENOENT' });
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('a failed approved Work test reaches Pi as repair feedback on the next model turn', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-failed-test-'));
+  let turn = 0;
+  let continued = false;
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          assert.equal(record.tool.name, 'dope_process');
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: 'failed', output: '3 tests failed: checkout total mismatch' } }); });
+          return true;
+        }
+      } catch { /* ordinary test output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      const choice = ++turn === 1 ? [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'test-1', type: 'function',
+          function: { name: 'dope_process', arguments: '{"kind":"test","commandId":"validation-1"}' } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { index: 0, delta: { role: 'assistant', content: 'I will repair the checkout mismatch.' }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'stop' }
+      ];
+      if (turn === 2) continued = JSON.stringify(body.messages).includes('3 tests failed: checkout total mismatch') &&
+        JSON.stringify(body.messages).includes('status: failed');
+      return new Response(choice.map((item, i) => `data: ${JSON.stringify({ id: `failed-${turn}-${i}`,
+        object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [item] })}\n\n`).join('') +
+        'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'work', cwd, model });
+    const answer = await dispatch({ type: 'work', id: 8, prompt: 'Run the approved test, then repair failures.' });
+    assert.equal(answer.text, 'I will repair the checkout mismatch.');
+    assert.equal(turn, 2);
+    assert.equal(continued, true);
   } finally {
     process.stdout.write = originalWrite;
     globalThis.fetch = originalFetch;
