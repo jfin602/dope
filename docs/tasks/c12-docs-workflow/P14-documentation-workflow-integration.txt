@@ -1,0 +1,30 @@
+TASK: Correction 12 / P14 — Verify the integrated documentation workflow and regression registration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+
+OBJECTIVE — T2
+Prove the connected owners before the manual gate and register the correction's focused tests in the existing aggregate. This is the dedicated cross-owner gate; ordinary eight-minute limits do not justify omitting its invariants.
+
+IMPLEMENT / VERIFY
+Use the real documentation service/store, Chat adapter, History metadata path and captured Work adapter on disposable projects. Add test/unit/documentation-workflow-integration.test.ts covering review -> approved multi-doc apply -> exactly one History event -> fresh Work requirements, with linked schema-2 Roadmap participation. Include review/no-op/reject/failed-zero effects, stale source, late project switch, controlled crash/retry/partial recovery, old diff after later edits, pending prompt conflict and unrelated source edit.
+Use Dope-owned fault fixtures; no test-only bypass of production approvals. Assert metadata/History reads are byte-preserving and zero inference. Preserve ordinary Chat/Work/Git events and independent qualification/grant states.
+Register all new documentation-* test files from P1-P13 and this integration file in package.json test:product without changing version, dependencies, script semantics or adding a broad runner. Check names against actual files; tests import lib outputs, never stale code.
+
+FOCUSED INTEGRATION COMMAND
+Verify changed owner outputs are current from prior prompts; rebuild only owners changed in this prompt in dependency order.
+node --test test/unit/documentation-workflow-integration.test.ts test/unit/history-integration.test.ts test/unit/roadmap-gate-document.test.ts test/unit/workitem-delegation.test.ts test/unit/pi-work-execution.test.ts test/unit/agent-sequence.test.ts
+git diff --check
+Do not run npm run check, app builds or packaging here; final aggregate/browser/native evidence is P15.
+DONE: integrated contract and registration pass; report DW1-DW10 automated evidence versus remaining live gaps, with no correction/phase Green claim.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

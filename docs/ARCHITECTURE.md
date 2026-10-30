@@ -99,9 +99,33 @@ Every Dope-owned UI surface must offer a discoverable purpose and entry point, c
 
 The comprehensive inventory and real human-task GUI qualification belong to design-approved, inactive **Phase 11 Human-Centered UI**, after Phase 10 Roadmap. The separate `c9-theme-fix` remains palette-only. Bundled Pi local agent runtime and manual real-use qualification are planned for **Phase 12** under ADR 0039, subject to Phase 11 owner closeout; no Pi integration is implemented by this decision. Living Software Knowledge Model background alignment moves intact to inactive **Phase 13**, retaining ADR 0023 controls. Theia owns ordinary editor behavior; improve Dope integration without a broad Theia fork or changing product-domain authority.
 
-## Bundled local agent runtime boundary (ADR 0039, future Phase 12)
+## Bundled local agent runtime boundary (ADR 0039; current forward scope)
 
-Dope remains the provider-independent domain/authority owner. A pinned Pi Coding Agent package will be included in the Electron AppImage and used internally as the default for eligible local model inference and coding loops; **AI Center** remains the only user-visible local connection/model configuration. Ordinary Chat and Planning may only use no-tool Pi; Work may only expose Dope-mediated, ExecutionGrant-checked sandbox commands. Pi session summaries/compaction are transport context, not canonical Chat/Work/History/Roadmap state. Dope retains explicit candidate review/promotion, project isolation, no silent hosted egress, and alternate user-selected providers. This is approved architecture, not implemented or phase-activated. [Phase 12 plan](planning/p12/phase-12-plan.md).
+Dope remains the provider-independent domain/authority owner. Pi is the bundled eligible local engine behind **AI Center** and the existing Chat/Planning/Work paths. The 2026-10-30 [agentic Chat design](planning/p12/agentic-chat-permissions.md) supersedes the initial no-tools Chat/Planning target: brokered project read/list/search and OS-sandboxed investigation use the existing permission boundary. Work retains Dope-mediated, ExecutionGrant-checked tools and candidate review/promotion. Pi session summaries/compaction remain transport context, not canonical Chat/Work/History/Roadmap state. Preserve project isolation, exact provider/model choice and no silent hosted egress. This forward design and the documentation workflow below are not implementation or qualification claims; existing Pi evidence retains its own recorded scope. [Phase 12 plan](planning/p12/phase-12-plan.md).
+
+## Planning documentation application and Work context — ADR 0041
+
+**2026-10-30: OWNER-APPROVED DESIGN / AUTHORING ONLY; NOT IMPLEMENTED OR QUALIFIED.** [ADR 0041](decisions/0041-planning-documentation-workflow-and-applied-history.md), the [documentation contract](planning/p12/documentation-workflow-contract.md), and [`c12-docs-workflow`](tasks/c12-docs-workflow/README.md) define the bounded implementation scope at unchanged `0.12.7`.
+
+The existing Chat/Planning pipeline may investigate and prepare a typed documentation proposal. One Dope-owned application boundary validates the exact approved changes, project/worktree identity, eligible paths and current source versions, then performs the reviewed document effects. Models propose; Dope validates and writes. Neither ordinary Pi file/shell tools nor Commands Ask/Allow receives canonical documentation authority. Do not introduce another Chat domain, provider loop, generic unrestricted file writer or implicit coding Work run.
+
+| State or effect | Owner and boundary |
+| --- | --- |
+| Current written requirements | The actual repository documents; existing project structure is respected. |
+| Proposal, approved basis and recovery evidence | A versioned project-local documentation owner beneath `.dope/`; no competing writable requirements copy. |
+| General documentation application | The Dope-owned documentation application service, scoped to the reviewed set and current source. |
+| Linked Roadmap definition/publication | Existing Roadmap source adapter and authoritative owner; coordinate Phase/Gate/Criterion edits without a second writer. |
+| Applied-change provenance and retained diff | The documentation application owner, identified by a stable project-scoped application ID. |
+| Documentation History entry | Read-only bounded projection of verified application-owner records; no History journal or recovery-writing read. |
+| Requirements supplied to coding | Existing Work preparation/execution contracts, with bounded document/section/version provenance. |
+
+Application must preserve unrelated dirty content and deny stale, foreign, unsupported or unsafe targets. Related file/owner changes need recoverable coordination, not a claim of cross-file/store atomicity. Durable recovery evidence must distinguish unchanged, actually applied, restored and unresolved effects. Recovery establishes an exact verified result before that result is projected into History; an interrupted application with retained partial changes must identify that subset and recovery status without claiming full success. Opening History cannot execute recovery, apply a proposal or start Work.
+
+Only actual applied canonical documentation effects make an application eligible for a documentation-change History entry. Drafts, reviews, approvals alone, rejected/cancelled attempts without effects, no-ops and failed-with-no-change operations are excluded. Deduplicate by stable application identity, not filename or display title; multiple separate updates to one document remain separate applications. Keep original application time and before/after diff evidence across restart and later source edits. Do not infer application or authorship from Chat timestamps, file mtimes or current Git dirty snapshots. Existing non-documentation History behavior remains independent.
+
+Before preparing or starting affected coding work, Dope resolves the applicable project instructions, accepted requirements/decisions, architecture constraints and Gate criteria into an inspectable bounded context. References identify the project, document, section and current source version. Preserve the existing Pi resource-loader isolation; supply documentation through Dope rather than enabling arbitrary provider-native resource discovery. Context selection and any summarization must report omitted/unknown evidence and respect actual selected-model limits without a hard-coded global context default or silent fallback.
+
+Recheck materially relevant document bases at preparation/launch. Resolve conflicts with pending WorkItems/prompts through explicit refreshed preparation; unrelated changes do not invalidate the task. Preserve the exact instructions/context of active and completed runs. Valid pending prompt-content edits follow current `docs/workflow.md`; they do not grant stack reorder permission. Repository instructions shape implementation but never enlarge executable authority. Documentation application, architecture adoption, Work Run, candidate promotion and Gate qualification remain separate effects.
 
 ## Workbench placement contract
 
@@ -263,7 +287,7 @@ Phase 6 requires no model provider, AI Presence, mutation authority, mandatory l
 
 **The product replacement is design-approved, not implemented/qualified.** Original Session source remains at `0.9.22` / `0752415`, with 9A/9B bounded historical Green and 9C P10 unexecuted/superseded.
 
-History is a **bounded, project-root-scoped, read-only projection** of authoritative Chat activity, AgentTask/AgentRun/sequences, PlanningMap/WorkItems, Project Mind, Git evidence and observed workbench focus. Do not build another canonical event ledger, Session-like grouping/attachments or copied owner records. Persist only minimal last-meaningful-focus reference if necessary. Use safe non-recovering Chat metadata reads, distinguish current Git working-tree snapshots from historical events, and keep WorkItem completion, AgentRun terminal status, Dope validation and promotion distinct.
+History is a **bounded, project-root-scoped, read-only projection** of authoritative Chat activity, AgentTask/AgentRun/sequences, PlanningMap/WorkItems, Project Mind, Git evidence and observed workbench focus. The approved ADR 0041 extension adds only verified applied-documentation records owned by the documentation application service. Do not build another canonical event ledger, Session-like grouping/attachments or copied owner records. History itself persists only a minimal last-meaningful-focus reference if necessary; application/recovery provenance remains with its owner. Use safe non-recovering metadata reads, distinguish current Git working-tree snapshots from historical events, and keep WorkItem completion, AgentRun terminal status, Dope validation and promotion distinct.
 
 The **History** launcher belongs to the **right activity toolbar** beside Chat and Work and reveals one existing **right-side** panel. Show **Continue Where You Left Off** first, a bounded Recent Activity list and explicit **Understand Recent Work**. Continue prefers a verified project-local last meaningful focus; otherwise label the suggested most recent relevant activity. Open exact original Chat/Work/Planning/editor views under existing single-owner and independent-map navigation. Reject stale/missing/foreign identities and late project-switch responses without silent fallback or running agents.
 
@@ -1015,11 +1039,14 @@ Canonical product state includes, as phases introduce it:
 - ProposedAction lifecycle
 - project-scoped last meaningful focus metadata (not a Session record)
 - Validation evidence
+- documentation proposal/application identity, reviewed bases and verified applied-change/recovery evidence, owned by the documentation application service (ADR 0041)
+- task-scoped documentation-context provenance recording the sources actually supplied to Work (ADR 0041)
 
 Derived/non-canonical state includes:
 - UI layout
 - user presentation preferences such as theme/keybindings
 - rendered panels
+- History entries projected from authoritative owner records, including applied documentation changes
 - search indexes
 - extracted/recomputable physical software graph snapshots and architecture projections
 - provider-native response IDs
@@ -1241,3 +1268,4 @@ Physical flow facts/projections are rebuildable derived state. Phase 6 introduce
 ## Codex subscription Chat adapter — ADR 0035 (planned, 2026-10-12)
 
 AI Center retains one managed ChatGPT-plan Codex account and immutable connection/model identity. Models may independently advertise conversationalText + streaming for Interactive Chat and agentExecution for Coding Agent Work, based on supported capabilities and account/catalog evidence rather than provider name. Chat uses a separate tool-free OAuth-authorized Responses API ConversationalModelRuntime adapter with bounded Dope-composed context and store:false/stream:true. Work retains the Codex App Server AgentExecutionAdapter, isolated execution/validation/promotion and grant authority. Neither path makes provider threads canonical Dope state. Hosted egress consent, token secrecy, no fallback to API-key billing and shared Work/Codex allowance are explicit. This correction changes neither Chat/Work placement nor p9d History. See ADR 0035 and docs/tasks/c9-codex-chat/.
+

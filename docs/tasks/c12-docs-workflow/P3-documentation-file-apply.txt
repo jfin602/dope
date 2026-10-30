@@ -1,0 +1,31 @@
+TASK: Correction 12 / P3 — Implement journaled single-document publication primitives
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Implement the narrow durable file-effect primitive used by the application coordinator. Keep it unregistered from user-facing services until P4 recovery and P6 authority are complete.
+
+IMPLEMENT
+Add project-intelligence/node/documentation-file-apply.ts using the established checked file/publish patterns in roadmap-document-patch.ts without changing Roadmap ownership. Operate only on already validated eligible add/update effects. Recheck canonical root, all path components, expected source bytes/fingerprint or absence, file type/encoding/size and destination identity at publication. Preserve unrelated bytes, supported line endings and existing mode. New-file publication must not clobber a collision.
+Write bounded durable journal/evidence before publication. Stage and verify exact reviewed bytes, perform a safe single-file replacement/create, verify actual after-identity, and retain sufficient before/after evidence for P4 recovery. Use fsync/rename/exclusive creation and race checks appropriate to existing platform conventions; never treat filename extension as authority.
+Return actual effect and recovery facts, not optimistic success. Do not expose a prepared journal as a receipt eligible for History. No shell, Git, recursive copy, outside-root writes or deletion/rename feature. Keep fault-injection hooks internal and deterministic.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-file-apply.test.ts for update/create, line endings, mode, source drift, new-file collision, symlink/path exchange and failures around stage/publication/verification. Assert later manual content is not overwritten.
+corepack yarn workspace @dope/project-intelligence build
+node --test test/unit/documentation-file-apply.test.ts
+git diff --check
+DONE: one approved effect can be verified or recovered from durable evidence; no public write route exists yet.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

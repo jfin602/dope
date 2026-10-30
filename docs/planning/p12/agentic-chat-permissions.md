@@ -2,6 +2,8 @@
 
 **Owner decision:** 2026-10-30. **Status:** APPROVED DESIGN / NOT IMPLEMENTED. **Version:** 0.12.7 unchanged. **Correction:** [c12-pi-agentic-chat](../../tasks/c12-pi-agentic-chat/README.md).
 
+**Approved documentation follow-on (2026-10-30):** [ADR 0041](../../decisions/0041-planning-documentation-workflow-and-applied-history.md) and [documentation workflow](documentation-workflow-contract.md) add a narrow Dope-owned reviewed application path through [`c12-docs-workflow`](../../tasks/c12-docs-workflow/README.md). This separate design/authoring scope is NOT IMPLEMENTED OR QUALIFIED and does not enlarge `c12-pi-agentic-chat` P1–P5 or change `0.12.7`.
+
 ## Scope and ownership
 Pi must retain its tool-selecting, iterative coding-agent capabilities in Chat, Planning and Work. Dope owns the one saved ChatPanel, project root/identity, AI Center selection, permissions, Roadmap and linked Markdown, Work grants, candidate review, durable History and approvals. Do not build a second Chat, Work or agent loop or treat Pi's session as canonical state.
 
@@ -19,7 +21,16 @@ Use Pi's actual custom-tool/multi-step agent loop through the existing pinned wo
 
 Command execution must have an OS-enforced project-read-only sandbox, ephemeral temporary writes, sterile env, inaccessible private home and credential mounts, no network sockets (namespace/seccomp), limited process/CPU/time/output. A command's apparent read-only wording is not an access control; never run a model-chosen command in the unsandboxed Dope backend shell. Fail closed when sandbox is unavailable. Allow should not be made useless by an artificially tiny test/build-only command list, but cannot weaken OS protection.
 
-Planning uses the same investigation tools while preserving typed proposals, Roadmap revision/provenance validation and explicit approval to publish. G3 deterministic response-first/no-action routes must not introduce a gratuitous second inference. Chat can **prepare an existing Work draft** for review, but not execute Work, edit canonical files or approve promotion. Work retains current candidate workspace, grants, tests, Accept/Reject and History. Preserve provider independence, exact model and local-only settings.
+Planning uses the same investigation tools while preserving typed proposals, Roadmap revision/provenance validation and explicit approval to publish. G3 deterministic response-first/no-action routes must not introduce a gratuitous second inference. Chat can **prepare an existing Work draft** for review, but cannot execute Work, directly edit canonical files through model tools, or approve promotion. The separately scoped ADR 0041 documentation action below permits only an explicitly reviewed Dope-owned application. Work retains current candidate workspace, grants, tests, Accept/Reject and History. Preserve provider independence, exact model and local-only settings.
+
+## Reviewed documentation application — separate ADR 0041 scope
+
+The existing ChatPanel may prepare a bounded documentation proposal, show its rationale and concrete diffs, and invoke the Dope-owned application action after developer approval of that exact change set. Bind approval to project/worktree identity, eligible targets, reviewed source versions and actual changes; reject stale or changed proposals until reviewed again. Use existing ordinary editor/diff surfaces. One coherent reviewed set needs one approval, not repetitive per-file approval.
+
+This is not a Pi file-write/shell tool or an effect of Commands Allow. General command investigation keeps its project-read-only sandbox. Linked Roadmap edits route through its existing authoritative source owner; no separate Markdown writer, automatic Work Run, architecture adoption or Gate qualification follows. Application records and recovery evidence belong to the documentation owner; only verified actual applied effects appear as documentation-change History. Review, proposal, approval alone, rejected/cancelled-without-effects, no-op and failed-with-no-change attempts do not.
+
+Existing Work preparation must consume bounded applicable current documentation with inspectable document/section/source-version references, then recheck relevant bases before execution. Surface material conflicts with pending work; preserve active/completed snapshots and the selected provider/local policy. An available read tool or saved prompt alone does not prove that required documentation was supplied. Detailed recovery, History and Work-context gates are owned by the [documentation workflow contract](documentation-workflow-contract.md), not by the older P1–P5 correction's qualification claim.
 
 ## Qualification
 Real source-bound browser and owner-operated installed Electron must show: tower-defense code exploration with no file attachment; actual Pi read/search events with verified file references and grounded milestone; Ask deny/approve-once, Allow eligible command; sandbox denial of writes, network, secrets, outside-root, symlink escape; Planning review without automatic mutation; cancellation/restart/project-switch permission reset; preserved Chat copy, continuity, provider choices and prior Work success. Browser and native evidence independent. Old P12 P1–P8 and B1–B9 results remain historical; this contract does not grant new Green, Run or a version change.
+

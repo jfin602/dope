@@ -1,0 +1,31 @@
+TASK: Correction 12 / P9 — Project only verified documentation applications into History
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Add the applied-only documentation source to existing read-only History.
+
+IMPLEMENT
+Extend HistorySource/HistoryOwnerRef and readHistory metadata composition with an owner-backed documentation application reference. Use stable application ID as sourceId, actual or explicitly unknown occurrence time, actual changed paths/outcome and bounded summary. Read the documentation owner's verified application records; do not infer events from proposal timestamps, Chat, file mtimes, dirty Git, model messages or candidate validation.
+Only verified retained effects are eligible. Review, draft, approval-only, reject/cancel without effects, no-op and failed-zero-change produce no documentation event and no disguised generic Work event. Full multi-file apply creates one event; verified partial recovery is clearly partial. Repeated notification, refresh/restart/retry cannot duplicate it.
+History reads remain non-mutating/model-free. Preserve existing unrelated Chat/Work/Git statuses and event/snapshot semantics. Opening History must not recover documentation records or replay writes; expose unresolved owner diagnostics truthfully.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-history.test.ts for the complete eligibility matrix, multi-file single entry, distinct repeated applications, stable dedup/time, two projects and non-mutating read byte checks.
+Build changed contracts then theia-extension once.
+node --test test/unit/documentation-history.test.ts test/unit/history-projection.test.ts
+git diff --check
+DONE: actual verified documentation effects are the sole input to documentation-change History entries.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

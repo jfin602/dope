@@ -1,5 +1,7 @@
 > **2026-10-30 OWNER-APPROVED FORWARD AMENDMENT:** The old no-filesystem/shell-tools Chat/Planning rule below is historical initial-P12 scope, superseded as the *future target* by [full Pi agentic Chat/Planning](../planning/p12/agentic-chat-permissions.md): Pi chooses project read/list/search tools; composer Commands Ask/Allow governs OS-sandboxed command execution. Dope still owns protected paths, approvals, grants and candidate promotion. No unrestricted Pi host shell or implicit source mutation. New correction is docs/prompts authored only, not implemented.
 
+> **2026-10-30 DOCUMENTATION WORKFLOW FOLLOW-ON:** [ADR 0041](0041-planning-documentation-workflow-and-applied-history.md) and the [documentation contract](../planning/p12/documentation-workflow-contract.md) approve a provider-independent Dope capability for reviewed documentation application, applied-only History and fresh requirements context for Work. [`c12-docs-workflow`](../tasks/c12-docs-workflow/README.md) is authorized for documentation/prompt authoring only, NOT IMPLEMENTED OR QUALIFIED, at unchanged `0.12.7`. It does not expand Pi's ordinary tools or the existing agentic-Chat stack.
+
 # ADR 0039 — Bundled Pi default local agent runtime
 
 **Decision date:** 2026-10-29. **Status:** OWNER-APPROVED DESIGN, NOT IMPLEMENTED OR QUALIFIED. **Entry:** Phase 12 after separately documented Phase 11 owner closeout and version-only 0.12.0 baseline. [Phase plan](../planning/p12/phase-12-plan.md).
@@ -19,6 +21,12 @@ Dope continues to own the single saved dockable ChatPanel, model connection regi
 - Pi's compaction may be used as bounded conversation context, not as a store of approvals or canonical history. Keep Dope-owned signed/hashed references, durable transcript, cancellation/restart recovery and precise provider/model attribution. Suppress debug/secrets from user-facing copies.
 - If Pi is unavailable, show a truthful recoverable error or an **explicit** alternate provider/engine choice. No invisible fallback or privilege expansion.
 
+### Documentation application and context (ADR 0041 forward scope)
+
+Pi may help prepare a typed documentation proposal through the existing Chat/Planning integration. The Dope-owned documentation application action validates one explicitly reviewed set of file changes against project/path/source identity and performs only those effects. Commands Ask/Allow remains investigation permission; it cannot approve documentation publication, Git mutation, Work execution or candidate promotion. Do not expose unrestricted Pi writes or replace the approved action with a host shell command.
+
+Dope retains application/recovery provenance and immutable applied-diff evidence under the documentation owner; History reads only verified applied changes. No Pi session or conversation is an application receipt. Before preparing or launching affected Work, Dope supplies bounded applicable documentation with source references and checks material freshness/conflicts. Preserve the worker's disabled arbitrary resource discovery and selected-model/local-only policy; do not rely on implicit Pi AGENTS/BOOT loading or enlarge a model context globally. The first implementation must prove a fresh task follows an applied requirement without manual repetition or attachment.
+
 ## Non-goals and phase ownership
 
 Do not build a second ChatPanel, replace AI Center/model registry, remove Codex, mandate Pi CLI installation, bundle Qwen model weights, make default hosted inference, bypass current candidate review, or import Pi's own UI. Phase 12 is the bundled engine plus real-use qualification; the originally approved **Living Software Knowledge Model** is preserved as **Phase 13** (ADR 0023's background knowledge/egress invariants remain intact).
@@ -26,3 +34,4 @@ Do not build a second ChatPanel, replace AI Center/model registry, remove Codex,
 ## Evidence needed before Green
 
 Pinned dependency/license integrity, no-global-install packaged AppImage, connection/model selection and context probe, no-tool Chat safety, grant-brokered Work execution, actual candidate reject and accept, structured transcripts/History, cancellation/crash/restart, compaction/32K load, browser plus owner-operated Electron, and genuine local multi-file repair. Standalone Pi tests alone do not qualify the integration. See [qualification](../planning/p12/pi-qualification-contract.md).
+

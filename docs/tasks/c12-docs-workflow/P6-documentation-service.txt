@@ -1,0 +1,31 @@
+TASK: Correction 12 / P6 — Expose project-scoped documentation review and apply authority
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Expose the completed documentation owner through a typed backend service that enforces one concrete reviewed-set approval.
+
+IMPLEMENT
+Add the smallest contracts/service DTO and theia-extension/node/documentation-backend.ts registration using existing attach/opaque handle, project identity, lifecycle and RPC conventions. Adapt eligible project reads to P1 without introducing a second filesystem policy. Provide bounded proposal preview/read/revise/reject, explicit apply, application/diff read and explicit recovery.
+Bind Apply to the validated proposal revision/digest, originating current project/root/worktree and source/owner versions. One approval covers the reviewed set; a changed relevant basis requires renewed review. Replay resolves the existing application ID without new effects. Wrong owner, switched project, cancelled/replaced pending UI context, unsafe paths and arbitrary request-supplied booleans must not confer authority.
+History/diff reads are non-mutating; recovery is separate. Commands Ask/Allow and ordinary Pi tools remain unchanged. Do not create an AgentRun to perform docs review or publish writes through the model worker. Keep the service unavailable when required preceding owners are incomplete.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-service.test.ts with real owner fixtures: foreign/late handles, approve/reject/no-op, changed digest, exact-set replay, read-only receipt access and project switch.
+Build changed contracts, project-intelligence only if changed, then theia-extension once.
+node --test test/unit/documentation-service.test.ts
+git diff --check
+DONE: the only exposed document write route verifies the exact current approved proposal at its backend effect boundary.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

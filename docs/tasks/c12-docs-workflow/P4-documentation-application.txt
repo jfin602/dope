@@ -1,0 +1,32 @@
+TASK: Correction 12 / P4 — Coordinate documentation application and recovery
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Implement coherent multi-document application with stable receipts and truthful zero/partial/full outcomes.
+
+IMPLEMENT
+Compose P2/P3 in one documentation application owner. Bind application ID to proposal identity/digest, project/worktree basis and approved exact effects; reserve it durably before publication and serialize compatible same-project operations. Revalidate every relevant target; preserve unrelated dirty edits. After effects, verify retained file identities and store immutable applied-diff evidence, actual affected paths, origin, known actor/time and outcome.
+A complete applied set produces one eligible application record. Review, approval-only, candidate-only, no-op, failed-zero-change and rejected/cancelled attempts with zero retained effects never produce eligible records. Cancellation after publication reports the verified retained effects truthfully. Retry resolves the same application ID and cannot repeat an effect or duplicate identity.
+Recover interruption before any write, between files and after file publication before acknowledgement. Safely restore only when current identities still match owned effects; otherwise preserve newer edits and report exact verified retained subset/pending targets. Unknown evidence/time stays unknown. Do not claim cross-file atomicity or full success for a partial application. Ordinary receipt metadata reads must never perform recovery writes; expose recovery as a separate owner operation.
+No UI/RPC registration, generic Work task, automatic inference or History ledger.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-application.test.ts with controlled fault points for zero/partial/full effects, retry/restart dedup, no-op, cancellation and newer manual edits during recovery.
+corepack yarn workspace @dope/project-intelligence build
+node --test test/unit/documentation-application.test.ts
+git diff --check
+DONE: receipts describe only verified retained effects and are stable across process-equivalent restart/retry.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

@@ -1,0 +1,32 @@
+TASK: Correction 12 / P13 — Reconcile documentation changes before pending work starts
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Prevent materially outdated prepared work from starting while preserving unrelated work and immutable running/completed evidence.
+
+IMPLEMENT
+Recheck the documentation basis immediately before existing direct/WorkItem/sequence start. Compare the relevant sources actually supplied; compatible refresh updates a new inspectable preparation, material contradiction or changed acceptance criteria exposes a concrete needs-review result through existing Work controls. Unrelated doc changes must not globally block tasks.
+Refresh pending task/source snapshots using existing owners and current prompt-content policy. Valid pending P*.txt content edits before execution remain supported; this adds no reorder permission or first-authored-byte lock. Never alter in-flight/completed instructions, records, checkpoints or historical results. Changed active work uses existing explicit steering/cancel behavior.
+Bind approval/grants to the refreshed task identity/basis where required; an old grant cannot silently authorize a changed task. Recheck across candidate creation/start and project switches; show stale evidence instead of executing with a mismatched packet. Docs apply itself never starts Work. Keep source changes by external editors distinguishable from Dope application receipts.
+If semantic compatibility is unresolved, request a reviewed preparation rather than fabricate a deterministic proof; no background LLM scheduler.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-work-freshness.test.ts for changed relevant requirements, compatible refresh, unrelated edit, prepared-stack content revision, grant/task mismatch, start race, active/completed preservation and external edit without receipt.
+Build changed agent-core then theia-extension once; rebuild other changed owner outputs only as traced.
+node --test test/unit/documentation-work-freshness.test.ts test/unit/agent-sequence.test.ts
+git diff --check
+DONE: work starts only from the inspected applicable current basis; old snapshots remain explainable and unrelated work remains usable.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

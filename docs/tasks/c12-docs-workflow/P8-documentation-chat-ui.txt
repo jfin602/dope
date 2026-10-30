@@ -1,0 +1,31 @@
+TASK: Correction 12 / P8 — Add documentation review and apply controls to the existing ChatPanel
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Let a developer inspect, revise, reject and apply a documentation proposal in the existing dockable ChatPanel.
+
+IMPLEMENT
+Extend ChatPanelController/ChatPanelWidget and their current presentation helpers. Show a concise decision/change summary, affected files and normal editor/diff links. Present Review documentation changes and Apply documentation changes with explicit pending, applying, no-change, applied, stale and recovery feedback. Apply acts on the exact displayed proposal; one coherent approval, no per-file confirmation carousel. Disable stale/incomplete actions and provide a useful refresh/review/recovery path.
+Use the existing editor/diff integration and owner callbacks, preserving Chat identity/placement and manual review/edit/apply without inference. Do not create a documentation workspace or second Chat.
+Apply current ADR0016/0030/0037: shared semantic theme tokens, restrained primary orange, neutral utility controls, readable hierarchy, keyboard-visible focus and narrow docks. Preserve text selection, response/transcript copying without tool/debug metadata, deliberate drag scrolling and cancellation. Keep technical JSON collapsed.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-chat-panel.test.ts covering exact displayed proposal action, stale refresh, duplicate click, no-model existing proposal, dock continuity and outcome labels. Reuse current controller/presentation test style.
+corepack yarn workspace @dope/theia-extension build
+node --test test/unit/documentation-chat-panel.test.ts test/unit/chat-panel.test.ts
+git diff --check
+DONE: one existing Chat exposes a clear review -> apply -> actual outcome path; real visual/keyboard/local-model observation remains P15.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

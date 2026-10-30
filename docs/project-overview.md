@@ -172,6 +172,14 @@ THINK includes:
 
 These are views into the same project.
 
+## Planning documentation and coding context
+
+**Owner-approved forward capability (2026-10-30), not implemented or qualified.** Planning turns agreed decisions into reviewed changes to the project's actual documentation. The existing ChatPanel provides review and apply actions; a bounded Dope-owned application path preserves project authority and unrelated edits. Repository documentation remains portable between Dope and external development tools.
+
+Only actual applied documentation changes enter Project History, as one sourced entry for the applied change set. Drafts, reviews, approval alone, rejected/no-op/failed-without-change operations do not become documentation-change entries. History remains read-only and links to the application owner's retained diff and original conversation.
+
+Subsequent Work receives the applicable current requirements, architecture decisions, instructions and acceptance criteria as bounded inspectable context. Relevant edits refresh pending work or expose conflicts; they do not silently change running/completed instructions, start execution or establish implementation/qualification. This reduces the need to repeat accepted project intent in each prompt. See [ADR 0041](decisions/0041-planning-documentation-workflow-and-applied-history.md), [contract](planning/p12/documentation-workflow-contract.md) and [c12-docs-workflow](tasks/c12-docs-workflow/README.md). The current product remains `0.12.7`; broader background alignment stays in Phase 13.
+
 ## Developer continuity over prompts
 
 The fundamental experience is sustained developer work and understanding, not a prompt or managed Session entity.
@@ -285,3 +293,4 @@ Planning persists in readable `.dope/planning.json` with its own optimistic docu
 BUILD/PLAN mode may foreground the appropriate work surface but is not canonical Plan/Task status. Task file links open the ordinary editor; coding, terminal, tests, SCM and debugger stay normal IDE workflows.
 
 ADR 0006 records Codex/OpenAI as the first reference AI implementation for Phase 7 so the future agent/runtime design is proven against a capable system before local-model limits are diagnosed. That is a bootstrap/qualification strategy only. Phase 3 contains no provider runtime code and preserves first-class future local-model compatibility.
+

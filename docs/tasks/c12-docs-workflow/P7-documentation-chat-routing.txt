@@ -1,0 +1,31 @@
+TASK: Correction 12 / P7 — Route documentation review through the existing Planning Chat
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Use the existing saved Chat and selected model to prepare documentation proposals and route explicit application to P6.
+
+IMPLEMENT
+Extend packages/chat/src/service.ts and existing ChatBackend/context/proposal paths with a documentation proposal/reference result, using a small dedicated parser/adapter where appropriate. Review documentation changes, /docs-review and explicit natural-language formalization requests resolve through the same bounded source-backed review operation. Apply documentation changes and /docs-apply target an existing concrete reviewed proposal; absent/stale/ambiguous context produces useful recovery, never fresh unreviewed publication.
+Use the selected eligible provider through existing capability/consent rules, with current project-aware Pi investigation when selected. Typed model output is untrusted; validate complete results before preview. Preserve current limits, cancellation, saved Chat leases, progress and source diagnostics. Do not add a new agent loop, hidden second inference for deterministic apply/denial, provider fallback or broad Chat tools.
+A response accurately distinguishes proposal-ready, applied, no change and recovery-required outcomes. Review/approval cannot claim publication, implementation or Gate Green. Repeated requests keep application identity and no generic review Work records. Manual service proposals remain usable without inference.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-chat.test.ts for command/natural-language parity, malformed/stale output, apply-without-review, cancelled turn, selected-model preservation and zero canonical documentation writes/documentation-change History entries during review; proposal and Chat persistence remain allowed.
+Build changed contracts if any, chat, then theia-extension once.
+node --test test/unit/documentation-chat.test.ts test/unit/chat-grounded-turn.test.ts
+git diff --check
+DONE: the existing Chat can produce a validated review and accurately invoke only its explicitly approved application.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

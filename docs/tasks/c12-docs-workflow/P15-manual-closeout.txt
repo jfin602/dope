@@ -1,0 +1,31 @@
+TASK: Correction 12 / P15 — Manual documentation workflow end-to-end closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+
+MANUAL T3 ONLY — NOT RUN BY THE HEADLESS RUNNER
+Use actual final source in a real browser and independently observed installed Electron. A browser/build result does not establish native parity. This prompt owns the sole correction closeout and may exceed ordinary implementation timing.
+
+SOURCE AND BUILD
+Record actual HEAD/dirty diff, unchanged 0.12.7, preceding results, selected provider/model/context and relevant c12-pi-agentic-chat source/capability evidence. Resolve only directly evidenced defects within this correction; after a repair rerun the smallest invalidated checks and any invalidated final aggregate. Preserve earlier failures.
+On final product source run npm run check once. It already includes typecheck, tests and browser/Electron builds; do not surround it with those same aggregate commands. Package that existing final Electron output with corepack yarn workspace @dope/electron package:linux; its existing script prepares/checks Pi assets and verifies the AppImage without repeating the app build. Record exact served bundle/backend/package hashes. Do not reinstall over the owner's app without its existing authorized install workflow.
+
+REAL TASK PROOF — DW1-DW10
+Use a disposable two-document project and the exact selected local model. In the existing saved Chat, discuss a concrete requirement (for example, persist a user setting locally), review the coordinated proposal, and verify zero project-doc effects and zero documentation History entry before Apply. Apply once and inspect actual bytes/diffs and exactly one application entry. Start a NEW Work task without repeating/attaching the requirement, inspect supplied source/version context, and prove actual generated behavior/validation follows it.
+Exercise review/approval-only/reject/cancel/no-op/failed-zero cases, stale proposal/new-file collision, foreign/project-switch and symlink boundaries. Use disposable controlled fault fixtures for interruption before writes, after a retained file change and before acknowledgement; verify exact zero/partial/full recovery, stable ID/time and no duplicate after retry/restart. Never damage the real tower-defense project.
+Edit/delete current docs after an application and open its original stored diff. Reconcile a relevant pending-work conflict, demonstrate unrelated doc edit does not block, and preserve running/completed snapshots. Exercise linked schema-2 Markdown through the existing owner; accepted draft without publication creates no document event, no automatic Gate Green/adoption/Run/grant.
+Observe normal/narrow Chat and History, keyboard/focus, current theme/alternate theme, response/transcript copy and drag scrolling, model-free existing proposal review/apply, bounded local context/omission, restart and original Chat/diff navigation. Native Electron observations and browser evidence are separate; missing native or any mandatory gate is an evidence gap.
+
+REPORT AND STOP
+Write source-bound qualification evidence under this stack and closeout.md with DW1-DW10 PASS/FAIL/BLOCKED/EVIDENCE GAP, actual application IDs/document hashes/context refs, commands, manual observations and remaining limits. Correction Green requires all mandatory scoped evidence; it never closes Phase12, waives Pi B1-B9, changes version or relabels earlier results. No fabricated native testing, automatic next stack or self-commit.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

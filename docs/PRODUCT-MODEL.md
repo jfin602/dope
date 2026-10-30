@@ -6,6 +6,26 @@ This document defines product concepts independently from Theia, Theia AI, any m
 
 The full vocabulary is intentionally broader than the initial implementation roadmap. A concept being defined here does not authorize building it early.
 
+## Planning Documentation Workflow — ADR 0041 (approved forward design)
+
+**2026-10-30 owner decision:** [ADR 0041](decisions/0041-planning-documentation-workflow-and-applied-history.md) and the [Phase 12 documentation contract](planning/p12/documentation-workflow-contract.md) approve `c12-docs-workflow` as a scoped follow-on to project-aware Planning. The owner authorizes documentation and prompt authoring; the capability is **NOT IMPLEMENTED / NOT QUALIFIED**, and `0.12.7` is unchanged. Earlier phase descriptions below retain their historical scope.
+
+Planning turns agreed decisions into reviewed project documentation through the **existing saved ChatPanel**, ordinary editor/diff surfaces and Dope-owned application authority. **Review documentation changes** and `/docs-review` prepare the same operation; **Apply documentation changes** and `/docs-apply` apply the reviewed change set. A discussion, draft, review or approval alone changes no canonical documentation and creates no documentation-change History entry.
+
+Three concepts have distinct roles:
+
+- **Documentation proposal:** a bounded, project-scoped set of intended document changes, rationale, affected paths/sections, reviewed source versions and related conflicts. It is noncanonical work state. A filename suffix alone never makes a target eligible, and a proposed edit does not become a requirement merely because the model wrote it.
+- **Applied documentation change:** an application-owner record of verified actual file effects, with a stable application ID, actual application time, known actor/model provenance, affected paths, before/after source identities, retained diff evidence and originating Chat/Planning links where available. The documentation owner persists it project-locally; History derives its view from this record.
+- **Documentation context for Work:** bounded, inspectable applicable instructions, accepted requirements/decisions, architecture constraints and Gate criteria supplied through existing task preparation/execution contracts, with document/section/version references and honest omission diagnostics. It is evidence of what a task received, not an independent editable copy of the requirements.
+
+Repository documents remain the canonical written requirements that Dope and external tools can read. `.dope/` may retain proposal identity, reviewed bases, application/recovery evidence and context provenance without becoming a competing requirements store. Current accepted requirements, future intent, observed behavior, drafts and historical records retain distinct roles; documented intent alone does not establish physical implementation or qualification.
+
+**Only applied changes appear as documentation changes in Project History.** One actual multi-document application yields one stable entry for the actual change set. Review, approval without application, rejection, cancellation without retained effects, no-op and failed-with-no-change operations yield none. Restart, refresh and retry cannot duplicate the same application. The historical diff remains the original applied diff after later edits. An interrupted operation must recover or report the exact verified retained subset, never claim the whole proposal succeeded. History reads remain non-mutating and model-free; existing unrelated Chat/Work/Git activity keeps its meaning.
+
+Before preparing or starting affected Work, resolve applicable current documentation and recheck its relevant source basis. A material conflict with a pending WorkItem or prompt requires explicit refreshed preparation; unrelated changes must not invalidate otherwise applicable work. Under the current runner policy, valid pending prompt **content** may be updated before execution. That is not general permission to reorder authored stacks or rewrite running/completed snapshots, outcomes or evidence. Documentation application does not itself publish an executable stack or start Work.
+
+Linked Roadmap updates use the existing source adapter and authoritative owner with **Phase -> Gate -> Criterion** semantics. Documentation approval/application, canonical architecture adoption, implementation, validation and Gate qualification remain independent. Commands Ask/Allow governs investigation; it does not grant documentation application, Git mutation, Work execution or promotion authority. No second Chat, Work or History store is introduced.
+
 ## Project Mind
 
 Project Mind is the developer-facing durable structured knowledge of one software project.
@@ -1047,3 +1067,4 @@ Phase 6 is fully useful without a model provider. AI may later explain physical 
 ## Codex model use in normal Chat — ADR 0035 (approved design, not implemented)
 
 An existing signed-in Codex AI Center connection can be eligible for both ordinary conversational Chat and delegated Work if the selected model independently supports the required feature capability. A normal Chat turn remains durable Dope-owned .dope/chats context, with its existing exact/Interactive selection, hosted-data consent and provenance; it cannot create AgentTask, AgentRun or execute tools. Work remains a distinct agent-execution product. Both use shared Work/Codex subscription allowance, not ordinary ChatGPT web-chat usage. See correction c9-codex-chat for qualification; do not infer implementation from this decision.
+

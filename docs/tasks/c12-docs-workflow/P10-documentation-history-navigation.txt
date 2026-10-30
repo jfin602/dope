@@ -1,0 +1,31 @@
+TASK: Correction 12 / P10 — Open original applied documentation diffs from History
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Make documentation History entries readable and navigable to their original applied evidence in existing surfaces.
+
+IMPLEMENT
+Extend HistoryWidget/presentation/navigation/owner-navigation through existing editor/diff and Chat callbacks. Label the actual application/recovery result and known actor/time; show affected docs and an action to inspect the stored applied diff. Open immutable before/after evidence tied to the application, not today's dirty diff. Missing/moved/deleted current files do not rewrite historical evidence; show honest availability and allow original evidence where retained.
+Validate project identity and application reference before and after async navigation. Origin Chat is optional; absence must not invent a fallback Chat. No mutation, re-apply, model call, Work start or second History owner.
+Use existing semantic theme tokens, neutral utility controls, selected/focus cues, keyboard and narrow-sidebar behavior. Keep implementation diagnostics behind disclosure.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-history-navigation.test.ts for later file edits/deletion, original diff identity, absent origin, foreign/stale async navigation and no-effect opening. Update exhaustive source-name/owner matches.
+corepack yarn workspace @dope/theia-extension build
+node --test test/unit/documentation-history-navigation.test.ts test/unit/history-navigation.test.ts test/unit/history-panel.test.ts
+git diff --check
+DONE: an old documentation entry still explains exactly its original applied changes after current files change.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+

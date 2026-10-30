@@ -1,5 +1,17 @@
 # ADR 0034 — Developer Continuity and Right-Toolbar History
 
+> **2026-10-30 APPLIED DOCUMENTATION HISTORY AMENDMENT — APPROVED DESIGN / AUTHORING ONLY:** [ADR 0041](0041-planning-documentation-workflow-and-applied-history.md) and the [documentation workflow contract](../planning/p12/documentation-workflow-contract.md) add verified applied-documentation changes as an owner-backed History source through [`c12-docs-workflow`](../tasks/c12-docs-workflow/README.md). The feature is not implemented or qualified, `0.12.7` is unchanged, and this amendment does not rewrite the original Phase 9 evidence or other History sources.
+
+## Applied documentation changes — forward contract
+
+Only the documentation application owner's verified record of actual applied project-document changes is eligible for a documentation-change History entry. Review, discussion, generated proposals, approval alone, rejection, cancellation without retained effects, no-op and failed-with-no-change operations produce no such entry. Each actual change set has one stable project-scoped application identity; restart, refresh and retry must not duplicate it. This rule does not suppress unrelated existing Chat, Work or Git activity.
+
+The documentation owner retains actual application time, known initiating actor/model provenance, summary, affected paths, before/after source identities, original applied diff and originating Chat/Planning links where available. History reads bounded metadata and navigates the existing diff/editor/Chat surfaces. It does not copy the journal, infer events from Chat/file timestamps or current dirty diffs, execute recovery, reapply changes or start Work. Later source edits must not alter the meaning of an earlier applied diff.
+
+Recovery belongs to the application owner. A zero-effect failure remains absent. If an interrupted operation retains actual changes, recovery must restore them safely or record the exact verified applied subset with a truthful partial/recovery outcome; it cannot manufacture complete success. Applied documentation means documentation changed, independently of Git commit, implementation, validation, architecture adoption or Gate qualification.
+
+The remaining sections preserve the original dated History design and its evidence scope; this forward amendment adds the documentation source without creating a second authoritative History database.
+
 **Status:** ACCEPTED PRODUCT DESIGN / SUPERSEDES ADR 0033 FOR FORWARD DEVELOPMENT / NOT IMPLEMENTED OR QUALIFIED  
 **Decision:** 2026-10-11 (America/Chicago), owner-approved through `/docs-review` and `/docs-apply`  
 **Entry:** Committed Dope `0.9.22` / `0752415be76ef3f87e1a34bf17c4009a888be085`. Original 9A bounded Green `0.9.6` / `6b51ee96`; 9B bounded Green `0.9.13` / `5aa0bac`; Phase 9 overall NOT QUALIFIED. Original 9C P1-P9 reached `0.9.22`; P10 was unexecuted.  
@@ -21,7 +33,7 @@ Manual Development Sessions ask the developer to create, name, link, maintain an
 
 - Derive a **read-only bounded** recent-activity projection from authoritative project records: Chat IDs/titles/`lastInteractedAt` (not mere viewing), AgentTasks/AgentRuns/sequences and real validation/review/applied status, PlanningMap/WorkItem revisions and state, relevant Project Mind decisions/ideas, Git commits and current working-tree snapshots, and explicit workbench focus/restoration evidence.
 - Project root/identity must scope every query, timeline and navigation. A Git diff is a current **snapshot**, not evidence for when or by whom an edit occurred. A completed/accepted Run is not automatically a completed WorkItem; a validation pass is not a candidate promotion. Missing timestamps/cause remain unknown, never invented.
-- Do not build a second authoritative activity/event database, replay raw transcripts into History, copy source data, record every keystroke, or run recovery-writing reads such as ChatRepository.read for routine History inspection. Only minimal **last meaningful focus** metadata may be persisted, project-scoped, if existing layout/owner state cannot supply it. Do not silently mutate the owner stores.
+- Do not build a second authoritative activity/event database, replay raw transcripts into History, copy source data, record every keystroke, or run recovery-writing reads such as ChatRepository.read for routine History inspection. Only minimal **last meaningful focus** metadata may be persisted by History itself, project-scoped, if existing layout/owner state cannot supply it. Applied-documentation records and recovery evidence remain in the documentation owner's store under ADR 0041. Do not silently mutate the owner stores.
 - Refresh on panel opening and relevant existing change notifications with bounded work. No continuous LLM polling, expensive full-project reanalysis or hidden background agent.
 
 ### 3. One-click continuation
@@ -52,3 +64,4 @@ This ADR and `/docs-apply` authorize **documentation changes only**. At the reco
 ## Forward compatibility — ADR 0036 (2026-10-12)
 
 Roadmap checkpoint links can navigate real History/Work/Planning/Chat evidence but cannot infer Green or event chronology from History snapshots. Keep History read-only and avoid new manual or hidden Session containers. Phase 9 `p9d` and legacy Session export/qualification stay separate. Phase 10 Roadmap remains unimplemented; former Living Software Knowledge Model becomes inactive Phase 11.
+

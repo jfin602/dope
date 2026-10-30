@@ -415,6 +415,21 @@ Before claiming the **new** Phase 9 Green, qualify an exact source/version candi
 
 A missing qualification gate is **NOT GREEN / Evidence Gap**. Old 9B local Qwen Planning-to-Work proof remains bounded historical evidence, not a substitute for new History UX. No Phase 9 closeout or Phase 10 activation follows from documentation.
 
+## Phase 12 — Planning documentation workflow qualification (ADR 0041)
+
+**2026-10-30 owner-approved design / authoring only, NOT IMPLEMENTED OR QUALIFIED; `0.12.7` unchanged.** The [Planning Documentation Workflow contract](planning/p12/documentation-workflow-contract.md) owns the detailed **DW1-DW10** gates for [c12-docs-workflow](tasks/c12-docs-workflow/README.md). This forward capability preserves historical Phase 9/11/Pi results and the existing read-only History owner model.
+
+Before claiming the new documentation workflow qualified, prove on an exact candidate:
+
+- **DW1-DW3 — reviewed effects only:** review produces inspectable accurate diffs without canonical documentation writes; one approved multi-document application produces exactly one entry for verified actual effects. Discussion, drafts, review, approval alone, rejection, cancellation/no retained changes, candidate-only, no-op and failed-no-change yield zero documentation-change entries. Reusing Work internals cannot disguise attempts as applied events.
+- **DW4-DW5 — source and recovery truth:** preserve unrelated dirty content and reject stale/foreign/unsafe targets; controlled failure and restart prove truthful zero/partial/full effects, safe recovery and stable deduplicated application identity/time. The application owner recovers its own state; reading History cannot write or infer a missing event from file timestamps, chat prose or the current Git diff.
+- **DW6 — historical evidence:** retain the actual applied diff after later document edits/deletion. Navigate existing evidence/editor/Chat views with truthful missing targets; opening an entry cannot replay an application or start Work.
+- **DW7-DW8 — effective coding handoff:** fresh Work receives and follows an applied requirement without manual repetition/attachment, with inspectable bounded document/section/version provenance. Relevant conflicting updates are resolved before pending execution; unrelated changes do not block it; active/completed instruction snapshots, results and current pending-prompt content/order policy remain intact.
+- **DW9 — independent owners and qualification:** linked Roadmap changes use the existing writer and Phase/Gate/Criterion source/revision/recovery contract. A draft accepted without Markdown publication is not an applied documentation event. No documentation operation silently adopts Architecture, starts Work, expands grants, completes WorkItems, qualifies gates or commits Git.
+- **DW10 — observed usability and local scope:** the existing saved ChatPanel, diff/editor, History, selected local provider, bounded-context/omission behavior and manual/no-model path work through an actual human task. Observe normal/narrow keyboard/focus, copy/drag-scroll, cancellation and restart; report browser/native evidence separately and preserve unobserved gaps.
+
+Run the smallest meaningful focused tests in ordinary implementation prompts, concentrate affected cross-owner failure evidence in the designated integration gate, and reserve the exact-source aggregate plus live GUI/native evidence for the final qualification scope. Do not repeat broad checks or infer measured performance from planning estimates. Missing gates remain **NOT GREEN / Evidence Gap**; stack authoring neither qualifies this capability nor closes Phase 12.
+
 ## Planning Maps and WorkItems
 
 PlanningMap/WorkItem completion is application truth, not model assertion.
@@ -656,3 +671,4 @@ While this correction is active, permanent regression coverage must additionally
 
 Correction qualification must replay the real Adaptive SEO GET opportunities path in the GUI and directly inspect its required `receives`, `invokes`, PostgreSQL `reads`, response branches and source/provenance. P8 remains blocked until that replay is Green.
 Whole-program taint analysis, arbitrary cross-language lineage, exhaustive SQL/schema lineage, mandatory runtime tracing and AI-generated missing hops are not Phase 6 qualification requirements.
+

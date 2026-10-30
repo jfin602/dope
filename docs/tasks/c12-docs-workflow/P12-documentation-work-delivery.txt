@@ -1,0 +1,31 @@
+TASK: Correction 12 / P12 — Deliver prepared documentation requirements to coding agents
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Supply P11's prepared requirements through the common execution request and disclose the actual supplied context in existing Work detail.
+
+IMPLEMENT
+At agent-execution-runtime.ts, compose bounded requirements text and provenance from the prepared task snapshot with its original objective/instructions. Keep original prompt content immutable and distinguish original text from supplied context. Both initial execution and existing retry/continuation paths must preserve the same approved snapshot without duplicated injection or hidden refresh.
+Respect actual selected provider/adapter limits, including Pi's scoped-prompt bound and appended execution reference. Preserve required instruction text and show material omitted requirements or an actionable capacity conflict before claiming readiness; never silently truncate required material. Apply the same Dope-owned context policy to supported providers without changing model selection, consent or grants.
+Keep Pi resource discovery and agent-file loading disabled; no provider fallback or new background inference. Documentation prose is requirements context, never tool authority. Historical tasks without the snapshot show context not recorded; pending legacy tasks follow P13's reviewed preparation rather than fabricated provenance.
+Add a narrow supplied-source disclosure to ChatPanelWidget's existing Work task/run detail beside instructions/provenance, using selectedTask from WorkSelectionController. Show supplied sections/source versions and omissions. Reuse theme tokens, keyboard focus and existing editor navigation; no new Work screen or forced Chat attachment. P13 separately owns source freshness and refreshed preparations.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-work-delivery.test.ts capturing actual initial and retry adapter requests for prepared direct/WorkItem/stack tasks, bounded exact requirement inclusion, provider-neutral behavior and actionable over-budget evidence. Verify no duplicate injection, preserved original text/authority and accurate context disclosure.
+corepack yarn workspace @dope/theia-extension build
+node --test test/unit/documentation-work-delivery.test.ts test/unit/pi-work-execution.test.ts
+git diff --check
+DONE: actual adapter input includes the applicable prepared requirement and traceable source; the real coding outcome remains DW7/P15.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.

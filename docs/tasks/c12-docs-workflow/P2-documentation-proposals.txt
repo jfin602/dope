@@ -1,0 +1,31 @@
+TASK: Correction 12 / P2 — Persist source-bound documentation proposals
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Preserve manifest versions, internal pins, lockfiles and provider defaults.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md and this stack's README/implementation-plan.md. Inspect actual local HEAD, source applicability, coherent version, owner dirty files and preceding prompt results. The owner's deliberate Run of this stack authorizes its scoped implementation; no /activate or second activation-only approval. Preserve owner edits; no reset, stash, clean or self-commit (runner owns checkpoints). Keep existing Chat/Work/Roadmap/History owners, grants, provider choice and local-only controls. No automatic Work, Git writes, qualification or hosted fallback.
+Ordinary T1 target <=8 minutes including focused validation; 10-minute soft ceiling, 15-minute hard budget. If the coherent safe change cannot fit, preserve progress and report the precise remaining scope; do not weaken checks or fabricate completion.
+
+OBJECTIVE — T1
+Create the one project-local proposal/review owner; proposals remain noncanonical and absent from documentation History.
+
+IMPLEMENT
+Add the proposal contract and store beneath the existing project-intelligence boundary, with versioned state under .dope/documentation-workflow/. Record stable proposal/project identity, origin Chat/Planning references, current revision, exact bounded add/update effects, reviewed source fingerprints or verified new-file absence, applicable owner revisions and reviewed-set digest. Validate all model input and source identities independently.
+Support read/revise/reject and restart-safe proposal recovery. Revisions invalidate previous approval bases. Preserve old reviewed evidence where needed without duplicating live documentation authority. Existing root/metadata path containment, symlink rejection, size bounds, optimistic revisions and same-owner write serialization remain enforced. Do not place proposals into generic AgentTask/History records.
+No canonical document writes, application service/RPC or automatic approval; initial file deletion/rename and executable prompt publication remain outside this operation.
+
+FOCUSED VALIDATION
+Create test/unit/documentation-proposals.test.ts for restart, malformed input, project mismatch, stale revise/reject, protected .dope symlinks and source/new-file basis. Assert canonical docs and History-source eligibility remain unchanged.
+Build only changed contracts (if any), then project-intelligence once; baseline dependencies follow implementation-plan.md.
+node --test test/unit/documentation-proposals.test.ts
+git diff --check
+DONE: a reviewed proposal survives restart with its exact basis; revision or rejection cannot publish content.
+
+Report only actual changes/checks and the next supported step; STOP at this prompt's scope.
+
