@@ -1,7 +1,8 @@
 {
   "name": "@dope/electron",
-  "version": "0.12.6",
+  "version": "0.12.7",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "description": "Dope software development environment",
   "author": "Dope Contributors",
   "productName": "Dope",
@@ -9,7 +10,7 @@
   "main": "scripts/packaged-main.cjs",
   "scripts": {
     "build": "theia rebuild:electron --cacheRoot ../.. && theia build",
-    "package:linux": "npm run prepare:pi-runtime --prefix ../.. && npm run check:pi-runtime --prefix ../.. && electron-builder --linux AppImage --publish never",
+    "package:linux": "npm run prepare:pi-runtime --prefix ../.. && npm run check:pi-runtime --prefix ../.. && electron-builder --linux AppImage --publish never && node ../../scripts/verify-pi-appimage.mjs",
     "start": "theia start --plugins=local-dir:../../plugins",
     "watch": "theia build --watch --mode development"
   },
@@ -71,7 +72,7 @@
     }
   },
   "dependencies": {
-    "@dope/theia-extension": "0.12.6",
+    "@dope/theia-extension": "0.12.7",
     "@theia/core": "1.75.0",
     "@theia/debug": "1.75.0",
     "@theia/editor": "1.75.0",

@@ -20,6 +20,25 @@ export function usableModelSummary(models: readonly AIModel[], connection: AICon
     return models.length ? `${models.length} usable ${models.length === 1 ? 'model' : 'models'}` : 'No usable models';
 }
 
+/** The Pi worker is bundled independently of the selected Local server and model. */
+export function localPiReadiness(state: AIInventoryState, connection: AIConnection): string {
+    if (connection.config.type !== 'local') return '';
+    if (connection.lifecycle === 'disabled') return 'Local connection disabled. Enable and refresh it.';
+    const health = connectionHealth(state, connection);
+    if (health === 'unavailable' || health === 'needs-authentication' || health === 'invalid-configuration')
+        return 'Local server offline or misconfigured. Start LM Studio, check the endpoint, then Reconnect.';
+    if (health !== 'ready') return 'Local server readiness is unconfirmed. Refresh Models or Test Connection.';
+    const models = state.registry.models.filter(model => model.connectionId === connection.id && model.enabled);
+    if (!models.length) return 'No Local model discovered. Load a model in LM Studio, then Refresh Models.';
+    const loaded = models.filter(model => state.loadedLocalModels?.some(item =>
+        item.connectionId === connection.id && item.providerModelKey === model.providerModelKey));
+    if (!loaded.length) return 'Local model discovered but unloaded or cold. Load it in LM Studio, then Refresh Models.';
+    if (!loaded.some(model => model.state === 'ready' && model.capabilities.conversationalText.value === true &&
+        model.capabilities.streaming.value === true && model.capabilities.toolCalling.value !== false))
+        return 'Loaded Local model is incompatible with Pi Chat or coding tools. Select a capable model in AI Center.';
+    return 'Local model active. Pi Chat uses this AI Center selection; verify coding tools before Work.';
+}
+
 export class AICenterController {
     state?: AIInventoryState;
     usableModels: AIModel[] = [];

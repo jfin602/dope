@@ -6,7 +6,7 @@ import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service'
 import type { AICredentialService } from '@dope/contracts/lib/ai-credential-service';
 import type { CodexAuthService } from '@dope/contracts/lib/codex-auth-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
-import { AICenterController, connectionHealth, usableModelSummary } from './ai-center-controller';
+import { AICenterController, connectionHealth, localPiReadiness, usableModelSummary } from './ai-center-controller';
 import { AICenterRolesController, emptyRoleHard, ROLE_DETAILS, ROLE_REASON_LABELS,
     roleEntryLabel, roleResolution, roleTargetLabel } from './ai-center-roles';
 
@@ -97,6 +97,8 @@ export class AICenterWidget extends BaseWidget {
         const roleStatus = element('p', this.roles.message, 'dope-ai-message');
         roleStatus.setAttribute('role', 'status'); roleStatus.setAttribute('aria-live', 'polite');
         this.content.append(roleStatus);
+        this.content.append(element('p',
+            'Local Chat and coding use the Pi runtime bundled with Dope. Pi is checked when used; an installed runtime does not mean the Local server or model is ready. Connect and select a model here once. Codex remains a separate provider.'));
         if (this.returnToChat) this.content.append(button(this.returnLabel, () => {
             const action = this.returnToChat;
             this.returnToChat = undefined;
@@ -373,6 +375,7 @@ export class AICenterWidget extends BaseWidget {
         detail.append(element('h3', connection.alias), element('p', `Health: ${connectionHealth(state, connection)}`));
         detail.append(element('p', `Provider: ${connection.config.type === 'codex' ? 'Codex / Agent Runtime (App Server)' : connection.config.type}`));
         detail.append(element('p', `Lifecycle: ${connection.lifecycle}`));
+        if (connection.config.type === 'local') detail.append(element('p', localPiReadiness(state, connection)));
         if (connection.preferredModelId) detail.append(element('p', `Preferred model: ${connection.preferredModelId}`));
         if ('endpoint' in connection.config && connection.config.endpoint)
             detail.append(element('p', `Endpoint: ${safeEndpoint(connection.config.endpoint)}`));
