@@ -7,8 +7,10 @@ MODEL / REASONING / USAGE
 VERSIONING
 The assigned project version is `0.12.1`.
 
-ENTRY GATE — NO AUTOMATIC PHASE ENTRY
-Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0039-bundled-pi-local-agent-runtime.md, docs/planning/p12/phase-12-plan.md, docs/tasks/p12/prompt-assessment.md and implementation-plan.md. Before any source mutation, verify explicit Phase 11 owner closeout/disposition, independently reviewed Pi/Qwen standalone result, coherent committed 0.12.0 baseline and deliberate owner Run of p12. If missing, STOP BLOCKED. Inspect current HEAD, branch, dirty state and exact existing upstream dependency; do not reset/stash/clean.
+ENTRY AUTHORIZATION — OWNER CLEARED P12 RUNNER (NO STANDALONE-GREEN ENTRY GATE)
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0039-bundled-pi-local-agent-runtime.md, docs/planning/p12/phase-12-plan.md, docs/planning/p12/owner-entry-authorization-2026-10-29.md, docs/tasks/p12/prompt-assessment.md and implementation-plan.md.
+The owner explicitly approved running P1–P7 using the existing `p12` runner on 2026-10-29. Phase 11 narrow owner closeout and the committed version-only `0.12.0` baseline are recorded. Existing standalone Pi/Qwen test evidence is reviewed, with autonomous completion NOT GREEN; it is accepted as sufficient for provisional integration entry only, not final Pi qualification.
+Do not block P1 on missing standalone Pi GREEN, ask for another owner Run or `/activate`, or demand additional synthetic benchmarks. The owner-approved runner invocation provides execution authorization. Inspect the actual HEAD, branch, dirty state, upstream package provenance/license, and runtime/tool safety. Stop on concrete technical, dependency, security or source-state blockers; report evidence. Do not reset, stash or clean the owner's work.
 
 OBJECTIVE
 Make a reproducible, version-pinned, license-compliant Pi runtime part of Dope's source/package dependency graph, not a global user-installed tool. Evaluate minimal embedded TypeScript SDK versus supervised, bundled RPC subprocess; choose based on verified Node/Theia/Electron module format, packaging, fault containment and restart behavior. Preserve user Pi files and existing Codex/local routing. Only make the smallest necessary foundation changes in this prompt; do not yet switch live Chat/Work default.

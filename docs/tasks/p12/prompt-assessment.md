@@ -1,3 +1,5 @@
+> **CURRENT RUN STATUS (2026-10-29):** The owner authorized P1–P7 with the [provisional entry decision](../../planning/p12/owner-entry-authorization-2026-10-29.md). The `0.12.0` baseline and narrow Phase 11 owner closeout are established; historical authoring statuses below are superseded for entry only. P8 is manual and full Pi qualification remains required.
+
 # /prompt-ass — p12 first stack: bundled Pi Agent
 
 **Authored:** 2026-10-29. **Scope:** Phase 12 first implementation workstream, descriptive name `p12-pi-agent`. **Status:** ASSESSED / DOCS ONLY, NOT RUN OR QUALIFIED. **Source snapshot at review:** GitHub main after G3 P1 owner commit `2a53f87`; current checkout/dirty state and Pi standalone qualification not independently read. Phase 11 OPEN; no 0.12.0 baseline or phase activation. Follow [ADR 0039](../../decisions/0039-bundled-pi-local-agent-runtime.md), [Phase 12 plan](../../planning/p12/phase-12-plan.md) and [B1–B9](../../planning/p12/pi-qualification-contract.md).

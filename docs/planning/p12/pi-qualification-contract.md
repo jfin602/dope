@@ -1,3 +1,5 @@
+> **Entry is not qualification (2026-10-29):** [Owner authorization](owner-entry-authorization-2026-10-29.md) allows P1–P7 to proceed with reviewed standalone Pi results marked NOT GREEN. B1–B9 remain required to close the integrated Pi stack; no security, grant, network, packaging or GUI gate is waived.
+
 # Phase 12 — Bundled Pi qualification contract (B1–B9)
 
 Status: Design only. Standalone Pi success is an entry prerequisite, not integration qualification.

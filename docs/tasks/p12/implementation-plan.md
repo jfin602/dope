@@ -1,3 +1,5 @@
+> **CURRENT RUN STATUS (2026-10-29):** The owner authorized P1–P7 with the [provisional entry decision](../../planning/p12/owner-entry-authorization-2026-10-29.md). The `0.12.0` baseline and narrow Phase 11 owner closeout are established; historical authoring statuses below are superseded for entry only. P8 is manual and full Pi qualification remains required.
+
 # /prompt-plan — Phase 12 first stack, Pi Agent
 
 **Date:** 2026-10-29. **Status:** PLANNED / DOCS ONLY / NOT RUN. **Execution folder:** `p12` (not runner-invalid `p12-pi-agent`). Phase 12 inactive pending a documented Phase 11 owner decision, 0.12.0 version-only baseline, independently reviewed standalone Pi/Qwen qualification and explicit later Run. Version targets below are **future assigned targets, not current package state**.
