@@ -1,4 +1,5 @@
 import type { AgentExecutionAdapter, AgentExecutionHandle, AgentExecutionRequest } from '@dope/agent-core/lib/execution';
+import { createHash } from 'node:crypto';
 import { parseExecutionGrant } from '@dope/agent-core/lib/authority';
 import { parseLocalToolRequests } from '@dope/agent-core/lib/node/local-tool-contracts';
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
@@ -52,6 +53,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         if (!(workspace instanceof ExecutionWorkspace) || workspace.root !== request.executionRoot ||
             workspace.projectRoot !== request.projectRoot) throw new Error('Pi Work candidate unavailable');
         await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
+        const initialFingerprint = await workspace.fingerprint();
         if (!(await preflightLocalToolSandbox()).available) throw new Error('Local OS sandbox unavailable');
         const commands = this.commands(request);
         const broker = localWorkspaceBroker(request, workspace, commands);
@@ -76,7 +78,12 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         const result = (async () => {
             try {
                 request.onEvent({ kind: 'status', summary: 'Pi Work started' });
-                const answer = await host.runWork(request.prompt, async raw => {
+                request.onEvent({ kind: 'provider-event',
+                    summary: `Pi source HEAD ${workspace.head}; candidate SHA-256 ${initialFingerprint}` });
+                const scopedPrompt = `${request.prompt}\n\nDope execution reference: task ${request.taskId}; source HEAD ${workspace.head}; candidate SHA-256 ${initialFingerprint}. Dope grants, review and validation remain authoritative.`;
+                if (Buffer.byteLength(scopedPrompt, 'utf8') > 32_000)
+                    throw new Error('Pi Work prompt and source reference exceed bounded context');
+                const answer = await host.runWork(scopedPrompt, async raw => {
                   try {
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
                     if (!Number.isSafeInteger(raw.id) || raw.id < 1 || seenTools.has(raw.id) || ++count > 32)
@@ -110,7 +117,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     }
                     if (response.status === 'completed' && call.name === 'edit') request.onEvent({ kind: 'file-changed',
                         summary: 'Candidate file changed', path: call.arguments.path });
-                    return { status: response.status, output: safe(response.output) };
+                    return { status: response.status, output: safe(response.output, 1024) };
                   } catch {
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
                     denied = true;
@@ -125,6 +132,26 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     request.onEvent(piWorkObservation(event));
                 });
                 if (cancelled || denied || answer.modelId !== request.modelId) throw new Error('Pi Work denied or model changed');
+                await this.bridge.assertWorkSelection({ connectionId: request.connectionId,
+                    modelId: request.modelId, registryRevision: request.selectedRegistryRevision,
+                    loadedContextTokens: request.selectedLoadedContextTokens }, endpoint);
+                await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
+                const delta = await workspace.delta();
+                const fingerprint = await workspace.fingerprint();
+                const deltaHash = createHash('sha256').update(JSON.stringify(delta)).digest('hex');
+                request.onEvent({ kind: 'provider-event',
+                    summary: `Pi candidate SHA-256 ${fingerprint}; delta SHA-256 ${deltaHash}` });
+                if (answer.compaction) {
+                    const value = answer.compaction;
+                    if (![value.originalSha256, value.compactedSha256].every(item => /^[a-f0-9]{64}$/.test(item)) ||
+                        !Number.isSafeInteger(value.tokensBefore) || value.tokensBefore < 0)
+                        throw new Error('Pi context identity invalid');
+                    request.onEvent({ kind: 'provider-event',
+                        summary: `Pi exact context compacted: original ${value.originalSha256}, compacted ${value.compactedSha256}, tokens before ${value.tokensBefore}` });
+                }
+                if (answer.usage?.tokenMeasurement === 'provider-reported')
+                    request.onEvent({ kind: 'provider-event', summary:
+                        `Pi reported tokens: input ${answer.usage.inputTokens ?? 0}, output ${answer.usage.outputTokens ?? 0}, total ${answer.usage.totalTokens ?? 0}` });
                 const text = safe(answer.text, 512);
                 if (text.trim()) request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text,
                     truncated: answer.text.length > 512, redacted: text !== answer.text });

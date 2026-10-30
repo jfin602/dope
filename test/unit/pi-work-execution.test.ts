@@ -17,6 +17,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     const project = join(parent, 'project');
     let workspace: ExecutionWorkspace | undefined;
     let turn = 0;
+    let scopedPrompt = '';
     const calls = [
         { name: 'dope_read', args: { path: 'README.md', maxBytes: 64 } },
         { name: 'dope_edit', args: { operation: 'modify', path: 'README.md', content: 'candidate change\n' } },
@@ -49,6 +50,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         async start() { return { version: '1.4.0', transport: 'supervised-worker', tools: [] }; },
         openWorkSession(model: unknown, cwd: string) { return dispatch({ type: 'open', mode: 'work', model, cwd }); },
         async runWork(prompt: string, onTool: (call: any) => Promise<any>, onEvent: (event: any) => void) {
+            scopedPrompt = prompt;
             const original = process.stdout.write;
             const replies: Promise<unknown>[] = [];
             process.stdout.write = function (chunk: any, ...args: any[]) {
@@ -103,9 +105,12 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         const handle = await adapter.start(request);
         await handle.result;
         assert.equal(turn, 5);
+        assert.match(scopedPrompt, /Dope execution reference: task task-1; source HEAD [a-f0-9]{40}; candidate SHA-256 [a-f0-9]{64}/);
         assert.equal(await readFile(join(workspace.root, 'README.md'), 'utf8'), 'candidate change\n');
         assert.equal(await readFile(join(project, 'README.md'), 'utf8'), original);
         assert.ok(events.some(event => event.kind === 'file-changed'));
+        assert.ok(events.some(event => /^Pi source HEAD [a-f0-9]{40}; candidate SHA-256 [a-f0-9]{64}$/.test(event.summary)));
+        assert.ok(events.some(event => /^Pi candidate SHA-256 [a-f0-9]{64}; delta SHA-256 [a-f0-9]{64}$/.test(event.summary)));
         assert.ok(events.some(event => event.kind === 'command-completed' && event.status === 'completed'));
         assert.ok(events.some(event => event.kind === 'command-completed' && event.status === 'failed'));
         assert.ok(events.some(event => event.summary === 'Pi dope_process failed'));

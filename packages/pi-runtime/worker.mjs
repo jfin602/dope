@@ -1,5 +1,6 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +16,53 @@ let isolatedDir;
 let workMode = false;
 let workRequestId;
 let nextToolId = 0;
+let activeRequest = false;
+let sessionConsumed = false;
+let compactionRecord;
+let compactionRejected = false;
 const pendingTools = new Map();
+const hash = value => createHash('sha256').update(value).digest('hex');
+const MAX_COMPACTION_BYTES = 12_000;
+function compactExact(event) {
+  // Pi's overflow recovery retries the interrupted turn. A Work tool may already
+  // have changed the candidate, so the only safe response is to stop the run.
+  if (event.willRetry) { compactionRejected = true; return { cancel: true }; }
+  const original = JSON.stringify({ previousSummary: event.preparation.previousSummary ?? null,
+    messages: [...event.preparation.messagesToSummarize, ...event.preparation.turnPrefixMessages] });
+  const messages = JSON.parse(original).messages;
+  const unique = [];
+  const seen = new Map();
+  for (const message of messages) {
+    const exact = JSON.stringify(message);
+    if (seen.has(exact)) unique.push({ repeatOf: seen.get(exact) });
+    else { seen.set(exact, unique.length); unique.push(message); }
+  }
+  const summary = JSON.stringify({ format: 'dope-pi-exact-v1',
+    originalSha256: hash(original), previousSummary: event.preparation.previousSummary ?? null,
+    entries: unique });
+  const restored = JSON.stringify({ previousSummary: event.preparation.previousSummary ?? null,
+    messages: unique.map((entry, index) => entry.repeatOf === undefined ? entry : unique[entry.repeatOf]) });
+  if (restored !== original) { compactionRejected = true; return { cancel: true }; }
+  if (Buffer.byteLength(summary) > MAX_COMPACTION_BYTES ||
+      Buffer.byteLength(summary) + 1024 >= Buffer.byteLength(original)) {
+    compactionRejected = true;
+    return { cancel: true };
+  }
+  compactionRecord = { originalSha256: hash(original), compactedSha256: hash(summary),
+    tokensBefore: event.preparation.tokensBefore };
+  return { compaction: { summary, firstKeptEntryId: event.preparation.firstKeptEntryId,
+    tokensBefore: event.preparation.tokensBefore,
+    details: { originalSha256: compactionRecord.originalSha256,
+      compactedSha256: compactionRecord.compactedSha256 } } };
+}
+export { compactExact };
+function isolatedExtension() {
+  const path = 'builtin:dope-exact-compaction';
+  return { path, resolvedPath: path, hidden: true,
+    sourceInfo: { path, source: 'dope', scope: 'temporary', origin: 'top-level' },
+    handlers: new Map([['session_before_compact', [compactExact]]]),
+    tools: new Map(), messageRenderers: new Map(), commands: new Map(), flags: new Map(), shortcuts: new Map() };
+}
 const WORK_TOOLS = {
   dope_read: { path: Type.String(), maxBytes: Type.Integer() },
   dope_list: { path: Type.String(), maxEntries: Type.Integer() },
@@ -44,7 +91,7 @@ function workTools() {
 }
 
 const emptyResources = Object.freeze({
-  getExtensions: () => ({ extensions: [], errors: [], runtime: createExtensionRuntime() }),
+  getExtensions: () => ({ extensions: [isolatedExtension()], errors: [], runtime: createExtensionRuntime() }),
   getSkills: () => ({ skills: [], diagnostics: [] }),
   getPrompts: () => ({ prompts: [], diagnostics: [] }),
   getThemes: () => ({ themes: [], diagnostics: [] }),
@@ -83,6 +130,9 @@ async function dispose() {
   pendingTools.clear();
   session?.dispose();
   session = undefined;
+  sessionConsumed = false;
+  compactionRecord = undefined;
+  compactionRejected = false;
   if (isolatedDir) {
     await rm(isolatedDir, { recursive: true, force: true });
     isolatedDir = undefined;
@@ -119,13 +169,16 @@ export async function dispatch(message) {
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           sessionManager: SessionManager.inMemory(message.cwd),
-          settingsManager: SettingsManager.inMemory({ compaction: { enabled: false },
+          settingsManager: SettingsManager.inMemory({ compaction: { enabled: true,
+            reserveTokens: Math.min(8192, Math.floor(message.model.contextWindow / 4)),
+            keepRecentTokens: Math.min(4096, Math.floor(message.model.contextWindow / 8)) },
             retry: { enabled: false } }),
           resourceLoader: emptyResources, tools: workMode ? Object.keys(WORK_TOOLS) : [],
           noTools: 'all', customTools: workMode ? workTools() : [],
           scopedModels: [{ model: message.model }]
         });
         session = result.session;
+        sessionConsumed = false;
         const tools = session.getActiveToolNames();
         if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? Object.keys(WORK_TOOLS) : []).sort()))
           throw new Error('Pi opened with unexpected tools');
@@ -140,16 +193,21 @@ export async function dispatch(message) {
       return { closed: true };
     case 'complete': {
       if (!session) throw new Error('Pi session unavailable');
+      if (sessionConsumed) throw new Error('Pi session turn already consumed');
       if (typeof message.prompt !== 'string' || !message.prompt.trim() ||
           Buffer.byteLength(message.prompt, 'utf8') > 8192)
         throw new Error('Invalid Pi prompt');
+      sessionConsumed = true;
       await session.prompt(message.prompt, { expandPromptTemplates: false });
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (!assistant || assistant.stopReason === 'error') throw new Error('Local Pi completion failed');
       return { text: assistant.content.filter(item => item.type === 'text').map(item => item.text).join('') };
     }
     case 'turn': {
+      compactionRecord = undefined;
+      compactionRejected = false;
       if (workMode || !session || !Array.isArray(message.messages) || !message.messages.length ||
+          sessionConsumed ||
           message.messages.at(-1)?.role !== 'user' ||
           message.messages.some(item => !['system', 'user', 'assistant'].includes(item?.role) ||
             typeof item.content !== 'string') ||
@@ -157,6 +215,7 @@ export async function dispatch(message) {
           !Number.isSafeInteger(message.maxOutputTokens) || message.maxOutputTokens < 1 ||
           message.maxOutputTokens > session.model.maxTokens)
         throw new Error('Invalid bounded Pi turn');
+      sessionConsumed = true;
       const zeroUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
         totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
       const systems = message.messages.filter(item => item.role === 'system').map(item => item.content).join('\n\n');
@@ -183,6 +242,7 @@ export async function dispatch(message) {
       try {
         await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
       } finally { unsubscribe(); }
+      if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
           assistant.stopReason === 'toolUse' || assistant.content.some(item => item.type === 'toolCall'))
@@ -193,11 +253,15 @@ export async function dispatch(message) {
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
         usage: { inputTokens: assistant.usage?.input, outputTokens: assistant.usage?.output,
           totalTokens: assistant.usage?.totalTokens,
-          tokenMeasurement: assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' } };
+          tokenMeasurement: assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' },
+        ...(compactionRecord ? { compaction: compactionRecord } : {}) };
     }
     case 'work': {
-      if (!session || !workMode || typeof message.prompt !== 'string' || !message.prompt.trim() ||
+      compactionRecord = undefined;
+      compactionRejected = false;
+      if (!session || !workMode || sessionConsumed || typeof message.prompt !== 'string' || !message.prompt.trim() ||
           Buffer.byteLength(message.prompt, 'utf8') > 32_000) throw new Error('Invalid Pi Work turn');
+      sessionConsumed = true;
       workRequestId = message.id;
       let sequence = 0;
       const emitWork = (kind, extra = {}) => {
@@ -215,15 +279,21 @@ export async function dispatch(message) {
       });
       try { await session.prompt(message.prompt, { expandPromptTemplates: false }); }
       finally { unsubscribe(); workRequestId = undefined; }
+      if (compactionRejected) throw new Error('Pi Work context cannot be compacted safely; retry with a shorter task');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (!assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted')
         throw new Error('Pi Work turn failed');
       return { text: assistant.content.filter(item => item.type === 'text').map(item => item.text).join('').slice(0, 8192),
-        modelId: assistant.responseModel ?? assistant.model };
+        modelId: assistant.responseModel ?? assistant.model,
+        usage: { inputTokens: assistant.usage?.input, outputTokens: assistant.usage?.output,
+          totalTokens: assistant.usage?.totalTokens,
+          tokenMeasurement: assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' },
+        ...(compactionRecord ? { compaction: compactionRecord } : {}) };
     }
     case 'tool-result': {
       const pending = pendingTools.get(message.toolId);
       if (!pending) throw new Error('Unknown Pi tool result');
+      pendingTools.delete(message.toolId);
       pending.resolve(message.result);
       return { received: true };
     }
@@ -235,17 +305,24 @@ export async function dispatch(message) {
 async function accept(line) {
   let id;
   let message;
+  let claimed = false;
   try {
     message = JSON.parse(line);
     id = message.id;
+    if (activeRequest && message.type !== 'tool-result') throw new Error('Pi worker busy');
+    if (message.type !== 'tool-result') { activeRequest = true; claimed = true; }
     const data = await dispatch({ ...message, emit: event =>
       process.stdout.write(`${JSON.stringify({ id, event })}\n`) });
     process.stdout.write(`${JSON.stringify({ id, ok: true, data })}\n`);
   } catch (error) {
-    const safe = ['open', 'complete', 'turn', 'work'].includes(message?.type) ?
+    const safe = /cannot be compacted safely/.test(String(error?.message)) ?
+      'Pi context cannot be compacted safely; shorten the task or select a larger loaded Local model' :
+      ['open', 'complete', 'turn', 'work'].includes(message?.type) ?
       'Local Pi session failed; check the selected AI Center model and local server' :
       String(error?.message ?? error);
     process.stdout.write(`${JSON.stringify({ id, ok: false, error: safe })}\n`);
+  } finally {
+    if (claimed) activeRequest = false;
   }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -1303,7 +1303,8 @@ export class ChatBackend implements ChatService {
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                         outcome: 'complete', content: output, actualModel: actual, routingProvenance,
                         contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
-                        tokenUsage: event.usage, ...(event.finishReason ? { finishReason: event.finishReason } : {}) });
+                        tokenUsage: event.usage, ...(event.compaction ? { compaction: event.compaction } : {}),
+                        ...(event.finishReason ? { finishReason: event.finishReason } : {}) });
                     const titledChat = completed.chats.find(item => item.id === key);
                     const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
                     const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;

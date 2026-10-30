@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import { piConversation } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 
 const selection = { connectionId: 'local', modelId: 'fixture-model' };
@@ -68,4 +69,57 @@ test('active Pi cancellation stops the worker turn and preserves cancelled statu
     setImmediate(() => controller.abort());
     await assert.rejects(turn, /Conversation cancelled/);
     assert.equal(released, true);
+});
+
+test('Pi host failure is explicit and a fresh Dope turn can rebind without replay', async () => {
+    let attempts = 0;
+    let released = 0;
+    const healthy = fixture();
+    const factory = { create() {
+        attempts++;
+        if (attempts === 1) return { async start() { throw new Error('worker exited'); } };
+        return healthy.factory.create();
+    }, release() { released++; } };
+    const messages = [{ role: 'system', content: 'Keep source hash abc and approved no-write constraint' },
+        { role: 'user', content: 'Resume from saved Dope Chat' }] as const;
+    await assert.rejects(async () => {
+        for await (const _event of piConversation(selection, { messages }, bridge as never,
+            factory as never)) { /* stopped before model request */ }
+    }, /Bundled Pi worker unavailable/);
+    assert.equal(healthy.calls.length, 0);
+    const events = [];
+    for await (const event of piConversation(selection, { messages }, bridge as never,
+        factory as never)) events.push(event);
+    assert.equal(healthy.calls.length, 1);
+    assert.deepEqual((healthy.calls[0] as { messages: unknown }).messages, messages);
+    assert.equal(released, 2);
+    assert.equal(events.at(-1)?.type, 'complete');
+});
+
+test('Pi accepts compactable prior Chat context while keeping current constraints bounded', async () => {
+    const { calls, factory } = fixture();
+    const messages = [{ role: 'system', content: 'Keep source hash abc and approved no-write constraint' },
+        ...Array.from({ length: 24 }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user',
+            content: 'older context '.repeat(40) })),
+        { role: 'user', content: 'Recall source hash abc' }] as const;
+    for await (const _event of piConversation(selection, { messages }, bridge as never,
+        factory as never)) { /* exact history reaches bounded Pi worker */ }
+    assert.equal(calls.length, 1);
+    assert.deepEqual((calls[0] as { messages: unknown }).messages, messages);
+});
+
+test('Pi Chat completion carries the exact Dope context identity for persistence', async () => {
+    const messages = [{ role: 'system', content: 'Approved source abc' },
+        { role: 'user', content: 'Continue' }] as const;
+    const compaction = { originalSha256: 'b'.repeat(64), compactedSha256: 'c'.repeat(64), tokensBefore: 4940 };
+    const { factory } = fixture({ text: 'safe answer', modelId: 'fixture-model', finishReason: 'stop',
+        usage: { tokenMeasurement: 'provider-reported', inputTokens: 25, outputTokens: 2, totalTokens: 27 },
+        compaction } as any);
+    const events = [];
+    for await (const event of piConversation(selection, { messages }, bridge as never, factory as never)) events.push(event);
+    const completed = events.at(-1);
+    assert.equal(completed?.type, 'complete');
+    if (completed?.type !== 'complete') throw new Error('completion missing');
+    assert.deepEqual(completed.compaction, { canonicalContextSha256:
+        createHash('sha256').update(JSON.stringify(messages)).digest('hex'), ...compaction });
 });

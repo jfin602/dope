@@ -23,7 +23,8 @@ function fixture() {
     const host = { async openNoToolSession(...args: any[]) { calls.push(args); return { version: '1.4.0', tools: [], resources: 'isolated' }; },
         async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
             tools: ['dope_read', 'dope_list', 'dope_edit', 'dope_process'], resources: 'isolated' }; } };
-    return { state, bridge, host, calls, failRefresh: () => { refreshError = true; } };
+    return { state, bridge, host, calls, failRefresh: () => { refreshError = true; },
+        restoreRefresh: () => { refreshError = false; } };
 }
 
 test('Pi bridge binds only the exact refreshed AI Center Local model and measured budget', async () => {
@@ -107,4 +108,17 @@ test('Pi bridge caps output and opens Work mode only after tool verification', a
     await bridge.assertWorkSelection(selection, 'http://127.0.0.1:1234/v1');
     verified.state.registry.revision++;
     await assert.rejects(bridge.assertWorkSelection(selection, 'http://127.0.0.1:1234/v1'));
+});
+
+test('a stopped Local service fails closed and a fresh selected binding can resume', async () => {
+    const f = fixture();
+    const selected = { connectionId: 'desk', modelId: 'exact-model', registryRevision: 3,
+        loadedContextTokens: 32768 };
+    f.failRefresh();
+    await assert.rejects(f.bridge.bind(selected, f.host as any, '/tmp'), /Local server unreachable/);
+    assert.equal(f.calls.length, 0);
+    f.restoreRefresh();
+    const resumed = await f.bridge.bind(selected, f.host as any, '/tmp');
+    assert.equal(resumed.contextWindowTokens, 32768);
+    assert.equal(f.calls.length, 1);
 });

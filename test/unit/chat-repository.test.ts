@@ -234,13 +234,16 @@ test('completed turns retain actual model and failure cannot masquerade as compl
     await assert.rejects(repo.mutate(root, state.revision, { type: 'finish-assistant', chatId, messageId,
       outcome: 'complete', content: 'wrong', actualModel: { ...provenance, providerId: 'other' } },
       lease.acquired ? lease.token : undefined), /immutable/);
+    const compaction = { canonicalContextSha256: 'a'.repeat(64), originalSha256: 'b'.repeat(64),
+      compactedSha256: 'c'.repeat(64), tokensBefore: 4940 };
     state = await repo.mutate(root, state.revision, { type: 'finish-assistant', chatId, messageId,
-      outcome: 'complete', content: 'Answer' }, lease.acquired ? lease.token : undefined);
+      outcome: 'complete', content: 'Answer', compaction }, lease.acquired ? lease.token : undefined);
     const message = (await new ChatRepository().read(root)).chats[0].messages[0];
     assert.equal(message.role, 'assistant');
     if (message.role !== 'assistant') throw new Error('assistant missing');
     assert.equal(message.execution.status, 'complete');
     assert.deepEqual(message.execution.actualModel, provenance);
+    assert.deepEqual(message.execution.compaction, compaction);
     await assert.rejects(repo.mutate(root, state.revision, { type: 'finish-assistant', chatId, messageId,
       outcome: 'complete', content: 'again', actualModel: provenance }, lease.acquired ? lease.token : undefined), /not active/);
     if (lease.acquired) await repo.release(root, chatId, lease.token);

@@ -11,6 +11,9 @@ export interface PiRuntimeDiagnostics {
 export type PiWorkEvent = { type: 'work'; sequence: number;
     kind: 'agent_start' | 'turn_start' | 'turn_end' | 'agent_end' | 'agent_settled' |
         'tool_execution_start' | 'tool_execution_end'; toolName?: string; isError?: boolean; aborted?: boolean };
+export interface PiContextRecord { originalSha256: string; compactedSha256: string; tokensBefore: number }
+export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; totalTokens?: number;
+    tokenMeasurement: 'provider-reported' | 'unavailable' }
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
     lastWorkSequence?: number;
     onEvent?: (event: { type: 'delta'; text: string } | PiWorkEvent) => void;
@@ -75,7 +78,7 @@ export class PiRuntimeHost {
     }
 
     runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void):
-        Promise<{ text: string; modelId: string }> {
+        Promise<{ text: string; modelId: string; usage?: PiTokenUsage; compaction?: PiContextRecord }> {
         return this.request({ type: 'work', prompt }, event => {
             if (event.type !== 'work') throw new Error('Invalid Pi Work stream event');
             onEvent?.(event);
@@ -94,21 +97,21 @@ export class PiRuntimeHost {
     async *streamTurn(messages: readonly { role: 'system' | 'user' | 'assistant'; content: string }[],
         maxOutputTokens: number, signal?: AbortSignal): AsyncIterable<
         { type: 'delta'; text: string } | { type: 'complete'; text: string; modelId: string;
-            finishReason: string; usage: { inputTokens?: number; outputTokens?: number;
-                totalTokens?: number; tokenMeasurement: 'provider-reported' | 'unavailable' } }> {
+            finishReason: string; usage: PiTokenUsage; compaction?: PiContextRecord }> {
         if (signal?.aborted) throw new Error('Pi turn cancelled');
         const queue: { type: 'delta'; text: string }[] = [];
         let wake: (() => void) | undefined;
         let settled = false;
         let result: { text: string; modelId: string; finishReason: string;
-            usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number;
-                tokenMeasurement: 'provider-reported' | 'unavailable' } } | undefined;
+            usage: PiTokenUsage; compaction?: PiContextRecord } | undefined;
         let failure: unknown;
         const notify = () => { wake?.(); wake = undefined; };
         const onAbort = () => this.dispose();
         signal?.addEventListener('abort', onAbort, { once: true });
         const task = this.request<typeof result>({ type: 'turn', messages, maxOutputTokens }, event => {
             if (event.type !== 'delta') throw new Error('Invalid Pi Chat stream event');
+            if (Buffer.byteLength(event.text, 'utf8') > 8192 || queue.length >= 128)
+                throw new Error('Pi Chat stream backpressure limit exceeded');
             queue.push(event); notify();
         }).then(value => { result = value; }, error => { failure = error; })
             .finally(() => { settled = true; notify(); });
@@ -131,6 +134,9 @@ export class PiRuntimeHost {
         const child = this.child;
         if (!child || child.exitCode !== null || child.killed) return Promise.reject(new Error('Pi worker unavailable'));
         const id = ++this.nextId;
+        const line = `${JSON.stringify({ ...record, id })}\n`;
+        if (Buffer.byteLength(line, 'utf8') > 600_000 || child.stdin.writableLength > 600_000)
+            return Promise.reject(new Error('Pi worker request exceeds bounded input capacity'));
         return new Promise<T>((resolve, reject) => {
             const timer = setTimeout(() => {
                 this.pending.delete(id);
@@ -138,7 +144,7 @@ export class PiRuntimeHost {
                 this.dispose();
             }, ['complete', 'turn', 'work'].includes(String(record.type)) ? 300_000 : 10_000);
             this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent, onTool });
-            child.stdin.write(`${JSON.stringify({ ...record, id })}\n`, error => {
+            child.stdin.write(line, error => {
                 if (error) this.fail(error);
             });
         });
@@ -163,10 +169,14 @@ export class PiRuntimeHost {
                 if (record.tool) {
                     if (!pending.onTool || !Number.isSafeInteger(record.tool.id) || record.tool.id < 1 ||
                         typeof record.tool.name !== 'string') throw new Error('Unexpected Pi tool call');
-                    void pending.onTool(record.tool).then(result =>
-                        this.request({ type: 'tool-result', toolId: record.tool!.id, result }),
-                    () => this.request({ type: 'tool-result', toolId: record.tool!.id,
-                        result: { status: 'denied', output: '' } })).catch(() => this.fail(new Error('Pi tool reply failed')));
+                    void pending.onTool(record.tool).then(result => {
+                        if (!this.pending.has(record.id)) return;
+                        return this.request({ type: 'tool-result', toolId: record.tool!.id, result });
+                    }, () => {
+                        if (!this.pending.has(record.id)) return;
+                        return this.request({ type: 'tool-result', toolId: record.tool!.id,
+                            result: { status: 'denied', output: '' } });
+                    }).catch(() => this.fail(new Error('Pi tool reply failed')));
                     continue;
                 }
                 if (record.event) {

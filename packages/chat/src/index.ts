@@ -62,6 +62,8 @@ export interface ChatExecution {
     contextUsage?: { usedTokens: number; budgetTokens: number };
     tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number;
         tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable' };
+    compaction?: { canonicalContextSha256: string; originalSha256: string;
+        compactedSha256: string; tokensBefore: number };
     finishReason?: string;
 }
 export interface ChatUserMessage {
@@ -277,7 +279,7 @@ export function availableChatContextTokens(policy: ChatContextPolicy, modelWindo
 }
 
 function parseExecution(value: unknown): ChatExecution {
-    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'contextUsage', 'tokenUsage', 'finishReason'],
+    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported execution schema');
     const execution: ChatExecution = { schemaVersion: 1, id: identifier(v.id), status: choice(v.status, statuses, 'assistant status'),
@@ -306,6 +308,16 @@ function parseExecution(value: unknown): ChatExecution {
             ...(usage.totalTokens === undefined ? {} : { totalTokens: usage.totalTokens as number }),
             tokenMeasurement: choice(usage.tokenMeasurement,
                 ['provider-reported', 'tokenizer', 'estimated', 'unavailable'] as const, 'token measurement') };
+    }
+    if (v.compaction !== undefined) {
+        const compact = record(v.compaction, ['canonicalContextSha256', 'originalSha256', 'compactedSha256', 'tokensBefore'],
+            ['canonicalContextSha256', 'originalSha256', 'compactedSha256', 'tokensBefore']);
+        const sha = (item: unknown): item is string => typeof item === 'string' && /^[a-f0-9]{64}$/.test(item);
+        if (!sha(compact.canonicalContextSha256) || !sha(compact.originalSha256) ||
+            !sha(compact.compactedSha256) || !tokens(compact.tokensBefore)) throw new Error('Invalid Chat compaction identity');
+        execution.compaction = { canonicalContextSha256: compact.canonicalContextSha256,
+            originalSha256: compact.originalSha256, compactedSha256: compact.compactedSha256,
+            tokensBefore: compact.tokensBefore as number };
     }
     if (v.finishReason !== undefined) execution.finishReason = string(v.finishReason, 'finish reason');
     if (execution.actualModel && execution.actualModel.connectionId !== execution.selectedModel.connectionId &&

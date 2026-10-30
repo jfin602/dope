@@ -46,6 +46,19 @@ test('versioned Chat round trips with explicit execution and context provenance'
   assert.deepEqual(moved.messages[1], chat.messages[1]);
 });
 
+test('Chat retains only validated exact Pi compaction identities', () => {
+  const chat = sampleChat();
+  const assistant = chat.messages[1] as ChatAssistantMessage;
+  const compaction = { canonicalContextSha256: 'a'.repeat(64), originalSha256: 'b'.repeat(64),
+    compactedSha256: 'c'.repeat(64), tokensBefore: 4940 };
+  const withIdentity = { ...chat, messages: [chat.messages[0], { ...assistant,
+    execution: { ...assistant.execution, compaction } }] };
+  assert.deepEqual((parseChat(withIdentity).messages[1] as ChatAssistantMessage).execution.compaction, compaction);
+  assert.throws(() => parseChat({ ...chat, messages: [chat.messages[0], { ...assistant,
+    execution: { ...assistant.execution, compaction: { ...compaction, originalSha256: 'invalid' } } }] }),
+  /compaction identity/);
+});
+
 test('Chat color is bounded and default assignment is stable across all ten colors', () => {
   assert.equal(CHAT_COLORS.length, 10);
   assert.deepEqual([...CHAT_COLORS], ['blue', 'cyan', 'teal', 'green', 'yellow', 'orange', 'red', 'pink', 'purple', 'indigo']);

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { dispatch } from '../../packages/pi-runtime/worker.mjs';
+import { dispatch, compactExact } from '../../packages/pi-runtime/worker.mjs';
 
 const model = {
   id: 'offline-fixture', name: 'Offline Fixture', api: 'openai-completions',
@@ -35,6 +35,63 @@ test('bundled Pi constructs and disposes without tools or project extensions', a
   }
 });
 
+test('Pi compaction preserves exact repeated history and refuses overflow retry', () => {
+  const repeated = { role: 'toolResult', toolCallId: 'same', toolName: 'dope_read',
+    content: [{ type: 'text', text: 'source-sha256=abc; accepted=no-write; candidate-diff=reviewed' }] };
+  const messages = Array.from({ length: 40 }, () => repeated);
+  const preparation = { previousSummary: undefined, messagesToSummarize: messages,
+    turnPrefixMessages: [], tokensBefore: 3500, firstKeptEntryId: 'entry-41' };
+  const result = compactExact({ preparation, willRetry: false });
+  assert.ok(result.compaction);
+  const summary = JSON.parse(result.compaction.summary);
+  assert.equal(summary.format, 'dope-pi-exact-v1');
+  assert.equal(summary.entries.length, messages.length);
+  assert.deepEqual(summary.entries.slice(1), Array.from({ length: 39 }, () => ({ repeatOf: 0 })));
+  assert.equal(summary.entries[0].content[0].text,
+    'source-sha256=abc; accepted=no-write; candidate-diff=reviewed');
+  assert.equal(result.compaction.firstKeptEntryId, 'entry-41');
+  assert.deepEqual(compactExact({ preparation, willRetry: true }), { cancel: true });
+  assert.deepEqual(compactExact({ preparation: { ...preparation,
+    messagesToSummarize: [repeated] }, willRetry: false }), { cancel: true });
+});
+
+test('Pi exact compaction can trigger on synthetic near-limit Chat history', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-compact-'));
+  const bodies = [];
+  try {
+    globalThis.fetch = async (_url, options) => {
+      bodies.push(JSON.parse(options.body));
+      const chunks = [
+        'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"offline-fixture","choices":[{"index":0,"delta":{"role":"assistant","content":"constraint-A retained"},"finish_reason":null}]}\n\n',
+        'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"offline-fixture","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\n',
+        'data: [DONE]\n\n'
+      ];
+      return new Response(chunks.join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', cwd, model });
+    const messages = [{ role: 'system', content: 'Approved constraint-A; source-sha256=abc; no canonical writes.' }];
+    for (let i = 0; i < 20; i++) {
+      messages.push({ role: 'user', content: 'repeat-'.repeat(70) });
+      messages.push({ role: 'assistant', content: 'answer-'.repeat(70) });
+    }
+    messages.push({ role: 'user', content: 'Recall constraint-A.' });
+    const answer = await dispatch({ type: 'turn', messages, maxOutputTokens: 128 });
+    assert.equal(answer.text, 'constraint-A retained');
+    assert.ok(answer.compaction);
+    assert.match(answer.compaction.originalSha256, /^[a-f0-9]{64}$/);
+    assert.match(answer.compaction.compactedSha256, /^[a-f0-9]{64}$/);
+    assert.equal(bodies.length, 1);
+    assert.match(JSON.stringify(bodies[0].messages), /constraint-A/);
+    assert.match(JSON.stringify(bodies[0].messages), /source-sha256=abc/);
+    assert.equal(answer.usage.tokenMeasurement, 'unavailable');
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('bundled Pi completes a synthetic prompt through the exact Local model', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
@@ -52,6 +109,7 @@ test('bundled Pi completes a synthetic prompt through the exact Local model', as
   try {
     await dispatch({ type: 'open', cwd, model, credential: 'secret-fixture' });
     assert.deepEqual(await dispatch({ type: 'complete', prompt: 'Return synthetic-ok.' }), { text: 'synthetic-ok' });
+    await assert.rejects(dispatch({ type: 'complete', prompt: 'Repeat the operation.' }), /already consumed/);
   } finally {
     await dispatch({ type: 'close' });
     globalThis.fetch = originalFetch;

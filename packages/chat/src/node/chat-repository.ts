@@ -464,6 +464,7 @@ export class ChatRepository {
                         routingProvenance: operation.routingProvenance ?? message.execution.routingProvenance,
                         finishedAt: now, ...(operation.contextUsage ? { contextUsage: operation.contextUsage } : {}),
                         ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}),
+                        ...(operation.compaction ? { compaction: operation.compaction } : {}),
                         ...(operation.finishReason ? { finishReason: operation.finishReason } : {}),
                         ...(operation.outcome === 'failed' ? { failure: operation.failure } : {}) } });
                     return { ...c, lastInteractedAt: now, messages };

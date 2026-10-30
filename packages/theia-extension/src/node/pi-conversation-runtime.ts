@@ -1,4 +1,5 @@
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
+import { createHash } from 'node:crypto';
 import type { ConversationEvent, ConversationRequest, ModelSelection } from '@dope/contracts/lib/model-runtime';
 import type { PiModelBridge } from './pi-model-bridge';
 import type { PiRuntimeFactory } from './pi-runtime-host';
@@ -27,8 +28,10 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             throw new ModelRuntimeFailure('Selected Local model has insufficient output capacity; load a larger model in AI Center',
                 'unsupported-capability');
         const inputBytes = Buffer.byteLength(JSON.stringify(request.messages), 'utf8');
+        const immutableBytes = Buffer.byteLength(JSON.stringify(request.messages.filter(item => item.role === 'system')),
+            'utf8') + Buffer.byteLength(request.messages.at(-1)?.content ?? '', 'utf8');
         if (!request.messages.length || request.messages.at(-1)?.role !== 'user' ||
-            inputBytes > 512 * 1024 || Math.ceil(inputBytes / 3) + maxOutputTokens + 1024 > binding.contextWindowTokens)
+            inputBytes > 512 * 1024 || Math.ceil(immutableBytes / 3) + maxOutputTokens + 1024 > binding.contextWindowTokens)
             throw new ModelRuntimeFailure('Local Chat context exceeds the measured model budget; shorten the turn or select a larger model',
                 'unsupported-capability');
         for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal)) {
@@ -40,11 +43,17 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 throw new ModelRuntimeFailure('Local answer reached its output limit; shorten the request or use a larger model',
                     'incomplete-answer');
             yield { type: 'complete', text: event.text, usage: event.usage,
+                ...(event.compaction ? { compaction: { canonicalContextSha256:
+                    createHash('sha256').update(JSON.stringify(request.messages)).digest('hex'),
+                    ...event.compaction } } : {}),
                 finishReason: event.finishReason, actualModelId: event.modelId };
         }
     } catch (error) {
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         if (error instanceof ModelRuntimeFailure) throw error;
+        if (error instanceof Error && /cannot be compacted/.test(error.message))
+            throw new ModelRuntimeFailure('Local history cannot be compacted safely; shorten the turn or select a larger loaded model',
+                'unsupported-capability');
         throw new ModelRuntimeFailure('Local Pi session failed; check the selected model and Local server in AI Center',
             'connection-unavailable');
     } finally {

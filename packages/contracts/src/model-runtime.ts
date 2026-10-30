@@ -94,6 +94,9 @@ export interface ConversationUsage {
 export type ConversationEvent =
     | { type: 'delta'; text: string }
     | { type: 'complete'; text: string; usage: ConversationUsage; finishReason?: string;
+        /** Ephemeral Pi context projection; the saved Dope messages remain canonical. */
+        compaction?: { canonicalContextSha256: string; originalSha256: string;
+            compactedSha256: string; tokensBefore: number };
         /** Provider-reported resolved model, when an explicit model alias resolves to a snapshot. */
         actualModelId?: string;
         /** Filled by the connection registry from the runtime actually used. */
