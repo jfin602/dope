@@ -57,13 +57,18 @@ export class PiRuntimeHost {
     }
 
     /** P2 supplies the exact local model. P1 never prompts or changes live routing. */
-    openNoToolSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string):
+    openNoToolSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string):
         Promise<{ version: string; tools: string[]; resources: string }> {
-        return this.request({ type: 'open', model, cwd });
+        return this.request({ type: 'open', model, cwd, ...(credential ? { credential } : {}) });
     }
 
     closeSession(): Promise<{ closed: boolean }> {
         return this.request({ type: 'close' });
+    }
+
+    /** P2 fixture only; P3 owns streamed Chat and cancellation. */
+    completeSynthetic(prompt: string): Promise<{ text: string }> {
+        return this.request({ type: 'complete', prompt });
     }
 
     private request<T>(record: Record<string, unknown>): Promise<T> {
@@ -75,7 +80,7 @@ export class PiRuntimeHost {
                 this.pending.delete(id);
                 reject(new Error('Pi worker response timed out'));
                 this.dispose();
-            }, 10_000);
+            }, record.type === 'complete' ? 300_000 : 10_000);
             this.pending.set(id, { resolve: value => resolve(value as T), reject, timer });
             child.stdin.write(`${JSON.stringify({ ...record, id })}\n`, error => {
                 if (error) this.fail(error);

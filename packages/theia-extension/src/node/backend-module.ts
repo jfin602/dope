@@ -44,6 +44,7 @@ import { AgentExecutionRuntime } from './agent-execution-runtime';
 import { CodexAgentExecutionAdapter } from './codex-agent-execution';
 import { LocalAgentExecutionAdapter } from './local-agent-execution';
 import { PiRuntimeFactory } from './pi-runtime-host';
+import { PiModelBridge } from './pi-model-bridge';
 import type { AgentExecutionAdapter } from '@dope/agent-core';
 import { historyServicePath, historyFocusServicePath, historyPlanningServicePath } from '@dope/contracts/lib/history-service';
 import { HistoryBackend } from './history-backend';
@@ -63,6 +64,14 @@ import { RoadmapPlanningLinks } from './roadmap-planning-links';
 
 export default new ContainerModule(bind => {
     bind(PiRuntimeFactory).toSelf().inSingletonScope();
+    bind(PiModelBridge).toDynamicValue(context => {
+        const inventory = context.container.get(AIInventoryController);
+        const credentials = context.container.get(AICredentialManager);
+        return new PiModelBridge({ inventory: () => inventory.inventory(),
+            refreshModels: id => inventory.refreshModels(id),
+            credential: id => credentials.readForExecution(id),
+            verifyLocalAgentExecution: (id, modelId) => inventory.verifyLocalAgentExecution(id, modelId) });
+    }).inSingletonScope();
     bind(BackendApplicationContribution).toDynamicValue(context => ({
         onStop: () => context.container.get(PiRuntimeFactory).dispose()
     })).inSingletonScope();
