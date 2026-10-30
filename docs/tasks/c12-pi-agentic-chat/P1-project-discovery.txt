@@ -1,0 +1,22 @@
+TASK: Correction 12 / P1 — Enable Pi autonomous project source discovery
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- No manifest/internal-pin/lockfile or provider/model changes.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0039 forward amendment, docs/planning/p12/agentic-chat-permissions.md, this stack's README/assessment/plan and original P12 scoped Chat/Work/P8 evidence. Check actual local HEAD, dirty files, version, active sessions and owner modifications. Writing these prompts does not authorize Run; later explicit owner invocation required. No /activate, reset, stash, clean, self-commit (runner owns checkpoints), hosted fallback, new Chat/Work authority or unsafe host shell. P1-P4 focused <=8m target, 10 soft/15 hard; if unsafe/incompatible, STOP and report rather than bypass.
+
+
+OBJECTIVE
+An eligible local Pi Chat/Planning request can autonomously list, search and read allowed project code without any manual attachment. Use Pi native multi-tool selection and continuation, not a second agent loop. No shell/edits in P1.
+
+IMPLEMENT
+Expose Dope-brokered custom read/list/path-search/text-search tools in packages/pi-runtime/worker.mjs, pi-runtime-host.ts, pi-conversation-runtime.ts and existing Chat backend. Use current ChatProjectGrounder for canonical project-root binding, safe paths/symlinks/private exclusions, hashes, bounded bytes and search. Remove the blanket Chat tool abort only for authorized registered tools, never expose unrestricted Pi built-in bash/read/write or plugin discovery. Keep Dope Chat store, per-turn model identity, streaming, lease, cancellation and context bounds. Record source refs, truncation and tool events without leaking raw private content.
+
+QUALIFY
+Disposable src/index.html + package.json: prompt "inspect this project" with ZERO attachments must drive Pi tool list/search/read then grounded answer. Tests for wrong root, private file, symlink, binary/large file, project switch/cancel, no process/write/network, Chat continuity and exact provider. Focused test, typecheck and affected build; real browser/native only P5. STOP.

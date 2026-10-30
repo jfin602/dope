@@ -1,0 +1,22 @@
+TASK: Correction 12 / P3 — Broker sandboxed Pi investigation commands
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- No manifest/internal-pin/lockfile or provider/model changes.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0039 forward amendment, docs/planning/p12/agentic-chat-permissions.md, this stack's README/assessment/plan and original P12 scoped Chat/Work/P8 evidence. Check actual local HEAD, dirty files, version, active sessions and owner modifications. Writing these prompts does not authorize Run; later explicit owner invocation required. No /activate, reset, stash, clean, self-commit (runner owns checkpoints), hosted fallback, new Chat/Work authority or unsafe host shell. P1-P4 focused <=8m target, 10 soft/15 hard; if unsafe/incompatible, STOP and report rather than bypass.
+
+
+OBJECTIVE
+Let Pi choose useful investigation/test commands in Chat/Planning under Ask or Allow without making them unsandboxed host commands or weakening Work's validation-command broker.
+
+IMPLEMENT
+Add separate Chat command tool and broker, binding model request to exact project/Chat/turn/approval. Ask waits for one-command approval; Allow runs only sandbox-eligible commands. Use Linux bwrap/unshare/seccomp: project mounted READ ONLY, private ephemeral tmp, sterile env, no private home/outside root, network socket denied, bounded CPU/memory/process/time/output. Reject unsafe mounts, paths, symlink escape and arbitrary host side effects. Model-selected shell runs INSIDE sandbox only, never in backend host shell. Denials return bounded truthful tool results; cancel, wrong project, late callback, expired token fail closed. Preserve existing Work tool and candidate review.
+
+QUALIFY
+Real sandbox disposable fixture: Ask Deny no execution, Ask Allow-once exact command succeeds, Allow runs permitted search/test without prompting. OS negative matrix: canonical write, private credentials, outside-root, symlink, network socket, host command, stale/replayed approval, cancellation. Check actual enforcement, not polite model refusal or observed absence of egress. Pi continues after results; focused tests, sandbox preflight and build/typecheck. STOP BLOCKED if OS isolation cannot enforce policy.

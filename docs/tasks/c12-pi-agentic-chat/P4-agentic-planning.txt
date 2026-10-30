@@ -1,0 +1,22 @@
+TASK: Correction 12 / P4 — Integrate Pi Planning activity and Prepare Work handoff
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- No manifest/internal-pin/lockfile or provider/model changes.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0039 forward amendment, docs/planning/p12/agentic-chat-permissions.md, this stack's README/assessment/plan and original P12 scoped Chat/Work/P8 evidence. Check actual local HEAD, dirty files, version, active sessions and owner modifications. Writing these prompts does not authorize Run; later explicit owner invocation required. No /activate, reset, stash, clean, self-commit (runner owns checkpoints), hosted fallback, new Chat/Work authority or unsafe host shell. P1-P4 focused <=8m target, 10 soft/15 hard; if unsafe/incompatible, STOP and report rather than bypass.
+
+
+OBJECTIVE
+Planning can use Pi's project read/search/approved-command loop to produce source-grounded typed proposals. Existing ChatPanel shows compact tool activity and explicit Prepare Work; never create another Roadmap/Work authority.
+
+IMPLEMENT
+Extend existing Planning Chat routing using the same Pi tools, preserving typed proposal validation, reviewed draft and linked Markdown/source-revision approval. Deterministic G3 no-action response-first paths still make ZERO additional inference. Show compact expandable read/search/command progress, permission decisions, result/failure in existing Chat; copies omit tool/debug/secret metadata. Add explicit Prepare Work action using existing Work draft, selected model and grant preview; do not auto-run, write canonical source or auto-accept. Preserve Chat continuity, cancellation, project boundaries and History.
+
+QUALIFY
+Source fixture: Pi inspects actual files and produces grounded reviewable planning proposal; no unauthorized Roadmap/Markdown change, invalid/stale proposal denied. G3 call-count, normal Chat/no-action, copied transcript, provider choices, Prepare Work draft without execution, existing Work regressions. Focused tests/build; real browser/native only P5. STOP.

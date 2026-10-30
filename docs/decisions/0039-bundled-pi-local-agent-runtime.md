@@ -1,3 +1,5 @@
+> **2026-10-30 OWNER-APPROVED FORWARD AMENDMENT:** The old no-filesystem/shell-tools Chat/Planning rule below is historical initial-P12 scope, superseded as the *future target* by [full Pi agentic Chat/Planning](../planning/p12/agentic-chat-permissions.md): Pi chooses project read/list/search tools; composer Commands Ask/Allow governs OS-sandboxed command execution. Dope still owns protected paths, approvals, grants and candidate promotion. No unrestricted Pi host shell or implicit source mutation. New correction is docs/prompts authored only, not implemented.
+
 # ADR 0039 — Bundled Pi default local agent runtime
 
 **Decision date:** 2026-10-29. **Status:** OWNER-APPROVED DESIGN, NOT IMPLEMENTED OR QUALIFIED. **Entry:** Phase 12 after separately documented Phase 11 owner closeout and version-only 0.12.0 baseline. [Phase plan](../planning/p12/phase-12-plan.md).

@@ -1,3 +1,5 @@
+> **2026-10-30 FORWARD B3/B4 CONTRACT CHANGE (NOT IMPLEMENTED):** [Agentic Chat/Planning permissions](agentic-chat-permissions.md) requires Pi-selected read/list/search and composer Ask/Allow permissioned sandboxed commands. B3/B4 must newly qualify exact command approval and OS-enforced read-only/credential/network protection. Original table below remains historical for initial P12; it is not reclassified or silently waived.
+
 > **Entry is not qualification (2026-10-29):** [Owner authorization](owner-entry-authorization-2026-10-29.md) allows P1–P7 to proceed with reviewed standalone Pi results marked NOT GREEN. B1–B9 remain required to close the integrated Pi stack; no security, grant, network, packaging or GUI gate is waived.
 
 # Phase 12 — Bundled Pi qualification contract (B1–B9)

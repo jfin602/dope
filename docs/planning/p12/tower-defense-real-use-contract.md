@@ -1,3 +1,5 @@
+> **2026-10-30 NATIVE REAL-USE ADDITION:** Verify Pi can inspect the real tower-defense source without manually attached Chat files, produce source-grounded milestone and use Ask/Allow command permissions under [agentic contract](agentic-chat-permissions.md). Owned source stays read-only until separate approved Work and candidate promotion; security negatives use disposable copies.
+
 # Phase 12 — Tower-defense real-use and repair
 
 Status: Planned manual proving ground AFTER qualified bundled Pi stack. The owner's persistent PixiJS 2D tower-defense project is real owned work, NOT a destructive fixture; its source path and current state remain unverified.

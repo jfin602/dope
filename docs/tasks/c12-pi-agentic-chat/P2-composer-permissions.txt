@@ -1,0 +1,22 @@
+TASK: Correction 12 / P2 — Add Commands Ask Allow and one-use approval
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- No manifest/internal-pin/lockfile or provider/model changes.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0039 forward amendment, docs/planning/p12/agentic-chat-permissions.md, this stack's README/assessment/plan and original P12 scoped Chat/Work/P8 evidence. Check actual local HEAD, dirty files, version, active sessions and owner modifications. Writing these prompts does not authorize Run; later explicit owner invocation required. No /activate, reset, stash, clean, self-commit (runner owns checkpoints), hosted fallback, new Chat/Work authority or unsafe host shell. P1-P4 focused <=8m target, 10 soft/15 hard; if unsafe/incompatible, STOP and report rather than bypass.
+
+
+OBJECTIVE
+Place visible "Commands: Ask / Allow" beside existing Chat model selector, shared by Chat and Planning. Ask default for every new Chat; Allow only current Chat/project/app session. Reads/list/search remain automatic in either mode.
+
+IMPLEMENT
+Extend current ChatPanel widget/controller and backend Chat service with pending exact command preview (command, project/cwd, sandbox/effect), developer Allow once / Deny, cancellation/expiry, and safe Pi tool pause/resume. Token bound to current Chat lease, project root, turn, command digest, source basis and one execution; reject stale/foreign/replayed/wrong-owner decisions. Reset Ask on app restart, project switch, or new Chat; never store reusable blanket grants. Allow only broker-eligible sandbox commands; until P3, report "commands unavailable", not fake execution. Keep Chat drag-selection, copy, Enter send, streaming and model controls intact; no source/Work/Roadmap writes.
+
+QUALIFY
+Focused UI/service tests default Ask, mode scope/reset, approve-once, Deny, cancel/stale/replay, pending request, secret-redacted transcript, no second Chat. Validate prompt text cannot grant authority. Typecheck/build. STOP.

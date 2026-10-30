@@ -1,0 +1,23 @@
+TASK: Correction 12 / P5 — Manual full Pi agentic Chat and Planning closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- No manifest/internal-pin/lockfile or provider/model changes.
+
+PREFLIGHT / SAFETY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0039 forward amendment, docs/planning/p12/agentic-chat-permissions.md, this stack's README/assessment/plan and original P12 scoped Chat/Work/P8 evidence. Check actual local HEAD, dirty files, version, active sessions and owner modifications. Writing these prompts does not authorize Run; later explicit owner invocation required. No /activate, reset, stash, clean, self-commit (runner owns checkpoints), hosted fallback, new Chat/Work authority or unsafe host shell. P1-P4 focused <=8m target, 10 soft/15 hard; if unsafe/incompatible, STOP and report rather than bypass.
+
+
+MANUAL T3 ONLY — NOT RUN BY HEADLESS RUNNER
+Codex may operate in-app browser for browser scope. Owner operates installed native Electron independently; builds and browser do not prove native. Verify exact source and NEW AppImage hash after implementation.
+
+QUALIFY
+1. In installed Dope open real tower-defense; select local Qwen and ask for inspected implemented mechanics and next small milestone with NO file attachments. Capture real Pi list/search/read, verified paths/hashes and meaningful grounded answer.
+2. Ask default: preview exact safe command/cwd; Deny produces no effect; Allow once executes exactly once. Allow toggle: eligible sandbox command executes without prompt and visible activity. Restart/switch project/new Chat resets Ask, stale token cannot execute.
+3. Planning uses those source findings and command results; typed proposal pending until approval, no automatic Roadmap/Markdown write. Verify deterministic G3 zero extra inference where applicable. Prepare Work displays existing approval but does not launch code changes.
+4. On disposable fixture test protected files, traversal, symlink escape, project write, network denial, wrong owner, cancel/replay and sandbox fail-closed. Regression checks Chat copy/continuity, Work candidate acceptance/rejection, History, provider switching.
+5. Record exact HEAD/dirty diff, model/context, Pi version, bundle/AppImage hashes, real browser AND separate native operation, tool events, command output and per-gate PASS/FAIL/BLOCKED/EVIDENCE GAP. Never fabricate parity. Preserve historical P12 results and outstanding B1-B9; correction Green != whole P12 Green. Write closeout only after actual observations, then STOP. No self-commit/version bump.
