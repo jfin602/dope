@@ -1,4 +1,14 @@
-# P12 final Pi integration — updated browser disposition (2026-10-30)
+# P12 final Pi integration — focused browser gate disposition (2026-10-30)
+
+**P12 PI INTEGRATION — PACKAGE READY FOR OWNER NATIVE TESTING; BROWSER GAPS OPEN.** The current clean product HEAD before these evidence edits is `99907526c65637c7cda3973d3a622f2416974b53`, version `0.12.7`, with the same product bytes as the prior AppImage build. The package was re-extracted and verified: [Dope-0.12.7.AppImage](/home/jfin/dev/dope/dist/linux/Dope-0.12.7.AppImage), SHA-256 `312f23224818699f47c1643ef21475c40ebfb9cef4d81446abb0f897d3afe6f2`, Pi `1.4.0`, 121 locked dependencies and license/notice files. No product repair or rebuild was needed. The owner-operated native GUI, clean installed runtime and update/rollback remain pending.
+
+The focused [browser gate report](final-browser-gates.md) records B2 as passing in its browser/test scope and strong B4 broker/sandbox enforcement evidence. A short exact-model local Chat and active Work cancellation passed; the cancelled run saved zero changes and reopened after reload. The returned accepted Work/History run remained intact after switching projects. B3 remains an evidence gap because a browser Planning answer was too ambiguous for Roadmap draft extraction and an authoritative live G3 inference count was unavailable, although deterministic response-first tests passed. B4 remains an evidence gap because the current grant contract has no expiration semantics for the newly requested expired-grant denial, and several live negatives were not operated. B6 remains an evidence gap because real near-limit Qwen compaction has not been observed. B8 remains partial because fresh post-cancel Work and live Pi crash/model-unload recovery were not operated. The [current matrix](b1-b9-matrix.md) separates all browser/package evidence from native obligations.
+
+This result does **not** qualify the full browser scope, waive a mandatory gate, turn original P8 Green, close Phase 12, or advance the version. Owner disposition is required for any proposed B3/B4/B6/B8 deferral. It preserves the previous result below and all earlier NOT GREEN records. Codex operated only the in-app browser under the owner's limited browser/Chrome equivalence decision; it did not operate native Electron.
+
+---
+
+# P12 final Pi integration — updated browser disposition (earlier 2026-10-30 snapshot)
 
 **P12 PI INTEGRATION — NOT GREEN.** The final bounded Codex-browser replay cleared the earlier fresh-Work eligibility blocker in the observed loaded-model state, completed a genuine two-file local Pi repair, passed Dope's independent 3/3 validation, accepted the reviewed candidate, and proved accepted Work/History persistence across browser reload and backend restart. B2/B3/B4/B6/B8 still contain the browser-testable partial or evidence gaps in the [updated B1–B9 matrix](b1-b9-matrix.md); B1/B7/B9 retain installed-native obligations. Owner-native operation and final P8 signoff remain pending; Phase 12 is OPEN and Dope remains `0.12.7`.
 

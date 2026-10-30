@@ -1,4 +1,24 @@
-# P12 Pi B1–B9 matrix — final bounded browser recovery (2026-10-30)
+# P12 Pi B1–B9 matrix — focused final browser gates (2026-10-30)
+
+Source: clean product HEAD `99907526c65637c7cda3973d3a622f2416974b53`, Dope `0.12.7`; subsequent working-tree changes in this folder are qualification Markdown only. The committed product diff from the preceding `a679c2b0` report has identical SHA-256 `84866ba2b7c54a28a531aff568bda62aff2f0564f9e4031fde73cee0db8d4726`. Pi `1.4.0`, lock SHA-256 `08fdea274c46717d78883dc9d1aec559d7eefac759658fe0baded70175833a70`; local exact Qwen at observed 32768. GUI: Codex in-app browser under the owner's documented browser equivalence, with no native or independent Chrome claim. [Full new evidence](final-browser-gates.md).
+
+| Gate | Current disposition | Basis and remaining requirement |
+| --- | --- | --- |
+| B1 Bundled distribution | **PACKAGE PASS; NATIVE PENDING** | Pinned Pi and 121 dependencies, licenses and worker were extracted from the actual AppImage; no launch-time install path in reviewed design. Clean-profile installed launch without global Pi/Node/npm remains owner-native. |
+| B2 Model auto-wiring | **PASS, browser plus focused tests** | Exact selected LM Studio/Qwen/32768 identity, refresh, real supported tool probe, recovered Work target and safe invalid-selection tests passed. Live credential is `none`; nonempty reference protection is synthetic-tested. Reprobe is required after refresh, rather than carrying a stale capability claim. |
+| B3 Default routing | **EVIDENCE GAP** | Fresh local no-tool Chat passed. Browser Planning returned a review action but the ambiguous saved answer failed draft extraction safely with zero source change. Deterministic saved-answer extraction counted zero extra model calls; a successful current-source browser Planning review and authoritative live G3 call count remain open. Codex alternative remained visible; manual/no-model path was not re-operated. |
+| B4 Brokered tool authority | **EVIDENCE GAP** | Explicit grant review/start, broker negative tests, real Linux sandbox path/credential/network-socket denial and candidate review authority passed. The grant schema has no expiration field/check, so the newly requested expired-grant denial is not implemented or proven. Individual live browser traversal/revocation/nonempty credential negatives were not operated. No whole-host egress claim. |
+| B5 Product continuity | **PASS, prior scoped evidence** | Existing saved Chat, two-file candidate Accept/Reject and Work/History persisted. Return from the cancellation fixture reopened exact accepted run `af2e44d6-2346-4caf-b4de-712411730cf7`. |
+| B6 Context | **EVIDENCE GAP** | Verified loaded 32768, effective bounded Pi context, tool output and synthetic exact compaction/refusal passed. Real near-limit Qwen compaction/accounting and constraint/reference retention remain unproven; mandatory gate has no owner waiver. |
+| B7 Fresh AppImage | **PACKAGE PASS; NATIVE PENDING** | `dist/linux/Dope-0.12.7.AppImage` SHA-256 `312f23224818699f47c1643ef21475c40ebfb9cef4d81446abb0f897d3afe6f2` passed extraction and byte checks. Installed Pi operation, update and rollback remain owner-native. |
+| B8 Recovery | **PARTIAL** | Active browser Work cancellation persisted `cancelled`, validation cancelled, zero changes and no promotion after reload; project switch kept accepted and cancelled tasks separate. Late events, duplicate start, stale basis, revocation, model failure and orphan reconciliation passed focused tests. Fresh post-cancel Work and live Pi crash/model-unload during Work remain unobserved. |
+| B9 Real Work and GUI | **BROWSER PASS; NATIVE PENDING** | Earlier genuine two-file Qwen/Pi read/edit/test, independent validation, explicit Accept and durable History remain applicable to identical product bytes. Installed Electron GUI and owner P8 signoff remain pending. |
+
+**P12 PI INTEGRATION — PACKAGE READY FOR OWNER NATIVE TESTING; BROWSER GAPS OPEN.** B3, B4, B6 and B8 prevent a browser Green under the requested gate set. Native testing cannot close them automatically. Historical matrix below is retained as the preceding browser snapshot.
+
+---
+
+# P12 Pi B1–B9 matrix — final bounded browser recovery (earlier 2026-10-30 snapshot)
 
 Product HEAD `a679c2b0d5085d65f338abd92911e08e3583aecb` on `main`; unchanged tracked product diff SHA-256 `84866ba2b7c54a28a531aff568bda62aff2f0564f9e4031fde73cee0db8d4726` (`git diff --binary`; untracked qualification reports excluded). Dope `0.12.7`, bundled Pi `1.4.0`, exact local model `qwen3-coder-30b-a3b-instruct@q4_k_m` at observed 32768 context, parallel 4, local device. GUI observations used the Codex in-app browser. The owner accepts Codex browser and Chrome evidence as interchangeable for this qualification; this report makes no independent external Chrome or native Electron claim.
 
