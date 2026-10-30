@@ -9,6 +9,7 @@ import type { AIRoleHardConstraints, RoutingProvenance } from '@dope/ai';
 import { ModelConnectionsRegistry } from './model-connections';
 import { ChatContextComposer } from './chat-context-composer';
 import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
+import { runChatInvestigationCommand } from './chat-command-broker';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevision, validImplementationPlan,
@@ -381,6 +382,7 @@ export class ChatBackend implements ChatService {
             throw new Error('Chat command mode is not owned by this panel');
         await this.repository.renew(root, chatId, leaseToken);
         if (this.leases.get(chatId)?.token !== leaseToken) throw new Error('Chat command mode is stale');
+        if (this.commandModes.get(chatId) !== mode) this.turns.get(chatId)?.abort.abort();
         this.commandModes.set(chatId, mode);
         this.pendingCommands.get(chatId)?.finish('deny');
     }
@@ -404,21 +406,21 @@ export class ChatBackend implements ChatService {
             pending.turn.signal.aborted || Date.now() >= pending.preview.expiresAt ||
             this.leases.get(chatId)?.token !== leaseToken || this.commandModes.get(chatId) !== 'ask')
             throw new Error('Command approval is stale or not owned by this Chat');
-        // Consume before resuming Pi. P3 will replace the unavailable result with a sandbox broker.
+        // Consume before resuming Pi. The broker rechecks turn, lease and project.
         pending.finish(allowOnce ? 'allow' : 'deny');
     }
     private async requestCommand(root: string, request: ChatTurnRequest, command: string,
-        turn: AbortController, sourceBasis: string): Promise<string> {
+        turn: AbortController, sourceBasis: string): Promise<boolean> {
         if (typeof command !== 'string' || !command.trim() || Buffer.byteLength(command, 'utf8') > 2048 ||
             /[\x00-\x08\x0b-\x1f\x7f]/u.test(command)) throw new Error('Command request denied');
-        if (this.commandModes.get(request.chatId) === 'allow') return 'commands unavailable';
+        if (this.commandModes.get(request.chatId) === 'allow') return true;
         if (this.commandModes.get(request.chatId) !== 'ask' || this.pendingCommands.has(request.chatId))
             throw new Error('Command request unavailable');
         const preview: ChatCommandPreview = { id: randomUUID(), command, project: root, cwd: root,
-            sandbox: 'Project read-only; temporary writes only; no network or private home (P3 broker unavailable)',
-            effect: 'Investigation command requested; no execution is available yet', expiresAt: Date.now() + 60_000 };
+            sandbox: 'Project read-only; private temporary files; no network or private home',
+            effect: 'Runs only inside the bounded Linux sandbox after approval', expiresAt: Date.now() + 60_000 };
         const digest = createHash('sha256').update(command).digest('hex');
-        return new Promise<string>(resolve => {
+        return new Promise<boolean>(resolve => {
             let settled = false;
             const finish = (decision: 'allow' | 'deny') => {
                 if (settled) return;
@@ -427,7 +429,7 @@ export class ChatBackend implements ChatService {
                     this.pendingCommands.delete(request.chatId);
                 if (this.handle) this.client.notifyChatEvent({ projectHandle: this.handle,
                     kind: 'command-settled', chatId: request.chatId, id: preview.id });
-                resolve(decision === 'allow' ? 'commands unavailable' : 'Command denied by developer; no execution occurred');
+                resolve(decision === 'allow');
             };
             const onAbort = () => finish('deny');
             const timer = setTimeout(() => finish('deny'), 60_000);
@@ -1269,12 +1271,50 @@ export class ChatBackend implements ChatService {
                 if (name === 'dope_command') {
                     const record = args as Record<string, unknown>;
                     if (!record || typeof record !== 'object' || Array.isArray(record) ||
-                        Object.keys(record).length !== 1 || typeof record.command !== 'string')
-                        throw new Error('Command request denied');
+                        Object.keys(record).length !== 1 || typeof record.command !== 'string') {
+                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        return 'Command denied: invalid request';
+                    }
+                    if (toolBytes >= 32 * 1024) {
+                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        return 'Command denied: Chat tool output limit reached';
+                    }
                     const basis = createHash('sha256').update(JSON.stringify(preview.refs)).digest('hex');
-                    const result = await this.requestCommand(root, request, record.command, abort, basis);
-                    toolEvents.push({ name, status: 'denied', truncated: false });
-                    return result;
+                    let approved: boolean;
+                    try { approved = await this.requestCommand(root, request, record.command, abort, basis); }
+                    catch {
+                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        return 'Command denied: invalid or unavailable request; no execution occurred';
+                    }
+                    if (!approved) {
+                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        return 'Command denied or expired; no execution occurred';
+                    }
+                    if (signal?.aborted || abort.signal.aborted || this.disposed ||
+                        this.active(request.projectHandle) !== root ||
+                        this.turns.get(key)?.abort !== abort ||
+                        this.leases.get(key)?.token !== request.leaseToken) {
+                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        return 'Command denied: Chat turn or project is no longer active';
+                    }
+                    const currentChat = (await this.repository.read(root).catch(() => undefined))?.chats
+                        .find(item => item.id === key);
+                    const currentUser = currentChat?.messages.filter(item => item.role === 'user').at(-1);
+                    if (!currentUser || createHash('sha256').update(JSON.stringify(currentUser.contextRefs)).digest('hex') !==
+                        basis) {
+                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        return 'Command denied: Chat source basis changed';
+                    }
+                    const commandSignal = signal ? AbortSignal.any([signal, abort.signal]) : abort.signal;
+                    const result = await runChatInvestigationCommand(root, record.command, commandSignal);
+                    const output = Buffer.from(result.output, 'utf8');
+                    const remaining = 32 * 1024 - toolBytes;
+                    const truncated = result.truncated || output.length > remaining;
+                    const bounded = output.subarray(0, remaining).toString('utf8');
+                    toolBytes += Buffer.byteLength(bounded);
+                    toolEvents.push({ name, status: result.executed ? 'completed' : 'denied',
+                        truncated });
+                    return bounded;
                 }
                 const allowed = ['dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text'] as const;
                 if (!allowed.includes(name as typeof allowed[number]) || !args || typeof args !== 'object' ||

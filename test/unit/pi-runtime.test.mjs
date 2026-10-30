@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { dispatch, compactExact } from '../../packages/pi-runtime/worker.mjs';
 import { resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
+import { runChatInvestigationCommand } from '../../packages/theia-extension/lib/node/chat-command-broker.js';
 
 test('Pi worker resolves from the bundled browser backend and extension development layouts', () => {
   const root = resolve(import.meta.dirname, '../..');
@@ -190,6 +191,8 @@ test('Pi Chat discovers a project without attachments through only brokered read
   let turn = 0;
   try {
     await mkdir(join(cwd, 'src'));
+    await mkdir(join(cwd, '.git'));
+    await mkdir(join(cwd, '.dope'));
     await writeFile(join(cwd, 'package.json'), '{"name":"fixture"}');
     await writeFile(join(cwd, 'src/index.html'), '<h1>Fixture project</h1>');
     process.stdout.write = function (chunk, ...args) {
@@ -199,9 +202,12 @@ test('Pi Chat discovers a project without attachments through only brokered read
           calls.push(record.tool);
           const output = record.tool.name === 'dope_list' ? 'Project directory .: package.json\nsrc/' :
             record.tool.name === 'dope_search_paths' ? 'src/index.html' :
-            record.tool.name === 'dope_read' ? '<h1>Fixture project</h1>' :
-            record.tool.name === 'dope_command' ? 'commands unavailable' : '';
-          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            record.tool.name === 'dope_read' ? '<h1>Fixture project</h1>' : '';
+          if (record.tool.name === 'dope_command') {
+            void runChatInvestigationCommand(cwd, record.tool.arguments.command).then(result =>
+              dispatch({ type: 'tool-result', toolId: record.tool.id,
+                result: { status: 'completed', output: result.output } }));
+          } else queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
             result: { status: 'completed', output } }); });
           return true;
         }
@@ -222,7 +228,7 @@ test('Pi Chat discovers a project without attachments through only brokered read
       const step = steps[turn++];
       if (turn === 2) assert.match(JSON.stringify(body.messages), /package.json/);
       if (turn === 4) assert.match(JSON.stringify(body.messages), /Fixture project/);
-      if (turn === 5) assert.match(JSON.stringify(body.messages), /commands unavailable/);
+      if (turn === 5) assert.match(JSON.stringify(body.messages), /Sandboxed command exited 0/);
       const choices = step ? [
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`,
           type: 'function', function: { name: step[0], arguments: step[1] } }] }, finish_reason: null },

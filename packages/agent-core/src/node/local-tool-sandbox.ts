@@ -8,6 +8,8 @@ export interface LocalSandboxPolicy {
     workspaceRoot: string;
     bwrapExecutable?: string;
     unshareExecutable?: string;
+    /** Chat investigation only. Work candidates retain their writable mount. */
+    readOnlyWorkspace?: boolean;
 }
 
 export interface LocalSandboxResult {
@@ -38,7 +40,12 @@ function noNetworkSocketsFilter(): Buffer {
     const instructions: Array<[number, number, number, number]> = [
         [0x20, 0, 0, 4], [0x15, 1, 0, 0xc000003e], [0x06, 0, 0, 0x80000000],
         [0x20, 0, 0, 0], [0x35, 0, 1, 0x40000000], [0x06, 0, 0, 0x80000000],
-        [0x15, 0, 1, 41], [0x06, 0, 0, 0x00050001], [0x06, 0, 0, 0x7fff0000]
+        [0x15, 0, 1, 41], [0x06, 0, 0, 0x00050001],
+        // io_uring can create sockets without invoking the socket(2) syscall.
+        [0x15, 0, 1, 425], [0x06, 0, 0, 0x00050001],
+        [0x15, 0, 1, 426], [0x06, 0, 0, 0x00050001],
+        [0x15, 0, 1, 427], [0x06, 0, 0, 0x00050001],
+        [0x06, 0, 0, 0x7fff0000]
     ];
     const buffer = Buffer.alloc(instructions.length * 8);
     instructions.forEach(([code, jt, jf, value], index) => {
@@ -51,7 +58,7 @@ function noNetworkSocketsFilter(): Buffer {
     return buffer;
 }
 
-async function protectedEntries(root: string): Promise<string[]> {
+async function protectedEntries(root: string, requireWorkState: boolean): Promise<string[]> {
     const masks: string[] = [];
     let count = 0;
     async function visit(directory: string): Promise<void> {
@@ -59,11 +66,13 @@ async function protectedEntries(root: string): Promise<string[]> {
             if (++count > MAX_ENTRIES) throw new LocalSandboxUnavailable('workspace scan limit exceeded');
             const path = join(directory, entry.name);
             const name = entry.name.toLowerCase();
-            if (PRIVATE_NAMES.has(name)) {
+            const chatPrivate = !requireWorkState && (name.startsWith('.') ||
+                /^(?:secrets?|credentials?|private)(?:[._-]|$)/u.test(name));
+            if (PRIVATE_NAMES.has(name) || chatPrivate) {
                 // The mount targets must already exist. Never create a mount target in the candidate.
-                if (!entry.isDirectory() || entry.isSymbolicLink())
-                    throw new LocalSandboxUnavailable('protected directory is not a real directory');
-                masks.push(path + '/');
+                if (entry.isSymbolicLink() || !(entry.isDirectory() || entry.isFile()))
+                    throw new LocalSandboxUnavailable('protected path is not a regular file or directory');
+                masks.push(path + (entry.isDirectory() ? '/' : ''));
             } else if (privateFile(name)) {
                 if (!entry.isFile() || entry.isSymbolicLink())
                     throw new LocalSandboxUnavailable('environment file is not a regular file');
@@ -72,7 +81,7 @@ async function protectedEntries(root: string): Promise<string[]> {
         }
     }
     await visit(root);
-    for (const name of ['.git', '.dope']) {
+    if (requireWorkState) for (const name of ['.git', '.dope']) {
         if (!masks.includes(join(root, name) + '/'))
             throw new LocalSandboxUnavailable(`workspace ${name} mount target missing`);
     }
@@ -104,10 +113,10 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
         throw new LocalSandboxUnavailable('workspace root is not canonical');
     const bwrap = await executable(policy.bwrapExecutable ?? '/usr/bin/bwrap', '/usr/bin/bwrap');
     const unshare = await executable(policy.unshareExecutable ?? '/usr/bin/unshare', '/usr/bin/unshare');
-    const masks = await protectedEntries(root);
+    const masks = await protectedEntries(root, !policy.readOnlyWorkspace);
     // The current Node runtime is a trusted executable, mounted read-only at a fixed path.
     // No caller-selected host executable or private home is exposed to the namespace.
-    const node = command.some(arg => arg.includes('/dope-node')) ?
+    const node = policy.readOnlyWorkspace || command.some(arg => arg.includes('/dope-node')) ?
         await realpath(process.execPath) : undefined;
     if (node && !(await lstat(node)).isFile())
         throw new LocalSandboxUnavailable('Node executable unavailable');
@@ -116,18 +125,24 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
         '--unshare-user', '--unshare-pid', '--unshare-ipc', '--unshare-uts', '--die-with-parent',
         '--ro-bind', '/usr', '/usr', '--symlink', 'usr/bin', '/bin',
         '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64',
-        '--bind', root, '/work', '--size', String(64 * 1024 * 1024), '--tmpfs', '/tmp',
+        policy.readOnlyWorkspace ? '--ro-bind' : '--bind', root, '/work',
+        '--size', String(64 * 1024 * 1024), '--tmpfs', '/tmp',
         '--size', String(16 * 1024 * 1024), '--tmpfs', '/home', '--dir', '/home/local',
         '--proc', '/proc', '--dev', '/dev'];
-    if (node) args.push('--ro-bind', node, '/dope-node');
+    if (node) args.push(...(policy.readOnlyWorkspace ?
+        ['--dir', '/dope-bin', '--ro-bind', node, '/dope-bin/node'] :
+        ['--ro-bind', node, '/dope-node']));
     for (const mask of masks) {
         const destination = '/work/' + relative(root, mask.replace(/\/$/u, '')).split(sep).join('/');
         args.push(...(mask.endsWith('/') ? ['--tmpfs', destination, '--remount-ro', destination] :
             ['--ro-bind', '/dev/null', destination]));
     }
     args.push('--seccomp', '3', '--new-session', '--chdir', '/work', '--clearenv');
-    for (const [name, value] of Object.entries(SAFE_ENV)) args.push('--setenv', name, value);
-    args.push('--', ...command);
+    for (const [name, value] of Object.entries(SAFE_ENV))
+        args.push('--setenv', name, name === 'PATH' && policy.readOnlyWorkspace ? `/dope-bin:${value}` : value);
+    args.push('--', ...(policy.readOnlyWorkspace ?
+        ['/usr/bin/prlimit', '--cpu=10:10', '--as=8589934592:8589934592',
+            '--nproc=64:64', '--nofile=128:128', '--fsize=67108864:67108864', '--', ...command] : command));
     const filterDirectory = await mkdtemp(join(tmpdir(), 'dope-local-seccomp-'));
     const filterPath = join(filterDirectory, 'filter.bpf');
     let filter: Awaited<ReturnType<typeof open>>;

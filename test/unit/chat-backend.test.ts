@@ -37,8 +37,9 @@ async function savedRoadmapOffer(backend: ChatBackend, projectHandle: string, ro
 }
 const firstPlanRequest = 'Plan a visual Git history for this project. Reuse the existing read-only diff editor in src/diffEditor.js; put branch checkout and commits in the toolbar; keep checkout and commit permissions explicit. Please inspect the relevant files and give me a complete ordered implementation plan with tests before changing anything.';
 
-test('Chat command approval is lease and turn scoped, one use, redacted, and unavailable before sandbox broker', async () => {
+test('Chat command approval is lease and turn scoped, one use, redacted, and sandboxed', async () => {
     const root = await folder(), repository = new ChatRepository();
+    await mkdir(join(root, '.git'));
     const events: ChatEvent[] = [];
     let wake: (() => void) | undefined;
     const client = { notifyChatEvent(event: ChatEvent) { events.push(event); wake?.(); wake = undefined; } };
@@ -77,24 +78,25 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and una
         assert.equal(first.command, 'printf secret-token');
         assert.equal(first.cwd, root);
         assert.match(first.sandbox, /read-only/);
+        await assert.rejects(backend.decideCommand(id(), chatId, lease.token, first.id, true), /Chat handle/);
         await assert.rejects(backend.decideCommand(projectHandle, chatId, id(), first.id, true), /not owned/);
         await assert.rejects(backend.decideCommand(projectHandle, chatId, lease.token, id(), true), /stale/);
         assert.equal(outputs.length, 0, 'prompt text and wrong-owner decisions cannot resume Pi');
         await backend.decideCommand(projectHandle, chatId, lease.token, first.id, true);
         await firstTurn;
-        assert.deepEqual(outputs, ['commands unavailable']);
+        assert.match(outputs[0], /Sandboxed command exited 0[\s\S]*secret-token/);
         await assert.rejects(backend.decideCommand(projectHandle, chatId, lease.token, first.id, true), /stale/);
         assert.doesNotMatch(JSON.stringify((await backend.get(projectHandle, chatId))!.messages), /secret-token/);
         const secondAt = events.length, secondTurn = turn('Please check again');
         const second = await nextPending(secondAt);
         await backend.decideCommand(projectHandle, chatId, lease.token, second.id, false);
         await secondTurn;
-        assert.match(outputs.at(-1)!, /denied by developer/);
+        assert.match(outputs.at(-1)!, /Command denied or expired; no execution occurred/);
         await backend.setCommandMode(projectHandle, chatId, lease.token, 'allow');
         const thirdAt = events.length;
         await turn('Please check once more');
         assert.equal(events.slice(thirdAt).some(item => item.kind === 'command-pending'), false);
-        assert.equal(outputs.at(-1), 'commands unavailable');
+        assert.match(outputs.at(-1)!, /Sandboxed command exited 0[\s\S]*secret-token/);
         await backend.release(projectHandle, chatId, lease.token);
         const next = await backend.claim({ projectHandle, chatId, ownerId: 'panel-b' });
         if (!next.acquired) throw new Error('Next lease missing');
@@ -105,6 +107,14 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and una
         await backend.cancelTurn(projectHandle, chatId, next.token);
         await Promise.allSettled([fourthTurn]);
         await assert.rejects(backend.decideCommand(projectHandle, chatId, next.token, fourth.id, true), /stale/);
+        const fifthAt = events.length;
+        const fifthTurn = backend.runTurn({ projectHandle, chatId, leaseToken: next.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Expired command' });
+        const fifth = await nextPending(fifthAt);
+        fifth.expiresAt = Date.now() - 1;
+        await assert.rejects(backend.decideCommand(projectHandle, chatId, next.token, fifth.id, true), /stale/);
+        await backend.cancelTurn(projectHandle, chatId, next.token);
+        await Promise.allSettled([fifthTurn]);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
