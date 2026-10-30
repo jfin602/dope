@@ -2,7 +2,7 @@
 
 **Owner decision:** 2026-10-29 (America/Chicago). **Disposition:** **OWNER-CLOSED for the narrowed deterministic Roadmap scope**, with the remaining Chrome interaction checks expressly treated as nonblocking by the owner's final instruction. This is an owner disposition, not a claim that every check in the earlier [final stabilization contract](final-stabilization-scope-amendment-2026-10-29.md) passed. **Phase 11 broad Bridge/Work/Hunts/G3 qualification remains NOT GREEN.**
 
-**Qualified product/test source:** `203d76b3305cac33037001594cb866977bf13579` (tree `8ceda346d7af51ff24c6cbb2caf39afb5abb51bb`) at `0.11.8`. The validation log `/tmp/dope-phase11-check-recovery-cycle2.log` was produced on the byte-identical product/test tree before this commit; subsequent changes through this closeout are documentation only. A separate version-only `0.12.0` baseline follows this closeout. It does not convert this evidence into a fresh test run on changed manifest bytes.
+**Qualified product/test source:** `203d76b3305cac33037001594cb866977bf13579` (tree `8ceda346d7af51ff24c6cbb2caf39afb5abb51bb`) at `0.11.8`. The validation log `/tmp/dope-phase11-check-recovery-cycle2.log` was produced on the byte-identical product/test tree before the documentation-only closeout commit `b9e82387dafb620688355bccfe5c4f356035a3c8`. The separate version-only [`0.12.0` baseline](../p12/baseline.md) is `e02a46447a460ee43f20ac65078238427468a81c`. It does not convert this evidence into a fresh test run on changed manifest bytes.
 
 ## Source and test recovery
 
