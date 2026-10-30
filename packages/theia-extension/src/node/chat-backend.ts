@@ -1183,6 +1183,47 @@ export class ChatBackend implements ChatService {
         let actual: ChatModelProvenance = { schemaVersion: 1, connectionId: connection.id,
             modelId: model.id, providerId: connection.providerId, modelLabel: model.label };
         let routingProvenance: RoutingProvenance | undefined;
+        const sourceRefs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> = [];
+        const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
+        let toolBytes = 0;
+        const projectTools = this.grounder ? { root,
+            execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
+                if (signal?.aborted || this.active(request.projectHandle) !== root ||
+                    this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
+                if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
+                const allowed = ['dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text'] as const;
+                if (!allowed.includes(name as typeof allowed[number]) || !args || typeof args !== 'object' ||
+                    Array.isArray(args)) throw new Error('Project discovery tool denied');
+                const field = name === 'dope_read' || name === 'dope_list' ? 'path' : 'query';
+                const record = args as Record<string, unknown>;
+                if (Object.keys(record).length !== 1 || typeof record[field] !== 'string')
+                    throw new Error('Project discovery arguments denied');
+                const toolName = name as typeof allowed[number];
+                try {
+                    const result = name === 'dope_read' ? await this.grounder!.readFile(root, record.path as string) :
+                        name === 'dope_list' ? await this.grounder!.listDirectory(root, record.path as string) :
+                        name === 'dope_search_paths' ? await this.grounder!.searchPaths(root, record.query as string) :
+                        await this.grounder!.searchText(root, record.query as string);
+                    if (signal?.aborted || this.active(request.projectHandle) !== root) throw new Error('Project discovery cancelled');
+                    const block = result.blocks[0];
+                    const remaining = Math.max(0, Math.min(8192, 32 * 1024 - toolBytes));
+                    if (!block || !remaining) throw new Error('Project discovery output limit reached');
+                    const excerpt = Buffer.from(block.text, 'utf8').subarray(0, remaining).toString('utf8').replace(/\uFFFD+$/, '');
+                    const truncated = excerpt !== block.text || result.diagnostics.some(item =>
+                        item.kind === 'truncated' || item.kind === 'omitted');
+                    toolBytes += Buffer.byteLength(excerpt);
+                    sourceRefs.push({ ...block.ref, includedBytes: Buffer.byteLength(excerpt),
+                        estimatedTokens: Math.ceil(Buffer.byteLength(excerpt) / 3) + 4,
+                        contentHash: createHash('sha256').update(excerpt).digest('hex') });
+                    toolEvents.push({ name: toolName, status: 'completed', truncated });
+                    return JSON.stringify({ source: block.ref.id, kind: block.ref.kind,
+                        contentHash: sourceRefs.at(-1)!.contentHash, sourceHash: block.ref.sourceHash, truncated,
+                        omitted: result.diagnostics.some(item => item.kind === 'omitted'), text: excerpt });
+                } catch {
+                    toolEvents.push({ name: toolName, status: 'denied', truncated: false });
+                    throw new Error('Project discovery denied or unavailable');
+                }
+            } } : undefined;
         try {
             if (this.pendingCancel.get(key) === request.leaseToken) abort.abort();
             if (!request.retryMessageId) {
@@ -1240,10 +1281,12 @@ export class ChatBackend implements ChatService {
                     preview = { refs: next.refs, diagnostics: next.diagnostics,
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
                     return { messages: withRetryInstruction(this.withDraft(next.messages, planningPrompt), retryInstruction), controls, signal: abort.signal,
+                        ...(resolvedConnection?.providerId === 'local' && projectTools ? { projectTools } : {}),
                         ...(planningOutput > 0 ?
                         { maxOutputTokens: nextBudget?.output ?? planningOutput } : {}) };
                 } }) : this.models!.generate(selectedModel!,
                 { messages: withRetryInstruction(this.withDraft(composed.messages, planningPrompt), retryInstruction), controls, signal: abort.signal,
+                    ...(connection.providerId === 'local' && projectTools ? { projectTools } : {}),
                     ...(planningOutput > 0 ?
                         { maxOutputTokens: budget?.output ?? planningOutput } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
@@ -1304,7 +1347,8 @@ export class ChatBackend implements ChatService {
                         outcome: 'complete', content: output, actualModel: actual, routingProvenance,
                         contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                         tokenUsage: event.usage, ...(event.compaction ? { compaction: event.compaction } : {}),
-                        ...(event.finishReason ? { finishReason: event.finishReason } : {}) });
+                        ...(event.finishReason ? { finishReason: event.finishReason } : {}),
+                        ...(toolEvents.length ? { sourceRefs, toolEvents } : {}) });
                     const titledChat = completed.chats.find(item => item.id === key);
                     const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
                     const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;
@@ -1355,6 +1399,7 @@ export class ChatBackend implements ChatService {
                 try { await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: output,
                     contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
+                    ...(toolEvents.length ? { sourceRefs, toolEvents } : {}),
                     ...(!cancelled ? { failure } : {}) }); }
                 catch { /* A lost lease or newer revision is recovered by ChatRepository. */ }
                 if (localRoadmap) try {

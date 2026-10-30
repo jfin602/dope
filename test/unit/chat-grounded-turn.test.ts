@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -88,6 +88,62 @@ test('ordinary Chat supplies local listing/search evidence, orientation, manual 
     assert.equal(finalUser?.role, 'user');
     if (finalUser?.role === 'user') assert.ok(finalUser.contextRefs.some(ref => ref.origin !== 'automatic' && ref.id === 'manual.txt'));
     assert.ok(result.usedTokens <= result.budgetTokens);
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('local Pi discovery is project-bound, read-only and records safe source activity', async () => {
+  const root = await fixture();
+  await symlink('../manual.txt', join(root, 'test', 'linked.txt'));
+  await writeFile(join(root, 'test', 'binary.dat'), Buffer.from([0, 1, 2]));
+  await writeFile(join(root, 'test', 'large.txt'), 'x'.repeat(70_000));
+  const repository = new ChatRepository();
+  const grounder = new ChatProjectGrounder(noMap as never);
+  const composer = new ChatContextComposer({} as never, {} as never, noMap as never, repository);
+  const calls: string[] = [];
+  const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+    models: [{ id: 'chat', label: 'Chat', usable: true, capabilities: { ...capabilities, contextWindowTokens: 8192 } }] }] }),
+    async *generate(_selection: typeof target, request: { projectTools?: {
+      root: string; execute(name: string, args: unknown, signal?: AbortSignal): Promise<string> } }) {
+      assert.equal(request.projectTools?.root, root);
+      const tools = request.projectTools!;
+      calls.push(JSON.parse(await tools.execute('dope_list', { path: '' })).text);
+      calls.push(JSON.parse(await tools.execute('dope_search_paths', { query: 'chat.test.ts' })).text);
+      calls.push(JSON.parse(await tools.execute('dope_search_text', { query: 'Chat persistence' })).text);
+      calls.push(JSON.parse(await tools.execute('dope_read', { path: 'test/chat.test.ts' })).text);
+      const large = JSON.parse(await tools.execute('dope_read', { path: 'test/large.txt' }));
+      assert.equal(large.truncated, true);
+      assert.ok(large.text.length <= 8192);
+      for (const [name, args] of [
+        ['dope_read', { path: '.dope/private.json' }], ['dope_read', { path: '../other' }],
+        ['dope_read', { path: 'test/linked.txt' }], ['dope_read', { path: 'test/binary.dat' }],
+        ['dope_process', { command: 'echo unsafe' }], ['dope_edit', { path: 'package.json', content: 'unsafe' }]
+      ] as const) await assert.rejects(tools.execute(name, args), /denied/);
+      const cancelled = new AbortController(); cancelled.abort();
+      await assert.rejects(tools.execute('dope_read', { path: 'package.json' }, cancelled.signal), /cancelled/);
+      yield { type: 'complete' as const, text: 'The project contains ChatRepository source.', actualModelId: 'chat',
+        finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+  const service = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer, undefined, grounder);
+  try {
+    const turn = await open(service, root);
+    await service.runTurn({ ...turn, selectedModel: target, content: 'inspect this project', context: [] });
+    assert.match(calls[0], /package.json/);
+    assert.match(calls[1], /test\/chat.test.ts/);
+    assert.match(calls[2], /ChatRepository/);
+    assert.match(calls[3], /ChatRepository/);
+    const saved = (await service.get(turn.projectHandle, turn.chatId))!.messages.at(-1);
+    assert.equal(saved?.role, 'assistant');
+    if (saved?.role !== 'assistant') return;
+    assert.deepEqual(saved.execution.toolEvents?.map(event => [event.name, event.status]), [
+      ['dope_list', 'completed'], ['dope_search_paths', 'completed'], ['dope_search_text', 'completed'],
+      ['dope_read', 'completed'], ['dope_read', 'completed'], ['dope_read', 'denied'], ['dope_read', 'denied'],
+      ['dope_read', 'denied'], ['dope_read', 'denied']
+    ]);
+    assert.deepEqual(saved.execution.sourceRefs?.map(ref => ref.kind), ['directory', 'path-search', 'text-search', 'file', 'file']);
+    assert.equal(saved.execution.toolEvents?.[4].truncated, true);
+    assert.ok(saved.execution.sourceRefs?.every(ref => ref.projectId && ref.contentHash?.length === 64));
+    assert.equal(JSON.stringify(saved).includes('unsafe'), false);
+    assert.equal((await readFile(join(root, 'package.json'), 'utf8')), '{"name":"grounded"}');
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 

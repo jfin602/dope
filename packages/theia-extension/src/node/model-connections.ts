@@ -278,6 +278,8 @@ export class ModelConnectionsRegistry implements ModelConnectionsService {
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         try {
             const pi = connection.providerId === 'local' ? this.pi?.() : undefined;
+            if (request.projectTools && !pi)
+                throw new ModelRuntimeFailure('Local Pi project discovery unavailable', 'unsupported-capability');
             const events = pi ? piConversation(selection, request, pi.bridge, pi.factory) :
                 live.runtime.generateConversation({ ...request, modelId: selection.modelId });
             for await (const event of events) {

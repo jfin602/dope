@@ -33,6 +33,31 @@ test('Pi turn preserves exact model, saved follow-up roles, streaming and bounde
     assert.equal((events.at(-1) as { usage: { totalTokens: number } }).usage.totalTokens, 27);
 });
 
+test('Pi Chat passes brokered project tools through the exact local session', async () => {
+    const observed: unknown[] = [];
+    const localBridge = { bind: async (_selection: unknown, _host: unknown, cwd: string, options: unknown) => {
+        observed.push({ cwd, options });
+        return { contextWindowTokens: 8192, maxOutputTokens: 2048 };
+    } };
+    const host = { start: async () => ({}), async *streamTurn(_messages: unknown, _limit: number,
+        _signal?: AbortSignal, onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown>) {
+        observed.push(await onTool!({ id: 1, name: 'dope_read', arguments: { path: 'src/index.html' } }));
+        yield { type: 'complete', text: 'The page has a heading.', modelId: 'fixture-model', finishReason: 'stop',
+            usage: { tokenMeasurement: 'unavailable' } };
+    } };
+    const events = [];
+    for await (const event of piConversation(selection, { messages: [{ role: 'user', content: 'inspect this project' }],
+        projectTools: { root: '/project', execute: async (name, args) => {
+            observed.push({ name, args }); return '<h1>Heading</h1>';
+        } } }, localBridge as never, { create: () => host, release: () => {} } as never)) events.push(event);
+    assert.deepEqual(observed, [
+        { cwd: '/project', options: { chatTools: true } },
+        { name: 'dope_read', args: { path: 'src/index.html' } },
+        { status: 'completed', output: '<h1>Heading</h1>' }
+    ]);
+    assert.equal(events.at(-1)?.type, 'complete');
+});
+
 test('Pi stops on changed model, insufficient context and cancellation', async () => {
     const changed = fixture({ text: 'wrong', modelId: 'other', finishReason: 'stop',
         usage: { tokenMeasurement: 'provider-reported', inputTokens: 1, outputTokens: 1, totalTokens: 2 } });

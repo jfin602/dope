@@ -14,6 +14,7 @@ if (version !== '1.4.0') throw new Error('Bundled Pi version mismatch');
 let session;
 let isolatedDir;
 let workMode = false;
+let chatToolsMode = false;
 let workRequestId;
 let nextToolId = 0;
 let activeRequest = false;
@@ -70,6 +71,33 @@ const WORK_TOOLS = {
     path: Type.String(), content: Type.String() },
   dope_process: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() }
 };
+const CHAT_TOOLS = {
+  dope_read: { path: Type.String() },
+  dope_list: { path: Type.String() },
+  dope_search_paths: { query: Type.String() },
+  dope_search_text: { query: Type.String() }
+};
+function chatTools() {
+  return Object.entries(CHAT_TOOLS).map(([name, properties]) => ({
+    name, label: name, description: 'Read-only project discovery through Dope. Paths are project-relative. No shell, edits or network.',
+    parameters: Type.Object(properties, { additionalProperties: false }),
+    async execute(_toolCallId, params, signal) {
+      if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
+      const id = ++nextToolId;
+      const answer = new Promise((resolve, reject) => pendingTools.set(id, { resolve, reject }));
+      const onAbort = () => { pendingTools.get(id)?.reject(new Error('Dope Chat tool cancelled')); pendingTools.delete(id); };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params } })}\n`);
+      try {
+        const result = await answer;
+        if (result.status !== 'completed' || typeof result.output !== 'string' ||
+            Buffer.byteLength(result.output, 'utf8') > 12_000)
+          throw new Error('Dope Chat tool denied or exceeded output limit');
+        return { content: [{ type: 'text', text: result.output }] };
+      } finally { signal?.removeEventListener('abort', onAbort); pendingTools.delete(id); }
+    }
+  }));
+}
 function workTools() {
   return Object.entries(WORK_TOOLS).map(([name, properties]) => ({
     name, label: name, description: 'Dope-authorized candidate operation. Paths are relative to the candidate root.',
@@ -129,6 +157,7 @@ function assertLocalModel(model) {
 
 async function dispose() {
   workMode = false;
+  chatToolsMode = false;
   for (const pending of pendingTools.values()) pending.reject(new Error('Pi session closed'));
   pendingTools.clear();
   session?.dispose();
@@ -149,7 +178,7 @@ export async function dispatch(message) {
     case 'open': {
       if (session) throw new Error('Pi session already open');
       assertLocalModel(message.model);
-      if (message.mode !== undefined && message.mode !== 'work') throw new Error('Invalid Pi mode');
+      if (message.mode !== undefined && !['work', 'chat-tools'].includes(message.mode)) throw new Error('Invalid Pi mode');
       if (typeof message.cwd !== 'string' || !message.cwd.startsWith('/'))
         throw new Error('Explicit absolute Pi working directory required');
       isolatedDir = await mkdtemp(join(tmpdir(), 'dope-pi-'));
@@ -169,6 +198,7 @@ export async function dispatch(message) {
           }]
         });
         workMode = message.mode === 'work';
+        chatToolsMode = message.mode === 'chat-tools';
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           sessionManager: SessionManager.inMemory(message.cwd),
@@ -176,14 +206,16 @@ export async function dispatch(message) {
             reserveTokens: Math.min(8192, Math.floor(message.model.contextWindow / 4)),
             keepRecentTokens: Math.min(4096, Math.floor(message.model.contextWindow / 8)) },
             retry: { enabled: false } }),
-          resourceLoader: emptyResources, tools: workMode ? Object.keys(WORK_TOOLS) : [],
-          noTools: 'all', customTools: workMode ? workTools() : [],
+          resourceLoader: emptyResources, tools: workMode ? Object.keys(WORK_TOOLS) :
+            chatToolsMode ? Object.keys(CHAT_TOOLS) : [],
+          noTools: 'all', customTools: workMode ? workTools() : chatToolsMode ? chatTools() : [],
           scopedModels: [{ model: message.model }]
         });
         session = result.session;
         sessionConsumed = false;
         const tools = session.getActiveToolNames();
-        if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? Object.keys(WORK_TOOLS) : []).sort()))
+        if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? Object.keys(WORK_TOOLS) :
+          chatToolsMode ? Object.keys(CHAT_TOOLS) : []).sort()))
           throw new Error('Pi opened with unexpected tools');
         return { version, tools, resources: 'isolated' };
       } catch (error) {
@@ -233,18 +265,24 @@ export async function dispatch(message) {
       session.refreshContext();
       session.agent.state.model = { ...session.model, maxTokens: message.maxOutputTokens };
       let attemptedTool = false;
+      let toolCount = 0;
+      workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
         if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta')
           message.emit?.({ type: 'delta', text: event.assistantMessageEvent.delta });
-        if (event.type === 'message_update' && event.assistantMessageEvent?.type.startsWith('toolcall_') ||
-            event.type === 'tool_execution_start') {
+        if (!chatToolsMode && (event.type === 'message_update' && event.assistantMessageEvent?.type.startsWith('toolcall_') ||
+            event.type === 'tool_execution_start')) {
+          attemptedTool = true;
+          void session.abort();
+        }
+        if (chatToolsMode && event.type === 'tool_execution_start' && ++toolCount > 16) {
           attemptedTool = true;
           void session.abort();
         }
       });
       try {
         await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
-      } finally { unsubscribe(); }
+      } finally { unsubscribe(); workRequestId = undefined; }
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||

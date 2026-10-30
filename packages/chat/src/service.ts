@@ -25,7 +25,8 @@ export type ChatOperation =
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
         content: string; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;
         contextUsage?: ChatExecution['contextUsage']; tokenUsage?: ChatExecution['tokenUsage'];
-        compaction?: ChatExecution['compaction']; finishReason?: string };
+        compaction?: ChatExecution['compaction']; finishReason?: string;
+        sourceRefs?: ChatExecution['sourceRefs']; toolEvents?: ChatExecution['toolEvents'] };
 export interface ChatMutation { projectHandle: string; expectedRevision: number; operation: ChatOperation; leaseToken?: string }
 export interface ChatSearchRequest { projectHandle: string; query: string; limit: number; excludeChatId?: ChatId }
 export interface ChatSearchHit { chatId: ChatId; messageId: string; title: string; excerpt: string; createdAt: string }

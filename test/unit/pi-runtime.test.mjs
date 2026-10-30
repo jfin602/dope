@@ -182,6 +182,71 @@ test('Pi no-tool turn streams from Dope context without exposing tools or projec
   }
 });
 
+test('Pi Chat discovers a project without attachments through only brokered read tools', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-discovery-'));
+  const calls = [];
+  let turn = 0;
+  try {
+    await mkdir(join(cwd, 'src'));
+    await writeFile(join(cwd, 'package.json'), '{"name":"fixture"}');
+    await writeFile(join(cwd, 'src/index.html'), '<h1>Fixture project</h1>');
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          calls.push(record.tool);
+          const output = record.tool.name === 'dope_list' ? 'Project directory .: package.json\nsrc/' :
+            record.tool.name === 'dope_search_paths' ? 'src/index.html' :
+            record.tool.name === 'dope_read' ? '<h1>Fixture project</h1>' : '';
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: 'completed', output } }); });
+          return true;
+        }
+      } catch { /* ordinary test output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.model, 'offline-fixture');
+      assert.deepEqual(body.tools.map(item => item.function.name).sort(),
+        ['dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text']);
+      const steps = [
+        ['dope_list', '{"path":""}'],
+        ['dope_search_paths', '{"query":"index.html"}'],
+        ['dope_read', '{"path":"src/index.html"}']
+      ];
+      const step = steps[turn++];
+      if (turn === 2) assert.match(JSON.stringify(body.messages), /package.json/);
+      if (turn === 4) assert.match(JSON.stringify(body.messages), /Fixture project/);
+      const choices = step ? [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`,
+          type: 'function', function: { name: step[0], arguments: step[1] } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { index: 0, delta: { role: 'assistant', content: 'This fixture has package.json and src/index.html.' }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'stop' }
+      ];
+      return new Response(choices.map((choice, i) => `data: ${JSON.stringify({ id: `discover-${turn}-${i}`,
+        object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [choice] })}\n\n`).join('') +
+        'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    const opened = await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
+    assert.deepEqual(opened.tools.sort(), ['dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text']);
+    const answer = await dispatch({ type: 'turn', id: 19, maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'inspect this project' }] });
+    assert.match(answer.text, /src\/index.html/);
+    assert.deepEqual(calls.map(call => call.name), ['dope_list', 'dope_search_paths', 'dope_read']);
+    assert.equal(turn, 4);
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('tool-call-like Local model output cannot execute a Pi tool', async () => {
   const originalFetch = globalThis.fetch;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-attack-'));

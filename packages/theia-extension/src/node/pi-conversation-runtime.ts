@@ -20,7 +20,8 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             throw new ModelRuntimeFailure('Bundled Pi worker unavailable; restart or reinstall Dope, then retry',
                 'connection-unavailable');
         }
-        const binding = await bridge.bind(selection, host, process.cwd());
+        const binding = await bridge.bind(selection, host, request.projectTools?.root ?? process.cwd(),
+            request.projectTools ? { chatTools: true } : {});
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         const maxOutputTokens = request.maxOutputTokens ?? Math.min(1024, binding.maxOutputTokens);
         if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1 ||
@@ -41,7 +42,11 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                     bytes: Buffer.byteLength(message.content, 'utf8'),
                     sha256: createHash('sha256').update(message.content).digest('hex') })) }));
         }
-        for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal)) {
+        const onTool = request.projectTools ? async (call: { id: number; name: string; arguments: unknown }) => {
+            const output = await request.projectTools!.execute(call.name, call.arguments, request.signal);
+            return { status: 'completed', output };
+        } : undefined;
+        for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool)) {
             if (event.type === 'delta') { yield event; continue; }
             if (event.modelId !== selection.modelId)
                 throw new ModelRuntimeFailure('Local server answered with a different model; reselect the loaded model in AI Center',

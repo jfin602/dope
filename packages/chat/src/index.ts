@@ -65,6 +65,9 @@ export interface ChatExecution {
     compaction?: { canonicalContextSha256: string; originalSha256: string;
         compactedSha256: string; tokensBefore: number };
     finishReason?: string;
+    sourceRefs?: ChatContextRef[];
+    toolEvents?: { name: 'dope_read' | 'dope_list' | 'dope_search_paths' | 'dope_search_text';
+        status: 'completed' | 'denied'; truncated: boolean }[];
 }
 export interface ChatUserMessage {
     schemaVersion: 1;
@@ -279,7 +282,7 @@ export function availableChatContextTokens(policy: ChatContextPolicy, modelWindo
 }
 
 function parseExecution(value: unknown): ChatExecution {
-    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason'],
+    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported execution schema');
     const execution: ChatExecution = { schemaVersion: 1, id: identifier(v.id), status: choice(v.status, statuses, 'assistant status'),
@@ -320,6 +323,20 @@ function parseExecution(value: unknown): ChatExecution {
             tokensBefore: compact.tokensBefore as number };
     }
     if (v.finishReason !== undefined) execution.finishReason = string(v.finishReason, 'finish reason');
+    if (v.sourceRefs !== undefined) {
+        if (!Array.isArray(v.sourceRefs) || v.sourceRefs.length > 16) throw new Error('Invalid Chat source refs');
+        execution.sourceRefs = v.sourceRefs.map(parseChatContextRef);
+    }
+    if (v.toolEvents !== undefined) {
+        if (!Array.isArray(v.toolEvents) || v.toolEvents.length > 16) throw new Error('Invalid Chat tool events');
+        execution.toolEvents = v.toolEvents.map(item => {
+            const event = record(item, ['name', 'status', 'truncated'], ['name', 'status', 'truncated']);
+            if (typeof event.truncated !== 'boolean') throw new Error('Invalid Chat tool truncation');
+            return { name: choice(event.name, ['dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text'] as const,
+                'Chat tool'), status: choice(event.status, ['completed', 'denied'] as const, 'Chat tool status'),
+                truncated: event.truncated };
+        });
+    }
     if (execution.actualModel && execution.actualModel.connectionId !== execution.selectedModel.connectionId &&
         execution.resolutionSource !== 'role-policy')
         throw new Error('Execution connection differs from selection');

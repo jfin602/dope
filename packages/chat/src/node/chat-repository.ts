@@ -466,6 +466,8 @@ export class ChatRepository {
                         ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}),
                         ...(operation.compaction ? { compaction: operation.compaction } : {}),
                         ...(operation.finishReason ? { finishReason: operation.finishReason } : {}),
+                        ...(operation.sourceRefs ? { sourceRefs: operation.sourceRefs } : {}),
+                        ...(operation.toolEvents ? { toolEvents: operation.toolEvents } : {}),
                         ...(operation.outcome === 'failed' ? { failure: operation.failure } : {}) } });
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;

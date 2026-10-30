@@ -83,6 +83,12 @@ export class PiRuntimeHost {
             ...(credential ? { credential } : {}) });
     }
 
+    openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string):
+        Promise<{ version: string; tools: string[]; resources: string }> {
+        return this.request({ type: 'open', mode: 'chat-tools', model, cwd,
+            ...(credential ? { credential } : {}) });
+    }
+
     runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void):
         Promise<{ text: string; modelId: string; usage?: PiTokenUsage; compaction?: PiContextRecord }> {
         return this.request({ type: 'work', prompt }, event => {
@@ -101,7 +107,8 @@ export class PiRuntimeHost {
     }
 
     async *streamTurn(messages: readonly { role: 'system' | 'user' | 'assistant'; content: string }[],
-        maxOutputTokens: number, signal?: AbortSignal): AsyncIterable<
+        maxOutputTokens: number, signal?: AbortSignal,
+        onTool?: NonNullable<Pending['onTool']>): AsyncIterable<
         { type: 'delta'; text: string } | { type: 'complete'; text: string; modelId: string;
             finishReason: string; usage: PiTokenUsage; compaction?: PiContextRecord }> {
         if (signal?.aborted) throw new Error('Pi turn cancelled');
@@ -119,7 +126,7 @@ export class PiRuntimeHost {
             if (Buffer.byteLength(event.text, 'utf8') > 8192 || queue.length >= 128)
                 throw new Error('Pi Chat stream backpressure limit exceeded');
             queue.push(event); notify();
-        }).then(value => { result = value; }, error => { failure = error; })
+        }, onTool).then(value => { result = value; }, error => { failure = error; })
             .finally(() => { settled = true; notify(); });
         try {
             while (!settled || queue.length) {
@@ -200,7 +207,7 @@ export class PiRuntimeHost {
                             (event.aborted !== undefined && (event.kind !== 'agent_settled' || typeof event.aborted !== 'boolean')))
                             throw new Error('Invalid Pi Work event');
                         pending.lastWorkSequence = event.sequence;
-                    } else if (record.event.type !== 'delta' || typeof record.event.text !== 'string' || pending.onTool)
+                    } else if (record.event.type !== 'delta' || typeof record.event.text !== 'string')
                         throw new Error('Invalid Pi stream event');
                     pending.onEvent?.(record.event);
                     continue;

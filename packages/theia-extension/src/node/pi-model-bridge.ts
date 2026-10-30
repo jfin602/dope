@@ -45,8 +45,8 @@ export class PiModelBridge {
             throw unavailable('Local Work model changed during execution');
     }
 
-    async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession'>,
-        cwd: string, options: { tools?: boolean } = {}): Promise<PiLocalBinding> {
+    async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
+        cwd: string, options: { tools?: boolean; chatTools?: boolean } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
         const before = await this.dependencies.inventory();
@@ -62,7 +62,7 @@ export class PiModelBridge {
         let refreshed: AIInventoryState;
         try { refreshed = await this.dependencies.refreshModels(selection.connectionId); }
         catch { throw unavailable('Local server unreachable; check the AI Center connection and retry'); }
-        if (options.tools) {
+        if (options.tools || options.chatTools) {
             const result = await this.dependencies.verifyLocalAgentExecution?.(selection.connectionId, selection.modelId);
             if (result !== 'supported')
                 throw unavailable('Verify Local agent execution in AI Center before using tools');
@@ -86,7 +86,7 @@ export class PiModelBridge {
             throw unavailable('Selected Local model is unavailable or unloaded; load and refresh it in AI Center');
         if (selection.loadedContextTokens !== undefined && selection.loadedContextTokens !== loaded)
             throw unavailable('Local selection or loaded context changed; reselect in AI Center');
-        if (options.tools && (model.capabilities.agentExecution?.source !== 'adapter-known' ||
+        if ((options.tools || options.chatTools) && (model.capabilities.agentExecution?.source !== 'adapter-known' ||
             model.capabilities.agentExecution.value !== true || model.capabilities.toolCalling.value === false))
             throw unavailable('Selected Local model is not verified for tools in AI Center');
         const declared = model.limits.maxOutputTokens.value;
@@ -106,13 +106,15 @@ export class PiModelBridge {
             latest.observations.find(item => item.connectionId === selection.connectionId)?.health !== 'ready')
             throw unavailable('Local model changed during binding; refresh AI Center and retry');
         const endpoint = connection.config.endpoint.replace(/\/$/, '');
-        const opened = await (options.tools ? host.openWorkSession : host.openNoToolSession).call(host,
+        const opened = await (options.tools ? host.openWorkSession : options.chatTools ?
+            host.openChatToolsSession : host.openNoToolSession).call(host,
             { id: selection.modelId, name: model.label,
             provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
             reasoning: false, input: ['text'],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: loaded, maxTokens: maxOutputTokens }, cwd, credential);
-        const expected = options.tools ? ['dope_edit', 'dope_list', 'dope_process', 'dope_read'] : [];
+        const expected = options.tools ? ['dope_edit', 'dope_list', 'dope_process', 'dope_read'] :
+            options.chatTools ? ['dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
             JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected))
             throw unavailable('Pi tool boundary changed; restart Dope');
