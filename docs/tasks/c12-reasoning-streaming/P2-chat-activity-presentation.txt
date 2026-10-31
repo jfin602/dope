@@ -1,0 +1,23 @@
+TASK: Correction 12 / P2 — Render reasoning and provisional activity separately
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- No package/lockfile/provider/model/version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0042, this stack's README/assessment/plan and P1's exact committed source/evidence. Check git status, user changes, and active C12 Planning work; no reset/stash/clean, Roadmap mutation or self-commit. No /activate. <=8m target, 10 soft/15 hard.
+
+OBJECTIVE
+Use the existing freely dockable ChatPanel: show honest live model activity while working, then collapse it when a genuine final answer becomes visually primary. Cancelled/failed runs retain inspectable activity but NO fake final response.
+
+IMPLEMENT
+1. Extend ChatPanelController's typed stream state, ChatPanelWidget and presentation/CSS using P1 saved events. An active stream gets a restrained gray, bounded-height scrollable Reasoning/Activity or Provisional output disclosure; tool/progress rows keep their own labels. Avoid re-rendering an unbounded raw transcript and retain scroll-follow, selected text, Space+drag, touch, docking and user expansion choice.
+2. Completion auto-collapses activity and displays only the committed answer as normal markdown. Cancellation, interruption, failure or absent completion shows status and activity, with explicit 'No final response'; do not render unfinished output as normal assistant content. Correctly preserve/reopen the activity on saved chats and show truthful 'Reasoning unavailable' when provider has no thinking channel.
+3. Preserve existing verified Planning output/outcomes, compact tool activity, in-chat command Ask/Allow cards and all authority/revision checks. Audit ChatContextComposer, saved history/search and Roadmap action readers for activity exclusion. No new chat surface, agent behavior, permissions or context contents.
+
+QUALIFY
+Unit/integration tests for streaming→complete/collapse; long repeated provisional→cancel/no final; failed raw Planning text; exact turn activity after reopen/retry; provider without surfaced thinking; bounds/truncation; user expansion stability; no next-turn reasoning; copy/drag/selection regressions. Run focused tests and affected typecheck/browser/Electron builds (no claim of GUI operation); report source-bound evidence and STOP. P3 owns copy menu; P4 owns live browser.
