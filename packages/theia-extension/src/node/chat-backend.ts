@@ -40,6 +40,12 @@ function forbidsCommandExecution(content: string): boolean {
     return content.split(/(?<=[.!?;])\s+|;\s*|\n+(?=\s*[-*]\s+)/).some(clause =>
         /\bdo\s+not\b.{0,160}\b(?:execute|run)\s+commands?\b\s*(?:,|[.!?;]?\s*$)/i.test(clause));
 }
+/** A direct instruction in the current request, not a quoted example or discussion. */
+export function forbidsProjectTools(content: string): boolean {
+    const prose = content.replace(/```[\s\S]*?```/g, '');
+    return prose.split('\n').filter(line => !/^\s*(?:>|[-*]\s*['"`])/.test(line)).some(line =>
+        /(?:^|[.!?]\s+)(?:please\s+)?do\s+not\s+(?:call|use|invoke)\s+(?:any\s+|project\s+)?tools\b/i.test(line));
+}
 function tracePlanning(stage: string, chatId: string, messageId: string, status?: string): void {
     if (process.env.DOPE_CHAT_PLANNING_TRACE !== '1') return;
     console.info('[dope-chat-planning-trace]', JSON.stringify({ at: new Date().toISOString(),
@@ -1095,8 +1101,10 @@ export class ChatBackend implements ChatService {
         const sourceRefs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> = [];
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
         let toolBytes = 0;
-        const projectTools = this.grounder ? { root,
+        const noProjectTools = forbidsProjectTools(content);
+        const projectTools = this.grounder && !noProjectTools ? { root,
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
+                if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
                 const toolName = name as NonNullable<ChatAssistantMessage['execution']['toolEvents']>[number]['name'];
                 const field = name === 'run_command' ? 'command' :
                     name === 'read_file' || name === 'list_files' ? 'path' : 'query';

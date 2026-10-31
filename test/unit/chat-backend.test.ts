@@ -6,7 +6,16 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
-import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { ChatBackend, forbidsProjectTools } from '../../packages/theia-extension/lib/node/chat-backend.js';
+
+test('explicit current-turn tool opt-out is narrow and distinct from read-only constraints', () => {
+    assert.equal(forbidsProjectTools('What is 1+1? Do not call tools or modify files.'), true);
+    assert.equal(forbidsProjectTools('Do not use any tools.'), true);
+    assert.equal(forbidsProjectTools('Read src/counter.js. Do not modify files or execute commands.'), false);
+    assert.equal(forbidsProjectTools('What does "Do not call tools" mean?'), false);
+    assert.equal(forbidsProjectTools('Here is an example:\n> Do not call tools.'), false);
+    assert.equal(forbidsProjectTools('```\nDo not call tools.\n```\nRead the source.'), false);
+});
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';

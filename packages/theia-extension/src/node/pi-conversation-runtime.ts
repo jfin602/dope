@@ -66,6 +66,9 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
         if (error instanceof Error && /cannot be compacted/.test(error.message))
             throw new ModelRuntimeFailure('Local history cannot be compacted safely; shorten the turn or select a larger loaded model',
                 'unsupported-capability');
+        if (error instanceof Error && /Repeated unchanged project evidence/.test(error.message))
+            throw new ModelRuntimeFailure('Local Chat stopped after repeated unchanged project evidence; ask a narrower question or retry',
+                'incomplete-answer');
         throw new ModelRuntimeFailure('Local Pi session failed; check the selected model and Local server in AI Center',
             'connection-unavailable');
     } finally {

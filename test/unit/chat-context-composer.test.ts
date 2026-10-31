@@ -31,6 +31,30 @@ test('ordinary Chat distinguishes factual recall from requested advice and prese
   assert.doesNotMatch(GROUNDED_CHAT_INSTRUCTION, /PixiJS|tower defense|strict JSON|truncate/);
 });
 
+test('recent context keeps complete exchanges and excludes cancelled, failed and provisional turns', async () => {
+  const active = chat(); active.settings.context.maxInputTokens = 2000;
+  const user = (content: string) => ({ schemaVersion: 1 as const, id: id(), role: 'user' as const,
+    createdAt: active.createdAt, content, contextRefs: [] });
+  const assistant = (content: string, status: 'complete' | 'cancelled' | 'failed') => ({
+    schemaVersion: 1 as const, id: id(), role: 'assistant' as const, createdAt: active.createdAt, content,
+    execution: { schemaVersion: 1 as const, id: id(), status, startedAt: active.createdAt,
+      selectedModel: { connectionId: 'local', modelId: 'qwen' } } });
+  active.messages = [user('old fact'), assistant('old answer', 'complete'),
+    user('abandoned counter request'), assistant('', 'cancelled'),
+    user('failed source request'), assistant('', 'failed'),
+    user('interrupted source request'), assistant('', 'failed'),
+    user('retry this'), assistant('', 'failed'), assistant('retried answer', 'complete'),
+    user('later fact'), assistant('later answer', 'complete') ] as Chat['messages'];
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const result = await composer.compose('/tmp', active, 'What is 1+1?', [],
+    { ...model, contextWindowTokens: 4000, maxInputTokens: 4000 });
+  assert.deepEqual(result.messages.map(item => [item.role, item.content]), [
+    ['user', 'old fact'], ['assistant', 'old answer'],
+    ['user', 'retry this'], ['assistant', 'retried answer'],
+    ['user', 'later fact'], ['assistant', 'later answer'], ['user', 'What is 1+1?']]);
+});
+
 test('all bounded source kinds resolve through project authorities with durable typed provenance', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-context-'));
   try {
@@ -103,7 +127,10 @@ test('context and active history share selected-model budget with explicit omiss
     await writeFile(join(root, 'large.txt'), 'x'.repeat(600));
     const active = chat(); active.settings.context.maxInputTokens = 60;
     active.messages = [{ schemaVersion: 1, id: id(), role: 'user', createdAt: active.createdAt,
-      content: 'old context '.repeat(25), contextRefs: [] }];
+      content: 'old context '.repeat(25), contextRefs: [] },
+      { schemaVersion: 1, id: id(), role: 'assistant', createdAt: active.createdAt,
+        content: 'old answer', execution: { schemaVersion: 1, id: id(), status: 'complete',
+          selectedModel: { connectionId: 'local', modelId: 'qwen' }, startedAt: active.createdAt } }];
     const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, {} as SoftwareMapIndex, {} as ChatRepository);
     const result = await composer.compose(root, active, 'New question', [{ kind: 'file', id: 'large.txt' }], model);
     assert.equal(result.refs.length, 1);

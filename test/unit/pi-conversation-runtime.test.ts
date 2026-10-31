@@ -148,3 +148,15 @@ test('Pi Chat completion carries the exact Dope context identity for persistence
     assert.deepEqual(completed.compaction, { canonicalContextSha256:
         createHash('sha256').update(JSON.stringify(messages)).digest('hex'), ...compaction });
 });
+
+test('Pi repeated-evidence stop remains an incomplete answer, never a completion event', async () => {
+    const host = { start: async () => ({}), async *streamTurn() {
+        throw new Error('Repeated unchanged project evidence stopped this Chat turn');
+    } };
+    const events = [];
+    await assert.rejects(async () => {
+        for await (const event of piConversation(selection, { messages: [{ role: 'user', content: 'Inspect source' }] },
+            bridge as never, { create: () => host, release: () => {} } as never)) events.push(event);
+    }, /stopped after repeated unchanged project evidence/);
+    assert.equal(events.some(event => event.type === 'complete'), false);
+});

@@ -150,6 +150,34 @@ test('local Pi discovery is project-bound, read-only and records safe source act
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('explicit no-tool Chat omits the project broker while read-only requests retain it', async () => {
+  const root = await fixture();
+  const repository = new ChatRepository();
+  const grounder = new ChatProjectGrounder(noMap as never);
+  const composer = new ChatContextComposer({} as never, {} as never, noMap as never, repository);
+  const exposed: boolean[] = [];
+  const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+    models: [{ id: 'chat', label: 'Chat', usable: true, capabilities: { ...capabilities, contextWindowTokens: 8192 } }] }] }),
+    async *generate(_selection: typeof target, request: { projectTools?: { root: string } }) {
+      exposed.push(!!request.projectTools);
+      yield { type: 'complete' as const, text: '2', actualModelId: 'chat', finishReason: 'stop',
+        usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+  const service = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer, undefined, grounder);
+  try {
+    const turn = await open(service, root);
+    await service.previewContext({ projectHandle: turn.projectHandle, chatId: turn.chatId,
+      selectedModel: target, content: 'What is 1+1? Do not call tools.', context: [] });
+    await service.runTurn({ ...turn, selectedModel: target, content: 'What is 1+1? Do not call tools.', context: [] });
+    await service.runTurn({ ...turn, selectedModel: target,
+      content: 'Read manual.txt. Do not modify files or execute commands.', context: [] });
+    assert.deepEqual(exposed, [false, true]);
+    const messages = (await service.get(turn.projectHandle, turn.chatId))!.messages;
+    assert.equal(messages[1].role, 'assistant');
+    if (messages[1].role === 'assistant') assert.equal(messages[1].execution.toolEvents?.length ?? 0, 0);
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('retry keeps evidence identity and refuses changed evidence before a second model request', async () => {
   const root = await fixture();
   const { service, sent, failNext } = setup(root, { fail: true });

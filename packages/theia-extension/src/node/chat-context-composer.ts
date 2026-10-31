@@ -35,7 +35,7 @@ export class ChatContextComposer {
 
     /** Only backend-recorded applied actions are decisions; model prose is never promoted. */
     private decisionContext(chat: Chat): string | undefined {
-        const applied = chat.messages.filter(message => message.role === 'assistant' &&
+        const applied = chat.messages.filter(message => message.role === 'assistant' && message.execution.status === 'complete' &&
             message.planningActivity?.status === 'applied').slice(-4);
         const decisions = applied.map(message => {
             if (message.role !== 'assistant') return undefined;
@@ -50,6 +50,7 @@ export class ChatContextComposer {
             } catch { return undefined; }
         }).filter(item => item !== undefined);
         const question = [...chat.messages].reverse().find(message => message.role === 'assistant' &&
+            message.execution.status === 'complete' &&
             message.planningActivity?.status === 'no-action' && message.content.includes('?'));
         if (!decisions.length && !question) return undefined;
         return JSON.stringify({ confirmedAppliedEdits: decisions,
@@ -401,6 +402,7 @@ export class ChatContextComposer {
         const orderedSelections = [...selections.filter(source => source.kind === 'roadmap' || source.kind === 'roadmap-checkpoint'),
             ...selections.filter(source => source.kind !== 'roadmap' && source.kind !== 'roadmap-checkpoint')];
         const memory = !help && (roadmapAction || chat.messages.some(message => message.role === 'assistant' &&
+            message.execution.status === 'complete' &&
             message.planningActivity?.status === 'applied')) ? this.decisionContext(chat) : undefined;
         const wrapperTokens = selections.length || grounding?.blocks.length || memory ? tokens('\n\nProject context:\n') : 0;
         const memoryBlock = memory ? `[Saved Chat planning decisions]\n${memory}` : undefined;
@@ -464,15 +466,25 @@ export class ChatContextComposer {
         if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];
         if (policy.history === 'recent' && !help) {
-            const history = chat.messages.filter(item => item.role === 'user' || item.execution.status === 'complete');
-            for (const item of history.reverse()) {
-                const cost = tokens(item.content);
+            const exchanges: { user: Chat['messages'][number]; assistant: Chat['messages'][number] }[] = [];
+            for (const item of chat.messages) {
+                if (item.role === 'user') {
+                    exchanges.push({ user: item, assistant: item });
+                } else if (item.execution.status === 'complete' && exchanges.length) {
+                    // A deliberate retry can complete after a failed assistant for the same user.
+                    exchanges[exchanges.length - 1].assistant = item;
+                }
+            }
+            for (const exchange of exchanges.reverse()) {
+                if (exchange.assistant === exchange.user) continue;
+                const cost = tokens(exchange.user.content) + tokens(exchange.assistant.content);
                 if (cost > remaining) {
-                    diagnostics.push({ kind: 'history', source: item.id, message: 'Older Chat message omitted by history budget' });
+                    diagnostics.push({ kind: 'history', source: exchange.user.id, message: 'Older Chat exchange omitted by history budget' });
                     break;
                 }
                 remaining -= cost;
-                historyMessages.unshift({ role: item.role, content: item.content });
+                historyMessages.unshift({ role: 'user', content: exchange.user.content },
+                    { role: 'assistant', content: exchange.assistant.content });
             }
         }
         messages.push(...historyMessages);

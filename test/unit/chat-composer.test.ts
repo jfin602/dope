@@ -113,7 +113,7 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
             assert.deepEqual(relocated.chat!.settings, settings);
             assert.equal(relocated.chat!.messages[1].role, 'assistant');
         } finally { relocated.dispose(); }
-    } finally { panel.dispose(); await rm(dir, { recursive: true, force: true }); }
+    } finally { panel.dispose(); await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }); }
 });
 
 test('Send presents one transient user turn immediately and reconciles the durable turn', async () => {
@@ -187,13 +187,14 @@ test('cancel and stale deltas cannot create a completed answer in another Chat o
         const last = panel.chat!.messages.at(-1)!;
         if (last.role !== 'assistant') assert.fail();
         assert.equal(last.execution.status, 'cancelled');
-        assert.equal(last.content, 'Partial');
+        assert.equal(last.content, '');
+        assert.ok(last.activity?.events.some(event => event.text === 'Partial'));
         assert.equal(panel.stream, undefined);
         await panel.attach(undefined);
         service.emit({ kind: 'assistant-delta', projectHandle: 'old', revision: 99, chatId: id,
             messageId: last.id, executionId: last.execution.id, sequence: 1, delta: 'stale' });
         assert.equal(panel.snapshot, undefined);
-    } finally { panel.dispose(); await rm(dir, { recursive: true, force: true }); }
+    } finally { panel.dispose(); await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }); }
 });
 
 test('panel source keeps input and toolbar rows with AI Center repair, settings and transcript status', async () => {
@@ -275,5 +276,5 @@ test('unavailable selection never routes to another connected model', async () =
         assert.equal(panel.chat!.messages.length, 0);
         assert.equal(panel.draft, 'Keep private');
         assert.equal(generated, 0);
-    } finally { panel.dispose(); await rm(dir, { recursive: true, force: true }); }
+    } finally { panel.dispose(); await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }); }
 });

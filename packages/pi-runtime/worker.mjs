@@ -19,6 +19,8 @@ let workRequestId;
 let nextToolId = 0;
 let activeRequest = false;
 let sessionConsumed = false;
+let chatRepeat = undefined;
+let chatLoopStopped = false;
 let compactionRecord;
 let compactionRejected = false;
 const pendingTools = new Map();
@@ -51,6 +53,12 @@ if (continuationTrace) {
   };
 }
 const hash = value => createHash('sha256').update(value).digest('hex');
+function normalized(value) {
+  if (Array.isArray(value)) return value.map(normalized);
+  if (value && typeof value === 'object') return Object.fromEntries(
+    Object.keys(value).sort().map(key => [key, normalized(value[key])]));
+  return value;
+}
 const MAX_COMPACTION_BYTES = 12_000;
 function compactExact(event) {
   // Pi's overflow recovery retries the interrupted turn. A Work tool may already
@@ -130,6 +138,21 @@ function chatTools() {
         if (result.status !== 'completed' || typeof result.output !== 'string' ||
             Buffer.byteLength(result.output, 'utf8') > 12_000)
           throw new Error('Dope Chat tool denied or exceeded output limit');
+        if (name !== 'run_command') {
+          const key = hash(JSON.stringify([name, normalized(params)]));
+          const evidence = hash(result.output);
+          chatRepeat = chatRepeat?.key === key && chatRepeat.evidence === evidence ?
+            { key, evidence, count: chatRepeat.count + 1 } : { key, evidence, count: 1 };
+          trace('tool-evidence', { toolName: name, argumentSha256: key,
+            resultSha256: evidence, repetition: chatRepeat.count });
+          if (chatRepeat.count >= 4) {
+            chatLoopStopped = true;
+            void session?.abort();
+            throw new Error('Repeated unchanged project evidence');
+          }
+          if (chatRepeat.count === 3) return { content: [{ type: 'text',
+            text: 'This identical project evidence was already returned twice in this turn. Use the available evidence to answer, or investigate a different source.' }] };
+        } else chatRepeat = undefined;
         return { content: [{ type: 'text', text: result.output }] };
       } finally { signal?.removeEventListener('abort', onAbort); pendingTools.delete(id); }
     }
@@ -210,6 +233,8 @@ async function dispose() {
   session?.dispose();
   session = undefined;
   sessionConsumed = false;
+  chatRepeat = undefined;
+  chatLoopStopped = false;
   compactionRecord = undefined;
   compactionRejected = false;
   if (isolatedDir) {
@@ -301,6 +326,8 @@ export async function dispatch(message) {
           message.maxOutputTokens > session.model.maxTokens)
         throw new Error('Invalid bounded Pi turn');
       sessionConsumed = true;
+      chatRepeat = undefined;
+      chatLoopStopped = false;
       const zeroUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
         totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
       const systems = message.messages.filter(item => item.role === 'system').map(item => item.content).join('\n\n');
@@ -343,8 +370,12 @@ export async function dispatch(message) {
       try {
         await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
         trace('session-prompt-returned', { toolCount });
+      } catch (error) {
+        if (chatLoopStopped) throw new Error('Repeated unchanged project evidence stopped this Chat turn');
+        throw error;
       } finally { unsubscribe(); workRequestId = undefined; }
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
+      if (chatLoopStopped) throw new Error('Repeated unchanged project evidence stopped this Chat turn');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
           assistant.stopReason === 'toolUse' || assistant.content.some(item => item.type === 'toolCall'))

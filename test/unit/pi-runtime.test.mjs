@@ -293,6 +293,99 @@ test('Pi Chat discovers a project without attachments through only brokered read
   }
 });
 
+test('Pi bounds repeated unchanged read evidence without fabricating completion', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-repeat-'));
+  const calls = [];
+  const seen = [];
+  let requests = 0;
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          calls.push(record.tool.name);
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: 'completed', output: 'unchanged source' } }); });
+          return true;
+        }
+      } catch { /* ordinary output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      seen.push(JSON.stringify(body.messages));
+      requests++;
+      const choices = [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `read-${requests}`,
+          type: 'function', function: { name: 'read_file', arguments: '{"path":"src/counter.js"}' } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ];
+      return new Response(choices.map((choice, i) => `data: ${JSON.stringify({ id: `repeat-${requests}-${i}`,
+        object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [choice] })}\n\n`).join('') +
+        'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
+    await assert.rejects(dispatch({ type: 'turn', id: 73, maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Read src/counter.js' }] }), /Repeated unchanged project evidence/);
+    assert.deepEqual(calls, ['read_file', 'read_file', 'read_file', 'read_file']);
+    assert.match(seen[3], /identical project evidence was already returned twice/);
+    assert.equal(requests, 4);
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi permits changed evidence and ordinary second reads', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-change-'));
+  let reads = 0;
+  let requests = 0;
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: 'completed', output: `source revision ${++reads}` } }); });
+          return true;
+        }
+      } catch { /* ordinary output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async () => {
+      requests++;
+      const choice = requests <= 4 ? [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `changed-${requests}`,
+          type: 'function', function: { name: 'read_file', arguments: '{"path":"src/counter.js"}' } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { index: 0, delta: { role: 'assistant', content: 'The source changed.' }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'stop' }
+      ];
+      return new Response(choice.map((item, i) => `data: ${JSON.stringify({ id: `changed-${requests}-${i}`,
+        object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [item] })}\n\n`).join('') +
+        'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
+    const result = await dispatch({ type: 'turn', id: 74, maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Track src/counter.js revisions' }] });
+    assert.equal(result.finishReason, 'stop');
+    assert.equal(result.text, 'The source changed.');
+    assert.equal(reads, 4);
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('tool-call-like Local model output cannot execute a Pi tool', async () => {
   const originalFetch = globalThis.fetch;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-attack-'));
