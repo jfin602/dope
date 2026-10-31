@@ -16,7 +16,7 @@ export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; tot
     tokenMeasurement: 'provider-reported' | 'unavailable' }
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
     lastWorkSequence?: number;
-    onEvent?: (event: { type: 'delta'; text: string } | PiWorkEvent) => void;
+    onEvent?: (event: { type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string } | PiWorkEvent) => void;
     onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
 
 /** Only Dope-owned paths are considered. No PATH lookup or user Pi installation is used. */
@@ -113,10 +113,11 @@ export class PiRuntimeHost {
     async *streamTurn(messages: readonly { role: 'system' | 'user' | 'assistant'; content: string }[],
         maxOutputTokens: number, signal?: AbortSignal,
         onTool?: NonNullable<Pending['onTool']>): AsyncIterable<
-        { type: 'delta'; text: string } | { type: 'complete'; text: string; modelId: string;
+        { type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string } |
+        { type: 'complete'; text: string; modelId: string;
             finishReason: string; usage: PiTokenUsage; compaction?: PiContextRecord }> {
         if (signal?.aborted) throw new Error('Pi turn cancelled');
-        const queue: { type: 'delta'; text: string }[] = [];
+        const queue: ({ type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string })[] = [];
         let wake: (() => void) | undefined;
         let settled = false;
         let result: { text: string; modelId: string; finishReason: string;
@@ -126,7 +127,7 @@ export class PiRuntimeHost {
         const onAbort = () => this.dispose();
         signal?.addEventListener('abort', onAbort, { once: true });
         const task = this.request<typeof result>({ type: 'turn', messages, maxOutputTokens }, event => {
-            if (event.type !== 'delta') throw new Error('Invalid Pi Chat stream event');
+            if (event.type !== 'delta' && event.type !== 'activity') throw new Error('Invalid Pi Chat stream event');
             if (Buffer.byteLength(event.text, 'utf8') > 8192 || queue.length >= 128)
                 throw new Error('Pi Chat stream backpressure limit exceeded');
             queue.push(event); notify();
@@ -180,7 +181,7 @@ export class PiRuntimeHost {
             this.stdout = this.stdout.slice(newline + 1);
             try {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
-                    event?: { type: 'delta'; text: string } | PiWorkEvent;
+                    event?: { type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string } | PiWorkEvent;
                     tool?: { id: number; name: string; arguments: unknown } };
                 const pending = this.pending.get(record.id);
                 if (!pending) throw new Error('Unexpected Pi worker response');
@@ -220,7 +221,9 @@ export class PiRuntimeHost {
                             (event.aborted !== undefined && (event.kind !== 'agent_settled' || typeof event.aborted !== 'boolean')))
                             throw new Error('Invalid Pi Work event');
                         pending.lastWorkSequence = event.sequence;
-                    } else if (record.event.type !== 'delta' || typeof record.event.text !== 'string')
+                    } else if ((record.event.type !== 'delta' &&
+                        !(record.event.type === 'activity' && record.event.kind === 'thinking')) ||
+                        typeof record.event.text !== 'string' || Buffer.byteLength(record.event.text, 'utf8') > 8192)
                         throw new Error('Invalid Pi stream event');
                     pending.onEvent?.(record.event);
                     continue;

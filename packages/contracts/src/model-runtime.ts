@@ -96,6 +96,7 @@ export interface ConversationUsage {
 }
 export type ConversationEvent =
     | { type: 'delta'; text: string }
+    | { type: 'activity'; kind: 'thinking' | 'provisional' | 'answer'; text: string }
     | { type: 'complete'; text: string; usage: ConversationUsage; finishReason?: string;
         /** Ephemeral Pi context projection; the saved Dope messages remain canonical. */
         compaction?: { canonicalContextSha256: string; originalSha256: string;

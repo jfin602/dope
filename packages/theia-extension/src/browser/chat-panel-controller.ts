@@ -212,6 +212,7 @@ export class ChatPanelController {
                     this.changed();
                     return;
                 }
+                if (event.kind === 'assistant-activity') return; // P2 projects this diagnostic channel.
                 if (event.kind === 'lease-changed' && event.chatId === this.retryChatId) {
                     const chatId = this.retryChatId!;
                     // The old connection may have closed before its browser could

@@ -1,6 +1,7 @@
 import type { Chat, ChatCollection, ChatColor, ChatContextKind, ChatContextRef, ChatFolderPath, ChatId, ChatMessage,
     ChatExecution, ChatModelProvenance, ChatModelSelection, ChatSettings } from './index';
 import type { RoutingProvenance } from '@dope/ai';
+import type { ChatExecutionActivity, ChatActivityKind } from './activity';
 
 export const chatServicePath = '/services/dope/chat';
 export const ChatService = Symbol('ChatService');
@@ -23,8 +24,9 @@ export type ChatOperation =
     | { type: 'begin-assistant'; chatId: ChatId; message: ChatMessage & { role: 'assistant' } }
     | { type: 'start-assistant'; chatId: ChatId; messageId: string; actualModel: ChatModelProvenance;
         routingProvenance?: RoutingProvenance }
+    | { type: 'record-assistant-activity'; chatId: ChatId; messageId: string; activity: ChatExecutionActivity }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
-        content: string; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;
+        content: string; activity?: ChatExecutionActivity; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;
         contextUsage?: ChatExecution['contextUsage']; tokenUsage?: ChatExecution['tokenUsage'];
         compaction?: ChatExecution['compaction']; finishReason?: string;
         sourceRefs?: ChatExecution['sourceRefs']; toolEvents?: ChatExecution['toolEvents'] };
@@ -78,6 +80,8 @@ export type ChatEvent =
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
     | { projectHandle: string; revision: number; kind: 'assistant-delta'; chatId: ChatId;
         messageId: string; executionId: string; sequence: number; delta: string }
+    | { projectHandle: string; kind: 'assistant-activity'; chatId: ChatId;
+        messageId: string; executionId: string; sequence: number; activityKind: ChatActivityKind; text: string }
     | { projectHandle: string; kind: 'command-pending'; chatId: ChatId; preview: ChatCommandPreview }
     | { projectHandle: string; kind: 'command-settled'; chatId: ChatId; id: string }
     | { projectHandle: string; kind: 'tool-progress'; chatId: ChatId; messageId: string;

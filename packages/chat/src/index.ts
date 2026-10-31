@@ -1,4 +1,7 @@
 import { parseRoutingProvenance, type RoutingProvenance } from '@dope/ai';
+import { parseExecutionActivity, type ChatExecutionActivity } from './activity';
+export { ChatActivityRecorder, parseExecutionActivity } from './activity';
+export type { ChatActivityEvent, ChatActivityKind, ChatExecutionActivity } from './activity';
 
 /** Project Chat identity belongs to Dope; neither storage paths nor runtime IDs define it. */
 export type ChatId = string;
@@ -83,8 +86,9 @@ export interface ChatAssistantMessage {
     id: string;
     role: 'assistant';
     createdAt: string;
-    content: string; // Visible answer only; hidden reasoning is not durable state.
+    content: string; // Only successfully completed final answer is conversational content.
     execution: ChatExecution;
+    activity?: ChatExecutionActivity; // Isolated diagnostics; never prompt context or search content.
     planningActivity?: ChatPlanningActivity; // Backend-verified projection; content remains the exact model output.
     roadmapAction?: ChatRoadmapAction;
 }
@@ -354,17 +358,19 @@ function parseExecution(value: unknown): ChatExecution {
     return execution;
 }
 export function parseChatMessage(value: unknown): ChatMessage {
-    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'execution', 'planningActivity', 'roadmapAction'],
+    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'execution', 'activity', 'planningActivity', 'roadmapAction'],
         ['schemaVersion', 'id', 'role', 'createdAt', 'content']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported message schema');
     const base = { schemaVersion: 1 as const, id: identifier(v.id), createdAt: time(v.createdAt), content: string(v.content, 'message content', false) };
     if (v.role === 'user') {
-        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || !base.content.trim()) throw new Error('Invalid user message');
+        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || !base.content.trim()) throw new Error('Invalid user message');
         return { ...base, role: 'user', contextRefs: v.contextRefs.map(parseChatContextRef) };
     }
     if (v.role === 'assistant') {
         if (v.contextRefs !== undefined) throw new Error('Invalid assistant message');
         const execution = parseExecution(v.execution);
+        const activity = v.activity === undefined ? undefined : parseExecutionActivity(v.activity,
+            (v.activity as ChatExecutionActivity).chatId, base.id, execution.id);
         const planningActivity = v.planningActivity === undefined ? undefined : parsePlanningActivity(v.planningActivity);
         const roadmapAction = v.roadmapAction === undefined ? undefined : parseChatRoadmapAction(v.roadmapAction);
         if (planningActivity && !['complete', 'failed', 'cancelled'].includes(execution.status))
@@ -372,7 +378,8 @@ export function parseChatMessage(value: unknown): ChatMessage {
         if (planningActivity && (planningActivity.kind === 'error' ? execution.status !== 'failed' :
             planningActivity.kind === 'cancelled' ? execution.status !== 'cancelled' : execution.status !== 'complete'))
             throw new Error('Planning activity differs from execution outcome');
-        return { ...base, role: 'assistant', execution, ...(planningActivity ? { planningActivity } : {}),
+        return { ...base, role: 'assistant', execution, ...(activity ? { activity } : {}),
+            ...(planningActivity ? { planningActivity } : {}),
             ...(roadmapAction ? { roadmapAction } : {}) };
     }
     throw new Error('Invalid Chat role');
@@ -437,7 +444,8 @@ export function parseChat(value: unknown): Chat {
     const updated = Date.parse(chat.updatedAt);
     if (new Set(ids).size !== ids.length || updated < created ||
         Date.parse(chat.lastInteractedAt) < created || Date.parse(chat.lastInteractedAt) > updated ||
-        chat.messages.some((message, index) => Date.parse(message.createdAt) < created ||
+        chat.messages.some((message, index) => message.role === 'assistant' && message.activity?.chatId !== undefined &&
+            message.activity.chatId !== chat.id || Date.parse(message.createdAt) < created ||
             Date.parse(message.createdAt) > updated ||
             (index > 0 && Date.parse(message.createdAt) < Date.parse(chat.messages[index - 1].createdAt)) ||
             (message.role === 'assistant' && (Date.parse(message.execution.startedAt) < Date.parse(message.createdAt) ||

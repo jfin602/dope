@@ -320,6 +320,10 @@ export async function dispatch(message) {
         if (!chatToolsMode && event.type === 'message_update' &&
             event.assistantMessageEvent?.type === 'text_delta')
           message.emit?.({ type: 'delta', text: event.assistantMessageEvent.delta });
+        if (event.type === 'message_update' &&
+            event.assistantMessageEvent?.type === 'thinking_delta' &&
+            typeof event.assistantMessageEvent.delta === 'string')
+          message.emit?.({ type: 'activity', kind: 'thinking', text: event.assistantMessageEvent.delta });
         if (!chatToolsMode && (event.type === 'message_update' && event.assistantMessageEvent?.type.startsWith('toolcall_') ||
             event.type === 'tool_execution_start')) {
           attemptedTool = true;

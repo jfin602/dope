@@ -9,7 +9,7 @@ import type { AIInventoryController } from './ai-registry-backend';
 import type { ModelConnectionsRegistry } from './model-connections';
 
 type Complete = Extract<ConversationEvent, { type: 'complete' }>;
-export type RoutedConversationEvent = (Extract<ConversationEvent, { type: 'delta' }> & { target: AIRoleTarget }) |
+export type RoutedConversationEvent = ((Extract<ConversationEvent, { type: 'delta' | 'activity' }>) & { target: AIRoleTarget }) |
     (Complete & { routingProvenance: RoutingProvenance });
 export interface RoleConversationRequest {
     roleId: AIRoleId;
@@ -119,7 +119,7 @@ export class AIRoleRoutingService {
                 const conversation = typeof request.conversation === 'function' ? await request.conversation(target) : request.conversation;
                 for await (const event of this.runtime.generate(target, conversation,
                     request.localOnly ? { localOnly: true } : undefined)) {
-                    if (event.type === 'delta') {
+                    if (event.type === 'delta' || event.type === 'activity') {
                         if (event.text.length) { meaningfulOutput = true; yield { ...event, target }; }
                     } else {
                         meaningfulOutput = true;

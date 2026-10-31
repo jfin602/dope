@@ -323,7 +323,7 @@ export class ChatRepository {
                 if (active) return message;
                 if (message.role !== 'assistant' || !['pending', 'streaming'].includes(message.execution.status)) return message;
                 changed = true;
-                return { ...message, execution: { ...message.execution, status: 'failed' as const,
+                return { ...message, content: '', execution: { ...message.execution, status: 'failed' as const,
                     finishedAt: now, failure: interrupted } };
             });
             const wasInterrupted = messages.some((message, i) => message !== chat.messages[i]);
@@ -358,7 +358,7 @@ export class ChatRepository {
                 const lease = await this.lease(base, uuid(operation.chatId));
                 if (this.active(lease)) throw new Error('Cannot delete an open Chat');
             }
-            if (['append-user', 'begin-assistant', 'start-assistant', 'finish-assistant'].includes(operation.type)) {
+            if (['append-user', 'begin-assistant', 'start-assistant', 'record-assistant-activity', 'finish-assistant'].includes(operation.type)) {
                 const chatId = (operation as Extract<ChatOperation, { chatId: string }>).chatId;
                 const lease = await this.lease(base, chatId);
                 if (!lease || !this.active(lease) || lease.token !== leaseToken) throw new Error('Chat ownership lease required');
@@ -455,6 +455,20 @@ export class ChatRepository {
                         ...(operation.routingProvenance ? { routingProvenance: operation.routingProvenance } : {}) } });
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;
+                case 'record-assistant-activity': update(c => {
+                    const at = c.messages.findIndex(m => m.id === operation.messageId);
+                    const message = c.messages[at];
+                    if (!message || message.role !== 'assistant' ||
+                        !['pending', 'streaming'].includes(message.execution.status))
+                        throw new Error('Assistant execution is not active');
+                    if (message.activity && (operation.activity.events.length <= message.activity.events.length ||
+                        JSON.stringify(operation.activity.events.slice(0, message.activity.events.length)) !==
+                            JSON.stringify(message.activity.events)))
+                        throw new Error('Stale or out-of-order Chat activity');
+                    const messages = [...c.messages];
+                    messages[at] = parseChatMessage({ ...message, activity: operation.activity });
+                    return { ...c, lastInteractedAt: now, messages };
+                }); break;
                 case 'finish-assistant': update(c => {
                     const at = c.messages.findIndex(m => m.id === operation.messageId);
                     const message = c.messages[at];
@@ -468,7 +482,15 @@ export class ChatRepository {
                         message.execution.actualModel.providerId !== operation.actualModel.providerId))
                         throw new Error('Assistant model provenance is immutable');
                     const messages = [...c.messages];
-                    messages[at] = parseChatMessage({ ...message, content: operation.content, execution: {
+                    if (operation.outcome !== 'complete' && operation.content)
+                        throw new Error('Failed assistant cannot commit conversational content');
+                    if (message.activity && operation.activity &&
+                        (operation.activity.events.length < message.activity.events.length ||
+                            JSON.stringify(operation.activity.events.slice(0, message.activity.events.length)) !==
+                                JSON.stringify(message.activity.events)))
+                        throw new Error('Stale or out-of-order Chat activity');
+                    messages[at] = parseChatMessage({ ...message, content: operation.content,
+                        ...(operation.activity ? { activity: operation.activity } : {}), execution: {
                         ...message.execution, status: operation.outcome, actualModel: operation.actualModel ?? message.execution.actualModel,
                         routingProvenance: operation.routingProvenance ?? message.execution.routingProvenance,
                         finishedAt: now, ...(operation.contextUsage ? { contextUsage: operation.contextUsage } : {}),
@@ -616,6 +638,7 @@ export class ChatRepository {
                 // ponytail: a fixed scan budget keeps retrieval bounded; add an index only if archives outgrow it.
                 if (++scanned > 5_000) return hits;
                 if (titleHit && message === chat.messages[0]) continue;
+                if (message.role === 'assistant' && message.execution.status !== 'complete') continue;
                 const content = message.content.replace(/\s+/g, ' ');
                 const at = content.toLocaleLowerCase('en-US').indexOf(needle);
                 if (at < 0) continue;

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
     ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
-import { suggestedChatTitle, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
+import { suggestedChatTitle, ChatActivityRecorder, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
@@ -1064,6 +1064,29 @@ export class ChatBackend implements ChatService {
             throw new Error('Chat mutation conflict');
         };
         let assistant: ChatAssistantMessage | undefined;
+        let activity: ChatActivityRecorder | undefined;
+        let activitySequence = 0;
+        let activityCount = 0;
+        let activityWrite = Promise.resolve();
+        const recordActivity = (kind: 'thinking' | 'provisional' | 'answer' | 'tool', text: string) => {
+            if (!assistant || !activity || !text) return;
+            activity.add(kind, text);
+            const recorded = activity.eventsSince(activityCount);
+            activityCount += recorded.length;
+            if (recorded.length) {
+                const snapshot = activity.snapshot();
+                activityWrite = activityWrite.then(async () => {
+                    await mutate({ type: 'record-assistant-activity', chatId: key,
+                        messageId: assistant!.id, activity: snapshot });
+                });
+                void activityWrite.catch(() => undefined); // Observed at the terminal mutation below.
+            }
+            for (const item of recorded) try {
+                this.client.notifyChatEvent({ projectHandle: request.projectHandle, kind: 'assistant-activity',
+                    chatId: key, messageId: assistant.id, executionId: assistant.execution.id,
+                    sequence: ++activitySequence, activityKind: item.kind, text: item.text });
+            } catch { /* Diagnostic display cannot control execution. */ }
+        };
         const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
         let output = '';
         let actual: ChatModelProvenance = { schemaVersion: 1, connectionId: connection.id,
@@ -1085,6 +1108,8 @@ export class ChatBackend implements ChatService {
                 const target = detail && typeof detailValue === 'string' ?
                     detailValue.replace(/\s+/gu, ' ').trim().slice(0, 160) : undefined;
                 const notify = (status: 'running' | 'completed' | 'failed' | 'denied', truncated?: boolean) => {
+                    if (['read_file', 'list_files', 'search_paths', 'search_text', 'run_command'].includes(name))
+                        recordActivity('tool', `${name}: ${status}`);
                     if (!this.handle || !assistant || !['read_file', 'list_files', 'search_paths',
                         'search_text', 'run_command'].includes(name)) return;
                     try { this.client.notifyChatEvent({ projectHandle: this.handle, kind: 'tool-progress',
@@ -1203,6 +1228,7 @@ export class ChatBackend implements ChatService {
                     selectedModel: { ...selectedModel }, resolutionSource: following ? 'role-policy' :
                         request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
                     startedAt: now } };
+            activity = new ChatActivityRecorder(key, assistant.id, assistant.execution.id);
             await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
             if (localRoadmap) tracePlanning('submitted', key, assistant.id);
             if (localRoadmap) this.planningProgress(key, assistant.id, 'waiting');
@@ -1273,6 +1299,10 @@ export class ChatBackend implements ChatService {
                 yield complete;
             })(this) : generate();
             for await (const event of events) {
+                if (event.type === 'activity') {
+                    recordActivity(event.kind, event.text);
+                    continue;
+                }
                 if (event.type === 'delta') {
                     if (following && sequence === 0) {
                         const routed = (event as Extract<RoutedConversationEvent, { type: 'delta' }>).target;
@@ -1283,6 +1313,7 @@ export class ChatBackend implements ChatService {
                         await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
                     }
                     output += event.text;
+                    recordActivity('provisional', event.text);
                     await this.repository.publishDelta(root, key, assistant.id, assistant.execution.id,
                         sequence++, event.text, request.leaseToken);
                 } else {
@@ -1304,10 +1335,11 @@ export class ChatBackend implements ChatService {
                             { connection: connection.label ?? connection.id, provider: actual.providerId,
                                 model: actual.modelLabel });
                     }
-                    if (localRoadmap && abort.signal.aborted)
-                        throw new ModelRuntimeFailure('Local planning cancelled', 'cancelled');
+                    if (abort.signal.aborted)
+                        throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+                    await activityWrite;
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
-                        outcome: 'complete', content: output, actualModel: actual, routingProvenance,
+                        outcome: 'complete', content: output, activity: activity?.snapshot(), actualModel: actual, routingProvenance,
                         contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                         tokenUsage: event.usage, ...(event.compaction ? { compaction: event.compaction } : {}),
                         ...(event.finishReason ? { finishReason: event.finishReason } : {}),
@@ -1352,11 +1384,12 @@ export class ChatBackend implements ChatService {
             if (this.proposals.get(key)?.messageId === assistant?.id) this.clearProposal(key);
             if (assistant) {
                 if (localRoadmap && error instanceof LocalPlanningOutputFailure && error.rawText)
-                    output = error.rawText;
+                    recordActivity('provisional', error.rawText);
                 const cancelled = abort.signal.aborted || error instanceof ModelRuntimeFailure && error.failureClass === 'cancelled';
                 const failure = error instanceof ModelRuntimeFailure ? error.message : 'Conversation failed';
+                try { await activityWrite; } catch { /* Final mutation below still carries the bounded snapshot. */ }
                 try { await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
-                    outcome: cancelled ? 'cancelled' : 'failed', content: output,
+                    outcome: cancelled ? 'cancelled' : 'failed', content: '', activity: activity?.snapshot(),
                     contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                     ...(toolEvents.length ? { sourceRefs, toolEvents } : {}),
                     ...(!cancelled ? { failure } : {}) }); }

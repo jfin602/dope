@@ -47,7 +47,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             return { status: 'completed', output };
         } : undefined;
         for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool)) {
-            if (event.type === 'delta') { yield event; continue; }
+            if (event.type === 'delta' || event.type === 'activity') { yield event; continue; }
             if (event.modelId !== selection.modelId)
                 throw new ModelRuntimeFailure('Local server answered with a different model; reselect the loaded model in AI Center',
                     'model-unavailable');
