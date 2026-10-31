@@ -1,0 +1,23 @@
+TASK: Correction 12 / P1 — Separate streamed activity and final answer authority
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Do not bump package/internal pins, model defaults, Pi version or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0042 and c12-reasoning-streaming README/assessment/plan. Inspect git HEAD/status and any in-flight c12-planning-recovery edits; preserve owner work. Do not reset, stash, clean, change Roadmap, self-commit (runner owns checkpoint) or run an unrelated stack. No /activate. Focused <=8m, soft 10/hard 15. STOP on unsafe conflicts; report exact blocker.
+
+OBJECTIVE
+One existing Chat/Pi turn streams inspectable reasoning/provisional/tool activity separately from its committed final answer. A cancelled or errored turn never promotes its draft into conversational content.
+
+IMPLEMENT
+1. Inspect actual Pi worker event payloads/version and non-Pi generation interfaces. Add typed, bounded event channels for explicit exposed thinking, provisional text, answer and sanitized tool activity across packages/pi-runtime/worker.mjs, pi-runtime-host.ts, pi-conversation-runtime.ts, ChatBackend and @dope/chat service. Text-only streams can be provisional until genuine completion. Never infer hidden reasoning from repeated text; use explicit provider evidence or tested opt-in delimiters only. Do not promise Qwen exposes thinking when it does not.
+2. Preserve event ordering, message/execution IDs, project lease, cancellation and selected provider. On true complete commit exactly the classified final answer. On cancel/fail/interrupted preserve partial output only as diagnostic activity, not as final assistant text. Do not change Pi tool authorizations or agent loop.
+3. Introduce a validated, durable, project/execution-bound activity record (separate sidecar or schema-isolated field), compatible with old chats and retries. Cap at <=128 KiB text and <=512 events/execution with explicit truncated markers. No raw private tool bodies, approval tokens, credentials or provider internals. Ensure server Chat history, saved-chat search and title consumers cannot treat activity as assistant speech. Keep normal completed conversational content intact.
+
+QUALIFY
+Focused deterministic tests: explicit thinking+final; text-only successful final; 12 provisional paragraphs then cancel with NO formal answer; partial streamed output then error; tool interleaving; split/malformed optional think tags; stale/out-of-order/wrong-lease events; truncation/redaction; reload old and new chats; repeat/restore/next-turn context. Assert completed answer only enters next turn and no project source/roadmap write. Run focused tests, relevant typecheck/build, report actual results and STOP. P2 handles visual UI; P3 copy; P4 manual browser.
