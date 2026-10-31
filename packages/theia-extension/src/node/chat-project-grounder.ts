@@ -51,7 +51,7 @@ function explicitPaths(question: string): { path: string; directorySyntax: boole
         // A dotted package name is not a request to inspect a same-named project file.
         // Explicit relative paths retain their existing behavior; bare filenames need file intent.
         if (!path.includes('/') &&
-            !/\b(?:read|inspect|open|check|view|show|find|locate|edit|examine)(?:\s+(?:the|this|my|project|workspace|source|file|named|called)){0,3}$/i.test(before) &&
+            !/\b(?:read|inspect|open|check|view|show|find|locate|edit|examine)(?:\s+(?:the|this|my|current|existing|project|workspace|source|file|named|called)){0,3}$/i.test(before) &&
             !/^[\s'"`)]*(?:file|exists?|present)\b/i.test(after)) return [];
         return [{ path: path.replace(/\/$/u, ''), directorySyntax: path.endsWith('/'),
             before }];

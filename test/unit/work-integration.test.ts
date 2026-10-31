@@ -170,6 +170,25 @@ test('project switch cannot let an old Prompt Stack scan suppress the new projec
     assert.equal(controller.phase.busy, false);
 });
 
+test('direct Work remains attachable when a new project has no Phase Stack folder', async () => {
+    const calls: string[] = [];
+    const runtime = {
+        async attach() { return { projectHandle: 'project-handle' }; },
+        async listTaskStacks() { calls.push('scan'); throw new Error('Tasks folder missing'); },
+        async listSequences() { calls.push('sequences'); return []; },
+        async sequenceEvidence() { calls.push('evidence'); return {
+            head, packageVersion: '0.12.7', clean: true, worktreeFingerprint: 'e'.repeat(64) }; },
+        async codingAgentReady() { calls.push('agent'); return true; },
+        async listTasks() { return []; }, async listRuns() { return []; }
+    } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    await controller.attach(project);
+    assert.equal(controller.handle, 'project-handle');
+    assert.equal(controller.attachState, 'attached');
+    assert.equal(controller.phase.evidence?.packageVersion, '0.12.7');
+    assert.deepEqual(calls, ['scan', 'sequences', 'evidence', 'agent']);
+});
+
 test('Work detail records unsupported steering and review-only action decisions with map impact evidence', async () => {
     const task = { id: 'task-1', objective: 'Scoped work', origin: { kind: 'work-item' } };
     const run = { id: 'run-1', taskId: task.id, status: 'running', changedFiles: [], validationResults: [] };

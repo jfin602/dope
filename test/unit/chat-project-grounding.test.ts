@@ -303,6 +303,11 @@ test('exact planning wording reads normalized named source before bounded heuris
     assert.ok(absent.diagnostics.some(item => item.kind === 'unavailable'));
     const rootSource = await grounder.investigateIdea(root, 'Find history source');
     assert.ok(rootSource.blocks.some(block => block.ref.kind === 'file' && block.ref.id === 'src/history.js'));
+    await writeFile(join(root, 'index.html'), '<main>fixture</main>\n');
+    const namedPage = await grounder.investigateIdea(root,
+      'Plan a page update. Please inspect the current index.html source and give a complete ordered implementation plan.');
+    assert.equal(namedPage.blocks.find(block => block.ref.kind === 'file')?.ref.id, 'index.html');
+    assert.equal(namedPage.blocks.find(block => block.ref.kind === 'file')?.text, '<main>fixture</main>\n');
     await writeFile(join(root, 'src/diffEditor.js'), 'changed source\n');
     assert.notEqual((await grounder.ground(root, question)).blocks.find(block => block.ref.kind === 'file')?.ref.sourceHash, file?.ref.sourceHash);
   } finally { await rm(root, { recursive: true, force: true }); }

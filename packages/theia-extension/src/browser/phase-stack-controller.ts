@@ -89,6 +89,10 @@ export class PhaseStackController {
             if (serial !== this.serial) return;
             this.handle = projectHandle;
             await this.bounded(this.scan());
+            // A project can support direct Work before it has a docs/tasks folder.
+            // Phase Stack discovery reports that absence, but must not prevent the
+            // independent Git/model evidence needed by the Work composer.
+            if (!this.evidence) await this.bounded(this.refresh());
             await this.bounded(this.resolveModel());
             if (serial === this.serial && !this.evidence) throw new Error('Work evidence unavailable');
         } catch (error) { if (serial === this.serial) {

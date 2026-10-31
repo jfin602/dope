@@ -13,7 +13,9 @@ import { parseRoutingProvenance } from '../../packages/ai/lib/index.js';
 
 const noMap = { snapshot: () => undefined, status: () => ({ state: 'uninitialized' }), inputsCurrent: async () => false };
 const target = { connectionId: 'local', modelId: 'chat' };
-const capabilities = { conversationalText: true, streaming: true, contextWindowTokens: 1200 };
+// The grounded system instruction alone costs 504 conservative input tokens.
+// Keep enough room for it while testing evidence truncation separately.
+const capabilities = { conversationalText: true, streaming: true, contextWindowTokens: 2048 };
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'dope-grounded-turn-'));
@@ -170,7 +172,26 @@ test('retry keeps evidence identity and refuses changed evidence before a second
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('small input windows report omitted Auto evidence and never exceed the model budget', async () => {
+test('small viable input windows report omitted Auto evidence and never exceed the model budget', async () => {
+  const root = await fixture();
+  const { service, sent } = setup(root, { window: 550 });
+  try {
+    const turn = await open(service, root);
+    const state = await service.read(turn.projectHandle);
+    const settings = structuredClone(state.chats[0].settings);
+    settings.context.reservedOutputTokens = 0;
+    settings.context.maxInputTokens = 550;
+    await service.mutate({ projectHandle: turn.projectHandle, expectedRevision: state.revision,
+      operation: { type: 'set-settings', chatId: turn.chatId, settings } });
+    const preview = await service.runTurn({ ...turn, selectedModel: target, content: 'what is in test/?' });
+    assert.ok(preview.usedTokens <= preview.budgetTokens);
+    assert.ok(preview.diagnostics.some(item => item.kind === 'omitted' || item.kind === 'truncated'));
+    assert.ok(preview.refs.some(ref => ref.origin === 'automatic' && ref.includedBytes === 0));
+    assert.equal(sent.length, 1);
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('input window below the grounded instruction minimum fails before model generation', async () => {
   const root = await fixture();
   const { service, sent } = setup(root, { window: 110 });
   try {
@@ -181,11 +202,9 @@ test('small input windows report omitted Auto evidence and never exceed the mode
     settings.context.maxInputTokens = 110;
     await service.mutate({ projectHandle: turn.projectHandle, expectedRevision: state.revision,
       operation: { type: 'set-settings', chatId: turn.chatId, settings } });
-    const preview = await service.runTurn({ ...turn, selectedModel: target, content: 'what is in test/?' });
-    assert.ok(preview.usedTokens <= preview.budgetTokens);
-    assert.ok(preview.diagnostics.some(item => item.kind === 'omitted' || item.kind === 'truncated'));
-    assert.ok(preview.refs.some(ref => ref.origin === 'automatic' && ref.includedBytes === 0));
-    assert.equal(sent.length, 1);
+    await assert.rejects(service.runTurn({ ...turn, selectedModel: target, content: 'what is in test/?' }),
+      /Message exceeds selected model input budget/);
+    assert.equal(sent.length, 0);
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -219,7 +238,7 @@ test('Interactive fallback reuses selected Auto evidence and hosted egress requi
   const models = { list: async () => ({ connections: [
     { id: 'local', ready: true, providerId: 'local', models: [{ id: 'chat', label: 'Local', usable: true, capabilities }] },
     { id: 'hosted', ready: true, providerId: 'hosted', models: [{ id: 'chat', label: 'Hosted', usable: true,
-      capabilities: { ...capabilities, contextWindowTokens: 400 } }] },
+      capabilities: { ...capabilities, contextWindowTokens: 900 } }] },
   ] }), async *generate() { assert.fail('role turn bypassed routing'); } };
   const routing = { async resolve(_role: string, _hard: unknown, authorized: boolean) {
     const selectedTarget = preferHosted ? second : first;
@@ -268,9 +287,9 @@ test('Interactive fallback reuses selected Auto evidence and hosted egress requi
     if (user.role === 'user') {
       assert.deepEqual(user.contextRefs, selected.refs);
       assert.ok(user.contextRefs.some(ref => ref.origin === 'automatic' && ref.kind === 'directory'));
-      assert.equal(selected.budgetTokens, 400);
-      assert.ok((selected.refs.find(ref => ref.kind === 'directory')?.includedBytes ?? 0) <
-        (initial.refs.find(ref => ref.kind === 'directory')?.includedBytes ?? 0));
+      assert.equal(selected.budgetTokens, 900);
+      assert.ok(selected.usedTokens <= selected.budgetTokens);
+      assert.deepEqual(selected.refs.map(ref => [ref.kind, ref.id]), initial.refs.map(ref => [ref.kind, ref.id]));
     }
     preferHosted = true;
     await assert.rejects(service.runTurn({ ...turn, content: 'what is in test/?' }), /hosted egress confirmation required/);
