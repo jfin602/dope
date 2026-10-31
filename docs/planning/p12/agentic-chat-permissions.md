@@ -4,6 +4,10 @@
 
 **Approved documentation follow-on (2026-10-30):** [ADR 0041](../../decisions/0041-planning-documentation-workflow-and-applied-history.md) and [documentation workflow](documentation-workflow-contract.md) add a narrow Dope-owned reviewed application path through [`c12-docs-workflow`](../../tasks/c12-docs-workflow/README.md). This separate design/authoring scope is NOT IMPLEMENTED OR QUALIFIED and does not enlarge `c12-pi-agentic-chat` P1–P5 or change `0.12.7`.
 
+## Reasoning-streaming / diagnostic-copy forward amendment (2026-10-31)
+
+[ADR 0042](../../decisions/0042-chat-reasoning-lifecycle-and-diagnostic-copy.md) and the [c12-reasoning-streaming correction](../../tasks/c12-reasoning-streaming/README.md) approve distinct live reasoning/provisional activity versus committed final answers in the **existing ChatPanel**, plus scoped right-click **Copy with Reasoning** on Dope-owned Chat copy controls. Left-click clean copy, Pi/tool authority, Chat context, Work, Roadmap ownership and documented permission boundaries remain unchanged. Unfinished/cancelled output is inspectable activity, not a formal assistant answer or next-turn context. Expose only provider-surfaced/testably classified reasoning (never hidden thinking); persist bounded redacted diagnostics for explicit user-initiated export. Runner P1-P3 and **manual connected Codex browser P4** are authored only. No code implementation, Run, Green or version change follows from this documentation amendment; local current source must be checked before any execution.
+
 ## Scope and ownership
 Pi must retain its tool-selecting, iterative coding-agent capabilities in Chat, Planning and Work. Dope owns the one saved ChatPanel, project root/identity, AI Center selection, permissions, Roadmap and linked Markdown, Work grants, candidate review, durable History and approvals. Do not build a second Chat, Work or agent loop or treat Pi's session as canonical state.
 
