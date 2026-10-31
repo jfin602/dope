@@ -34,6 +34,7 @@ export interface LocalPlanningAnswerCheck {
     onRetry?: (cause: 'invalid-envelope' | 'missing-owner-revision') => void;
     validateBridge?: (value: Record<string, unknown>) => Promise<boolean>;
     validatePlan?: (value: LocalImplementationPlan) => string[];
+    hasInspectedSource?: () => boolean;
 }
 
 export interface LocalImplementationPlan {
@@ -307,6 +308,8 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                     'No prose, code fences, extra fields or repeated file reads unless a material source dependency is missing.';
             }
         }
+        if (mode === 'plan' && check.hasInspectedSource?.() === false)
+            retryInstruction = 'Investigate the relevant project source with your available file tools before drafting the plan. Choose the files yourself from the request and project structure. Do not produce final JSON until you have inspected source evidence; then use the complete Planning output contract already provided.';
         if (attempt + 1 < MAX_ATTEMPTS)
             check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
     }

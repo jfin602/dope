@@ -40,7 +40,7 @@ function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3)
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
-const PLAN_INVESTIGATION_INSTRUCTION = `Use Pi file tools to inspect only what the requested plan needs. Once source evidence suffices, stop investigating and finish. Return one compact JSON object only, without prose or fences. Exact valid shape: {"type":"implementation-plan","objective":"goal","successCriteria":["result"],"constraints":[],"assumptions":[],"steps":[{"title":"Inspect source","detail":"Identify existing code","deliverables":["source findings"],"dependsOn":[],"reuse":[]},{"title":"Implement requested change","detail":"Describe actual work","deliverables":["changed file"],"dependsOn":[1],"reuse":[]}],"tests":["validation"],"guiQualification":"manual check or not applicable with reason","risks":[],"alternatives":[],"question":""}. Every top-level field is required. EVERY step requires title, detail, nonempty deliverables, dependsOn and reuse. reuse is an array: [] when no existing file is used in that step, otherwise [{"path":"verified project-relative path","reason":"how used"}]. Use 1-based earlier step numbers in dependsOn. Give at least two substantive steps. Preserve the developer's exact requirements and exclusions; do not propose forbidden alternatives. Cite only verified paths. Include requested validation in a step deliverable and tests. Never claim writes, approval or completed tests. This is a review proposal, not a Roadmap mutation.`;
+const PLAN_INVESTIGATION_INSTRUCTION = `First investigate the project with the available Pi file tools. Choose the relevant files and tools yourself, read the existing implementation needed by this request, and use actual tool results as source evidence. Do not draft a plan or generate final JSON before that investigation. Once evidence suffices, stop reading and produce the proposal. Final output must be one compact JSON object, without prose or fences, with exactly these top-level fields: type ("implementation-plan"), objective (string), successCriteria (nonempty string array), constraints (string array), assumptions (string array), steps (array), tests (string array), guiQualification (string), risks (string array), alternatives (string array), question (string, empty if none). Give at least two substantive steps. Every step requires title and detail (strings), nonempty deliverables (string array), dependsOn (array of 1-based earlier step numbers; [] for the first step), and reuse (array of verified {"path":"project-relative path","reason":"how used"} objects, or [] when none). Cite only paths verified by tool results. Include requested validation in a step deliverable and tests. Preserve every developer requirement and exclusion. Never claim writes, approval or completed tests. This is a review proposal, not a Roadmap mutation.`;
 function firstPlanInstruction(requirements: readonly PlanRequirement[], content: string): string {
     const detailedActions = requirements.some(item => /\b(?:toolbar|button|control|checkout|commit|authorization|permission)\b/i.test(item.text));
     return `${PLAN_INVESTIGATION_INSTRUCTION} Exact developer directives: ${JSON.stringify(planOutputDirectives(content))}. ` +
@@ -1220,12 +1220,19 @@ export class ChatBackend implements ChatService {
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             planningOutput, model.capabilities) : undefined;
         if (planOnly && budget!.output < 2048) throw new Error('Selected local model has insufficient plan output capacity');
+        if (planOnly) tracePlanning('grounding-start', request.chatId, 'preflight');
+        const groundingStarted = Date.now();
         const grounding = planOnly ? await this.grounder?.investigateIdea(root, content) : await this.grounder?.ground(root, content);
+        if (planOnly) tracePlanning('grounding-complete', request.chatId, 'preflight', `${Date.now() - groundingStarted}ms`);
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
+        if (planOnly) tracePlanning('composition-start', request.chatId, 'preflight');
+        const compositionStarted = Date.now();
         const composed = await this.composeTurn(root, contextChat, content, request.context ?? [],
             model.capabilities, budget, planningPrompt, grounding, !!bridge, opportunity);
+        if (planOnly) tracePlanning('composition-complete', request.chatId, 'preflight',
+            `${Date.now() - compositionStarted}ms;${composed.usedTokens}tokens`);
         if (bridge) composed.refs.push(bridge.reference);
         if ((request.context ?? []).some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
@@ -1490,6 +1497,7 @@ export class ChatBackend implements ChatService {
                         validatePlan: planOnly && localMode === 'plan' ? value =>
                             planExplicitConstraintViolations(content, value, sourceRefs
                                 .filter(ref => ref.kind === 'file').map(ref => ref.id)) : undefined,
+                        hasInspectedSource: planOnly && localMode === 'plan' ? () => observedFiles.size > 0 : undefined,
                         onRetry: cause => tracePlanning('retry', key, assistant!.id, cause) });
                 await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                 tracePlanning('validated', key, assistant!.id);

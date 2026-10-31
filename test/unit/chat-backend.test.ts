@@ -899,6 +899,9 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.match(inspectedSource, /current history owner/);
         assert.ok(investigations > 0);
         assert.match(sent.at(-1)!, /current history owner/);
+        assert.ok(sent.at(-1)!.indexOf('First investigate the project') <
+            sent.at(-1)!.indexOf('Final output must be one compact JSON object'));
+        assert.doesNotMatch(sent.at(-1)!, /"title":"Inspect source"/);
         assert.equal(turn.proposal?.action.type, 'implementation-plan', JSON.stringify(turn.planPreview ?? turn.proposalError));
         assert.equal(turn.proposal?.changedIds.length, 3);
         assert.equal(turn.refs.some(ref => ref.kind === 'file' && ref.id === sourcePath && ref.sourceHash), true);

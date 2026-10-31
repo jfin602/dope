@@ -149,6 +149,18 @@ test('invalid implementation plan gives the retry a concrete finish instruction'
     assert.match(hints[1]!, /Finish now/);
 });
 
+test('a malformed no-tool plan asks Pi to investigate before schema correction', async () => {
+    const hints: Array<string | undefined> = [];
+    const plan = JSON.stringify(implementationPlan);
+    const result = await localPlanningJson(async function* (hint) {
+        hints.push(hint);
+        yield complete(hints.length === 1 ? '{"type":"implementation-plan"}' : plan);
+    }, new AbortController().signal, 16000, 'plan', true, { hasInspectedSource: () => false });
+    assert.equal(result.text, plan);
+    assert.match(hints[1]!, /Investigate the relevant project source/);
+    assert.doesNotMatch(hints[1]!, /Your completed plan was rejected/);
+});
+
 test('valid JSON with a missing reuse field receives the exact schema issue and only one retry', async () => {
     const missing = { ...implementationPlan, steps: [implementationPlan.steps[0],
         (({ reuse: _reuse, ...step }) => step)(implementationPlan.steps[1])] };
