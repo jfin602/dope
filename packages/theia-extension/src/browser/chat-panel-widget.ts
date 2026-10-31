@@ -14,7 +14,8 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatActivityPresentation, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
@@ -52,6 +53,7 @@ function copyChatText(text: string): Promise<void> {
 }
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
+    private readonly copyMenu = new ChatCopyContextMenu();
     private static readonly toolbarChanged = new Emitter<void>();
     static readonly onDidChangeToolbar = ChatPanelWidget.toolbarChanged.event;
     readonly controller: ChatPanelController;
@@ -71,6 +73,20 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             await copyChatText(chatTranscriptCopyText(chat, this.controller.stream,
                 this.controller.transientUser?.chatId === chat.id ? this.controller.transientUser : undefined));
         } catch { this.status.textContent = 'Could not copy the transcript.'; }
+    }
+    openTranscriptCopyMenu(anchor: HTMLElement): void {
+        this.copyMenu.open(anchor, () => {
+            const chat = this.controller.chat;
+            return chat && this.canCopyTranscript ? chatDiagnosticCopyText(chat, { transcript: true }, this.controller.stream) : undefined;
+        }, copyChatText, message => { this.status.textContent = message; });
+    }
+    private bindDiagnosticCopy(button: HTMLButtonElement, message: ChatAssistantMessage): void {
+        this.copyMenu.bind(button, () => {
+            const chat = this.controller.chat;
+            return chat && chat.messages.some(item => item.id === message.id && item.role === 'assistant' &&
+                item.execution.id === message.execution.id) ?
+                chatDiagnosticCopyText(chat, { messageId: message.id }, this.controller.stream) : undefined;
+        }, copyChatText, feedback => { this.status.textContent = feedback; });
     }
     toggleChatSettings(): void {
         const chat = this.controller.chat;
@@ -1984,6 +2000,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     });
                     copy.setAttribute('aria-label', `Copy original JSON for ${activity.label}`);
                     copy.setAttribute('aria-live', 'polite');
+                    this.bindDiagnosticCopy(copy, message);
                     details.append(summary, raw, copy);
                     content.append(details);
                     if (activity.alert) item.classList.add('dope-chat-message-alert');
@@ -2114,8 +2131,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             }
             if (message.role === 'assistant') {
                 const copyText = chatResponseCopyText(message);
-                if (copyText) {
+                const diagnostic = chatDiagnosticCopyText(chat, { messageId: message.id }, this.controller.stream);
+                if (copyText || diagnostic) {
                     const copy = this.button('', () => {
+                        if (!copyText) { this.status.textContent = 'No final response to copy.'; return; }
                         void copyChatText(copyText)
                             .then(() => { icon.className = codicon('check');
                                 copy.setAttribute('aria-label', 'Response copied'); copy.title = 'Copied';
@@ -2127,6 +2146,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     copy.setAttribute('aria-label', 'Copy Response');
                     copy.setAttribute('aria-live', 'polite');
                     copy.title = 'Copy Response';
+                    this.bindDiagnosticCopy(copy, message);
                     const icon = document.createElement('span'); icon.className = codicon('copy');
                     icon.setAttribute('aria-hidden', 'true'); copy.append(icon);
                     item.append(copy);
@@ -2405,6 +2425,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
     }
     override dispose(): void {
+        this.copyMenu.close(false);
         this.stopElapsedTicker();
         this.endTranscriptDrag();
         document.removeEventListener('keydown', this.spacePanKeyDown);

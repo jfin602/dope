@@ -85,7 +85,7 @@ export class ChatPanelController {
         status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean; detail?: string; target?: string }[] };
     running = false;
     runStartedAt?: string;
-    stream: { messageId: string; executionId: string; content: string; sequence: number;
+    stream: { chatId: string; messageId: string; executionId: string; content: string; sequence: number;
         activitySequence: number; events: ChatActivityEvent[] } | undefined;
     planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
     roadmapGenerationStage?: Extract<import('@dope/chat/lib/service').ChatEvent, { kind: 'planning-progress' }>['stage'];
@@ -208,7 +208,7 @@ export class ChatPanelController {
                     if (current && (current.messageId !== event.messageId || current.executionId !== event.executionId ||
                         event.sequence !== current.sequence + 1)) return;
                     if (!current && event.sequence !== 0) return;
-                    this.stream = { messageId: event.messageId, executionId: event.executionId,
+                    this.stream = { chatId: event.chatId, messageId: event.messageId, executionId: event.executionId,
                         content: (current?.content ?? '') + event.delta, sequence: event.sequence,
                         activitySequence: current?.activitySequence ?? 0, events: current?.events ?? [] };
                     this.changed();
@@ -220,7 +220,7 @@ export class ChatPanelController {
                     if (current && (current.messageId !== event.messageId || current.executionId !== event.executionId ||
                         event.sequence !== current.activitySequence + 1)) return;
                     if (!current && event.sequence !== 1) return;
-                    this.stream = { messageId: event.messageId, executionId: event.executionId,
+                    this.stream = { chatId: event.chatId, messageId: event.messageId, executionId: event.executionId,
                         content: current?.content ?? '', sequence: current?.sequence ?? -1,
                         activitySequence: event.sequence,
                         events: [...(current?.events ?? []), { sequence: event.sequence,

@@ -8,7 +8,8 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { ChatActivityRecorder } from '../../packages/chat/lib/index.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -582,19 +583,90 @@ test('response and transcript copy use chronological conversational projections 
             status: 'failed', refs: [] } } as unknown as import('../../packages/chat/lib/index.js').ChatAssistantMessage;
     assert.equal(chatResponseCopyText(regular as import('../../packages/chat/lib/index.js').ChatAssistantMessage), regular.content);
     assert.match(chatResponseCopyText(planned), /No change needed/);
-    assert.match(chatResponseCopyText(failed), /failed before an approved change/);
+    assert.equal(chatResponseCopyText(failed), '');
     const transcript = chatTranscriptCopyText({ messages: [user, regular, planned, failed] as
         import('../../packages/chat/lib/index.js').ChatMessage[] });
     assert.ok(transcript.indexOf('You:') < transcript.indexOf('Assistant:'));
     assert.match(transcript, /Show a debug trace/);
     assert.match(transcript, /```ts\nconst x = 1;\n```/);
     assert.match(transcript, /No change needed/);
-    assert.match(transcript, /failed before an approved change/);
+    assert.doesNotMatch(transcript, /failed before an approved change/);
     assert.doesNotMatch(transcript, /INTERNAL_DIAGNOSTIC_PAYLOAD|"type":"no-action"/);
     assert.match(chatTranscriptCopyText({ messages: [user, regular] as
         import('../../packages/chat/lib/index.js').ChatMessage[] },
     { messageId: 'streaming-id', content: 'Streaming **answer**' }, { content: 'Pending user turn' }),
     /You:\nPending user turn$/);
+});
+
+test('diagnostic copy is scoped, chronological, persistent and separate from clean copy', () => {
+    const chatId = randomUUID();
+    const cancelledId = randomUUID(); const cancelledRun = randomUUID();
+    const doneId = randomUUID(); const doneRun = randomUUID();
+    const cancelledActivity = new ChatActivityRecorder(chatId, cancelledId, cancelledRun);
+    for (let index = 0; index < 12; index++) cancelledActivity.add('provisional', `Repeated paragraph ${index}.\n`);
+    cancelledActivity.add('tool', 'read_file: completed');
+    const completedActivity = new ChatActivityRecorder(chatId, doneId, doneRun);
+    completedActivity.add('thinking', 'Captured reasoning, exactly.');
+    completedActivity.add('tool', 'run_command: denied');
+    const cancelled = { role: 'assistant', id: cancelledId, content: '',
+        execution: { id: cancelledRun, status: 'cancelled' }, activity: cancelledActivity.snapshot() } as
+        import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    const done = { role: 'assistant', id: doneId, content: 'Committed answer.',
+        execution: { id: doneRun, status: 'complete' }, activity: completedActivity.snapshot() } as
+        import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    const chat = { id: chatId, messages: [{ role: 'user', content: 'First question.' }, cancelled,
+        { role: 'user', content: 'Second question.' }, done] } as import('../../packages/chat/lib/index.js').Chat;
+    const clean = chatTranscriptCopyText(chat);
+    assert.doesNotMatch(clean, /Repeated paragraph|Captured reasoning|No final response/);
+    assert.equal(chatResponseCopyText(cancelled), '');
+    assert.equal(chatResponseCopyText(done), 'Committed answer.');
+    const diagnostic = chatDiagnosticCopyText(chat, { transcript: true })!;
+    assert.ok(diagnostic.indexOf('First question.') < diagnostic.indexOf('Repeated paragraph 0.'));
+    assert.ok(diagnostic.indexOf('Repeated paragraph 11.') < diagnostic.indexOf('Second question.'));
+    assert.match(diagnostic, /No final response/);
+    assert.match(diagnostic, /Captured reasoning, exactly\./);
+    assert.match(diagnostic, /Tool: read_file: completed/);
+    assert.match(diagnostic, /Final response:\nCommitted answer\./);
+    assert.doesNotMatch(chatDiagnosticCopyText(chat, { messageId: doneId })!, /Repeated paragraph/);
+    assert.equal(chatDiagnosticCopyText({ ...chat, id: randomUUID() }, { messageId: cancelledId }), undefined);
+    assert.equal(chatDiagnosticCopyText({ ...chat, messages: [{ ...done, activity: undefined }] },
+        { messageId: doneId }), undefined);
+    assert.equal(chatDiagnosticCopyText({ ...chat, messages: [{ ...done, activity: undefined }] },
+        { messageId: doneId }, { chatId: randomUUID(), messageId: doneId, executionId: doneRun,
+            events: completedActivity.snapshot().events }), undefined);
+    const reopened = structuredClone(chat);
+    assert.equal(chatDiagnosticCopyText(reopened, { transcript: true }), diagnostic);
+});
+
+test('diagnostic copy marks storage truncation and exports metadata, not tool payloads or tokens', () => {
+    const chatId = randomUUID(); const messageId = randomUUID(); const executionId = randomUUID();
+    const recorder = new ChatActivityRecorder(chatId, messageId, executionId);
+    recorder.add('thinking', 'api_key=veryprivate');
+    recorder.add('tool', 'run_command: completed');
+    recorder.add('provisional', 'A'.repeat(140_000));
+    const message = { role: 'assistant', id: messageId, content: '',
+        execution: { id: executionId, status: 'failed' }, activity: recorder.snapshot() } as
+        import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    const exported = chatDiagnosticCopyText({ id: chatId, messages: [message] } as
+        import('../../packages/chat/lib/index.js').Chat, { messageId })!;
+    assert.match(exported, /\[redacted\]/);
+    assert.match(exported, /Activity truncated/);
+    assert.match(exported, /Tool: run_command: completed/);
+    assert.match(exported, /No final response/);
+    assert.doesNotMatch(exported, /veryprivate|approval token|raw tool output/);
+});
+
+test('all Dope Chat copy controls use the shared accessible context menu', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const frontend = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
+    const menu = await readFile(new URL('../../packages/theia-extension/src/browser/chat-copy-context-menu.ts', import.meta.url), 'utf8');
+    assert.match(widget, /this\.bindDiagnosticCopy\(copy, message\)/);
+    assert.match(widget, /this\.copyMenu\.open\(anchor/);
+    assert.match(frontend, /dope\.chat\.copyTranscript[\s\S]*openTranscriptCopyMenu\(button\)/);
+    for (const key of ['contextmenu', 'ContextMenu', 'F10', 'ArrowDown', 'ArrowUp', 'Escape'])
+        assert.ok(menu.includes(key), key);
+    assert.match(menu, /No captured reasoning or provisional activity/);
+    assert.match(menu, /this\.anchor\.focus\(\)/);
 });
 
 test('touch drag follows vertical movement and leaves horizontal gestures to the browser', () => {

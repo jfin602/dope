@@ -322,6 +322,7 @@ export function canDragChatTranscript(target: Element, spacePan = false): boolea
 /** Copy the same conversational projection shown in Chat, never its inspectable machine payload. */
 export function chatResponseCopyText(message: ChatAssistantMessage, streamingContent?: string): string {
     if (streamingContent !== undefined) return '';
+    if (message.execution && message.execution.status !== 'complete') return '';
     const activity = planningActivityPresentation(message);
     if (activity) {
         const outcome = planningOutcome(message);
@@ -333,7 +334,57 @@ export function chatResponseCopyText(message: ChatAssistantMessage, streamingCon
         const outcome = planningOutcome(message);
         return [outcome?.summary, outcome?.questions.join(' ')].filter(Boolean).join('\n\n');
     }
-    return message.execution && message.execution.status !== 'complete' ? '' : message.content;
+    return message.content;
+}
+
+/** A read-only, ID-bound export of captured activity. Stored tool events contain metadata only. */
+export function chatDiagnosticCopyText(chat: Pick<Chat, 'id' | 'messages'>,
+    scope: { messageId: string } | { transcript: true },
+    stream?: { chatId: string; messageId: string; executionId: string; events: import('@dope/chat').ChatActivityEvent[] }):
+    string | undefined {
+    const activityFor = (message: ChatAssistantMessage) => {
+        const saved = message.activity;
+        if (stream?.chatId === chat.id && stream.messageId === message.id &&
+            stream.executionId === message.execution.id)
+            return { events: stream.events, truncated: stream.events.some(event => event.kind === 'truncated') };
+        if (saved && saved.chatId === chat.id && saved.messageId === message.id &&
+            saved.executionId === message.execution.id) return saved;
+        return undefined;
+    };
+    const assistants = chat.messages.filter((message): message is ChatAssistantMessage => message.role === 'assistant');
+    const selected = 'messageId' in scope ? assistants.filter(message => message.id === scope.messageId) : assistants;
+    if (!selected.some(message => activityFor(message)?.events.some(event =>
+        event.kind === 'thinking' || event.kind === 'provisional'))) return undefined;
+    const assistantText = (message: ChatAssistantMessage): string => {
+        const activity = activityFor(message);
+        const lines = [`Assistant [message ${message.id}; execution ${message.execution.id}; ${message.execution.status}]:`];
+        let pending: { kind: 'thinking' | 'provisional'; text: string } | undefined;
+        const flush = () => {
+            if (pending) lines.push(`[${pending.kind === 'thinking' ? 'Reasoning' : 'Provisional output'}]\n${pending.text}`);
+            pending = undefined;
+        };
+        for (const event of activity?.events ?? []) {
+            if (event.kind === 'thinking' || event.kind === 'provisional') {
+                if (pending?.kind === event.kind) pending.text += event.text;
+                else { flush(); pending = { kind: event.kind, text: event.text }; }
+                continue;
+            }
+            flush();
+            if (event.kind === 'tool') {
+                // Tool payloads are never exported. Even a malformed live event receives a safe label.
+                const safe = /^(?:read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command): (?:running|completed|failed|denied)$/.test(event.text);
+                lines.push(`[Tool: ${safe ? event.text : 'details redacted'}]`);
+            } else if (event.kind === 'truncated') lines.push('[Activity truncated]');
+        }
+        flush();
+        if (activity?.truncated && !activity.events.some(event => event.kind === 'truncated')) lines.push('[Activity truncated]');
+        const final = chatResponseCopyText(message);
+        lines.push(final ? `Final response:\n${final}` : 'No final response');
+        return lines.join('\n');
+    };
+    if ('messageId' in scope) return selected[0] ? assistantText(selected[0]) : undefined;
+    return chat.messages.map(message => message.role === 'user' ? `You:\n${message.content}` :
+        assistantText(message)).join('\n\n');
 }
 
 /** A bounded display projection of diagnostics, never conversational answer text. */
@@ -357,7 +408,8 @@ export function chatTranscriptCopyText(chat: Pick<Chat, 'messages'>,
     stream?: { messageId?: string; content: string }, transientUser?: { content: string }): string {
     const turns = chat.messages.flatMap(message => {
         const content = message.role === 'user' ? message.content : chatResponseCopyText(message,
-            stream?.messageId !== undefined && stream.messageId === message.id ? stream.content : undefined);
+            stream !== undefined && stream.messageId === message.id &&
+            message.execution?.status !== 'complete' ? stream.content : undefined);
         return content ? [`${message.role === 'user' ? 'You' : 'Assistant'}:\n${content}`] : [];
     });
     if (transientUser?.content) turns.push(`You:\n${transientUser.content}`);

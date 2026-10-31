@@ -196,7 +196,20 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container, modelConnectionsServicePath,
             { notifyModelConnectionsChanged() { modelInventoryChanged.fire(); } } satisfies ModelConnectionsClient)).inSingletonScope();
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
-        initialize: () => context.container.get(ThemeService).register(dopeDarkTheme),
+        initialize: () => {
+            context.container.get(ThemeService).register(dopeDarkTheme);
+            const openTranscriptMenu = (event: MouseEvent | KeyboardEvent) => {
+                const button = (event.target as Element | null)?.closest<HTMLElement>('[id="dope.chat.copyTranscript"]');
+                if (!button || (event instanceof KeyboardEvent &&
+                    event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10'))) return;
+                const widget = context.container.get(ApplicationShell).currentWidget;
+                if (!(widget instanceof ChatPanelWidget) || !widget.canCopyTranscript) return;
+                event.preventDefault(); event.stopPropagation();
+                widget.openTranscriptCopyMenu(button);
+            };
+            document.addEventListener('contextmenu', openTranscriptMenu, true);
+            document.addEventListener('keydown', openTranscriptMenu, true);
+        },
     })).inSingletonScope();
     bindViewContribution(bind, SoftwareMapView);
     bindViewContribution(bind, LeftChatLauncher);
