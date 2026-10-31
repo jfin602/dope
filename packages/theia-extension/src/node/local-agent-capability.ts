@@ -44,11 +44,12 @@ export class LocalAgentCapabilityProbe {
             ];
             const common = { connection, modelId, loadedModelIds: [modelId], inventory, budget,
                 ...(credential === undefined ? {} : { credential }), signal: abort, timeoutMs: this.timeoutMs,
-                maxOutputTokens: 128 };
+                maxOutputTokens: 512 };
             const first = await bounded(this.transport.turn({ ...common, messages }));
             if (first.kind !== 'tools' || first.calls.length !== 1) return 'unsupported';
             const call = first.calls[0];
-            if (call.name !== 'read' || call.arguments.path !== path) return 'unsupported';
+            if (call.name !== 'read' || call.arguments.path !== path || call.arguments.maxBytes !== 128)
+                return 'unsupported';
             messages.push({ role: 'assistant', content: '', tool_calls: [{ id: call.id, type: 'function',
                 function: { name: call.name, arguments: JSON.stringify(call.arguments) } }] });
             messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify({ id: call.id,

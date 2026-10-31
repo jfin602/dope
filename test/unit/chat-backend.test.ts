@@ -123,6 +123,7 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
 test('only an explicit first-pass planning request selects plan mode', () => {
     assert.equal(requestsImplementationPlan(firstPlanRequest), true);
     assert.equal(requestsImplementationPlan("Inspect this project's implementation and prepare one small, concrete development milestone with validation steps. Present the proposal for my review without changing source files."), true);
+    assert.equal(requestsImplementationPlan("Inspect this project's source files using your available tools. Identify what is implemented and propose one small development milestone with concrete validation steps. Present the implementation plan for review. Do not modify files or the Roadmap."), true);
     for (const ordinary of ['Plan with Chat help', 'What is the plan?', 'Plan a trip',
         'Please inspect src/diffEditor.js', 'Plan a checkpoint and inspect the Roadmap',
         'Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js'])

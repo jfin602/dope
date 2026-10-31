@@ -84,8 +84,9 @@ export class ChatPanelController {
     commandMode: ChatCommandMode = 'ask';
     pendingCommand?: ChatCommandPreview;
     toolProgress?: { messageId: string; events: { name: NonNullable<import('@dope/chat').ChatExecution['toolEvents']>[number]['name'];
-        status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean }[] };
+        status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean; detail?: string; target?: string }[] };
     running = false;
+    runStartedAt?: string;
     stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
     planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
     roadmapGenerationStage?: Extract<import('@dope/chat/lib/service').ChatEvent, { kind: 'planning-progress' }>['stage'];
@@ -181,8 +182,10 @@ export class ChatPanelController {
                 if (event.kind === 'tool-progress') {
                     if (event.chatId !== this.chatId || !this.running) return;
                     const current = this.toolProgress?.messageId === event.messageId ? this.toolProgress.events : [];
-                    const next = event.status === 'running' ? [...current, { name: event.name, status: event.status }] :
-                        [...current.slice(0, -1), { name: event.name, status: event.status, truncated: event.truncated }];
+                    const next = event.status === 'running' ?
+                        [...current, { name: event.name, status: event.status, detail: event.detail, target: event.target }] :
+                        [...current.slice(0, -1), { name: event.name, status: event.status,
+                            truncated: event.truncated, detail: event.detail, target: event.target }];
                     this.toolProgress = { messageId: event.messageId, events: next.slice(-16) };
                     this.changed(); return;
                 }
@@ -510,7 +513,8 @@ export class ChatPanelController {
         }
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
-        this.running = true; this.error = ''; this.stream = undefined; this.planningProgress = undefined;
+        this.running = true; this.runStartedAt = new Date().toISOString();
+        this.error = ''; this.stream = undefined; this.planningProgress = undefined;
         this.toolProgress = undefined;
         this.planningProposal = undefined; this.planningProposalError = undefined;
         this.planningProposalErrorMessageId = undefined; this.planPreview = undefined;
@@ -563,7 +567,8 @@ export class ChatPanelController {
             return false;
         } finally {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {
-                this.running = false; this.stream = undefined; this.planningProgress = undefined;
+                this.running = false; this.runStartedAt = undefined;
+                this.stream = undefined; this.planningProgress = undefined;
                 this.pendingCommand = undefined;
                 this.roadmapGenerationStage = undefined; this.activeRoadmapOfferId = undefined; this.changed();
                 await this.refresh(true);

@@ -1,7 +1,7 @@
 import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { ApplicationShell, type StatefulWidget } from '@theia/core/lib/browser';
 import { SingleTextInputDialog } from '@theia/core/lib/browser/dialogs';
-import type { Event } from '@theia/core/lib/common';
+import { Emitter, type Event } from '@theia/core/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { ConnectionStatus, type ConnectionStatusService } from '@theia/core/lib/browser/connection-status-service';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
@@ -21,6 +21,7 @@ import type { WorkSelection } from './shared-panel-state';
 import { WorkSelectionController, workManualGateReady, workReviewCanAccept, workReviewState, workRows, workRunOverview, workTitle } from './work-selection-controller';
 import { WorkSelectionNavigator } from './work-selection-navigator';
 import { restoreWorkScroll, workDisclosureKeydown } from './work-transcript-presentation';
+import { formatRunElapsed, formatRunElapsedCompact } from './run-elapsed';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
@@ -51,15 +52,40 @@ function copyChatText(text: string): Promise<void> {
 }
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
+    private static readonly toolbarChanged = new Emitter<void>();
+    static readonly onDidChangeToolbar = ChatPanelWidget.toolbarChanged.event;
     readonly controller: ChatPanelController;
     readonly panel: SharedPanelState;
     readonly workController?: WorkSelectionController;
     readonly directController?: AgentRunController;
     private composingWork = false;
+    private toolbarState = '';
+    get canBackToChats(): boolean { return this.panel.mode === 'chat' && this.controller.mode === 'chat'; }
+    backToChats(): void { if (this.canBackToChats) this.controller.select(undefined); }
+    get canCopyTranscript(): boolean { return this.canBackToChats && !!this.controller.chat?.messages.length; }
+    get canOpenChatSettings(): boolean { return this.canBackToChats && !!this.controller.chat; }
+    async copyWholeTranscript(): Promise<void> {
+        const chat = this.controller.chat;
+        if (!this.canCopyTranscript || !chat) return;
+        try {
+            await copyChatText(chatTranscriptCopyText(chat, this.controller.stream,
+                this.controller.transientUser?.chatId === chat.id ? this.controller.transientUser : undefined));
+        } catch { this.status.textContent = 'Could not copy the transcript.'; }
+    }
+    toggleChatSettings(): void {
+        const chat = this.controller.chat;
+        if (!this.canOpenChatSettings || !chat) return;
+        this.settingsOpen = !this.settingsOpen;
+        this.revealSettings = this.settingsOpen;
+        this.settingsDraft = this.settingsOpen ? structuredClone(chat.settings) : undefined;
+        this.settingsChatId = chat.id;
+        this.render();
+    }
     private strategicPresentationKey = '';
     private strategicPresentationTarget?: { workspace: string; projectId: string; chatId: string };
     private strategicPresentationQueue: Promise<void> = Promise.resolve();
     private readonly openPlanningActivities = new Set<string>();
+    private readonly openToolActivities = new Set<string>();
     private promptStacksOnly = false;
     private lastWorkSelection?: WorkSelection;
     private readonly rootsListener;
@@ -84,6 +110,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private workAttachmentError = false;
     private workAttachTimer?: ReturnType<typeof setTimeout>;
     private reconnectProbe?: ReturnType<typeof setInterval>;
+    private elapsedTicker?: ReturnType<typeof setInterval>;
     private probingBackend = false;
     private workNavigator?: WorkSelectionNavigator;
     private modelsRequest = 0;
@@ -92,6 +119,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private revealSettings = false;
     private settingsDraft?: ChatSettings;
     private settingsChatId?: string;
+    private titleEditingChatId?: string;
+    private titleDraft = '';
     private readonly scrollFollow = new ChatScrollFollow();
     private readonly transcriptDrag = new ChatTranscriptDrag();
     private readonly workFollow = new ChatScrollFollow();
@@ -126,8 +155,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly presentStrategicRoadmap?: (projectUri: string, projectId: string, chatId: string,
             state: { stage?: Extract<ChatEvent, { kind: 'planning-progress' }>['stage'];
                 review?: ChatStrategicDraftReview; error?: string; clear?: boolean; busy?: boolean },
-            decide: (approve: boolean) => Promise<void>, open: boolean) => Promise<void>,
-        private readonly prepareWorkDraft?: (workspace: string, model: ChatModelSelection, instructions: string) => Promise<void>) {
+            decide: (approve: boolean) => Promise<void>, open: boolean) => Promise<void>) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -311,8 +339,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const state = this.controller;
         const active = state.activePlanning;
         const label = this.content.querySelector<HTMLElement>('.dope-chat-planning-context');
-        if (label) label.textContent = `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
-            (active ? `${active.kind === 'roadmap-checkpoint' ? 'checkpoint' : active.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${active.id}` : 'none');
+        if (label) {
+            label.hidden = !active;
+            label.textContent = active ? `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
+                `${active.kind === 'roadmap-checkpoint' ? 'checkpoint' : active.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${active.id}` : '';
+        }
         const pin = this.content.querySelector<HTMLButtonElement>('.dope-chat-pin-planning');
         if (pin) pin.disabled = !state.workspace || !this.planningSelection?.current(state.workspace);
     }
@@ -558,21 +589,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         else this.render();
         if (!navigationOnly) await this.refreshWork();
     }
-    /** The existing Work composer owns all later model, validation, grant and Start decisions. */
-    async receiveChatWorkDraft(workspace: string, model: ChatModelSelection, instructions: string): Promise<void> {
-        await this.initialAttach;
-        const controller = this.directController;
-        if (this.module !== 'work' || this.panel.workspace !== workspace || controller?.project !== workspace ||
-            !controller.handle || !instructions.trim()) throw new Error('Work project changed; prepare the draft again.');
-        await this.selectWorkLauncher();
-        await this.selectWork();
-        if (this.panel.workspace !== workspace || controller.project !== workspace) throw new Error('Work project changed.');
-        controller.setPolicy({ kind: 'exact', connectionId: model.connectionId, modelId: model.modelId });
-        controller.edit(instructions.trim().split('\n')[0].slice(0, 1000), instructions.trim().slice(0, 20000));
-        controller.setValidation('');
-        controller.acceptGrant(false); controller.authorizeHostedProjectData(false);
-        this.composingWork = true; this.render();
-    }
     /** Exact owner navigation; never starts a task or changes the Chat conversation. */
     async navigateWork(selection: WorkSelection, workspace: string): Promise<boolean> {
         await this.initialAttach;
@@ -730,8 +746,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const title = document.createElement('span'); title.className = 'dope-work-row-title'; title.textContent = row.title;
                 const meta = document.createElement('span'); meta.className = 'dope-work-row-meta';
                 const time = Number.isFinite(Date.parse(row.updatedAt)) ? new Date(row.updatedAt).toLocaleString() : '';
-                meta.textContent = [row.status, row.activity, row.elapsedMs === undefined ? time :
-                    `${Math.floor(row.elapsedMs / 60000)}m elapsed`].filter(Boolean).join(' · ');
+                meta.textContent = [row.status, row.activity, time].filter(Boolean).join(' · ');
+                if (row.startedAt) meta.append(' · ', this.elapsedClock(row.startedAt, row.endedAt, row.running));
                 text.append(title, meta);
                 if (row.stack) { const progress = document.createElement('span'); progress.className = 'dope-work-row-progress';
                     progress.textContent = row.stack; text.append(progress); }
@@ -846,6 +862,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         overview.setAttribute('aria-live', 'polite');
         overview.textContent = `${view.origin === 'prompt-stack' ? 'Prompt Stack' : view.origin === 'work-item' ? 'WorkItem' : 'Direct Work'} · ${view.status}`;
         scroll.append(overview);
+        const displayedRun = work.kind === 'sequence' ? controller.phase.run :
+            work.kind === 'run' ? controller.selectedRun : undefined;
+        if (displayedRun?.startedAt) scroll.append(this.elapsedClock(displayedRun.startedAt,
+            displayedRun.endedAt, displayedRun.status === 'running'));
         const decision = document.createElement('section'); decision.className = 'dope-work-start';
         decision.setAttribute('aria-label', 'Next Work action');
         const decisionTitle = document.createElement('h3'); decisionTitle.textContent = 'Next action'; decision.append(decisionTitle);
@@ -1296,6 +1316,119 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.content.append(region);
         latest.hidden = !this.workFollow.latestBelow;
     }
+    private elapsedClock(startedAt: string, endedAt?: string, running = false): HTMLSpanElement {
+        const clock = document.createElement('span');
+        clock.className = 'dope-elapsed-time';
+        clock.dataset.startedAt = startedAt;
+        if (endedAt) clock.dataset.endedAt = endedAt;
+        if (running) clock.dataset.running = 'true';
+        clock.textContent = `Elapsed ${formatRunElapsed(startedAt, endedAt) ?? '—'}`;
+        return clock;
+    }
+    private compactElapsedClock(startedAt: string, endedAt?: string, running = false): HTMLSpanElement {
+        const clock = document.createElement('span');
+        clock.className = 'dope-elapsed-time';
+        clock.dataset.startedAt = startedAt;
+        clock.dataset.compact = 'true';
+        if (running) clock.dataset.running = 'true';
+        clock.textContent = formatRunElapsedCompact(startedAt, endedAt ? Date.parse(endedAt) : Date.now()) ?? '0s';
+        return clock;
+    }
+    private appendWorkingStatus(item: HTMLElement, startedAt: string): void {
+        const row = document.createElement('div');
+        row.className = 'dope-chat-working-row';
+        row.setAttribute('role', 'status');
+        const label = document.createElement('span'); label.textContent = 'Working...';
+        row.append(label, this.compactElapsedClock(startedAt, undefined, true));
+        item.append(row);
+    }
+    private appendToolActivity(item: HTMLElement, messageId: string,
+        events: readonly { name: string; status: string; truncated?: boolean; detail?: string; target?: string }[] | undefined,
+        active: boolean, startedAt: string, endedAt?: string): void {
+        const labels: Record<string, string> = { read_file: 'Read', list_files: 'List',
+            search_paths: 'Find paths', search_text: 'Search text', run_command: 'Command',
+            dope_read: 'Read', dope_list: 'List', dope_search_paths: 'Find paths',
+            dope_search_text: 'Search text', dope_command: 'Command' };
+        const steps = events?.length ?? 0;
+        const current = events?.at(-1);
+        if (active && !steps) return;
+        const labelText = active && current ?
+            `${labels[current.name] ?? 'Tool'}${current.target ? ` · ${current.target}` : ''}` :
+            steps ? `Project activity · ${steps} tool ${steps === 1 ? 'step' : 'steps'}` : 'Project activity';
+        if (!steps) {
+            const row = document.createElement('div'); row.className = 'dope-chat-activity-static';
+            const label = document.createElement('span'); label.textContent = labelText;
+            row.append(label, this.compactElapsedClock(startedAt, endedAt));
+            item.append(row);
+            return;
+        }
+        const activity = document.createElement('details'); activity.className = 'dope-chat-tool-activity';
+        activity.open = this.openToolActivities.has(messageId);
+        activity.addEventListener('toggle', () => {
+            if (activity.open) this.openToolActivities.add(messageId);
+            else this.openToolActivities.delete(messageId);
+        });
+        const heading = document.createElement('summary');
+        const label = document.createElement('span'); label.className = 'dope-chat-activity-label';
+        label.textContent = labelText;
+        heading.append(label);
+        if (!active) heading.append(this.compactElapsedClock(startedAt, endedAt));
+        activity.append(heading);
+        if (active && current) {
+            const exact = document.createElement('pre');
+            exact.className = 'dope-chat-tool-detail';
+            exact.textContent = current.detail ?? `${current.name} (call details unavailable)`;
+            activity.append(exact);
+            const history = document.createElement('div');
+            history.className = 'dope-chat-tool-history-title';
+            history.textContent = `Project activity · ${steps} tool ${steps === 1 ? 'step' : 'steps'}`;
+            activity.append(history);
+        }
+        const list = document.createElement('ul');
+        for (const event of events ?? []) {
+            const row = document.createElement('li');
+            const command = event.name === 'run_command' || event.name === 'dope_command';
+            const outcome = command && event.status === 'completed' ? 'allowed · completed' :
+                command && event.status === 'failed' ? 'allowed · failed' : event.status;
+            row.textContent = `${labels[event.name] ?? 'Tool'} · ${outcome}${event.truncated ? ' · truncated' : ''}`;
+            list.append(row);
+        }
+        activity.append(list); item.append(activity);
+    }
+    private syncElapsedTicker(): void {
+        const active = this.content.querySelector('.dope-elapsed-time[data-running="true"]');
+        if (!active) { this.stopElapsedTicker(); return; }
+        if (this.elapsedTicker) return;
+        this.elapsedTicker = setInterval(() => {
+            const clocks = this.content.querySelectorAll<HTMLElement>('.dope-elapsed-time[data-running="true"]');
+            if (!clocks.length) { this.stopElapsedTicker(); return; }
+            const now = Date.now();
+            clocks.forEach(clock => {
+                clock.textContent = clock.dataset.compact === 'true' ?
+                    formatRunElapsedCompact(clock.dataset.startedAt ?? '', now) ?? '0s' :
+                    `Elapsed ${formatRunElapsed(clock.dataset.startedAt ?? '', undefined, now) ?? '—'}`;
+            });
+        }, 1000);
+    }
+    private stopElapsedTicker(): void {
+        if (this.elapsedTicker) clearInterval(this.elapsedTicker);
+        this.elapsedTicker = undefined;
+    }
+    private toggleTitleEditing(chatId: string, currentTitle: string): void {
+        if (this.titleEditingChatId === chatId) {
+            const title = this.titleDraft.trim();
+            this.titleEditingChatId = undefined;
+            if (title && title !== currentTitle) this.mutate({ type: 'rename-chat', chatId, title });
+        } else {
+            this.titleEditingChatId = chatId;
+            this.titleDraft = currentTitle;
+        }
+        this.render();
+        if (this.titleEditingChatId === chatId) {
+            const input = this.content.querySelector<HTMLInputElement>('.dope-chat-title-input');
+            input?.focus(); input?.select();
+        }
+    }
     private async name(title: string, value = ''): Promise<string | undefined> {
         const result = await new SingleTextInputDialog({ title, initialValue: value, confirmButtonLabel: 'Save' }).open();
         return result?.trim() || undefined;
@@ -1621,6 +1754,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private render(): void {
         const state = this.controller;
+        const toolbarState = `${this.canBackToChats}:${this.canCopyTranscript}:${this.canOpenChatSettings}`;
+        if (toolbarState !== this.toolbarState) {
+            this.toolbarState = toolbarState;
+            ChatPanelWidget.toolbarChanged.fire();
+        }
         if (this.dragPointerId !== undefined && (this.panel.mode !== 'chat' || state.mode !== 'chat' || state.chatId !== this.dragChatId))
             this.endTranscriptDrag();
         const selectedWork = this.panel.work;
@@ -1683,6 +1821,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             }));
         }
         this.content.replaceChildren();
+        this.stopElapsedTicker();
         if (this.panel.mode === 'work') {
             this.renderWork();
             const current = this.content.querySelector<HTMLElement>('.dope-work-scroll');
@@ -1693,6 +1832,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (latest) latest.hidden = !this.workFollow.latestBelow;
             }
             this.workSelectionChanged = false;
+            this.syncElapsedTicker();
             if (focused) this.content.querySelectorAll<HTMLElement>('[aria-label]').forEach(element => {
                 if (element.getAttribute('aria-label') === focused) element.focus({ preventScroll: true });
             });
@@ -1707,6 +1847,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         if (state.mode === 'select-chat') {
             this.settingsOpen = false; this.settingsDraft = undefined; this.settingsChatId = undefined;
+            this.titleEditingChatId = undefined;
             const header = document.createElement('header');
             header.className = 'dope-chat-selector-header';
             const heading = document.createElement('h2');
@@ -1732,51 +1873,34 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (this.settingsChatId !== chat.id) {
             this.settingsOpen = false; this.settingsDraft = undefined; this.settingsChatId = chat.id;
         }
-        const copyTranscript = () => {
-            const text = chatTranscriptCopyText(chat, state.stream,
-                state.transientUser?.chatId === chat.id ? state.transientUser : undefined);
-            void copyChatText(text)
-                .then(() => {
-                    transcriptCopyIcon.className = codicon('check');
-                    transcriptCopy.setAttribute('aria-label', 'Transcript copied'); transcriptCopy.title = 'Transcript copied';
-                    setTimeout(() => {
-                        transcriptCopyIcon.className = codicon('copy');
-                        transcriptCopy.setAttribute('aria-label', 'Copy whole transcript');
-                        transcriptCopy.title = 'Copy whole transcript';
-                    }, 2000);
-                }, () => {
-                    transcriptCopy.setAttribute('aria-label', 'Copy transcript failed');
-                    transcriptCopy.title = 'Copy transcript failed';
-                });
-        };
+        if (this.titleEditingChatId && this.titleEditingChatId !== chat.id) this.titleEditingChatId = undefined;
         const header = document.createElement('header');
-        const back = this.button('', () => state.select(undefined));
-        back.className = 'dope-chat-back';
-        back.setAttribute('aria-label', 'Back to Chats');
-        back.title = 'Back to Chats';
-        const backIcon = document.createElement('span');
-        backIcon.className = codicon('arrow-left'); backIcon.setAttribute('aria-hidden', 'true');
-        back.append(backIcon);
-        const heading = document.createElement('h2');
-        heading.textContent = chat.title;
-        const settings = this.button('⚙', () => {
-            this.settingsOpen = !this.settingsOpen;
-            this.revealSettings = this.settingsOpen;
-            this.settingsDraft = this.settingsOpen ? structuredClone(chat.settings) : undefined;
-            this.settingsChatId = chat.id;
-            this.render();
-        });
-        settings.className = 'dope-chat-settings';
-        settings.setAttribute('aria-label', 'Chat settings');
-        const transcriptCopy = this.button('', copyTranscript, !chat.messages.length);
-        transcriptCopy.className = 'dope-chat-copy-transcript';
-        transcriptCopy.setAttribute('aria-label', 'Copy whole transcript');
-        transcriptCopy.title = 'Copy whole transcript';
-        const transcriptCopyIcon = document.createElement('span');
-        transcriptCopyIcon.className = codicon('copy');
-        transcriptCopyIcon.setAttribute('aria-hidden', 'true');
-        transcriptCopy.append(transcriptCopyIcon);
-        header.append(back, heading, transcriptCopy, settings);
+        header.className = 'dope-chat-title-card';
+        if (this.titleEditingChatId === chat.id) {
+            const input = document.createElement('input');
+            input.className = 'dope-chat-title-input';
+            input.setAttribute('aria-label', 'Chat title');
+            input.maxLength = 200;
+            input.value = this.titleDraft;
+            input.oninput = () => { this.titleDraft = input.value; };
+            input.onkeydown = event => {
+                if (event.key === 'Enter') { event.preventDefault(); this.toggleTitleEditing(chat.id, chat.title); }
+                else if (event.key === 'Escape') { this.titleEditingChatId = undefined; this.render(); }
+            };
+            header.append(input);
+        } else {
+            const heading = document.createElement('h2');
+            heading.textContent = chat.title;
+            header.append(heading);
+        }
+        const editTitle = this.button('', () => this.toggleTitleEditing(chat.id, chat.title), state.pending);
+        editTitle.className = 'dope-chat-title-edit';
+        editTitle.setAttribute('aria-label', this.titleEditingChatId === chat.id ? 'Save chat title' : 'Edit chat title');
+        editTitle.title = this.titleEditingChatId === chat.id ? 'Save chat title' : 'Edit chat title';
+        const editIcon = document.createElement('span');
+        editIcon.className = codicon('edit'); editIcon.setAttribute('aria-hidden', 'true');
+        editTitle.append(editIcon);
+        header.append(editTitle);
         const shell = document.createElement('section'); shell.className = 'dope-chat-shell';
         const region = document.createElement('div'); region.className = 'dope-chat-transcript-region';
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll';
@@ -1807,7 +1931,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         transcript.className = 'dope-chat-transcript';
         const lastUserIndex = chat.messages.map(message => message.role).lastIndexOf('user');
         const activeAssistant = [...chat.messages.slice(lastUserIndex + 1)].reverse().find(message =>
-            message.role === 'assistant');
+            message.role === 'assistant' && ['pending', 'streaming'].includes(message.execution.status));
         for (const message of chat.messages) {
             const item = document.createElement('li');
             item.className = `dope-chat-message dope-chat-message-${message.role}`;
@@ -1819,10 +1943,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const body = message.role === 'assistant' && state.stream?.messageId === message.id ?
                 state.stream.content : message.content;
             if (message.role === 'assistant' && message.execution.status === 'pending' && !body) {
-                content.classList.add('dope-chat-working');
-                content.textContent = 'Working';
-                const dots = document.createElement('span'); dots.textContent = '…'; dots.setAttribute('aria-hidden', 'true');
-                content.append(dots);
+                if (!(state.running && message.id === activeAssistant?.id)) content.textContent = 'Working...';
             } else if (message.role === 'assistant') {
                 const activity = state.stream?.messageId === message.id ? undefined : planningActivityPresentation(message);
                 const outcome = state.stream?.messageId === message.id ? undefined : planningOutcome(message);
@@ -1885,51 +2006,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             time.textContent = new Date(message.createdAt).toLocaleString();
             item.append(content);
             if (message.role === 'assistant') {
-                if (state.running && message.id === activeAssistant?.id && body && !state.pendingCommand) {
-                    const working = document.createElement('p');
-                    working.className = 'dope-chat-working dope-chat-working-status';
-                    working.setAttribute('role', 'status'); working.textContent = 'Working…';
-                    item.append(working);
-                }
+                if (state.running && message.id === activeAssistant?.id)
+                    this.appendWorkingStatus(item, message.execution.startedAt);
                 const events = state.toolProgress?.messageId === message.id && state.running ?
                     state.toolProgress.events : message.execution.toolEvents;
-                if (events?.length) {
-                    const activity = document.createElement('details'); activity.className = 'dope-chat-tool-activity';
-                    const heading = document.createElement('summary');
-                    heading.textContent = `Project activity · ${events.length} tool ${events.length === 1 ? 'step' : 'steps'}`;
-                    const list = document.createElement('ul');
-                    for (const event of events) {
-                        const row = document.createElement('li');
-                        const label = { read_file: 'Read', list_files: 'List', search_paths: 'Find paths',
-                            search_text: 'Search text', run_command: 'Command', dope_read: 'Read', dope_list: 'List',
-                            dope_search_paths: 'Find paths', dope_search_text: 'Search text',
-                            dope_command: 'Command' }[event.name];
-                        const command = event.name === 'run_command' || event.name === 'dope_command';
-                        const outcome = command && event.status === 'completed' ? 'allowed · completed' :
-                            command && event.status === 'failed' ? 'allowed · failed' : event.status;
-                        row.textContent = `${label} · ${outcome}${event.truncated ? ' · truncated' : ''}`;
-                        list.append(row);
-                    }
-                    activity.append(heading, list); item.append(activity);
-                }
+                this.appendToolActivity(item, message.id, events, state.running && message.id === activeAssistant?.id,
+                    message.execution.startedAt, message.execution.finishedAt);
                 const action = this.roadmapActionCard(message);
                 if (action) item.append(action);
                 if (state.pendingCommand && message.id === activeAssistant?.id) {
                     const command = this.commandApprovalCard();
                     if (command) item.append(command);
-                }
-                if (this.prepareWorkDraft && message.execution.status === 'complete' && message.content.trim() &&
-                    (!message.planningActivity || ['applied', 'no-action'].includes(message.planningActivity.status))) {
-                    const prepare = this.button('Prepare Work', () => {
-                        const workspace = state.workspace;
-                        if (!workspace || state.chatId !== chat.id || state.running || state.pending) return;
-                        const instructions = implementationPlanAnswer(message) ||
-                            planningOutcome(message)?.summary || message.content;
-                        void this.prepareWorkDraft!(workspace, message.execution.selectedModel, instructions)
-                            .catch(error => { this.status.textContent = String(error); });
-                    }, state.running || state.pending);
-                    prepare.setAttribute('aria-label', 'Prepare Work draft from this response');
-                    item.append(prepare);
                 }
             }
             const meta = document.createElement('small'); meta.className = 'dope-chat-message-meta';
@@ -2033,27 +2120,20 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             content.className = 'dope-chat-message-content'; content.textContent = state.transientUser.content;
             item.append(content); transcript.append(item);
         }
-        if (state.running && !chat.messages.some(message =>
-            message.role === 'assistant' && ['pending', 'streaming'].includes(message.execution.status))) {
+        if (state.running && !activeAssistant) {
             const item = document.createElement('li'); item.className = 'dope-chat-message dope-chat-message-assistant';
             item.setAttribute('aria-label', state.stream?.content ? 'Assistant' : 'Assistant working');
             const content = document.createElement('div'); content.className = 'dope-chat-message-content';
             if (state.stream?.content) {
                 content.append(renderUntrustedMessageMarkdown(this.markdown, state.stream.content));
-            } else {
-                content.classList.add('dope-chat-working'); content.textContent = 'Working';
-                const dots = document.createElement('span'); dots.textContent = '…'; dots.setAttribute('aria-hidden', 'true');
-                content.append(dots);
             }
             item.append(content); transcript.append(item);
+            if (state.runStartedAt) this.appendWorkingStatus(item, state.runStartedAt);
+            if (state.runStartedAt) this.appendToolActivity(item, state.toolProgress?.messageId ?? '',
+                state.toolProgress?.events, true, state.runStartedAt);
             if (state.pendingCommand && !activeAssistant) {
                 const command = this.commandApprovalCard();
                 if (command) item.append(command);
-            } else if (state.stream?.content && !activeAssistant) {
-                const working = document.createElement('p');
-                working.className = 'dope-chat-working dope-chat-working-status';
-                working.setAttribute('role', 'status'); working.textContent = 'Working…';
-                item.append(working);
             }
         }
         scroll.append(transcript);
@@ -2097,7 +2177,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         for (const kind of chat.settings.context.allowedSources)
             sources.append(new Option(kind.replace(/-/g, ' '), kind));
         menu.append(sources);
-        menuButton('Copy Transcript', copyTranscript, !chat.messages.length);
         menuButton('Add context', () => void this.addContext(sources.value as ChatContextKind), !sources.options.length);
         for (const kind of ['Ask', 'Explain', 'Trace', 'Find Related'] as const)
             menuButton(kind, () => this.behavior(kind));
@@ -2188,19 +2267,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const responseNotices = document.createElement('div');
         responseNotices.className = 'dope-chat-response-notices';
         responseNotices.setAttribute('aria-label', 'Chat notices and reviews');
-        if (state.running && state.planningProgress) {
+        if (state.running && state.planningProgress?.stage === 'validating') {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';
             progress.setAttribute('role', 'status');
-            progress.textContent = state.planningProgress.stage === 'waiting' ?
-                'Waiting for local model…' : 'Validating local planning result…';
+            progress.textContent = 'Validating local planning result…';
             responseNotices.append(progress);
         }
         const planning = document.createElement('div');
         planning.className = 'dope-chat-planning-context';
         const activePlanning = state.activePlanning;
-        planning.textContent = `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
-            (activePlanning ? `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : activePlanning.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${activePlanning.id}` : 'none');
+        planning.hidden = !activePlanning;
+        planning.textContent = activePlanning ? `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
+            `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : activePlanning.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${activePlanning.id}` : '';
         responseNotices.append(planning);
         if (activePlanning?.kind === 'roadmap') {
             const notice = document.createElement('p');
@@ -2347,6 +2426,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.revealSettings = false;
         }
         latest.hidden = !this.scrollFollow.latestBelow;
+        this.syncElapsedTicker();
         if (focused) {
             const replacement = [...this.content.querySelectorAll<HTMLElement>('[aria-label]')]
                 .find(element => element.getAttribute('aria-label') === focused);
@@ -2356,6 +2436,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
     }
     override dispose(): void {
+        this.stopElapsedTicker();
         this.endTranscriptDrag();
         document.removeEventListener('keydown', this.spacePanKeyDown);
         document.removeEventListener('keyup', this.spacePanKeyUp);

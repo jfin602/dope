@@ -134,7 +134,9 @@ export class LocalToolTurnTransport {
             throw failure('Invalid Local turn envelope', 'invalid-json');
         const choice = data.choices[0];
         const message = choice.message;
-        if (message.refusal || message.reasoning || message.reasoning_content)
+        const reasoning = [message.reasoning, message.reasoning_content];
+        if (message.refusal || reasoning.some(value => value != null &&
+            (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > MAX_TEXT_BYTES)))
             throw failure('Unsupported Local assistant response', 'unsupported-capability');
         if (Array.isArray(message.tool_calls) && message.tool_calls.length) {
             // LM Studio can return explanatory assistant text with a tool-call turn. It

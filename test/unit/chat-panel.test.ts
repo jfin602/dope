@@ -268,7 +268,7 @@ test('restoration resolves duplicate panels, permits different Chats, and releas
         } finally { replacement.dispose(); }
     } finally {
         first.dispose(); second.dispose(); third.dispose();
-        await rm(root, { recursive: true, force: true });
+        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
     }
 });
 
@@ -359,7 +359,7 @@ test('saved Chat restore reclaims an orphaned browser lease only after expiry', 
         assert.equal((await repository.claim(root, chatId, 'competitor')).acquired, false);
     } finally {
         restored.dispose(); original.dispose();
-        await rm(root, { recursive: true, force: true });
+        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
     }
 });
 
@@ -386,7 +386,7 @@ test('saved Chat restore wakes on old transport close without a 60-second wait',
         await assert.rejects(repository.renew(root, chatId, lease.token), /lost/);
     } finally {
         restored.dispose(); old.dispose();
-        await rm(root, { recursive: true, force: true });
+        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
     }
 });
 
@@ -464,11 +464,12 @@ test('dispose during a late claim releases the token and ignores the late select
 test('selector and transcript retain keyboard and dark theme surfaces', async () => {
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const frontendModule = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
     assert.match(css, /\.dope-chat-panel button:focus-visible/);
     assert.match(css, /var\(--theia-editor-background\)/);
     assert.match(source, /document\.createElement\('button'\)/);
     assert.match(source, /document\.createElement\('summary'\)/);
-    assert.match(source, /Back to Chats/);
+    assert.match(frontendModule, /Back to Chats/);
     assert.match(source, /message\.content/);
     assert.match(source, /dope-chat-settings/);
 });

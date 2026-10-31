@@ -190,6 +190,8 @@ export interface WorkRow {
     running: boolean;
     stack?: string;
     elapsedMs?: number;
+    startedAt?: string;
+    endedAt?: string;
 }
 
 export function workReviewState(run?: AgentRun, task?: AgentTask, busy = false):
@@ -238,7 +240,8 @@ export function workRows(tasks: AgentTask[], runs: AgentRun[], sequences: AgentT
                 sequence.status === 'completed' ? 'All prompt entries complete' : 'Prompt Stack',
             updatedAt: sequence.updatedAt, running, stack: `${sequence.stack.folderName} · P${Math.min(sequence.currentEntryNumber,
                 sequence.stack.entries.length)} of ${sequence.stack.entries.length}`,
-            elapsedMs: running && run?.startedAt ? Math.max(0, now - Date.parse(run.startedAt)) : undefined });
+            elapsedMs: running && run?.startedAt ? Math.max(0, now - Date.parse(run.startedAt)) : undefined,
+            startedAt: run?.startedAt, endedAt: run?.endedAt });
     }
     for (const run of runs) {
         if (childRuns.has(run.id)) continue;
@@ -248,7 +251,8 @@ export function workRows(tasks: AgentTask[], runs: AgentRun[], sequences: AgentT
             activity: run.outcome?.summary ?? run.commandEvidence?.at(-1)?.commandSummary ??
                 run.changeSummary?.summary ?? (run.status === 'running' ? 'Agent working' : `Run ${run.status}`),
             updatedAt: run.endedAt ?? run.startedAt ?? run.createdAt, running: run.status === 'running',
-            elapsedMs: run.status === 'running' && run.startedAt ? Math.max(0, now - Date.parse(run.startedAt)) : undefined });
+            elapsedMs: run.status === 'running' && run.startedAt ? Math.max(0, now - Date.parse(run.startedAt)) : undefined,
+            startedAt: run.startedAt, endedAt: run.endedAt });
     }
     for (const task of tasks) {
         if (childTasks.has(task.id) || task.origin.kind === 'phase-stack' || runs.some(run => run.taskId === task.id)) continue;

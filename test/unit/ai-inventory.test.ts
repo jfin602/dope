@@ -52,9 +52,11 @@ async function fixture(run: (state: { store: AIRegistryStore; controller: AIInve
 
 test('Local Coding Agent eligibility requires synthetic tool continuation and live sandbox/context', async () => {
     let sandbox = true;
-    let mode: 'tools' | 'no-tool' | 'deferred' = 'tools';
+    let mode: 'tools' | 'no-tool' | 'wrong-args' | 'deferred' = 'tools';
     let release: (() => void) | undefined;
-    const transport = { async turn(request: { messages: { role: string; content: string }[] }) {
+    const transport = { async turn(request: { messages: { role: string; content: string }[];
+        maxOutputTokens: number }) {
+        assert.equal(request.maxOutputTokens, 512);
         if (request.messages.some(message => message.role === 'tool')) {
             const result = JSON.parse(request.messages.at(-1)!.content);
             return { kind: 'final' as const, text: `Value: ${result.output}` };
@@ -62,7 +64,7 @@ test('Local Coding Agent eligibility requires synthetic tool continuation and li
         if (mode === 'deferred') await new Promise<void>(resolve => { release = resolve; });
         if (mode === 'no-tool') return { kind: 'final' as const, text: 'OK' };
         return { kind: 'tools' as const, calls: [{ id: 'probe-call', name: 'read' as const,
-            arguments: { path: 'dope-synthetic-capability-probe.txt', maxBytes: 128 } }] };
+            arguments: { path: 'dope-synthetic-capability-probe.txt', maxBytes: mode === 'wrong-args' ? 1 : 128 } }] };
     } };
     const probe = new LocalAgentCapabilityProbe(transport as any, async () => ({ available: sandbox }));
     await fixture(async ({ store, controller, runtime, change }) => {
@@ -86,6 +88,9 @@ test('Local Coding Agent eligibility requires synthetic tool continuation and li
         assert.deepEqual((await controller.findEligibleModels({ usableOnly: true,
             capabilities: ['agentExecution'] })).models, []);
         mode = 'no-tool';
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'unsupported');
+        assert.equal((await capability())?.source, 'unknown');
+        mode = 'wrong-args';
         assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'unsupported');
         assert.equal((await capability())?.source, 'unknown');
         mode = 'tools'; sandbox = false;

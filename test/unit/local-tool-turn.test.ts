@@ -57,6 +57,18 @@ test('valid call is normalized through the P1 tool parser, never executed', asyn
         arguments: { path: 'src/main.ts', maxBytes: 100 } }] });
 });
 
+test('bounded LM Studio reasoning text is inert on tool and final turns', async () => {
+    const tool = mock(() => completion({ content: '', reasoning_content: 'I should read the synthetic file.',
+        tool_calls: [{ id: 'call_1', type: 'function', function: { name: 'read',
+            arguments: '{"path":"dope-synthetic-capability-probe.txt","maxBytes":128}' } }] }, 'tool_calls'));
+    assert.deepEqual(await tool.turn(request()), { kind: 'tools', calls: [{ id: 'call_1', name: 'read',
+        arguments: { path: 'dope-synthetic-capability-probe.txt', maxBytes: 128 } }] });
+    const final = mock(() => completion({ content: 'Value received', reasoning_content: 'Use the tool result.' }));
+    assert.deepEqual(await final.turn(request()), { kind: 'final', text: 'Value received' });
+    await expectClass(mock(() => completion({ content: 'bad', reasoning_content: { unexpected: true } }))
+        .turn(request()), 'unsupported-capability');
+});
+
 test('valid multi-line edit exceeds display reserve but remains within tool context budget', async () => {
     const content = 'test("clamp", () => {\n  assert.equal(clamp(1, 2, 10), 2);\n});\n'.repeat(9);
     const transport = mock(() => completion({ content: null, tool_calls: [{ id: 'call_1', type: 'function',

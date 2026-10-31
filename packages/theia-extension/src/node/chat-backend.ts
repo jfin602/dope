@@ -57,7 +57,12 @@ export function requestsImplementationPlan(content: string): boolean {
     const explicitMilestone = /^inspect\s+this\s+project(?:'s)?\s+implementation\s+and\s+prepare\s+one\s+small[,\s]+concrete\s+development\s+milestone\b/i.test(text) &&
         /\bvalidation\s+steps\b/i.test(text) && /\bproposal\s+for\s+my\s+review\b/i.test(text) &&
         /\bwithout\s+changing\s+source\s+files\b/i.test(text);
-    return explicitMilestone || /^plan\s+(?:a|an|the|my)\s+\S/i.test(text) &&
+    const sourceMilestone = /^inspect\s+this\s+project(?:'s)?\s+source\s+files\s+using\s+your\s+available\s+tools\b/i.test(text) &&
+        /\bpropose\s+one\s+small\s+development\s+milestone\b/i.test(text) &&
+        /\bconcrete\s+validation\s+steps\b/i.test(text) &&
+        /\bpresent\s+the\s+implementation\s+plan\s+for\s+review\b/i.test(text) &&
+        /\bdo\s+not\s+modify\s+files\s+or\s+the\s+roadmap\b/i.test(text);
+    return explicitMilestone || sourceMilestone || /^plan\s+(?:a|an|the|my)\s+\S/i.test(text) &&
         /\b(?:please\s+)?inspect\b/i.test(text) &&
         /\b(?:complete|full)\s+ordered\s+implementation\s+plan\b/i.test(text);
 }
@@ -1281,11 +1286,20 @@ export class ChatBackend implements ChatService {
         const projectTools = this.grounder ? { root,
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
                 const toolName = name as NonNullable<ChatAssistantMessage['execution']['toolEvents']>[number]['name'];
+                const field = name === 'run_command' ? 'command' :
+                    name === 'read_file' || name === 'list_files' ? 'path' : 'query';
+                const detailValue = args && typeof args === 'object' && !Array.isArray(args) ?
+                    (args as Record<string, unknown>)[field] : undefined;
+                const detail = typeof detailValue === 'string' && Buffer.byteLength(detailValue, 'utf8') <= 2048 &&
+                    !/[\x00-\x08\x0b-\x1f\x7f]/u.test(detailValue) ?
+                    `${name}(${JSON.stringify({ [field]: detailValue })})` : undefined;
+                const target = detail && typeof detailValue === 'string' ?
+                    detailValue.replace(/\s+/gu, ' ').trim().slice(0, 160) : undefined;
                 const notify = (status: 'running' | 'completed' | 'failed' | 'denied', truncated?: boolean) => {
                     if (!this.handle || !assistant || !['read_file', 'list_files', 'search_paths',
                         'search_text', 'run_command'].includes(name)) return;
                     try { this.client.notifyChatEvent({ projectHandle: this.handle, kind: 'tool-progress',
-                        chatId: key, messageId: assistant.id, name: toolName, status, truncated }); }
+                        chatId: key, messageId: assistant.id, name: toolName, status, truncated, detail, target }); }
                     catch { /* Transient progress never controls tool authority. */ }
                 };
                 const count = toolEvents.length;

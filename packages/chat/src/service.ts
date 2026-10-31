@@ -84,7 +84,7 @@ export type ChatEvent =
     | { projectHandle: string; kind: 'command-settled'; chatId: ChatId; id: string }
     | { projectHandle: string; kind: 'tool-progress'; chatId: ChatId; messageId: string;
         name: NonNullable<ChatExecution['toolEvents']>[number]['name'];
-        status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean };
+        status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean; detail?: string; target?: string };
 export interface ChatClient { notifyChatEvent(event: ChatEvent): void }
 
 /** Transport-neutral service. The backend owns persistence, revisions and lease enforcement. */

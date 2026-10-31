@@ -6,6 +6,8 @@ import URI from '@theia/core/lib/common/uri';
 import { CommandContribution, CommandRegistry, Emitter, MenuContribution } from '@theia/core/lib/common';
 import { WindowTitleService } from '@theia/core/lib/browser/window/window-title-service';
 import { bindViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
+import { TabBarToolbarContribution, type TabBarToolbarRegistry } from '@theia/core/lib/browser/shell/tab-bar-toolbar/tab-bar-toolbar-registry';
+import { codicon, type Widget } from '@theia/core/lib/browser/widgets/widget';
 import { NoteService, noteServicePath } from '@dope/contracts/lib/note-service';
 import { ProjectMindClient, ProjectMindService, projectMindServicePath } from '@dope/contracts/lib/project-mind-service';
 import { AgentRuntimeService, agentRuntimeServicePath, type AgentRuntimeClient } from '@dope/contracts/lib/agent-runtime-service';
@@ -208,6 +210,34 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toService(LeftWorkLauncher);
     bind(FrontendApplicationContribution).toService(RightWorkLauncher);
     bind(FrontendApplicationContribution).toService(RightHistoryLauncher);
+    bind(TabBarToolbarContribution).toConstantValue({ registerToolbarItems: (registry: TabBarToolbarRegistry) => {
+        registry.registerItem({ id: 'dope.chat.back', command: 'dope.chat.back', icon: codicon('arrow-left'),
+            tooltip: 'Back to Chats', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackToChats,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.chat.copyTranscript', command: 'dope.chat.copyTranscript',
+            icon: codicon('copy'), tooltip: 'Copy whole transcript', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canOpenChatSettings,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.chat.settings', command: 'dope.chat.settings',
+            icon: codicon('gear'), tooltip: 'Chat settings', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canOpenChatSettings,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+    } });
+    bind(CommandContribution).toConstantValue({ registerCommands: (commands: CommandRegistry) => {
+        commands.registerCommand({ id: 'dope.chat.back', label: 'Back to Chats' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.backToChats(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackToChats
+        });
+        commands.registerCommand({ id: 'dope.chat.copyTranscript', label: 'Copy whole transcript' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) void widget.copyWholeTranscript(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canCopyTranscript
+        });
+        commands.registerCommand({ id: 'dope.chat.settings', label: 'Chat settings' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.toggleChatSettings(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canOpenChatSettings
+        });
+    } });
     bind(HistoryService).toDynamicValue(context => ServiceConnectionProvider.createProxy<HistoryService>(
         context.container, historyServicePath)).inSingletonScope();
     bind('HistoryFocusService').toDynamicValue(context => ServiceConnectionProvider.createProxy<HistoryService>(
@@ -508,14 +538,6 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 if (state.clear) { widget.clearStrategicReview(projectUri, chatId); return; }
                 await widget.presentStrategicReview(projectUri, projectId, chatId, state, decide);
                 if (openEditor) await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
-            }, async (workspace, model, instructions) => {
-                const roots = await context.container.get(WorkspaceService).roots;
-                if (roots.length !== 1 || roots[0].resource.toString() !== workspace)
-                    throw new Error('Project changed before Prepare Work.');
-                const widget = await context.container.get(CommandRegistry)
-                    .executeCommand<ChatPanelWidget>('dope.work.open');
-                if (!widget) throw new Error('Work panel is unavailable.');
-                await widget.receiveChatWorkDraft(workspace, model, instructions);
             });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
