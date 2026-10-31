@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -21,16 +21,14 @@ test('file replacement help does not capture a normal Objective edit', () => {
     assert.equal(selectDopeCapabilityHelp('Change the Objective in this Roadmap file'), undefined);
 });
 
-test('one saved local Chat gives current replacement help before and after a confirmed owner switch', async () => {
+test('one saved local Chat gives current linked-file help before and after a confirmed relink', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-chat-help-replacement-'));
-    const original = '# Roadmap\n\n## Product Phase 1 — Wrong\nStatus: **NOT GREEN**\nObjective: Old\n';
-    const replacement = '# Roadmap\n\n## Product Phase 2 — Intended\nStatus: **ACTIVE**\nObjective: New\n';
+    const original = '# Roadmap\n## Phase 1 [id: phase-one]: Wrong\nObjective: Old\n';
     const store = new RoadmapStore();
     let backend: ChatBackend | undefined;
     try {
         await writeFile(join(root, 'wrong.md'), original);
-        await writeFile(join(root, 'intended.md'), replacement);
-        const first = await store.acceptImport(root, 0, await previewRoadmapImport(root, 'wrong.md'));
+        const first = await store.acceptGateImport(root, 0, 'project', await previewRoadmapImport(root, 'wrong.md'));
         const repository = new ChatRepository();
         const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
             {} as SoftwareMapIndex, repository, store);
@@ -59,12 +57,13 @@ test('one saved local Chat gives current replacement help before and after a con
         const request = { projectHandle, chatId, leaseToken: lease.token, selectedModel: selected,
             content: 'How do I change the wrong linked Roadmap file?', context: [] };
         assert.equal((await backend.runTurn(request)).proposal, undefined);
-        const preview = await store.previewReplacement(root, 'intended.md');
+        await rename(join(root, 'wrong.md'), join(root, 'intended.md'));
+        const preview = await store.previewGateRelink(root, 'intended.md');
         assert.equal(preview.state, 'ready');
-        const next = await store.applyReplacement(root, preview, true);
-        assert.deepEqual(next.checkpoints.map(item => item.id), ['roadmap:intended.md#phase-2']);
-        assert.deepEqual(next.checkpoints.map(item => item.status), ['active']);
-        assert.deepEqual(await readFile(join(root, 'wrong.md'), 'utf8'), original);
+        const next = await store.applyGateRelink(root, preview, true);
+        assert.deepEqual(next.phases.map(item => item.id), ['phase-one']);
+        assert.equal(next.linkedDocument?.path, 'intended.md');
+        assert.deepEqual(await readFile(join(root, 'intended.md'), 'utf8'), original);
         assert.equal((await backend.runTurn(request)).proposal, undefined);
         assert.match(observed[0], /wrong\.md \(synced\)/);
         assert.match(observed[1], /intended\.md \(synced\)/);

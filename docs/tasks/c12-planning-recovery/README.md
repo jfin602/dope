@@ -2,6 +2,8 @@
 
 **Owner decision:** 2026-10-31. **Status:** DESIGN / ASSESSED / PLANNED / THREE MANUAL PROMPTS AUTHORED. NOT EXECUTED OR QUALIFIED BY THIS DOCUMENTATION CHANGE. **Version:** `0.12.7` unchanged.
 
+**2026-10-31 execution update:** P1 cleanup reached **GREEN for its recovered scope** after the [P1-R1 completion repair and real Qwen30 browser qualification](qualification/2026-10-31-p1-r1-chat-completion.md). The [original P1 NOT GREEN report](qualification/2026-10-31-p1-cleanup.md) remains historical evidence. P2 and P3 have not started; C12 and native Electron are not qualified. Version remains `0.12.7`; no self-commit.
+
 **Why:** The experimental `implementation-plan`/Planning-only `submit_plan` route proved Pi source inspection and model submissions but repeatedly failed to yield a valid human-reviewable plan. The owner no longer wants a parallel implementation-plan product. Natural project-aware Chat should discuss architecture freely, then propose explicit changes through the **existing** Phase → Gate → Criterion Roadmap and, separately, through reviewed documentation changes. Retain actual NOT GREEN reports and owner-native evidence gaps; mark the obsolete *requirement* superseded, never its failed tests PASS.
 
 [Assessment](prompt-assessment.md) · [Plan](implementation-plan.md) · [Owner scope](scope.md) · [original C12](../c12-pi-agentic-chat/README.md) · [original Docs](../c12-docs-workflow/README.md)

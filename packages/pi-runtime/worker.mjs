@@ -168,7 +168,9 @@ const emptyResources = Object.freeze({
   getPrompts: () => ({ prompts: [], diagnostics: [] }),
   getThemes: () => ({ themes: [], diagnostics: [] }),
   getAgentsFiles: () => ({ agentsFiles: [] }),
-  getSystemPrompt: () => 'You are an assistant operating under Dope authority.',
+  getSystemPrompt: () => chatToolsMode ?
+    'You are an assistant operating under Dope authority. Use project tools when evidence is needed. After a tool result, decide whether another tool is needed; when you can answer, give the final answer without a tool call. Do not combine a final answer with a tool call.' :
+    'You are an assistant operating under Dope authority.',
   getSystemPromptSource: () => undefined,
   getAppendSystemPrompt: () => [],
   getAppendSystemPromptSources: () => [],
@@ -308,8 +310,6 @@ export async function dispatch(message) {
       session.agent.state.model = { ...session.model, maxTokens: message.maxOutputTokens };
       let attemptedTool = false;
       let toolCount = 0;
-      let streamedText = '';
-      let resumeAfterTool = false;
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
         if (['turn_start', 'turn_end', 'message_start', 'message_end', 'tool_execution_start',
@@ -317,15 +317,9 @@ export async function dispatch(message) {
           trace(event.type, { toolName: event.toolName,
             stopReason: event.message?.role === 'assistant' ? event.message.stopReason : undefined,
             isError: event.isError });
-        if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
-          const delta = event.assistantMessageEvent.delta;
-          const gap = resumeAfterTool && streamedText.trim() &&
-            !streamedText.endsWith('\n') && !delta.startsWith('\n') ? '\n\n' : '';
-          const text = gap + delta;
-          streamedText += text;
-          resumeAfterTool = false;
-          message.emit?.({ type: 'delta', text });
-        }
+        if (!chatToolsMode && event.type === 'message_update' &&
+            event.assistantMessageEvent?.type === 'text_delta')
+          message.emit?.({ type: 'delta', text: event.assistantMessageEvent.delta });
         if (!chatToolsMode && (event.type === 'message_update' && event.assistantMessageEvent?.type.startsWith('toolcall_') ||
             event.type === 'tool_execution_start')) {
           attemptedTool = true;
@@ -335,7 +329,6 @@ export async function dispatch(message) {
           attemptedTool = true;
           void session.abort();
         }
-        if (chatToolsMode && event.type === 'tool_execution_end') resumeAfterTool = true;
       });
       try {
         await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
@@ -346,9 +339,10 @@ export async function dispatch(message) {
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
           assistant.stopReason === 'toolUse' || assistant.content.some(item => item.type === 'toolCall'))
         throw new Error('Local Pi completion failed or attempted a tool call');
-      const text = chatToolsMode && toolCount && streamedText ? streamedText :
-        assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
+      const text = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
       if (Buffer.byteLength(text, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
+      if (chatToolsMode && assistant.stopReason === 'stop' && text)
+        message.emit?.({ type: 'delta', text });
       return { text, modelId: assistant.responseModel ?? assistant.model,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
         usage: { inputTokens: assistant.usage?.input, outputTokens: assistant.usage?.output,

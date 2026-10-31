@@ -56,7 +56,7 @@ test('saved answer prepares a review without a second model call or exact select
         assert.equal((await store.read(root)).revision, 0);
         assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            content: 'Lets make a roadmap first' }), /competing draft|prevents a new proposal/);
+            content: 'Lets make a roadmap first' }), /already has a Roadmap decision/);
         assert.equal(calls, 0);
         await backend.release(projectHandle, chatId, lease.token);
         const retired = await backend.get(projectHandle, chatId);
@@ -66,7 +66,7 @@ test('saved answer prepares a review without a second model call or exact select
         const reclaimed = await backend.claim({ projectHandle, chatId, ownerId: 'next-panel' });
         assert(reclaimed.acquired);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: reclaimed.token,
-            content: 'Lets make a roadmap first' }), /prevents a new proposal/);
+            content: 'Lets make a roadmap first' }), /already has a Roadmap decision/);
         assert.equal(calls, 0);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
