@@ -111,7 +111,7 @@ export class ChatPanelController {
     private readonly planningListener?: { dispose(): void };
     private planningGeneration = 0;
 
-    constructor(private readonly connect: () => ChatConnection, private readonly changed: () => void,
+    constructor(private readonly connect: () => ChatConnection, private readonly changed: (kind?: 'activity') => void,
         private readonly owners = new ChatOpenOwners(), private readonly panelId: string = crypto.randomUUID(),
         private readonly focus = () => {}, private readonly planning?: ChatPlanningSelection) {
         this.planningListener = planning?.onChange(() => {
@@ -225,7 +225,7 @@ export class ChatPanelController {
                         activitySequence: event.sequence,
                         events: [...(current?.events ?? []), { sequence: event.sequence,
                             kind: event.activityKind, text: event.text }] };
-                    this.changed(); return;
+                    this.changed('activity'); return;
                 }
                 if (event.kind === 'lease-changed' && event.chatId === this.retryChatId) {
                     const chatId = this.retryChatId!;
@@ -406,7 +406,8 @@ export class ChatPanelController {
                 !this.transientUser?.previousIds.has(message.id))) this.transientUser = undefined;
             if (this.stream && !snapshot.chats.find(chat => chat.id === this.chatId)?.messages.some(message =>
                 message.id === this.stream?.messageId && message.role === 'assistant' &&
-                message.execution.id === this.stream.executionId && message.execution.status === 'streaming'))
+                message.execution.id === this.stream.executionId &&
+                ['pending', 'streaming'].includes(message.execution.status)))
                 this.stream = undefined;
             if (this.chatId && !snapshot.chats.some(chat => chat.id === this.chatId)) void this.select(undefined);
             if (!retainError) this.error = '';

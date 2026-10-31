@@ -926,7 +926,7 @@ body.theia-light:not(.dope-dark) {
     color: var(--theia-descriptionForeground); background: var(--theia-input-background); }
 .dope-chat-stream-activity > summary { cursor: pointer; font-size: 12px; }
 .dope-chat-stream-note { display: block; margin: 5px 0; font-size: 11px; }
-.dope-chat-stream-activity > pre { max-height: 16rem; overflow: auto; margin: 4px 0;
+.dope-chat-stream-activity > pre { margin: 4px 0;
     white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; color: inherit; user-select: text; }
 .theia-sidepanel-toolbar:has([id="dope.chat.back"]) .theia-sidepanel-title { margin-left: 43px; }
 .theia-sidepanel-toolbar:has([id="dope.chat.back"]) > .lm-TabBar-toolbar {

@@ -112,10 +112,13 @@ export class PiModelBridge {
             latest.observations.find(item => item.connectionId === selection.connectionId)?.health !== 'ready')
             throw unavailable('Local model changed during binding; refresh AI Center and retry');
         const endpoint = connection.config.endpoint.replace(/\/$/, '');
+        // This exact LM Studio model was verified to return a separate reasoning_content channel.
+        const exposedThinking = selection.modelId === 'qwen3.5-9b';
         const opened = await (options.tools ? host.openWorkSession : options.chatTools ? host.openChatToolsSession : host.openNoToolSession).call(host,
             { id: selection.modelId, name: model.label,
             provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
-            reasoning: false, input: ['text'],
+            reasoning: exposedThinking, input: ['text'],
+            ...(exposedThinking ? { compat: { thinkingFormat: 'qwen-chat-template' } } : {}),
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: loaded, maxTokens: maxOutputTokens }, cwd, credential);
         const expected = options.tools ? ['edit_file', 'list_files', 'read_file', 'run_command'] :

@@ -181,10 +181,14 @@ const emptyResources = Object.freeze({
 function assertLocalModel(model) {
   if (!model || typeof model !== 'object' || typeof model.baseUrl !== 'string' ||
       Object.keys(model).some(key => !['id', 'name', 'provider', 'api', 'baseUrl', 'reasoning',
-        'input', 'cost', 'contextWindow', 'maxTokens'].includes(key)) ||
+        'input', 'cost', 'contextWindow', 'maxTokens', 'compat'].includes(key)) ||
       model.provider !== 'dope-local' || model.api !== 'openai-completions' ||
       typeof model.id !== 'string' || !model.id.trim() ||
-      typeof model.name !== 'string' || !model.name.trim() || model.reasoning !== false ||
+      typeof model.name !== 'string' || !model.name.trim() ||
+      (model.reasoning === true ?
+        (model.id !== 'qwen3.5-9b' || model.compat?.thinkingFormat !== 'qwen-chat-template' ||
+          Object.keys(model.compat).length !== 1) :
+        (model.reasoning !== false || model.compat !== undefined)) ||
       !Array.isArray(model.input) || model.input.length !== 1 || model.input[0] !== 'text' ||
       !model.cost || Object.values(model.cost).some(value => value !== 0) ||
       !Number.isSafeInteger(model.contextWindow) || model.contextWindow < 2048 ||
@@ -235,7 +239,8 @@ export async function dispatch(message) {
         modelRuntime.registerProvider('dope-local', {
           name: 'Dope Local', api: 'openai-completions', baseUrl: message.model.baseUrl,
           apiKey: message.credential ?? 'local', models: [{
-            id: message.model.id, name: message.model.name, reasoning: false, input: ['text'],
+            id: message.model.id, name: message.model.name, reasoning: message.model.reasoning,
+            ...(message.model.compat ? { compat: message.model.compat } : {}), input: ['text'],
             cost: message.model.cost, contextWindow: message.model.contextWindow,
             maxTokens: message.model.maxTokens
           }]
@@ -245,6 +250,7 @@ export async function dispatch(message) {
         const chatToolNames = Object.keys(CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
+          thinkingLevel: message.model.reasoning ? 'medium' : 'off',
           sessionManager: SessionManager.inMemory(message.cwd),
           settingsManager: SettingsManager.inMemory({ compaction: { enabled: true,
             reserveTokens: Math.min(8192, Math.floor(message.model.contextWindow / 4)),

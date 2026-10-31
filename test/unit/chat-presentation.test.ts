@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatStreamingActivityPresentation, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -16,6 +16,8 @@ test('saved and live diagnostic activity stays bounded and outside the final ans
     assert.equal(cancelled.unavailable, true);
     assert.ok(cancelled.text.length <= 12_000);
     assert.equal(cancelled.truncated, true);
+    assert.deepEqual(chatStreamingActivityPresentation(events), cancelled);
+    assert.equal(chatStreamingActivityPresentation([]), undefined);
     assert.equal(chatResponseCopyText(base), '');
     assert.deepEqual(chatActivityPresentation({ ...base, activity: undefined },
         { messageId: 'turn', executionId: 'execution', events }), cancelled);

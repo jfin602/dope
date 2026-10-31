@@ -44,6 +44,20 @@ test('Pi bridge binds only the exact refreshed AI Center Local model and measure
     assert.equal(calls[0][0].contextWindow, 32768);
 });
 
+test('only verified Qwen3.5 local binding requests an exposed thinking channel', async () => {
+    const f = fixture();
+    f.state.registry.models[0].providerModelKey = 'qwen3.5-9b';
+    f.state.loadedLocalModels[0].providerModelKey = 'qwen3.5-9b';
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'qwen3.5-9b' }, f.host as any, '/tmp');
+    assert.equal(f.calls[0][0].reasoning, true);
+    assert.deepEqual(f.calls[0][0].compat, { thinkingFormat: 'qwen-chat-template' });
+    f.state.registry.models[0].providerModelKey = 'another-model';
+    f.state.loadedLocalModels[0].providerModelKey = 'another-model';
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'another-model' }, f.host as any, '/tmp');
+    assert.equal(f.calls[1][0].reasoning, false);
+    assert.equal(f.calls[1][0].compat, undefined);
+});
+
 test('Pi Chat binding accepts only the complete brokered tool boundary', async () => {
     const f = fixture();
     f.state.registry.models[0].capabilities.agentExecution = known(true);

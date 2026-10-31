@@ -394,11 +394,21 @@ export function chatActivityPresentation(message: ChatAssistantMessage,
     const events = stream?.messageId === message.id && stream.executionId === message.execution.id ?
         stream.events : message.activity?.events ?? [];
     if (!events.length && message.execution.status === 'complete') return undefined;
+    return presentChatActivity(events, !!message.activity?.truncated);
+}
+
+export function chatStreamingActivityPresentation(events: import('@dope/chat').ChatActivityEvent[]):
+    { label: string; text: string; unavailable: boolean; truncated: boolean } | undefined {
+    return events.length ? presentChatActivity(events, false) : undefined;
+}
+
+function presentChatActivity(events: import('@dope/chat').ChatActivityEvent[], savedTruncated: boolean):
+    { label: string; text: string; unavailable: boolean; truncated: boolean } {
     const visible = events.filter(event => event.kind !== 'tool' && event.kind !== 'answer');
     const text = visible.map(event => event.text).join('');
     const limit = 12_000;
     const truncated = text.length > limit || events.some(event => event.kind === 'truncated') ||
-        !!message.activity?.truncated;
+        savedTruncated;
     return { label: visible.some(event => event.kind === 'thinking') ? 'Reasoning / Activity' : 'Provisional output',
         text: text.length > limit ? text.slice(-limit) : text,
         unavailable: !visible.some(event => event.kind === 'thinking'), truncated };

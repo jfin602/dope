@@ -14,7 +14,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
@@ -183,7 +183,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.title.closable = this.id !== chatLauncherIds.left && this.id !== chatLauncherIds.right &&
             this.id !== workLauncherIds.left && this.id !== workLauncherIds.right;
         this.addClass('dope-chat-panel');
-        this.controller = new ChatPanelController(connect, () => { this.render(); this.syncStrategicRoadmap(); }, owners, this.id,
+        this.controller = new ChatPanelController(connect, kind => {
+            if (kind === 'activity' && this.updateLiveStreamActivity()) return;
+            this.render(); this.syncStrategicRoadmap();
+        }, owners, this.id,
             () => { void this.shell.activateWidget(this.id); }, planningSelection);
         this.panel = new SharedPanelState(workOwners, this.id,
             () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
@@ -1427,6 +1430,43 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             });
         }, 1000);
     }
+    private updateLiveStreamActivity(): boolean {
+        const state = this.controller;
+        const stream = state.stream;
+        if (this.panel.mode !== 'chat' || state.mode !== 'chat' || !state.running ||
+            !stream || stream.chatId !== state.chatId) return false;
+        const item = this.content.querySelector<HTMLElement>('.dope-chat-message[aria-label="Assistant working"]');
+        const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
+        const diagnostic = chatStreamingActivityPresentation(stream.events);
+        if (!item || !scroll || !diagnostic) return false;
+        let details = item.querySelector<HTMLDetailsElement>('.dope-chat-stream-activity');
+        if (!details) {
+            details = document.createElement('details');
+            details.className = 'dope-chat-stream-activity';
+            details.open = true;
+            const heading = document.createElement('summary');
+            const note = document.createElement('span'); note.className = 'dope-chat-stream-note';
+            const raw = document.createElement('pre');
+            details.append(heading, note, raw);
+            item.prepend(details);
+        }
+        const heading = details.querySelector('summary')!;
+        const note = details.querySelector<HTMLElement>('.dope-chat-stream-note')!;
+        const raw = details.querySelector('pre')!;
+        heading.textContent = `${diagnostic.label} · Working`;
+        note.textContent = diagnostic.unavailable ? 'Reasoning unavailable' : 'Surfaced reasoning';
+        const next = diagnostic.text || 'No activity captured';
+        if (next.startsWith(raw.textContent ?? '')) raw.append(document.createTextNode(next.slice((raw.textContent ?? '').length)));
+        else raw.textContent = next;
+        let limit = details.querySelector<HTMLElement>('.dope-chat-stream-limit');
+        if (diagnostic.truncated && !limit) {
+            limit = document.createElement('span'); limit.className = 'dope-chat-stream-limit';
+            limit.textContent = 'Activity display limited; captured record may be truncated.';
+            details.append(limit);
+        } else if (!diagnostic.truncated) limit?.remove();
+        if (this.scrollFollow.following) scroll.scrollTop = scroll.scrollHeight;
+        return true;
+    }
     private stopElapsedTicker(): void {
         if (this.elapsedTicker) clearInterval(this.elapsedTicker);
         this.elapsedTicker = undefined;
@@ -2166,9 +2206,34 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (state.running && !activeAssistant) {
             const item = document.createElement('li'); item.className = 'dope-chat-message dope-chat-message-assistant';
             item.setAttribute('aria-label', 'Assistant working');
-            const content = document.createElement('div'); content.className = 'dope-chat-message-content';
-            content.textContent = 'Working...';
-            item.append(content); transcript.append(item);
+            if (!state.runStartedAt) {
+                const content = document.createElement('div'); content.className = 'dope-chat-message-content';
+                content.textContent = 'Working...';
+                item.append(content);
+            }
+            transcript.append(item);
+            const diagnostic = chatStreamingActivityPresentation(state.stream?.chatId === chat.id ?
+                state.stream.events : []);
+            if (diagnostic) {
+                const details = document.createElement('details');
+                details.className = 'dope-chat-stream-activity';
+                details.open = true;
+                const heading = document.createElement('summary');
+                heading.textContent = `${diagnostic.label} · Working`;
+                const note = document.createElement('span');
+                note.className = 'dope-chat-stream-note';
+                note.textContent = diagnostic.unavailable ? 'Reasoning unavailable' : 'Surfaced reasoning';
+                const raw = document.createElement('pre');
+                raw.textContent = diagnostic.text || 'No activity captured';
+                details.append(heading, note, raw);
+                if (diagnostic.truncated) {
+                    const limit = document.createElement('span');
+                    limit.className = 'dope-chat-stream-limit';
+                    limit.textContent = 'Activity display limited; captured record may be truncated.';
+                    details.append(limit);
+                }
+                item.append(details);
+            }
             if (state.runStartedAt) this.appendWorkingStatus(item, state.runStartedAt);
             if (state.runStartedAt) this.appendToolActivity(item, state.toolProgress?.messageId ?? '',
                 state.toolProgress?.events, true, state.runStartedAt);

@@ -127,6 +127,40 @@ test('bundled Pi completes a synthetic prompt through the exact Local model', as
   }
 });
 
+test('verified Qwen3.5 emits exposed thinking separately from final text', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-thinking-'));
+  const events = [];
+  try {
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.model, 'qwen3.5-9b');
+      assert.equal(body.chat_template_kwargs?.enable_thinking, true);
+      const chunks = [
+        'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"qwen3.5-9b","choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"Check arithmetic."},"finish_reason":null}]}\n\n',
+        'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"qwen3.5-9b","choices":[{"index":0,"delta":{"content":"2"},"finish_reason":null}]}\n\n',
+        'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"qwen3.5-9b","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\n',
+        'data: [DONE]\n\n'
+      ];
+      return new Response(chunks.join(''), { status: 200,
+        headers: { 'content-type': 'text/event-stream' } });
+    };
+    const thinkingModel = { ...model, id: 'qwen3.5-9b', name: 'Qwen3.5 9B', reasoning: true,
+      compat: { thinkingFormat: 'qwen-chat-template' } };
+    await dispatch({ type: 'open', cwd, model: thinkingModel });
+    const result = await dispatch({ type: 'turn', maxOutputTokens: 256,
+      messages: [{ role: 'user', content: 'What is 1+1?' }], emit: event => events.push(event) });
+    assert.equal(result.text, '2');
+    assert.ok(events.some(event => event.type === 'activity' && event.kind === 'thinking' &&
+      event.text === 'Check arithmetic.'));
+    assert.ok(events.some(event => event.type === 'delta' && event.text === '2'));
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('Pi no-tool turn streams from Dope context without exposing tools or project extensions', async () => {
   const originalFetch = globalThis.fetch;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-turn-'));
