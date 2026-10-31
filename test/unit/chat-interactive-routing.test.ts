@@ -19,7 +19,7 @@ const runtime = { connections: [
     models: [{ id: 'large', label: 'Large', usable: true, capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192 } }] },
 ] };
 
-test('new Chats follow Interactive, require Chat hosted consent, record fallback and keep exact override authority', async () => {
+test('new Pi Chats follow Interactive, require hosted consent, reject fallback and keep exact override authority', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-chat-interactive-'));
   const repository = new ChatRepository();
   let preferred = 0, fallback = false, broken = false, runtimeCalls: string[] = [], budgets: number[] = [];
@@ -85,15 +85,15 @@ test('new Chats follow Interactive, require Chat hosted consent, record fallback
     if (state.chats[0].messages.at(-1)?.role === 'assistant')
       assert.equal(state.chats[0].messages.at(-1)!.execution.routingProvenance?.source, 'explicit-turn');
     preferred = 0; fallback = true;
-    await send('Fallback', { hostedProjectDataAuthorized: true });
+    await assert.rejects(send('Fallback', { hostedProjectDataAuthorized: true }),
+      /Pi Chat cannot switch providers within a turn/);
     state = await service.read(projectHandle);
     const last = state.chats[0].messages.at(-1);
     assert.equal(last?.role, 'assistant');
     if (last?.role === 'assistant') {
       assert.equal(last.execution.selectedModel.connectionId, 'local');
-      assert.equal(last.execution.actualModel?.connectionId, 'hosted');
-      assert.deepEqual(last.execution.routingProvenance?.attempts.map(item => item.outcome),
-        ['transient-transport', 'selected']);
+      assert.equal(last.execution.status, 'failed');
+      assert.equal(last.execution.actualModel, undefined);
     }
     broken = true; fallback = false;
     const before = state.chats[0].messages.length;

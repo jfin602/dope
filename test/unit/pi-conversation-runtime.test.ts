@@ -47,11 +47,12 @@ test('Pi Chat passes brokered project tools through the exact local session', as
     } };
     const events = [];
     for await (const event of piConversation(selection, { messages: [{ role: 'user', content: 'inspect this project' }],
+        controls: { 'reasoning.effort': 'off' },
         projectTools: { root: '/project', execute: async (name, args) => {
             observed.push({ name, args }); return '<h1>Heading</h1>';
         } } }, localBridge as never, { create: () => host, release: () => {} } as never)) events.push(event);
     assert.deepEqual(observed, [
-        { cwd: '/project', options: { chatTools: true } },
+        { cwd: '/project', options: { chatTools: true, reasoningMode: 'off' } },
         { name: 'read_file', args: { path: 'src/index.html' } },
         { status: 'completed', output: '<h1>Heading</h1>' }
     ]);

@@ -132,7 +132,7 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('greenfield G1 stays ordinary saved Chat with selected model and no plan creation', async () => {
+test('greenfield G1 stays ordinary Pi Chat without automatic source or plan creation', async () => {
     const root = await folder(), repository = new ChatRepository();
     const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
         inputsCurrent: async () => false };
@@ -165,15 +165,16 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
         assert.equal(result.proposal, undefined);
         assert.equal(result.refs.some(ref => ref.kind === 'file'), false);
-        assert.equal(result.refs[0]?.kind, 'project-orientation');
+        assert.deepEqual(result.refs, []);
         assert.deepEqual(result.refs, preview.refs);
         assert.equal(sent[0]?.role, 'system');
+        assert.match(sent[0].content, /Pi read_file/);
         assert.ok(sent.some(message => /Checked read-only Roadmap opportunity.*revision zero/s.test(message.content)));
         assert.ok(sent.some(message => /may mention that Dope can generate a provisional Roadmap draft/.test(message.content)));
         assert.equal(sent.some(message => /implementation-plan|pixi\.js: absent/.test(message.content)), false);
         const saved = (await backend.get(projectHandle, chatId))!.messages;
         assert.equal(saved[0].role, 'user');
-        assert.equal(saved[0].contextRefs[0]?.kind, 'project-orientation');
+        assert.deepEqual(saved[0].contextRefs, []);
         assert.equal(saved[1].role, 'assistant');
         assert.equal(saved[1].execution?.selectedModel.modelId, 'q4');
         assert.equal(saved[1].execution?.tokenUsage?.totalTokens, 42);
@@ -544,7 +545,7 @@ test('Roadmap offer fails closed on owner changes, expiration, foreign Chat, and
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('G2 sends fresh workspace evidence after preview and requires hosted project consent', async () => {
+test('G2 keeps Pi source tool-driven while hosted context refresh requires consent', async () => {
     const root = await folder(), repository = new ChatRepository();
     const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
         inputsCurrent: async () => false };
@@ -571,19 +572,24 @@ test('G2 sends fresh workspace evidence after preview and requires hosted projec
         await writeFile(join(root, 'src/game.ts'), 'export const wave = 1;\n');
         const preview = await backend.previewContext({ projectHandle, chatId,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content, context: [] });
-        const oldHash = preview.refs.find(ref => ref.id === 'src/game.ts')?.sourceHash;
+        assert.deepEqual(preview.refs, []);
         await writeFile(join(root, 'src/game.ts'), 'export const wave = 2;\n');
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'hosted', modelId: 'remote' }, content }), /hosted project-data confirmation/);
         assert.equal(calls, 0);
-        const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+        const local = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
+        assert.deepEqual(local.refs, []);
+        assert.doesNotMatch(packets[0], /export const wave = [12]/);
+        const hosted = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'hosted', modelId: 'remote' }, content,
+            hostedProjectDataAuthorized: true });
         assert.ok(packets.some(packet => /export const wave = 2/.test(packet)));
         assert.equal(packets.some(packet => /export const wave = 1/.test(packet)), false);
-        const ref = result.refs.find(item => item.id === 'src/game.ts')!;
-        assert.notEqual(ref.sourceHash, oldHash);
+        const ref = hosted.refs.find(item => item.id === 'src/game.ts')!;
+        assert.ok(ref.sourceHash);
         assert.equal(ref.sourceHash, ref.contentHash);
-        assert.equal((await backend.get(projectHandle, chatId))!.messages[0].contextRefs
+        assert.equal((await backend.get(projectHandle, chatId))!.messages[2].contextRefs
             .find(item => item.id === 'src/game.ts')?.contentHash, ref.contentHash);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
