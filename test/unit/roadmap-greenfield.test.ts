@@ -1,12 +1,10 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
-import { reviseImplementationPlan, type ImplementationPlanInput } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import { projectRoadmap } from '../../packages/project-intelligence/lib/roadmap-projection.js';
 import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
 
@@ -136,154 +134,51 @@ test('cancel, project isolation, concurrent edits, corrupt state and symlinked s
     } finally { await rm(other, { recursive: true, force: true }); }
 }));
 
-const planInput = (): ImplementationPlanInput => ({ objective: 'Add history', constraints: ['Keep permissions explicit'],
-    evidence: [{ id: '123e4567-e89b-42d3-a456-426614174000', path: 'src/history.ts', sha256: 'a'.repeat(64) }],
-    decisions: [{ text: 'Reuse the diff editor', origin: 'developer' }], steps: [
-        { title: 'Inspect history', detail: 'Find current history owner', expectedOutputs: ['Owner map'],
-            dependencies: [], evidenceIds: ['123e4567-e89b-42d3-a456-426614174000'] },
-        { title: 'Build history', detail: 'Add the view', expectedOutputs: ['History view'],
-            dependencies: [], evidenceIds: [] }] });
-const projectionInput = (): ImplementationPlanInput => {
-    const input = planInput(); input.evidence = []; input.steps.forEach(step => { step.evidenceIds = []; });
-    return input;
-};
-
-test('source change and invalid outcome graph leave reviewed plan recoverable without Roadmap writes', async () => fixture(async root => {
-    const store = new RoadmapStore(), drafts = new RoadmapGreenfield(store);
-    const path = join(root, 'history.ts');
-    await writeFile(path, 'export const history = 1;\n');
-    const { handle } = await drafts.beginImplementationPlan(root);
-    const input = projectionInput();
-    input.evidence = [{ id: '123e4567-e89b-42d3-a456-426614174000', path: 'history.ts',
-        sha256: createHash('sha256').update('export const history = 1;\n').digest('hex') }];
-    input.steps[0].evidenceIds = [input.evidence[0].id];
-    await drafts.applyImplementationPlan(handle,
-        await drafts.previewImplementationPlan(handle, 0, 0, input), true);
-    const preview = await drafts.previewImplementationPlanProjection(root, handle);
-    await writeFile(path, 'export const history = 2;\n');
-    await assert.rejects(drafts.applyImplementationPlanProjection(root, preview, true), /source changed/);
-    assert.equal((await store.read(root)).revision, 0);
-    assert.equal(drafts.read(handle).phases.length, 0);
-    assert.equal((await drafts.listImplementationPlans(root))[0].handle, handle);
-    await assert.rejects(drafts.previewImplementationPlanProjection(root, handle), /source changed/);
-    await writeFile(path, 'export const history = 1;\n');
-    const duplicate = projectionInput(); duplicate.steps[1].title = duplicate.steps[0].title;
-    const accepted = drafts.readImplementationPlan(handle)!;
-    duplicate.steps[0].id = accepted.steps[0].id; duplicate.steps[1].id = accepted.steps[1].id;
-    await drafts.applyImplementationPlan(handle,
-        await drafts.previewImplementationPlan(handle, 0, 1, duplicate), true);
-    await assert.rejects(drafts.previewImplementationPlanProjection(root, handle), /unique Roadmap graph/);
-    assert.equal((await store.read(root)).revision, 0);
-}));
-
-test('reviewed plan revisions preserve IDs and decisions, and reject invalid order', async () => fixture(async root => {
-    const drafts = new RoadmapGreenfield(new RoadmapStore());
-    const { handle } = await drafts.beginImplementationPlan(root);
-    const first = await drafts.previewImplementationPlan(handle, 0, 0, planInput());
-    const accepted = await drafts.applyImplementationPlan(handle, first, true);
-    const common = { type: 'implementation-plan-revision' as const, baseRevision: 1,
-        constraintsAdd: [], decisionsAdd: ['Use existing editor'], question: '' };
-    const split = reviseImplementationPlan(accepted, { ...common,
-        edits: [{ type: 'split', step: 2, title: 'Test history', detail: 'Add focused tests' }] });
-    assert.deepEqual(split.steps.slice(0, 2).map(step => step.id), accepted.steps.map(step => step.id));
-    assert.equal(split.steps[2].id, undefined);
-    assert.deepEqual(split.decisions[0], accepted.decisions[0]);
-    assert.equal(split.decisions[1].origin, 'model-assumption');
-    const preview = await drafts.previewImplementationPlan(handle, 0, 1, split, 'model');
-    assert.deepEqual(drafts.readImplementationPlan(handle), accepted);
-    assert.deepEqual(preview.after.decisions[0], accepted.decisions[0]);
-    const revised = await drafts.applyImplementationPlan(handle, preview, true);
-    assert.equal(revised.steps[2].dependencies[0], revised.steps[1].id);
-    const merge = reviseImplementationPlan(revised, { ...common, baseRevision: 2,
-        edits: [{ type: 'merge', first: 2, second: 3, title: 'Build and test', detail: 'Use existing editor' }] });
-    assert.equal(merge.steps[1].id, revised.steps[1].id);
-    assert.equal(merge.steps.length, 2);
-    assert.deepEqual(merge.decisions.slice(0, 2), revised.decisions);
-    const moved = reviseImplementationPlan(accepted, { ...common,
-        edits: [{ type: 'move', step: 2, before: 1 }] });
-    assert.deepEqual(moved.steps.map(step => step.id), [accepted.steps[1].id, accepted.steps[0].id]);
-    assert.throws(() => reviseImplementationPlan(revised, { ...common, baseRevision: 2,
-        edits: [{ type: 'move', step: 3, before: 2 }] }), /order|cycle/);
-    await assert.rejects(drafts.previewImplementationPlan(handle, 0, 1, merge, 'model'), /Stale/);
-}));
-
-test('accepted implementation plan survives restart and Chat binding without changing canonical owners', async () => fixture(async root => {
-    const store = new RoadmapStore(), drafts = new RoadmapGreenfield(store);
-    const { handle } = await drafts.begin(root);
+test('retired accepted plans stay readable and do not own new Roadmap drafts', async () => fixture(async root => {
+    const store = new RoadmapStore(), projectId = (await store.read(root)).projectId;
+    const handle = '123e4567-e89b-42d3-a456-426614174000';
     const chatId = '123e4567-e89b-42d3-a456-426614174001';
-    drafts.bindChat(root, handle, chatId);
-    const before = await store.read(root);
-    const input = planInput();
-    const first = await drafts.previewImplementationPlan(handle, 0, 0, input);
-    assert.equal(first.after.status, 'proposed');
-    assert.equal(drafts.readImplementationPlan(handle), undefined);
-    await assert.rejects(drafts.applyImplementationPlan(handle, first, false), /approval/);
-    const accepted = await drafts.applyImplementationPlan(handle, first, true);
-    assert.equal(accepted.status, 'accepted');
-    assert.deepEqual(accepted.constraints, ['Keep permissions explicit']);
-    assert.deepEqual(accepted.decisions, [{ text: 'Reuse the diff editor', origin: 'developer' }]);
-    const saved = await readFile(join(root, '.dope', 'roadmap-drafts.json'), 'utf8');
-    const restored = new RoadmapGreenfield(store);
-    await restored.restore(root);
-    assert.equal(restored.chatDraft(root, chatId)?.handle, handle);
-    assert.deepEqual(restored.readImplementationPlan(handle), accepted);
-    const revised = planInput();
-    revised.steps[0].id = accepted.steps[0].id;
-    revised.steps[1].id = accepted.steps[1].id;
-    revised.steps[1].dependencies = [accepted.steps[0].id];
-    const update = await restored.previewImplementationPlan(handle, 0, 1, revised);
-    assert.deepEqual(restored.readImplementationPlan(handle), accepted);
-    const second = await restored.applyImplementationPlan(handle, update, true);
-    assert.deepEqual(second.steps.map(step => step.id), accepted.steps.map(step => step.id));
-    assert.deepEqual(second.steps[1].dependencies, [accepted.steps[0].id]);
-    assert.equal((await store.read(root)).revision, before.revision);
-    assert.deepEqual((await store.read(root)).checkpoints, before.checkpoints);
-    assert.deepEqual(await readdir(root), ['.dope']);
-    assert.notEqual(await readFile(join(root, '.dope', 'roadmap-drafts.json'), 'utf8'), saved);
+    const plan = { schemaVersion: 1, revision: 1, status: 'accepted', objective: 'Historical plan',
+        constraints: [], steps: [], evidence: [], decisions: [],
+        source: { projectId, roadmapRevision: 0, draftRevision: 0 } };
+    await mkdir(join(root, '.dope'));
+    await writeFile(join(root, '.dope', 'roadmap-drafts.json'), JSON.stringify({ schemaVersion: 1,
+        revision: 1, drafts: [{ handle, projectId, value: { revision: 0, phases: [] },
+            chatId, planOnly: true, ownerRevision: 0, implementationPlan: plan }] }));
+    const drafts = new RoadmapGreenfield(store);
+    assert.deepEqual(await drafts.restore(root), []);
+    assert.equal((await drafts.listImplementationPlans(root))[0].plan.objective, 'Historical plan');
+    assert.equal((await drafts.readOpportunity(root)).drafts, 0);
+    const created = await drafts.begin(root);
+    assert.notEqual(created.handle, handle);
+    assert.equal((await drafts.listImplementationPlans(root))[0].plan.objective, 'Historical plan');
+    assert.equal((await drafts.list(root)).length, 1);
+    drafts.cancel(created.handle);
+    const sourceHash = 'a'.repeat(64);
+    const preview = await drafts.previewStrategicDraft(root, { projectId, ownerRevision: 0,
+        phases: [{ title: 'New Roadmap', objective: 'Keep planning', checkpoints: [
+            { title: 'First step', objective: 'Deliver it', dependsOn: [] }] }] }, sourceHash);
+    await drafts.acceptStrategicDraft(root, chatId, preview, sourceHash);
+    assert.equal(drafts.chatDraft(root, chatId)?.handle, preview.handle);
+    assert.equal((await drafts.listImplementationPlans(root))[0].plan.objective, 'Historical plan');
+    const saved = JSON.parse(await readFile(join(root, '.dope', 'roadmap-drafts.json'), 'utf8'));
+    assert.equal(saved.drafts.find((item: { handle: string }) => item.handle === handle).chatId, undefined);
 }));
 
-test('plan validation, review, owner handoff and corrupt storage fail closed', async () => fixture(async root => {
-    const store = new RoadmapStore(), drafts = new RoadmapGreenfield(store);
-    const { handle } = await drafts.begin(root);
-    const empty = planInput(); empty.steps = [];
-    const emptyPreview = await drafts.previewImplementationPlan(handle, 0, 0, empty);
-    assert.equal((await drafts.applyImplementationPlan(handle, emptyPreview, true)).steps.length, 0);
-    const proposed = await drafts.previewImplementationPlan(handle, 0, 1, planInput(), 'model');
-    assert.equal(proposed.after.decisions[0].origin, 'developer');
-    drafts.clearImplementationPlanPreview(handle);
-    await assert.rejects(drafts.applyImplementationPlan(handle, proposed, true), /Stale/);
-    const valid = await drafts.previewImplementationPlan(handle, 0, 1, planInput());
-    assert.equal((await drafts.applyImplementationPlan(handle, valid, true)).steps.length, 2);
-    const current = drafts.readImplementationPlan(handle)!;
-    const duplicate = planInput(); duplicate.steps[0].id = current.steps[0].id;
-    duplicate.steps[1].id = current.steps[0].id;
-    await assert.rejects(drafts.previewImplementationPlan(handle, 0, 2, duplicate), /cyclic/);
-    const cyclic = planInput(); cyclic.steps[0].id = current.steps[0].id;
-    cyclic.steps[1].id = current.steps[1].id;
-    cyclic.steps[0].dependencies = [current.steps[1].id];
-    cyclic.steps[1].dependencies = [current.steps[0].id];
-    await assert.rejects(drafts.previewImplementationPlan(handle, 0, 2, cyclic), /cyclic/);
-    await assert.rejects(drafts.previewImplementationPlan(handle, 0, 1, planInput()), /Stale/);
-    const oversized = planInput(); oversized.steps[0].detail = 'x'.repeat(8193);
-    const unchangedBytes = await readFile(join(root, '.dope', 'roadmap-drafts.json'), 'utf8');
-    await assert.rejects(drafts.previewImplementationPlan(handle, 0, 2, oversized), /Invalid/);
-    assert.equal(await readFile(join(root, '.dope', 'roadmap-drafts.json'), 'utf8'), unchangedBytes);
-    const stale = await drafts.previewImplementationPlan(handle, 0, 2, planInput());
-    drafts.bindChat(root, handle, '123e4567-e89b-42d3-a456-426614174002');
-    await assert.rejects(drafts.applyImplementationPlan(handle, stale, true), /Stale/);
-    assert.deepEqual(drafts.readImplementationPlan(handle), current);
-    const saved = await readFile(join(root, '.dope', 'roadmap-drafts.json'), 'utf8');
-    const parsed = JSON.parse(saved);
-    delete parsed.drafts[0].implementationPlan;
-    await writeFile(join(root, '.dope', 'roadmap-drafts.json'), JSON.stringify(parsed));
-    const legacy = new RoadmapGreenfield(store);
-    await legacy.restore(root);
-    assert.equal(legacy.readImplementationPlan(handle), undefined);
-    const invalid = JSON.parse(saved);
-    invalid.drafts[0].implementationPlan.status = 'proposed';
-    await writeFile(join(root, '.dope', 'roadmap-drafts.json'), JSON.stringify(invalid));
-    await assert.rejects(new RoadmapGreenfield(store).restore(root), /Corrupt/);
-    await writeFile(join(root, '.dope', 'roadmap-drafts.json'), saved.slice(0, 40));
-    await assert.rejects(new RoadmapGreenfield(store).restore(root), /Corrupt/);
-    assert.equal((await store.read(root)).revision, 0);
+test('eight historical plans cannot exhaust the live draft allowance', async () => fixture(async root => {
+    const store = new RoadmapStore(), projectId = (await store.read(root)).projectId;
+    const plan = { schemaVersion: 1, revision: 1, status: 'accepted', objective: 'Historical plan',
+        constraints: [], steps: [], evidence: [], decisions: [],
+        source: { projectId, roadmapRevision: 0, draftRevision: 0 } };
+    await mkdir(join(root, '.dope'));
+    await writeFile(join(root, '.dope', 'roadmap-drafts.json'), JSON.stringify({ schemaVersion: 1,
+        revision: 1, drafts: Array.from({ length: 8 }, (_, index) => ({
+            handle: `123e4567-e89b-42d3-a456-42661417400${index}`, projectId,
+            value: { revision: 0, phases: [] }, planOnly: true, ownerRevision: 0,
+            implementationPlan: plan })) }));
+    const drafts = new RoadmapGreenfield(store);
+    assert.equal((await drafts.listImplementationPlans(root)).length, 8);
+    await drafts.begin(root);
+    assert.equal((await drafts.list(root)).length, 1);
+    assert.equal((await drafts.listImplementationPlans(root)).length, 8);
 }));

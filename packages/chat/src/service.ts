@@ -64,11 +64,9 @@ export interface ChatStrategicDraftReview { token: string; projectId: string; re
         title: string; purpose: string; criteria: { id: string; title: string; expectedResult: string }[] }[];
         checkpoints: { id: string; title: string; objective: string;
         dependencies: string[] }[] }[] }
-export interface ChatPlanPreview { coverage: { id: string; text: string;
-    status: 'covered' | 'needs-review' | 'missing'; explanation: string; stepNumbers: number[] }[] }
 export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal;
     roadmapFocus?: { projectId: string; revision: number; id: string };
-    proposalError?: string; planPreview?: ChatPlanPreview; roadmapOffer?: ChatRoadmapOffer;
+    proposalError?: string; roadmapOffer?: ChatRoadmapOffer;
     roadmapDraftReview?: ChatStrategicDraftReview }
 export type ChatCommandMode = 'ask' | 'allow';
 export interface ChatCommandPreview { id: string; command: string; project: string; cwd: string;
@@ -111,7 +109,5 @@ export interface ChatService {
         offerId: string, token: string, approve: boolean, selectedModel?: ChatModelSelection): Promise<'declined' | ChatStrategicDraftReview>;
     decideStrategicDraft(projectHandle: string, chatId: ChatId, leaseToken: string,
         token: string, approve: boolean): Promise<number | undefined>;
-    undoPlanningRevision(projectHandle: string, chatId: ChatId, leaseToken: string,
-        expectedRevision: number): Promise<number>;
     cancelTurn(projectHandle: string, chatId: ChatId, leaseToken: string): Promise<void>;
 }

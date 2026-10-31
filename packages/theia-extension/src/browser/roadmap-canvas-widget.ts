@@ -17,7 +17,7 @@ import type { RoadmapIndex, RoadmapLink, RoadmapReplacementPreview } from '@dope
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
-import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft, ImplementationPlanProjectionPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
 import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
@@ -256,15 +256,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private importState?: { uri: string; projectId: string; revision: number; discovery: RoadmapCandidateDiscovery;
         preview?: RoadmapImportPreview; path?: string; busy: boolean; showChooser: boolean; message?: string };
     private createState?: { uri: string; projectId: string; handle: string; draft: GreenfieldDraft;
-        mode: 'manual' | 'chat' | 'plan'; chatId?: string; path: string; preview?: GreenfieldPreview;
+        mode: 'manual' | 'chat'; chatId?: string; path: string; preview?: GreenfieldPreview;
         editPreview?: GreenfieldEditPreview; busy: boolean; error?: string };
-    private planSetup?: { uri: string; projectId: string; chatId?: string; busy: boolean; error?: string };
     private createSerial = 0;
     private draftSequence = 0;
     private draftEpoch?: string;
     private proposedDraft?: GreenfieldDraft;
-    private reviewedPlan?: { uri: string; projectId: string; handle: string; plan: ImplementationPlanDraft;
-        preview?: ImplementationPlanProjectionPreview; busy: boolean; error?: string };
+    private reviewedPlan?: { uri: string; projectId: string; handle: string; plan: ImplementationPlanDraft };
     private createStarting = false;
     private projectUri?: string;
     private projection?: TaskRoadmapProjection;
@@ -585,14 +583,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.owners = owners;
             this.taskStacks = tasks;
             this.projectUri = projectUri;
-            if (this.planSetup && (this.planSetup.uri !== projectUri || this.planSetup.projectId !== index.projectId))
-                this.planSetup = undefined;
             const reviewed = plans[0];
-            if (reviewed && this.planSetup?.uri === projectUri) this.planSetup = undefined;
             if (!reviewed || this.reviewedPlan?.uri !== projectUri || this.reviewedPlan.handle !== reviewed.handle ||
                 this.reviewedPlan.plan.revision !== reviewed.plan.revision || index.revision !== 0)
                 this.reviewedPlan = reviewed ? { uri: projectUri, projectId: index.projectId,
-                    handle: reviewed.handle, plan: reviewed.plan, busy: false } : undefined;
+                    handle: reviewed.handle, plan: reviewed.plan } : undefined;
             if (switched) this.sourceError = undefined;
             if (this.relink && (this.relink.uri !== projectUri || this.relink.preview?.revision !== index.revision))
                 this.relink = undefined;
@@ -615,7 +610,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             } else if (index.revision === 0) {
                 const chosen = restored[0];
                 if (chosen) this.createState = { uri: projectUri, projectId: index.projectId, handle: chosen.handle,
-                    draft: chosen.draft, mode: chosen.plan ? 'plan' : chosen.chatId ? 'chat' : 'manual', chatId: chosen.chatId,
+                    draft: chosen.draft, mode: chosen.chatId ? 'chat' : 'manual', chatId: chosen.chatId,
                     path: 'ROADMAP.md', busy: false };
             }
             const restoredId = switched ? this.selectedId : undefined;
@@ -743,16 +738,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             return projectRoadmapDraft(base, undefined, this.strategic.review.draft);
         if (this.createState?.projectId === base.projectId)
             return projectRoadmapDraft(base, this.createState.draft, this.proposedDraft);
-        return this.reviewedPlan?.projectId === base.projectId && this.reviewedPlan.preview ?
-            projectRoadmapDraft(base, undefined, this.reviewedPlan.preview.draft) : base;
+        return base;
     }
 
     private projectIndex(index: RoadmapIndex, tasks = this.taskStacks, owners = this.owners): TaskRoadmapProjection {
         if ((index as unknown as RoadmapGateIndex).schemaVersion === 2) {
             const phases = gatePhaseCards(index as unknown as RoadmapGateIndex, owners);
             const accepted = this.createState?.projectId === phases.projectId ? this.createState.draft : undefined;
-            const proposed = this.strategic?.projectId === phases.projectId ? this.strategic.review?.draft :
-                this.proposedDraft ?? (this.reviewedPlan?.projectId === phases.projectId ? this.reviewedPlan.preview?.draft : undefined);
+            const proposed = this.strategic?.projectId === phases.projectId ? this.strategic.review?.draft : this.proposedDraft;
             const visible = projectGateDraftCards(phases, accepted, proposed);
             return { ...visible, unlinkedTasks: phases.unassignedCorrections.map(item => ({
                 path: item.id, title: item.title, reason: 'Correction parent is missing or conflicted.' })),
@@ -764,8 +757,6 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     /** Reject foreign, stale and repeated notifications before touching presentation state. */
     draftChanged(change: GreenfieldChange): void {
-        if (change.kind === 'plan' && this.inspector.index?.projectRoot === change.root &&
-            this.inspector.index.projectId === change.projectId) { void this.refresh(); return; }
         const state = this.createState;
         if (this.isDisposed || !state || !this.inspector.index || this.inspector.index.revision !== 0 ||
             change.root !== this.inspector.index.projectRoot || change.projectId !== state.projectId ||
@@ -1057,12 +1048,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const displayedCount = visible.nodes.length;
         const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
         this.status.textContent = projection.revision === 0 ?
-            this.reviewedPlan?.preview && !this.createState ? 'Proposed plan projection on canvas · Review the graph and accept or reject below. Nothing has been published.' :
             this.strategic?.review ? 'Proposed Roadmap on canvas · Not yet accepted. Accept or reject here. Nothing has been published.' :
             this.proposedDraft ? `Proposed draft on canvas · Review and accept or reject ${this.createState?.mode === 'manual' ? 'in Roadmap' : 'in the selected Chat'}. Nothing has been published.` :
                 this.createState ? `Accepted draft revision ${this.createState.draft.revision} on canvas · Review Phase and Gate definitions before accepting Roadmap structure. Markdown publication requires separate approval.` :
                     'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
-            `${displayedCount} displayed Roadmap cards · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.gateSyncPreview?.state ?? this.inspector.index.linkedDocument.syncState})` : ' · Accepted structure; Markdown not published'}${this.reviewedPlan ? ' · Reviewed plan remains noncanonical; bulk projection into this Roadmap is unavailable.' : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
+            `${displayedCount} displayed Roadmap cards · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.gateSyncPreview?.state ?? this.inspector.index.linkedDocument.syncState})` : ' · Accepted structure; Markdown not published'}${this.reviewedPlan ? ' · Historical implementation plan is read-only.' : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
     }
 
     private renderStrategicBar(): void {
@@ -1112,7 +1102,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private renderDraftInspection(): void {
-        const draft = this.strategic?.review?.draft ?? this.createState?.draft ?? this.reviewedPlan?.preview?.draft;
+        const draft = this.strategic?.review?.draft ?? this.createState?.draft;
         const selected = draft?.phases.find(phase => phase.id === this.selectedId ||
             phase.checkpoints.some(item => item.id === this.selectedId));
         const checkpoint = selected?.checkpoints.find(item => item.id === this.selectedId);
@@ -1123,7 +1113,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.inspectionSummary.textContent = this.inspector.selectedGate?.title ?? this.inspector.selected?.title ?? 'Roadmap details';
             return;
         }
-        this.inspectionSummary.textContent = `${item.title} · ${this.strategic?.review || this.reviewedPlan?.preview ? 'Proposed' : 'Accepted draft'}`;
+        this.inspectionSummary.textContent = `${item.title} · ${this.strategic?.review ? 'Proposed' : 'Accepted draft'}`;
         const names = new Map(draft!.phases.flatMap(phase => [[phase.id, phase.title] as const,
             ...phase.checkpoints.map(child => [child.id, child.title] as const)]));
         this.draftInspection.replaceChildren();
@@ -1146,7 +1136,6 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }
         const authority = document.createElement('p'); authority.textContent =
             this.strategic?.review ? 'Proposed strategic Roadmap. Accept or reject in Roadmap; no file has been written.' :
-            this.reviewedPlan?.preview ? 'Proposed plan projection. Review and accept or reject in Roadmap.' :
                 'Accepted draft. Linked Markdown requires a separate preview and approval.';
         this.draftInspection.append(authority);
     }
@@ -1560,7 +1549,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.importEntry.append(ownership);
             if (this.reviewedPlan?.projectId === index.projectId) {
                 const blocked = document.createElement('p'); blocked.setAttribute('role', 'status');
-                blocked.textContent = 'Reviewed implementation plan remains a noncanonical draft. This linked Roadmap supports single-section document edits only; bulk projection needs a separate reviewed source mapping and cannot overwrite the Markdown.';
+                blocked.textContent = 'Historical implementation plan is read-only. Use reviewed Roadmap actions for new changes.';
                 this.importEntry.append(blocked);
             }
             const change = document.createElement('button'); change.type = 'button'; change.textContent = 'Change linked file';
@@ -1663,84 +1652,19 @@ export class RoadmapCanvasWidget extends BaseWidget {
             element.onclick = action; return element;
         };
         const importButton = button('Import Roadmap', () => void this.discoverImport());
-        importButton.disabled = !!this.importState?.busy || !!this.createState || this.createStarting ||
-            !!this.reviewedPlan?.preview || !!this.reviewedPlan?.busy;
-        const chatButton = button('Plan with Chat', () => {
-            if (this.projectUri) this.planSetup = { uri: this.projectUri, projectId: index.projectId, busy: false };
-            this.renderImportEntry();
-        });
+        importButton.disabled = !!this.importState?.busy || !!this.createState || this.createStarting;
         const manualButton = button('Create Manually', () => { void this.beginCreate('manual'); });
-        chatButton.disabled = manualButton.disabled = !!this.createState || this.createStarting || !!this.importState?.busy ||
-            !!this.reviewedPlan?.preview || !!this.reviewedPlan?.busy;
-        if (this.planSetup?.chatId) chatButton.disabled = true;
-        actions.append(importButton,
-            chatButton, manualButton);
+        manualButton.disabled = !!this.createState || this.createStarting || !!this.importState?.busy;
+        actions.append(importButton, manualButton);
         this.importEntry.append(heading, actions);
         if (this.createState) { this.renderCreate(); return; }
-        if (this.planSetup?.uri === this.projectUri && this.planSetup.projectId === index.projectId) {
-            const setup = this.planSetup;
-            const section = document.createElement('section'); section.className = 'dope-roadmap-create';
-            const title = document.createElement('h4'); title.textContent = 'Implementation plan with saved Chat';
-            const guidance = document.createElement('p'); guidance.textContent = setup.chatId ?
-                'Use this saved Chat where you placed it. The complete plan will require review in Chat before it appears on this Roadmap.' :
-                'Choose the saved Chat to use for a complete, reviewable implementation plan.';
-            section.append(title, guidance);
-            if (!setup.chatId) {
-                const select = document.createElement('select'); select.setAttribute('aria-label', 'Saved Chat for implementation plan');
-                const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Choose a saved Chat'; select.append(empty);
-                for (const chat of this.savedChats(setup.uri)) {
-                    const option = document.createElement('option'); option.value = chat.id; option.textContent = chat.title; select.append(option);
-                }
-                const start = document.createElement('button'); start.type = 'button'; start.textContent = 'Start plan in Chat';
-                start.disabled = setup.busy;
-                start.onclick = () => { if (setup.busy || !select.value) return;
-                    const selectedChatId = select.value; setup.busy = true; this.renderImportEntry();
-                    void this.service.beginImplementationPlan(setup.uri, selectedChatId).then(() => {
-                        if (this.planSetup === setup && this.projectUri === setup.uri) {
-                            setup.chatId = selectedChatId; setup.error = undefined;
-                        } else void this.service.cancelUnacceptedImplementationPlan(setup.uri, selectedChatId).catch(() => undefined);
-                    }, error => { if (this.planSetup === setup) setup.error = `Plan could not start: ${String(error)}. Refresh and review the Roadmap owner.`; })
-                        .finally(() => { if (this.planSetup === setup) { setup.busy = false; this.renderImportEntry(); } });
-                };
-                section.append(select, start);
-            } else {
-                const discard = document.createElement('button'); discard.type = 'button';
-                discard.textContent = 'Discard unaccepted plan setup'; discard.disabled = setup.busy;
-                discard.onclick = () => { if (!setup.chatId || setup.busy) return; setup.busy = true; this.renderImportEntry();
-                    void this.service.cancelUnacceptedImplementationPlan(setup.uri, setup.chatId).then(() => {
-                        if (this.planSetup === setup) this.planSetup = undefined;
-                    }, error => { if (this.planSetup === setup)
-                        setup.error = `Plan setup could not be discarded: ${String(error)}. Refresh and review the plan.`; })
-                        .finally(() => { setup.busy = false; this.renderImportEntry(); });
-                };
-                section.append(discard);
-            }
-            if (setup.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
-                error.textContent = setup.error; section.append(error); }
-            this.importEntry.append(section);
-        }
         if (this.reviewedPlan?.uri === this.projectUri && this.reviewedPlan.projectId === index.projectId) {
             const state = this.reviewedPlan;
             const section = document.createElement('section'); section.className = 'dope-roadmap-create';
             const title = document.createElement('h4'); title.textContent = `Reviewed implementation plan · revision ${state.plan.revision}`;
             const note = document.createElement('p'); note.textContent =
-                'Project strategic outcomes into this Roadmap draft. Technical detail stays in the reviewed plan. Linked Markdown needs a separate preview and approval.';
+                'Historical, noncanonical plan. This retired workflow is read-only; use Chat and reviewed Roadmap actions for new changes.';
             section.append(title, note);
-            const control = (label: string, action: () => void): HTMLButtonElement => {
-                const element = document.createElement('button'); element.type = 'button'; element.textContent = label;
-                element.disabled = state.busy; element.onclick = action; return element;
-            };
-            if (!state.preview) section.append(control('Review plan projection', () => void this.previewReviewedPlan()));
-            else {
-                const graph = document.createElement('pre'); graph.setAttribute('aria-label', 'Plan projection review');
-                graph.textContent = state.preview.draft.phases.map(phase =>
-                    `${phase.title}\n${phase.checkpoints.map(item => `  ${item.title}${item.dependencies?.length ?
-                        ` · depends on ${item.dependencies.length} outcome(s)` : ''}`).join('\n')}`).join('\n');
-                section.append(graph, control('Accept as Roadmap draft', () => void this.acceptReviewedPlan()),
-                    control('Reject projection', () => void this.rejectReviewedPlan()));
-            }
-            if (state.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
-                error.textContent = state.error; section.append(error); }
             this.importEntry.append(section);
         }
         const state = this.importState;
@@ -2062,56 +1986,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private cancelImport(): void { ++this.importSerial; this.importState = undefined; this.renderImportEntry(); }
 
-    private async previewReviewedPlan(): Promise<void> {
-        const state = this.reviewedPlan, index = this.inspector.index;
-        if (!state || state.busy || !index || index.revision !== 0 || state.projectId !== index.projectId) return;
-        state.busy = true; state.error = undefined; this.renderImportEntry();
-        try {
-            const preview = await this.service.previewImplementationPlanProjection(state.uri, state.handle);
-            if (this.reviewedPlan !== state || this.projectUri !== state.uri) return;
-            state.preview = preview;
-            this.projection = this.projectIndex(index);
-            this.render();
-        } catch (error) { if (this.reviewedPlan === state) state.error = `Plan projection unavailable: ${String(error)}. Refresh and review again.`; }
-        finally { if (this.reviewedPlan === state) { state.busy = false; this.renderImportEntry(); } }
-    }
-
-    private async acceptReviewedPlan(): Promise<void> {
-        const state = this.reviewedPlan, index = this.inspector.index;
-        if (!state?.preview || state.busy || !index || index.revision !== 0 || state.projectId !== index.projectId) return;
-        state.busy = true; state.error = undefined; this.renderImportEntry();
-        try {
-            const draft = await this.service.applyImplementationPlanProjection(state.uri, state.preview, true);
-            if (this.reviewedPlan !== state || this.projectUri !== state.uri) return;
-            this.reviewedPlan = undefined;
-            this.createState = { uri: state.uri, projectId: state.projectId, handle: state.handle,
-                draft, mode: 'plan', path: 'ROADMAP.md', busy: false };
-            this.projection = this.projectIndex(index);
-            this.render();
-        } catch (error) { if (this.reviewedPlan === state) {
-            state.preview = undefined; state.error = `Plan projection was not accepted: ${String(error)}. Refresh and review again.`;
-        } } finally { if (this.reviewedPlan === state) { state.busy = false; this.renderImportEntry(); } }
-    }
-
-    private async rejectReviewedPlan(): Promise<void> {
-        const state = this.reviewedPlan, index = this.inspector.index;
-        if (!state?.preview || state.busy || !index || state.projectId !== index.projectId) return;
-        state.busy = true; this.renderImportEntry();
-        try { await this.service.clearImplementationPlanProjection(state.uri, state.handle); }
-        catch (error) { if (this.reviewedPlan === state) state.error = `Projection rejection could not be confirmed: ${String(error)}`; }
-        finally {
-            if (this.reviewedPlan === state) {
-                state.preview = undefined; state.busy = false;
-                this.projection = this.projectIndex(index);
-                this.render();
-            }
-        }
-    }
-
     private async beginCreate(mode: 'manual' | 'chat'): Promise<void> {
         const uri = this.projectUri, index = this.inspector.index;
         if (!uri || !index || index.revision !== 0 || this.createState || this.createStarting ||
-            this.importState?.busy || this.reviewedPlan?.preview || this.reviewedPlan?.busy) return;
+            this.importState?.busy) return;
         const serial = ++this.createSerial;
         this.createStarting = true; this.renderImportEntry();
         try {
@@ -2218,10 +2096,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private renderCreate(): void {
         const state = this.createState; if (!state) return;
         const section = document.createElement('section'); section.className = 'dope-roadmap-create';
-        const heading = document.createElement('h4'); heading.textContent = state.mode === 'chat' ? 'Plan with an existing Chat' :
-            state.mode === 'plan' ? 'Accepted plan Roadmap draft' : 'Create a Roadmap manually';
-        const note = document.createElement('p'); note.textContent = state.mode === 'plan' ?
-            'Review the projected outcomes, edit if needed, then preview and explicitly approve the new linked Markdown file.' :
+        const heading = document.createElement('h4'); heading.textContent = state.mode === 'chat' ? 'Plan with an existing Chat' : 'Create a Roadmap manually';
+        const note = document.createElement('p'); note.textContent =
             'Build Phases, Gates and testable Criteria. Review each change, then accept the Roadmap structure. Markdown publication requires separate approval. No model is needed.';
         section.append(heading, note);
         const button = (label: string, action: () => void): HTMLButtonElement => {
@@ -2542,8 +2418,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.setInspectionOpen(true);
         this.render();
         if (node.draftState) this.status.textContent = `${node.title} · ${node.draftState === 'proposed' ?
-            this.reviewedPlan?.preview ? 'Proposed plan projection; accept or reject in Roadmap' :
-                this.strategic?.review ? 'Proposed draft; accept or reject in Roadmap' :
+            this.strategic?.review ? 'Proposed draft; accept or reject in Roadmap' :
                     'Proposed draft; accept or reject in the selected Chat' :
             this.inspector.gateIndex?.phases.some(phase => phase.id === id) ?
                 'Accepted Roadmap structure; Markdown publication remains separate' :

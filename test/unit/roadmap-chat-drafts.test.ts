@@ -11,19 +11,6 @@ import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/
 import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/node/project-planning-actions.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 
-test('a new plan-only owner refuses existing plan or legacy greenfield drafts', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dope-plan-owner-'));
-    const drafts = new RoadmapGreenfield(new RoadmapStore());
-    try {
-        const plan = await drafts.beginImplementationPlan(root);
-        await assert.rejects(drafts.beginImplementationPlan(root), /existing implementation plan owner/);
-        drafts.cancel(plan.handle);
-        const legacy = await drafts.begin(root);
-        await assert.rejects(drafts.beginImplementationPlan(root), /existing implementation plan owner/);
-        drafts.cancel(legacy.handle);
-    } finally { await rm(root, { recursive: true, force: true }); }
-});
-
 test('selected local model previews two draft phases with one approval and no canonical write', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-chat-draft-steps-'));
     const store = new RoadmapStore(), greenfield = new RoadmapGreenfield(store);

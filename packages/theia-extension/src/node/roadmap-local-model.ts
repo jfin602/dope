@@ -33,16 +33,8 @@ export interface LocalPlanningAnswerCheck {
     maxSteps?: 2 | 3;
     onRetry?: (cause: 'invalid-envelope' | 'missing-owner-revision') => void;
     validateBridge?: (value: Record<string, unknown>) => Promise<boolean>;
-    validatePlan?: (value: LocalImplementationPlan) => string[];
-    hasInspectedSource?: () => boolean;
 }
 
-export interface LocalImplementationPlan {
-    type: 'implementation-plan'; objective: string; successCriteria: string[]; constraints: string[];
-    assumptions: string[]; steps: { title: string; detail: string; deliverables: string[];
-        dependsOn: number[]; reuse: { path: string; reason: string }[] }[];
-    tests: string[]; guiQualification: string; risks: string[]; alternatives: string[]; question: string;
-}
 /** One completed model envelope; a Gate is a proposed requirement with explicit criteria, never a task. */
 export function parseStrategicDraft(text: string, finishReason: string | undefined,
     projectId: string, ownerRevision: number): StrategicDraftInput {
@@ -82,125 +74,6 @@ export function parseStrategicDraft(text: string, finishReason: string | undefin
         throw new LocalPlanningOutputFailure('Strategic draft Phase/Gate/Criterion shape is invalid', text);
     return input;
 }
-export function validImplementationPlanRevision(value: unknown): boolean {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    const raw = value as Record<string, unknown>;
-    if (Object.keys(raw).sort().join(',') !== 'baseRevision,constraintsAdd,decisionsAdd,edits,question,type' ||
-        raw.type !== 'implementation-plan-revision' || !Number.isSafeInteger(raw.baseRevision) ||
-        !planLines(raw.constraintsAdd, 8, 512) || !planLines(raw.decisionsAdd, 8, 512) ||
-        typeof raw.question !== 'string' || raw.question.length > 512 || /[\0-\x1f]/.test(raw.question) ||
-        !Array.isArray(raw.edits) || !raw.edits.length || raw.edits.length > 8 ||
-        Buffer.byteLength(JSON.stringify(raw), 'utf8') > 12000) return false;
-    return raw.edits.every(value => {
-        if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-        const edit = value as Record<string, unknown>;
-        const keys = Object.keys(edit).sort().join(',');
-        const number = (key: string) => Number.isSafeInteger(edit[key]) && (edit[key] as number) > 0;
-        if (edit.type === 'update') return ['step,type,title', 'detail,step,type', 'detail,step,title,type'].includes(keys) &&
-            number('step') && (edit.title === undefined || planLine(edit.title, 200)) &&
-            (edit.detail === undefined || planLine(edit.detail, 2048));
-        if (edit.type === 'merge') return keys === 'detail,first,second,title,type' &&
-            number('first') && number('second') && planLine(edit.title, 200) && planLine(edit.detail, 2048);
-        if (edit.type === 'move') return keys === 'before,step,type' && number('step') && number('before');
-        if (edit.type === 'split') return keys === 'detail,step,title,type' && number('step') &&
-            planLine(edit.title, 200) && planLine(edit.detail, 2048);
-        return edit.type === 'add' && keys === 'before,detail,title,type' && number('before') &&
-            planLine(edit.title, 200) && planLine(edit.detail, 2048);
-    });
-}
-const planLine = (value: unknown, limit: number): value is string =>
-    typeof value === 'string' && !!value.trim() && value.length <= limit && !/[\0-\x1f]/.test(value);
-const planLines = (value: unknown, max: number, limit: number): value is string[] =>
-    Array.isArray(value) && value.length <= max && value.every(item => planLine(item, limit));
-export function validImplementationPlan(value: unknown): value is LocalImplementationPlan {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    const raw = value as Record<string, unknown>;
-    if (Object.keys(raw).sort().join(',') !==
-        'alternatives,assumptions,constraints,guiQualification,objective,question,risks,steps,successCriteria,tests,type' ||
-        raw.type !== 'implementation-plan' || !planLine(raw.objective, 2048) ||
-        !planLines(raw.successCriteria, 8, 512) || !raw.successCriteria.length ||
-        !planLines(raw.constraints, 16, 512) || !planLines(raw.assumptions, 8, 512) ||
-        !planLines(raw.tests, 12, 512) || !raw.tests.length || !planLine(raw.guiQualification, 1024) ||
-        !planLines(raw.risks, 8, 512) || !planLines(raw.alternatives, 8, 512) ||
-        typeof raw.question !== 'string' || raw.question.length > 512 || /[\0-\x1f]/.test(raw.question) ||
-        !Array.isArray(raw.steps) || raw.steps.length < 2 || raw.steps.length > 16) return false;
-    const steps = raw.steps as unknown[];
-    if (Buffer.byteLength(JSON.stringify(raw), 'utf8') > 16000 ||
-        new Set(steps.flatMap(value => value && typeof value === 'object' && !Array.isArray(value) &&
-            Array.isArray((value as Record<string, unknown>).reuse) ?
-            ((value as Record<string, unknown>).reuse as { path?: string }[]).map(item => item?.path) : [])).size > 64)
-        return false;
-    return steps.every((value, index) => {
-        if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-        const step = value as Record<string, unknown>;
-        return Object.keys(step).sort().join(',') === 'deliverables,dependsOn,detail,reuse,title' &&
-            planLine(step.title, 200) && !/[\r\n]/.test(step.title) && planLine(step.detail, 2048) &&
-            planLines(step.deliverables, 8, 512) && step.deliverables.length > 0 &&
-            Array.isArray(step.dependsOn) && step.dependsOn.length <= index &&
-            new Set(step.dependsOn).size === step.dependsOn.length &&
-            step.dependsOn.every(item => Number.isSafeInteger(item) && item >= 1 && item <= index) &&
-            Array.isArray(step.reuse) && step.reuse.length <= 8 && step.reuse.every(item =>
-                item && typeof item === 'object' && !Array.isArray(item) &&
-                Object.keys(item).sort().join(',') === 'path,reason' &&
-                planLine(item.path, 512) && planLine(item.reason, 512)) &&
-            (step.detail as string).length + (index === steps.length - 1 ?
-                JSON.stringify([raw.tests, raw.guiQualification, raw.risks, raw.alternatives, raw.question]).length : 0) +
-                JSON.stringify(step.reuse).length < 8192;
-    });
-}
-
-/** Diagnostic only. The strict validator above remains the sole schema authority. */
-export function implementationPlanShapeIssues(value: unknown): string[] {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return ['plan must be one JSON object'];
-    const plan = value as Record<string, unknown>;
-    const required = ['type', 'objective', 'successCriteria', 'constraints', 'assumptions', 'steps',
-        'tests', 'guiQualification', 'risks', 'alternatives', 'question'];
-    const issues: string[] = [];
-    for (const key of required) if (!(key in plan)) issues.push(`missing ${key}`);
-    for (const key of Object.keys(plan)) if (!required.includes(key)) issues.push(`unexpected ${key}`);
-    if (plan.type !== 'implementation-plan') issues.push('type must be implementation-plan');
-    for (const [key, limit] of [['objective', 2048], ['guiQualification', 1024]] as const)
-        if (key in plan && !planLine(plan[key], limit)) issues.push(`${key} must be nonempty single-line text`);
-    if ('question' in plan && (typeof plan.question !== 'string' || plan.question.length > 512 ||
-        /[\0-\x1f]/.test(plan.question))) issues.push('question must be a string (empty when none)');
-    for (const key of ['successCriteria', 'constraints', 'assumptions', 'tests', 'risks', 'alternatives'])
-        if (key in plan && (!Array.isArray(plan[key]) || !(plan[key] as unknown[]).every(item => typeof item === 'string')))
-            issues.push(`${key} must be a string array`);
-    for (const key of ['successCriteria', 'tests'])
-        if (Array.isArray(plan[key]) && !plan[key].length) issues.push(`${key} needs at least one item`);
-    for (const key of ['successCriteria', 'constraints', 'assumptions', 'tests', 'risks', 'alternatives'])
-        if (Array.isArray(plan[key]) && plan[key].some(item => !planLine(item,
-            key === 'constraints' ? 512 : 512))) issues.push(`${key} entries must be nonempty single-line text`);
-    if (!Array.isArray(plan.steps) || plan.steps.length < 2) issues.push('steps must contain at least two steps');
-    else plan.steps.forEach((value, index) => {
-        const prefix = `steps[${index}]`;
-        if (!value || typeof value !== 'object' || Array.isArray(value)) { issues.push(`${prefix} must be an object`); return; }
-        const step = value as Record<string, unknown>;
-        const keys = ['title', 'detail', 'deliverables', 'dependsOn', 'reuse'];
-        for (const key of keys) if (!(key in step)) issues.push(`missing ${prefix}.${key}`);
-        for (const key of Object.keys(step)) if (!keys.includes(key)) issues.push(`unexpected ${prefix}.${key}`);
-        if ('deliverables' in step && !Array.isArray(step.deliverables)) issues.push(`${prefix}.deliverables must be an array`);
-        else if (Array.isArray(step.deliverables) && (!step.deliverables.length ||
-            step.deliverables.some(item => !planLine(item, 512))))
-            issues.push(`${prefix}.deliverables needs nonempty single-line items`);
-        if ('dependsOn' in step && !Array.isArray(step.dependsOn)) issues.push(`${prefix}.dependsOn must be an array`);
-        else if (Array.isArray(step.dependsOn) && (step.dependsOn.length > index ||
-            new Set(step.dependsOn).size !== step.dependsOn.length ||
-            step.dependsOn.some(item => !Number.isSafeInteger(item) || item < 1 || item > index)))
-            issues.push(`${prefix}.dependsOn must contain only earlier 1-based step numbers`);
-        if ('title' in step && !planLine(step.title, 200)) issues.push(`${prefix}.title must be nonempty single-line text`);
-        if ('detail' in step && !planLine(step.detail, 2048)) issues.push(`${prefix}.detail must be nonempty single-line text`);
-        if ('reuse' in step && (!Array.isArray(step.reuse) || !step.reuse.every(item =>
-            item && typeof item === 'object' && !Array.isArray(item) &&
-                Object.keys(item).sort().join(',') === 'path,reason' &&
-                typeof item.path === 'string' && typeof item.reason === 'string')))
-            issues.push(`${prefix}.reuse must be [] or an array of {path,reason}`);
-        else if (Array.isArray(step.reuse) && step.reuse.some(item => !planLine(item.path, 512) ||
-            !planLine(item.reason, 512))) issues.push(`${prefix}.reuse paths and reasons must be nonempty single-line text`);
-    });
-    return issues.slice(0, 8);
-}
-
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
 export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number,
     limits: Pick<ConversationModelCapabilities, 'maxInputTokens' | 'maxOutputTokens'> = {}) {
@@ -233,13 +106,11 @@ export function verifyRoadmapLocalInput(messages: readonly ConversationMessage[]
 /** Completed output is buffered so invalid attempts cannot become actionable Chat text. */
 export async function localPlanningJson<T extends { type: string; text: string; finishReason?: string }>(
     generate: (retryInstruction?: string) => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes = MAX_PLANNING_JSON_BYTES,
-    mode: 'linked' | 'unlinked' | 'draft' | 'gate' | 'help' | 'bridge' | 'plan' | 'plan-revision' = 'unlinked', eligibleObjective = true,
+    mode: 'linked' | 'unlinked' | 'draft' | 'gate' | 'help' | 'bridge' = 'unlinked', eligibleObjective = true,
     check: LocalPlanningAnswerCheck = {}): Promise<T> {
     let lastInvalid = '';
     let retryInstruction: string | undefined;
     let incompleteOwnerRevision = false;
-    let missingPlanCoverage: string[] = [];
-    let planIssues: string[] = [];
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         let complete: T | undefined;
@@ -265,22 +136,6 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                 raw.type === 'roadmap-gate-undo' && Object.keys(raw).sort().join(',') === 'type' ||
                 raw.type === 'roadmap-gate-focus' && Object.keys(raw).sort().join(',') === 'id,type' &&
                 typeof raw.id === 'string')) return complete;
-            if (mode === 'plan') {
-                if (validImplementationPlan(raw)) {
-                    missingPlanCoverage = check.validatePlan?.(raw) ?? [];
-                    if (!missingPlanCoverage.length) return complete;
-                    planIssues = missingPlanCoverage;
-                } else {
-                    planIssues = implementationPlanShapeIssues(raw);
-                    if (!planIssues.length) planIssues = ['one or more strict field bounds or dependencies are invalid'];
-                }
-                retryInstruction = `Your completed plan was rejected: ${planIssues.join('; ')}. ` +
-                    'Return the whole corrected implementation-plan JSON now. Every step, including validation steps, ' +
-                    'must contain title, detail, deliverables, dependsOn, and reuse. Use reuse:[] when no verified ' +
-                    'project file is reused in that step. Preserve every developer requirement and prohibition exactly. ' +
-                    'Use previously verified file evidence; do not reread unchanged files. No prose or code fences.';
-            }
-            if (mode === 'plan-revision' && validImplementationPlanRevision(raw)) return complete;
             const proposal = (raw.type === 'roadmap-proposal' && mode === 'unlinked' &&
                 Object.keys(raw).sort().join(',') === 'action,ownerRevision,projectId,type' &&
                 Number.isSafeInteger(raw.ownerRevision) || raw.type === 'roadmap-draft-proposal' && mode === 'draft' &&
@@ -309,37 +164,26 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             if (mode === 'bridge' && raw.type === 'bridge-proposal' &&
                 await check.validateBridge?.(raw)) return complete;
             if (mode !== 'help' && mode !== 'bridge' && (proposal || sequence || draftSequence || intent)) return complete;
-            if (noAction && mode !== 'plan') {
+            if (noAction) {
                 if (check.requiredOwnerRevision === undefined ||
                     citesOwnerRevision(raw.message as string, check.requiredOwnerRevision)) return complete;
                 incompleteOwnerRevision = true;
                 retryInstruction = `Previous answer omitted current Roadmap owner revision ${check.requiredOwnerRevision}. Re-answer all requested facts from attached evidence as strict JSON no-action.`;
-            } else if (mode !== 'plan') {
+            } else {
                 incompleteOwnerRevision = false;
                 retryInstruction = undefined;
             }
         } catch {
             // A retry must change the model's task, especially when Pi starts a fresh tool session.
-            if (mode === 'plan') {
-                planIssues = ['invalid JSON, incomplete generation, or output size'];
-                retryInstruction = 'Your previous answer was not complete strict implementation-plan JSON. ' +
-                    'Finish now with one JSON object using every required field and at least two substantive steps. ' +
-                    'Every step requires reuse:[] or verified {path,reason} entries. Preserve every developer requirement. ' +
-                    'No prose, code fences, extra fields or repeated file reads unless a material source dependency is missing.';
-            }
+
         }
-        if (mode === 'plan' && check.hasInspectedSource?.() === false)
-            retryInstruction = 'Investigate the relevant project source with your available file tools before drafting the plan. Choose the files yourself from the request and project structure. Do not produce final JSON until you have inspected source evidence; then use the complete Planning output contract already provided.';
         if (attempt + 1 < MAX_ATTEMPTS)
             check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
     }
-    return fail(mode === 'plan' ?
-        `Local implementation plan incomplete or invalid strict JSON after two attempts; no draft change accepted${planIssues.length ?
-            `. Validation: ${planIssues.join('; ')}` : ''}` :
-        incompleteOwnerRevision ?
+    return fail(incompleteOwnerRevision ?
         'Local planning answer omitted the requested current Roadmap owner revision after two attempts' :
         'Local planning did not return strict JSON after two attempts', lastInvalid,
-        mode === 'plan' || incompleteOwnerRevision ? 'incomplete-answer' : 'invalid-json');
+        incompleteOwnerRevision ? 'incomplete-answer' : 'invalid-json');
 }
 
 function validNestedAction(value: unknown, mode: 'linked' | 'unlinked' | 'draft'): boolean {

@@ -13,18 +13,14 @@ import { ChatProjectGrounder, type GroundingResult } from './chat-project-ground
 import { runChatInvestigationCommand } from './chat-command-broker';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
-import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevision, validImplementationPlan,
-    validImplementationPlanRevision, implementationPlanShapeIssues,
+import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevision,
     roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
-import { RoadmapGreenfield, reviseImplementationPlan, type ImplementationPlanRevision,
-    type GreenfieldEdit, type GreenfieldEditPreview, type ImplementationPlanPreview,
-    type ImplementationPlanInput, type StrategicDraftPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview,
+    type StrategicDraftPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import { selectDopeCapabilityHelp } from './dope-capability-help';
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
-import { planRequirements, planRequirementCoverage, planOutputDirectives, planForbidsCommands,
-    planExplicitConstraintViolations, type PlanRequirement } from './chat-plan-requirements';
 import { extractSavedRoadmap, roadmapCreationIntent } from './chat-roadmap-extract';
 import { roadmapRequirementCoverage } from './chat-roadmap-requirements';
 import { bindGateChatActions, gateChatDiff, validGateChatEnvelope } from './roadmap-gate-chat';
@@ -35,51 +31,15 @@ import type { GateDocumentPatch } from '@dope/project-intelligence/lib/node/road
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
         action: { type: 'create-phase', title: 'Example phase', objective: 'One clear objective' } });
-    return `You are discussing a noncanonical Roadmap draft. Answer questions or ask one meaningful clarifying question as {"type":"no-action","message":"your concrete answer or question"}; do not force an edit. If the user asks for an edit, ${maxSteps ? `you may propose from two to ${maxSteps} small steps in one atomic preview using {"type":"roadmap-draft-sequence","projectId":"${projectId}","draftRevision":${revision},"actions":[{"type":"create-phase","title":"First phase"},{"type":"create-phase","title":"Second phase"}]}, or propose one step` : 'propose exactly one small step'} using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. A Gate is an explicit verifiable requirement, not an implementation step or feature inventory item. For a developer-requested Gate use {"type":"create-gate","phaseId":"<existing phase ID>","title":"<testable requirement>","purpose":"<why it must pass>"}; add each observable criterion separately with {"type":"add-criterion","phaseId":"<existing phase ID>","gateId":"<existing gate ID>","title":"<criterion>","expectedResult":"<observable pass result>"}. Copy IDs from the current draft; never invent an ID. Supported actions also include edit-phase, edit-gate, edit-criterion, create-correction (parentId, title, optional objective), and attach-correction (correctionId, parentId). Keep implementation tasks in the separate plan; do not convert them to required Gates. Return only one JSON object. This requires developer approval. Never claim an edit was applied or a Gate is Green.`;
+    return `You are discussing a noncanonical Roadmap draft. Answer questions or ask one meaningful clarifying question as {"type":"no-action","message":"your concrete answer or question"}; do not force an edit. If the user asks for an edit, ${maxSteps ? `you may propose from two to ${maxSteps} small steps in one atomic preview using {"type":"roadmap-draft-sequence","projectId":"${projectId}","draftRevision":${revision},"actions":[{"type":"create-phase","title":"First phase"},{"type":"create-phase","title":"Second phase"}]}, or propose one step` : 'propose exactly one small step'} using the exact projectId and draftRevision below. The action must be an object with a "type" field, not a property named after the action. For a phase, use this exact JSON shape with your own title and objective: ${example}. A Gate is an explicit verifiable requirement, not an implementation step or feature inventory item. For a developer-requested Gate use {"type":"create-gate","phaseId":"<existing phase ID>","title":"<testable requirement>","purpose":"<why it must pass>"}; add each observable criterion separately with {"type":"add-criterion","phaseId":"<existing phase ID>","gateId":"<existing gate ID>","title":"<criterion>","expectedResult":"<observable pass result>"}. Copy IDs from the current draft; never invent an ID. Supported actions also include edit-phase, edit-gate, edit-criterion, create-correction (parentId, title, optional objective), and attach-correction (correctionId, parentId). Keep implementation tasks in Work; do not convert them to required Gates. Return only one JSON object. This requires developer approval. Never claim an edit was applied or a Gate is Green.`;
 }
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
-const PLAN_INVESTIGATION_INSTRUCTION = `Investigate the project with the available Pi file tools. Choose relevant files yourself and read the implementation needed by this request. Use actual tool results as source evidence. Then submit one complete implementation plan through submit_plan. Include every developer requirement, exact requested tests and validation commands. Preserve prohibitions as constraints; do not propose forbidden dependencies or claim unverified results. If Dope rejects the candidate, use its precise feedback for at most one corrected submission in this same turn. After acceptance, briefly report that the proposal awaits human review. Do not output a second JSON plan, claim approval, edit files or change Roadmap.`;
-function firstPlanInstruction(requirements: readonly PlanRequirement[], content: string): string {
-    const detailedActions = requirements.some(item => /\b(?:toolbar|button|control|checkout|commit|authorization|permission)\b/i.test(item.text));
-    return `${PLAN_INVESTIGATION_INSTRUCTION} Exact developer directives: ${JSON.stringify(planOutputDirectives(content))}. ` +
-        `Requested capabilities: ${JSON.stringify(requirements.map(item => item.text))}. ` +
-        'Cover each capability with concrete step work, a deliverable and a success criterion or test. ' +
-        'State source unknowns as assumptions; do not invent reads.' +
-        (planForbidsCommands(content) ? ' The developer forbids command execution in this turn. Use only file read/list/search tools; do not call run_command.' : '') +
-        (detailedActions ? ' Connect requested controls to real operations, failure handling and explicit authorization checks; verify the operation, not just the button.' : '');
+function forbidsCommandExecution(content: string): boolean {
+    return content.split(/(?<=[.!?;])\s+|;\s*|\n+(?=\s*[-*]\s+)/).some(clause =>
+        /\bdo\s+not\b.{0,160}\b(?:execute|run)\s+commands?\b\s*(?:,|[.!?;]?\s*$)/i.test(clause));
 }
-/** Deliberately narrow first-turn intent; ordinary mentions of a plan remain ordinary Chat. */
-export function requestsImplementationPlan(content: string): boolean {
-    const text = content.trim();
-    const explicitMilestone = /^inspect\s+this\s+project(?:'s)?\s+implementation\s+and\s+prepare\s+one\s+small[,\s]+concrete\s+development\s+milestone\b/i.test(text) &&
-        /\bvalidation\s+steps\b/i.test(text) && /\bproposal\s+for\s+my\s+review\b/i.test(text) &&
-        /\bwithout\s+changing\s+source\s+files\b/i.test(text);
-    const sourceMilestone = /^inspect\s+this\s+project(?:'s)?\s+source\s+files\s+using\s+your\s+available\s+tools\b/i.test(text) &&
-        /\bpropose\s+one\s+small\s+development\s+milestone\b/i.test(text) &&
-        /\bconcrete\s+validation\s+steps\b/i.test(text) &&
-        /\bpresent\s+the\s+implementation\s+plan\s+for\s+review\b/i.test(text) &&
-        /\bdo\s+not\s+modify\s+files\s+or\s+the\s+roadmap\b/i.test(text);
-    const sourcePlan = /^inspect\s+the\s+existing\s+project\s+source\s+and\s+prepare\s+a\s+minimal\s+implementation\s+plan\b/i.test(text) &&
-        /\bpresent\s+the\s+implementation\s+plan\s+for\s+review\b/i.test(text) &&
-        /\bdo\s+not\s+modify\s+project\s+files\b/i.test(text);
-    return explicitMilestone || sourceMilestone || sourcePlan || /^plan\s+(?:a|an|the|my)\s+\S/i.test(text) &&
-        /\b(?:please\s+)?inspect\b/i.test(text) &&
-        /\b(?:complete|full)\s+ordered\s+implementation\s+plan\b/i.test(text);
-}
-function planRevisionInstruction(plan: NonNullable<ReturnType<RoadmapGreenfield['chatImplementationPlan']>>['plan']): string {
-    if (!plan) return PLAN_INVESTIGATION_INSTRUCTION;
-    return `Revise only the affected steps in the accepted noncanonical plan below, using fresh read-only source evidence. ` +
-        `For an edit return ONLY strict JSON {"type":"implementation-plan-revision","baseRevision":${plan.revision},` +
-        `"edits":[{"type":"update","step":1,"detail":"replacement detail"}],"constraintsAdd":[],"decisionsAdd":[],"question":""}. ` +
-        `Supported edits: update(step,title and/or detail), merge(first,second,title,detail) for adjacent steps, ` +
-        `move(step,before), split(step,title,detail), add(before,title,detail). Numbers refer to the accepted plan below, ` +
-        `not to intermediate edits. Keep unaffected steps and confirmed decisions. Use decisionsAdd only for newly suggested choices, ` +
-        `not developer approvals. If the request is ambiguous, answer {"type":"no-action","message":"one concrete question"}. ` +
-        `Never claim approval or a Roadmap, Markdown, Work, or prompt write. Accepted plan: ${JSON.stringify(plan)}`;
-}
-
 function tracePlanning(stage: string, chatId: string, messageId: string, status?: string): void {
     if (process.env.DOPE_CHAT_PLANNING_TRACE !== '1') return;
     console.info('[dope-chat-planning-trace]', JSON.stringify({ at: new Date().toISOString(),
@@ -129,8 +89,7 @@ export class ChatBackend implements ChatService {
         undo?: { handle: string; ownerId: string; revision: number; token: string };
         roadmapOffer?: ChatRoadmapOffer;
         draft?: { handle: string; preview: GreenfieldEditPreview };
-        plan?: { handle: string; preview: ImplementationPlanPreview } }>();
-    private readonly planUndo = new Map<string, { handle: string; leaseToken: string; revision: number }>();
+        }>();
     private readonly gateUndo = new Map<string, { handle: string; ownerId: string; revision: number;
         token: string; leaseToken: string }>();
     private readonly strategicReviews = new Map<string, { root: string; leaseToken: string; messageId: string; offerId: string;
@@ -222,15 +181,13 @@ export class ChatBackend implements ChatService {
         try {
             const state = await this.greenfield.readOpportunity(root);
             const base = `Checked read-only Roadmap opportunity for root ${JSON.stringify(root)}, projectId ${state.projectId}, owner revision ${state.revision}: `;
-            if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts ||
-                state.acceptedPlans || state.pendingPlans)
+            if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts)
                 return base + `linked document ${state.linkedDocument ? JSON.stringify(state.linkedDocument) : 'none'}, ` +
                     `root ROADMAP.md present ${state.canonicalMarkdown}, ${state.gates} accepted Gates, ` +
                     `${state.draftGates} Gates in drafts, ${state.proposedGates} proposed Gates, ` +
-                    `creation pending ${state.pendingCreation}, ${state.drafts} Greenfield drafts, ` +
-                    `${state.acceptedPlans} accepted plans, ${state.pendingPlans} pending plans. ` +
-                    'An owner, creation, draft, or plan already exists. Offer Open, Continue, or Review Roadmap as appropriate; do not offer a duplicate draft.';
-            return base + 'revision zero, no linked document, pending creation, Greenfield draft, or accepted/pending plan. ' +
+                    `creation pending ${state.pendingCreation}, ${state.drafts} Greenfield drafts. ` +
+                    'An owner, creation, or draft already exists. Offer Open, Continue, or Review Roadmap as appropriate; do not offer a duplicate draft.';
+            return base + 'revision zero, no linked document, pending creation, or Greenfield draft. ' +
                 'At a useful planning juncture you may mention that Dope can generate a provisional Roadmap draft. ' +
                 'This is an informational possibility only: no executable offer or authorization exists in this turn. ' +
                 'Do not claim a draft was generated or repeat the suggestion if it was already made in this Chat.';
@@ -303,37 +260,19 @@ export class ChatBackend implements ChatService {
         if (!model) throw new Error('Selected model unavailable');
         await this.greenfield?.ensureRestored(root);
         const helpTurn = !!selectDopeCapabilityHelp(request.content);
-        const planBinding = !helpTurn ? this.greenfield?.chatImplementationPlan(root, request.chatId) : undefined;
         const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId);
-        const explicitPlan = !helpTurn && !draft && !planBinding &&
-            !request.context.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap' || item.kind === 'planning-map') &&
-            requestsImplementationPlan(request.content);
-        if (explicitPlan) {
-            const owner = await this.greenfield?.owner(root);
-            if (!owner || owner.revision !== 0 || owner.linkedDocument || owner.pendingCreation)
-                throw new Error('This Roadmap already has an owner; review it before starting a new implementation plan');
-        }
-        const planOnly = planBinding?.planOnly === true || explicitPlan;
-        const opportunity = await this.roadmapOpportunity(root, request.content, !helpTurn && !draft && !planOnly &&
+        const opportunity = await this.roadmapOpportunity(root, request.content, !helpTurn && !draft &&
             !request.context.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap' || item.kind === 'planning-map'));
-        if (planOnly && !this.grounder) throw new Error('Project investigation unavailable');
-        const planningGrounding = planOnly ? await this.grounder?.investigateIdea(root, request.content) :
-            await this.grounder?.ground(root, request.content);
         const connection = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId);
         if (draft && connection?.providerId !== 'local') throw new Error('Greenfield Chat planning requires a local model');
         const localRoadmap = connection?.providerId === 'local' &&
-            (request.context.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') || !!draft || helpTurn || planOnly);
-        if (planOnly && connection?.providerId !== 'local') throw new Error('Implementation planning requires a selected local model');
+            (request.context.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') || !!draft || helpTurn);
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
-            planOnly ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
-                chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
-        if (planOnly && budget!.output < 2048) throw new Error('Selected local model has insufficient plan output capacity');
+            chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
         const composed = await this.composeTurn(root, chat, request.content, request.context,
-            model.capabilities, budget, planOnly ? { text: planBinding?.plan ? planRevisionInstruction(planBinding.plan) :
-                firstPlanInstruction(planRequirements(request.content), request.content) } : draft, planningGrounding, false, opportunity);
+            model.capabilities, budget, draft, await this.grounder?.ground(root, request.content), false, opportunity);
         if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
-            planOnly ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
-                chat.settings.context.reservedOutputTokens);
+            chat.settings.context.reservedOutputTokens);
         if (request.context.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
@@ -462,7 +401,6 @@ export class ChatBackend implements ChatService {
         const pending = this.proposals.get(chatId);
         if (pending?.handle) this.planning?.detach(pending.handle);
         if (pending?.draft) this.greenfield?.clearEditPreview(pending.draft.handle);
-        if (pending?.plan) this.greenfield?.clearImplementationPlanPreview(pending.plan.handle);
         this.proposals.delete(chatId);
     }
     private clearGateUndo(chatId: string): void {
@@ -486,7 +424,7 @@ export class ChatBackend implements ChatService {
             return undefined;
         const state = await this.greenfield.readOpportunity(root);
         if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation ||
-            state.drafts || state.acceptedPlans || state.pendingPlans) return undefined;
+            state.drafts) return undefined;
         if (!this.handle || this.root !== root) return undefined;
         const offer: ChatRoadmapOffer = { id: randomUUID(), token: randomUUID(), projectHandle: this.handle,
             projectId: state.projectId,
@@ -536,8 +474,7 @@ export class ChatBackend implements ChatService {
         const state = await this.greenfield.readOpportunity(root);
         checkCancelled();
         if (state.projectId !== offer.projectId || state.revision !== offer.ownerRevision ||
-            state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts ||
-            state.acceptedPlans || state.pendingPlans)
+            state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts)
             throw new Error('Roadmap owner or draft changed; review Roadmap and request a new offer');
         const saved = (await this.repository.read(root)).chats.find(item => item.id === chatId);
         checkCancelled();
@@ -873,114 +810,6 @@ export class ChatBackend implements ChatService {
         }
     }
 
-    private async planProposal(root: string, chatId: string, messageId: string, leaseToken: string,
-        output: string, refs: ChatContextPreview['refs'], requirements: readonly PlanRequirement[], content: string):
-        Promise<{ proposal?: ChatPlanningProposal; proposalError?: string;
-            planPreview?: ChatTurnResult['planPreview'] }> {
-        try {
-            const plan: unknown = JSON.parse(output);
-            if (!validImplementationPlan(plan) || !this.greenfield) throw new Error('Invalid implementation plan');
-            const bound = this.greenfield.chatImplementationPlan(root, chatId);
-            if (!bound?.planOnly) throw new Error('Implementation plan binding changed');
-            const draft = this.greenfield.read(bound.handle);
-            const owner = await this.greenfield.owner(root);
-            if (owner.projectId !== this.greenfield.draftProjectId(bound.handle) ||
-                owner.revision !== (bound.ownerRevision ?? 0) || owner.pendingCreation)
-                throw new Error('Implementation plan owner changed');
-            const verified = new Map<string, string>();
-            for (const ref of refs.filter(ref => ref.kind === 'file' && ref.sourceHash && ref.includedBytes)) {
-                if (verified.has(ref.id) && verified.get(ref.id) !== ref.sourceHash)
-                    throw new Error('Project source changed during planning');
-                verified.set(ref.id, ref.sourceHash!);
-            }
-            for (const [path, expected] of verified) {
-                const current = await this.grounder?.readFile(root, path);
-                if (current?.blocks[0]?.ref.sourceHash !== expected || current.diagnostics.length)
-                    throw new Error('Project source changed during planning');
-                const supplied = refs.find(ref => ref.kind === 'file' && ref.id === path);
-                if (supplied?.projectId && current.blocks[0].ref.projectId !== supplied.projectId)
-                    throw new Error('Foreign project evidence');
-            }
-            const explicitViolations = planExplicitConstraintViolations(content, plan, [...verified.keys()]);
-            if (explicitViolations.length) return { proposalError: `Plan violates developer constraints: ${explicitViolations.join('; ')}` };
-            const coverage = planRequirementCoverage(requirements, plan);
-            if (coverage.some(item => !item.complete)) return {
-                proposalError: 'Plan needs work before it can be accepted. Review the requirements below and ask Chat to revise the plan.',
-                planPreview: { coverage: coverage.map(item => ({ id: item.requirement.id, text: item.requirement.text,
-                    status: item.status, explanation: item.explanation, stepNumbers: item.stepNumbers })) },
-            };
-            const evidence = [...new Set(plan.steps.flatMap(step => step.reuse.map(item => item.path)))]
-                .filter(path => verified.has(path)).map(path => ({ id: randomUUID(), path, sha256: verified.get(path)! }));
-            const evidenceIds = new Map(evidence.map(item => [item.path, item.id]));
-            const input: ImplementationPlanInput = { objective: `${plan.objective} Success: ${plan.successCriteria.join('; ')}`,
-                constraints: plan.constraints, evidence,
-                decisions: plan.assumptions.map(text => ({ text, origin: 'model-assumption' })),
-                steps: plan.steps.map((step, index) => ({ title: step.title,
-                    detail: [step.detail, ...step.reuse.filter(item => !verified.has(item.path))
-                        .map(item => `Unverified reuse ${item.path}: ${item.reason}`),
-                        ...(index === plan.steps.length - 1 ? [
-                            `Tests: ${plan.tests.join('; ')}`, `GUI qualification: ${plan.guiQualification}`,
-                            `Risks: ${plan.risks.join('; ')}`, `Alternatives: ${plan.alternatives.join('; ')}`,
-                            ...(plan.question ? [`Question: ${plan.question}`] : [])] : [])].join(' | '),
-                    expectedOutputs: step.deliverables,
-                    dependencies: step.dependsOn.map(number => `step:${number}`),
-                    evidenceIds: step.reuse.flatMap(item => {
-                        const id = evidenceIds.get(item.path);
-                        return id ? [id] : [];
-                    }) })) };
-            const preview = await this.greenfield.previewImplementationPlan(bound.handle, draft.revision,
-                bound.plan?.revision ?? 0, input, 'model');
-            const stepIds = preview.after.steps.map(step => step.id);
-            const id = randomUUID();
-            this.proposals.set(chatId, { id, messageId, leaseToken, changedIds: stepIds,
-                plan: { handle: bound.handle, preview } });
-            return { proposal: { id, chatId, messageId, ownerId: preview.after.source.projectId,
-                revision: preview.planRevision, changedIds: stepIds,
-                action: { type: 'implementation-plan', id: stepIds[0] },
-                summary: JSON.stringify({ before: preview.before, after: preview.after, coverage }) } };
-        } catch (error) {
-            return { proposalError: `Implementation plan rejected: ${String(error)}` };
-        }
-    }
-
-    private async planRevisionProposal(root: string, chatId: string, messageId: string, leaseToken: string,
-        output: string, expectedRevision: number, refs: ChatContextPreview['refs']): Promise<{
-        proposal?: ChatPlanningProposal; proposalError?: string }> {
-        try {
-            const raw: unknown = JSON.parse(output);
-            if (!validImplementationPlanRevision(raw) || !this.greenfield)
-                throw new Error('Invalid implementation plan revision');
-            const bound = this.greenfield.chatImplementationPlan(root, chatId);
-            if (!bound?.planOnly || !bound.plan) throw new Error('Implementation plan binding changed');
-            const revision = raw as ImplementationPlanRevision;
-            if (bound.plan.revision !== expectedRevision) throw new Error('Stale implementation plan revision');
-            for (const ref of refs.filter(item => item.kind === 'file' && item.sourceHash && item.includedBytes)) {
-                const current = await this.grounder?.readFile(root, ref.id);
-                if (!current || current.blocks[0]?.ref.contentHash !== ref.sourceHash || current.diagnostics.length)
-                    throw new Error('Cited project source changed during plan revision');
-            }
-            const input = reviseImplementationPlan(bound.plan, revision);
-            const preview = await this.greenfield.previewImplementationPlan(bound.handle,
-                this.greenfield.read(bound.handle).revision, revision.baseRevision, input, 'model');
-            const before = new Map(preview.before!.steps.map(step => [step.id, step]));
-            const after = new Map(preview.after.steps.map(step => [step.id, step]));
-            const changedIds = [...new Set([...before.keys(), ...after.keys()])].filter(id =>
-                JSON.stringify(before.get(id)) !== JSON.stringify(after.get(id)) ||
-                preview.before!.steps.findIndex(step => step.id === id) !==
-                preview.after.steps.findIndex(step => step.id === id));
-            if (!changedIds.length && JSON.stringify(preview.before!.constraints) === JSON.stringify(preview.after.constraints) &&
-                JSON.stringify(preview.before!.decisions) === JSON.stringify(preview.after.decisions))
-                throw new Error('Implementation plan revision has no effect');
-            const id = randomUUID();
-            this.proposals.set(chatId, { id, messageId, leaseToken, changedIds,
-                plan: { handle: bound.handle, preview } });
-            return { proposal: { id, chatId, messageId, ownerId: preview.after.source.projectId,
-                revision: preview.planRevision, changedIds,
-                action: { type: 'implementation-plan-revision', id: changedIds[0] ?? preview.after.steps[0]?.id ?? id },
-                summary: JSON.stringify({ before: preview.before, after: preview.after }) } };
-        } catch (error) { return { proposalError: `Implementation plan revision rejected: ${String(error)}` }; }
-    }
-
     async decidePlanningProposal(projectHandle: string, chatId: string, leaseToken: string,
         proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined> {
         const root = this.active(projectHandle);
@@ -1006,7 +835,6 @@ export class ChatBackend implements ChatService {
         try {
             tracePlanning('decision-requested', chatId, pending.messageId, approve ? 'approve' : 'reject');
             if (!approve) { await record('denied'); if (pending.draft) this.greenfield?.clearEditPreview(pending.draft.handle);
-                if (pending.plan) this.greenfield?.clearImplementationPlanPreview(pending.plan.handle);
                 return undefined; }
             if (pending.document) {
                 if (!this.roadmapStore || pending.document.root !== root) throw new Error('Linked Roadmap owner changed');
@@ -1022,17 +850,6 @@ export class ChatBackend implements ChatService {
                     ownerId: pending.undo.ownerId, expectedRevision: pending.undo.revision, token: pending.undo.token });
                 appliedRevision = result.revision;
                 this.clearGateUndo(chatId);
-                await record('applied', result.revision);
-                return { revision: result.revision, changedIds: pending.changedIds };
-            }
-            if (pending.plan) {
-                if (!this.greenfield || this.greenfield.chatImplementationPlan(root, chatId)?.handle !== pending.plan.handle)
-                    throw new Error('Implementation plan binding changed');
-                const result = await this.greenfield.applyImplementationPlan(pending.plan.handle, pending.plan.preview, true);
-                appliedRevision = result.revision;
-                if (pending.plan.preview.before) this.planUndo.set(chatId, {
-                    handle: pending.plan.handle, leaseToken, revision: result.revision });
-                else this.planUndo.delete(chatId);
                 await record('applied', result.revision);
                 return { revision: result.revision, changedIds: pending.changedIds };
             }
@@ -1058,7 +875,6 @@ export class ChatBackend implements ChatService {
             return { revision: result.revision, changedIds: pending.changedIds };
         } catch (error) {
             if (pending.draft && appliedRevision === undefined) this.greenfield?.clearEditPreview(pending.draft.handle);
-            if (pending.plan && appliedRevision === undefined) this.greenfield?.clearImplementationPlanPreview(pending.plan.handle);
             if (appliedRevision !== undefined)
                 throw new Error(`Planning write completed at revision ${appliedRevision}, but Chat activity could not be recorded; reread the Roadmap: ${String(error)}`);
             if ((await this.repository.read(root)).chats.find(chat => chat.id === chatId)?.messages
@@ -1068,18 +884,6 @@ export class ChatBackend implements ChatService {
             throw error;
         } finally { if (pending.handle && this.gateUndo.get(chatId)?.handle !== pending.handle)
             this.planning?.detach(pending.handle); }
-    }
-
-    async undoPlanningRevision(projectHandle: string, chatId: string, leaseToken: string,
-        expectedRevision: number): Promise<number> {
-        const root = this.active(projectHandle), undo = this.planUndo.get(chatId);
-        if (!undo || undo.leaseToken !== leaseToken || undo.revision !== expectedRevision ||
-            this.proposals.has(chatId) || this.turns.has(chatId) ||
-            this.greenfield?.chatImplementationPlan(root, chatId)?.handle !== undo.handle)
-            throw new Error('Stale implementation plan undo');
-        await this.repository.renew(root, chatId, leaseToken);
-        this.planUndo.delete(chatId);
-        return (await this.greenfield!.undoImplementationPlan(undo.handle, expectedRevision)).revision;
     }
 
     async runTurn(request: ChatTurnRequest): Promise<ChatTurnResult> {
@@ -1150,22 +954,6 @@ export class ChatBackend implements ChatService {
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const helpTurn = !!selectDopeCapabilityHelp(content);
         const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId, request.planningSteps);
-        let planBinding = !helpTurn ? this.greenfield?.chatImplementationPlan(root, request.chatId) : undefined;
-        if (!helpTurn && !draft && !planBinding && !request.bridgeProposal && !request.planningSteps &&
-            !(request.context ?? []).some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'planning-map') &&
-            requestsImplementationPlan(content)) {
-            if (!this.greenfield || !this.grounder) throw new Error('Implementation planning is unavailable');
-            const owner = await this.greenfield.owner(root);
-            if (owner.revision !== 0 || owner.linkedDocument || owner.pendingCreation)
-                throw new Error('This Roadmap already has an owner; review it before starting a new implementation plan');
-            const started = await this.greenfield.beginImplementationPlan(root);
-            try { this.greenfield.bindChat(root, started.handle, request.chatId); }
-            catch (error) { this.greenfield.cancel(started.handle); throw error; }
-            planBinding = this.greenfield.chatImplementationPlan(root, request.chatId);
-        }
-        const planOnly = planBinding?.planOnly === true;
-        const requirements = planOnly && !planBinding?.plan ? planRequirements(content) : [];
-        if (planOnly && !this.grounder) throw new Error('Project investigation unavailable');
         const bridgeSelection = request.bridgeProposal;
         if (bridgeSelection && (helpTurn || draft || request.planningSteps || !this.bridgePlanning ||
             (request.context ?? []).filter(item => item.kind === 'roadmap-checkpoint' &&
@@ -1174,16 +962,14 @@ export class ChatBackend implements ChatService {
             throw new Error('Bridge proposal requires one current selected checkpoint and a Planning owner');
         const bridge = bridgeSelection ? await BridgeLocalProposal.prepare(this.bridgePlanning!, root, bridgeSelection) : undefined;
         const roadmapTurn = (request.context ?? []).some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') ||
-            !!draft || helpTurn || !!bridge || planOnly;
+            !!draft || helpTurn || !!bridge;
         const opportunity = await this.roadmapOpportunity(root, content, !roadmapTurn &&
             !(request.context ?? []).some(item => item.kind === 'planning-map'));
         if (request.planningSteps !== undefined && (![2, 3].includes(request.planningSteps) ||
             !roadmapTurn || helpTurn || !draft &&
             (request.context ?? []).filter(item => item.kind === 'roadmap-checkpoint').length !== 1))
             throw new Error('Small-step planning requires a bound draft or one unlinked Roadmap checkpoint and a cap of two or three');
-        const planningPrompt = planOnly ? { text: planBinding?.plan ? planRevisionInstruction(planBinding.plan) :
-            firstPlanInstruction(requirements, content) } :
-            bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
+        const planningPrompt = bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
             `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
             'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
         const requestHard: AIRoleHardConstraints = { ...chatHard,
@@ -1211,7 +997,7 @@ export class ChatBackend implements ChatService {
         const connection = (await this.models.list()).connections.find(item => item.id === selectedModel.connectionId);
         const model = connection?.ready && connection.models.find(item => item.id === selectedModel.modelId && item.usable);
         if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
-        if ((draft || bridge || planOnly) && connection.providerId !== 'local') throw new Error('Planning requires a selected local model');
+        if ((draft || bridge) && connection.providerId !== 'local') throw new Error('Planning requires a selected local model');
         if (connection.providerId !== 'local' && request.hostedProjectDataAuthorized !== true)
             throw new Error('Chat hosted project-data confirmation required');
         const controls = chat.settings.reasoningControls ?? {};
@@ -1220,33 +1006,25 @@ export class ChatBackend implements ChatService {
                 throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
         if (!this.composer) throw new Error('Context composer unavailable');
         const localRoadmap = roadmapTurn && connection.providerId === 'local';
-        const planningOutput = planOnly ? Math.max(2048, chat.settings.context.reservedOutputTokens) : chat.settings.context.reservedOutputTokens;
+        const planningOutput = chat.settings.context.reservedOutputTokens;
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             planningOutput, model.capabilities) : undefined;
-        if (planOnly && budget!.output < 2048) throw new Error('Selected local model has insufficient plan output capacity');
-        if (planOnly) tracePlanning('grounding-start', request.chatId, 'preflight');
-        const groundingStarted = Date.now();
-        const grounding = planOnly ? await this.grounder?.investigateIdea(root, content) : await this.grounder?.ground(root, content);
-        if (planOnly) tracePlanning('grounding-complete', request.chatId, 'preflight', `${Date.now() - groundingStarted}ms`);
+        const grounding = await this.grounder?.ground(root, content);
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
-        if (planOnly) tracePlanning('composition-start', request.chatId, 'preflight');
-        const compositionStarted = Date.now();
         const composed = await this.composeTurn(root, contextChat, content, request.context ?? [],
             model.capabilities, budget, planningPrompt, grounding, !!bridge, opportunity);
-        if (planOnly) tracePlanning('composition-complete', request.chatId, 'preflight',
-            `${Date.now() - compositionStarted}ms;${composed.usedTokens}tokens`);
         if (bridge) composed.refs.push(bridge.reference);
         if ((request.context ?? []).some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
-        let localMode: 'linked' | 'unlinked' | 'draft' | 'gate' | 'help' | 'bridge' | 'plan' | 'plan-revision' =
-            bridge ? 'bridge' : planOnly ? planBinding?.plan ? 'plan-revision' : 'plan' :
+        let localMode: 'linked' | 'unlinked' | 'draft' | 'gate' | 'help' | 'bridge' =
+            bridge ? 'bridge' :
                 helpTurn ? 'help' : draft ? 'draft' :
                     composed.refs.some(item => item.kind === 'roadmap') ? 'gate' : 'unlinked';
         let eligibleObjective = true;
-        if (localRoadmap && localMode !== 'gate' && !draft && !helpTurn && !planOnly && this.planning) {
+        if (localRoadmap && localMode !== 'gate' && !draft && !helpTurn && this.planning) {
             const ref = composed.refs.filter(item => item.kind === 'roadmap-checkpoint');
             if (ref.length !== 1) throw new Error('Select exactly one Roadmap checkpoint');
             const attached = await this.planning.attach(root);
@@ -1293,13 +1071,8 @@ export class ChatBackend implements ChatService {
         let routingProvenance: RoutingProvenance | undefined;
         const sourceRefs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> = [];
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
-        // A Planning schema retry starts a fresh Pi session. Carry only file bytes Pi already chose to read.
-        const observedFiles = new Map<string, string>();
-        let submissionAttempts = 0;
-        let submittedPlan: Awaited<ReturnType<ChatBackend['planProposal']>> | undefined;
-        let lastSubmission: Awaited<ReturnType<ChatBackend['planProposal']>> | undefined;
         let toolBytes = 0;
-        const projectTools = this.grounder ? { root, planning: planOnly && localMode === 'plan',
+        const projectTools = this.grounder ? { root,
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
                 const toolName = name as NonNullable<ChatAssistantMessage['execution']['toolEvents']>[number]['name'];
                 const field = name === 'run_command' ? 'command' :
@@ -1323,41 +1096,10 @@ export class ChatBackend implements ChatService {
                 try { return await (async () => {
                 if (signal?.aborted || this.active(request.projectHandle) !== root ||
                     this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
-                if (toolEvents.length >= (planOnly ? 20 : 16)) throw new Error('Project discovery limit reached');
-                if (name === 'submit_plan') {
-                    if (!planOnly || localMode !== 'plan' || !assistant || abort.signal.aborted ||
-                        signal?.aborted || this.leases.get(key)?.token !== request.leaseToken)
-                        throw new Error('Planning submission unavailable');
-                    if (submittedPlan?.proposal) return 'Proposal already submitted; await human review.';
-                    if (submissionAttempts >= 2) return 'Proposal rejected: correction limit reached; no pending proposal.';
-                    submissionAttempts++;
-                    let result: Awaited<ReturnType<ChatBackend['planProposal']>>;
-                    if (!validImplementationPlan(args)) {
-                        const issues = implementationPlanShapeIssues(args);
-                        result = { proposalError: `Invalid implementation plan: ${issues.join('; ') || 'required fields or relationships are invalid'}` };
-                    } else if (!observedFiles.size) {
-                        result = { proposalError: 'Read relevant project source with read_file before submitting; model claims alone are not evidence.' };
-                    } else if (args.steps.some(step => step.reuse.some(item => !observedFiles.has(item.path)))) {
-                        result = { proposalError: 'Reuse paths must come from successful read_file results for this project.' };
-                    } else {
-                        const readRefs = sourceRefs.filter(ref => ref.kind === 'file' && observedFiles.has(ref.id));
-                        result = await this.planProposal(root, key, assistant.id, request.leaseToken,
-                            JSON.stringify(args), readRefs, requirements, content);
-                    }
-                    toolEvents.push({ name: 'submit_plan', status: result.proposal ? 'completed' : 'failed', truncated: false });
-                    lastSubmission = result;
-                    if (result.proposal) {
-                        submittedPlan = result;
-                        return 'Proposal accepted for human review. Stop submitting; summarize pending status without claiming approval or application.';
-                    }
-                    const coverage = result.planPreview?.coverage.filter(item => item.status !== 'covered')
-                        .map(item => `${item.text}: ${item.explanation}`).slice(0, 3).join('; ');
-                    return `Proposal rejected: ${result.proposalError ?? 'validation failed'}${coverage ? ` ${coverage}` : ''} ` +
-                        (submissionAttempts < 2 ? 'Revise and resubmit once.' : 'Correction limit reached; no pending proposal.');
-                }
+                if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
                 if (name === 'run_command') {
                     const record = args as Record<string, unknown>;
-                    if (planForbidsCommands(content)) {
+                    if (forbidsCommandExecution(content)) {
                         toolEvents.push({ name, status: 'denied', truncated: false });
                         return 'Command denied: the developer prohibited command execution in this turn';
                     }
@@ -1437,7 +1179,6 @@ export class ChatBackend implements ChatService {
                     const payload = JSON.stringify({ source: block.ref.id, kind: block.ref.kind,
                         contentHash: sourceRefs.at(-1)!.contentHash, sourceHash: block.ref.sourceHash, truncated,
                         omitted: result.diagnostics.some(item => item.kind === 'omitted'), text: excerpt });
-                    if (toolName === 'read_file') observedFiles.set(block.ref.id, payload);
                     return payload;
                 } catch {
                     toolEvents.push({ name: toolName, status: 'denied', truncated: false });
@@ -1471,16 +1212,6 @@ export class ChatBackend implements ChatService {
             let sequence = 0;
             const withRetryInstruction = (messages: readonly ConversationMessage[], instruction?: string): readonly ConversationMessage[] => {
                 let retry = instruction;
-                if (planOnly && instruction && observedFiles.size) {
-                    const evidence: string[] = [];
-                    let bytes = 0;
-                    for (const [path, payload] of observedFiles) {
-                        const item = `${path}: ${payload}`;
-                        if (bytes + Buffer.byteLength(item, 'utf8') > 1800) break;
-                        evidence.push(item); bytes += Buffer.byteLength(item, 'utf8');
-                    }
-                    if (evidence.length) retry += ` Previously verified file results follow. Use them; read more only if needed. ${evidence.join(' ')}`;
-                }
                 const sent = retry ? [{ role: 'system' as const, content: retry }, ...messages] : messages;
                 if (localRoadmap) verifyRoadmapLocalInput(sent, budget!);
                 return sent;
@@ -1525,7 +1256,7 @@ export class ChatBackend implements ChatService {
                     ...(planningOutput > 0 ?
                         { maxOutputTokens: budget?.output ?? planningOutput } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
-            const events = localRoadmap && !(planOnly && localMode === 'plan') ? (async function* (backend: ChatBackend) {
+            const events = localRoadmap ? (async function* (backend: ChatBackend) {
                 const guardedGenerate = async function* (retryInstruction?: string) {
                     if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                     yield* generate(retryInstruction);
@@ -1536,10 +1267,6 @@ export class ChatBackend implements ChatService {
                     localMode, eligibleObjective, { requiredOwnerRevision: requestedRevision,
                         maxSteps: request.planningSteps,
                         validateBridge: bridge ? value => bridge.validate(value) : undefined,
-                        validatePlan: planOnly && localMode === 'plan' ? value =>
-                            planExplicitConstraintViolations(content, value, sourceRefs
-                                .filter(ref => ref.kind === 'file').map(ref => ref.id)) : undefined,
-                        hasInspectedSource: planOnly && localMode === 'plan' ? () => observedFiles.size > 0 : undefined,
                         onRetry: cause => tracePlanning('retry', key, assistant!.id, cause) });
                 await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                 tracePlanning('validated', key, assistant!.id);
@@ -1579,10 +1306,6 @@ export class ChatBackend implements ChatService {
                     }
                     if (localRoadmap && abort.signal.aborted)
                         throw new ModelRuntimeFailure('Local planning cancelled', 'cancelled');
-                    if (planOnly && (actual.connectionId !== selectedModel!.connectionId ||
-                        actual.modelId !== selectedModel!.modelId || actual.providerId !== 'local'))
-                        throw new ModelRuntimeFailure('Selected local planning model changed during inference', 'model-unavailable');
-                    if (submittedPlan?.proposal) output = 'Implementation plan submitted for human review. No project files or Roadmap were changed.';
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                         outcome: 'complete', content: output, actualModel: actual, routingProvenance,
                         contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
@@ -1598,16 +1321,10 @@ export class ChatBackend implements ChatService {
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted && !localRoadmap) return preview;
                     const proposalRefs = [...preview.refs, ...sourceRefs];
-                    const result = submittedPlan?.proposal ? submittedPlan : planOnly ? localMode === 'plan-revision' ?
-                        (JSON.parse(output) as { type: string }).type === 'no-action' ? {} :
-                            await this.planRevisionProposal(root, key, assistant.id, request.leaseToken, output,
-                                planBinding!.plan!.revision, proposalRefs) :
-                        lastSubmission ?? { proposalError: 'The model did not call submit_plan; no pending proposal was created.' } :
-                        helpTurn || bridge ? {} : await this.proposal(root, key, assistant.id,
-                            request.leaseToken, output, proposalRefs, draft);
+                    const result = helpTurn || bridge ? {} : await this.proposal(root, key, assistant.id,
+                        request.leaseToken, output, proposalRefs, draft);
                     if (localRoadmap) {
-                        const kind = submittedPlan?.proposal || planOnly && localMode === 'plan' ?
-                            'implementation-plan' : (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
+                        const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
                             { schemaVersion: 1, kind, refs: proposalRefs,
                                 status: kind === 'no-action' || kind === 'roadmap-gate-focus' &&
@@ -1624,7 +1341,7 @@ export class ChatBackend implements ChatService {
                                 result.proposal ? 'pending' : 'rejected');
                     }
                     const roadmapOffer = !request.retryMessageId && !localRoadmap &&
-                        !bridgeSelection && !request.planningSteps && !planOnly ?
+                        !bridgeSelection && !request.planningSteps ?
                         await this.offerRoadmap(root, key, assistant.id, request.leaseToken, opportunity, output)
                             .catch(() => undefined) : undefined;
                     return { ...preview, ...result, ...(roadmapOffer ? { roadmapOffer } : {}) };

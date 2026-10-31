@@ -29,20 +29,14 @@ test('blank Roadmap exposes model-free draft, preview, approval, cancellation an
     assert.match(backend, /new RoadmapGreenfield\(context\.container\.get\(RoadmapStore\)\)/);
 });
 
-test('Chat entry associates an existing selected saved Chat without opening or moving a panel', () => {
-    const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
-    const module = read('packages/theia-extension/src/browser/frontend-module.ts');
-    assert.match(widget, /button\('Plan with Chat', \(\) => \{/);
-    assert.doesNotMatch(widget, /beginCreate\('chat'\)/);
-    assert.match(widget, /this\.savedChats\(setup\.uri\)/);
-    assert.match(widget, /this\.service\.beginImplementationPlan\(setup\.uri, selectedChatId\)/);
-    assert.match(widget, /setup\.chatId = selectedChatId/);
-    assert.match(widget, /complete, reviewable implementation plan/);
-    assert.match(module, /getWidgets\(CHAT_PANEL_ID\)/);
-    assert.match(module, /\['left', 'right'\] as const\)\.map\(side => widgets\.tryGetWidget\(chatLauncherIds\[side\]\)\)/);
-    assert.match(module, /widget\.controller\.workspace !== workspace/);
-    assert.match(module, /widget\.controller\.chat\.id/);
-    assert.doesNotMatch(widget, /openChatPanel|shell\.addWidget|shell\.activateWidget|sendTurn|invokeModel/);
+test('retired plan submission has no Chat, Roadmap, or Pi entry point', () => {
+    for (const path of ['packages/theia-extension/src/node/chat-backend.ts',
+        'packages/theia-extension/src/browser/roadmap-canvas-widget.ts',
+        'packages/theia-extension/src/roadmap-service.ts',
+        'packages/pi-runtime/worker.mjs']) {
+        const source = read(path);
+        assert.doesNotMatch(source, /submit_plan|planOnly|beginImplementationPlan|Plan with Chat|previewImplementationPlanProjection/);
+    }
 });
 
 test('creation controls have labels, keyboard forms, narrow layout and semantic theme tokens', () => {

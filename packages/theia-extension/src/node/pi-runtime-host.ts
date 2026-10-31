@@ -93,12 +93,6 @@ export class PiRuntimeHost {
             ...(credential ? { credential } : {}) });
     }
 
-    openPlanningSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string):
-        Promise<{ version: string; tools: string[]; resources: string }> {
-        return this.request({ type: 'open', mode: 'planning-tools', model, cwd,
-            ...(credential ? { credential } : {}) });
-    }
-
     runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void):
         Promise<{ text: string; modelId: string; usage?: PiTokenUsage; compaction?: PiContextRecord }> {
         return this.request({ type: 'work', prompt }, event => {

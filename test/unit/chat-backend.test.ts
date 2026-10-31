@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
-import { ChatBackend, requestsImplementationPlan } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
@@ -35,7 +35,6 @@ async function savedRoadmapOffer(backend: ChatBackend, projectHandle: string, ro
             id: string; token: string; expiresAt: number } | undefined> }).offerRoadmap(root, chatId,
                 messageId, leaseToken, 'revision zero', output, true);
 }
-const firstPlanRequest = 'Plan a visual Git history for this project. Reuse the existing read-only diff editor in src/diffEditor.js; put branch checkout and commits in the toolbar; keep checkout and commit permissions explicit. Please inspect the relevant files and give me a complete ordered implementation plan with tests before changing anything.';
 
 test('Chat command approval is lease and turn scoped, one use, redacted, and sandboxed', async () => {
     const root = await folder(), repository = new ChatRepository();
@@ -124,22 +123,11 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('only an explicit first-pass planning request selects plan mode', () => {
-    assert.equal(requestsImplementationPlan(firstPlanRequest), true);
-    assert.equal(requestsImplementationPlan("Inspect this project's implementation and prepare one small, concrete development milestone with validation steps. Present the proposal for my review without changing source files."), true);
-    assert.equal(requestsImplementationPlan("Inspect this project's source files using your available tools. Identify what is implemented and propose one small development milestone with concrete validation steps. Present the implementation plan for review. Do not modify files or the Roadmap."), true);
-    for (const ordinary of ['Plan with Chat help', 'What is the plan?', 'Plan a trip',
-        'Please inspect src/diffEditor.js', 'Plan a checkpoint and inspect the Roadmap',
-        'Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js'])
-        assert.equal(requestsImplementationPlan(ordinary), false);
-});
-
 test('greenfield G1 stays ordinary saved Chat with selected model and no plan creation', async () => {
     const root = await folder(), repository = new ChatRepository();
     const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
         inputsCurrent: async () => false };
     const content = 'Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js';
-    let planStarts = 0;
     let sent: { role: string; content: string }[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true, providerId: 'local',
         models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true, streaming: true,
@@ -151,10 +139,8 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
                 inputTokens: 32, outputTokens: 10, totalTokens: 42 } };
     } };
     const greenfield = { ensureRestored: async () => {}, chatDraft: () => undefined,
-        chatImplementationPlan: () => undefined,
         readOpportunity: async () => ({ projectId: 'uninitialized', revision: 0, canonicalMarkdown: false, pendingCreation: false,
-            checkpoints: 0, drafts: 0, acceptedPlans: 0, pendingPlans: 0 }),
-        beginImplementationPlan: async () => { planStarts++; throw new Error('Unexpected plan'); } };
+            checkpoints: 0, drafts: 0 }) };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
         new ChatContextComposer({} as never, {} as never, index as never, repository), undefined,
         new ChatProjectGrounder(index as never), undefined, greenfield as never);
@@ -168,7 +154,6 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content, context: [] });
         const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
-        assert.equal(planStarts, 0);
         assert.equal(result.proposal, undefined);
         assert.equal(result.refs.some(ref => ref.kind === 'file'), false);
         assert.equal(result.refs[0]?.kind, 'project-orientation');
@@ -192,7 +177,7 @@ test('greenfield G1 stays ordinary saved Chat with selected model and no plan cr
 test('ordinary Chat opportunity suppresses duplicate or unverifiable offers without model inference', async () => {
     const repository = new ChatRepository();
     const state = { projectId: 'p1', revision: 0, canonicalMarkdown: false, pendingCreation: false, checkpoints: 0,
-        drafts: 0, acceptedPlans: 0, pendingPlans: 0, linkedDocument: undefined as string | undefined };
+        drafts: 0, linkedDocument: undefined as string | undefined };
     const greenfield = { readOpportunity: async () => state };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, undefined, undefined,
         undefined, undefined, undefined, greenfield as never);
@@ -205,11 +190,11 @@ test('ordinary Chat opportunity suppresses duplicate or unverifiable offers with
         assert.equal(await (backend as unknown as { roadmapOpportunity(root: string, content: string,
             ordinary: boolean): Promise<string | undefined> }).roadmapOpportunity('/tmp/project', 'Plan it', false), undefined);
         for (const change of [{ revision: 1 }, { linkedDocument: 'ROADMAP.md' }, { canonicalMarkdown: true },
-            { pendingCreation: true }, { drafts: 1 }, { acceptedPlans: 1 }, { pendingPlans: 1 }]) {
+            { pendingCreation: true }, { drafts: 1 }]) {
             Object.assign(state, change);
             assert.match((await read())!, /do not offer a duplicate draft/);
             Object.assign(state, { revision: 0, linkedDocument: undefined, canonicalMarkdown: false, pendingCreation: false,
-                drafts: 0, acceptedPlans: 0, pendingPlans: 0 });
+                drafts: 0 });
         }
         greenfield.readOpportunity = async () => { throw new Error('owner unavailable'); };
         assert.match((await read())!, /could not be verified.*Do not infer absence/s);
@@ -524,14 +509,13 @@ test('Roadmap offer fails closed on owner changes, expiration, foreign Chat, and
         const makeOffer = () => savedRoadmapOffer(backend, projectHandle, root, chatId, claim.token,
             'A roadmap draft is available.');
         for (const change of [{ revision: 1 }, { linkedDocument: 'ROADMAP.md' }, { drafts: 1 },
-            { pendingCreation: true }, { canonicalMarkdown: true }, { acceptedPlans: 1 },
-            { pendingPlans: 1 }, { projectId: id() }]) {
+            { pendingCreation: true }, { canonicalMarkdown: true }, { projectId: id() }]) {
             const offer = (await makeOffer())!;
             Object.assign(state, change);
             await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
                 offer.id, offer.token, true), /owner or draft changed/);
             Object.assign(state, { projectId: 'uninitialized', revision: 0, linkedDocument: undefined,
-                drafts: 0, pendingCreation: false, canonicalMarkdown: false, acceptedPlans: 0, pendingPlans: 0 });
+                drafts: 0, pendingCreation: false, canonicalMarkdown: false });
         }
         const foreign = (await makeOffer())!;
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, other, claim.token,
@@ -776,201 +760,4 @@ test('ownership gates turn writes and transient deltas; search reads saved Chat'
         await assert.rejects(service.publishDelta({ projectHandle, chatId, messageId: assistantId,
             executionId, sequence: 1, delta: 'late', leaseToken: claim.token }), /lease required/);
     } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
-});
-
-test('plan investigation rejects unmeasured local capacity before model inference', async () => {
-    const root = await folder(), repository = new ChatRepository();
-    let generated = false;
-    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
-        models: [{ id: 'small', usable: true, capabilities: { conversationalText: true, streaming: true,
-            contextWindowTokens: 1024 } }] }] }), async *generate() { generated = true; yield { type: 'complete', text: '{}' }; } };
-    const greenfield = { ensureRestored: async () => {}, chatDraft: () => undefined,
-        chatImplementationPlan: () => ({ handle: 'plan', planOnly: true }) };
-    const grounder = { investigateIdea: async () => ({ blocks: [], diagnostics: [] }) };
-    const service = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
-        {} as never, undefined, grounder as never, undefined, greenfield as never);
-    try {
-        const { projectHandle } = await service.attach(pathToFileURL(root).href);
-        const chatId = id();
-        await service.mutate({ projectHandle, expectedRevision: 0,
-            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-        await assert.rejects(service.previewContext({ projectHandle, chatId,
-            selectedModel: { connectionId: 'local', modelId: 'small' }, content: 'Plan a change', context: [] }),
-        /context is too small|capacity/);
-        assert.equal(generated, false);
-    } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
-});
-
-test('short idea previews a complete noncanonical plan on first local outcome, then requires approval', async () => {
-    const root = await folder(), repository = new ChatRepository(), store = new RoadmapStore();
-    const greenfield = new RoadmapGreenfield(store);
-    const sourcePath = 'src/diffEditor.js';
-    const source = 'export class GitHistory { /* current history owner */ }\n';
-    await mkdir(join(root, 'src'), { recursive: true });
-    await writeFile(join(root, sourcePath), source);
-    let plan = JSON.stringify({ type: 'implementation-plan', objective: 'Visual Git history',
-        successCriteria: ['Visual Git history shows commits and reuses the read-only diff editor',
-            'Branch checkout and commit toolbar controls require explicit permission'], constraints: ['Explicit permissions'],
-        assumptions: ['Diff editor integration needs confirmation'], steps: [
-            { title: 'Inspect Git and diff seams', detail: 'Read the current history and reuse the read-only diff editor',
-                deliverables: ['Read-only diff editor integration map'], dependsOn: [],
-                reuse: [{ path: sourcePath, reason: 'Current history owner' }] },
-            { title: 'Build visual Git history view', detail: 'Show commits and integrate the existing diff editor',
-                deliverables: ['Visual Git history view'], dependsOn: [1], reuse: [] },
-            { title: 'Add branch checkout and commit toolbar controls',
-                detail: 'Call checkoutBranch and invoke repository commit creation from toolbar actions after explicit permission checks; handle failure, verify the new commit identifier and implement tests',
-                deliverables: ['Functional branch checkout and commit creation toolbar controls with explicit permissions and tests'],
-                dependsOn: [2], reuse: [] }],
-        tests: ['Unit history, diff editor reuse, checkout and commit permission checks'],
-        guiQualification: 'Exercise history, checkout, commit and diff in browser',
-        risks: ['Stale branch; refresh before checkout'], alternatives: ['Start with read-only history'], question: '' });
-    let calls = 0, reportedModel = 'q4', interrupted = false,
-        changeSourceAfterInspect = false;
-    let inspectedSource = '';
-    const sent: string[] = [];
-    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
-        models: [{ id: 'q4', label: 'Fixture', usable: true, capabilities: { conversationalText: true,
-            streaming: true, contextWindowTokens: 8192 } }] },
-        { id: 'hosted', ready: true, providerId: 'gemini', models: [{ id: 'remote', usable: true,
-            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192 } }] }] }),
-        async *generate(_selection: unknown, request: { messages: { content: string }[];
-            projectTools?: { planning?: boolean; execute(name: string, args: unknown): Promise<string> } }) {
-            calls++; sent.push(request.messages.map(message => message.content).join('\n'));
-            if (request.projectTools?.planning) inspectedSource = JSON.parse(await request.projectTools.execute('read_file',
-                { path: sourcePath })).text;
-            yield { type: 'delta' as const, text: 'Preparing a plan.' };
-            if (interrupted) return;
-            if (changeSourceAfterInspect) await writeFile(join(root, sourcePath), 'changed during turn\n');
-            if (request.projectTools?.planning) await request.projectTools.execute('submit_plan', JSON.parse(plan));
-            yield { type: 'complete' as const, text: request.projectTools?.planning ? 'Plan submitted for review.' : plan,
-                actualModelId: reportedModel }; } };
-    const composer = { compose: async (_root: unknown, _chat: unknown, _content: unknown,
-        _context: unknown, _capabilities: unknown, grounding: { blocks: { text: string; ref: unknown }[];
-            diagnostics: unknown[] }) => ({ messages: [{ role: 'user' as const,
-        content: `Add history\n${grounding.blocks.map(block => block.text).join('\n')}` }],
-        refs: grounding.blocks.map(block => block.ref), diagnostics: grounding.diagnostics,
-        usedTokens: 20, budgetTokens: 1000 }) };
-    const grounder = new ChatProjectGrounder({ status: () => ({ state: 'idle', generation: 0 }),
-        snapshot: () => undefined, inputsCurrent: async () => false } as never);
-    const investigate = grounder.investigateIdea.bind(grounder);
-    let investigations = 0;
-    grounder.investigateIdea = async (...args) => { investigations++; return investigate(...args); };
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
-        undefined, grounder as never, undefined, greenfield);
-    try {
-        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
-        await backend.mutate({ projectHandle, expectedRevision: 0,
-            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
-        if (!lease.acquired) throw new Error('Lease missing');
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'hosted', modelId: 'remote' }, hostedProjectDataAuthorized: true,
-            content: firstPlanRequest }), /selected local model/);
-        const binding = greenfield.chatImplementationPlan(root, chatId);
-        assert.equal(binding?.planOnly, true);
-        const handle = binding!.handle;
-        assert.equal(calls, 0);
-        interrupted = true;
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest }), /completion|complete/i);
-        interrupted = false;
-        assert.equal(greenfield.readImplementationPlan(handle), undefined);
-        assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.role, 'assistant');
-        assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.execution?.status, 'failed');
-        const completePlan = plan;
-        plan = JSON.stringify({ ...JSON.parse(plan), steps: JSON.parse(plan).steps.slice(0, 2) });
-        const incomplete = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest });
-        assert.equal(incomplete.proposal, undefined);
-        assert.ok(incomplete.planPreview?.coverage.some(item => item.status !== 'covered'));
-        assert.match(incomplete.proposalError ?? '', /needs work/);
-        assert.equal(greenfield.readImplementationPlan(handle), undefined);
-        assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.planningActivity?.status, 'rejected');
-        plan = completePlan;
-        calls = 0;
-        const before = await store.read(root);
-        changeSourceAfterInspect = true;
-        const stale = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest });
-        assert.equal(stale.proposal, undefined);
-        assert.match(stale.proposalError ?? '', /source changed/i);
-        assert.deepEqual(await store.read(root), before);
-        changeSourceAfterInspect = false;
-        await writeFile(join(root, sourcePath), source);
-        calls = 0;
-        const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: firstPlanRequest });
-        assert.equal(calls, 1);
-        assert.match(inspectedSource, /current history owner/);
-        assert.ok(investigations > 0);
-        assert.match(sent.at(-1)!, /current history owner/);
-        assert.match(sent.at(-1)!, /submit_plan/);
-        assert.doesNotMatch(sent.at(-1)!, /"title":"Inspect source"/);
-        assert.equal(turn.proposal?.action.type, 'implementation-plan', JSON.stringify(turn.planPreview ?? turn.proposalError));
-        assert.equal(turn.proposal?.changedIds.length, 3);
-        assert.equal(turn.refs.some(ref => ref.kind === 'file' && ref.id === sourcePath && ref.sourceHash), true);
-        assert.equal(greenfield.readImplementationPlan(handle), undefined);
-        assert.deepEqual(await store.read(root), before);
-        const message = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
-        assert.equal(message.role === 'assistant' && message.planningActivity?.status, 'pending');
-        if (message.role === 'assistant') {
-            assert.deepEqual(message.execution.toolEvents?.map(event => [event.name, event.status]),
-                [['read_file', 'completed'], ['submit_plan', 'completed']]);
-            assert.ok(message.planningActivity?.refs.some(ref => ref.id === sourcePath && ref.sourceHash));
-        }
-        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, turn.proposal!.id, true);
-        const accepted = greenfield.readImplementationPlan(handle)!;
-        assert.equal(accepted.steps.length, 3);
-        assert.deepEqual(accepted.evidence.map(item => item.path), [sourcePath]);
-        assert.deepEqual(accepted.steps[2].dependencies, [accepted.steps[1].id]);
-        assert.deepEqual(await store.read(root), before);
-        plan = JSON.stringify({ type: 'implementation-plan-revision', baseRevision: 1,
-            edits: [{ type: 'update', step: 2, detail: 'Reuse existing diff editor' }],
-            constraintsAdd: [], decisionsAdd: [], question: '' });
-        const revision = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Reuse the existing editor' });
-        assert.equal(revision.proposal?.action.type, 'implementation-plan-revision');
-        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 1);
-        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, revision.proposal!.id, false);
-        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 1);
-        const approvedRevision = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Reuse the existing editor' });
-        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, approvedRevision.proposal!.id, true);
-        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 2);
-        assert.equal(greenfield.readImplementationPlan(handle)?.steps[1].id, accepted.steps[1].id);
-        assert.deepEqual(await store.read(root), before);
-        assert.equal(await backend.undoPlanningRevision(projectHandle, chatId, lease.token, 2), 3);
-        assert.deepEqual(greenfield.readImplementationPlan(handle)?.steps, accepted.steps);
-        await assert.rejects(backend.undoPlanningRevision(projectHandle, chatId, lease.token, 2), /Stale/);
-        plan = JSON.stringify({ type: 'implementation-plan-revision', baseRevision: 3,
-            edits: [{ type: 'update', step: 2, detail: 'Use the existing editor' }],
-            constraintsAdd: [], decisionsAdd: [], question: '' });
-        reportedModel = 'swapped';
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Revise the plan' }), /model changed/);
-        assert.equal(greenfield.readImplementationPlan(handle)?.revision, 3);
-        await writeFile(join(root, sourcePath), 'changed source\n');
-        await assert.rejects(greenfield.previewImplementationPlanProjection(root, handle), /source changed/i);
-        await writeFile(join(root, sourcePath), source);
-        // The accepted Chat plan is still only a draft. Projection and source publication
-        // each require a distinct review, then Bridge scope requires a third one.
-        const projection = await greenfield.previewImplementationPlanProjection(root, handle);
-        await assert.rejects(greenfield.applyImplementationPlanProjection(root, projection, false), /approval/);
-        assert.equal((await store.read(root)).revision, 0);
-        const projected = await greenfield.applyImplementationPlanProjection(root, projection, true);
-        assert.equal(projected.phases.length, 3);
-        assert.deepEqual((await readdir(root)).sort(), ['.dope', 'src'].sort());
-        const publication = greenfield.preview(handle, 'ROADMAP.md');
-        await assert.rejects(greenfield.accept(handle, publication, false), /approval/);
-        const canonical = await greenfield.accept(handle, publication, true);
-        assert.equal(canonical.schemaVersion, 2);
-        assert.equal(canonical.revision, 1);
-        assert.equal(canonical.phases.length, 3);
-        assert.equal(canonical.gates.length, 0);
-        assert.equal(canonical.phases.every(item => item.qualificationStatus !== 'green'), true);
-        assert.equal(canonical.linkedDocument, undefined);
-        assert.deepEqual(await new RoadmapStore().read(root), canonical);
-        assert.equal((await new ChatRepository().read(root)).chats[0].messages.length > 0, true);
-        assert.deepEqual((await readdir(root)).sort(), ['.dope', 'src'].sort());
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

@@ -45,8 +45,8 @@ export class PiModelBridge {
             throw unavailable('Local Work model changed during execution');
     }
 
-    async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession' | 'openPlanningSession'>,
-        cwd: string, options: { tools?: boolean; chatTools?: boolean; planningTools?: boolean } = {}): Promise<PiLocalBinding> {
+    async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
+        cwd: string, options: { tools?: boolean; chatTools?: boolean } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
         const before = await this.dependencies.inventory();
@@ -62,7 +62,7 @@ export class PiModelBridge {
         let refreshed: AIInventoryState;
         try { refreshed = await this.dependencies.refreshModels(selection.connectionId); }
         catch { throw unavailable('Local server unreachable; check the AI Center connection and retry'); }
-        if (options.tools || options.chatTools || options.planningTools) {
+        if (options.tools || options.chatTools) {
             const alreadyVerified = refreshed.registry.models.some(model =>
                 model.connectionId === selection.connectionId && model.providerModelKey === selection.modelId &&
                 model.capabilities.agentExecution?.source === 'adapter-known' &&
@@ -92,7 +92,7 @@ export class PiModelBridge {
             throw unavailable('Selected Local model is unavailable or unloaded; load and refresh it in AI Center');
         if (selection.loadedContextTokens !== undefined && selection.loadedContextTokens !== loaded)
             throw unavailable('Local selection or loaded context changed; reselect in AI Center');
-        if ((options.tools || options.chatTools || options.planningTools) && (model.capabilities.agentExecution?.source !== 'adapter-known' ||
+        if ((options.tools || options.chatTools) && (model.capabilities.agentExecution?.source !== 'adapter-known' ||
             model.capabilities.agentExecution.value !== true || model.capabilities.toolCalling.value === false))
             throw unavailable('Selected Local model is not verified for tools in AI Center');
         const declared = model.limits.maxOutputTokens.value;
@@ -112,16 +112,14 @@ export class PiModelBridge {
             latest.observations.find(item => item.connectionId === selection.connectionId)?.health !== 'ready')
             throw unavailable('Local model changed during binding; refresh AI Center and retry');
         const endpoint = connection.config.endpoint.replace(/\/$/, '');
-        const opened = await (options.tools ? host.openWorkSession : options.planningTools ?
-            host.openPlanningSession : options.chatTools ? host.openChatToolsSession : host.openNoToolSession).call(host,
+        const opened = await (options.tools ? host.openWorkSession : options.chatTools ? host.openChatToolsSession : host.openNoToolSession).call(host,
             { id: selection.modelId, name: model.label,
             provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
             reasoning: false, input: ['text'],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: loaded, maxTokens: maxOutputTokens }, cwd, credential);
         const expected = options.tools ? ['edit_file', 'list_files', 'read_file', 'run_command'] :
-            options.planningTools ? ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text', 'submit_plan'] :
-                options.chatTools ? ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
+            options.chatTools ? ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
             JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected))
             throw unavailable('Pi tool boundary changed; restart Dope');

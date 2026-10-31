@@ -1,29 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { implementationPlanShapeIssues, localPlanningJson, parseStrategicDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget, validImplementationPlan,
+import { localPlanningJson, parseStrategicDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget,
     verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
-
-const implementationPlan = { type: 'implementation-plan', objective: 'Add visual Git history',
-    successCriteria: ['Checkout and commits are usable'], constraints: ['Keep permissions explicit'],
-    assumptions: ['Existing diff editor can be reused'], steps: [
-        { title: 'Inspect history', detail: 'Identify Git and diff editor owners', deliverables: ['Source map'], dependsOn: [], reuse: [] },
-        { title: 'Implement history view', detail: 'Wire history to existing diff editor', deliverables: ['History panel'],
-            dependsOn: [1], reuse: [] }], tests: ['Unit history navigation'], guiQualification: 'Exercise checkout in GUI',
-    risks: ['Stale branch state; refresh before action'], alternatives: ['Reuse existing list first'], question: '' };
-
-test('submission shape feedback names empty and invalid mandatory fields', () => {
-    const invalid = { ...implementationPlan, guiQualification: '', steps: [implementationPlan.steps[0],
-        { ...implementationPlan.steps[1], deliverables: [], dependsOn: [2] }] };
-    assert.equal(validImplementationPlan(invalid), false);
-    assert.deepEqual(implementationPlanShapeIssues(invalid), [
-        'guiQualification must be nonempty single-line text',
-        'steps[1].deliverables needs nonempty single-line items',
-        'steps[1].dependsOn must contain only earlier 1-based step numbers'
-    ]);
-});
 
 test('whole strategic envelope requires complete output and exact owner identity', () => {
     const draft = { type: 'strategic-roadmap-draft', projectId: 'project', ownerRevision: 0,
@@ -58,43 +39,6 @@ test('local draft action permits proposed Gates and criteria without a qualifica
         signal, 4096, 'draft')).text, JSON.stringify(action));
     await assert.rejects(localPlanningJson(async function* () { yield complete(JSON.stringify({ ...action,
         action: { ...action.action, status: 'green' } })); }, signal, 4096, 'draft'), /strict JSON/);
-});
-
-test('strict plan envelope is separate from the 4000-character no-action and small Roadmap action caps', async () => {
-    const signal = new AbortController().signal;
-    const valid = JSON.stringify({ ...implementationPlan, steps: implementationPlan.steps.map((step, index) => ({
-        ...step, detail: 'Use the existing editor. '.repeat(78) + (index ? 'Wire actions safely.' : 'Inspect source first.') })) });
-    assert.ok(valid.length > 4000);
-    assert.equal(validImplementationPlan(JSON.parse(valid)), true);
-    assert.equal((await localPlanningJson(async function* () { yield complete(valid); }, signal, 16000, 'plan')).text, valid);
-    for (const bad of [
-        { ...implementationPlan, actions: [{ type: 'shell' }] },
-        { ...implementationPlan, steps: [implementationPlan.steps[0]] },
-        { ...implementationPlan, steps: [implementationPlan.steps[0], { ...implementationPlan.steps[1], dependsOn: [2] }] },
-        { ...implementationPlan, steps: Array.from({ length: 17 }, () => implementationPlan.steps[0]) }
-    ]) {
-        assert.equal(validImplementationPlan(bad), false);
-        let calls = 0;
-        await assert.rejects(localPlanningJson(async function* () { calls++; yield complete(JSON.stringify(bad)); },
-            signal, 16000, 'plan'), /strict JSON/);
-        assert.equal(calls, 2);
-    }
-    await assert.rejects(localPlanningJson(async function* () { yield complete(noAction); }, signal, 16000, 'plan'), /strict JSON/);
-    await assert.rejects(localPlanningJson(async function* () { yield complete(valid); }, signal, 1000, 'plan'), /strict JSON/);
-    await assert.rejects(localPlanningJson(async function* () { yield { type: 'delta', text: valid.slice(0, 50) }; },
-        signal, 16000, 'plan'), /without completion/);
-});
-
-test('every implementation step requires a typed reuse array, including validation steps', () => {
-    assert.equal(validImplementationPlan(implementationPlan), true);
-    const missing = { ...implementationPlan, steps: [implementationPlan.steps[0],
-        (({ reuse: _reuse, ...step }) => step)(implementationPlan.steps[1])] };
-    assert.equal(validImplementationPlan(missing), false);
-    assert.deepEqual(implementationPlanShapeIssues(missing), ['missing steps[1].reuse']);
-    const wrongType = { ...implementationPlan, steps: [implementationPlan.steps[0],
-        { ...implementationPlan.steps[1], reuse: 'src/history.js' }] };
-    assert.equal(validImplementationPlan(wrongType), false);
-    assert.deepEqual(implementationPlanShapeIssues(wrongType), ['steps[1].reuse must be [] or an array of {path,reason}']);
 });
 
 test('measured 4096 narrow stress reserves serialized input, system and output', () => {
@@ -145,45 +89,6 @@ test('non-tools JSON fallback repairs once and never accepts a second malformed 
     calls = 0;
     await assert.rejects(localPlanningJson(async function* () { calls++; yield complete('{bad'); }, controller.signal), /two attempts/);
     assert.equal(calls, 2);
-});
-
-test('invalid implementation plan gives the retry a concrete finish instruction', async () => {
-    const hints: Array<string | undefined> = [];
-    const plan = JSON.stringify(implementationPlan);
-    const result = await localPlanningJson(async function* (hint) {
-        hints.push(hint);
-        yield complete(hints.length === 1 ? 'I will inspect more files.' : plan);
-    }, new AbortController().signal, 16000, 'plan');
-    assert.equal(result.text, plan);
-    assert.equal(hints[0], undefined);
-    assert.match(hints[1]!, /complete strict implementation-plan JSON/);
-    assert.match(hints[1]!, /Finish now/);
-});
-
-test('a malformed no-tool plan asks Pi to investigate before schema correction', async () => {
-    const hints: Array<string | undefined> = [];
-    const plan = JSON.stringify(implementationPlan);
-    const result = await localPlanningJson(async function* (hint) {
-        hints.push(hint);
-        yield complete(hints.length === 1 ? '{"type":"implementation-plan"}' : plan);
-    }, new AbortController().signal, 16000, 'plan', true, { hasInspectedSource: () => false });
-    assert.equal(result.text, plan);
-    assert.match(hints[1]!, /Investigate the relevant project source/);
-    assert.doesNotMatch(hints[1]!, /Your completed plan was rejected/);
-});
-
-test('valid JSON with a missing reuse field receives the exact schema issue and only one retry', async () => {
-    const missing = { ...implementationPlan, steps: [implementationPlan.steps[0],
-        (({ reuse: _reuse, ...step }) => step)(implementationPlan.steps[1])] };
-    const hints: Array<string | undefined> = [];
-    const result = await localPlanningJson(async function* (hint) {
-        hints.push(hint);
-        yield complete(JSON.stringify(hints.length === 1 ? missing : implementationPlan));
-    }, new AbortController().signal, 16000, 'plan');
-    assert.equal(result.text, JSON.stringify(implementationPlan));
-    assert.equal(hints.length, 2);
-    assert.match(hints[1]!, /missing steps\[1\]\.reuse/);
-    assert.match(hints[1]!, /reuse:\[\]/);
 });
 
 test('a copied no-action placeholder is retried once and never published as an answer', async () => {

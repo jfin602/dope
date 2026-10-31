@@ -21,7 +21,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 'connection-unavailable');
         }
         const binding = await bridge.bind(selection, host, request.projectTools?.root ?? process.cwd(),
-            request.projectTools ? request.projectTools.planning ? { planningTools: true } : { chatTools: true } : {});
+            request.projectTools ? { chatTools: true } : {});
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         const maxOutputTokens = request.maxOutputTokens ?? Math.min(1024, binding.maxOutputTokens);
         if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1 ||
