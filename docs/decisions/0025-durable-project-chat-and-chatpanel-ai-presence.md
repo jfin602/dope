@@ -77,6 +77,9 @@ Provider credentials, endpoints, connection setup and globally available model i
 
 ### Context composition and saved-chat reuse
 
+> **2026-10-31 provider-specific forward amendment, not yet implemented:** The original Phase 7 permission for composed Dope source content remains historical design and non-Pi compatibility. Pi-backed Chat now targets Pi-selected source acquisition: Dope supplies compact project/active-path metadata when available, but no unsolicited source-file bodies. Preserve user attachments/selections, intentionally typed project context and completed conversation history. [ADR 0039](0039-bundled-pi-local-agent-runtime.md) and [Pi-only context contract](../planning/p12/agentic-chat-permissions.md#pi-only-source-context--2026-10-31-approved-forward-contract) govern this change. An automatically supplied file hash is not an observed Pi tool read. Main still injects source contents; no Pi-only GREEN claimed.
+
+
 All Chats are durable and potentially useful, but all historical Chats are not injected into every request.
 
 The active Chat supplies direct conversation context subject to an explicit budget/strategy. Other saved Chats are an available project context corpus accessed through explicit attachment, search or bounded retrieval. This keeps historical value without allowing the archive to consume the entire model context window.

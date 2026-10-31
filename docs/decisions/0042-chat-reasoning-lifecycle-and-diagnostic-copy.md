@@ -1,6 +1,8 @@
 # ADR 0042 — Chat reasoning lifecycle and diagnostic copy
 
-**Decision:** 2026-10-31, owner-approved design. **Status:** ACCEPTED FOR FORWARD IMPLEMENTATION; DOCS ONLY / NOT IMPLEMENTED OR QUALIFIED. **Product version:** 0.12.7 unchanged. **Correction:** [c12-reasoning-streaming](../tasks/c12-reasoning-streaming/README.md). Earlier Chat/Pi/Planning/Work qualification remains historical.
+**Decision:** 2026-10-31, owner-approved design. **Status at adoption:** ACCEPTED FOR FORWARD IMPLEMENTATION; DOCS ONLY / NOT THEN IMPLEMENTED OR QUALIFIED. **Product version:** 0.12.7 unchanged. **Correction:** [c12-reasoning-streaming](../tasks/c12-reasoning-streaming/README.md). Earlier Chat/Pi/Planning/Work qualification remains historical.
+
+> **CURRENT 2026-10-31 SOURCE/QUALIFICATION AMENDMENT:** `c12-reasoning-streaming` P1-P3 have since been implemented/committed: bounded separate activity/final state, live/collapsed presentation, and right-click Copy with Reasoning. Manual P4 was attempted and recorded **NOT GREEN** ([P4 source/evidence commit](https://github.com/jfin602/dope/commit/b0ac012aece8ee147a6fe747c36160c010e670c3)); owner-native Electron and Phase 12 qualification remain open. Classify exposed provider thinking only when verified; provisional text must never be represented as hidden reasoning. Original design clauses below remain authoritative without implying qualification.
 
 ## Problem
 

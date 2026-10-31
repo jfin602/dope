@@ -1,10 +1,12 @@
+> **2026-10-31 FORWARD PI-ONLY READ GATE (NOT YET IMPLEMENTED/QUALIFIED):** [Pi-backed Chat context contract](agentic-chat-permissions.md#pi-only-source-context--2026-10-31-approved-forward-contract) requires a fresh Chat with no attached source file, source path/metadata but no source body in the initial model request, an actual observed Pi-brokered read/list/search tool call with matching fixture bytes/hash, and a complete grounded answer. A correct answer caused by Dope's automatic `[Auto ...]` file injection is NOT a Pi read. Test explicit attachments/selections, typed context, no-tools opt-out, non-Pi providers, read-only path controls, cancel/retry and output-limit recovery. This supplements B3/B4/B6/B8 without rewriting historical outcomes. [Qwen30 scoped P1](../../tasks/c12-planning-recovery/qualification/2026-10-31-p1-final-qwen30.md) GREEN does not clear [Qwen3.5-9B post-cancel](../../tasks/c12-planning-recovery/qualification/2026-10-31-p1-r2-loop-context-isolation.md) NOT GREEN or native Electron.
+
 > **2026-10-30 FORWARD B3/B4 CONTRACT CHANGE (NOT IMPLEMENTED):** [Agentic Chat/Planning permissions](agentic-chat-permissions.md) requires Pi-selected read/list/search and composer Ask/Allow permissioned sandboxed commands. B3/B4 must newly qualify exact command approval and OS-enforced read-only/credential/network protection. Original table below remains historical for initial P12; it is not reclassified or silently waived.
 
 > **Entry is not qualification (2026-10-29):** [Owner authorization](owner-entry-authorization-2026-10-29.md) allows P1–P7 to proceed with reviewed standalone Pi results marked NOT GREEN. B1–B9 remain required to close the integrated Pi stack; no security, grant, network, packaging or GUI gate is waived.
 
 # Phase 12 — Bundled Pi qualification contract (B1–B9)
 
-Status: Design only. Standalone Pi success is an entry prerequisite, not integration qualification.
+Status at original contract authoring: Design only. Dated source-bound evidence and forward amendments govern current status; standalone Pi success does not alone qualify integration.
 
 | Gate | Required evidence |
 | --- | --- |

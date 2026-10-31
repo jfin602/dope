@@ -1,6 +1,8 @@
 # c12-reasoning-streaming — Chat activity, final answers and diagnostic copy
 
-**Owner decision:** 2026-10-31. **Status:** DOCS APPLIED / ASSESSED / PLANNED / PROMPTS AUTHORED ONLY; NOT RUN / NOT QUALIFIED. **Package:** 0.12.7 unchanged.
+**Owner decision:** 2026-10-31. **Current status:** P1-P3 IMPLEMENTED AND COMMITTED; manual P4 ATTEMPTED / **NOT GREEN**. Native Electron and whole Phase 12 remain unqualified. **Package:** 0.12.7 unchanged; the earlier authored-only status is historical.
+
+**Evidence update (2026-10-31):** P1 separated durable activity and final answer authority; P2 rendered live/collapsed activity; P3 added scoped right-click diagnostic copy while preserving clean left-click. [P4 NOT GREEN](https://github.com/jfin602/dope/commit/b0ac012aece8ee147a6fe747c36160c010e670c3) is not a successful correction closeout. Separate [Qwen30 Planning P1 GREEN](../c12-planning-recovery/qualification/2026-10-31-p1-final-qwen30.md) does not clear P4. Provider-exposed thinking is different from provisional activity. [Pi-only source context](../../planning/p12/agentic-chat-permissions.md#pi-only-source-context--2026-10-31-approved-forward-contract) is a later, still-unimplemented policy.
 
 **Decision:** Reasoning/provisional output is visible while working and persistently inspectable but is not the final assistant answer and must never contaminate next-turn context. Completed answers are visually primary after reasoning collapses; cancelled turns show no invented final. Right-click on any Dope-owned Chat/related transcript Copy control exposes a scoped **Copy with Reasoning** option, with normal left-click semantics preserved.
 
