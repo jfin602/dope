@@ -1,0 +1,23 @@
+TASK: Correction 12 / P3 — Right-click copy with reasoning across Chat controls
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- No product version, dependency or provider/model changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0042, this stack assessment/plan and P1/P2 committed behavior. Inspect actual git state and owner changes. No reset/stash/clean, Roadmap edits, self-commit or /activate. <=8m target, 10 soft/15 hard.
+
+OBJECTIVE
+Every Dope-owned ChatPanel/associated Chat or Work transcript Copy control has one shared right-click menu containing 'Copy with Reasoning', without adding a permanent arrow or changing its normal left-click copy payload.
+
+IMPLEMENT
+1. Keep existing chatResponseCopyText and chatTranscriptCopyText clean default projections: Copy Response copies final answer only; Copy Transcript copies clean chronological dialogue; Copy JSON still copies explicit raw JSON. Ensure failed/cancelled partial activity cannot leak into clean copy or become a phantom Assistant answer.
+2. Add one deterministic scoped diagnostic serializer keyed by current Chat, message and execution IDs: response includes its available captured reasoning/provisional activity, execution outcome, sanitized tool entries and any committed final; transcript includes all recorded turns in chronological order with per-turn activity and 'No final response' on cancelled/failed attempts. Preserve exact captured text when possible; mark redactions/truncation, never invent hidden reasoning, include no secret tool payloads/approval tokens, and never mutate context/history.
+3. Add reusable anchored right-click context menu to all Dope-owned Chat Copy buttons including toolbar Copy Transcript, response icons, Copy JSON and applicable in-panel transcript copies. Show 'Copy with Reasoning'; unavailable/disabled with truthful explanation when no recorded reasoning exists. Context Menu key / Shift+F10, arrow navigation, Escape close, restore focus; respect Theia and native browser/editor context menus elsewhere. Use existing clipboard fallback and status feedback; no extra Chat system.
+
+QUALIFY
+Focused serializer and UI tests: left click unchanged; right-click response/transcript/JSON; chronological diagnostic copy with 12 repeated cancelled paragraphs but clean copy without them; completed final; missing reasoning disabled; tool redaction/truncation; keyboard accessibility; copied content across reopen; copied text not fed into next-turn prompts; selection and drag-scroll unaffected. Run focused tests and affected typecheck/build. STOP. P4 is manual Codex browser closeout only.
