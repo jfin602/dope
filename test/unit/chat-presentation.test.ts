@@ -196,7 +196,7 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
     assert.match(widget, /shell\.append\(header, region\)/);
-    assert.match(widget, /shell\.append\(composer\)/);
+    assert.match(widget, /shell\.append\(composer, menu\)/);
     assert.match(css, /\.dope-chat-scroll \{[^}]*overflow: auto/);
     assert.match(css, /\.dope-chat-shell \{[^}]*flex-direction: column/);
     assert.match(css, /\.dope-chat-message-user \{[^}]*align-items: flex-end/);
@@ -245,6 +245,7 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
 
 test('Select Chat keeps folder disclosure and keyboard accessible contextual actions separate from selection', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     const tree = widget.slice(widget.indexOf('private renderTree('), widget.indexOf('private render():'));
     assert.match(tree, /details\.append\(menu, this\.renderTree\(folder\)\)/);
@@ -262,7 +263,7 @@ test('Select Chat keeps folder disclosure and keyboard accessible contextual act
     assert.match(tree, /type: 'move-chat'/);
     assert.match(tree, /this\.controller\.deleteChat\(chat\.id\)/);
     assert.match(widget, /navigation\.setAttribute\('aria-label', 'Chats and folders'\)/);
-    assert.match(widget, /back\.setAttribute\('aria-label', 'Back to Chats'\)/);
+    assert.match(module, /commands\.registerCommand\(\{ id: 'dope\.chat\.back', label: 'Back to Chats' \}/);
     assert.match(css, /\.dope-chat-selector-list \{[^}]*overflow: auto/);
     assert.match(css, /\.dope-chat-panel button:focus-visible, \.dope-chat-panel summary:focus-visible/);
 });

@@ -117,11 +117,12 @@ test('context and active history share selected-model budget with explicit omiss
 });
 
 test('automatic investigation references hash only bytes included in the measured context', async () => {
-  const active = chat(); active.settings.context.maxInputTokens = 500;
-  const source = 'verified evidence '.repeat(100);
+  const active = chat(); active.settings.context.maxInputTokens = 1200;
+  const source = 'verified evidence '.repeat(300);
   const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
     {} as SoftwareMapIndex, {} as ChatRepository);
-  const result = await composer.compose('/tmp', active, 'Plan this', [], model, { blocks: [{ text: source,
+  const result = await composer.compose('/tmp', active, 'Plan this', [],
+    { ...model, contextWindowTokens: 4096, maxInputTokens: 4096 }, { blocks: [{ text: source,
     ref: { schemaVersion: 1, kind: 'file', id: 'src/a.ts', label: 'src/a.ts', origin: 'automatic',
       projectId: 'project-a', estimatedTokens: 1000, includedBytes: Buffer.byteLength(source),
       contentHash: createHash('sha256').update(source).digest('hex') } }], diagnostics: [] });

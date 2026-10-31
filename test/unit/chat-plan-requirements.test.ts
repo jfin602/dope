@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { planRequirements, planRequirementCoverage, planOutputDirectives,
-    planExplicitConstraintViolations, type PlanRequirement } from '../../packages/theia-extension/lib/node/chat-plan-requirements.js';
+    planExplicitConstraintViolations, planForbidsCommands, type PlanRequirement } from '../../packages/theia-extension/lib/node/chat-plan-requirements.js';
 import { validImplementationPlan, type LocalImplementationPlan } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const requirements: PlanRequirement[] = [
@@ -68,7 +68,7 @@ test('bulleted Planning directives retain the Node-only requirement and reject f
         successCriteria: ['Node built-in test runner passes increment(1) returns 2'],
         constraints: ['No new dependencies'], assumptions: [], steps: [
             { title: 'Add automated test', detail: 'Add automated test for increment function using Node built-in test runner; test that increment(1) returns 2',
-                deliverables: ['src/counter.test.js imports existing increment function and asserts increment(1) returns 2'],
+                deliverables: ['src/counter.test.js imports node:test and existing increment function and asserts increment(1) returns 2'],
                 dependsOn: [], reuse: [{ path: 'src/counter.js', reason: 'Reuse existing increment function' }] },
             { title: 'Add test script', detail: 'Use Node built-in test runner in package.json scripts.test via node --test',
                 deliverables: ['package.json test script for validation command npm test'], dependsOn: [1],
@@ -89,6 +89,45 @@ test('bulleted Planning directives retain the Node-only requirement and reject f
     ['src/counter.js', 'package.json']).join(' '), /Requested test result/);
     assert.match(planExplicitConstraintViolations(request, { ...plan,
         steps: plan.steps.map(step => ({ ...step, reuse: [] })) }, ['src/counter.js']).join(' '), /verified reuse path/);
+});
+
+test('exact source-inspection request scores the capability, not review instructions', () => {
+    const request = `Inspect the existing project source and prepare a minimal implementation plan to add automated testing for the increment function.\n\nRequirements:\n- Use Node's built-in test runner.\n- Do not introduce Jest, Vitest or any new dependency.\n- Test that increment(1) returns 2.\n- Reuse the existing increment implementation.\n- Include exact affected files, deliverables and validation command.\n- Keep the implementation small.\n\nPresent the implementation plan for review.\n\nDo not modify project files, execute commands, or apply Roadmap changes.`;
+    const expected = planRequirements(request);
+    assert.equal(planForbidsCommands(request), true);
+    assert.equal(planForbidsCommands('Do not run commands outside the project.'), false);
+    assert.deepEqual(expected.map(item => item.text), [
+        'add automated testing for the increment function', "Use Node's built-in test runner", 'Test that increment(1) returns 2']);
+    const plan: LocalImplementationPlan = { type: 'implementation-plan',
+        objective: 'Add automated testing for increment',
+        successCriteria: ['Node built-in test runner verifies increment(1) returns 2'],
+        constraints: ['No new dependency and no project changes before approval'], assumptions: [],
+        steps: [
+            { title: 'Add increment test', detail: 'Add a small automated test for the increment function with Node built-in test runner; test that increment(1) returns 2',
+                deliverables: ['src/counter.test.js imports node:test and increment from src/counter.js and asserts increment(1) returns 2'],
+                dependsOn: [], reuse: [{ path: 'src/counter.js', reason: 'Reuse existing increment implementation' }] },
+            { title: 'Define validation', detail: 'Document the Node test command for future validation',
+                deliverables: ['Validation command: node --test src/counter.test.js'], dependsOn: [1], reuse: [] },
+        ], tests: ['Run node --test src/counter.test.js to verify increment(1) returns 2'],
+        guiQualification: 'No GUI to test', risks: [], alternatives: [], question: '' };
+    assert.equal(validImplementationPlan(plan), true);
+    assert.deepEqual(planExplicitConstraintViolations(request, plan, ['src/counter.js']), []);
+    assert.equal(planRequirementCoverage(expected, plan).every(item => item.complete), true);
+    assert.match(planExplicitConstraintViolations(request, { ...plan, alternatives: ['Use Jest instead'] },
+        ['src/counter.js']).join(' '), /Jest/);
+    assert.match(planExplicitConstraintViolations(request, { ...plan,
+        steps: [{ ...plan.steps[0], detail: 'Add a new dependency for tests' }, plan.steps[1]] },
+    ['src/counter.js']).join(' '), /new dependenc/);
+    assert.match(planExplicitConstraintViolations(request, { ...plan,
+        steps: plan.steps.map(step => ({ ...step, deliverables: step.deliverables.map(item =>
+            item.replace('node:test', 'console.assert').replace('node --test', 'node')) })),
+        tests: ['Run node src/counter.test.js to assert increment(1) returns 2'] },
+    ['src/counter.js']).join(' '), /Requested Node test runner/);
+    assert.match(planExplicitConstraintViolations(request, { ...plan, steps: plan.steps.map(step => ({ ...step,
+        reuse: [] })) }, ['src/counter.js']).join(' '), /verified reuse path/);
+    assert.equal(validImplementationPlan({ ...plan, steps: plan.steps.map(step => {
+        const { reuse: _reuse, ...missing } = step; return missing;
+    }) }), false);
 });
 
 test('B/C: a commit control is not commit creation; execution, failure and identifier verification cover it', () => {

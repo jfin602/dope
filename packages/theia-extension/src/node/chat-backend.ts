@@ -23,7 +23,7 @@ import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/
 import { selectDopeCapabilityHelp } from './dope-capability-help';
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
-import { planRequirements, planRequirementCoverage, planOutputDirectives,
+import { planRequirements, planRequirementCoverage, planOutputDirectives, planForbidsCommands,
     planExplicitConstraintViolations, type PlanRequirement } from './chat-plan-requirements';
 import { extractSavedRoadmap, roadmapCreationIntent } from './chat-roadmap-extract';
 import { roadmapRequirementCoverage } from './chat-roadmap-requirements';
@@ -40,13 +40,14 @@ function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3)
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
-const PLAN_INVESTIGATION_INSTRUCTION = `First investigate the project with the available Pi file tools. Choose the relevant files and tools yourself, read the existing implementation needed by this request, and use actual tool results as source evidence. Do not draft a plan or generate final JSON before that investigation. Once evidence suffices, stop reading and produce the proposal. Final output must be one compact JSON object, without prose or fences, with exactly these top-level fields: type ("implementation-plan"), objective (string), successCriteria (nonempty string array), constraints (string array), assumptions (string array), steps (array), tests (string array), guiQualification (string), risks (string array), alternatives (string array), question (string, empty if none). Give at least two substantive steps. Every step requires title and detail (strings), nonempty deliverables (string array), dependsOn (array of 1-based earlier step numbers; [] for the first step), and reuse (array of verified {"path":"project-relative path","reason":"how used"} objects, or [] when none). Cite only paths verified by tool results. Include requested validation in a step deliverable and tests. Preserve every developer requirement and exclusion. Never claim writes, approval or completed tests. This is a review proposal, not a Roadmap mutation.`;
+const PLAN_INVESTIGATION_INSTRUCTION = `First investigate the project with the available Pi file tools. Choose the relevant files and tools yourself, read the existing implementation needed by this request, and use actual tool results as source evidence. Do not draft a plan or generate final JSON before that investigation. Once evidence suffices, stop reading and produce the proposal. Final output must be one compact JSON object, without prose or fences, with exactly these top-level fields: type ("implementation-plan"), objective (string), successCriteria (nonempty string array), constraints (string array), assumptions (string array), steps (array), tests (string array), guiQualification (string), risks (string array), alternatives (string array), question (string, empty if none). Give at least two substantive steps. Every step requires title and detail (strings), nonempty deliverables (string array), dependsOn (array of 1-based earlier step numbers; [] for the first step), and reuse (array of verified {"path":"project-relative path","reason":"how used"} objects, or [] when none). Cite only paths verified by tool results. Include requested validation in a step deliverable and tests. Preserve every developer requirement and exclusion in every field, including alternatives; use alternatives:[] when the allowed approach has no useful alternative. Describe validation as future work, without claiming test output or results already obtained. Do not add unrequested test cases. Never claim writes or approval. This is a review proposal, not a Roadmap mutation.`;
 function firstPlanInstruction(requirements: readonly PlanRequirement[], content: string): string {
     const detailedActions = requirements.some(item => /\b(?:toolbar|button|control|checkout|commit|authorization|permission)\b/i.test(item.text));
     return `${PLAN_INVESTIGATION_INSTRUCTION} Exact developer directives: ${JSON.stringify(planOutputDirectives(content))}. ` +
         `Requested capabilities: ${JSON.stringify(requirements.map(item => item.text))}. ` +
         'Cover each capability with concrete step work, a deliverable and a success criterion or test. ' +
         'State source unknowns as assumptions; do not invent reads.' +
+        (planForbidsCommands(content) ? ' The developer forbids command execution in this turn. Use only file read/list/search tools; do not call run_command.' : '') +
         (detailedActions ? ' Connect requested controls to real operations, failure handling and explicit authorization checks; verify the operation, not just the button.' : '');
 }
 /** Deliberately narrow first-turn intent; ordinary mentions of a plan remain ordinary Chat. */
@@ -60,7 +61,10 @@ export function requestsImplementationPlan(content: string): boolean {
         /\bconcrete\s+validation\s+steps\b/i.test(text) &&
         /\bpresent\s+the\s+implementation\s+plan\s+for\s+review\b/i.test(text) &&
         /\bdo\s+not\s+modify\s+files\s+or\s+the\s+roadmap\b/i.test(text);
-    return explicitMilestone || sourceMilestone || /^plan\s+(?:a|an|the|my)\s+\S/i.test(text) &&
+    const sourcePlan = /^inspect\s+the\s+existing\s+project\s+source\s+and\s+prepare\s+a\s+minimal\s+implementation\s+plan\b/i.test(text) &&
+        /\bpresent\s+the\s+implementation\s+plan\s+for\s+review\b/i.test(text) &&
+        /\bdo\s+not\s+modify\s+project\s+files\b/i.test(text);
+    return explicitMilestone || sourceMilestone || sourcePlan || /^plan\s+(?:a|an|the|my)\s+\S/i.test(text) &&
         /\b(?:please\s+)?inspect\b/i.test(text) &&
         /\b(?:complete|full)\s+ordered\s+implementation\s+plan\b/i.test(text);
 }
@@ -1319,6 +1323,10 @@ export class ChatBackend implements ChatService {
                 if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
                 if (name === 'run_command') {
                     const record = args as Record<string, unknown>;
+                    if (planForbidsCommands(content)) {
+                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        return 'Command denied: the developer prohibited command execution in this turn';
+                    }
                     if (!record || typeof record !== 'object' || Array.isArray(record) ||
                         Object.keys(record).length !== 1 || typeof record.command !== 'string') {
                         toolEvents.push({ name, status: 'denied', truncated: false });

@@ -99,6 +99,10 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
         await turn('Please check once more');
         assert.equal(events.slice(thirdAt).some(item => item.kind === 'command-pending'), false);
         assert.match(outputs.at(-1)!, /Sandboxed command exited 0[\s\S]*secret-token/);
+        const prohibitedAt = events.length;
+        await turn('Do not modify project files, execute commands, or apply Roadmap changes.');
+        assert.equal(events.slice(prohibitedAt).some(item => item.kind === 'command-pending'), false);
+        assert.match(outputs.at(-1)!, /developer prohibited command execution/);
         await backend.release(projectHandle, chatId, lease.token);
         const next = await backend.claim({ projectHandle, chatId, ownerId: 'panel-b' });
         if (!next.acquired) throw new Error('Next lease missing');

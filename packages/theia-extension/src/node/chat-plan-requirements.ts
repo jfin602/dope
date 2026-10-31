@@ -15,9 +15,14 @@ const terms = (value: string): string[] => [...new Set(value.replace(/([a-z])([A
 const requestClauses = (content: string): string[] => content.split(/(?<=[.!?;])\s+|;\s*|\n+(?=\s*[-*]\s+)/)
     .map(value => value.trim().replace(/^[-*]\s+/, '').replace(/[.!?;]+$/, ''));
 
+export function planForbidsCommands(content: string): boolean {
+    return requestClauses(content).some(clause =>
+        /\bdo\s+not\b.{0,160}\b(?:execute|run)\s+commands?\b\s*(?:,|$)/i.test(clause));
+}
+
 /** Small exact reminders, not an additional source or generated summary. */
 export function planOutputDirectives(content: string): string[] {
-    return requestClauses(content).filter(clause => /^(?:use|do not|test that|reuse|include)\b/i.test(clause))
+    return requestClauses(content).filter(clause => /^(?:use|do not|test that|reuse|include|keep)\b/i.test(clause))
         .filter(clause => !/^do not\s+(?:modify|edit|run|apply)\b/i.test(clause)).slice(0, 8);
 }
 
@@ -30,11 +35,13 @@ export function planRequirements(content: string): PlanRequirement[] {
         // the typed plan still requires concrete steps, deliverables and tests.
         if (/^(?:please\s+)?inspect\b.*\bprepare\b.*\b(?:development\s+)?milestone\b/i.test(clause) ||
             /^inspect\b.*\busing\s+your\s+(?:(?:available|project|file)\s+)?tools\b/i.test(clause)) return [];
-        const plannedCapability = /^prepare\b.*\bimplementation\s+plan\s+(?:(?:for|to)\s+)(.+)$/i.exec(clause);
+        const plannedCapability = /^(?:(?:inspect\b.+?\band\s+)?prepare)\b.*\b(?:implementation\s+)?plan\s+(?:(?:for|to)\s+)(.+)$/i.exec(clause);
         if (plannedCapability) return [plannedCapability[1]];
+        if (/^identify\b.*\bpresent\b.*\bproposal\s+for\s+review\b/i.test(clause)) return [];
         if (/^prepare\b.*\b(?:implementation\s+)?plan\b/i.test(clause)) return [];
-        if (/^requirements:$/i.test(clause) || /^(?:include|finish|do not|propose the smallest)\b/i.test(clause)) return [];
-        if (/^reuse\b.*\brather\s+than\s+rewriting\b/i.test(clause)) return [];
+        if (/^requirements:$/i.test(clause) || /^(?:include|finish|do not|propose the smallest)\b/i.test(clause) ||
+            /^keep\s+(?:the\s+)?implementation\s+small\b/i.test(clause)) return [];
+        if (/^reuse\b.*\b(?:existing\s+(?:increment\s+)?(?:function|implementation)|rather\s+than\s+rewriting)\b/i.test(clause)) return [];
         if (/^(?:please\s+)?present\b.*\b(?:proposal|plan)\b.*\breview\b/i.test(clause)) return [];
         if (/^please\s+inspect\b/i.test(clause)) return /\btests?\b/i.test(clause) ? ['tests'] : [];
         return clause ? [clause] : [];
@@ -57,9 +64,9 @@ export function planExplicitConstraintViolations(content: string, plan: LocalImp
         const forbidden = /^do\s+not\s+(?:introduce|add|use|include|install|recommend)\s+(.+)$/i.exec(clause);
         if (forbidden) for (const item of forbidden[1].split(/,\s*|\s+or\s+/i).map(value =>
             value.trim().replace(/^(?:a|an|any)\s+/i, '')).filter(Boolean)) {
-            if (/^new\s+dependencies$/i.test(item)) {
+            if (/^new\s+dependenc(?:y|ies)$/i.test(item)) {
                 if (fragments.some(fragment => /\b(?:npm\s+install|yarn\s+add)\b/i.test(fragment) ||
-                    [...fragment.matchAll(/\b(?:add|install|introduce|include|require)\b.{0,50}\b(?:new\s+)?(?:dev)?dependencies\b/gi)]
+                    [...fragment.matchAll(/\b(?:add|install|introduce|include|require)\b.{0,50}\b(?:new\s+)?(?:dev)?dependenc(?:y|ies)\b/gi)]
                         .some(match => !/\b(?:no|without|avoid|zero)\b/i.test(match[0]))))
                     violations.push(`Proposed new dependencies despite: ${clause}`);
             } else if (new RegExp(`\\b${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(proposed)) {
@@ -72,6 +79,10 @@ export function planExplicitConstraintViolations(content: string, plan: LocalImp
             const found = terms(proposedLower);
             if (requiredTerms.some(word => !found.includes(word)))
                 violations.push(`Requested use is not demonstrated: ${clause}`);
+            // This is conditional on the developer's exact runner choice, not a default for plans.
+            if (/^Node's\s+built-in\s+test\s+runner$/i.test(requiredUse[1]) &&
+                (!/\bnode:test\b/i.test(proposed) || !/\bnode\s+--test\b/i.test(proposed)))
+                violations.push(`Requested Node test runner is not implemented by a node:test case and node --test validation: ${clause}`);
         }
         const testResult = /^test\s+that\s+(.+?)\s+returns?\s+(.+)$/i.exec(clause);
         if (testResult) {
@@ -80,7 +91,7 @@ export function planExplicitConstraintViolations(content: string, plan: LocalImp
             if (!fragments.some(fragment => assertion.test(fragment)))
                 violations.push(`Requested test result is absent: ${clause}`);
         }
-        if (/^reuse\b.*\bexisting\s+function\b/i.test(clause) &&
+        if (/\breuse\b.*\bexisting\s+(?:(?:increment|[a-z][a-z0-9]*)\s+)?(?:implementation|function)\b/i.test(clause) &&
             !plan.steps.some(step => step.reuse.some(item => verifiedFiles.includes(item.path))))
             violations.push(`Requested existing function has no verified reuse path: ${clause}`);
     }
