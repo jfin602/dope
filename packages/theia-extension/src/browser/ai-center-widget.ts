@@ -80,6 +80,18 @@ export class AICenterWidget extends BaseWidget {
         this.content.querySelector<HTMLElement>('.dope-ai-role-editor h3')?.focus();
     }
 
+    async focusLocalAgentVerification(connectionId: string, modelId: string): Promise<void> {
+        this.surface = 'connections';
+        await this.controller.load();
+        await this.controller.select(connectionId);
+        this.modelsOpen = true;
+        this.render();
+        const target = [...this.content.querySelectorAll<HTMLButtonElement>('[data-verify-model]')]
+            .find(button => button.dataset.verifyModel === modelId);
+        target?.scrollIntoView({ block: 'center' });
+        target?.focus();
+    }
+
     setReturnToChat(action?: () => void, label = 'Return to Chat'): void { this.returnToChat = action; this.returnLabel = label; this.render(); }
 
     private select(id?: string): void {
@@ -423,10 +435,14 @@ export class AICenterWidget extends BaseWidget {
                 model.locality === 'local' ? loadedContext ? 'loaded' : 'unknown' : model.limits.contextWindowTokens.source})`),
                 button(model.enabled ? 'Disable model' : 'Enable model', () => void controller.toggleModel(
                     connection.id, model.providerModelKey, !model.enabled), controller.busy));
-            if (connection.config.type === 'local') row.append(button('Verify Coding Agent tools', () =>
-                void controller.verifyLocalAgentExecution(connection.id, model.providerModelKey),
-                controller.busy || !model.enabled || model.state !== 'ready' ||
-                loadedContext === undefined));
+            if (connection.config.type === 'local') {
+                const verify = button('Verify Coding Agent tools', () =>
+                    void controller.verifyLocalAgentExecution(connection.id, model.providerModelKey),
+                    controller.busy || !model.enabled || model.state !== 'ready' ||
+                    loadedContext === undefined);
+                verify.dataset.verifyModel = model.providerModelKey;
+                row.append(verify);
+            }
             detail.append(row);
         }
         const tested = state.tests.find(item => item.connectionId === connection.id);

@@ -36,7 +36,7 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
     let fail = false;
     let pendingObserved = false;
     for (const id of ['one', 'two']) {
-        await registry.upsert({ id, providerId: id, label: id });
+        await registry.upsert({ id, providerId: 'local', label: id });
         await registry.connect(id, {
             async discoverModels() { return [{ id: 'chat', label: 'Chat', capabilities: { conversationalText: true,
                 streaming: true, contextWindowTokens: 8192, reasoningControls: [{ id: 'effort', values: ['low'] }] } }]; },
@@ -204,7 +204,7 @@ test('panel source keeps input and toolbar rows with AI Center repair, settings 
     assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;\s*this\.render\(\)/);
     assert.match(source, /Manage AI connections/);
     assert.match(source, /Why this model\?/);
-    assert.match(source, /Configure Interactive in Roles/);
+    assert.match(source, /Open AI Center/);
     assert.match(source, /Chat settings/);
     assert.match(source, /execution\.status/);
     assert.match(source, /actualModel\.providerId/);
@@ -226,32 +226,34 @@ test('composer Enter sends, Shift+Enter and IME Enter stay in the textarea', () 
     assert.equal(shouldSendChatInput(event('a')), false);
 });
 
-test('composer textarea grows, shrinks and resets to its content height', () => {
+test('composer textarea keeps the same height for short and long drafts', () => {
     let contentHeight = 28;
     const input = { style: { height: '' }, get scrollHeight() { return contentHeight; } } as HTMLTextAreaElement;
     resizeChatInput(input);
-    assert.equal(input.style.height, '28px');
+    assert.equal(input.style.height, '4.5em');
     contentHeight = 120;
     resizeChatInput(input);
-    assert.equal(input.style.height, '120px');
+    assert.equal(input.style.height, '4.5em');
     contentHeight = 28;
     resizeChatInput(input);
-    assert.equal(input.style.height, '28px');
+    assert.equal(input.style.height, '4.5em');
 });
 
-test('composer keeps actions in the popover and only model plus submission on the footer', async () => {
+test('composer keeps actions in the popover and only controls on the footer', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     for (const action of ['Add context', 'Clear context', 'Preview context', 'Refresh models', 'Manage AI connections', 'Retry'])
         assert.match(source, new RegExp(`menuButton\\('${action}'`));
     assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
     assert.match(source, /menuButton\(kind, \(\) => this\.behavior\(kind\)\)/);
-    assert.match(source, /toolbar\.append\(more, modelSelector, submitButton\)/);
+    assert.match(source, /toolbar\.append\(more, modelSelector, commandLabel, submitButton\)/);
+    assert.match(source, /scroll\.append\(responseNotices\)/);
+    assert.doesNotMatch(source, /composer\.append\((?:progress|planning|notice|selectedContext|review|note|preview|details)\)/);
     assert.match(source, /this\.button\('', submit,/);
     assert.match(source, /if \(!shouldSendChatInput\(event\)\) return;[\s\S]*?submit\(\)/);
     assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;/);
     assert.match(css, /\.dope-chat-composer \{[^}]*max-width: 940px/);
-    assert.match(css, /\.dope-chat-composer textarea \{[^}]*resize: none;[^}]*max-height:/);
+    assert.match(css, /\.dope-chat-composer textarea \{[^}]*height: 4\.5em;[^}]*resize: none;/);
 });
 
 test('unavailable selection never routes to another connected model', async () => {

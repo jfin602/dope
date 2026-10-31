@@ -56,7 +56,7 @@ test('two fresh Pi-mapped Work candidates retain transcript and History identiti
                         commandId: 'pi-1', command: 'fixture-test', status: 'failed', exitCode: 1,
                         output: 'test failed safely', outputTruncated: false });
                     request.onEvent(piWorkObservation({ type: 'work', sequence: 3,
-                        kind: 'tool_execution_end', toolName: 'dope_process', isError: true }));
+                        kind: 'tool_execution_end', toolName: 'run_command', isError: true }));
                     await writeFile(join(request.executionRoot, candidatePath), `${decision} candidate\n`);
                     request.onEvent({ kind: 'file-changed', summary: 'Candidate file changed', path: candidatePath });
                     request.onEvent(piWorkObservation({ type: 'work', sequence: 4, kind: 'agent_end' }));
@@ -95,7 +95,7 @@ test('two fresh Pi-mapped Work candidates retain transcript and History identiti
                 assert.deepEqual(before.entries.filter(entry => entry.kind === 'command').map(entry => entry.status), ['failed']);
                 const events = (await store.readEvents(root, held.id, 0, 100)).events;
                 assert.ok(events.some(event => event.summary === 'Pi session started'));
-                assert.ok(events.some(event => event.summary === 'Pi dope_process failed'));
+                assert.ok(events.some(event => event.summary === 'Pi run_command failed'));
                 assert.ok(events.every(event => event.runId === held.id));
                 await runRuntime.dispose(); runRuntime = undefined;
                 const freshStore = new AgentStore();

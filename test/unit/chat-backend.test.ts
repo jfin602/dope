@@ -56,7 +56,7 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192,
                 maxInputTokens: 8192 } }] }] }),
     async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
-        outputs.push(await request.projectTools!.execute('dope_command', { command: 'printf secret-token' }));
+        outputs.push(await request.projectTools!.execute('run_command', { command: 'printf secret-token' }));
         yield { type: 'complete' as const, text: 'Command was not executed.', actualModelId: 'q4',
             finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
     } };
@@ -122,6 +122,7 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
 
 test('only an explicit first-pass planning request selects plan mode', () => {
     assert.equal(requestsImplementationPlan(firstPlanRequest), true);
+    assert.equal(requestsImplementationPlan("Inspect this project's implementation and prepare one small, concrete development milestone with validation steps. Present the proposal for my review without changing source files."), true);
     for (const ordinary of ['Plan with Chat help', 'What is the plan?', 'Plan a trip',
         'Please inspect src/diffEditor.js', 'Plan a checkpoint and inspect the Roadmap',
         'Lets plan the start of a new project. I want to make a 2D tower defense game with pixi.js'])
@@ -830,7 +831,7 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         async *generate(_selection: unknown, request: { messages: { content: string }[];
             projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
             calls++; sent.push(request.messages.map(message => message.content).join('\n'));
-            if (inspectWithPi) inspectedSource = JSON.parse(await request.projectTools!.execute('dope_read',
+            if (inspectWithPi) inspectedSource = JSON.parse(await request.projectTools!.execute('read_file',
                 { path: sourcePath })).text;
             if (changeSourceAfterInspect) await writeFile(join(root, sourcePath), 'changed during turn\n');
             yield { type: 'delta' as const, text: plan.slice(0, 30) };
@@ -906,7 +907,7 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.equal(message.role === 'assistant' && message.planningActivity?.status, 'pending');
         if (message.role === 'assistant') {
             assert.deepEqual(message.execution.toolEvents?.map(event => [event.name, event.status]),
-                [['dope_read', 'completed']]);
+                [['read_file', 'completed']]);
             assert.ok(message.planningActivity?.refs.some(ref => ref.id === sourcePath && ref.sourceHash));
         }
         await backend.decidePlanningProposal(projectHandle, chatId, lease.token, turn.proposal!.id, true);

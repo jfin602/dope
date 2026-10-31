@@ -275,8 +275,7 @@ export function shouldSendChatInput(event: Pick<KeyboardEvent, 'key' | 'shiftKey
     return event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229;
 }
 export function resizeChatInput(input: HTMLTextAreaElement): void {
-    input.style.height = 'auto';
-    input.style.height = `${input.scrollHeight}px`;
+    input.style.height = '4.5em';
 }
 /** Presentation-only follow state; a new Chat starts at the latest turn. */
 export class ChatScrollFollow {

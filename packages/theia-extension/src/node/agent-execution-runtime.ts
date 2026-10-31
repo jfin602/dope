@@ -296,7 +296,7 @@ export class AgentExecutionRuntime {
         const kind: AgentRunEvent['kind'] = observation.kind === 'file-changed' ? 'file' :
             observation.kind.startsWith('command-') ? 'process' : observation.kind === 'authority-denied' ?
                 'authority' : 'message';
-        const piSummary = /^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|dope_(?:read|list|edit|process) (?:started|ended|failed)|Work tool stopped at (?:request-check|request-parse|workspace-check|model-check|candidate-check|broker-execute))$/u
+        const piSummary = /^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|(?:read_file|list_files|edit_file|run_command|dope_(?:read|list|edit|process)) (?:started|ended|failed)|Work tool stopped at (?:request-check|request-parse|workspace-check|model-check|candidate-check|broker-execute))$/u
             .test(observation.summary) ? observation.summary : undefined;
         const summary = piSummary ?? (observation.kind === 'agent-message' ? 'Agent message received' :
             observation.kind === 'command-started' ? 'Project command started' :

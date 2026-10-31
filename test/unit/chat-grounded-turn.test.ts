@@ -108,20 +108,21 @@ test('local Pi discovery is project-bound, read-only and records safe source act
       root: string; execute(name: string, args: unknown, signal?: AbortSignal): Promise<string> } }) {
       assert.equal(request.projectTools?.root, root);
       const tools = request.projectTools!;
-      calls.push(JSON.parse(await tools.execute('dope_list', { path: '' })).text);
-      calls.push(JSON.parse(await tools.execute('dope_search_paths', { query: 'chat.test.ts' })).text);
-      calls.push(JSON.parse(await tools.execute('dope_search_text', { query: 'Chat persistence' })).text);
-      calls.push(JSON.parse(await tools.execute('dope_read', { path: 'test/chat.test.ts' })).text);
-      const large = JSON.parse(await tools.execute('dope_read', { path: 'test/large.txt' }));
+      calls.push(JSON.parse(await tools.execute('list_files', { path: '' })).text);
+      calls.push(JSON.parse(await tools.execute('search_paths', { query: 'chat.test.ts' })).text);
+      calls.push(JSON.parse(await tools.execute('search_text', { query: 'Chat persistence' })).text);
+      calls.push(JSON.parse(await tools.execute('read_file', { path: 'test/chat.test.ts' })).text);
+      const large = JSON.parse(await tools.execute('read_file', { path: 'test/large.txt' }));
       assert.equal(large.truncated, true);
       assert.ok(large.text.length <= 8192);
       for (const [name, args] of [
-        ['dope_read', { path: '.dope/private.json' }], ['dope_read', { path: '../other' }],
-        ['dope_read', { path: 'test/linked.txt' }], ['dope_read', { path: 'test/binary.dat' }],
-        ['dope_process', { command: 'echo unsafe' }], ['dope_edit', { path: 'package.json', content: 'unsafe' }]
+        ['read_file', { path: '.dope/private.json' }], ['read_file', { path: '../other' }],
+        ['read_file', { path: 'test/linked.txt' }], ['read_file', { path: 'test/binary.dat' }],
+        ['edit_file', { path: 'package.json', content: 'unsafe' }]
       ] as const) await assert.rejects(tools.execute(name, args), /denied/);
+      assert.match(await tools.execute('run_command', { command: '' }), /Command denied/);
       const cancelled = new AbortController(); cancelled.abort();
-      await assert.rejects(tools.execute('dope_read', { path: 'package.json' }, cancelled.signal), /cancelled/);
+      await assert.rejects(tools.execute('read_file', { path: 'package.json' }, cancelled.signal), /cancelled/);
       yield { type: 'complete' as const, text: 'The project contains ChatRepository source.', actualModelId: 'chat',
         finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
     } };
@@ -137,9 +138,9 @@ test('local Pi discovery is project-bound, read-only and records safe source act
     assert.equal(saved?.role, 'assistant');
     if (saved?.role !== 'assistant') return;
     assert.deepEqual(saved.execution.toolEvents?.map(event => [event.name, event.status]), [
-      ['dope_list', 'completed'], ['dope_search_paths', 'completed'], ['dope_search_text', 'completed'],
-      ['dope_read', 'completed'], ['dope_read', 'completed'], ['dope_read', 'denied'], ['dope_read', 'denied'],
-      ['dope_read', 'denied'], ['dope_read', 'denied']
+      ['list_files', 'completed'], ['search_paths', 'completed'], ['search_text', 'completed'],
+      ['read_file', 'completed'], ['read_file', 'completed'], ['read_file', 'denied'], ['read_file', 'denied'],
+      ['read_file', 'denied'], ['read_file', 'denied'], ['run_command', 'denied']
     ]);
     assert.deepEqual(saved.execution.sourceRefs?.map(ref => ref.kind), ['directory', 'path-search', 'text-search', 'file', 'file']);
     assert.equal(saved.execution.toolEvents?.[4].truncated, true);

@@ -1648,6 +1648,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const focused = this.content.contains(active) ? active?.getAttribute('aria-label') : undefined;
         const focusedWorkKey = this.content.contains(active) ? active?.dataset.workKey : undefined;
         const selection = active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : undefined;
+        // Work and Chat selection keep their root status. Active Chat places it
+        // with other notices in the scrollable response area below.
+        this.node.insertBefore(this.status, this.content);
+        this.status.className = this.panel.mode === 'chat' && state.error ? 'dope-chat-error-bubble' : '';
         this.status.textContent = this.panel.mode === 'chat' ?
             state.error || (state.loading ? 'Loading Chats…' : !state.workspace ?
                 this.workspaceRootCount === undefined ? 'Checking the attached project…' :
@@ -1668,7 +1672,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (this.panel.workspace) this.status.append(' ', this.button('Back to Select Work', () => { void this.selectWork(); }));
         }
         if (this.panel.mode === 'chat' && state.error.includes('Interactive role')) this.status.append(' ',
-            this.button('Configure Interactive in Roles', () => { void this.aiCenter?.openRole('interactive'); }));
+            this.button('Open AI Center', () => { void this.aiCenter?.openRole('interactive'); }));
+        if (this.panel.mode === 'chat' && state.error.includes('Verify Local agent execution')) {
+            const failed = [...(state.chat?.messages ?? [])].reverse().find(message =>
+                message.role === 'assistant' && message.execution.status === 'failed');
+            const model = failed?.role === 'assistant' ? failed.execution.selectedModel : state.turnModel;
+            this.status.append(' ', this.button('Open tool verification', () => {
+                if (model) void this.aiCenter?.openLocalAgentVerification(this.id, model.connectionId, model.modelId);
+                else void this.aiCenter?.openFromChat(this.id);
+            }));
+        }
         this.content.replaceChildren();
         if (this.panel.mode === 'work') {
             this.renderWork();
@@ -1887,10 +1900,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const list = document.createElement('ul');
                     for (const event of events) {
                         const row = document.createElement('li');
-                        const label = { dope_read: 'Read', dope_list: 'List', dope_search_paths: 'Find paths',
-                            dope_search_text: 'Search text', dope_command: 'Command' }[event.name];
-                        const outcome = event.name === 'dope_command' && event.status === 'completed' ? 'allowed · completed' :
-                            event.name === 'dope_command' && event.status === 'failed' ? 'allowed · failed' : event.status;
+                        const label = { read_file: 'Read', list_files: 'List', search_paths: 'Find paths',
+                            search_text: 'Search text', run_command: 'Command', dope_read: 'Read', dope_list: 'List',
+                            dope_search_paths: 'Find paths', dope_search_text: 'Search text',
+                            dope_command: 'Command' }[event.name];
+                        const command = event.name === 'run_command' || event.name === 'dope_command';
+                        const outcome = command && event.status === 'completed' ? 'allowed · completed' :
+                            command && event.status === 'failed' ? 'allowed · failed' : event.status;
                         row.textContent = `${label} · ${outcome}${event.truncated ? ' · truncated' : ''}`;
                         list.append(row);
                     }
@@ -1972,6 +1988,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
             }
             item.append(meta);
+            if (message.role === 'assistant' &&
+                message.execution.failure?.includes('Verify Local agent execution') &&
+                !state.error.includes('Verify Local agent execution')) {
+                const recovery = document.createElement('div');
+                recovery.className = 'dope-chat-error-bubble';
+                const description = document.createElement('span');
+                description.textContent = message.execution.failure;
+                const target = message.execution.selectedModel;
+                recovery.append(description, this.button('Open tool verification', () => {
+                    void this.aiCenter?.openLocalAgentVerification(this.id, target.connectionId, target.modelId);
+                }));
+                item.append(recovery);
+            }
             if (message.role === 'assistant') {
                 const copyText = chatResponseCopyText(message,
                     state.stream?.messageId !== undefined && state.stream.messageId === message.id ? state.stream.content : undefined);
@@ -2156,26 +2185,28 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         };
         toolbar.append(more, modelSelector, commandLabel, submitButton);
         composer.append(input, toolbar);
-        composer.append(menu);
+        const responseNotices = document.createElement('div');
+        responseNotices.className = 'dope-chat-response-notices';
+        responseNotices.setAttribute('aria-label', 'Chat notices and reviews');
         if (state.running && state.planningProgress) {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';
             progress.setAttribute('role', 'status');
             progress.textContent = state.planningProgress.stage === 'waiting' ?
                 'Waiting for local model…' : 'Validating local planning result…';
-            composer.append(progress);
+            responseNotices.append(progress);
         }
         const planning = document.createElement('div');
         planning.className = 'dope-chat-planning-context';
         const activePlanning = state.activePlanning;
         planning.textContent = `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
             (activePlanning ? `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : activePlanning.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${activePlanning.id}` : 'none');
-        composer.append(planning);
+        responseNotices.append(planning);
         if (activePlanning?.kind === 'roadmap') {
             const notice = document.createElement('p');
             notice.className = 'dope-chat-context-diagnostics';
             notice.textContent = 'Roadmap Chat editing is not yet qualified. Review any proposed change before applying it; use Roadmap manual controls for dependable structure edits.';
-            composer.append(notice);
+            responseNotices.append(notice);
         }
         if (state.context.length) {
             const selectedContext = document.createElement('ul');
@@ -2187,7 +2218,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 row.append(label, this.button('Remove', () => state.removeContext(index)));
                 selectedContext.append(row);
             });
-            composer.append(selectedContext);
+            responseNotices.append(selectedContext);
         }
         if (state.planningProposal) {
             const proposal = state.planningProposal;
@@ -2242,8 +2273,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             }
             const source = Array.from(transcript.children).find(item =>
                 (item as HTMLElement).dataset.messageId === proposal.messageId);
-            if (planProposal) composer.append(review);
-            else if (source) source.append(review);
+            if (source) source.append(review);
+            else responseNotices.append(review);
         }
         if (state.planningProposalError) {
             const note = document.createElement('p');
@@ -2252,8 +2283,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const source = Array.from(transcript.children).find(item =>
                 (item as HTMLElement).dataset.messageId === state.planningProposalErrorMessageId);
             if (source) source.append(note);
-            else if (!/roadmap/i.test(state.planningProposalError)) composer.append(note);
-            else this.status.textContent = state.planningProposalError;
+            else responseNotices.append(note);
         }
         if (state.planPreview) {
             const preview = document.createElement('section');
@@ -2270,10 +2300,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             }
             const recovery = document.createElement('p');
             recovery.textContent = 'Review the plan in the conversation and ask Chat to revise the missing or unclear work. No draft was changed.';
-            preview.append(heading, list, recovery); composer.append(preview);
+            preview.append(heading, list, recovery); responseNotices.append(preview);
         }
         if (state.undoPlanRevision !== undefined && !state.planningProposal) {
-            composer.append(this.button('Undo accepted plan revision',
+            responseNotices.append(this.button('Undo accepted plan revision',
                 () => void state.undoPlanningRevision(), state.pending || state.running));
         }
         if (state.lastContext) {
@@ -2294,9 +2324,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 included.append(item);
             }
             details.append(included);
-            composer.append(details);
+            responseNotices.append(details);
         }
-        shell.append(composer);
+        responseNotices.prepend(this.status);
+        scroll.append(responseNotices);
+        shell.append(composer, menu);
         this.content.append(shell);
         resizeChatInput(input);
         scroll.scrollTop = this.scrollFollow.restore(scrollTop, scroll.scrollHeight, scroll.clientHeight);

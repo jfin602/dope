@@ -22,6 +22,34 @@ let sessionConsumed = false;
 let compactionRecord;
 let compactionRejected = false;
 const pendingTools = new Map();
+const continuationTrace = process.env.DOPE_PI_CONTINUATION_TRACE === '1';
+let traceCount = 0;
+const trace = (stage, detail = {}) => {
+  if (!continuationTrace || ++traceCount > 128) return;
+  process.stderr.write(`[dope-pi-continuation] ${JSON.stringify({ at: new Date().toISOString(),
+    stage, modelId: session?.model?.id, requestId: workRequestId, ...detail })}\n`);
+};
+if (continuationTrace) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    const endpoint = String(url);
+    if (!endpoint.includes('/chat/completions')) return originalFetch(url, options);
+    const started = Date.now();
+    let body;
+    try { body = JSON.parse(String(options?.body)); } catch { /* No prompt text is logged. */ }
+    trace('model-request', { messages: body?.messages?.length, tools: body?.tools?.length,
+      maxOutputTokens: body?.max_tokens, bodyBytes: Buffer.byteLength(String(options?.body ?? ''), 'utf8') });
+    try {
+      const response = await originalFetch(url, options);
+      trace('model-response-headers', { status: response.status, elapsedMs: Date.now() - started });
+      return response;
+    } catch (error) {
+      trace('model-request-failed', { elapsedMs: Date.now() - started,
+        error: error instanceof Error ? error.name : 'unknown' });
+      throw error;
+    }
+  };
+}
 const hash = value => createHash('sha256').update(value).digest('hex');
 const MAX_COMPACTION_BYTES = 12_000;
 function compactExact(event) {
@@ -65,26 +93,27 @@ function isolatedExtension() {
     tools: new Map(), messageRenderers: new Map(), commands: new Map(), flags: new Map(), shortcuts: new Map() };
 }
 const WORK_TOOLS = {
-  dope_read: { path: Type.String(), maxBytes: Type.Integer() },
-  dope_list: { path: Type.String(), maxEntries: Type.Integer() },
-  dope_edit: { operation: Type.Union([Type.Literal('create'), Type.Literal('modify')]),
+  read_file: { path: Type.String(), maxBytes: Type.Integer() },
+  list_files: { path: Type.String(), maxEntries: Type.Integer() },
+  edit_file: { operation: Type.Union([Type.Literal('create'), Type.Literal('modify')]),
     path: Type.String(), content: Type.String() },
-  dope_process: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() }
+  run_command: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() }
 };
 const CHAT_TOOLS = {
-  dope_read: { path: Type.String() },
-  dope_list: { path: Type.String() },
-  dope_search_paths: { query: Type.String() },
-  dope_search_text: { query: Type.String() },
-  dope_command: { command: Type.String() }
+  read_file: { path: Type.String() },
+  list_files: { path: Type.String() },
+  search_paths: { query: Type.String() },
+  search_text: { query: Type.String() },
+  run_command: { command: Type.String() }
 };
 function chatTools() {
   return Object.entries(CHAT_TOOLS).map(([name, properties]) => ({
-    name, label: name, description: name === 'dope_command' ?
-      'Request a sandboxed project investigation command. Dope decides whether it is available and requires approval. Never claim execution without a tool result.' :
-      name === 'dope_list' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
-      name === 'dope_read' ? 'Read one real project file using a relative path returned by dope_list or dope_search_paths. An absent result is not evidence of an empty project.' :
-      'Search eligible project paths or text. Search may omit protected entries; use dope_list on the root before concluding which files exist.',
+    name, label: name, description: name === 'run_command' ?
+      'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
+      name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
+      name === 'read_file' ? 'Read one real project file using a relative path returned by list_files or search_paths. An absent result is not evidence of an empty project.' :
+      name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
+      'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
@@ -93,8 +122,11 @@ function chatTools() {
       const onAbort = () => { pendingTools.get(id)?.reject(new Error('Dope Chat tool cancelled')); pendingTools.delete(id); };
       signal?.addEventListener('abort', onAbort, { once: true });
       process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params } })}\n`);
+      trace('tool-request', { toolId: id, toolName: name });
       try {
         const result = await answer;
+        trace('tool-result-accepted', { toolId: id, status: result.status,
+          outputBytes: Buffer.byteLength(result.output ?? '', 'utf8') });
         if (result.status !== 'completed' || typeof result.output !== 'string' ||
             Buffer.byteLength(result.output, 'utf8') > 12_000)
           throw new Error('Dope Chat tool denied or exceeded output limit');
@@ -105,7 +137,11 @@ function chatTools() {
 }
 function workTools() {
   return Object.entries(WORK_TOOLS).map(([name, properties]) => ({
-    name, label: name, description: 'Dope-authorized candidate operation. Paths are relative to the candidate root.',
+    name, label: name, description: name === 'read_file' ?
+      'Read one file from the authorized candidate workspace using a relative path and maximum byte count.' :
+      name === 'list_files' ? 'List one directory in the authorized candidate workspace using a relative path and entry limit.' :
+      name === 'edit_file' ? 'Create or modify one file in the authorized candidate workspace. Canonical project files are not edited.' :
+      'Run an approved test or build command by its granted commandId in the authorized candidate workspace.',
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!workMode || signal?.aborted) throw new Error('Dope Work tool unavailable');
@@ -275,6 +311,11 @@ export async function dispatch(message) {
       let resumeAfterTool = false;
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
+        if (['turn_start', 'turn_end', 'message_start', 'message_end', 'tool_execution_start',
+          'tool_execution_end', 'agent_end', 'agent_settled'].includes(event.type))
+          trace(event.type, { toolName: event.toolName,
+            stopReason: event.message?.role === 'assistant' ? event.message.stopReason : undefined,
+            isError: event.isError });
         if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
           const delta = event.assistantMessageEvent.delta;
           const gap = resumeAfterTool && streamedText.trim() &&
@@ -297,6 +338,7 @@ export async function dispatch(message) {
       });
       try {
         await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
+        trace('session-prompt-returned', { toolCount });
       } finally { unsubscribe(); workRequestId = undefined; }
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
@@ -350,6 +392,8 @@ export async function dispatch(message) {
     case 'tool-result': {
       const pending = pendingTools.get(message.toolId);
       if (!pending) throw new Error('Unknown Pi tool result');
+      trace('tool-result-received', { toolId: message.toolId, status: message.result?.status,
+        outputBytes: Buffer.byteLength(message.result?.output ?? '', 'utf8') });
       pendingTools.delete(message.toolId);
       pending.resolve(message.result);
       return { received: true };

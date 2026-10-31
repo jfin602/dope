@@ -82,9 +82,11 @@ test('Work reads every saved page from the beginning, including truncation state
     const runtime = {
         async attach() { return { projectHandle: 'handle' }; },
         async listTaskStacks() { return []; }, async listSequences() { return []; },
+        async sequenceEvidence() { return { head: 'fixture', packageVersion: '0.12.7', worktreeFingerprint: 'fixture' }; },
+        async codingAgentReady() { return true; },
         async listTasks() { return []; }, async listRuns() { return []; },
         async readRun() { return { id: 'run', taskId: 'task', status: 'completed' }; },
-        async readTask() { return undefined; },
+        async readTask() { return { id: 'task', origin: { kind: 'direct' } }; },
         async readSteering() { return undefined; }, async listActions() { return []; },
         async readMapImpact() { return undefined; },
         async readTranscript(_handle: string, _runId: string, cursor: number) {
@@ -115,6 +117,8 @@ test('a late transcript page cannot repopulate a cleared Work selection', async 
     const runtime = {
         async attach() { return { projectHandle: 'handle' }; },
         async listTaskStacks() { return []; }, async listSequences() { return []; },
+        async sequenceEvidence() { return { head: 'fixture', packageVersion: '0.12.7', worktreeFingerprint: 'fixture' }; },
+        async codingAgentReady() { return true; },
         async listTasks() { return []; }, async listRuns() { return []; },
         async readRun() { return { id: 'run', taskId: 'task', status: 'completed' }; },
         async readTask() { return undefined; },

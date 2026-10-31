@@ -13,7 +13,7 @@ const hard = { requiredCapabilities: ['conversationalText', 'streaming'], locali
   usableOnly: true, hostedProjectData: 'requires-feature-authorization' } as const;
 const targets = [{ connectionId: 'local', modelId: 'small' }, { connectionId: 'hosted', modelId: 'large' }] as const;
 const runtime = { connections: [
-  { id: 'local', label: 'Local', providerId: 'local-provider', ready: true,
+  { id: 'local', label: 'Local', providerId: 'local', ready: true,
     models: [{ id: 'small', label: 'Small', usable: true, capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 2048 } }] },
   { id: 'hosted', label: 'Hosted', providerId: 'hosted-provider', ready: true,
     models: [{ id: 'large', label: 'Large', usable: true, capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192 } }] },
@@ -133,7 +133,7 @@ test('automatic title reuses the routed actual exact target', async () => {
     yield { type: 'complete' as const, text: 'Answer', routingProvenance: parseRoutingProvenance({
       version: 1, source: 'role-policy', requestedRole: 'interactive', policyRevision: 1,
       effectiveHard: hard, preferredTarget: targets[0], actualTarget: targets[0],
-      executionLabels: { connection: 'Local', provider: 'local-provider', model: 'Small' },
+      executionLabels: { connection: 'Local', provider: 'local', model: 'Small' },
       attempts: [{ target: targets[0], outcome: 'selected' }],
     }) };
   } };

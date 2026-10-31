@@ -17,6 +17,11 @@ const terms = (value: string): string[] => [...new Set(value.replace(/([a-z])([A
 export function planRequirements(content: string): PlanRequirement[] {
     const clauses = content.split(/(?<=[.!?;])\s+|;\s*/).map(value => value.trim().replace(/[.!?;]+$/, ''));
     const meaningful = clauses.flatMap(clause => {
+        // Investigation, review and no-write directions govern the planning workflow.
+        // A generic milestone request names no product capability to score lexically;
+        // the typed plan still requires concrete steps, deliverables and tests.
+        if (/^(?:please\s+)?inspect\b.*\bprepare\b.*\b(?:development\s+)?milestone\b/i.test(clause)) return [];
+        if (/^(?:please\s+)?present\b.*\b(?:proposal|plan)\b.*\breview\b/i.test(clause)) return [];
         if (/^please\s+inspect\b/i.test(clause)) return /\btests?\b/i.test(clause) ? ['tests'] : [];
         return clause ? [clause] : [];
     }).slice(0, 12);

@@ -22,9 +22,9 @@ function fixture() {
         credential: async () => undefined });
     const host = { async openNoToolSession(...args: any[]) { calls.push(args); return { version: '1.4.0', tools: [], resources: 'isolated' }; },
         async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
-            tools: ['dope_read', 'dope_list', 'dope_edit', 'dope_process'], resources: 'isolated' }; },
+            tools: ['read_file', 'list_files', 'edit_file', 'run_command'], resources: 'isolated' }; },
         async openChatToolsSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
-            tools: ['dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command'],
+            tools: ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command'],
             resources: 'isolated' }; } };
     return { state, bridge, host, calls, failRefresh: () => { refreshError = true; },
         restoreRefresh: () => { refreshError = false; } };
@@ -54,7 +54,7 @@ test('Pi Chat binding accepts only the complete brokered tool boundary', async (
     const binding = await bridge.bind(selected, f.host as any, '/tmp', { chatTools: true });
     assert.equal(binding.modelId, 'exact-model');
     const incomplete = { ...f.host, openChatToolsSession: async () => ({ version: '1.4.0',
-        tools: ['dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text'], resources: 'isolated' }) };
+        tools: ['read_file', 'list_files', 'search_paths', 'search_text'], resources: 'isolated' }) };
     await assert.rejects(bridge.bind(selected, incomplete as any, '/tmp', { chatTools: true }),
         /Pi tool boundary changed/);
 });

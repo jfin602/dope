@@ -46,7 +46,7 @@ test('bundled Pi constructs and disposes without tools or project extensions', a
 });
 
 test('Pi compaction preserves exact repeated history and refuses overflow retry', () => {
-  const repeated = { role: 'toolResult', toolCallId: 'same', toolName: 'dope_read',
+  const repeated = { role: 'toolResult', toolCallId: 'same', toolName: 'read_file',
     content: [{ type: 'text', text: 'source-sha256=abc; accepted=no-write; candidate-diff=reviewed' }] };
   const messages = Array.from({ length: 40 }, () => repeated);
   const preparation = { previousSummary: undefined, messagesToSummarize: messages,
@@ -200,10 +200,10 @@ test('Pi Chat discovers a project without attachments through only brokered read
         const record = JSON.parse(String(chunk));
         if (record.tool) {
           calls.push(record.tool);
-          const output = record.tool.name === 'dope_list' ? 'Project directory .: package.json\nsrc/' :
-            record.tool.name === 'dope_search_paths' ? 'src/index.html' :
-            record.tool.name === 'dope_read' ? '<h1>Fixture project</h1>' : '';
-          if (record.tool.name === 'dope_command') {
+          const output = record.tool.name === 'list_files' ? 'Project directory .: package.json\nsrc/' :
+            record.tool.name === 'search_paths' ? 'src/index.html' :
+            record.tool.name === 'read_file' ? '<h1>Fixture project</h1>' : '';
+          if (record.tool.name === 'run_command') {
             void runChatInvestigationCommand(cwd, record.tool.arguments.command).then(result =>
               dispatch({ type: 'tool-result', toolId: record.tool.id,
                 result: { status: 'completed', output: result.output } }));
@@ -218,12 +218,12 @@ test('Pi Chat discovers a project without attachments through only brokered read
       const body = JSON.parse(options.body);
       assert.equal(body.model, 'offline-fixture');
       assert.deepEqual(body.tools.map(item => item.function.name).sort(),
-        ['dope_command', 'dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text']);
+        ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text']);
       const steps = [
-        ['dope_list', '{"path":""}'],
-        ['dope_search_paths', '{"query":"index.html"}'],
-        ['dope_read', '{"path":"src/index.html"}'],
-        ['dope_command', '{"command":"node --version"}']
+        ['list_files', '{"path":""}'],
+        ['search_paths', '{"query":"index.html"}'],
+        ['read_file', '{"path":"src/index.html"}'],
+        ['run_command', '{"command":"node --version"}']
       ];
       const step = steps[turn++];
       if (turn === 2) assert.match(JSON.stringify(body.messages), /package.json/);
@@ -243,12 +243,12 @@ test('Pi Chat discovers a project without attachments through only brokered read
         'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
     };
     const opened = await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
-    assert.deepEqual(opened.tools.sort(), ['dope_command', 'dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text']);
+    assert.deepEqual(opened.tools.sort(), ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text']);
     const answer = await dispatch({ type: 'turn', id: 19, maxOutputTokens: 128,
       messages: [{ role: 'user', content: 'inspect this project' }] });
     assert.match(answer.text, /src\/index.html/);
     assert.match(answer.text, /Checking the sandbox directory\.\n\nThe command completed\./);
-    assert.deepEqual(calls.map(call => call.name), ['dope_list', 'dope_search_paths', 'dope_read', 'dope_command']);
+    assert.deepEqual(calls.map(call => call.name), ['list_files', 'search_paths', 'read_file', 'run_command']);
     assert.equal(turn, 5);
   } finally {
     process.stdout.write = originalWrite;
@@ -314,10 +314,10 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
     globalThis.fetch = async (_url, options) => {
       const body = JSON.parse(options.body);
       assert.deepEqual(body.tools.map(item => item.function.name).sort(),
-        ['dope_edit', 'dope_list', 'dope_process', 'dope_read']);
+        ['edit_file', 'list_files', 'read_file', 'run_command']);
       const response = ++turn === 1 ? [
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-1', type: 'function',
-          function: { name: 'dope_read', arguments: '{"path":"src/main.ts","maxBytes":100}' } }] }, finish_reason: null },
+          function: { name: 'read_file', arguments: '{"path":"src/main.ts","maxBytes":100}' } }] }, finish_reason: null },
         { index: 0, delta: {}, finish_reason: 'tool_calls' }
       ] : [
         { index: 0, delta: { role: 'assistant', content: 'Candidate inspected.' }, finish_reason: null },
@@ -331,7 +331,7 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
         headers: { 'content-type': 'text/event-stream' } });
     };
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model });
-    assert.deepEqual(opened.tools.sort(), ['dope_edit', 'dope_list', 'dope_process', 'dope_read']);
+    assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_file', 'run_command']);
     const answer = await dispatch({ type: 'work', id: 7, prompt: 'Inspect src/main.ts.' });
     assert.equal(answer.modelId, 'offline-fixture');
     assert.equal(seen.length, 1);
@@ -356,7 +356,7 @@ test('a failed approved Work test reaches Pi as repair feedback on the next mode
       try {
         const record = JSON.parse(String(chunk));
         if (record.tool) {
-          assert.equal(record.tool.name, 'dope_process');
+          assert.equal(record.tool.name, 'run_command');
           queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
             result: { status: 'failed', output: '3 tests failed: checkout total mismatch' } }); });
           return true;
@@ -368,7 +368,7 @@ test('a failed approved Work test reaches Pi as repair feedback on the next mode
       const body = JSON.parse(options.body);
       const choice = ++turn === 1 ? [
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'test-1', type: 'function',
-          function: { name: 'dope_process', arguments: '{"kind":"test","commandId":"validation-1"}' } }] }, finish_reason: null },
+          function: { name: 'run_command', arguments: '{"kind":"test","commandId":"validation-1"}' } }] }, finish_reason: null },
         { index: 0, delta: {}, finish_reason: 'tool_calls' }
       ] : [
         { index: 0, delta: { role: 'assistant', content: 'I will repair the checkout mismatch.' }, finish_reason: null },

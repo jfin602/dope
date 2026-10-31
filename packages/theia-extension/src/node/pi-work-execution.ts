@@ -9,7 +9,9 @@ import { localWorkspaceBroker } from './local-agent-turn-loop';
 import type { PiModelBridge } from './pi-model-bridge';
 import type { PiRuntimeFactory, PiRuntimeHost, PiWorkEvent } from './pi-runtime-host';
 
-const expectedTools = ['dope_edit', 'dope_list', 'dope_process', 'dope_read'];
+const expectedTools = ['edit_file', 'list_files', 'run_command', 'read_file'];
+const workToolNames = { read_file: 'read', list_files: 'list', edit_file: 'edit',
+    run_command: 'process' } as const;
 const secret = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|api[_-]?key|password|secret|token|authorization)\s*[:=]\s*\S+|\bBearer\s+\S+|(?:^|[\s"'(])(?:\/[A-Za-z0-9._~-]+\/[^\s"')]+|[A-Za-z]:\\Users\\[^\s"')]+)/giu;
 const safe = (text: string, max = 4000) => text
     .replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think>/gimu, '[reasoning omitted]')
@@ -83,7 +85,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 request.onEvent({ kind: 'provider-event',
                     summary: `Pi source HEAD ${workspace.head}; candidate SHA-256 ${initialFingerprint}` });
                 const approvedCommands = commands.map(command => `${command.id} (${command.kind})`).join(', ');
-                const scopedPrompt = `${request.prompt}\n\nDope execution reference: task ${request.taskId}; source HEAD ${workspace.head}; candidate SHA-256 ${initialFingerprint}. Dope grants, review and validation remain authoritative. ${approvedCommands ? `If you call dope_process, use only these approved command IDs and kinds: ${approvedCommands}.` : 'No dope_process command is approved; Dope runs required validation after your final answer.'}`;
+                const scopedPrompt = `${request.prompt}\n\nDope execution reference: task ${request.taskId}; source HEAD ${workspace.head}; candidate SHA-256 ${initialFingerprint}. Dope grants, review and validation remain authoritative. ${approvedCommands ? `If you call run_command, use only these approved command IDs and kinds: ${approvedCommands}.` : 'No run_command command is approved; Dope runs required validation after your final answer.'}`;
                 if (Buffer.byteLength(scopedPrompt, 'utf8') > 32_000)
                     throw new Error('Pi Work prompt and source reference exceed bounded context');
                 const answer = await host.runWork(scopedPrompt, async raw => {
@@ -94,7 +96,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         throw new Error('Invalid Pi Work tool event');
                     seenTools.add(raw.id);
                     if (!expectedTools.includes(raw.name)) throw new Error('Unsupported Pi Work tool');
-                    const name = raw.name.slice(5);
+                    const name = workToolNames[raw.name as keyof typeof workToolNames];
                     stage = 'request-parse';
                     const [call] = parseLocalToolRequests(JSON.stringify([{
                         id: `pi-${raw.id}`, name, arguments: raw.arguments }]));

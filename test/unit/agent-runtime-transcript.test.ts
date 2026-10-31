@@ -53,7 +53,7 @@ test('runtime transcript retains ordered pages, terminal commands, legacy runs a
             objective: 'Explain work', instructions: 'Perform one change', projectRoot: '.',
             modelPolicy: { kind: 'follow-coding-agent' }, controls: {}, authority: { profile: 'phase-8b-project' },
             completion: { validation: [{ kind: 'test', label: 'npm test', command: 'npm test' }],
-                requireValidationPass: true }, origin: { kind: 'direct' } } as any);
+                requireValidationPass: true }, reviewPolicy: { kind: 'required' }, origin: { kind: 'direct' } } as any);
         const legacy = await store.createRun(root, { version: 1, id: 'legacy-run', taskId: task.id, status: 'pending',
             grantId: 'legacy-grant', grantRevision: 0, requestedPolicy: task.modelPolicy, projectRoot: '.',
             createdAt: at, changedFiles: [], validationResults: [] });

@@ -41,6 +41,13 @@ test('A: equivalent wording for history and diff work is recognized without exac
     assert.equal(statuses(complete)[1], 'covered');
 });
 
+test('generic inspect and review instructions are workflow constraints, not product feature requirements', () => {
+    const request = "Inspect this project's implementation and prepare one small, concrete development milestone with validation steps. Present the proposal for my review without changing source files.";
+    assert.deepEqual(planRequirements(request), []);
+    assert.equal(planRequirementCoverage(planRequirements(request), complete).length, 0);
+    assert.equal(planRequirements(`${request} Add functional branch checkout.`).length, 1);
+});
+
 test('B/C: a commit control is not commit creation; execution, failure and identifier verification cover it', () => {
     const buttonOnly = { ...complete, steps: complete.steps.filter(item => item.title !== 'Commit creation operation') };
     assert.notEqual(statuses(buttonOnly)[3], 'covered');

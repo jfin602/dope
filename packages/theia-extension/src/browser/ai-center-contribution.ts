@@ -94,6 +94,12 @@ export class AICenterContribution implements CommandContribution, MenuContributi
         return widget;
     }
 
+    async openLocalAgentVerification(chatPanelId: string, connectionId: string, modelId: string): Promise<AICenterWidget> {
+        const widget = await this.openForChat(chatPanelId);
+        await widget.focusLocalAgentVerification(connectionId, modelId);
+        return widget;
+    }
+
     private async openForChat(chatPanelId?: string, label?: string): Promise<AICenterWidget> {
         const widget = await this.widgets.getOrCreateWidget<AICenterWidget>(AI_CENTER_ID);
         widget.setReturnToChat(chatPanelId ? () => {

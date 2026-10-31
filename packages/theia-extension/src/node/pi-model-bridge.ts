@@ -113,8 +113,8 @@ export class PiModelBridge {
             reasoning: false, input: ['text'],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: loaded, maxTokens: maxOutputTokens }, cwd, credential);
-        const expected = options.tools ? ['dope_edit', 'dope_list', 'dope_process', 'dope_read'] :
-            options.chatTools ? ['dope_command', 'dope_list', 'dope_read', 'dope_search_paths', 'dope_search_text'] : [];
+        const expected = options.tools ? ['edit_file', 'list_files', 'read_file', 'run_command'] :
+            options.chatTools ? ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
             JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected))
             throw unavailable('Pi tool boundary changed; restart Dope');

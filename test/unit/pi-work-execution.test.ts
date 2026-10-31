@@ -19,17 +19,17 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     let turn = 0;
     let scopedPrompt = '';
     const calls = [
-        { name: 'dope_read', args: { path: 'README.md', maxBytes: 64 } },
-        { name: 'dope_edit', args: { operation: 'modify', path: 'README.md', content: 'candidate change\n' } },
-        { name: 'dope_process', args: { kind: 'test', commandId: 'failing-sample' } },
-        { name: 'dope_process', args: { kind: 'test', commandId: 'sample' } }
+        { name: 'read_file', args: { path: 'README.md', maxBytes: 64 } },
+        { name: 'edit_file', args: { operation: 'modify', path: 'README.md', content: 'candidate change\n' } },
+        { name: 'run_command', args: { kind: 'test', commandId: 'failing-sample' } },
+        { name: 'run_command', args: { kind: 'test', commandId: 'sample' } }
     ];
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (_url, options) => {
         const wire = JSON.parse(String(options?.body));
         assert.equal(wire.model, 'synthetic-local');
         assert.deepEqual(wire.tools.map((item: any) => item.function.name).sort(),
-            ['dope_edit', 'dope_list', 'dope_process', 'dope_read']);
+            ['edit_file', 'list_files', 'read_file', 'run_command']);
         const next = calls[turn++];
         const chunks = next ? [
             { delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`, type: 'function',
@@ -83,7 +83,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
                 provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
                 reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
                 contextWindow: 4096, maxTokens: 512 }, cwd);
-            assert.deepEqual(opened.tools.sort(), ['dope_edit', 'dope_list', 'dope_process', 'dope_read']);
+            assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_file', 'run_command']);
             return { endpoint };
         }, async assertWorkSelection() {} };
         const grant = createDefaultExecutionGrant({ id: 'grant-1', revision: 0, taskId: 'task-1',
@@ -119,8 +119,8 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.ok(events.some(event => event.summary === 'Pi session started'));
         assert.ok(events.some(event => event.summary === 'Pi model turn running'));
-        assert.ok(events.some(event => event.summary === 'Pi dope_edit started'));
-        assert.ok(events.some(event => event.summary === 'Pi dope_process ended'));
+        assert.ok(events.some(event => event.summary === 'Pi edit_file started'));
+        assert.ok(events.some(event => event.summary === 'Pi run_command ended'));
         const commandStart = events.findIndex(event => event.kind === 'command-started');
         const commandEnd = events.findIndex(event => event.kind === 'command-completed');
         assert.ok(commandStart >= 0 && commandEnd > commandStart);
@@ -172,7 +172,7 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
             grant, taskId: 'task-cancel', connectionId: 'local', registrationId: 'local',
             modelId: 'fixture-model', prompt: 'Read README', onEvent: event => events.push(event) });
         revoked = true;
-        await assert.rejects(callTool!({ id: 1, name: 'dope_read', arguments: { path: 'README.md', maxBytes: 64 } }),
+        await assert.rejects(callTool!({ id: 1, name: 'read_file', arguments: { path: 'README.md', maxBytes: 64 } }),
             /denied/);
         assert.ok(events.some(event => event.kind === 'authority-denied' &&
             event.summary === 'Pi Work tool denied at workspace-check'));
@@ -181,7 +181,7 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
         await handle.cancel();
         const count = events.length;
         stream!({ type: 'work', sequence: 1, kind: 'agent_start' });
-        await assert.rejects(callTool!({ id: 2, name: 'dope_read', arguments: { path: 'README.md', maxBytes: 64 } }),
+        await assert.rejects(callTool!({ id: 2, name: 'read_file', arguments: { path: 'README.md', maxBytes: 64 } }),
             /stopped/);
         assert.equal(events.length, count);
         adapter.dispose();

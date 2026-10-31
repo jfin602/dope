@@ -54,7 +54,10 @@ function firstPlanInstruction(requirements: readonly PlanRequirement[]): string 
 /** Deliberately narrow first-turn intent; ordinary mentions of a plan remain ordinary Chat. */
 export function requestsImplementationPlan(content: string): boolean {
     const text = content.trim();
-    return /^plan\s+(?:a|an|the|my)\s+\S/i.test(text) &&
+    const explicitMilestone = /^inspect\s+this\s+project(?:'s)?\s+implementation\s+and\s+prepare\s+one\s+small[,\s]+concrete\s+development\s+milestone\b/i.test(text) &&
+        /\bvalidation\s+steps\b/i.test(text) && /\bproposal\s+for\s+my\s+review\b/i.test(text) &&
+        /\bwithout\s+changing\s+source\s+files\b/i.test(text);
+    return explicitMilestone || /^plan\s+(?:a|an|the|my)\s+\S/i.test(text) &&
         /\b(?:please\s+)?inspect\b/i.test(text) &&
         /\b(?:complete|full)\s+ordered\s+implementation\s+plan\b/i.test(text);
 }
@@ -1279,8 +1282,8 @@ export class ChatBackend implements ChatService {
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
                 const toolName = name as NonNullable<ChatAssistantMessage['execution']['toolEvents']>[number]['name'];
                 const notify = (status: 'running' | 'completed' | 'failed' | 'denied', truncated?: boolean) => {
-                    if (!this.handle || !assistant || !['dope_read', 'dope_list', 'dope_search_paths',
-                        'dope_search_text', 'dope_command'].includes(name)) return;
+                    if (!this.handle || !assistant || !['read_file', 'list_files', 'search_paths',
+                        'search_text', 'run_command'].includes(name)) return;
                     try { this.client.notifyChatEvent({ projectHandle: this.handle, kind: 'tool-progress',
                         chatId: key, messageId: assistant.id, name: toolName, status, truncated }); }
                     catch { /* Transient progress never controls tool authority. */ }
@@ -1291,7 +1294,7 @@ export class ChatBackend implements ChatService {
                 if (signal?.aborted || this.active(request.projectHandle) !== root ||
                     this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
                 if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
-                if (name === 'dope_command') {
+                if (name === 'run_command') {
                     const record = args as Record<string, unknown>;
                     if (!record || typeof record !== 'object' || Array.isArray(record) ||
                         Object.keys(record).length !== 1 || typeof record.command !== 'string') {
@@ -1341,18 +1344,18 @@ export class ChatBackend implements ChatService {
                         truncated });
                     return bounded;
                 }
-                const allowed = ['dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text'] as const;
+                const allowed = ['read_file', 'list_files', 'search_paths', 'search_text'] as const;
                 if (!allowed.includes(name as typeof allowed[number]) || !args || typeof args !== 'object' ||
                     Array.isArray(args)) throw new Error('Project discovery tool denied');
-                const field = name === 'dope_read' || name === 'dope_list' ? 'path' : 'query';
+                const field = name === 'read_file' || name === 'list_files' ? 'path' : 'query';
                 const record = args as Record<string, unknown>;
                 if (Object.keys(record).length !== 1 || typeof record[field] !== 'string')
                     throw new Error('Project discovery arguments denied');
                 const toolName = name as typeof allowed[number];
                 try {
-                    const result = name === 'dope_read' ? await this.grounder!.readFile(root, record.path as string) :
-                        name === 'dope_list' ? await this.grounder!.listDirectory(root, record.path as string) :
-                        name === 'dope_search_paths' ? await this.grounder!.searchPaths(root, record.query as string) :
+                    const result = name === 'read_file' ? await this.grounder!.readFile(root, record.path as string) :
+                        name === 'list_files' ? await this.grounder!.listDirectory(root, record.path as string) :
+                        name === 'search_paths' ? await this.grounder!.searchPaths(root, record.query as string) :
                         await this.grounder!.searchText(root, record.query as string);
                     if (signal?.aborted || this.active(request.projectHandle) !== root) throw new Error('Project discovery cancelled');
                     const block = result.blocks[0];

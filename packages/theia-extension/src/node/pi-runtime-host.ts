@@ -50,13 +50,17 @@ export class PiRuntimeHost {
             env: {
                 ELECTRON_RUN_AS_NODE: '1',
                 PI_OFFLINE: '1',
-                PI_TELEMETRY: '0'
+                PI_TELEMETRY: '0',
+                ...(process.env.DOPE_PI_CONTINUATION_TRACE === '1' ? { DOPE_PI_CONTINUATION_TRACE: '1' } : {})
             }
         });
         this.child = child;
         child.stdout.setEncoding('utf8');
         child.stdout.on('data', (chunk: string) => this.acceptOutput(chunk));
-        child.stderr.on('data', () => { /* Diagnostics never enter user-facing responses. */ });
+        child.stderr.on('data', (chunk: Buffer) => {
+            if (process.env.DOPE_PI_CONTINUATION_TRACE === '1')
+                console.info(String(chunk).slice(0, 4096));
+        });
         child.on('error', error => this.fail(error));
         child.on('exit', () => this.fail(new Error('Bundled Pi worker exited')));
         try {
@@ -183,8 +187,17 @@ export class PiRuntimeHost {
                 if (record.tool) {
                     if (!pending.onTool || !Number.isSafeInteger(record.tool.id) || record.tool.id < 1 ||
                         typeof record.tool.name !== 'string') throw new Error('Unexpected Pi tool call');
+                    if (process.env.DOPE_PI_CONTINUATION_TRACE === '1')
+                        console.info('[dope-pi-continuation]', JSON.stringify({ at: new Date().toISOString(),
+                            stage: 'broker-received', requestId: record.id, toolId: record.tool.id,
+                            toolName: record.tool.name }));
                     void pending.onTool(record.tool).then(result => {
                         if (!this.pending.has(record.id)) return;
+                        if (process.env.DOPE_PI_CONTINUATION_TRACE === '1')
+                            console.info('[dope-pi-continuation]', JSON.stringify({ at: new Date().toISOString(),
+                                stage: 'broker-completed', requestId: record.id, toolId: record.tool!.id,
+                                status: (result as { status?: string })?.status,
+                                outputBytes: Buffer.byteLength((result as { output?: string })?.output ?? '') }));
                         return this.request({ type: 'tool-result', toolId: record.tool!.id, result });
                     }, () => {
                         if (!this.pending.has(record.id)) return;
@@ -200,7 +213,7 @@ export class PiRuntimeHost {
                             event.sequence !== (pending.lastWorkSequence ?? 0) + 1 || event.sequence > 512 ||
                             !['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled',
                                 'tool_execution_start', 'tool_execution_end'].includes(event.kind) ||
-                            (event.toolName !== undefined && (!['dope_read', 'dope_list', 'dope_edit', 'dope_process']
+                            (event.toolName !== undefined && (!['read_file', 'list_files', 'edit_file', 'run_command']
                                 .includes(event.toolName) || !event.kind.startsWith('tool_execution_'))) ||
                             (event.kind.startsWith('tool_execution_') !== (event.toolName !== undefined)) ||
                             (event.isError !== undefined && (event.kind !== 'tool_execution_end' || typeof event.isError !== 'boolean')) ||

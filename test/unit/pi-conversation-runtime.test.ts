@@ -41,7 +41,7 @@ test('Pi Chat passes brokered project tools through the exact local session', as
     } };
     const host = { start: async () => ({}), async *streamTurn(_messages: unknown, _limit: number,
         _signal?: AbortSignal, onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown>) {
-        observed.push(await onTool!({ id: 1, name: 'dope_read', arguments: { path: 'src/index.html' } }));
+        observed.push(await onTool!({ id: 1, name: 'read_file', arguments: { path: 'src/index.html' } }));
         yield { type: 'complete', text: 'The page has a heading.', modelId: 'fixture-model', finishReason: 'stop',
             usage: { tokenMeasurement: 'unavailable' } };
     } };
@@ -52,7 +52,7 @@ test('Pi Chat passes brokered project tools through the exact local session', as
         } } }, localBridge as never, { create: () => host, release: () => {} } as never)) events.push(event);
     assert.deepEqual(observed, [
         { cwd: '/project', options: { chatTools: true } },
-        { name: 'dope_read', args: { path: 'src/index.html' } },
+        { name: 'read_file', args: { path: 'src/index.html' } },
         { status: 'completed', output: '<h1>Heading</h1>' }
     ]);
     assert.equal(events.at(-1)?.type, 'complete');
