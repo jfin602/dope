@@ -1625,7 +1625,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const active = this.usableModels().find(entry => this.sameModel(entry.selection, exact));
         for (const control of active?.controls ?? []) {
             const select = document.createElement('select');
-            select.append(new Option('Default', ''), ...control.values.map(value => new Option(value, value)));
+            select.append(new Option('Auto', ''), ...control.values.map(value =>
+                new Option(value === 'on' ? 'On' : value[0].toUpperCase() + value.slice(1), value)));
             select.value = draft.reasoningControls?.[control.id] ?? '';
             select.onchange = () => {
                 draft.reasoningControls = { ...draft.reasoningControls };
@@ -2078,7 +2079,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     heading.addEventListener('click', () => this.activityExpansion.set(message.id, !details.open));
                     const note = document.createElement('span');
                     note.className = 'dope-chat-stream-note';
-                    note.textContent = diagnostic.unavailable ? 'Reasoning unavailable' : 'Surfaced reasoning';
+                    note.textContent = `${diagnostic.unavailable ? 'Reasoning unavailable' : 'Surfaced reasoning'} · Reasoning tokens: ${message.execution.tokenUsage?.reasoningTokens ?? 'unavailable'}`;
                     const raw = document.createElement('pre'); raw.textContent = diagnostic.text || 'No activity captured';
                     details.append(heading, note, raw);
                     if (diagnostic.truncated) {
@@ -2086,6 +2087,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         details.append(limit);
                     }
                     item.append(details);
+                }
+                if (!diagnostic && message.execution.tokenUsage?.reasoningTokens !== undefined) {
+                    const usage = document.createElement('span');
+                    usage.className = 'dope-chat-stream-note';
+                    usage.textContent = `Reasoning tokens: ${message.execution.tokenUsage.reasoningTokens} · Reasoning stream unavailable`;
+                    item.append(usage);
                 }
                 if (state.running && message.id === activeAssistant?.id)
                     this.appendWorkingStatus(item, message.execution.startedAt);

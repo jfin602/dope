@@ -11,6 +11,7 @@ export interface PiLocalBinding {
     endpoint: string;
     contextWindowTokens: number;
     maxOutputTokens: number;
+    reasoningEnabled: boolean;
     credentialReference?: { source: 'environment' | 'session' | 'secure'; name?: string };
 }
 
@@ -46,7 +47,7 @@ export class PiModelBridge {
     }
 
     async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
-        cwd: string, options: { tools?: boolean; chatTools?: boolean } = {}): Promise<PiLocalBinding> {
+        cwd: string, options: { tools?: boolean; chatTools?: boolean; reasoningMode?: string } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
         const before = await this.dependencies.inventory();
@@ -95,8 +96,16 @@ export class PiModelBridge {
         if ((options.tools || options.chatTools) && (model.capabilities.agentExecution?.source !== 'adapter-known' ||
             model.capabilities.agentExecution.value !== true || model.capabilities.toolCalling.value === false))
             throw unavailable('Selected Local model is not verified for tools in AI Center');
+        const reasoning = model.capabilities.localReasoning?.source === 'provider-reported' ?
+            model.capabilities.localReasoning.value : undefined;
+        const requested = options.reasoningMode;
+        if (requested !== undefined && (!reasoning || !reasoning.values.includes(requested)))
+            throw unavailable('Selected Local model does not support that reasoning mode');
+        const mode = requested ?? reasoning?.default;
+        const thinkingLevel = mode === 'on' ? 'medium' : mode ?? 'off';
+        const reasoningEnabled = !!reasoning && mode !== 'off';
         const declared = model.limits.maxOutputTokens.value;
-        const maxOutputTokens = Math.min(4096, loaded - 1536,
+        const maxOutputTokens = Math.min(reasoningEnabled ? 8192 : 4096, loaded - 1536,
             Number.isSafeInteger(declared) && declared! > 0 ? declared! : Infinity);
         if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1)
             throw unavailable('Selected Local model has insufficient output budget');
@@ -112,15 +121,14 @@ export class PiModelBridge {
             latest.observations.find(item => item.connectionId === selection.connectionId)?.health !== 'ready')
             throw unavailable('Local model changed during binding; refresh AI Center and retry');
         const endpoint = connection.config.endpoint.replace(/\/$/, '');
-        // This exact LM Studio model was verified to return a separate reasoning_content channel.
-        const exposedThinking = selection.modelId === 'qwen3.5-9b';
         const opened = await (options.tools ? host.openWorkSession : options.chatTools ? host.openChatToolsSession : host.openNoToolSession).call(host,
             { id: selection.modelId, name: model.label,
             provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
-            reasoning: exposedThinking, input: ['text'],
-            ...(exposedThinking ? { compat: { thinkingFormat: 'qwen-chat-template' } } : {}),
+            reasoning: !!reasoning, input: ['text'],
+            ...(reasoning ? { compat: reasoning.format === 'qwen-chat-template' ?
+                { thinkingFormat: 'qwen-chat-template' } : { supportsReasoningEffort: true } } : {}),
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-            contextWindow: loaded, maxTokens: maxOutputTokens }, cwd, credential);
+            contextWindow: loaded, maxTokens: maxOutputTokens }, cwd, credential, thinkingLevel);
         const expected = options.tools ? ['edit_file', 'list_files', 'read_file', 'run_command'] :
             options.chatTools ? ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
@@ -128,7 +136,7 @@ export class PiModelBridge {
             throw unavailable('Pi tool boundary changed; restart Dope');
         return { connectionId: selection.connectionId, modelId: selection.modelId,
             registryRevision: latest.registry.revision, endpoint,
-            contextWindowTokens: loaded, maxOutputTokens,
+            contextWindowTokens: loaded, maxOutputTokens, reasoningEnabled,
             ...(connection.credential ? { credentialReference: { source: connection.credential.source,
                 ...(connection.credential.source === 'environment' ? { name: connection.credential.name } : {}) } } : {}) };
     }

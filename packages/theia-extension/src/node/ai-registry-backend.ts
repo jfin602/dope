@@ -22,7 +22,10 @@ function inventoryModel(connection: AIConnection, model: ConnectedModel): AIMode
         label: model.label, locality, enabled: true, state: 'ready',
         capabilities: { conversationalText: coldLocal ? unknown<boolean>() : known(model.capabilities.conversationalText, 'adapter-known'),
             streaming: coldLocal ? unknown<boolean>() : known(model.capabilities.streaming, 'adapter-known'),
-            structuredOutput: unknown(), toolCalling: unknown(), agentExecution: unknown() },
+            structuredOutput: unknown(), toolCalling: unknown(), agentExecution: unknown(),
+            ...(model.capabilities.localReasoning ? { localReasoning:
+                known({ ...model.capabilities.localReasoning,
+                    values: [...model.capabilities.localReasoning.values] }, 'provider-reported') } : {}) },
         limits: { contextWindowTokens: locality === 'local' ? unknown() :
             known(model.capabilities.contextWindowTokens, 'adapter-known'),
             maxInputTokens: known(model.capabilities.maxInputTokens, 'adapter-known'),

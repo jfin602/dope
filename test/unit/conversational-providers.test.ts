@@ -21,6 +21,27 @@ const native = (id = 'chat-model', context = 4096) => json({ models: [
     { type: 'embedding', key: 'embed', loaded_instances: [{ id: 'embed', config: { context_length: 2048 } }] },
 ] });
 
+test('LM Studio reasoning metadata advertises only modes the Pi transport can control', async () => {
+    const local = new LocalConversationalProvider({ fetch: async url => String(url).endsWith('/api/v1/models') ?
+        json({ models: [
+            { type: 'llm', key: 'boolean', architecture: 'qwen35', capabilities: {
+                reasoning: { allowed_options: ['off', 'on'], default: 'on' } },
+                loaded_instances: [{ id: 'boolean', config: { context_length: 16384 } }] },
+            { type: 'llm', key: 'graded', architecture: 'gpt-oss', capabilities: {
+                reasoning: { allowed_options: ['low', 'medium', 'high'], default: 'low' } },
+                loaded_instances: [{ id: 'graded', config: { context_length: 16384 } }] },
+            { type: 'llm', key: 'unknown', architecture: 'unknown', capabilities: {
+                reasoning: { allowed_options: ['low', 'high'], default: 'low' } },
+                loaded_instances: [{ id: 'unknown', config: { context_length: 16384 } }] },
+        ] }) : json({ data: ['boolean', 'graded', 'unknown'].map(id => ({ id })) }) });
+    const models = await local.discoverModels();
+    assert.deepEqual(models[0].capabilities.reasoningControls,
+        [{ id: 'reasoning.effort', values: ['off', 'on'] }]);
+    assert.deepEqual(models[1].capabilities.reasoningControls,
+        [{ id: 'reasoning.effort', values: ['low', 'medium', 'high'] }]);
+    assert.equal(models[2].capabilities.reasoningControls, undefined);
+});
+
 test('Local discovery and streaming preserve exact model, order, usage and synthesis state', async () => {
     const synthesis = new LmStudioSynthesisProvider();
     const calls: { url: string; body?: any; authorization?: string | null }[] = [];

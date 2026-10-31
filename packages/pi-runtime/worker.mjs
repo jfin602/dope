@@ -209,8 +209,9 @@ function assertLocalModel(model) {
       typeof model.id !== 'string' || !model.id.trim() ||
       typeof model.name !== 'string' || !model.name.trim() ||
       (model.reasoning === true ?
-        (model.id !== 'qwen3.5-9b' || model.compat?.thinkingFormat !== 'qwen-chat-template' ||
-          Object.keys(model.compat).length !== 1) :
+        (!model.compat || Object.keys(model.compat).length !== 1 ||
+          !(model.compat.thinkingFormat === 'qwen-chat-template' ||
+            model.compat.supportsReasoningEffort === true)) :
         (model.reasoning !== false || model.compat !== undefined)) ||
       !Array.isArray(model.input) || model.input.length !== 1 || model.input[0] !== 'text' ||
       !model.cost || Object.values(model.cost).some(value => value !== 0) ||
@@ -250,6 +251,9 @@ export async function dispatch(message) {
     case 'open': {
       if (session) throw new Error('Pi session already open');
       assertLocalModel(message.model);
+      const thinkingLevel = message.thinkingLevel ?? (message.model.reasoning ? 'medium' : 'off');
+      if (!(message.model.reasoning ? ['off', 'low', 'medium', 'high'].includes(thinkingLevel) :
+        thinkingLevel === 'off')) throw new Error('Unsupported Pi thinking level');
       if (message.mode !== undefined && !['work', 'chat-tools'].includes(message.mode)) throw new Error('Invalid Pi mode');
       if (typeof message.cwd !== 'string' || !message.cwd.startsWith('/'))
         throw new Error('Explicit absolute Pi working directory required');
@@ -275,7 +279,7 @@ export async function dispatch(message) {
         const chatToolNames = Object.keys(CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
-          thinkingLevel: message.model.reasoning ? 'medium' : 'off',
+          thinkingLevel,
           sessionManager: SessionManager.inMemory(message.cwd),
           settingsManager: SettingsManager.inMemory({ compaction: { enabled: true,
             reserveTokens: Math.min(8192, Math.floor(message.model.contextWindow / 4)),
@@ -387,6 +391,10 @@ export async function dispatch(message) {
       return { text, modelId: assistant.responseModel ?? assistant.model,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
         usage: { inputTokens: assistant.usage?.input, outputTokens: assistant.usage?.output,
+          // Pi normalizes an absent OpenAI reasoning breakdown to zero. Only a
+          // positive count proves that the provider actually reported one.
+          ...(assistant.usage?.totalTokens && assistant.usage.reasoning > 0 ?
+            { reasoningTokens: assistant.usage.reasoning } : {}),
           totalTokens: assistant.usage?.totalTokens,
           tokenMeasurement: assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' },
         ...(compactionRecord ? { compaction: compactionRecord } : {}) };

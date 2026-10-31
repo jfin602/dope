@@ -21,9 +21,14 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 'connection-unavailable');
         }
         const binding = await bridge.bind(selection, host, request.projectTools?.root ?? process.cwd(),
-            request.projectTools ? { chatTools: true } : {});
+            { ...(request.projectTools ? { chatTools: true } : {}),
+                reasoningMode: request.controls?.['reasoning.effort'] });
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
-        const maxOutputTokens = request.maxOutputTokens ?? Math.min(1024, binding.maxOutputTokens);
+        const maxOutputTokens = request.maxOutputTokens ?? Math.min(binding.reasoningEnabled ? 2048 : 1024,
+            binding.maxOutputTokens);
+        if (binding.reasoningEnabled && maxOutputTokens < 2048)
+            throw new ModelRuntimeFailure('Reasoning needs at least 2048 output tokens including the final answer; increase the Chat budget or load a larger model',
+                'unsupported-capability');
         if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1 ||
             maxOutputTokens > binding.maxOutputTokens)
             throw new ModelRuntimeFailure('Selected Local model has insufficient output capacity; load a larger model in AI Center',

@@ -63,7 +63,7 @@ export interface ChatExecution {
     finishedAt?: string;
     failure?: string; // User-safe summary; no raw provider payload.
     contextUsage?: { usedTokens: number; budgetTokens: number };
-    tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number;
+    tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number;
         tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable' };
     compaction?: { canonicalContextSha256: string; originalSha256: string;
         compactedSha256: string; tokensBefore: number };
@@ -307,13 +307,17 @@ function parseExecution(value: unknown): ChatExecution {
         execution.contextUsage = { usedTokens: context.usedTokens as number, budgetTokens: context.budgetTokens as number };
     }
     if (v.tokenUsage !== undefined) {
-        const usage = record(v.tokenUsage, ['inputTokens', 'outputTokens', 'totalTokens', 'tokenMeasurement'], ['tokenMeasurement']);
+        const usage = record(v.tokenUsage, ['inputTokens', 'outputTokens', 'totalTokens', 'reasoningTokens', 'tokenMeasurement'], ['tokenMeasurement']);
         if (usage.inputTokens !== undefined && !tokens(usage.inputTokens) ||
             usage.outputTokens !== undefined && !tokens(usage.outputTokens) ||
-            usage.totalTokens !== undefined && !tokens(usage.totalTokens)) throw new Error('Invalid Chat token usage');
+            usage.totalTokens !== undefined && !tokens(usage.totalTokens) ||
+            usage.reasoningTokens !== undefined && (!tokens(usage.reasoningTokens) ||
+                usage.outputTokens !== undefined && (usage.reasoningTokens as number) > (usage.outputTokens as number)))
+            throw new Error('Invalid Chat token usage');
         execution.tokenUsage = { ...(usage.inputTokens === undefined ? {} : { inputTokens: usage.inputTokens as number }),
             ...(usage.outputTokens === undefined ? {} : { outputTokens: usage.outputTokens as number }),
             ...(usage.totalTokens === undefined ? {} : { totalTokens: usage.totalTokens as number }),
+            ...(usage.reasoningTokens === undefined ? {} : { reasoningTokens: usage.reasoningTokens as number }),
             tokenMeasurement: choice(usage.tokenMeasurement,
                 ['provider-reported', 'tokenizer', 'estimated', 'unavailable'] as const, 'token measurement') };
     }

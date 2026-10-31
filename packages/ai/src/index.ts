@@ -59,6 +59,7 @@ export interface AIModel {
         structuredOutput: KnownValue<boolean>;
         toolCalling: KnownValue<boolean>;
         agentExecution?: KnownValue<boolean>;
+        localReasoning?: KnownValue<{ values: string[]; default: string; format: 'qwen-chat-template' | 'effort' }>;
     };
     limits: {
         contextWindowTokens: KnownValue<number>;
@@ -199,14 +200,28 @@ function bool(value: unknown): boolean {
 export function parseAIModel(value: unknown): AIModel {
     const item = record(value, ['version', 'connectionId', 'providerModelKey', 'label', 'locality', 'enabled', 'state', 'capabilities', 'limits']);
     if (item.version !== AI_REGISTRY_VERSION) throw new Error('Unsupported AI model version');
-    const capabilities = record(item.capabilities, ['conversationalText', 'streaming', 'structuredOutput', 'toolCalling', 'agentExecution']);
+    const capabilities = record(item.capabilities, ['conversationalText', 'streaming', 'structuredOutput', 'toolCalling', 'agentExecution', 'localReasoning']);
+    const reasoning = (value: unknown) => {
+        const item = record(value, ['values', 'default', 'format']);
+        if (!Array.isArray(item.values) || !item.values.length ||
+            item.values.some(value => typeof value !== 'string' ||
+                !['off', 'on', 'low', 'medium', 'high'].includes(value)) ||
+            new Set(item.values).size !== item.values.length ||
+            !item.values.includes(item.default) ||
+            !['qwen-chat-template', 'effort'].includes(String(item.format)))
+            throw new Error('Invalid local reasoning metadata');
+        return { values: item.values as string[], default: item.default as string,
+            format: item.format as 'qwen-chat-template' | 'effort' };
+    };
     const limits = record(item.limits, ['contextWindowTokens', 'maxInputTokens', 'maxOutputTokens']);
     return { version: AI_REGISTRY_VERSION, connectionId: text(item.connectionId), providerModelKey: text(item.providerModelKey),
         label: text(item.label), locality: choice(item.locality, ['local', 'hosted'] as const), enabled: bool(item.enabled),
         state: choice(item.state, ['unknown', 'ready', 'unavailable', 'disabled'] as const),
         capabilities: { conversationalText: known(capabilities.conversationalText, bool), streaming: known(capabilities.streaming, bool),
             structuredOutput: known(capabilities.structuredOutput, bool), toolCalling: known(capabilities.toolCalling, bool),
-            ...(capabilities.agentExecution === undefined ? {} : { agentExecution: known(capabilities.agentExecution, bool) }) },
+            ...(capabilities.agentExecution === undefined ? {} : { agentExecution: known(capabilities.agentExecution, bool) }),
+            ...(capabilities.localReasoning === undefined ? {} :
+                { localReasoning: known(capabilities.localReasoning, reasoning) }) },
         limits: { contextWindowTokens: known(limits.contextWindowTokens, value => integer(value, 1)),
             maxInputTokens: known(limits.maxInputTokens, value => integer(value, 1)),
             maxOutputTokens: known(limits.maxOutputTokens, value => integer(value, 1)) } };

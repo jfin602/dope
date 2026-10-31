@@ -10,6 +10,19 @@ const TIMEOUT_MS = 120_000;
 const LOCAL_GENERATION_TIMEOUT_MS = 300_000;
 const model = (id: string): ConnectedModel => ({ id, label: id,
     capabilities: { conversationalText: true, streaming: true } });
+function localReasoning(entry: any): ConnectedModel['capabilities']['localReasoning'] {
+    const reported = entry?.capabilities?.reasoning;
+    const options = reported?.allowed_options;
+    if (!Array.isArray(options) || !options.length || new Set(options).size !== options.length ||
+        !options.every(value => typeof value === 'string') || !options.includes(reported.default)) return undefined;
+    // LM Studio reports model ability; Pi 1.4.0 supplies these two request controls.
+    // A boolean chat template cannot honestly expose graded levels.
+    if (entry.architecture === 'qwen35' && options.every(value => ['off', 'on'].includes(value)))
+        return { values: options, default: reported.default, format: 'qwen-chat-template' };
+    if (entry.architecture === 'gpt-oss' && options.every(value => ['low', 'medium', 'high'].includes(value)))
+        return { values: options, default: reported.default, format: 'effort' };
+    return undefined;
+}
 const failure = (provider: string, status: number): ModelRuntimeFailure => {
     if (status === 401 || status === 403) return new ModelRuntimeFailure(`${provider} authentication failed`, 'authentication');
     if (status === 404) return new ModelRuntimeFailure(`${provider} model or endpoint unavailable`, 'model-unavailable');
@@ -81,8 +94,14 @@ export class LocalConversationalProvider implements ConversationalModelRuntime {
                         .filter((instance: any) => entry.key === id || instance?.id === id)
                         .map((instance: any) => instance?.config?.context_length));
                 const safe = capacities.length > 0 && capacities.every(value => Number.isSafeInteger(value) && value > 0);
+                const matching = entries.filter(entry => entry?.type === 'llm' &&
+                    (entry.key === id || Array.isArray(entry.loaded_instances) &&
+                        entry.loaded_instances.some((instance: any) => instance?.id === id)));
+                const reasoning = safe && matching.length === 1 ? localReasoning(matching[0]) : undefined;
                 return { id, label: id, capabilities: { conversationalText: safe, streaming: safe,
-                    ...(safe ? { contextWindowTokens: Math.min(...capacities) } : {}) } };
+                    ...(safe ? { contextWindowTokens: Math.min(...capacities) } : {}),
+                    ...(reasoning ? { localReasoning: reasoning,
+                        reasoningControls: [{ id: 'reasoning.effort', values: reasoning.values }] } : {}) } };
             });
             if (generation !== this.generation) return [];
             this.models = discovered.filter(item => item.capabilities.conversationalText).map(item => item.id);

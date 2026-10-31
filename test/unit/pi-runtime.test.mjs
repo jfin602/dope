@@ -131,11 +131,12 @@ test('verified Qwen3.5 emits exposed thinking separately from final text', async
   const originalFetch = globalThis.fetch;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-thinking-'));
   const events = [];
+  let enabled = true;
   try {
     globalThis.fetch = async (_url, options) => {
       const body = JSON.parse(options.body);
       assert.equal(body.model, 'qwen3.5-9b');
-      assert.equal(body.chat_template_kwargs?.enable_thinking, true);
+      assert.equal(body.chat_template_kwargs?.enable_thinking, enabled);
       const chunks = [
         'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"qwen3.5-9b","choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"Check arithmetic."},"finish_reason":null}]}\n\n',
         'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"qwen3.5-9b","choices":[{"index":0,"delta":{"content":"2"},"finish_reason":null}]}\n\n',
@@ -154,6 +155,39 @@ test('verified Qwen3.5 emits exposed thinking separately from final text', async
     assert.ok(events.some(event => event.type === 'activity' && event.kind === 'thinking' &&
       event.text === 'Check arithmetic.'));
     assert.ok(events.some(event => event.type === 'delta' && event.text === '2'));
+    await dispatch({ type: 'close' });
+    enabled = false;
+    await dispatch({ type: 'open', cwd, model: thinkingModel, thinkingLevel: 'off' });
+    const off = await dispatch({ type: 'turn', maxOutputTokens: 256,
+      messages: [{ role: 'user', content: 'What is 1+1?' }] });
+    assert.equal(off.text, '2');
+    await dispatch({ type: 'close' });
+    await assert.rejects(dispatch({ type: 'open', cwd, model: thinkingModel,
+      thinkingLevel: 'xhigh' }), /Unsupported Pi thinking level/);
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi sends a reported graded reasoning level through the installed SDK', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-graded-'));
+  try {
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.reasoning_effort, 'low');
+      return new Response('data: {"choices":[{"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+        { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', cwd, thinkingLevel: 'low',
+      model: { ...model, id: 'graded', reasoning: true, maxTokens: 2048,
+        compat: { supportsReasoningEffort: true } } });
+    const result = await dispatch({ type: 'turn', maxOutputTokens: 2048,
+      messages: [{ role: 'user', content: 'Say OK' }] });
+    assert.equal(result.text, 'OK');
+    assert.equal(result.usage.reasoningTokens, undefined);
   } finally {
     await dispatch({ type: 'close' });
     globalThis.fetch = originalFetch;

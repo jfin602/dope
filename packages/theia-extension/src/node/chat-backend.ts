@@ -1014,7 +1014,10 @@ export class ChatBackend implements ChatService {
                 throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
         if (!this.composer) throw new Error('Context composer unavailable');
         const localRoadmap = roadmapTurn && connection.providerId === 'local';
-        const planningOutput = chat.settings.context.reservedOutputTokens;
+        const reasoningOn = connection.providerId === 'local' && !!model.capabilities.localReasoning &&
+            (controls['reasoning.effort'] ?? model.capabilities.localReasoning.default) !== 'off';
+        const planningOutput = reasoningOn ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
+            chat.settings.context.reservedOutputTokens;
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             planningOutput, model.capabilities) : undefined;
         // Pi must discover source with its own brokered tools; automatic grounding is for other providers.

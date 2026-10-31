@@ -44,18 +44,29 @@ test('Pi bridge binds only the exact refreshed AI Center Local model and measure
     assert.equal(calls[0][0].contextWindow, 32768);
 });
 
-test('only verified Qwen3.5 local binding requests an exposed thinking channel', async () => {
+test('Pi binding follows reported modes rather than a model name', async () => {
     const f = fixture();
     f.state.registry.models[0].providerModelKey = 'qwen3.5-9b';
     f.state.loadedLocalModels[0].providerModelKey = 'qwen3.5-9b';
     await f.bridge.bind({ connectionId: 'desk', modelId: 'qwen3.5-9b' }, f.host as any, '/tmp');
-    assert.equal(f.calls[0][0].reasoning, true);
-    assert.deepEqual(f.calls[0][0].compat, { thinkingFormat: 'qwen-chat-template' });
+    assert.equal(f.calls[0][0].reasoning, false);
+    f.state.registry.models[0].capabilities.localReasoning = { source: 'provider-reported',
+        value: { values: ['off', 'on'], default: 'on', format: 'qwen-chat-template' } };
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'qwen3.5-9b' }, f.host as any, '/tmp');
+    assert.equal(f.calls[1][0].reasoning, true);
+    assert.deepEqual(f.calls[1][0].compat, { thinkingFormat: 'qwen-chat-template' });
+    assert.equal(f.calls[1][3], 'medium');
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'qwen3.5-9b' }, f.host as any, '/tmp',
+        { reasoningMode: 'off' });
+    assert.equal(f.calls[2][3], 'off');
+    await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'qwen3.5-9b' }, f.host as any,
+        '/tmp', { reasoningMode: 'high' }), /does not support/);
     f.state.registry.models[0].providerModelKey = 'another-model';
     f.state.loadedLocalModels[0].providerModelKey = 'another-model';
+    delete f.state.registry.models[0].capabilities.localReasoning;
     await f.bridge.bind({ connectionId: 'desk', modelId: 'another-model' }, f.host as any, '/tmp');
-    assert.equal(f.calls[1][0].reasoning, false);
-    assert.equal(f.calls[1][0].compat, undefined);
+    assert.equal(f.calls[3][0].reasoning, false);
+    assert.equal(f.calls[3][0].compat, undefined);
 });
 
 test('Pi Chat binding accepts only the complete brokered tool boundary', async () => {

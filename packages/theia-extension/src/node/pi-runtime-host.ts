@@ -13,6 +13,7 @@ export type PiWorkEvent = { type: 'work'; sequence: number;
         'tool_execution_start' | 'tool_execution_end'; toolName?: string; isError?: boolean; aborted?: boolean };
 export interface PiContextRecord { originalSha256: string; compactedSha256: string; tokensBefore: number }
 export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; totalTokens?: number;
+    reasoningTokens?: number;
     tokenMeasurement: 'provider-reported' | 'unavailable' }
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
     lastWorkSequence?: number;
@@ -76,21 +77,24 @@ export class PiRuntimeHost {
     }
 
     /** P2 supplies the exact local model. P1 never prompts or changes live routing. */
-    openNoToolSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string):
+    openNoToolSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
+        thinkingLevel?: string):
         Promise<{ version: string; tools: string[]; resources: string }> {
-        return this.request({ type: 'open', model, cwd, ...(credential ? { credential } : {}) });
+        return this.request({ type: 'open', model, cwd, ...(credential ? { credential } : {}), thinkingLevel });
     }
 
-    openWorkSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string):
+    openWorkSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
+        thinkingLevel?: string):
         Promise<{ version: string; tools: string[]; resources: string }> {
         return this.request({ type: 'open', mode: 'work', model, cwd,
-            ...(credential ? { credential } : {}) });
+            ...(credential ? { credential } : {}), thinkingLevel });
     }
 
-    openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string):
+    openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
+        thinkingLevel?: string):
         Promise<{ version: string; tools: string[]; resources: string }> {
         return this.request({ type: 'open', mode: 'chat-tools', model, cwd,
-            ...(credential ? { credential } : {}) });
+            ...(credential ? { credential } : {}), thinkingLevel });
     }
 
     runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void):

@@ -71,6 +71,8 @@ export interface ConversationModelCapabilities {
     maxOutputTokens?: number;
     /** Adapter-defined controls and their supported values, e.g. reasoning effort. */
     reasoningControls?: ReadonlyArray<{ id: string; values: readonly string[] }>;
+    /** LM Studio reported modes, narrowed to a Pi transport verified by this adapter. */
+    localReasoning?: { values: readonly string[]; default: string; format: 'qwen-chat-template' | 'effort' };
 }
 export interface ConnectedModel {
     id: ModelId;
@@ -92,6 +94,7 @@ export interface ConversationUsage {
     inputTokens?: number;
     outputTokens?: number;
     totalTokens?: number;
+    reasoningTokens?: number;
     tokenMeasurement: ModelGenerationUsage['tokenMeasurement'];
 }
 export type ConversationEvent =
