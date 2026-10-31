@@ -6,7 +6,10 @@
 
 - Keep one saved ChatPanel. The chat title, transcript, composer, and settings belong to that panel.
 - The transcript is the scrolling surface for messages, reasoning, and final answers. Expanded reasoning uses the normal chat width and edges; it does not add a nested vertical scrollbar after completion.
-- Chat settings overlays the **entire Chat shell**, including the title, transcript, and composer, at the shell's full available width. Its own scroll does not change the transcript's scroll position or height. The toolbar settings cog changes to an X while open and changes back when closed. The settings sheet has no second Close button. Escape may dismiss it.
+- Chat settings is a sheet over the conversation, starting directly below the Chat toolbar. It does not move or resize the transcript or composer. The composer remains visible below the conversation. The sheet scrolls independently when its contents exceed the available height.
+- While the sheet is open, the toolbar label reads **CHAT SETTINGS** and the normal conversation title row is hidden. There is no title row inside the sheet: **Appearance** starts at its top. The toolbar settings cog becomes an X and returns to the cog when the sheet closes.
+- The sheet ends just below **Save settings** instead of filling the conversation height. A small centered tab with an up arrow protrudes from its bottom edge. Clicking that tab, the toolbar X, the dimmed conversation, or pressing Escape closes the sheet. Saving closes it after a successful save.
+- The conversation beneath the sheet has a translucent black dimmer while settings is open. The sheet slides down and the dimmer fades in quickly on open; both reverse on close. Honor reduced-motion preferences. The dimmer and sheet must not restart their entrance animations when settings rerenders, including after a Chat color change. Color selection updates its pressed state while the sheet stays open and visually steady.
 - The composer stays at the bottom of Chat. Its model selector, Commands selector, buttons, and + popup use the same Dope control colors, borders, radius, and visible focus treatment as settings. The + popup has themed select options, actions, hover, disabled, and expanded states.
 
 ## Assistant turn
@@ -58,7 +61,9 @@ When changing Chat presentation or shared controls, inspect the connected browse
 1. Stream a turn with captured reasoning/provisional text and a tool call; verify readable Markdown, event order, file path safety, and disclosure toggle.
 2. Finish a turn; verify automatic collapse, one final answer, subtle rule, footer alignment, Info toggle, and both copy modes.
 3. Cancel and fail a turn; verify truthful state, elapsed time, retained inspectable activity, and `No final response` when appropriate.
-4. Open and close settings with the cog/X; verify full-shell coverage, themed controls, independent scrolling, and unchanged transcript scroll position.
-5. Open the + menu and inspect model/Commands selectors, menu select, actions, hover/focus/disabled states, and narrow-width fit.
+4. Open settings with the cog; verify **CHAT SETTINGS** in the toolbar, **Appearance** at the top of the sheet, the composer still visible, and the sheet ending below Save with its protruding up-arrow tab. Verify the conversation dims as the sheet slides down, with no transcript layout or scroll jump.
+5. Change Chat color twice while settings stays open; verify each selected swatch updates, and neither the sheet nor dimmer closes, flashes, or replays its entrance animation. Check another settings control that rerenders the sheet for the same behavior.
+6. Close with the up-arrow tab, toolbar X, dimmed conversation, and Escape in separate attempts; verify the sheet slides up, the dimmer fades out, and the toolbar returns to **CHAT**. Check reduced-motion behavior and a short viewport where the sheet must scroll while the pull tab remains reachable.
+7. Open the + menu and inspect model/Commands selectors, menu select, actions, hover/focus/disabled states, and narrow-width fit.
 
 Run the focused Chat activity, panel, and presentation tests for behavior changes. A browser check does not qualify native Electron or clear the historical C12 P4 result.

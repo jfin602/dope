@@ -746,6 +746,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-panel summary { cursor: pointer; overflow-wrap: anywhere; }
 .dope-chat-color-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--chat-color); }
 .dope-chat-transcript-region { position: relative; flex: 1; min-height: 0; }
+.dope-chat-settings-region { overflow: hidden; }
 .dope-chat-scroll { position: absolute; inset: 0; overflow: auto; padding: 10px 12px 18px; cursor: grab; touch-action: pan-y pinch-zoom; }
 .dope-chat-scroll-dragging, .dope-chat-scroll-dragging *, .dope-chat-scroll-panning, .dope-chat-scroll-panning * { cursor: grabbing; user-select: none; }
 .dope-chat-message-content, .dope-chat-message-content * { user-select: text; }
@@ -990,13 +991,23 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-panel .dope-chat-latest { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 50%; background: var(--theia-button-secondaryBackground); box-shadow: 0 2px 8px #0008; }
 .dope-chat-panel button.dope-chat-latest:hover:not(:disabled) { background: var(--theia-button-secondaryHoverBackground); }
 .dope-chat-latest[hidden] { display: none; }
-.dope-chat-settings-form { box-sizing: border-box; position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; gap: 12px;
-    width: 100%; overflow-y: auto; padding: 12px; color: var(--theia-foreground);
+.dope-chat-settings-backdrop { position: absolute; inset: 0; z-index: 2; background: #0008; }
+.dope-chat-settings-overlay { position: absolute; inset: 0 0 auto; z-index: 3; display: flex; flex-direction: column;
+    width: 100%; max-height: 100%; }
+.dope-chat-settings-overlay.dope-chat-settings-entering { animation: dope-chat-settings-in 160ms ease-out both; }
+.dope-chat-settings-backdrop.dope-chat-settings-entering { animation: dope-chat-settings-backdrop-in 160ms ease-out both; }
+.dope-chat-settings-form { box-sizing: border-box; display: flex; flex: 0 1 auto; flex-direction: column; gap: 12px;
+    min-height: 0; width: 100%; overflow-y: auto; padding: 12px; color: var(--theia-foreground);
     background: var(--theia-editorWidget-background, var(--theia-editor-background));
-    border-top: 1px solid var(--theia-widget-border); box-shadow: 0 8px 24px #0008; }
-.dope-chat-settings-form > header { position: sticky; top: -12px; z-index: 1; display: flex; align-items: center; justify-content: space-between;
-    gap: 8px; margin: -12px -12px 0; padding: 10px 12px; background: inherit; border-bottom: 1px solid var(--theia-widget-border); }
-.dope-chat-settings-form h3 { margin: 0; font-size: 14px; }
+    box-shadow: 0 8px 24px #0008; }
+.dope-chat-panel button.dope-chat-settings-pull-tab { box-sizing: border-box; align-self: center; flex: none; display: grid; place-items: center;
+    width: 42px; height: 18px; padding: 0 0 2px; border: 1px solid var(--theia-widget-border); border-top: 0;
+    border-radius: 0 0 7px 7px; background: var(--theia-editorWidget-background, var(--theia-editor-background));
+    color: var(--theia-foreground); box-shadow: 0 6px 12px #0008; cursor: pointer; font-size: 14px; line-height: 1; }
+.dope-chat-panel button.dope-chat-settings-pull-tab:hover { color: var(--dope-primary, var(--theia-foreground)); }
+@keyframes dope-chat-settings-in { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes dope-chat-settings-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dope-chat-settings-overlay, .dope-chat-settings-backdrop { animation: none; } }
 .dope-chat-settings-section { display: grid; gap: 8px; padding: 0 0 12px; border-bottom: 1px solid var(--theia-widget-border); }
 .dope-chat-settings-section h4 { margin: 0; color: var(--dope-primary, var(--theia-foreground)); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .dope-chat-settings-advanced { min-width: 0; border-bottom: 1px solid var(--theia-widget-border); padding-bottom: 8px; }

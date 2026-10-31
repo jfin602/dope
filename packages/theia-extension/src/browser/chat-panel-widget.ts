@@ -114,10 +114,33 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     toggleChatSettings(): void {
         const chat = this.controller.chat;
         if (!this.canOpenChatSettings || !chat) return;
-        this.settingsOpen = !this.settingsOpen;
-        this.settingsDraft = this.settingsOpen ? structuredClone(chat.settings) : undefined;
+        if (this.settingsOpen) { this.closeChatSettings(); return; }
+        this.settingsOpen = true;
+        this.settingsEntering = true;
+        this.settingsDraft = structuredClone(chat.settings);
         this.settingsChatId = chat.id;
         this.render();
+    }
+    private settingsEntering = false;
+    private settingsClosing = false;
+    private closeChatSettings(): void {
+        if (this.settingsClosing) return;
+        this.settingsClosing = true;
+        const finish = () => {
+            if (!this.settingsClosing) return;
+            this.settingsClosing = false;
+            this.settingsOpen = false;
+            this.settingsEntering = false;
+            this.settingsDraft = undefined;
+            this.render();
+        };
+        const overlay = this.content.querySelector<HTMLElement>('.dope-chat-settings-overlay');
+        if (!overlay || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
+        const backdrop = this.content.querySelector<HTMLElement>('.dope-chat-settings-backdrop');
+        backdrop?.animate([{ opacity: 1 }, { opacity: 0 }],
+            { duration: 140, easing: 'ease-in', fill: 'forwards' });
+        void overlay.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }],
+            { duration: 140, easing: 'ease-in', fill: 'forwards' }).finished.then(finish, finish);
     }
     private strategicPresentationKey = '';
     private strategicPresentationTarget?: { workspace: string; projectId: string; chatId: string };
@@ -1597,17 +1620,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.chat?.settings.modelPolicy.type === 'exact' ? state.chat.settings.modelPolicy.model : undefined);
     }
     private renderSettings(chatId: string): HTMLElement {
-        const form = document.createElement('section');
-        form.className = 'dope-chat-settings-form';
-        form.setAttribute('role', 'dialog');
-        form.setAttribute('aria-label', 'Chat settings');
-        form.onkeydown = event => {
+        const overlay = document.createElement('div');
+        overlay.className = 'dope-chat-settings-overlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-label', 'Chat settings');
+        overlay.onkeydown = event => {
             if (event.key === 'Escape') { event.stopPropagation(); this.toggleChatSettings(); }
         };
-        const heading = document.createElement('header');
-        const title = document.createElement('h3'); title.textContent = 'Chat settings';
-        heading.append(title);
-        form.append(heading);
+        const form = document.createElement('section');
+        form.className = 'dope-chat-settings-form';
         const draft = this.settingsDraft!;
         const color = document.createElement('fieldset');
         color.className = 'dope-chat-color-picker';
@@ -1729,13 +1750,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             void this.controller.mutate({ type: 'set-settings', chatId,
             settings: draft }).then(saved => {
             if (saved && this.settingsChatId === chatId) {
-                this.settingsOpen = false; this.settingsDraft = undefined; this.render();
+                this.closeChatSettings();
             }
         }); }, this.controller.running);
         save.className = 'dope-chat-settings-save';
         actions.append(save);
         form.append(actions);
-        return form;
+        const pullTab = this.button('↑', () => this.closeChatSettings());
+        pullTab.className = 'dope-chat-settings-pull-tab';
+        pullTab.setAttribute('aria-label', 'Close chat settings');
+        pullTab.title = 'Close chat settings';
+        overlay.append(form, pullTab);
+        return overlay;
     }
     private renderTree(node: ChatTree): HTMLElement {
         const list = document.createElement('ul');
@@ -1903,7 +1929,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         selectedWork.kind === 'run' && this.workController.selectedRun?.id === selectedWork.id) ?
                     this.workController.selectedTask : undefined,
                 selectedWork.kind === 'sequence' && this.workController.phase.selected?.id === selectedWork.id ?
-                    this.workController.phase.selected : undefined) : 'Work' : 'Chat';
+                    this.workController.phase.selected : undefined) : 'Work' : this.settingsOpen ? 'CHAT SETTINGS' : 'Chat';
         this.content.className = this.panel.mode === 'work' ? 'dope-chat-content dope-chat-content-work' :
             state.mode !== 'chat' ? 'dope-chat-content dope-chat-content-select' :
                 'dope-chat-content dope-chat-content-conversation';
@@ -2033,6 +2059,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         header.append(editTitle);
         const shell = document.createElement('section'); shell.className = 'dope-chat-shell';
         const region = document.createElement('div'); region.className = 'dope-chat-transcript-region';
+        if (this.settingsOpen) region.classList.add('dope-chat-settings-region');
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll';
         scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'Chat conversation');
         scroll.onscroll = () => {
@@ -2323,7 +2350,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         down.setAttribute('aria-hidden', 'true'); latest.append(down);
         latest.className = 'dope-chat-latest'; latest.hidden = !this.scrollFollow.latestBelow;
         region.append(scroll, latest);
-        shell.append(header, region);
+        if (!this.settingsOpen) shell.append(header);
+        shell.append(region);
         const composer = document.createElement('div'); composer.className = 'dope-chat-composer';
         const input = document.createElement('textarea'); input.rows = 1; input.placeholder = 'Message';
         input.setAttribute('aria-label', 'Message'); input.value = state.draft;
@@ -2535,7 +2563,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         responseNotices.prepend(this.status);
         scroll.append(responseNotices);
         shell.append(composer, menu);
-        if (this.settingsOpen) shell.append(this.renderSettings(chat.id));
+        if (this.settingsOpen) {
+            const backdrop = document.createElement('div');
+            backdrop.className = 'dope-chat-settings-backdrop';
+            backdrop.setAttribute('aria-hidden', 'true');
+            backdrop.onclick = () => this.closeChatSettings();
+            const overlay = this.renderSettings(chat.id);
+            if (this.settingsEntering) {
+                backdrop.classList.add('dope-chat-settings-entering');
+                overlay.classList.add('dope-chat-settings-entering');
+                this.settingsEntering = false;
+            }
+            region.append(backdrop, overlay);
+        }
         this.content.append(shell);
         resizeChatInput(input);
         scroll.scrollTop = this.scrollFollow.restore(scrollTop, scroll.scrollHeight, scroll.clientHeight);
