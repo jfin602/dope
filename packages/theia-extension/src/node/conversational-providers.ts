@@ -15,10 +15,13 @@ function localReasoning(entry: any): ConnectedModel['capabilities']['localReason
     const options = reported?.allowed_options;
     if (!Array.isArray(options) || !options.length || new Set(options).size !== options.length ||
         !options.every(value => typeof value === 'string') || !options.includes(reported.default)) return undefined;
-    // LM Studio reports model ability; Pi 1.4.0 supplies these two request controls.
-    // A boolean chat template cannot honestly expose graded levels.
-    if (entry.architecture === 'qwen35' && options.every(value => ['off', 'on'].includes(value)))
-        return { values: options, default: reported.default, format: 'qwen-chat-template' };
+    // LM Studio's OpenAI-compatible custom-tool endpoint ignores Pi's
+    // chat_template_kwargs.enable_thinking=false for Qwen3.5. Its native chat
+    // endpoint honors Off but cannot carry Pi's custom tools. Do not advertise
+    // Off on the tool-capable path. A non-On default cannot be mapped honestly.
+    if (entry.architecture === 'qwen35' && reported.default === 'on' &&
+        options.every(value => ['off', 'on'].includes(value)) && options.includes('on'))
+        return { values: ['on'], default: 'on', format: 'qwen-chat-template' };
     if (entry.architecture === 'gpt-oss' && options.every(value => ['low', 'medium', 'high'].includes(value)))
         return { values: options, default: reported.default, format: 'effort' };
     return undefined;

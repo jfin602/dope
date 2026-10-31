@@ -36,10 +36,23 @@ test('LM Studio reasoning metadata advertises only modes the Pi transport can co
         ] }) : json({ data: ['boolean', 'graded', 'unknown'].map(id => ({ id })) }) });
     const models = await local.discoverModels();
     assert.deepEqual(models[0].capabilities.reasoningControls,
-        [{ id: 'reasoning.effort', values: ['off', 'on'] }]);
+        [{ id: 'reasoning.effort', values: ['on'] }]);
+    assert.deepEqual(models[0].capabilities.localReasoning,
+        { values: ['on'], default: 'on', format: 'qwen-chat-template' });
     assert.deepEqual(models[1].capabilities.reasoningControls,
         [{ id: 'reasoning.effort', values: ['low', 'medium', 'high'] }]);
     assert.equal(models[2].capabilities.reasoningControls, undefined);
+});
+
+test('LM Studio Qwen Off default is not remapped to a false Auto capability', async () => {
+    const local = new LocalConversationalProvider({ fetch: async url => String(url).endsWith('/api/v1/models') ?
+        json({ models: [{ type: 'llm', key: 'qwen-off-default', architecture: 'qwen35',
+            capabilities: { reasoning: { allowed_options: ['off', 'on'], default: 'off' } },
+            loaded_instances: [{ id: 'qwen-off-default', config: { context_length: 16384 } }] }] }) :
+        json({ data: [{ id: 'qwen-off-default' }] }) });
+    const [model] = await local.discoverModels();
+    assert.equal(model.capabilities.localReasoning, undefined);
+    assert.equal(model.capabilities.reasoningControls, undefined);
 });
 
 test('Local discovery and streaming preserve exact model, order, usage and synthesis state', async () => {

@@ -1627,13 +1627,29 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const select = document.createElement('select');
             select.append(new Option('Auto', ''), ...control.values.map(value =>
                 new Option(value === 'on' ? 'On' : value[0].toUpperCase() + value.slice(1), value)));
-            select.value = draft.reasoningControls?.[control.id] ?? '';
+            const selected = draft.reasoningControls?.[control.id];
+            if (selected && !control.values.includes(selected)) {
+                const unavailable = new Option(`${selected[0].toUpperCase() + selected.slice(1)} unavailable`, selected);
+                unavailable.disabled = true;
+                select.append(unavailable);
+            }
+            select.value = selected ?? '';
             select.onchange = () => {
                 draft.reasoningControls = { ...draft.reasoningControls };
                 if (select.value) draft.reasoningControls[control.id] = select.value;
                 else delete draft.reasoningControls[control.id];
             };
             field(`Reasoning: ${control.id}`, select);
+            const activeModel = this.models.connections.find(connection =>
+                connection.id === active?.selection.connectionId)?.models.find(item =>
+                    item.id === active?.selection.modelId);
+            if (control.id === 'reasoning.effort' &&
+                activeModel?.capabilities.localReasoning?.format === 'qwen-chat-template' &&
+                !control.values.includes('off')) {
+                const note = document.createElement('p');
+                note.textContent = 'Off is unavailable for this LM Studio Qwen model through the Pi tool endpoint. Choose Auto or On.';
+                form.append(note);
+            }
         }
         const history = document.createElement('select');
         history.append(new Option('Recent history', 'recent'), new Option('No history', 'none'));

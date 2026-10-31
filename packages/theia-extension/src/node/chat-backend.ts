@@ -1011,7 +1011,10 @@ export class ChatBackend implements ChatService {
         const controls = chat.settings.reasoningControls ?? {};
         for (const [id, value] of Object.entries(controls))
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
-                throw new ModelRuntimeFailure('Selected model does not support the saved reasoning control', 'unsupported-capability');
+                throw new ModelRuntimeFailure(id === 'reasoning.effort' && value === 'off' &&
+                    model.capabilities.localReasoning?.format === 'qwen-chat-template' ?
+                    'Reasoning Off is unavailable for this LM Studio Qwen model through the Pi tool endpoint; choose Auto or On' :
+                    'Selected model does not support the saved reasoning control', 'unsupported-capability');
         if (!this.composer) throw new Error('Context composer unavailable');
         const localRoadmap = roadmapTurn && connection.providerId === 'local';
         const reasoningOn = connection.providerId === 'local' && !!model.capabilities.localReasoning &&

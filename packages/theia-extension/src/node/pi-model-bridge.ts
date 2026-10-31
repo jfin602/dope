@@ -99,6 +99,10 @@ export class PiModelBridge {
         const reasoning = model.capabilities.localReasoning?.source === 'provider-reported' ?
             model.capabilities.localReasoning.value : undefined;
         const requested = options.reasoningMode;
+        if (requested === 'off' && reasoning?.format === 'qwen-chat-template' &&
+            !reasoning.values.includes('off'))
+            throw new ModelRuntimeFailure('Reasoning Off is unavailable for this LM Studio Qwen model through the Pi tool endpoint; choose Auto or On',
+                'unsupported-capability');
         if (requested !== undefined && (!reasoning || !reasoning.values.includes(requested)))
             throw unavailable('Selected Local model does not support that reasoning mode');
         const mode = requested ?? reasoning?.default;
