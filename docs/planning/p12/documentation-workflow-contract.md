@@ -1,3 +1,5 @@
+> **2026-10-31 FORWARD OWNER SCOPE:** The original requirement to graduate decisions through a rigid `implementation-plan` workflow is superseded. Natural existing Chat/Pi conversation, reviewed schema-2 Roadmap actions and separately reviewed document changes are the intended path. See [c12-planning-recovery](../../tasks/c12-planning-recovery/README.md). The original writer, recovery, applied-only History, source and Work-reference constraints remain documented safety requirements, not implementation evidence. This forward amendment does not run the 15-prompt stack.
+
 # Phase 12 — Planning Documentation Workflow
 
 **Owner decision:** 2026-10-30 (America/Chicago). **Status:** OWNER-APPROVED DESIGN / AUTHORING ONLY / NOT IMPLEMENTED OR QUALIFIED. **Product:** `0.12.7` unchanged. **Review basis:** `c01711345ba3d83900b20242948abdabaeeeb6ac`.

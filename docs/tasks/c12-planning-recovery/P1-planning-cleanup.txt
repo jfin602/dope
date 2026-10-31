@@ -1,0 +1,15 @@
+TASK: C12 planning recovery / P1 — delete only the abandoned rigid implementation-plan path
+
+MODEL: GPT-6 Sol High. MANUAL execution; Codex in-app browser for relevant live UI checks.
+PONYTAIL: Discover and invoke the installed Ponytail skill in FULL mode through this host's supported skill invocation before editing. Do not install it into Dope's bundled Pi or falsely claim it loaded. If unavailable, report it and follow its minimal-complete-change principles.
+SAFETY: Read BOOT.md, AGENTS.md, docs/workflow.md, this stack's README, assessment and plan, existing Roadmap/Docs contracts, and latest local qualification evidence. Inspect actual HEAD, dirty/untracked files, exact 0.12.7 and active processes. Preserve all work; no reset/stash/clean, self-commit, model/provider/lockfile/version change, global shell/network grants, second Chat/agent, or canonical writes without explicit owner approval. Use disposable projects. No /activate or phase runner. Do not silently start c12-docs-workflow. Report source-bound PASS/FAIL/GAP; do not force GREEN.
+
+OWNER INTENT: Stop debugging the unnecessary `implementation-plan`/Planning-only `submit_plan` workflow. Natural Pi Chat and the authoritative schema-2 Roadmap remain. This is a brief cleanup, NOT a Planning rewrite.
+
+1. Inventory exact reachable call sites and persisted state for `planOnly`, `submit_plan`, `PLAN_INVESTIGATION_INSTRUCTION`, implementation-plan schema/reviewer, preview/update/card and special model budget/retry wiring. Identify adjacent useful features (Roadmap draft/gate edit, Planning Map, Prepare Work, ordinary Pi investigation and Work) before touching any file.
+2. Retire only obsolete implementation-plan routing/contracts/tool/validation and dead tests. Preserve historical Chat/qualification records; give existing dormant records a safe read-only/no-action handling path rather than deleting user work. Keep any general-purpose utility actually used elsewhere.
+3. Verify ordinary natural source-grounded Chat with Pi, read/list/search/Commands Ask/Allow, copy/History, Work preparation, schema-2 Roadmap Chat proposal routing, deterministic zero-extra-call path, cancellation and source/protected-path controls. No forced JSON plan for ordinary talk.
+4. Run focused tests, affected typecheck/browser+backend builds, `git diff --check`, and one brief real Codex-browser disposable Pi Chat smoke using the current 30B model if ready. Do not restart slow Planning benchmark.
+5. Save dated source-bound evidence. Mark retired implementation-plan requirement SUPERSEDED, not PASS; keep C12/native status honest.
+
+EXIT: CLEANUP GREEN only with unbroken Chat/Pi/Work/Roadmap and no reachable obsolete feature. If a dependency blocks deletion, report exact seam and smallest repair rather than broad redesign. Do not start P2 automatically. STOP.

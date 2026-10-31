@@ -1,3 +1,5 @@
+> **OWNER SEQUENCING AMENDMENT (2026-10-31):** [c12-planning-recovery](../c12-planning-recovery/README.md) supersedes the rigid implementation-plan prerequisite. First clean up the experimental path and qualify conversational schema-2 Roadmap editing; then enter a narrow core `/docs-review`/`/docs-apply` vertical slice. The historical 15-prompt stack remains authored/not run and its publication/recovery/History/Work-reference safety requirements are preserved, not silently claimed implemented. Advanced scope is deferred to separate qualification. No version or GREEN claim by docs.
+
 # c12-docs-workflow — Planning documentation, applied-only History and agent-led reading
 
 **Owner decision:** 2026-10-30 (America/Chicago). **Status:** ASSESSED / PLANNED / AUTHORED ONLY — NOT RUN, IMPLEMENTED OR QUALIFIED. **Correction version:** `0.12.7` unchanged. **Runtime assessment source:** `c01711345ba3d83900b20242948abdabaeeeb6ac` on `jfin602/dope` main.
