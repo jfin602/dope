@@ -594,7 +594,7 @@ test('response and transcript copy use chronological conversational projections 
     assert.match(chatTranscriptCopyText({ messages: [user, regular] as
         import('../../packages/chat/lib/index.js').ChatMessage[] },
     { messageId: 'streaming-id', content: 'Streaming **answer**' }, { content: 'Pending user turn' }),
-    /You:\nPending user turn\n\nAssistant:\nStreaming \*\*answer\*\*$/);
+    /You:\nPending user turn$/);
 });
 
 test('touch drag follows vertical movement and leaves horizontal gestures to the browser', () => {

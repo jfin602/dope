@@ -2,9 +2,30 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
+
+test('saved and live diagnostic activity stays bounded and outside the final answer', () => {
+    const events = Array.from({ length: 12 }, (_, index) => ({ sequence: index + 1,
+        kind: 'provisional' as const, text: 'Read src/counter.js. '.repeat(100) }));
+    const base = { id: 'turn', content: '', execution: { id: 'execution', status: 'cancelled' },
+        activity: { events, truncated: false } } as ChatAssistantMessage;
+    const cancelled = chatActivityPresentation(base)!;
+    assert.equal(cancelled.label, 'Provisional output');
+    assert.equal(cancelled.unavailable, true);
+    assert.ok(cancelled.text.length <= 12_000);
+    assert.equal(cancelled.truncated, true);
+    assert.equal(chatResponseCopyText(base), '');
+    assert.deepEqual(chatActivityPresentation({ ...base, activity: undefined },
+        { messageId: 'turn', executionId: 'execution', events }), cancelled);
+    assert.equal(chatActivityPresentation({ ...base, id: 'retry', activity: undefined },
+        { messageId: 'turn', executionId: 'execution', events })?.text, '');
+    const completed = { ...base, content: 'Final answer', execution: { ...base.execution, status: 'complete' } } as ChatAssistantMessage;
+    assert.equal(chatResponseCopyText(completed), 'Final answer');
+    assert.equal(chatActivityPresentation(completed)?.text, cancelled.text);
+    assert.equal(chatActivityPresentation({ ...completed, activity: undefined }), undefined);
+});
 
 test('only persisted trusted planning activity receives a compact label and honest status', () => {
     const message = { content: '{"type":"roadmap-intent"}', planningActivity: {
@@ -207,7 +228,7 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(widget, /for \(const value of CHAT_COLORS\)/);
     assert.match(widget, /type: 'set-color', chatId, color: value/);
     assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, body\)/);
-    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, state\.stream\.content\)/);
+    assert.doesNotMatch(widget, /renderUntrustedMessageMarkdown\(this\.markdown, state\.stream\.content\)/);
     assert.match(markdown, /messageMarkdown\.renderer\.rules\.image =/);
     assert.match(markdown, /safeChatLink\(link\.getAttribute\('href'\)!, document\.baseURI\)/);
     assert.match(markdown, /link\.removeAttribute\('href'\)/);
@@ -236,7 +257,7 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
     assert.doesNotMatch(widget, /body\.replace\(\/\\s\+\/g, ' '\)\.slice\(0, 160\)/);
     assert.match(widget, /this\.openPlanningActivities\.add\(message\.id\)/);
     assert.match(widget, /if \(activity\.alert\) item\.classList\.add\('dope-chat-message-alert'\)/);
-    assert.match(widget, /else content\.append\(renderUntrustedMessageMarkdown\(this\.markdown, body\)\)/);
+    assert.match(widget, /message\.execution\.status === 'complete'/);
     assert.match(css, /\.dope-chat-planning-outcome \{[^}]*overflow-wrap: anywhere/);
     assert.match(css, /\.dope-chat-planning-activity \{[^}]*var\(--theia-descriptionForeground\)/);
     assert.match(css, /\.dope-chat-message-alert \.dope-chat-activity-status \{[^}]*var\(--theia-errorForeground\)/);

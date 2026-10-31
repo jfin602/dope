@@ -321,7 +321,7 @@ export function canDragChatTranscript(target: Element, spacePan = false): boolea
 
 /** Copy the same conversational projection shown in Chat, never its inspectable machine payload. */
 export function chatResponseCopyText(message: ChatAssistantMessage, streamingContent?: string): string {
-    if (streamingContent !== undefined) return streamingContent;
+    if (streamingContent !== undefined) return '';
     const activity = planningActivityPresentation(message);
     if (activity) {
         const outcome = planningOutcome(message);
@@ -333,7 +333,24 @@ export function chatResponseCopyText(message: ChatAssistantMessage, streamingCon
         const outcome = planningOutcome(message);
         return [outcome?.summary, outcome?.questions.join(' ')].filter(Boolean).join('\n\n');
     }
-    return message.content;
+    return message.execution && message.execution.status !== 'complete' ? '' : message.content;
+}
+
+/** A bounded display projection of diagnostics, never conversational answer text. */
+export function chatActivityPresentation(message: ChatAssistantMessage,
+    stream?: { messageId: string; executionId: string; events: import('@dope/chat').ChatActivityEvent[] }):
+    { label: string; text: string; unavailable: boolean; truncated: boolean } | undefined {
+    const events = stream?.messageId === message.id && stream.executionId === message.execution.id ?
+        stream.events : message.activity?.events ?? [];
+    if (!events.length && message.execution.status === 'complete') return undefined;
+    const visible = events.filter(event => event.kind !== 'tool' && event.kind !== 'answer');
+    const text = visible.map(event => event.text).join('');
+    const limit = 12_000;
+    const truncated = text.length > limit || events.some(event => event.kind === 'truncated') ||
+        !!message.activity?.truncated;
+    return { label: visible.some(event => event.kind === 'thinking') ? 'Reasoning / Activity' : 'Provisional output',
+        text: text.length > limit ? text.slice(-limit) : text,
+        unavailable: !visible.some(event => event.kind === 'thinking'), truncated };
 }
 
 export function chatTranscriptCopyText(chat: Pick<Chat, 'messages'>,
@@ -344,8 +361,6 @@ export function chatTranscriptCopyText(chat: Pick<Chat, 'messages'>,
         return content ? [`${message.role === 'user' ? 'You' : 'Assistant'}:\n${content}`] : [];
     });
     if (transientUser?.content) turns.push(`You:\n${transientUser.content}`);
-    if (stream?.content && !chat.messages.some(message => message.id === stream.messageId))
-        turns.push(`Assistant:\n${stream.content}`);
     return turns.join('\n\n');
 }
 export function animateChatToLatest(element: HTMLElement, reducedMotion: boolean,

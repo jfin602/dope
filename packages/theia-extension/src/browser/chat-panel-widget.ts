@@ -14,7 +14,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatActivityPresentation, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
@@ -85,6 +85,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private strategicPresentationTarget?: { workspace: string; projectId: string; chatId: string };
     private strategicPresentationQueue: Promise<void> = Promise.resolve();
     private readonly openPlanningActivities = new Set<string>();
+    private readonly activityExpansion = new Map<string, boolean>();
     private readonly openToolActivities = new Set<string>();
     private promptStacksOnly = false;
     private lastWorkSelection?: WorkSelection;
@@ -1940,13 +1941,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (message.role === 'user') item.dataset.color = chat.color;
             const content = document.createElement('div');
             content.className = 'dope-chat-message-content';
-            const body = message.role === 'assistant' && state.stream?.messageId === message.id ?
-                state.stream.content : message.content;
+            const body = message.content;
             if (message.role === 'assistant' && message.execution.status === 'pending' && !body) {
                 if (!(state.running && message.id === activeAssistant?.id)) content.textContent = 'Working...';
             } else if (message.role === 'assistant') {
-                const activity = state.stream?.messageId === message.id ? undefined : planningActivityPresentation(message);
-                const outcome = state.stream?.messageId === message.id ? undefined : planningOutcome(message);
+                const activity = planningActivityPresentation(message);
+                const outcome = planningOutcome(message);
                 if (outcome) {
                     const explanation = document.createElement('div');
                     explanation.className = 'dope-chat-planning-outcome';
@@ -1991,7 +1991,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     message.planningActivity?.status === 'cancelled') {
                     const note = document.createElement('p');
                     note.className = 'dope-chat-planning-invalid';
-                    note.textContent = 'Unvalidated local planning output';
+                    note.textContent = 'No final response · Unvalidated local planning output';
                     content.append(note);
                     if (body) {
                         const raw = document.createElement('pre');
@@ -1999,13 +1999,37 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         raw.textContent = body;
                         content.append(raw);
                     }
-                } else content.append(renderUntrustedMessageMarkdown(this.markdown, body));
+                } else if (message.execution.status === 'complete')
+                    content.append(renderUntrustedMessageMarkdown(this.markdown, body));
+                else if (message.execution.status !== 'pending' && message.execution.status !== 'streaming') {
+                    const note = document.createElement('p'); note.textContent = 'No final response'; content.append(note);
+                }
             } else content.textContent = body;
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
             time.textContent = new Date(message.createdAt).toLocaleString();
             item.append(content);
             if (message.role === 'assistant') {
+                const diagnostic = chatActivityPresentation(message, state.stream);
+                if (diagnostic) {
+                    const details = document.createElement('details');
+                    details.className = 'dope-chat-stream-activity';
+                    const active = state.running && message.id === activeAssistant?.id;
+                    details.open = this.activityExpansion.get(message.id) ?? active;
+                    const heading = document.createElement('summary');
+                    heading.textContent = `${diagnostic.label}${active ? ' · Working' : ''}`;
+                    heading.addEventListener('click', () => this.activityExpansion.set(message.id, !details.open));
+                    const note = document.createElement('span');
+                    note.className = 'dope-chat-stream-note';
+                    note.textContent = diagnostic.unavailable ? 'Reasoning unavailable' : 'Surfaced reasoning';
+                    const raw = document.createElement('pre'); raw.textContent = diagnostic.text || 'No activity captured';
+                    details.append(heading, note, raw);
+                    if (diagnostic.truncated) {
+                        const limit = document.createElement('span'); limit.textContent = 'Activity display limited; captured record may be truncated.';
+                        details.append(limit);
+                    }
+                    item.append(details);
+                }
                 if (state.running && message.id === activeAssistant?.id)
                     this.appendWorkingStatus(item, message.execution.startedAt);
                 const events = state.toolProgress?.messageId === message.id && state.running ?
@@ -2089,8 +2113,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 item.append(recovery);
             }
             if (message.role === 'assistant') {
-                const copyText = chatResponseCopyText(message,
-                    state.stream?.messageId !== undefined && state.stream.messageId === message.id ? state.stream.content : undefined);
+                const copyText = chatResponseCopyText(message);
                 if (copyText) {
                     const copy = this.button('', () => {
                         void copyChatText(copyText)
@@ -2122,11 +2145,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         if (state.running && !activeAssistant) {
             const item = document.createElement('li'); item.className = 'dope-chat-message dope-chat-message-assistant';
-            item.setAttribute('aria-label', state.stream?.content ? 'Assistant' : 'Assistant working');
+            item.setAttribute('aria-label', 'Assistant working');
             const content = document.createElement('div'); content.className = 'dope-chat-message-content';
-            if (state.stream?.content) {
-                content.append(renderUntrustedMessageMarkdown(this.markdown, state.stream.content));
-            }
+            content.textContent = 'Working...';
             item.append(content); transcript.append(item);
             if (state.runStartedAt) this.appendWorkingStatus(item, state.runStartedAt);
             if (state.runStartedAt) this.appendToolActivity(item, state.toolProgress?.messageId ?? '',

@@ -355,7 +355,8 @@ export class ChatContextComposer {
             if (source.id === active.id || !source.messageId) throw new Error('Select a message from another Chat');
             const saved = (await this.chats.read(root)).chats.find(item => item.id === source.id);
             const message = saved?.messages.find(item => item.id === source.messageId);
-            if (!saved || !message) throw new Error('Saved Chat excerpt missing');
+            if (!saved || !message || message.role === 'assistant' && message.execution.status !== 'complete')
+                throw new Error('Saved Chat excerpt missing');
             return { label: `${saved.title}: ${message.id}`, text: message.content };
         }
         throw new Error('Unsupported context source');

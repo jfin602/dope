@@ -1,5 +1,5 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
-import type { Chat, ChatCollection, ChatFolderPath } from '@dope/chat';
+import type { Chat, ChatCollection, ChatFolderPath, ChatActivityEvent } from '@dope/chat';
 import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
     ChatPlanningProposal, ChatRoadmapOffer, ChatStrategicDraftReview, ChatTurnResult,
     ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
@@ -85,7 +85,8 @@ export class ChatPanelController {
         status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean; detail?: string; target?: string }[] };
     running = false;
     runStartedAt?: string;
-    stream: { messageId: string; executionId: string; content: string; sequence: number } | undefined;
+    stream: { messageId: string; executionId: string; content: string; sequence: number;
+        activitySequence: number; events: ChatActivityEvent[] } | undefined;
     planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
     roadmapGenerationStage?: Extract<import('@dope/chat/lib/service').ChatEvent, { kind: 'planning-progress' }>['stage'];
     roadmapGenerationProjectId?: string;
@@ -208,11 +209,24 @@ export class ChatPanelController {
                         event.sequence !== current.sequence + 1)) return;
                     if (!current && event.sequence !== 0) return;
                     this.stream = { messageId: event.messageId, executionId: event.executionId,
-                        content: (current?.content ?? '') + event.delta, sequence: event.sequence };
+                        content: (current?.content ?? '') + event.delta, sequence: event.sequence,
+                        activitySequence: current?.activitySequence ?? 0, events: current?.events ?? [] };
                     this.changed();
                     return;
                 }
-                if (event.kind === 'assistant-activity') return; // P2 projects this diagnostic channel.
+                if (event.kind === 'assistant-activity') {
+                    if (!this.running || event.chatId !== this.chatId) return;
+                    const current = this.stream;
+                    if (current && (current.messageId !== event.messageId || current.executionId !== event.executionId ||
+                        event.sequence !== current.activitySequence + 1)) return;
+                    if (!current && event.sequence !== 1) return;
+                    this.stream = { messageId: event.messageId, executionId: event.executionId,
+                        content: current?.content ?? '', sequence: current?.sequence ?? -1,
+                        activitySequence: event.sequence,
+                        events: [...(current?.events ?? []), { sequence: event.sequence,
+                            kind: event.activityKind, text: event.text }] };
+                    this.changed(); return;
+                }
                 if (event.kind === 'lease-changed' && event.chatId === this.retryChatId) {
                     const chatId = this.retryChatId!;
                     // The old connection may have closed before its browser could
