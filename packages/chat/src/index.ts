@@ -18,7 +18,7 @@ export interface ChatContextRef {
     kind: ChatContextKind;
     id: string; // Project-relative path or Dope-owned artifact identity, according to kind.
     label: string;
-    origin?: 'manual' | 'automatic'; // Omitted on older persisted refs; those are manual.
+    origin?: 'manual' | 'automatic' | 'tool'; // Omitted on older persisted refs; those are manual.
     excerpt?: string;
     estimatedTokens: number;
     includedBytes?: number;
@@ -234,7 +234,7 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     if (v.schemaVersion !== 1) throw new Error('Unsupported context reference schema');
     const ref: ChatContextRef = { schemaVersion: 1, kind: choice(v.kind, contextKinds, 'context kind'), id: string(v.id, 'context ID'),
         label: string(v.label, 'context label'), estimatedTokens: count(v.estimatedTokens, 'context tokens') };
-    if (v.origin !== undefined) ref.origin = choice(v.origin, ['manual', 'automatic'] as const, 'context origin');
+    if (v.origin !== undefined) ref.origin = choice(v.origin, ['manual', 'automatic', 'tool'] as const, 'context origin');
     if (v.excerpt !== undefined) ref.excerpt = string(v.excerpt, 'context excerpt', false);
     if (v.includedBytes !== undefined) ref.includedBytes = count(v.includedBytes, 'included bytes');
     if (v.contentHash !== undefined) {

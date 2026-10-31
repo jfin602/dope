@@ -206,13 +206,13 @@ export class ChatBackend implements ChatService {
     private async composeTurn(root: string, chat: Chat, content: string, context: ChatContextSelection[],
         model: ConversationModelCapabilities, budget?: ReturnType<typeof roadmapLocalBudget>,
         draft?: { text: string }, grounding?: GroundingResult, bridgeMode = false,
-        opportunity?: string) {
+        opportunity?: string, piMode = false) {
         const capabilities = planningComposerCapabilities(model, budget, draft);
         let inputTokens = capabilities.maxInputTokens;
         for (let attempt = 0; attempt < 4; attempt++) {
             const composed = await this.composer!.compose(root, chat, content, context,
                 inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding,
-                !!budget, bridgeMode, opportunity);
+                !!budget, bridgeMode, opportunity, piMode);
             if (!budget) return composed;
             const bytes = Buffer.byteLength(JSON.stringify(this.withDraft(composed.messages, draft)), 'utf8');
             if (bytes <= budget.inputBytes) {
@@ -276,7 +276,9 @@ export class ChatBackend implements ChatService {
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
         const composed = await this.composeTurn(root, chat, request.content, request.context,
-            model.capabilities, budget, draft, await this.grounder?.ground(root, request.content), false, opportunity);
+            model.capabilities, budget, draft,
+            connection?.providerId === 'local' ? undefined : await this.grounder?.ground(root, request.content),
+            false, opportunity, connection?.providerId === 'local');
         if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
             chat.settings.context.reservedOutputTokens);
         if (request.context.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
@@ -1015,12 +1017,14 @@ export class ChatBackend implements ChatService {
         const planningOutput = chat.settings.context.reservedOutputTokens;
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             planningOutput, model.capabilities) : undefined;
-        const grounding = await this.grounder?.ground(root, content);
+        // Pi must discover source with its own brokered tools; automatic grounding is for other providers.
+        const grounding = connection.providerId === 'local' ? undefined : await this.grounder?.ground(root, content);
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
         const composed = await this.composeTurn(root, contextChat, content, request.context ?? [],
-            model.capabilities, budget, planningPrompt, grounding, !!bridge, opportunity);
+            model.capabilities, budget, planningPrompt, grounding, !!bridge, opportunity,
+            connection.providerId === 'local');
         if (bridge) composed.refs.push(bridge.reference);
         if ((request.context ?? []).some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
@@ -1205,7 +1209,7 @@ export class ChatBackend implements ChatService {
                     const truncated = excerpt !== block.text || result.diagnostics.some(item =>
                         item.kind === 'truncated' || item.kind === 'omitted');
                     toolBytes += Buffer.byteLength(excerpt);
-                    sourceRefs.push({ ...block.ref, includedBytes: Buffer.byteLength(excerpt),
+                    sourceRefs.push({ ...block.ref, origin: 'tool', includedBytes: Buffer.byteLength(excerpt),
                         estimatedTokens: Math.ceil(Buffer.byteLength(excerpt) / 3) + 4,
                         contentHash: createHash('sha256').update(excerpt).digest('hex') });
                     toolEvents.push({ name: toolName, status: 'completed', truncated });
@@ -1258,6 +1262,9 @@ export class ChatBackend implements ChatService {
                 signal: abort.signal,
                 conversation: async target => {
                     const resolvedConnection = (await this.models!.list()).connections.find(item => item.id === target.connectionId);
+                    if (connection.providerId === 'local' && resolvedConnection?.providerId !== 'local')
+                        throw new ModelRuntimeFailure('Pi Chat cannot switch providers within a turn; choose a model explicitly',
+                            'unsupported-capability');
                     const resolvedModel = resolvedConnection?.models.find(item => item.id === target.modelId && item.usable);
                     if (!resolvedModel) throw new ModelRuntimeFailure('Role target unavailable', 'model-unavailable');
                     for (const [id, value] of Object.entries(controls))
@@ -1270,7 +1277,10 @@ export class ChatBackend implements ChatService {
                         throw new ModelRuntimeFailure('Loaded local context or limits changed; preview this turn again',
                             'unsupported-capability');
                     const next = await this.composeTurn(root, contextChat, content, request.context ?? [],
-                        resolvedModel.capabilities, nextBudget, planningPrompt, grounding, !!bridge, opportunity);
+                        resolvedModel.capabilities, nextBudget, planningPrompt,
+                        resolvedConnection?.providerId === 'local' ? undefined :
+                            grounding ?? await this.grounder?.ground(root, content),
+                        !!bridge, opportunity, resolvedConnection?.providerId === 'local');
                     if (bridge) next.refs.push(bridge.reference);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');

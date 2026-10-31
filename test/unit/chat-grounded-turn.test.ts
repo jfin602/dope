@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
-import { ChatContextComposer, GROUNDED_CHAT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { parseRoutingProvenance } from '../../packages/ai/lib/index.js';
 
@@ -54,7 +54,7 @@ async function open(service: ChatBackend, root: string) {
   return { projectHandle, chatId, leaseToken: lease.token };
 }
 
-test('ordinary Chat supplies local listing/search evidence, orientation, manual context and persisted Auto refs', async () => {
+test('Pi Chat sends workspace identity without automatic source and retains explicit file context', async () => {
   const root = await fixture();
   const { service, sent } = setup(root);
   try {
@@ -66,21 +66,21 @@ test('ordinary Chat supplies local listing/search evidence, orientation, manual 
       operation: { type: 'set-settings', chatId: turn.chatId, settings } });
     const preview = await service.previewContext({ projectHandle: turn.projectHandle, chatId: turn.chatId,
       selectedModel: target, content: 'what is in test/?', context: [] });
-    assert.ok(preview.refs.some(ref => ref.origin === 'automatic' && ref.kind === 'directory'));
+    assert.equal(preview.refs.some(ref => ref.origin === 'automatic'), false);
     const result = await service.runTurn({ ...turn, selectedModel: target, content: 'what is in test/?', context: [] });
-    assert.ok(result.refs.some(ref => ref.origin === 'automatic' && ref.id === 'test'));
-    assert.match(sent[0].messages.at(-1)!.content, /chat\.test\.ts/);
+    assert.equal(result.refs.some(ref => ref.origin === 'automatic'), false);
+    assert.doesNotMatch(JSON.stringify(sent[0]), /Chat persistence|chat\.test\.ts/);
     assert.equal(sent[0].messages[0].role, 'system');
-    assert.equal(sent[0].messages[0].content, GROUNDED_CHAT_INSTRUCTION);
-    assert.doesNotMatch(JSON.stringify(sent[0]), new RegExp(root));
+    assert.match(sent[0].messages[0].content, /Pi read_file/);
+    assert.match(sent[0].messages[0].content, new RegExp(root));
     const saved = (await service.read(turn.projectHandle)).chats[0].messages[0];
     assert.equal(saved.role, 'user');
     if (saved.role === 'user') {
       assert.deepEqual(saved.contextRefs, result.refs);
-      assert.ok(saved.contextRefs.every(ref => ref.origin === 'automatic' && ref.contentHash?.length === 64));
+      assert.equal(saved.contextRefs.length, 0);
     }
     await service.runTurn({ ...turn, selectedModel: target, content: 'where is Chat persistence implemented?', context: [] });
-    assert.match(sent[1].messages.at(-1)!.content, /Project path search|Project text search/);
+    assert.doesNotMatch(sent[1].messages.at(-1)!.content, /Project path search|Project text search|ChatRepository/);
     await service.runTurn({ ...turn, selectedModel: target, content: 'hello there', context: [] });
     assert.doesNotMatch(sent[2].messages.at(-1)!.content, /Project path search|Project text search|chat\.test\.ts/);
     await service.runTurn({ ...turn, selectedModel: target, content: 'Read manual.txt',
@@ -143,6 +143,7 @@ test('local Pi discovery is project-bound, read-only and records safe source act
       ['read_file', 'denied'], ['read_file', 'denied'], ['run_command', 'denied']
     ]);
     assert.deepEqual(saved.execution.sourceRefs?.map(ref => ref.kind), ['directory', 'path-search', 'text-search', 'file', 'file']);
+    assert.ok(saved.execution.sourceRefs?.every(ref => ref.origin === 'tool'));
     assert.equal(saved.execution.toolEvents?.[4].truncated, true);
     assert.ok(saved.execution.sourceRefs?.every(ref => ref.projectId && ref.contentHash?.length === 64));
     assert.equal(JSON.stringify(saved).includes('unsafe'), false);
@@ -178,7 +179,94 @@ test('explicit no-tool Chat omits the project broker while read-only requests re
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('retry keeps evidence identity and refuses changed evidence before a second model request', async () => {
+test('Pi reads the named source through its tool, keeps related bytes out, and preserves explicit selections', async () => {
+  const root = await fixture();
+  await mkdir(join(root, 'src'));
+  const source = 'export const counter = () => 7; // PI_READ_ONLY_FACT';
+  await writeFile(join(root, 'src', 'counter.js'), source);
+  await writeFile(join(root, 'src', 'related.js'), 'RELATED_PRIVATE_SENTINEL');
+  const repository = new ChatRepository();
+  const grounder = new ChatProjectGrounder(noMap as never);
+  const composer = new ChatContextComposer({} as never, {} as never, noMap as never, repository);
+  const requests: string[] = [];
+  const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+    models: [{ id: 'chat', label: 'Pi', usable: true, capabilities: { ...capabilities, contextWindowTokens: 8192 } }] }] }),
+    async *generate(_selection: typeof target, request: { messages: Array<{ role: string; content: string }>;
+      projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+      const prompt = JSON.stringify(request.messages);
+      requests.push(prompt);
+      assert.match(prompt, /src\/counter\.js/);
+      assert.doesNotMatch(prompt, /PI_READ_ONLY_FACT|RELATED_PRIVATE_SENTINEL/);
+      assert.ok(request.projectTools);
+      const result = JSON.parse(await request.projectTools!.execute('read_file', { path: 'src/counter.js' }));
+      assert.equal(result.text, source);
+      assert.equal(result.source, 'src/counter.js');
+      await assert.rejects(request.projectTools!.execute('edit_file',
+        { path: 'src/counter.js', content: 'changed' }), /denied/);
+      yield { type: 'complete' as const, text: 'The counter returns 7.', actualModelId: 'chat',
+        finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+  const service = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer, undefined, grounder);
+  try {
+    const turn = await open(service, root);
+    const settingsState = await service.read(turn.projectHandle);
+    const settings = structuredClone(settingsState.chats[0].settings);
+    settings.context.allowedSources = ['selection', 'file'];
+    await service.mutate({ projectHandle: turn.projectHandle, expectedRevision: settingsState.revision,
+      operation: { type: 'set-settings', chatId: turn.chatId, settings } });
+    const question = 'Inspect src/counter.js and explain the actual counter behavior.';
+    const preview = await service.previewContext({ projectHandle: turn.projectHandle, chatId: turn.chatId,
+      selectedModel: target, content: question, context: [] });
+    assert.equal(preview.refs.some(ref => ref.origin === 'automatic'), false);
+    await service.runTurn({ ...turn, selectedModel: target, content: question, context: [] });
+    const answer = (await service.get(turn.projectHandle, turn.chatId))!.messages.at(-1);
+    assert.equal(answer?.role, 'assistant');
+    if (answer?.role === 'assistant') {
+      assert.equal(answer.content, 'The counter returns 7.');
+      assert.deepEqual(answer.execution.toolEvents?.map(item => [item.name, item.status]),
+        [['read_file', 'completed']]);
+      assert.equal(answer.execution.sourceRefs?.[0]?.id, 'src/counter.js');
+      assert.equal(answer.execution.sourceRefs?.[0]?.origin, 'tool');
+    }
+    assert.equal(await readFile(join(root, 'src', 'counter.js'), 'utf8'), source);
+    const explicit = 'SELECTED_CODE_FACT';
+    const selection = { kind: 'selection' as const, id: 'src/counter.js', text: explicit,
+      start: 0, end: explicit.length };
+    const selected = await composer.compose(root, (await service.get(turn.projectHandle, turn.chatId))!,
+      'Explain this selection', [selection], { ...capabilities, contextWindowTokens: 8192 },
+      undefined, false, false, undefined, true);
+    assert.match(selected.messages.at(-1)!.content, /SELECTED_CODE_FACT/);
+    assert.equal(selected.refs[0].origin, undefined);
+    assert.equal(requests.length, 1);
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('hosted Chat retains automatic source grounding when authorized', async () => {
+  const root = await fixture();
+  const repository = new ChatRepository();
+  const grounder = new ChatProjectGrounder(noMap as never);
+  const composer = new ChatContextComposer({} as never, {} as never, noMap as never, repository);
+  const hosted = { connectionId: 'hosted', modelId: 'chat' };
+  const sent: string[] = [];
+  const models = { list: async () => ({ connections: [{ id: 'hosted', ready: true, providerId: 'hosted',
+    models: [{ id: 'chat', label: 'Hosted', usable: true, capabilities: { ...capabilities,
+      contextWindowTokens: 8192 } }] }] }),
+    async *generate(_selection: typeof hosted, request: { messages: Array<{ content: string }> }) {
+      sent.push(JSON.stringify(request.messages));
+      yield { type: 'complete' as const, text: 'Grounded.', actualModelId: 'chat', finishReason: 'stop',
+        usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+  const service = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer, undefined, grounder);
+  try {
+    const turn = await open(service, root);
+    const result = await service.runTurn({ ...turn, selectedModel: hosted,
+      content: 'Read manual.txt', context: [], hostedProjectDataAuthorized: true });
+    assert.match(sent[0], /MANUAL FACT/);
+    assert.ok(result.refs.some(ref => ref.origin === 'automatic' && ref.id === 'manual.txt'));
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('Pi retry does not recapture changed source as automatic evidence', async () => {
   const root = await fixture();
   const { service, sent, failNext } = setup(root, { fail: true });
   try {
@@ -195,13 +283,13 @@ test('retry keeps evidence identity and refuses changed evidence before a second
     assert.equal(changedAttempt?.role, 'assistant');
     if (changedAttempt?.role !== 'assistant') return;
     await writeFile(join(root, 'test', 'new.test.ts'), 'Changed listing');
-    await assert.rejects(service.runTurn({ ...turn, selectedModel: target, retryMessageId: changedAttempt.id }),
-      /Retry project evidence changed or is stale/);
-    assert.equal(sent.length, 3);
+    await service.runTurn({ ...turn, selectedModel: target, retryMessageId: changedAttempt.id });
+    assert.equal(sent.length, 4);
+    assert.doesNotMatch(JSON.stringify(sent[3]), /Changed listing|new\.test\.ts/);
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('small viable input windows report omitted Auto evidence and never exceed the model budget', async () => {
+test('small viable Pi input windows contain no automatic evidence', async () => {
   const root = await fixture();
   const { service, sent } = setup(root, { window: 550 });
   try {
@@ -214,8 +302,7 @@ test('small viable input windows report omitted Auto evidence and never exceed t
       operation: { type: 'set-settings', chatId: turn.chatId, settings } });
     const preview = await service.runTurn({ ...turn, selectedModel: target, content: 'what is in test/?' });
     assert.ok(preview.usedTokens <= preview.budgetTokens);
-    assert.ok(preview.diagnostics.some(item => item.kind === 'omitted' || item.kind === 'truncated'));
-    assert.ok(preview.refs.some(ref => ref.origin === 'automatic' && ref.includedBytes === 0));
+    assert.equal(preview.refs.some(ref => ref.origin === 'automatic'), false);
     assert.equal(sent.length, 1);
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
@@ -254,7 +341,7 @@ test('grounding only writes Chat state and no project authority or map input', a
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('Interactive fallback reuses selected Auto evidence and hosted egress requires authorization', async () => {
+test('Interactive Pi Chat blocks provider fallback before source grounding and requires hosted authorization', async () => {
   const root = await fixture();
   for (let i = 0; i < 50; i++) await writeFile(join(root, 'test', `extra-${i}.test.ts`), 'extra');
   const repository = new ChatRepository();
@@ -262,6 +349,9 @@ test('Interactive fallback reuses selected Auto evidence and hosted egress requi
   const composer = new ChatContextComposer({} as never, {} as never, noMap as never, repository);
   const first = { connectionId: 'local', modelId: 'chat' };
   const second = { connectionId: 'hosted', modelId: 'chat' };
+  const originalGround = grounder.ground.bind(grounder);
+  let groundCalls = 0;
+  grounder.ground = async (project, question) => { groundCalls++; return originalGround(project, question); };
   let preferHosted = true;
   const sent: Array<{ target: string; content: string }> = [];
   const models = { list: async () => ({ connections: [
@@ -306,27 +396,19 @@ test('Interactive fallback reuses selected Auto evidence and hosted egress requi
     await assert.rejects(service.runTurn({ ...turn, content: 'what is in test/?' }), /hosted egress confirmation required/);
     assert.equal(sent.length, 0);
     preferHosted = false;
-    const selected = await service.runTurn({ ...turn, content: 'what is in test/?', hostedProjectDataAuthorized: true });
-    assert.equal(sent.length, 2);
-    assert.match(sent[0].content, /chat\.test\.ts/);
-    assert.match(sent[1].content, /chat\.test\.ts/);
-    const state = await service.read(turn.projectHandle);
-    const user = state.chats[0].messages[0];
-    assert.equal(user.role, 'user');
-    if (user.role === 'user') {
-      assert.deepEqual(user.contextRefs, selected.refs);
-      assert.ok(user.contextRefs.some(ref => ref.origin === 'automatic' && ref.kind === 'directory'));
-      assert.equal(selected.budgetTokens, 900);
-      assert.ok(selected.usedTokens <= selected.budgetTokens);
-      assert.deepEqual(selected.refs.map(ref => [ref.kind, ref.id]), initial.refs.map(ref => [ref.kind, ref.id]));
-    }
+    await assert.rejects(service.runTurn({ ...turn, content: 'what is in test/?', hostedProjectDataAuthorized: true }),
+      /Pi Chat cannot switch providers within a turn/);
+    assert.equal(sent.length, 1);
+    assert.doesNotMatch(sent[0].content, /chat\.test\.ts/);
+    assert.equal(initial.refs.some(ref => ref.origin === 'automatic'), false);
+    assert.equal(groundCalls, 0);
     preferHosted = true;
     await assert.rejects(service.runTurn({ ...turn, content: 'what is in test/?' }), /hosted egress confirmation required/);
-    assert.equal(sent.length, 2);
+    assert.equal(sent.length, 1);
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('a new project handle selects only the new project evidence', async () => {
+test('a new project handle sends only the new workspace identity', async () => {
   const firstRoot = await fixture();
   const secondRoot = await fixture();
   await rm(join(secondRoot, 'test', 'chat.test.ts'));
@@ -337,9 +419,9 @@ test('a new project handle selects only the new project evidence', async () => {
     await first.service.runTurn({ ...a, selectedModel: target, content: 'what is in test/?' });
     const b = await open(second.service, secondRoot);
     await second.service.runTurn({ ...b, selectedModel: target, content: 'what is in test/?' });
-    assert.match(first.sent[0].messages.at(-1)!.content, /chat\.test\.ts/);
-    assert.match(second.sent[0].messages.at(-1)!.content, /different\.test\.ts/);
-    assert.doesNotMatch(second.sent[0].messages.at(-1)!.content, /chat\.test\.ts/);
+    assert.match(first.sent[0].messages[0].content, new RegExp(firstRoot));
+    assert.match(second.sent[0].messages[0].content, new RegExp(secondRoot));
+    assert.doesNotMatch(JSON.stringify(second.sent[0]), /second project|different\.test\.ts/);
     assert.throws(() => second.service.read(a.projectHandle), /Invalid or disposed Chat handle/);
   } finally {
     first.service.dispose(); second.service.dispose();
