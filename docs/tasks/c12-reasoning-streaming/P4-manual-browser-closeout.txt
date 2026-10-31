@@ -1,0 +1,22 @@
+TASK: Correction 12 / P4 — Manual Codex browser reasoning and copy closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Do not bump package/version/model/provider/lockfiles.
+
+MANUAL CLOSEOUT — NEVER RUN BY HEADLESS PHASE RUNNER
+Use the Codex in-app browser for real Chrome UI operation, not screenshots of unit tests or hypothetical output. Owner separately operates installed Electron/AppImage; real browser evidence does not prove native. Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0042, c12-reasoning-streaming README/assessment/plan and P1-P3 committed reports. Inspect exact git HEAD, dirty tree, version, current Pi/model and available provider thinking channels. Preserve all local owner changes and Roadmap files. Do not self-commit or /activate.
+
+MANUAL MATRIX
+1. In a disposable real project with src/counter.js defining increment(value) returning value+1, ask 'Read src/counter.js with the available file tools and tell me what increment(1) returns. Do not modify files or Roadmap.' Observe actual source read, tool/progress activity and final answer 2. Record actual tool and UI proof, not mere inference. Try one naturally completed exposed-thinking provider if available; otherwise mark thinking-channel unavailable and test provisional text honestly.
+2. Replay a deterministic captured streaming fixture containing twelve repetitive provisional/reasoning paragraphs and cancel before final. In the real UI the activity is bounded/gray/inspectable, status Cancelled, no formal final answer. On fresh next turn prove exact model input/history excludes all cancelled paragraphs; no project/Roadmap mutation.
+3. Complete a turn with distinct supported reasoning/provisional and final channels: confirm automatic collapse, final markdown presentation, reopening activity, saved Chat restart/reload and retry preserve proper turn/execution association. Cover no-reasoning provider and malformed delimiter/no-complete interruption as available; label unobserved gaps.
+4. Actually left-click Copy Response/Copy Transcript/Copy JSON and compare clipboard to expected ordinary payload; right-click each and choose Copy with Reasoning, checking chronological captured content/status with no hidden/invented reasoning, secret tool body or approval token. Test associated Copy controls, Shift+F10/Context Menu key, Escape, focus restore and disabled/no-reasoning explanation.
+5. Verify drag-scroll, text selection, Space-pan, scroll-follow under long activity, fixed composer height, dock movement, tooltip feedback, interleaved tools/Ask-Allow, other providers and Planning/Work regressions. Run focused final checks on exactly tested source, inspect any errors.
+6. Capture screenshot/interaction evidence and exact HEAD, diff, version, selected model/context, Pi runtime, test/build results, browser session, clipboard extracts, next-turn context check, PASS/FAIL/BLOCKED/EVIDENCE GAP per scenario. Owner-native Electron must be separately operated and recorded; if not observed, explicitly EVIDENCE GAP. Do not claim overall Phase 12 Green from a correction-scope browser pass.
+
+Write dated closeout only for observed facts, preserve historical C12 failures, then STOP. The runner executes only P1-P3; this prompt runs manually after the runner, never automatically with --closeout.
