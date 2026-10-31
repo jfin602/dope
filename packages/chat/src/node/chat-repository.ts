@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, readdir, realpath, rename, rm, rmdir, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assignedChatColor, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
+import { MANUAL_CHAT_CONTEXT_SOURCES, assignedChatColor, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
     parseChatCollection, parseChatColor, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
 import type { Chat, ChatCollection, ChatFolder, ChatPlanningActivity, ChatRoadmapAction } from '../index';
 import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
@@ -11,7 +11,7 @@ import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '.
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const DEFAULT_SETTINGS = { schemaVersion: 1 as const, modelPolicy: { type: 'follow-interactive' as const }, context: { maxInputTokens: 8192, reservedOutputTokens: 1024,
     history: 'recent' as const, savedChatSearch: false,
-    allowedSources: ['roadmap-checkpoint' as const, 'roadmap' as const] } };
+    allowedSources: [...MANUAL_CHAT_CONTEXT_SOURCES] } };
 const interrupted = 'Interrupted before completion';
 const leaseDuration = 60_000;
 type Entry = { id: string; folderPath: string; file: string; revision: number };

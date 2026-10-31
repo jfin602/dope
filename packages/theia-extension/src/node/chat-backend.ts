@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
     ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
-import { suggestedChatTitle, ChatActivityRecorder, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
+import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
@@ -1125,9 +1125,11 @@ export class ChatBackend implements ChatService {
                     `${name}(${JSON.stringify({ [field]: detailValue })})` : undefined;
                 const target = detail && typeof detailValue === 'string' ?
                     detailValue.replace(/\s+/gu, ' ').trim().slice(0, 160) : undefined;
+                const activityPath = name === 'read_file' || name === 'list_files' ?
+                    safeChatToolPath(detailValue) : undefined;
                 const notify = (status: 'running' | 'completed' | 'failed' | 'denied', truncated?: boolean) => {
                     if (['read_file', 'list_files', 'search_paths', 'search_text', 'run_command'].includes(name))
-                        recordActivity('tool', `${name}: ${status}`);
+                        recordActivity('tool', `${name}: ${status}${activityPath ? ` · ${activityPath}` : ''}`);
                     if (!this.handle || !assistant || !['read_file', 'list_files', 'search_paths',
                         'search_text', 'run_command'].includes(name)) return;
                     try { this.client.notifyChatEvent({ projectHandle: this.handle, kind: 'tool-progress',

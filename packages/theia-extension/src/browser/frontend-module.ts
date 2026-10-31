@@ -234,7 +234,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             onDidChange: ChatPanelWidget.onDidChangeToolbar });
         registry.registerItem({ id: 'dope.chat.settings', command: 'dope.chat.settings',
             icon: codicon('gear'), tooltip: 'Chat settings', group: 'navigation',
-            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canOpenChatSettings,
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canOpenChatSettings && !widget.isChatSettingsOpen,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.chat.closeSettings', command: 'dope.chat.settings',
+            icon: codicon('close'), tooltip: 'Close chat settings', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.isChatSettingsOpen,
             onDidChange: ChatPanelWidget.onDidChangeToolbar });
     } });
     bind(CommandContribution).toConstantValue({ registerCommands: (commands: CommandRegistry) => {

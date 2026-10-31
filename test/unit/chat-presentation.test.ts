@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatStreamingActivityPresentation, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -25,8 +25,43 @@ test('saved and live diagnostic activity stays bounded and outside the final ans
         { messageId: 'turn', executionId: 'execution', events })?.text, '');
     const completed = { ...base, content: 'Final answer', execution: { ...base.execution, status: 'complete' } } as ChatAssistantMessage;
     assert.equal(chatResponseCopyText(completed), 'Final answer');
-    assert.equal(chatActivityPresentation(completed)?.text, cancelled.text);
+    assert.equal(chatActivityPresentation(completed), undefined);
     assert.equal(chatActivityPresentation({ ...completed, activity: undefined }), undefined);
+});
+
+test('committed final stream is absent from reasoning while cancellation keeps provisional text', () => {
+    const events = [
+        { sequence: 1, kind: 'thinking' as const, text: 'I will add the numbers.\n\n' },
+        { sequence: 2, kind: 'provisional' as const, text: 'The result is **15**.\n' },
+        { sequence: 3, kind: 'provisional' as const, text: '- First point\n- Second point' },
+    ];
+    const activity = { events, truncated: false };
+    const content = 'The result is **15**.\n- First point\n- Second point';
+    const complete = { id: 'turn', content, execution: { id: 'run', status: 'complete' }, activity } as ChatAssistantMessage;
+    assert.equal(chatActivityPresentation(complete)?.text, 'I will add the numbers.\n\n');
+    assert.equal(chatStreamingActivityPresentation(events, true)?.text, 'I will add the numbers.\n\n');
+    assert.equal(chatStreamingActivityPresentation(events)?.text, 'I will add the numbers.\n\n' + content);
+    const cancelled = { ...complete, content: '', execution: { id: 'run', status: 'cancelled' } } as ChatAssistantMessage;
+    assert.equal(chatActivityPresentation(cancelled)?.text, 'I will add the numbers.\n\n' + content);
+});
+
+test('reasoning keeps Markdown and line breaks around one tool call at its recorded position', () => {
+    const events = [
+        { sequence: 1, kind: 'thinking' as const, text: 'First line\n**bold text**\n\n' },
+        { sequence: 2, kind: 'tool' as const, text: 'read_file: running · src/counter.js' },
+        { sequence: 3, kind: 'tool' as const, text: 'read_file: completed · src/counter.js' },
+        { sequence: 4, kind: 'thinking' as const, text: 'After the call\n- first item\n- second item' },
+    ];
+    const result = chatStreamingActivityPresentation(events)!;
+    assert.deepEqual(result.parts, [
+        { kind: 'thinking', text: 'First line\n**bold text**\n\n' },
+        { kind: 'tool', name: 'read_file', status: 'completed', path: 'src/counter.js' },
+        { kind: 'thinking', text: 'After the call\n- first item\n- second item' },
+    ]);
+    assert.equal(chatToolCallLabel(result.parts[1] as Extract<typeof result.parts[number], { kind: 'tool' }>),
+        'read_file · src/counter.js · completed');
+    assert.match(renderUntrustedMessageHtml(result.parts[0].text), /<strong>bold text<\/strong>/);
+    assert.match(renderUntrustedMessageHtml(result.parts[2].text), /<li>first item<\/li>/);
 });
 
 test('only persisted trusted planning activity receives a compact label and honest status', () => {
@@ -230,7 +265,8 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(widget, /for \(const value of CHAT_COLORS\)/);
     assert.match(widget, /type: 'set-color', chatId, color: value/);
     assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, body\)/);
-    assert.doesNotMatch(widget, /renderUntrustedMessageMarkdown\(this\.markdown, state\.stream\.content\)/);
+    assert.match(widget, /state\.stream\.executionId === message\.execution\.id/);
+    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, state\.stream\.content\)/);
     assert.match(markdown, /messageMarkdown\.renderer\.rules\.image =/);
     assert.match(markdown, /safeChatLink\(link\.getAttribute\('href'\)!, document\.baseURI\)/);
     assert.match(markdown, /link\.removeAttribute\('href'\)/);

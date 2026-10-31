@@ -8,7 +8,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { ChatActivityRecorder } from '../../packages/chat/lib/index.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
@@ -625,7 +625,7 @@ test('diagnostic copy is scoped, chronological, persistent and separate from cle
     assert.ok(diagnostic.indexOf('Repeated paragraph 11.') < diagnostic.indexOf('Second question.'));
     assert.match(diagnostic, /No final response/);
     assert.match(diagnostic, /Captured reasoning, exactly\./);
-    assert.match(diagnostic, /Tool: read_file: completed/);
+    assert.match(diagnostic, /read_file · completed/);
     assert.match(diagnostic, /Final response:\nCommitted answer\./);
     assert.doesNotMatch(chatDiagnosticCopyText(chat, { messageId: doneId })!, /Repeated paragraph/);
     assert.equal(chatDiagnosticCopyText({ ...chat, id: randomUUID() }, { messageId: cancelledId }), undefined);
@@ -651,9 +651,69 @@ test('diagnostic copy marks storage truncation and exports metadata, not tool pa
         import('../../packages/chat/lib/index.js').Chat, { messageId })!;
     assert.match(exported, /\[redacted\]/);
     assert.match(exported, /Activity truncated/);
-    assert.match(exported, /Tool: run_command: completed/);
+    assert.match(exported, /run_command · completed/);
     assert.match(exported, /No final response/);
     assert.doesNotMatch(exported, /veryprivate|approval token|raw tool output/);
+});
+
+test('copy with reasoning places one tool call between the exact reasoning passages', () => {
+    const chatId = randomUUID(); const messageId = randomUUID(); const executionId = randomUUID();
+    const recorder = new ChatActivityRecorder(chatId, messageId, executionId);
+    recorder.add('thinking', 'Before **the call**\n\n');
+    recorder.add('tool', 'read_file: running · src/counter.js');
+    recorder.add('tool', 'read_file: completed · src/counter.js');
+    recorder.add('thinking', 'After the call\nNext line');
+    const message = { role: 'assistant', id: messageId, content: 'Final answer.',
+        execution: { id: executionId, status: 'complete' }, activity: recorder.snapshot() } as
+        import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    const chat = { id: chatId, messages: [message] } as import('../../packages/chat/lib/index.js').Chat;
+    const copied = chatDiagnosticCopyText(chat, { messageId })!;
+    assert.match(copied, /\[Reasoning\]\nBefore \*\*the call\*\*\n\nread_file · src\/counter\.js · completed\nAfter the call\nNext line/);
+    assert.equal(copied.match(/\[Reasoning\]/g)?.length, 1);
+    assert.equal(copied.match(/read_file · src\/counter\.js/g)?.length, 1);
+    assert.equal(chatResponseCopyText(message), 'Final answer.');
+    const toolOnly = { ...message, activity: { ...message.activity!, events: recorder.snapshot().events.filter(event =>
+        event.kind === 'tool') } };
+    assert.match(chatDiagnosticCopyText({ id: chatId, messages: [toolOnly] } as
+        import('../../packages/chat/lib/index.js').Chat, { messageId })!, /read_file · src\/counter\.js · completed/);
+});
+
+test('diagnostic copy does not repeat committed final answer as provisional activity', () => {
+    const chatId = randomUUID(); const messageId = randomUUID(); const executionId = randomUUID();
+    const recorder = new ChatActivityRecorder(chatId, messageId, executionId);
+    recorder.add('thinking', 'I will calculate this.\n');
+    recorder.add('provisional', 'The answer is **15**.');
+    const message = { role: 'assistant', id: messageId, content: 'The answer is **15**.',
+        execution: { id: executionId, status: 'complete' }, activity: recorder.snapshot() } as
+        import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    const chat = { id: chatId, messages: [message] } as import('../../packages/chat/lib/index.js').Chat;
+    const copy = chatDiagnosticCopyText(chat, { messageId })!;
+    assert.equal(copy.match(/The answer is \*\*15\*\*\./g)?.length, 1);
+    assert.match(copy, /\[Reasoning\]\nI will calculate this\./);
+    assert.doesNotMatch(copy, /\[Provisional output\]/);
+    assert.equal(chatResponseCopyText(message), message.content);
+});
+
+test('older saved file calls use their matching safe tool reference for display and copy', () => {
+    const chatId = randomUUID(); const messageId = randomUUID(); const executionId = randomUUID();
+    const recorder = new ChatActivityRecorder(chatId, messageId, executionId);
+    recorder.add('thinking', 'I will inspect the file.\n\n');
+    recorder.add('tool', 'read_file: running');
+    recorder.add('tool', 'read_file: completed');
+    recorder.add('thinking', 'The file confirms it.');
+    const message = { role: 'assistant', id: messageId, content: 'Done.',
+        execution: { id: executionId, status: 'complete', toolEvents: [
+            { name: 'read_file', status: 'completed', truncated: false }], sourceRefs: [
+            { kind: 'file', id: 'src/counter.js', origin: 'tool' }] },
+        activity: recorder.snapshot() } as import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    assert.deepEqual(chatActivityPresentation(message)?.parts[1],
+        { kind: 'tool', name: 'read_file', status: 'completed', path: 'src/counter.js' });
+    assert.match(chatDiagnosticCopyText({ id: chatId, messages: [message] } as
+        import('../../packages/chat/lib/index.js').Chat, { messageId })!,
+    /read_file · src\/counter\.js · completed/);
+    const unpaired = { ...message, execution: { ...message.execution, sourceRefs: [] } };
+    assert.doesNotMatch(chatDiagnosticCopyText({ id: chatId, messages: [unpaired] } as
+        import('../../packages/chat/lib/index.js').Chat, { messageId })!, /src\/counter\.js/);
 });
 
 test('all Dope Chat copy controls use the shared accessible context menu', async () => {

@@ -146,6 +146,11 @@ test('local Pi discovery is project-bound, read-only and records safe source act
     assert.ok(saved.execution.sourceRefs?.every(ref => ref.origin === 'tool'));
     assert.equal(saved.execution.toolEvents?.[4].truncated, true);
     assert.ok(saved.execution.sourceRefs?.every(ref => ref.projectId && ref.contentHash?.length === 64));
+    const activity = saved.activity?.events.filter(event => event.kind === 'tool').map(event => event.text) ?? [];
+    assert.ok(activity.includes('read_file: running · test/chat.test.ts'));
+    assert.ok(activity.includes('read_file: completed · test/chat.test.ts'));
+    assert.ok(activity.includes('read_file: denied'));
+    assert.ok(activity.every(text => !text.includes('../other')));
     assert.equal(JSON.stringify(saved).includes('unsafe'), false);
     assert.equal((await readFile(join(root, 'package.json'), 'utf8')), '{"name":"grounded"}');
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }

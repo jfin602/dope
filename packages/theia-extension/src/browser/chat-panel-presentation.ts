@@ -1,4 +1,4 @@
-import type { Chat, ChatAssistantMessage } from '@dope/chat';
+import { safeChatToolPath, type Chat, type ChatAssistantMessage } from '@dope/chat';
 
 export function isDraftPlanningAction(type: string): boolean {
     return ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint', 'reorder-phase',
@@ -340,7 +340,8 @@ export function chatResponseCopyText(message: ChatAssistantMessage, streamingCon
 /** A read-only, ID-bound export of captured activity. Stored tool events contain metadata only. */
 export function chatDiagnosticCopyText(chat: Pick<Chat, 'id' | 'messages'>,
     scope: { messageId: string } | { transcript: true },
-    stream?: { chatId: string; messageId: string; executionId: string; events: import('@dope/chat').ChatActivityEvent[] }):
+    stream?: { chatId: string; messageId: string; executionId: string; content?: string;
+        events: import('@dope/chat').ChatActivityEvent[] }):
     string | undefined {
     const activityFor = (message: ChatAssistantMessage) => {
         const saved = message.activity;
@@ -353,34 +354,28 @@ export function chatDiagnosticCopyText(chat: Pick<Chat, 'id' | 'messages'>,
     };
     const assistants = chat.messages.filter((message): message is ChatAssistantMessage => message.role === 'assistant');
     const selected = 'messageId' in scope ? assistants.filter(message => message.id === scope.messageId) : assistants;
-    if (!selected.some(message => activityFor(message)?.events.some(event =>
-        event.kind === 'thinking' || event.kind === 'provisional'))) return undefined;
+    const visibleTimeline = (message: ChatAssistantMessage) => activityTimeline(activityFor(message)?.events ?? [], message,
+        message.execution.status === 'complete' || stream?.chatId === chat.id && stream.messageId === message.id &&
+        stream.executionId === message.execution.id && !!stream.content);
+    if (!selected.some(message => visibleTimeline(message).length)) return undefined;
     const assistantText = (message: ChatAssistantMessage): string => {
         const activity = activityFor(message);
         const lines = [`Assistant [message ${message.id}; execution ${message.execution.id}; ${message.execution.status}]:`];
-        let pending: { kind: 'thinking' | 'provisional'; text: string } | undefined;
-        const flush = () => {
-            if (pending) lines.push(`[${pending.kind === 'thinking' ? 'Reasoning' : 'Provisional output'}]\n${pending.text}`);
-            pending = undefined;
-        };
-        for (const event of activity?.events ?? []) {
-            if (event.kind === 'thinking' || event.kind === 'provisional') {
-                if (pending?.kind === event.kind) pending.text += event.text;
-                else { flush(); pending = { kind: event.kind, text: event.text }; }
-                continue;
+        let lastTextKind: 'thinking' | 'provisional' | undefined;
+        for (const part of visibleTimeline(message)) {
+            if (part.kind === 'tool') lines.push(chatToolCallLabel(part));
+            else {
+                lines.push(lastTextKind === part.kind ? part.text :
+                    `[${part.kind === 'thinking' ? 'Reasoning' : 'Provisional output'}]\n${part.text}`);
+                lastTextKind = part.kind;
             }
-            flush();
-            if (event.kind === 'tool') {
-                // Tool payloads are never exported. Even a malformed live event receives a safe label.
-                const safe = /^(?:read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command): (?:running|completed|failed|denied)$/.test(event.text);
-                lines.push(`[Tool: ${safe ? event.text : 'details redacted'}]`);
-            } else if (event.kind === 'truncated') lines.push('[Activity truncated]');
         }
-        flush();
+        if (activity?.events.some(event => event.kind === 'truncated')) lines.push('[Activity truncated]');
         if (activity?.truncated && !activity.events.some(event => event.kind === 'truncated')) lines.push('[Activity truncated]');
         const final = chatResponseCopyText(message);
         lines.push(final ? `Final response:\n${final}` : 'No final response');
-        return lines.join('\n');
+        return lines.reduce((copy, line) => copy ?
+            `${copy}${copy.endsWith('\n') || line.startsWith('\n') ? '' : '\n'}${line}` : line, '');
     };
     if ('messageId' in scope) return selected[0] ? assistantText(selected[0]) : undefined;
     return chat.messages.map(message => message.role === 'user' ? `You:\n${message.content}` :
@@ -389,29 +384,108 @@ export function chatDiagnosticCopyText(chat: Pick<Chat, 'id' | 'messages'>,
 
 /** A bounded display projection of diagnostics, never conversational answer text. */
 export function chatActivityPresentation(message: ChatAssistantMessage,
-    stream?: { messageId: string; executionId: string; events: import('@dope/chat').ChatActivityEvent[] }):
-    { label: string; text: string; unavailable: boolean; truncated: boolean } | undefined {
-    const events = stream?.messageId === message.id && stream.executionId === message.execution.id ?
-        stream.events : message.activity?.events ?? [];
+    stream?: { messageId: string; executionId: string; content?: string;
+        events: import('@dope/chat').ChatActivityEvent[] }):
+    ChatActivityDisplay | undefined {
+    const matchingStream = stream?.messageId === message.id && stream.executionId === message.execution.id ? stream : undefined;
+    const events = matchingStream ?
+        matchingStream.events : message.activity?.events ?? [];
     if (!events.length && message.execution.status === 'complete') return undefined;
-    return presentChatActivity(events, !!message.activity?.truncated);
+    const display = presentChatActivity(events, !!message.activity?.truncated, message,
+        message.execution.status === 'complete' || !!matchingStream?.content);
+    return message.execution.status === 'complete' && !display.parts.length && !display.truncated ? undefined : display;
 }
 
-export function chatStreamingActivityPresentation(events: import('@dope/chat').ChatActivityEvent[]):
-    { label: string; text: string; unavailable: boolean; truncated: boolean } | undefined {
-    return events.length ? presentChatActivity(events, false) : undefined;
+export function chatStreamingActivityPresentation(events: import('@dope/chat').ChatActivityEvent[], finalStarted = false):
+    ChatActivityDisplay | undefined {
+    if (!events.length) return undefined;
+    const display = presentChatActivity(events, false, undefined, finalStarted);
+    return display.parts.length || display.truncated ? display : undefined;
 }
 
-function presentChatActivity(events: import('@dope/chat').ChatActivityEvent[], savedTruncated: boolean):
-    { label: string; text: string; unavailable: boolean; truncated: boolean } {
-    const visible = events.filter(event => event.kind !== 'tool' && event.kind !== 'answer');
-    const text = visible.map(event => event.text).join('');
+export type ChatActivityPart = { kind: 'thinking' | 'provisional'; text: string } |
+    { kind: 'tool'; name: string; status: 'running' | 'completed' | 'failed' | 'denied' | ''; path?: string };
+export interface ChatActivityDisplay {
+    label: string;
+    text: string;
+    parts: ChatActivityPart[];
+    unavailable: boolean;
+    truncated: boolean;
+}
+
+/** Preserve the event order; a completion updates its call at the original position. */
+function activityTimeline(events: readonly import('@dope/chat').ChatActivityEvent[],
+    message?: ChatAssistantMessage, omitProvisional = false): ChatActivityPart[] {
+    const parts: ChatActivityPart[] = [];
+    const toolPattern = /^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command): (running|completed|failed|denied)(?: · (.+))?$/u;
+    for (const event of events) {
+        if (event.kind === 'thinking' || event.kind === 'provisional' && !omitProvisional) {
+            const last = parts.at(-1);
+            if (last?.kind === event.kind) last.text += event.text;
+            else parts.push({ kind: event.kind, text: event.text });
+        } else if (event.kind === 'tool') {
+            const match = toolPattern.exec(event.text);
+            if (!match || match[3] &&
+                (!['read_file', 'list_files', 'dope_read', 'dope_list'].includes(match[1]) ||
+                    safeChatToolPath(match[3]) !== match[3])) {
+                parts.push({ kind: 'tool', name: 'details redacted', status: '' });
+                continue;
+            }
+            const name = match[1];
+            const status = match[2] as 'running' | 'completed' | 'failed' | 'denied';
+            const path = match[3];
+            const pending = status === 'running' ? undefined : [...parts].reverse().find(part =>
+                part.kind === 'tool' && part.name === name && part.path === path && part.status === 'running');
+            if (pending?.kind === 'tool') pending.status = status;
+            else parts.push({ kind: 'tool', name, status, ...(path ? { path } : {}) });
+        }
+    }
+    // Older saved calls have no path in their activity marker. Attribute refs
+    // only when every completed call of that type has a matching stored ref.
+    for (const [names, kind] of [
+        [['read_file', 'dope_read'], 'file'], [['list_files', 'dope_list'], 'directory'],
+    ] as const) {
+        const calls = parts.filter((part): part is Extract<ChatActivityPart, { kind: 'tool' }> =>
+            part.kind === 'tool' && names.some(name => name === part.name) &&
+            part.status === 'completed' && !part.path);
+        const completed = message?.execution.toolEvents?.filter(event =>
+            names.some(name => name === event.name) && event.status === 'completed') ?? [];
+        const refs = message?.execution.sourceRefs?.filter(ref => ref.origin === 'tool' && ref.kind === kind) ?? [];
+        if (calls.length && calls.length === completed.length && calls.length === refs.length)
+            calls.forEach((call, index) => { call.path = safeChatToolPath(refs[index].id); });
+    }
+    return parts;
+}
+
+export function chatToolCallLabel(part: Extract<ChatActivityPart, { kind: 'tool' }>): string {
+    if (part.name === 'details redacted') return 'details redacted';
+    return [part.name, part.path, part.status].filter(Boolean).join(' · ');
+}
+
+function presentChatActivity(events: import('@dope/chat').ChatActivityEvent[], savedTruncated: boolean,
+    message?: ChatAssistantMessage, omitProvisional = false): ChatActivityDisplay {
+    const timeline = activityTimeline(events, message, omitProvisional);
+    const text = timeline.filter((part): part is Extract<ChatActivityPart, { kind: 'thinking' | 'provisional' }> =>
+        part.kind !== 'tool').map(part => part.text).join('');
     const limit = 12_000;
     const truncated = text.length > limit || events.some(event => event.kind === 'truncated') ||
         savedTruncated;
-    return { label: visible.some(event => event.kind === 'thinking') ? 'Reasoning / Activity' : 'Provisional output',
+    let remaining = limit;
+    const parts: ChatActivityPart[] = [];
+    for (let index = timeline.length - 1; index >= 0; index--) {
+        const part = timeline[index];
+        if (part.kind === 'tool') {
+            if (remaining > 0) parts.unshift(part);
+        } else if (remaining > 0) {
+            const clipped = part.text.slice(-remaining);
+            remaining -= clipped.length;
+            parts.unshift({ ...part, text: clipped });
+        }
+    }
+    return { label: timeline.some(part => part.kind === 'thinking') ? 'Reasoning / Activity' :
+        timeline.some(part => part.kind === 'provisional') ? 'Provisional output' : 'Tool activity',
         text: text.length > limit ? text.slice(-limit) : text,
-        unavailable: !visible.some(event => event.kind === 'thinking'), truncated };
+        parts, unavailable: !timeline.some(part => part.kind === 'thinking'), truncated };
 }
 
 export function chatTranscriptCopyText(chat: Pick<Chat, 'messages'>,

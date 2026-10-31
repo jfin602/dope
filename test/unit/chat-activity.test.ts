@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { ChatActivityRecorder, parseExecutionActivity } from '../../packages/chat/lib/index.js';
+import { ChatActivityRecorder, parseExecutionActivity, safeChatToolPath } from '../../packages/chat/lib/index.js';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import type { ChatEvent } from '../../packages/chat/lib/service.js';
@@ -47,6 +47,15 @@ test('activity is identity-bound, ordered, bounded and redacted', () => {
         ['thinking', 'tool', 'tool', 'answer']);
     assert.throws(() => parseExecutionActivity({ ...interleaved.snapshot(), events: [
         { sequence: 1, kind: 'tool', text: 'read_file: secret-body' }] }, ...ids), /event/);
+    assert.equal(safeChatToolPath('src/counter file.ts'), 'src/counter file.ts');
+    assert.equal(safeChatToolPath('../outside.ts'), undefined);
+    assert.equal(safeChatToolPath('src/api_key=hidden.ts'), undefined);
+    const withPath = new ChatActivityRecorder(...ids);
+    withPath.add('tool', 'read_file: running · src/counter file.ts');
+    withPath.add('tool', 'read_file: completed · src/counter file.ts');
+    assert.deepEqual(parseExecutionActivity(withPath.snapshot(), ...ids), withPath.snapshot());
+    assert.throws(() => parseExecutionActivity({ ...withPath.snapshot(), events: [
+        { sequence: 1, kind: 'tool', text: 'read_file: running · ../outside.ts' }] }, ...ids), /event/);
 });
 
 test('interrupted saved activity survives recovery without becoming assistant speech', async () => {

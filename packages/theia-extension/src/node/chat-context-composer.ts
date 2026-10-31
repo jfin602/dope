@@ -273,9 +273,6 @@ export class ChatContextComposer {
 
     private async resolve(root: string, active: Chat, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
         if (!source || typeof source.id !== 'string' || !source.id.trim()) throw new Error('Invalid context selection');
-        if (!active.settings.context.allowedSources.includes(source.kind) &&
-            !(source.kind === 'roadmap' && active.settings.context.allowedSources.includes('roadmap-checkpoint')))
-            throw new Error(`Context source disabled: ${source.kind}`);
         if (source.kind === 'editor' || source.kind === 'selection' || source.kind === 'file') {
             const path = projectPath(source.id);
             const file = await this.file(root, path);

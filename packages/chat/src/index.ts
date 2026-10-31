@@ -1,6 +1,6 @@
 import { parseRoutingProvenance, type RoutingProvenance } from '@dope/ai';
 import { parseExecutionActivity, type ChatExecutionActivity } from './activity';
-export { ChatActivityRecorder, parseExecutionActivity } from './activity';
+export { ChatActivityRecorder, parseExecutionActivity, safeChatToolPath } from './activity';
 export type { ChatActivityEvent, ChatActivityKind, ChatExecutionActivity } from './activity';
 
 /** Project Chat identity belongs to Dope; neither storage paths nor runtime IDs define it. */
@@ -12,6 +12,10 @@ export type ChatColor = typeof CHAT_COLORS[number];
 export type AssistantStatus = 'pending' | 'streaming' | 'complete' | 'failed' | 'cancelled';
 export type ChatContextKind = 'editor' | 'selection' | 'file' | 'project-mind' | 'architecture' |
     'physical-map' | 'flow' | 'planning-map' | 'work-item' | 'roadmap-checkpoint' | 'roadmap' | 'saved-chat' | 'directory' | 'path-search' | 'text-search' | 'project-orientation' | 'grounding-status';
+/** Sources a person can explicitly attach. Saved Chat also requires savedChatSearch. */
+export const MANUAL_CHAT_CONTEXT_SOURCES: readonly ChatContextKind[] = ['editor', 'selection', 'file',
+    'project-mind', 'architecture', 'physical-map', 'flow', 'planning-map', 'work-item',
+    'roadmap-checkpoint', 'roadmap', 'saved-chat'];
 
 export interface ChatContextRef {
     schemaVersion: 1;
@@ -261,15 +265,16 @@ export function parseChatSettings(value: unknown): ChatSettings {
     const c = record(v.context, ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources'],
         ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources']);
     if (typeof c.savedChatSearch !== 'boolean' || !Array.isArray(c.allowedSources)) throw new Error('Invalid context policy');
-    const allowedSources = c.allowedSources.map(source => choice(source, contextKinds, 'context source'));
-    if (new Set(allowedSources).size !== allowedSources.length) throw new Error('Duplicate context source');
+    const legacySources = c.allowedSources.map(source => choice(source, contextKinds, 'context source'));
+    if (new Set(legacySources).size !== legacySources.length) throw new Error('Duplicate context source');
     const settings: ChatSettings = { schemaVersion: 1,
         modelPolicy: v.modelPolicy === undefined ? v.defaultModel === undefined ? { type: 'follow-interactive' } :
             { type: 'exact', model: parseChatModelSelection(v.defaultModel) } : parseChatModelPolicy(v.modelPolicy), context: {
         maxInputTokens: count(c.maxInputTokens, 'input budget', true),
         reservedOutputTokens: count(c.reservedOutputTokens, 'output reserve'),
         history: choice(c.history, ['recent', 'none'], 'history policy'),
-        savedChatSearch: c.savedChatSearch, allowedSources,
+        // Old per-source choices are accepted for saved Chat compatibility, then retired.
+        savedChatSearch: c.savedChatSearch, allowedSources: [...MANUAL_CHAT_CONTEXT_SOURCES],
     } };
     if (v.reasoningControls !== undefined) {
         if (!v.reasoningControls || typeof v.reasoningControls !== 'object' || Array.isArray(v.reasoningControls))

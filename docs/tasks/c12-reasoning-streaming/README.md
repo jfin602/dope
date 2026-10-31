@@ -8,6 +8,8 @@
 
 [ADR 0042](../../decisions/0042-chat-reasoning-lifecycle-and-diagnostic-copy.md) · [Assessment](prompt-assessment.md) · [Plan](implementation-plan.md) · [Existing agentic Chat permissions](../../planning/p12/agentic-chat-permissions.md).
 
+The owner-approved later browser UI target is recorded in the [Chat panel visual and interaction contract](../../ui/chat-panel-visual-contract.md). Use it for future Chat presentation and applicable Dope control styling. It does not rewrite the manual P4 NOT GREEN evidence or qualify native Electron.
+
 | Prompt | Execution | Scope |
 | --- | --- | --- |
 | [P1](P1-stream-activity-contract.txt) | Runner | Typed provider/Pi stream classification, terminal semantics and bounded saved activity |

@@ -20,6 +20,17 @@ const encoder = new TextEncoder();
 const kinds: readonly ChatActivityKind[] = ['thinking', 'provisional', 'answer', 'tool', 'truncated'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const sensitive = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|authorization|password|secret|token)\s*[:=]\s*\S+|\bBearer\s+\S+/giu;
+const toolEvent = /^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command): (running|completed|failed|denied)(?: · (.+))?$/u;
+
+/** Only bounded project-relative file paths may accompany diagnostic tool metadata. */
+export function safeChatToolPath(value: unknown): string | undefined {
+    if (typeof value !== 'string' || !value || value !== value.trim() || value.length > 160 ||
+        encoder.encode(value).length > 512 || /^[\\/]|^[A-Za-z]:/u.test(value) ||
+        value.includes('\\') || /[\x00-\x1f\x7f]/u.test(value) ||
+        value.split('/').some(segment => segment === '..') ||
+        value.replace(sensitive, '[redacted]') !== value) return undefined;
+    return value;
+}
 
 export function parseExecutionActivity(value: unknown, chatId: string, messageId: string,
     executionId: string): ChatExecutionActivity {
@@ -34,10 +45,13 @@ export function parseExecutionActivity(value: unknown, chatId: string, messageId
     const events = v.events.map((item: unknown, index): ChatActivityEvent => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Invalid Chat activity event');
         const event = item as Record<string, unknown>;
+        const tool = event.kind === 'tool' && typeof event.text === 'string' ? toolEvent.exec(event.text) : null;
         if (Object.keys(event).some(key => !['sequence', 'kind', 'text'].includes(key)) ||
             event.sequence !== index + 1 || !kinds.includes(event.kind as ChatActivityKind) ||
             typeof event.text !== 'string' || encoder.encode(event.text).length > 8192 ||
-            (event.kind === 'tool' && !/^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command): (running|completed|failed|denied)$/.test(event.text)) ||
+            (event.kind === 'tool' && (!tool || tool[3] &&
+                (!['read_file', 'list_files', 'dope_read', 'dope_list'].includes(tool[1]) ||
+                    safeChatToolPath(tool[3]) !== tool[3]))) ||
             (event.kind === 'truncated' && event.text !== '[Activity truncated]'))
             throw new Error('Invalid Chat activity event');
         bytes += encoder.encode(event.text).length;

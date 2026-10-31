@@ -7,14 +7,14 @@ import { ConnectionStatus, type ConnectionStatusService } from '@theia/core/lib/
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import type { ChatOperation } from '@dope/chat/lib/service';
-import { CHAT_COLORS, type ChatSettings, type ChatContextKind, type ChatModelSelection, type ChatAssistantMessage } from '@dope/chat';
+import { CHAT_COLORS, MANUAL_CHAT_CONTEXT_SOURCES, type ChatSettings, type ChatContextKind, type ChatModelSelection, type ChatAssistantMessage } from '@dope/chat';
 import type { ChatContextSelection, ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
@@ -54,6 +54,8 @@ function copyChatText(text: string): Promise<void> {
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly copyMenu = new ChatCopyContextMenu();
+    private readonly copyFeedbackTimers = new WeakMap<HTMLElement, {
+        timer: ReturnType<typeof setTimeout>; label: string | null; title: string | null }>();
     private static readonly toolbarChanged = new Emitter<void>();
     static readonly onDidChangeToolbar = ChatPanelWidget.toolbarChanged.event;
     readonly controller: ChatPanelController;
@@ -66,19 +68,22 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     backToChats(): void { if (this.canBackToChats) this.controller.select(undefined); }
     get canCopyTranscript(): boolean { return this.canBackToChats && !!this.controller.chat?.messages.length; }
     get canOpenChatSettings(): boolean { return this.canBackToChats && !!this.controller.chat; }
+    get isChatSettingsOpen(): boolean { return this.canOpenChatSettings && this.settingsOpen; }
     async copyWholeTranscript(): Promise<void> {
         const chat = this.controller.chat;
         if (!this.canCopyTranscript || !chat) return;
+        const button = document.getElementById('dope.chat.copyTranscript');
         try {
             await copyChatText(chatTranscriptCopyText(chat, this.controller.stream,
                 this.controller.transientUser?.chatId === chat.id ? this.controller.transientUser : undefined));
-        } catch { this.status.textContent = 'Could not copy the transcript.'; }
+            if (button) this.flashCopyFeedback(button, 'Copied.');
+        } catch { if (button) this.flashCopyFeedback(button, 'Copy failed.'); }
     }
     openTranscriptCopyMenu(anchor: HTMLElement): void {
         this.copyMenu.open(anchor, () => {
             const chat = this.controller.chat;
             return chat && this.canCopyTranscript ? chatDiagnosticCopyText(chat, { transcript: true }, this.controller.stream) : undefined;
-        }, copyChatText, message => { this.status.textContent = message; });
+        }, copyChatText, message => this.flashCopyFeedback(anchor, message));
     }
     private bindDiagnosticCopy(button: HTMLButtonElement, message: ChatAssistantMessage): void {
         this.copyMenu.bind(button, () => {
@@ -86,13 +91,30 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             return chat && chat.messages.some(item => item.id === message.id && item.role === 'assistant' &&
                 item.execution.id === message.execution.id) ?
                 chatDiagnosticCopyText(chat, { messageId: message.id }, this.controller.stream) : undefined;
-        }, copyChatText, feedback => { this.status.textContent = feedback; });
+        }, copyChatText, feedback => this.flashCopyFeedback(button, feedback));
+    }
+    private flashCopyFeedback(button: HTMLElement, message: string): void {
+        const previous = this.copyFeedbackTimers.get(button);
+        if (previous) clearTimeout(previous.timer);
+        const label = previous ? previous.label : button.getAttribute('aria-label');
+        const title = previous ? previous.title : button.getAttribute('title');
+        button.dataset.copyFeedback = message;
+        button.setAttribute('aria-label', message);
+        button.setAttribute('title', message);
+        const timer = setTimeout(() => {
+            delete button.dataset.copyFeedback;
+            if (label === null) button.removeAttribute('aria-label');
+            else button.setAttribute('aria-label', label);
+            if (title === null) button.removeAttribute('title');
+            else button.setAttribute('title', title);
+            this.copyFeedbackTimers.delete(button);
+        }, 2000);
+        this.copyFeedbackTimers.set(button, { timer, label, title });
     }
     toggleChatSettings(): void {
         const chat = this.controller.chat;
         if (!this.canOpenChatSettings || !chat) return;
         this.settingsOpen = !this.settingsOpen;
-        this.revealSettings = this.settingsOpen;
         this.settingsDraft = this.settingsOpen ? structuredClone(chat.settings) : undefined;
         this.settingsChatId = chat.id;
         this.render();
@@ -101,8 +123,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private strategicPresentationTarget?: { workspace: string; projectId: string; chatId: string };
     private strategicPresentationQueue: Promise<void> = Promise.resolve();
     private readonly openPlanningActivities = new Set<string>();
+    private readonly openResponseInfo = new Set<string>();
     private readonly activityExpansion = new Map<string, boolean>();
-    private readonly openToolActivities = new Set<string>();
+    private readonly activityAutoCollapsed = new Set<string>();
     private promptStacksOnly = false;
     private lastWorkSelection?: WorkSelection;
     private readonly rootsListener;
@@ -133,7 +156,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private modelsRequest = 0;
     private models: ModelConnectionsSnapshot = { connections: [] };
     private settingsOpen = false;
-    private revealSettings = false;
     private settingsDraft?: ChatSettings;
     private settingsChatId?: string;
     private titleEditingChatId?: string;
@@ -1354,66 +1376,56 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         clock.textContent = formatRunElapsedCompact(startedAt, endedAt ? Date.parse(endedAt) : Date.now()) ?? '0s';
         return clock;
     }
-    private appendWorkingStatus(item: HTMLElement, startedAt: string): void {
-        const row = document.createElement('div');
-        row.className = 'dope-chat-working-row';
-        row.setAttribute('role', 'status');
-        const label = document.createElement('span'); label.textContent = 'Working...';
-        row.append(label, this.compactElapsedClock(startedAt, undefined, true));
-        item.append(row);
+    private activityText(diagnostic: ChatActivityDisplay): HTMLElement {
+        const body = document.createElement('div');
+        body.className = 'dope-chat-stream-text dope-chat-message-content';
+        for (const part of diagnostic.parts) {
+            if (part.kind === 'tool') {
+                const call = document.createElement('div');
+                call.className = 'dope-chat-stream-tool';
+                call.textContent = chatToolCallLabel(part);
+                body.append(call);
+            } else if (part.text) {
+                const prose = renderUntrustedMessageMarkdown(this.markdown, part.text);
+                prose.className = 'dope-chat-stream-prose';
+                body.append(prose);
+            }
+        }
+        if (!body.childNodes.length) body.textContent = 'No activity captured';
+        return body;
     }
-    private appendToolActivity(item: HTMLElement, messageId: string,
-        events: readonly { name: string; status: string; truncated?: boolean; detail?: string; target?: string }[] | undefined,
-        active: boolean, startedAt: string, endedAt?: string): void {
-        const labels: Record<string, string> = { read_file: 'Read', list_files: 'List',
-            search_paths: 'Find paths', search_text: 'Search text', run_command: 'Command',
-            dope_read: 'Read', dope_list: 'List', dope_search_paths: 'Find paths',
-            dope_search_text: 'Search text', dope_command: 'Command' };
-        const steps = events?.length ?? 0;
-        const current = events?.at(-1);
-        if (active && !steps) return;
-        const labelText = active && current ?
-            `${labels[current.name] ?? 'Tool'}${current.target ? ` · ${current.target}` : ''}` :
-            steps ? `Project activity · ${steps} tool ${steps === 1 ? 'step' : 'steps'}` : 'Project activity';
-        if (!steps) {
-            const row = document.createElement('div'); row.className = 'dope-chat-activity-static';
-            const label = document.createElement('span'); label.textContent = labelText;
-            row.append(label, this.compactElapsedClock(startedAt, endedAt));
-            item.append(row);
-            return;
-        }
-        const activity = document.createElement('details'); activity.className = 'dope-chat-tool-activity';
-        activity.open = this.openToolActivities.has(messageId);
-        activity.addEventListener('toggle', () => {
-            if (activity.open) this.openToolActivities.add(messageId);
-            else this.openToolActivities.delete(messageId);
-        });
+    private appendReasoningActivity(item: HTMLElement, messageId: string | undefined,
+        diagnostic: ReturnType<typeof chatStreamingActivityPresentation>, active: boolean,
+        startedAt: string, endedAt?: string, outcome: 'Working...' | 'Finished' | 'Canceled' | 'Error' = 'Working...'): void {
+        const details = document.createElement('details');
+        details.className = 'dope-chat-stream-activity';
+        details.open = messageId ? this.activityExpansion.get(messageId) ?? active : active;
         const heading = document.createElement('summary');
-        const label = document.createElement('span'); label.className = 'dope-chat-activity-label';
-        label.textContent = labelText;
-        heading.append(label);
-        if (!active) heading.append(this.compactElapsedClock(startedAt, endedAt));
-        activity.append(heading);
-        if (active && current) {
-            const exact = document.createElement('pre');
-            exact.className = 'dope-chat-tool-detail';
-            exact.textContent = current.detail ?? `${current.name} (call details unavailable)`;
-            activity.append(exact);
-            const history = document.createElement('div');
-            history.className = 'dope-chat-tool-history-title';
-            history.textContent = `Project activity · ${steps} tool ${steps === 1 ? 'step' : 'steps'}`;
-            activity.append(history);
+        if (messageId) heading.addEventListener('click', () => this.activityExpansion.set(messageId, !details.open));
+        const label = document.createElement('span');
+        label.textContent = outcome;
+        heading.append(label, this.compactElapsedClock(startedAt, endedAt, active));
+        details.append(heading);
+        if (diagnostic) {
+            if (diagnostic.unavailable && diagnostic.parts.some(part => part.kind === 'provisional')) {
+                const note = document.createElement('span');
+                note.className = 'dope-chat-stream-note';
+                note.textContent = 'Provisional output';
+                details.append(note);
+            }
+            details.append(this.activityText(diagnostic));
+            if (diagnostic.truncated) {
+                const limit = document.createElement('span'); limit.className = 'dope-chat-stream-limit';
+                limit.textContent = 'Activity display limited; captured record may be truncated.';
+                details.append(limit);
+            }
+        } else if (!active) {
+            const note = document.createElement('span');
+            note.className = 'dope-chat-stream-note';
+            note.textContent = 'No captured reasoning or provisional activity';
+            details.append(note);
         }
-        const list = document.createElement('ul');
-        for (const event of events ?? []) {
-            const row = document.createElement('li');
-            const command = event.name === 'run_command' || event.name === 'dope_command';
-            const outcome = command && event.status === 'completed' ? 'allowed · completed' :
-                command && event.status === 'failed' ? 'allowed · failed' : event.status;
-            row.textContent = `${labels[event.name] ?? 'Tool'} · ${outcome}${event.truncated ? ' · truncated' : ''}`;
-            list.append(row);
-        }
-        activity.append(list); item.append(activity);
+        item.prepend(details);
     }
     private syncElapsedTicker(): void {
         const active = this.content.querySelector('.dope-elapsed-time[data-running="true"]');
@@ -1437,27 +1449,27 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             !stream || stream.chatId !== state.chatId) return false;
         const item = this.content.querySelector<HTMLElement>('.dope-chat-message[aria-label="Assistant working"]');
         const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
-        const diagnostic = chatStreamingActivityPresentation(stream.events);
+        const diagnostic = chatStreamingActivityPresentation(stream.events, !!stream.content);
         if (!item || !scroll || !diagnostic) return false;
         let details = item.querySelector<HTMLDetailsElement>('.dope-chat-stream-activity');
         if (!details) {
-            details = document.createElement('details');
-            details.className = 'dope-chat-stream-activity';
-            details.open = true;
-            const heading = document.createElement('summary');
-            const note = document.createElement('span'); note.className = 'dope-chat-stream-note';
-            const raw = document.createElement('pre');
-            details.append(heading, note, raw);
-            item.prepend(details);
+            this.appendReasoningActivity(item, undefined, diagnostic, true, state.runStartedAt ?? new Date().toISOString());
+            details = item.querySelector<HTMLDetailsElement>('.dope-chat-stream-activity')!;
         }
-        const heading = details.querySelector('summary')!;
-        const note = details.querySelector<HTMLElement>('.dope-chat-stream-note')!;
-        const raw = details.querySelector('pre')!;
-        heading.textContent = `${diagnostic.label} · Working`;
-        note.textContent = diagnostic.unavailable ? 'Reasoning unavailable' : 'Surfaced reasoning';
-        const next = diagnostic.text || 'No activity captured';
-        if (next.startsWith(raw.textContent ?? '')) raw.append(document.createTextNode(next.slice((raw.textContent ?? '').length)));
-        else raw.textContent = next;
+        const note = details.querySelector<HTMLElement>('.dope-chat-stream-note');
+        if (diagnostic.unavailable && diagnostic.parts.some(part => part.kind === 'provisional')) {
+            if (!note) {
+                const unavailable = document.createElement('span');
+                unavailable.className = 'dope-chat-stream-note';
+                unavailable.textContent = 'Provisional output';
+                details.append(unavailable);
+            }
+        } else {
+            note?.remove();
+        }
+        const body = details.querySelector<HTMLElement>('.dope-chat-stream-text');
+        if (body) body.replaceWith(this.activityText(diagnostic));
+        else details.append(this.activityText(diagnostic));
         let limit = details.querySelector<HTMLElement>('.dope-chat-stream-limit');
         if (diagnostic.truncated && !limit) {
             limit = document.createElement('span'); limit.className = 'dope-chat-stream-limit';
@@ -1512,9 +1524,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private async addContext(kind: ChatContextKind): Promise<void> {
         const chat = this.controller.chat;
         if (!chat) return;
-        const allowed = chat.settings.context.allowedSources;
-        if (!allowed.length) { this.status.textContent = 'Enable context sources in Chat settings.'; return; }
-        if (!allowed.includes(kind)) { this.status.textContent = 'Context source is disabled.'; return; }
+        if (kind === 'saved-chat' && !chat.settings.context.savedChatSearch) {
+            this.status.textContent = 'Enable saved Chat retrieval in Advanced settings first.'; return;
+        }
         const workspace = this.controller.workspace, chatId = chat.id;
         try {
             let selection: ChatContextSelection;
@@ -1587,7 +1599,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private renderSettings(chatId: string): HTMLElement {
         const form = document.createElement('section');
         form.className = 'dope-chat-settings-form';
+        form.setAttribute('role', 'dialog');
         form.setAttribute('aria-label', 'Chat settings');
+        form.onkeydown = event => {
+            if (event.key === 'Escape') { event.stopPropagation(); this.toggleChatSettings(); }
+        };
+        const heading = document.createElement('header');
+        const title = document.createElement('h3'); title.textContent = 'Chat settings';
+        heading.append(title);
+        form.append(heading);
         const draft = this.settingsDraft!;
         const color = document.createElement('fieldset');
         color.className = 'dope-chat-color-picker';
@@ -1602,9 +1622,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             choice.setAttribute('aria-pressed', String(this.controller.chat?.color === value));
             color.append(choice);
         }
-        form.append(color);
-        const field = (label: string, input: HTMLElement) => {
-            const row = document.createElement('label'); row.textContent = label; row.append(input); form.append(row);
+        const section = (label: string) => {
+            const group = document.createElement('section'); group.className = 'dope-chat-settings-section';
+            const heading = document.createElement('h4'); heading.textContent = label;
+            group.append(heading); form.append(group); return group;
+        };
+        const appearance = section('Appearance'); appearance.append(color);
+        const modelSection = section('Model');
+        const field = (parent: HTMLElement, label: string, input: HTMLElement) => {
+            const row = document.createElement('label');
+            row.className = input instanceof HTMLInputElement && input.type === 'checkbox' ?
+                'dope-chat-settings-check' : 'dope-chat-settings-field';
+            row.textContent = label; row.append(input); parent.append(row);
         };
         const model = document.createElement('select');
         model.append(new Option('Follow Interactive role', ''));
@@ -1612,17 +1641,27 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             JSON.stringify(entry.selection)));
         const exact = draft.modelPolicy.type === 'exact' ? draft.modelPolicy.model : undefined;
         if (exact && !this.usableModels().some(entry => this.sameModel(entry.selection, exact)))
-            model.append(new Option('Pinned model unavailable', JSON.stringify(exact)));
+            model.append(new Option(`Pinned model unavailable (${exact.modelId})`, JSON.stringify(exact)));
         model.value = exact ? JSON.stringify(exact) : '';
         model.onchange = () => { draft.modelPolicy = model.value ?
             { type: 'exact', model: JSON.parse(model.value) as ChatModelSelection } : { type: 'follow-interactive' };
             draft.reasoningControls = undefined; this.render(); };
-        field('Chat model policy', model);
+        field(modelSection, 'Default model', model);
         if (!this.usableModels().length || exact && !this.usableModels().some(entry => this.sameModel(entry.selection, exact)))
-            form.append(this.button('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); }));
+            modelSection.append(this.button('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); }));
         if (draft.modelPolicy.type === 'follow-interactive')
-            form.append(this.button('Configure Interactive role', () => { void this.aiCenter?.openRole('interactive'); }));
+            modelSection.append(this.button('Configure Interactive role', () => { void this.aiCenter?.openRole('interactive'); }));
         const active = this.usableModels().find(entry => this.sameModel(entry.selection, exact));
+        if (!active) {
+            const note = document.createElement('p'); note.className = 'dope-chat-settings-note';
+            note.textContent = exact ? 'This saved model is unavailable. Choose an available model or Follow Interactive role.' :
+                'Reasoning options depend on the Interactive model. Pin an available model to configure them here.';
+            modelSection.append(note);
+        } else if (!active.controls.length) {
+            const note = document.createElement('p'); note.className = 'dope-chat-settings-note';
+            note.textContent = 'No configurable reasoning options are reported for this model.';
+            modelSection.append(note);
+        }
         for (const control of active?.controls ?? []) {
             const select = document.createElement('select');
             select.append(new Option('Auto', ''), ...control.values.map(value =>
@@ -1639,7 +1678,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (select.value) draft.reasoningControls[control.id] = select.value;
                 else delete draft.reasoningControls[control.id];
             };
-            field(`Reasoning: ${control.id}`, select);
+            field(modelSection, 'Reasoning', select);
             const activeModel = this.models.connections.find(connection =>
                 connection.id === active?.selection.connectionId)?.models.find(item =>
                     item.id === active?.selection.modelId);
@@ -1648,38 +1687,54 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 !control.values.includes('off')) {
                 const note = document.createElement('p');
                 note.textContent = 'Off is unavailable for this LM Studio Qwen model through the Pi tool endpoint. Choose Auto or On.';
-                form.append(note);
+                modelSection.append(note);
             }
         }
-        const history = document.createElement('select');
-        history.append(new Option('Recent history', 'recent'), new Option('No history', 'none'));
-        history.value = draft.context.history;
-        history.onchange = () => { draft.context.history = history.value as 'recent' | 'none'; };
-        field('Conversation history', history);
+        const conversation = section('Conversation');
+        const history = document.createElement('input'); history.type = 'checkbox';
+        history.checked = draft.context.history === 'recent';
+        history.onchange = () => { draft.context.history = history.checked ? 'recent' : 'none'; };
+        field(conversation, 'Use previous messages', history);
+        const advanced = document.createElement('details'); advanced.className = 'dope-chat-settings-advanced';
+        const advancedTitle = document.createElement('summary'); advancedTitle.textContent = 'Advanced settings';
+        advanced.append(advancedTitle); form.append(advanced);
+        const tokenInputs: HTMLInputElement[] = [];
         for (const [label, key] of [['Input token budget', 'maxInputTokens'], ['Output token reserve', 'reservedOutputTokens']] as const) {
             const input = document.createElement('input'); input.type = 'number'; input.min = key === 'maxInputTokens' ? '1' : '0';
-            input.value = String(draft.context[key]);
+            input.step = '1'; input.value = String(draft.context[key]); tokenInputs.push(input);
             input.onchange = () => { draft.context[key] = Number(input.value); };
-            field(label, input);
+            field(advanced, label, input);
         }
-        const sources: ChatContextKind[] = ['editor', 'selection', 'file', 'project-mind', 'architecture',
-            'physical-map', 'flow', 'planning-map', 'work-item', 'roadmap-checkpoint', 'roadmap', 'saved-chat'];
-        for (const source of sources) {
-            const input = document.createElement('input'); input.type = 'checkbox';
-            input.checked = draft.context.allowedSources.includes(source);
-            input.onchange = () => { draft.context.allowedSources = input.checked ?
-                [...draft.context.allowedSources, source] : draft.context.allowedSources.filter(item => item !== source); };
-            field(`Allow ${source} context`, input);
-        }
+        const budgetNote = document.createElement('p'); budgetNote.className = 'dope-chat-settings-note';
+        budgetNote.textContent = 'These saved limits are capped by the selected model’s loaded capacity when a turn runs.';
+        advanced.append(budgetNote);
         const saved = document.createElement('input'); saved.type = 'checkbox'; saved.checked = draft.context.savedChatSearch;
         saved.onchange = () => { draft.context.savedChatSearch = saved.checked; };
-        field('Allow saved Chat retrieval', saved);
-        form.append(this.button('Save settings', () => void this.controller.mutate({ type: 'set-settings', chatId,
+        field(advanced, 'Allow saved Chat retrieval', saved);
+        const savedNote = document.createElement('p'); savedNote.className = 'dope-chat-settings-note';
+        savedNote.textContent = 'Lets you select an excerpt from another saved Chat. Your current conversation history is controlled above.';
+        advanced.append(savedNote);
+        const error = document.createElement('p'); error.className = 'dope-chat-settings-error';
+        error.setAttribute('role', 'alert'); advanced.append(error);
+        const actions = document.createElement('footer');
+        const save = this.button('Save settings', () => {
+            const [input, output] = tokenInputs.map(control => Number(control.value));
+            if (!tokenInputs.every(control => control.value.trim() && control.checkValidity()) ||
+                !Number.isSafeInteger(input) || input < 1 || !Number.isSafeInteger(output) || output < 0) {
+                error.textContent = 'Enter whole, nonnegative token limits; input must be at least 1.';
+                advanced.open = true; return;
+            }
+            draft.context.maxInputTokens = input; draft.context.reservedOutputTokens = output;
+            error.textContent = '';
+            void this.controller.mutate({ type: 'set-settings', chatId,
             settings: draft }).then(saved => {
             if (saved && this.settingsChatId === chatId) {
                 this.settingsOpen = false; this.settingsDraft = undefined; this.render();
             }
-        }), this.controller.running));
+        }); }, this.controller.running);
+        save.className = 'dope-chat-settings-save';
+        actions.append(save);
+        form.append(actions);
         return form;
     }
     private renderTree(node: ChatTree): HTMLElement {
@@ -1828,7 +1883,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private render(): void {
         const state = this.controller;
-        const toolbarState = `${this.canBackToChats}:${this.canCopyTranscript}:${this.canOpenChatSettings}`;
+        const toolbarState = `${this.canBackToChats}:${this.canCopyTranscript}:${this.canOpenChatSettings}:${this.isChatSettingsOpen}`;
         if (toolbarState !== this.toolbarState) {
             this.toolbarState = toolbarState;
             ChatPanelWidget.toolbarChanged.fire();
@@ -1856,6 +1911,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.scrollFollow.select(this.panel.mode === 'chat' && state.mode === 'chat' ? state.chatId : undefined);
         const oldScroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
         const scrollTop = oldScroll?.scrollTop ?? 0;
+        const settingsScrollTop = this.content.querySelector<HTMLElement>('.dope-chat-settings-form')?.scrollTop ?? 0;
         const active = document.activeElement as HTMLElement | null;
         const focused = this.content.contains(active) ? active?.getAttribute('aria-label') : undefined;
         const focusedWorkKey = this.content.contains(active) ? active?.dataset.workKey : undefined;
@@ -2079,43 +2135,39 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const note = document.createElement('p'); note.textContent = 'No final response'; content.append(note);
                 }
             } else content.textContent = body;
+            if (message.role === 'assistant' && state.running && message.id === activeAssistant?.id &&
+                state.stream?.messageId === message.id && state.stream.executionId === message.execution.id &&
+                state.stream.content) {
+                content.replaceChildren(renderUntrustedMessageMarkdown(this.markdown, state.stream.content));
+            }
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
             time.textContent = new Date(message.createdAt).toLocaleString();
-            item.append(content);
+            if (message.role === 'user') item.append(content);
             if (message.role === 'assistant') {
                 const diagnostic = chatActivityPresentation(message, state.stream);
-                if (diagnostic) {
-                    const details = document.createElement('details');
-                    details.className = 'dope-chat-stream-activity';
-                    const active = state.running && message.id === activeAssistant?.id;
-                    details.open = this.activityExpansion.get(message.id) ?? active;
-                    const heading = document.createElement('summary');
-                    heading.textContent = `${diagnostic.label}${active ? ' · Working' : ''}`;
-                    heading.addEventListener('click', () => this.activityExpansion.set(message.id, !details.open));
-                    const note = document.createElement('span');
-                    note.className = 'dope-chat-stream-note';
-                    note.textContent = `${diagnostic.unavailable ? 'Reasoning unavailable' : 'Surfaced reasoning'} · Reasoning tokens: ${message.execution.tokenUsage?.reasoningTokens ?? 'unavailable'}`;
-                    const raw = document.createElement('pre'); raw.textContent = diagnostic.text || 'No activity captured';
-                    details.append(heading, note, raw);
-                    if (diagnostic.truncated) {
-                        const limit = document.createElement('span'); limit.textContent = 'Activity display limited; captured record may be truncated.';
-                        details.append(limit);
-                    }
-                    item.append(details);
+                const active = state.running && message.id === activeAssistant?.id;
+                if ((message.execution.status === 'complete' ||
+                    active && state.stream?.messageId === message.id && !!state.stream.content) &&
+                    !this.activityAutoCollapsed.has(message.id)) {
+                    this.activityAutoCollapsed.add(message.id);
+                    this.activityExpansion.set(message.id, false);
                 }
+                if (diagnostic || active || message.execution.status === 'complete')
+                    this.appendReasoningActivity(item, message.id, diagnostic, active,
+                        message.execution.startedAt, message.execution.finishedAt,
+                        message.execution.status === 'complete' ? 'Finished' :
+                            message.execution.status === 'cancelled' ? 'Canceled' :
+                                ['failed', 'interrupted'].includes(message.execution.status) ? 'Error' : 'Working...');
                 if (!diagnostic && message.execution.tokenUsage?.reasoningTokens !== undefined) {
                     const usage = document.createElement('span');
                     usage.className = 'dope-chat-stream-note';
                     usage.textContent = `Reasoning tokens: ${message.execution.tokenUsage.reasoningTokens} · Reasoning stream unavailable`;
                     item.append(usage);
                 }
-                if (state.running && message.id === activeAssistant?.id)
-                    this.appendWorkingStatus(item, message.execution.startedAt);
-                const events = state.toolProgress?.messageId === message.id && state.running ?
-                    state.toolProgress.events : message.execution.toolEvents;
-                this.appendToolActivity(item, message.id, events, state.running && message.id === activeAssistant?.id,
-                    message.execution.startedAt, message.execution.finishedAt);
+                if (message.execution.status === 'complete' && chatResponseCopyText(message) ||
+                    active && state.stream?.content) content.classList.add('dope-chat-final-answer');
+                item.append(content);
                 const action = this.roadmapActionCard(message);
                 if (action) item.append(action);
                 if (state.pendingCommand && message.id === activeAssistant?.id) {
@@ -2123,62 +2175,96 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     if (command) item.append(command);
                 }
             }
-            const meta = document.createElement('small'); meta.className = 'dope-chat-message-meta';
-            meta.append(time);
-            if (message.role === 'user' && message.contextRefs.length) {
-                for (const [origin, label] of [['manual', 'Context'], ['automatic', 'Auto context']] as const) {
-                    const sources = message.contextRefs.filter(ref => (ref.origin ?? 'manual') === origin);
-                    if (!sources.length) continue;
-                    const refs = document.createElement('details');
-                    const summary = document.createElement('summary');
-                    summary.textContent = ` · ${label} (${sources.length})`;
-                    refs.append(summary);
-                    const list = document.createElement('ul');
-                    for (const ref of sources) {
-                        const entry = document.createElement('li');
-                        entry.textContent = `${ref.kind}: ${ref.label}${origin === 'manual' ? ` (${ref.id})` : ''}` +
-                            `${ref.includedBytes === 0 ? ' (omitted by budget)' : ''}`;
-                        list.append(entry);
+            if (message.role === 'user') {
+                const meta = document.createElement('small'); meta.className = 'dope-chat-message-meta';
+                meta.append(time);
+                if (message.contextRefs.length) {
+                    for (const [origin, label] of [['manual', 'Context'], ['automatic', 'Auto context']] as const) {
+                        const sources = message.contextRefs.filter(ref => (ref.origin ?? 'manual') === origin);
+                        if (!sources.length) continue;
+                        const refs = document.createElement('details');
+                        const summary = document.createElement('summary');
+                        summary.textContent = ` · ${label} (${sources.length})`;
+                        refs.append(summary);
+                        const list = document.createElement('ul');
+                        for (const ref of sources) {
+                            const entry = document.createElement('li');
+                            entry.textContent = `${ref.kind}: ${ref.label}${origin === 'manual' ? ` (${ref.id})` : ''}` +
+                                `${ref.includedBytes === 0 ? ' (omitted by budget)' : ''}`;
+                            list.append(entry);
+                        }
+                        refs.append(list); meta.append(refs);
                     }
-                    refs.append(list); meta.append(refs);
                 }
-            }
-            if (message.role === 'assistant') {
+                item.append(meta);
+            } else {
                 const execution = message.execution;
-                const status = document.createElement('span');
-                status.textContent = ` · ${execution.status}${execution.failure ? ` · ${execution.failure}` : ''}`;
                 if (['failed', 'cancelled', 'interrupted'].includes(execution.status))
                     item.classList.add('dope-chat-message-alert');
-                meta.append(status);
-                const provenance = document.createElement('span');
-                provenance.className = 'dope-chat-provenance';
-                provenance.textContent = ` · ${execution.selectedModel.connectionId}/${execution.selectedModel.modelId}` +
-                    (execution.actualModel ? ` → ${execution.actualModel.providerId}/${execution.actualModel.modelLabel}` : '');
-                meta.append(provenance);
+                const footer = document.createElement('div'); footer.className = 'dope-chat-response-footer';
+                const actions = document.createElement('div'); actions.className = 'dope-chat-response-actions';
+                const copyText = chatResponseCopyText(message);
+                const copy = this.button('', () => {
+                    if (!copyText) { this.flashCopyFeedback(copy, 'No final response to copy.'); return; }
+                    void copyChatText(copyText)
+                        .then(() => { icon.className = codicon('check');
+                            this.flashCopyFeedback(copy, 'Copied.');
+                            setTimeout(() => { icon.className = codicon('copy'); }, 2000); },
+                            () => this.flashCopyFeedback(copy, 'Copy failed.'));
+                });
+                copy.className = 'dope-chat-copy-response';
+                copy.setAttribute('aria-label', 'Copy Response'); copy.setAttribute('aria-live', 'polite');
+                copy.title = 'Copy Response';
+                this.bindDiagnosticCopy(copy, message);
+                const icon = document.createElement('span'); icon.className = codicon('copy');
+                icon.setAttribute('aria-hidden', 'true'); copy.append(icon);
+                const info = document.createElement('div'); info.className = 'dope-chat-response-info';
+                info.id = `dope-chat-response-info-${message.id}`;
+                info.hidden = !this.openResponseInfo.has(message.id);
+                const detail = (label: string, value: string) => {
+                    const row = document.createElement('div');
+                    row.textContent = `${label}: ${value}`;
+                    info.append(row);
+                };
+                detail('Status', `${execution.status}${execution.failure ? ` · ${execution.failure}` : ''}`);
+                detail('Selected', `${execution.selectedModel.connectionId}/${execution.selectedModel.modelId}`);
+                if (execution.actualModel) detail('Actual',
+                    `${execution.actualModel.providerId}/${execution.actualModel.modelLabel}`);
                 if (execution.routingProvenance) {
                     const route = execution.routingProvenance;
-                    const why = document.createElement('details');
-                    const summary = document.createElement('summary'); summary.textContent = 'Why this model?';
-                    const detail = document.createElement('span');
-                    detail.textContent = `${route.requestedRole ?? 'Exact'} · ${route.source}; constraints: ` +
-                        `${route.effectiveHard.locality}, ${route.effectiveHard.requiredCapabilities.join(', ') || 'none'}, ` +
+                    detail('Routing', `${route.requestedRole ?? 'Exact'} · ${route.source}`);
+                    detail('Constraints', `${route.effectiveHard.locality}, ` +
+                        `${route.effectiveHard.requiredCapabilities.join(', ') || 'none'}, ` +
                         `context ≥${route.effectiveHard.minimumKnownContextTokens ?? 0}, ` +
-                        `hosted egress ${route.effectiveHard.hostedProjectData}; ` +
-                        `preferred: ${route.preferredTarget ? `${route.preferredTarget.connectionId}/${route.preferredTarget.modelId}` : 'none'}; ` +
-                        `actual: ${route.executionLabels.connection}/${route.executionLabels.model}; ` +
-                        `attempts: ${route.attempts.map(item => `${item.target.connectionId}/${item.target.modelId} ${item.outcome}`).join(' → ')}`;
-                    why.append(summary, detail); meta.append(why);
-                } else if (execution.resolutionSource && ['failed', 'cancelled'].includes(execution.status)) {
-                    const why = document.createElement('details');
-                    const summary = document.createElement('summary'); summary.textContent = 'Why this model?';
-                    const detail = document.createElement('span');
-                    detail.textContent = `${execution.resolutionSource}; selected: ` +
-                        `${execution.selectedModel.connectionId}/${execution.selectedModel.modelId}; ` +
-                        `${execution.failure ?? execution.status}`;
-                    why.append(summary, detail); meta.append(why);
+                        `hosted egress ${route.effectiveHard.hostedProjectData}`);
+                    detail('Preferred', route.preferredTarget ?
+                        `${route.preferredTarget.connectionId}/${route.preferredTarget.modelId}` : 'none');
+                    detail('Route actual', `${route.executionLabels.connection}/${route.executionLabels.model}`);
+                    detail('Attempts', route.attempts.map(attempt =>
+                        `${attempt.target.connectionId}/${attempt.target.modelId} ${attempt.outcome}`).join(' → ') || 'none');
+                } else if (execution.resolutionSource) {
+                    detail('Resolution', execution.resolutionSource);
                 }
+                const infoButton = this.button('', () => {
+                    const open = !this.openResponseInfo.has(message.id);
+                    if (open) this.openResponseInfo.add(message.id);
+                    else this.openResponseInfo.delete(message.id);
+                    info.hidden = !open;
+                    infoButton.setAttribute('aria-expanded', String(open));
+                    infoButton.setAttribute('aria-label', open ? 'Hide response info' : 'Show response info');
+                    infoButton.title = open ? 'Hide response info' : 'Show response info';
+                });
+                infoButton.className = 'dope-chat-response-info-button';
+                infoButton.setAttribute('aria-label', info.hidden ? 'Show response info' : 'Hide response info');
+                infoButton.setAttribute('aria-expanded', String(!info.hidden));
+                infoButton.setAttribute('aria-controls', info.id);
+                infoButton.title = info.hidden ? 'Show response info' : 'Hide response info';
+                const infoIcon = document.createElement('span'); infoIcon.className = codicon('info');
+                infoIcon.setAttribute('aria-hidden', 'true'); infoButton.append(infoIcon);
+                actions.append(copy, infoButton);
+                footer.append(actions, time);
+                item.append(footer, info);
             }
-            item.append(meta);
             if (message.role === 'assistant' &&
                 message.execution.failure?.includes('Verify Local agent execution') &&
                 !state.error.includes('Verify Local agent execution')) {
@@ -2191,29 +2277,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     void this.aiCenter?.openLocalAgentVerification(this.id, target.connectionId, target.modelId);
                 }));
                 item.append(recovery);
-            }
-            if (message.role === 'assistant') {
-                const copyText = chatResponseCopyText(message);
-                const diagnostic = chatDiagnosticCopyText(chat, { messageId: message.id }, this.controller.stream);
-                if (copyText || diagnostic) {
-                    const copy = this.button('', () => {
-                        if (!copyText) { this.status.textContent = 'No final response to copy.'; return; }
-                        void copyChatText(copyText)
-                            .then(() => { icon.className = codicon('check');
-                                copy.setAttribute('aria-label', 'Response copied'); copy.title = 'Copied';
-                                setTimeout(() => { icon.className = codicon('copy');
-                                    copy.setAttribute('aria-label', 'Copy Response'); copy.title = 'Copy Response'; }, 2000); },
-                                () => { copy.setAttribute('aria-label', 'Copy response failed'); copy.title = 'Copy failed'; });
-                    });
-                    copy.className = 'dope-chat-copy-response';
-                    copy.setAttribute('aria-label', 'Copy Response');
-                    copy.setAttribute('aria-live', 'polite');
-                    copy.title = 'Copy Response';
-                    this.bindDiagnosticCopy(copy, message);
-                    const icon = document.createElement('span'); icon.className = codicon('copy');
-                    icon.setAttribute('aria-hidden', 'true'); copy.append(icon);
-                    item.append(copy);
-                }
             }
             transcript.append(item);
         }
@@ -2236,37 +2299,24 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             }
             transcript.append(item);
             const diagnostic = chatStreamingActivityPresentation(state.stream?.chatId === chat.id ?
-                state.stream.events : []);
-            if (diagnostic) {
-                const details = document.createElement('details');
-                details.className = 'dope-chat-stream-activity';
-                details.open = true;
-                const heading = document.createElement('summary');
-                heading.textContent = `${diagnostic.label} · Working`;
-                const note = document.createElement('span');
-                note.className = 'dope-chat-stream-note';
-                note.textContent = diagnostic.unavailable ? 'Reasoning unavailable' : 'Surfaced reasoning';
-                const raw = document.createElement('pre');
-                raw.textContent = diagnostic.text || 'No activity captured';
-                details.append(heading, note, raw);
-                if (diagnostic.truncated) {
-                    const limit = document.createElement('span');
-                    limit.className = 'dope-chat-stream-limit';
-                    limit.textContent = 'Activity display limited; captured record may be truncated.';
-                    details.append(limit);
-                }
-                item.append(details);
+                state.stream.events : [], !!state.stream?.content);
+            if (state.stream?.content && !this.activityAutoCollapsed.has(state.stream.messageId)) {
+                this.activityAutoCollapsed.add(state.stream.messageId);
+                this.activityExpansion.set(state.stream.messageId, false);
             }
-            if (state.runStartedAt) this.appendWorkingStatus(item, state.runStartedAt);
-            if (state.runStartedAt) this.appendToolActivity(item, state.toolProgress?.messageId ?? '',
-                state.toolProgress?.events, true, state.runStartedAt);
+            if (state.runStartedAt) this.appendReasoningActivity(item, state.stream?.messageId, diagnostic,
+                true, state.runStartedAt);
+            if (state.stream?.chatId === chat.id && state.stream.content) {
+                const preview = renderUntrustedMessageMarkdown(this.markdown, state.stream.content);
+                preview.className = 'dope-chat-message-content dope-chat-final-answer';
+                item.append(preview);
+            }
             if (state.pendingCommand && !activeAssistant) {
                 const command = this.commandApprovalCard();
                 if (command) item.append(command);
             }
         }
         scroll.append(transcript);
-        if (this.settingsOpen) scroll.prepend(this.renderSettings(chat.id));
         const latest = this.button('', () => this.scrollToLatest());
         latest.setAttribute('aria-label', 'Scroll to latest'); latest.title = 'Scroll to latest';
         const down = document.createElement('span'); down.className = codicon('chevron-down');
@@ -2303,7 +2353,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         };
         const sources = document.createElement('select');
         sources.setAttribute('aria-label', 'Context source');
-        for (const kind of chat.settings.context.allowedSources)
+        for (const kind of MANUAL_CHAT_CONTEXT_SOURCES.filter(item => item !== 'saved-chat' || chat.settings.context.savedChatSearch))
             sources.append(new Option(kind.replace(/-/g, ' '), kind));
         menu.append(sources);
         menuButton('Add context', () => void this.addContext(sources.value as ChatContextKind), !sources.options.length);
@@ -2485,6 +2535,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         responseNotices.prepend(this.status);
         scroll.append(responseNotices);
         shell.append(composer, menu);
+        if (this.settingsOpen) shell.append(this.renderSettings(chat.id));
         this.content.append(shell);
         resizeChatInput(input);
         scroll.scrollTop = this.scrollFollow.restore(scrollTop, scroll.scrollHeight, scroll.clientHeight);
@@ -2497,11 +2548,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.cancelScrollAnimation?.();
             this.animateLatest(scroll);
         }
-        if (this.revealSettings) {
-            scroll.scrollTop = 0;
-            this.scrollFollow.scrolled(0, scroll.scrollHeight, scroll.clientHeight);
-            this.revealSettings = false;
-        }
+        const settings = shell.querySelector<HTMLElement>('.dope-chat-settings-form');
+        if (settings) settings.scrollTop = settingsScrollTop;
         latest.hidden = !this.scrollFollow.latestBelow;
         this.syncElapsedTicker();
         if (focused) {
