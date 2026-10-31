@@ -63,10 +63,16 @@ export class PiModelBridge {
         try { refreshed = await this.dependencies.refreshModels(selection.connectionId); }
         catch { throw unavailable('Local server unreachable; check the AI Center connection and retry'); }
         if (options.tools || options.chatTools) {
-            const result = await this.dependencies.verifyLocalAgentExecution?.(selection.connectionId, selection.modelId);
-            if (result !== 'supported')
-                throw unavailable('Verify Local agent execution in AI Center before using tools');
-            refreshed = await this.dependencies.inventory();
+            const alreadyVerified = refreshed.registry.models.some(model =>
+                model.connectionId === selection.connectionId && model.providerModelKey === selection.modelId &&
+                model.capabilities.agentExecution?.source === 'adapter-known' &&
+                model.capabilities.agentExecution.value === true);
+            if (!alreadyVerified) {
+                const result = await this.dependencies.verifyLocalAgentExecution?.(selection.connectionId, selection.modelId);
+                if (result !== 'supported')
+                    throw unavailable('Verify Local agent execution in AI Center before using tools');
+                refreshed = await this.dependencies.inventory();
+            }
         }
         const connection = refreshed.registry.connections.find(item => item.id === selection.connectionId);
         if (!connection || connection.lifecycle !== 'enabled' || connection.config.type !== 'local' ||

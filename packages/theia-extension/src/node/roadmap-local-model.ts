@@ -148,6 +148,38 @@ export function validImplementationPlan(value: unknown): value is LocalImplement
     });
 }
 
+/** Diagnostic only. The strict validator above remains the sole schema authority. */
+export function implementationPlanShapeIssues(value: unknown): string[] {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return ['plan must be one JSON object'];
+    const plan = value as Record<string, unknown>;
+    const required = ['type', 'objective', 'successCriteria', 'constraints', 'assumptions', 'steps',
+        'tests', 'guiQualification', 'risks', 'alternatives', 'question'];
+    const issues: string[] = [];
+    for (const key of required) if (!(key in plan)) issues.push(`missing ${key}`);
+    for (const key of Object.keys(plan)) if (!required.includes(key)) issues.push(`unexpected ${key}`);
+    if (plan.type !== 'implementation-plan') issues.push('type must be implementation-plan');
+    for (const key of ['successCriteria', 'constraints', 'assumptions', 'tests', 'risks', 'alternatives'])
+        if (key in plan && (!Array.isArray(plan[key]) || !(plan[key] as unknown[]).every(item => typeof item === 'string')))
+            issues.push(`${key} must be a string array`);
+    if (!Array.isArray(plan.steps) || plan.steps.length < 2) issues.push('steps must contain at least two steps');
+    else plan.steps.forEach((value, index) => {
+        const prefix = `steps[${index}]`;
+        if (!value || typeof value !== 'object' || Array.isArray(value)) { issues.push(`${prefix} must be an object`); return; }
+        const step = value as Record<string, unknown>;
+        const keys = ['title', 'detail', 'deliverables', 'dependsOn', 'reuse'];
+        for (const key of keys) if (!(key in step)) issues.push(`missing ${prefix}.${key}`);
+        for (const key of Object.keys(step)) if (!keys.includes(key)) issues.push(`unexpected ${prefix}.${key}`);
+        if ('deliverables' in step && !Array.isArray(step.deliverables)) issues.push(`${prefix}.deliverables must be an array`);
+        if ('dependsOn' in step && !Array.isArray(step.dependsOn)) issues.push(`${prefix}.dependsOn must be an array`);
+        if ('reuse' in step && (!Array.isArray(step.reuse) || !step.reuse.every(item =>
+            item && typeof item === 'object' && !Array.isArray(item) &&
+            Object.keys(item).sort().join(',') === 'path,reason' &&
+            typeof item.path === 'string' && typeof item.reason === 'string')))
+            issues.push(`${prefix}.reuse must be [] or an array of {path,reason}`);
+    });
+    return issues.slice(0, 8);
+}
+
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
 export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number,
     limits: Pick<ConversationModelCapabilities, 'maxInputTokens' | 'maxOutputTokens'> = {}) {
@@ -186,6 +218,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
     let retryInstruction: string | undefined;
     let incompleteOwnerRevision = false;
     let missingPlanCoverage: string[] = [];
+    let planIssues: string[] = [];
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         let complete: T | undefined;
@@ -211,15 +244,20 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                 raw.type === 'roadmap-gate-undo' && Object.keys(raw).sort().join(',') === 'type' ||
                 raw.type === 'roadmap-gate-focus' && Object.keys(raw).sort().join(',') === 'id,type' &&
                 typeof raw.id === 'string')) return complete;
-            if (mode === 'plan' && validImplementationPlan(raw)) {
-                missingPlanCoverage = check.validatePlan?.(raw) ?? [];
-                if (!missingPlanCoverage.length) return complete;
-                retryInstruction = `The plan has no concrete step, deliverable, or acceptance check for: ${missingPlanCoverage.join('; ')}. ` +
-                    'Return the whole revised plan. For each gap, add or correct actionable step details and deliverables ' +
-                    'and a matching success criterion or test. Do not assume a requested view or action already exists ' +
-                    'unless the supplied source proves it. Keep explicit authorization checks and test deliverables in ' +
-                    'the implementation steps. Use the same supplied evidence; do not invent source reads.';
-                continue;
+            if (mode === 'plan') {
+                if (validImplementationPlan(raw)) {
+                    missingPlanCoverage = check.validatePlan?.(raw) ?? [];
+                    if (!missingPlanCoverage.length) return complete;
+                    planIssues = missingPlanCoverage;
+                } else {
+                    planIssues = implementationPlanShapeIssues(raw);
+                    if (!planIssues.length) planIssues = ['one or more strict field bounds or dependencies are invalid'];
+                }
+                retryInstruction = `Your completed plan was rejected: ${planIssues.join('; ')}. ` +
+                    'Return the whole corrected implementation-plan JSON now. Every step, including validation steps, ' +
+                    'must contain title, detail, deliverables, dependsOn, and reuse. Use reuse:[] when no verified ' +
+                    'project file is reused in that step. Preserve every developer requirement and prohibition exactly. ' +
+                    'Use previously verified file evidence; do not reread unchanged files. No prose or code fences.';
             }
             if (mode === 'plan-revision' && validImplementationPlanRevision(raw)) return complete;
             const proposal = (raw.type === 'roadmap-proposal' && mode === 'unlinked' &&
@@ -255,17 +293,26 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                     citesOwnerRevision(raw.message as string, check.requiredOwnerRevision)) return complete;
                 incompleteOwnerRevision = true;
                 retryInstruction = `Previous answer omitted current Roadmap owner revision ${check.requiredOwnerRevision}. Re-answer all requested facts from attached evidence as strict JSON no-action.`;
-            } else {
+            } else if (mode !== 'plan') {
                 incompleteOwnerRevision = false;
                 retryInstruction = undefined;
             }
-        } catch { /* One bounded repair attempt; no mutation or provider switch. */ }
+        } catch {
+            // A retry must change the model's task, especially when Pi starts a fresh tool session.
+            if (mode === 'plan') {
+                planIssues = ['invalid JSON, incomplete generation, or output size'];
+                retryInstruction = 'Your previous answer was not complete strict implementation-plan JSON. ' +
+                    'Finish now with one JSON object using every required field and at least two substantive steps. ' +
+                    'Every step requires reuse:[] or verified {path,reason} entries. Preserve every developer requirement. ' +
+                    'No prose, code fences, extra fields or repeated file reads unless a material source dependency is missing.';
+            }
+        }
         if (attempt + 1 < MAX_ATTEMPTS)
             check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
     }
     return fail(mode === 'plan' ?
-        `Local implementation plan incomplete or invalid strict JSON after two attempts; no draft change accepted${missingPlanCoverage.length ?
-            `. Uncovered requirements: ${missingPlanCoverage.join('; ')}` : ''}` :
+        `Local implementation plan incomplete or invalid strict JSON after two attempts; no draft change accepted${planIssues.length ?
+            `. Validation: ${planIssues.join('; ')}` : ''}` :
         incompleteOwnerRevision ?
         'Local planning answer omitted the requested current Roadmap owner revision after two attempts' :
         'Local planning did not return strict JSON after two attempts', lastInvalid,

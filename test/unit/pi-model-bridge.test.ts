@@ -59,6 +59,18 @@ test('Pi Chat binding accepts only the complete brokered tool boundary', async (
         /Pi tool boundary changed/);
 });
 
+test('freshly refreshed exact model reuses a verified tool capability without another synthetic loop', async () => {
+    const f = fixture();
+    f.state.registry.models[0].capabilities.agentExecution = known(true);
+    let probes = 0;
+    const bridge = new PiModelBridge({ inventory: async () => f.state,
+        refreshModels: async () => f.state, credential: async () => undefined,
+        verifyLocalAgentExecution: async () => { probes++; return 'supported'; } });
+    await bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp', { chatTools: true });
+    assert.equal(probes, 0);
+    assert.equal(f.calls.length, 1);
+});
+
 test('Pi bridge denies stale, wrong, disabled, cold, hosted and unreachable selections', async () => {
     const selection = { connectionId: 'desk', modelId: 'exact-model' };
     for (const mutate of [

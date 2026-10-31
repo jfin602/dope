@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { planRequirements, planRequirementCoverage, type PlanRequirement } from '../../packages/theia-extension/lib/node/chat-plan-requirements.js';
+import { planRequirements, planRequirementCoverage, planOutputDirectives,
+    planExplicitConstraintViolations, type PlanRequirement } from '../../packages/theia-extension/lib/node/chat-plan-requirements.js';
 import { validImplementationPlan, type LocalImplementationPlan } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const requirements: PlanRequirement[] = [
@@ -46,6 +47,48 @@ test('generic inspect and review instructions are workflow constraints, not prod
     assert.deepEqual(planRequirements(request), []);
     assert.equal(planRequirementCoverage(planRequirements(request), complete).length, 0);
     assert.equal(planRequirements(`${request} Add functional branch checkout.`).length, 1);
+});
+
+test('specific file inspection and test-plan formatting directions do not become product requirements', () => {
+    const request = `Inspect src/counter.js and package.json using your available tools. Prepare one minimal implementation plan for adding an automated test for the existing increment function using Node's built-in test runner. Include the file changes, one test case and validation command. Present the plan for review. Do not edit files, run commands or apply Roadmap changes. Finish once the necessary source evidence is verified.`;
+    const requirements = planRequirements(request);
+    assert.equal(requirements.length, 1);
+    assert.match(requirements[0].text, /automated test.*Node's built-in test runner/i);
+    assert.equal(planRequirements(`${request} Add functional branch checkout.`).length, 2);
+});
+
+test('bulleted Planning directives retain the Node-only requirement and reject forbidden alternatives', () => {
+    const request = `Inspect src/counter.js and package.json using your project tools.\n\nPrepare one minimal implementation plan to add an automated test for the existing increment function.\n\nRequirements:\n- Use Node's built-in test runner.\n- Do not introduce Vitest, Jest or new dependencies.\n- Test that increment(1) returns 2.\n- Include the required file changes and validation command.\n- Reuse the existing function rather than rewriting it.\n- Do not modify project files or the Roadmap.\n\nPresent the implementation plan for review.`;
+    const expected = planRequirements(request);
+    assert.deepEqual(expected.map(item => item.text), [
+        'add an automated test for the existing increment function',
+        "Use Node's built-in test runner", 'Test that increment(1) returns 2']);
+    assert.ok(planOutputDirectives(request).includes('Do not introduce Vitest, Jest or new dependencies'));
+    const plan: LocalImplementationPlan = { type: 'implementation-plan', objective: 'Add automated test for increment function',
+        successCriteria: ['Node built-in test runner passes increment(1) returns 2'],
+        constraints: ['No new dependencies'], assumptions: [], steps: [
+            { title: 'Add automated test', detail: 'Add automated test for increment function using Node built-in test runner; test that increment(1) returns 2',
+                deliverables: ['src/counter.test.js imports existing increment function and asserts increment(1) returns 2'],
+                dependsOn: [], reuse: [{ path: 'src/counter.js', reason: 'Reuse existing increment function' }] },
+            { title: 'Add test script', detail: 'Use Node built-in test runner in package.json scripts.test via node --test',
+                deliverables: ['package.json test script for validation command npm test'], dependsOn: [1],
+                reuse: [{ path: 'package.json', reason: 'Extend existing ESM manifest' }] }],
+        tests: ['Run npm test with Node built-in test runner and assert increment(1) returns 2'],
+        guiQualification: 'Not applicable: CLI test only', risks: [], alternatives: [], question: '' };
+    assert.equal(validImplementationPlan(plan), true);
+    assert.equal(planRequirementCoverage(expected, plan).every(item => item.complete), true);
+    assert.deepEqual(planExplicitConstraintViolations(request, plan, ['src/counter.js', 'package.json']), []);
+    assert.match(planExplicitConstraintViolations(request, { ...plan,
+        steps: [plan.steps[0], { ...plan.steps[1], detail: 'Add Jest and npm install for the test' }] },
+    ['src/counter.js', 'package.json']).join(' '), /Jest/);
+    assert.match(planExplicitConstraintViolations(request, { ...plan,
+        tests: ['Run npm test with Node built-in test runner and assert increment(1) returns 3'],
+        successCriteria: ['Node built-in test runner passes increment(1) returns 3'],
+        steps: plan.steps.map(step => ({ ...step, detail: step.detail.replaceAll('returns 2', 'returns 3'),
+            deliverables: step.deliverables.map(item => item.replaceAll('returns 2', 'returns 3')) })) },
+    ['src/counter.js', 'package.json']).join(' '), /Requested test result/);
+    assert.match(planExplicitConstraintViolations(request, { ...plan,
+        steps: plan.steps.map(step => ({ ...step, reuse: [] })) }, ['src/counter.js']).join(' '), /verified reuse path/);
 });
 
 test('B/C: a commit control is not commit creation; execution, failure and identifier verification cover it', () => {
