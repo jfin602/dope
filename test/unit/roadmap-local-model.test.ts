@@ -14,6 +14,17 @@ const implementationPlan = { type: 'implementation-plan', objective: 'Add visual
             dependsOn: [1], reuse: [] }], tests: ['Unit history navigation'], guiQualification: 'Exercise checkout in GUI',
     risks: ['Stale branch state; refresh before action'], alternatives: ['Reuse existing list first'], question: '' };
 
+test('submission shape feedback names empty and invalid mandatory fields', () => {
+    const invalid = { ...implementationPlan, guiQualification: '', steps: [implementationPlan.steps[0],
+        { ...implementationPlan.steps[1], deliverables: [], dependsOn: [2] }] };
+    assert.equal(validImplementationPlan(invalid), false);
+    assert.deepEqual(implementationPlanShapeIssues(invalid), [
+        'guiQualification must be nonempty single-line text',
+        'steps[1].deliverables needs nonempty single-line items',
+        'steps[1].dependsOn must contain only earlier 1-based step numbers'
+    ]);
+});
+
 test('whole strategic envelope requires complete output and exact owner identity', () => {
     const draft = { type: 'strategic-roadmap-draft', projectId: 'project', ownerRevision: 0,
         phases: ['Foundation', 'Combat', 'MVP polish'].map((title, index) => ({ title,

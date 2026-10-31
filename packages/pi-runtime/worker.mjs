@@ -15,6 +15,7 @@ let session;
 let isolatedDir;
 let workMode = false;
 let chatToolsMode = false;
+let planningMode = false;
 let workRequestId;
 let nextToolId = 0;
 let activeRequest = false;
@@ -106,15 +107,30 @@ const CHAT_TOOLS = {
   search_text: { query: Type.String() },
   run_command: { command: Type.String() }
 };
+// The exact structural and semantic authority remains Dope's
+// validImplementationPlan/planProposal boundary. This TypeBox shape only helps Pi
+// produce typed arguments; the host revalidates every untrusted field.
+const PLAN_TOOL = Type.Object({
+  type: Type.Literal('implementation-plan'), objective: Type.String(),
+  successCriteria: Type.Array(Type.String()), constraints: Type.Array(Type.String()),
+  assumptions: Type.Array(Type.String()),
+  steps: Type.Array(Type.Object({ title: Type.String(), detail: Type.String(),
+    deliverables: Type.Array(Type.String()), dependsOn: Type.Array(Type.Integer()),
+    reuse: Type.Array(Type.Object({ path: Type.String(), reason: Type.String() },
+      { additionalProperties: false })) }, { additionalProperties: false })),
+  tests: Type.Array(Type.String()), guiQualification: Type.String(),
+  risks: Type.Array(Type.String()), alternatives: Type.Array(Type.String()), question: Type.String()
+}, { additionalProperties: false });
 function chatTools() {
-  return Object.entries(CHAT_TOOLS).map(([name, properties]) => ({
+  return Object.entries({ ...CHAT_TOOLS, ...(planningMode ? { submit_plan: PLAN_TOOL } : {}) }).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
+      name === 'submit_plan' ? 'Submit a complete implementation plan for Dope validation and human review. No files or Roadmap are changed. Include all required fields, exact test cases and validation commands. If rejected, use the returned feedback for at most one correction.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
       name === 'read_file' ? 'Read one real project file using a relative path returned by list_files or search_paths. An absent result is not evidence of an empty project.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
-    parameters: Type.Object(properties, { additionalProperties: false }),
+    parameters: name === 'submit_plan' ? properties : Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
       const id = ++nextToolId;
@@ -127,6 +143,9 @@ function chatTools() {
         const result = await answer;
         trace('tool-result-accepted', { toolId: id, status: result.status,
           outputBytes: Buffer.byteLength(result.output ?? '', 'utf8') });
+        if (name === 'submit_plan' && result.status === 'completed' && typeof result.output === 'string' &&
+            Buffer.byteLength(result.output, 'utf8') <= 12_000)
+          return { content: [{ type: 'text', text: result.output }] };
         if (result.status !== 'completed' || typeof result.output !== 'string' ||
             Buffer.byteLength(result.output, 'utf8') > 12_000)
           throw new Error('Dope Chat tool denied or exceeded output limit');
@@ -199,6 +218,7 @@ function assertLocalModel(model) {
 async function dispose() {
   workMode = false;
   chatToolsMode = false;
+  planningMode = false;
   for (const pending of pendingTools.values()) pending.reject(new Error('Pi session closed'));
   pendingTools.clear();
   session?.dispose();
@@ -219,7 +239,7 @@ export async function dispatch(message) {
     case 'open': {
       if (session) throw new Error('Pi session already open');
       assertLocalModel(message.model);
-      if (message.mode !== undefined && !['work', 'chat-tools'].includes(message.mode)) throw new Error('Invalid Pi mode');
+      if (message.mode !== undefined && !['work', 'chat-tools', 'planning-tools'].includes(message.mode)) throw new Error('Invalid Pi mode');
       if (typeof message.cwd !== 'string' || !message.cwd.startsWith('/'))
         throw new Error('Explicit absolute Pi working directory required');
       isolatedDir = await mkdtemp(join(tmpdir(), 'dope-pi-'));
@@ -239,7 +259,9 @@ export async function dispatch(message) {
           }]
         });
         workMode = message.mode === 'work';
-        chatToolsMode = message.mode === 'chat-tools';
+        chatToolsMode = message.mode === 'chat-tools' || message.mode === 'planning-tools';
+        planningMode = message.mode === 'planning-tools';
+        const chatToolNames = [...Object.keys(CHAT_TOOLS), ...(planningMode ? ['submit_plan'] : [])];
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           sessionManager: SessionManager.inMemory(message.cwd),
@@ -248,7 +270,7 @@ export async function dispatch(message) {
             keepRecentTokens: Math.min(4096, Math.floor(message.model.contextWindow / 8)) },
             retry: { enabled: false } }),
           resourceLoader: emptyResources, tools: workMode ? Object.keys(WORK_TOOLS) :
-            chatToolsMode ? Object.keys(CHAT_TOOLS) : [],
+            chatToolsMode ? chatToolNames : [],
           noTools: 'all', customTools: workMode ? workTools() : chatToolsMode ? chatTools() : [],
           scopedModels: [{ model: message.model }]
         });
@@ -256,7 +278,7 @@ export async function dispatch(message) {
         sessionConsumed = false;
         const tools = session.getActiveToolNames();
         if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? Object.keys(WORK_TOOLS) :
-          chatToolsMode ? Object.keys(CHAT_TOOLS) : []).sort()))
+          chatToolsMode ? chatToolNames : []).sort()))
           throw new Error('Pi opened with unexpected tools');
         return { version, tools, resources: 'isolated' };
       } catch (error) {
@@ -330,7 +352,7 @@ export async function dispatch(message) {
           attemptedTool = true;
           void session.abort();
         }
-        if (chatToolsMode && event.type === 'tool_execution_start' && ++toolCount > 16) {
+        if (chatToolsMode && event.type === 'tool_execution_start' && ++toolCount > (planningMode ? 20 : 16)) {
           attemptedTool = true;
           void session.abort();
         }

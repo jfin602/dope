@@ -824,7 +824,7 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         tests: ['Unit history, diff editor reuse, checkout and commit permission checks'],
         guiQualification: 'Exercise history, checkout, commit and diff in browser',
         risks: ['Stale branch; refresh before checkout'], alternatives: ['Start with read-only history'], question: '' });
-    let calls = 0, reportedModel = 'q4', interrupted = false, inspectWithPi = false,
+    let calls = 0, reportedModel = 'q4', interrupted = false,
         changeSourceAfterInspect = false;
     let inspectedSource = '';
     const sent: string[] = [];
@@ -834,14 +834,16 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         { id: 'hosted', ready: true, providerId: 'gemini', models: [{ id: 'remote', usable: true,
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192 } }] }] }),
         async *generate(_selection: unknown, request: { messages: { content: string }[];
-            projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+            projectTools?: { planning?: boolean; execute(name: string, args: unknown): Promise<string> } }) {
             calls++; sent.push(request.messages.map(message => message.content).join('\n'));
-            if (inspectWithPi) inspectedSource = JSON.parse(await request.projectTools!.execute('read_file',
+            if (request.projectTools?.planning) inspectedSource = JSON.parse(await request.projectTools.execute('read_file',
                 { path: sourcePath })).text;
-            if (changeSourceAfterInspect) await writeFile(join(root, sourcePath), 'changed during turn\n');
-            yield { type: 'delta' as const, text: plan.slice(0, 30) };
+            yield { type: 'delta' as const, text: 'Preparing a plan.' };
             if (interrupted) return;
-            yield { type: 'complete' as const, text: plan, actualModelId: reportedModel }; } };
+            if (changeSourceAfterInspect) await writeFile(join(root, sourcePath), 'changed during turn\n');
+            if (request.projectTools?.planning) await request.projectTools.execute('submit_plan', JSON.parse(plan));
+            yield { type: 'complete' as const, text: request.projectTools?.planning ? 'Plan submitted for review.' : plan,
+                actualModelId: reportedModel }; } };
     const composer = { compose: async (_root: unknown, _chat: unknown, _content: unknown,
         _context: unknown, _capabilities: unknown, grounding: { blocks: { text: string; ref: unknown }[];
             diagnostics: unknown[] }) => ({ messages: [{ role: 'user' as const,
@@ -885,7 +887,6 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.equal(greenfield.readImplementationPlan(handle), undefined);
         assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-1)?.planningActivity?.status, 'rejected');
         plan = completePlan;
-        inspectWithPi = true;
         calls = 0;
         const before = await store.read(root);
         changeSourceAfterInspect = true;
@@ -903,8 +904,7 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.match(inspectedSource, /current history owner/);
         assert.ok(investigations > 0);
         assert.match(sent.at(-1)!, /current history owner/);
-        assert.ok(sent.at(-1)!.indexOf('First investigate the project') <
-            sent.at(-1)!.indexOf('Final output must be one compact JSON object'));
+        assert.match(sent.at(-1)!, /submit_plan/);
         assert.doesNotMatch(sent.at(-1)!, /"title":"Inspect source"/);
         assert.equal(turn.proposal?.action.type, 'implementation-plan', JSON.stringify(turn.planPreview ?? turn.proposalError));
         assert.equal(turn.proposal?.changedIds.length, 3);
@@ -915,7 +915,7 @@ test('short idea previews a complete noncanonical plan on first local outcome, t
         assert.equal(message.role === 'assistant' && message.planningActivity?.status, 'pending');
         if (message.role === 'assistant') {
             assert.deepEqual(message.execution.toolEvents?.map(event => [event.name, event.status]),
-                [['read_file', 'completed']]);
+                [['read_file', 'completed'], ['submit_plan', 'completed']]);
             assert.ok(message.planningActivity?.refs.some(ref => ref.id === sourcePath && ref.sourceHash));
         }
         await backend.decidePlanningProposal(projectHandle, chatId, lease.token, turn.proposal!.id, true);

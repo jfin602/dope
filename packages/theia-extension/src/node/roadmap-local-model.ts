@@ -159,9 +159,18 @@ export function implementationPlanShapeIssues(value: unknown): string[] {
     for (const key of required) if (!(key in plan)) issues.push(`missing ${key}`);
     for (const key of Object.keys(plan)) if (!required.includes(key)) issues.push(`unexpected ${key}`);
     if (plan.type !== 'implementation-plan') issues.push('type must be implementation-plan');
+    for (const [key, limit] of [['objective', 2048], ['guiQualification', 1024]] as const)
+        if (key in plan && !planLine(plan[key], limit)) issues.push(`${key} must be nonempty single-line text`);
+    if ('question' in plan && (typeof plan.question !== 'string' || plan.question.length > 512 ||
+        /[\0-\x1f]/.test(plan.question))) issues.push('question must be a string (empty when none)');
     for (const key of ['successCriteria', 'constraints', 'assumptions', 'tests', 'risks', 'alternatives'])
         if (key in plan && (!Array.isArray(plan[key]) || !(plan[key] as unknown[]).every(item => typeof item === 'string')))
             issues.push(`${key} must be a string array`);
+    for (const key of ['successCriteria', 'tests'])
+        if (Array.isArray(plan[key]) && !plan[key].length) issues.push(`${key} needs at least one item`);
+    for (const key of ['successCriteria', 'constraints', 'assumptions', 'tests', 'risks', 'alternatives'])
+        if (Array.isArray(plan[key]) && plan[key].some(item => !planLine(item,
+            key === 'constraints' ? 512 : 512))) issues.push(`${key} entries must be nonempty single-line text`);
     if (!Array.isArray(plan.steps) || plan.steps.length < 2) issues.push('steps must contain at least two steps');
     else plan.steps.forEach((value, index) => {
         const prefix = `steps[${index}]`;
@@ -171,12 +180,23 @@ export function implementationPlanShapeIssues(value: unknown): string[] {
         for (const key of keys) if (!(key in step)) issues.push(`missing ${prefix}.${key}`);
         for (const key of Object.keys(step)) if (!keys.includes(key)) issues.push(`unexpected ${prefix}.${key}`);
         if ('deliverables' in step && !Array.isArray(step.deliverables)) issues.push(`${prefix}.deliverables must be an array`);
+        else if (Array.isArray(step.deliverables) && (!step.deliverables.length ||
+            step.deliverables.some(item => !planLine(item, 512))))
+            issues.push(`${prefix}.deliverables needs nonempty single-line items`);
         if ('dependsOn' in step && !Array.isArray(step.dependsOn)) issues.push(`${prefix}.dependsOn must be an array`);
+        else if (Array.isArray(step.dependsOn) && (step.dependsOn.length > index ||
+            new Set(step.dependsOn).size !== step.dependsOn.length ||
+            step.dependsOn.some(item => !Number.isSafeInteger(item) || item < 1 || item > index)))
+            issues.push(`${prefix}.dependsOn must contain only earlier 1-based step numbers`);
+        if ('title' in step && !planLine(step.title, 200)) issues.push(`${prefix}.title must be nonempty single-line text`);
+        if ('detail' in step && !planLine(step.detail, 2048)) issues.push(`${prefix}.detail must be nonempty single-line text`);
         if ('reuse' in step && (!Array.isArray(step.reuse) || !step.reuse.every(item =>
             item && typeof item === 'object' && !Array.isArray(item) &&
-            Object.keys(item).sort().join(',') === 'path,reason' &&
-            typeof item.path === 'string' && typeof item.reason === 'string')))
+                Object.keys(item).sort().join(',') === 'path,reason' &&
+                typeof item.path === 'string' && typeof item.reason === 'string')))
             issues.push(`${prefix}.reuse must be [] or an array of {path,reason}`);
+        else if (Array.isArray(step.reuse) && step.reuse.some(item => !planLine(item.path, 512) ||
+            !planLine(item.reason, 512))) issues.push(`${prefix}.reuse paths and reasons must be nonempty single-line text`);
     });
     return issues.slice(0, 8);
 }

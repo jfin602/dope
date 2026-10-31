@@ -14,7 +14,7 @@ import { runChatInvestigationCommand } from './chat-command-broker';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevision, validImplementationPlan,
-    validImplementationPlanRevision,
+    validImplementationPlanRevision, implementationPlanShapeIssues,
     roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 import { RoadmapGreenfield, reviseImplementationPlan, type ImplementationPlanRevision,
     type GreenfieldEdit, type GreenfieldEditPreview, type ImplementationPlanPreview,
@@ -40,7 +40,7 @@ function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3)
 
 const chatHard: AIRoleHardConstraints = { requiredCapabilities: ['conversationalText', 'streaming'],
     locality: 'any', enabledOnly: true, usableOnly: true, hostedProjectData: 'requires-feature-authorization' };
-const PLAN_INVESTIGATION_INSTRUCTION = `First investigate the project with the available Pi file tools. Choose the relevant files and tools yourself, read the existing implementation needed by this request, and use actual tool results as source evidence. Do not draft a plan or generate final JSON before that investigation. Once evidence suffices, stop reading and produce the proposal. Final output must be one compact JSON object, without prose or fences, with exactly these top-level fields: type ("implementation-plan"), objective (string), successCriteria (nonempty string array), constraints (string array), assumptions (string array), steps (array), tests (string array), guiQualification (string), risks (string array), alternatives (string array), question (string, empty if none). Give at least two substantive steps. Every step requires title and detail (strings), nonempty deliverables (string array), dependsOn (array of 1-based earlier step numbers; [] for the first step), and reuse (array of verified {"path":"project-relative path","reason":"how used"} objects, or [] when none). Cite only paths verified by tool results. Include requested validation in a step deliverable and tests. Preserve every developer requirement and exclusion in every field, including alternatives; use alternatives:[] when the allowed approach has no useful alternative. Describe validation as future work, without claiming test output or results already obtained. Do not add unrequested test cases. Never claim writes or approval. This is a review proposal, not a Roadmap mutation.`;
+const PLAN_INVESTIGATION_INSTRUCTION = `Investigate the project with the available Pi file tools. Choose relevant files yourself and read the implementation needed by this request. Use actual tool results as source evidence. Then submit one complete implementation plan through submit_plan. Include every developer requirement, exact requested tests and validation commands. Preserve prohibitions as constraints; do not propose forbidden dependencies or claim unverified results. If Dope rejects the candidate, use its precise feedback for at most one corrected submission in this same turn. After acceptance, briefly report that the proposal awaits human review. Do not output a second JSON plan, claim approval, edit files or change Roadmap.`;
 function firstPlanInstruction(requirements: readonly PlanRequirement[], content: string): string {
     const detailedActions = requirements.some(item => /\b(?:toolbar|button|control|checkout|commit|authorization|permission)\b/i.test(item.text));
     return `${PLAN_INVESTIGATION_INSTRUCTION} Exact developer directives: ${JSON.stringify(planOutputDirectives(content))}. ` +
@@ -1295,8 +1295,11 @@ export class ChatBackend implements ChatService {
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
         // A Planning schema retry starts a fresh Pi session. Carry only file bytes Pi already chose to read.
         const observedFiles = new Map<string, string>();
+        let submissionAttempts = 0;
+        let submittedPlan: Awaited<ReturnType<ChatBackend['planProposal']>> | undefined;
+        let lastSubmission: Awaited<ReturnType<ChatBackend['planProposal']>> | undefined;
         let toolBytes = 0;
-        const projectTools = this.grounder ? { root,
+        const projectTools = this.grounder ? { root, planning: planOnly && localMode === 'plan',
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
                 const toolName = name as NonNullable<ChatAssistantMessage['execution']['toolEvents']>[number]['name'];
                 const field = name === 'run_command' ? 'command' :
@@ -1320,7 +1323,38 @@ export class ChatBackend implements ChatService {
                 try { return await (async () => {
                 if (signal?.aborted || this.active(request.projectHandle) !== root ||
                     this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
-                if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
+                if (toolEvents.length >= (planOnly ? 20 : 16)) throw new Error('Project discovery limit reached');
+                if (name === 'submit_plan') {
+                    if (!planOnly || localMode !== 'plan' || !assistant || abort.signal.aborted ||
+                        signal?.aborted || this.leases.get(key)?.token !== request.leaseToken)
+                        throw new Error('Planning submission unavailable');
+                    if (submittedPlan?.proposal) return 'Proposal already submitted; await human review.';
+                    if (submissionAttempts >= 2) return 'Proposal rejected: correction limit reached; no pending proposal.';
+                    submissionAttempts++;
+                    let result: Awaited<ReturnType<ChatBackend['planProposal']>>;
+                    if (!validImplementationPlan(args)) {
+                        const issues = implementationPlanShapeIssues(args);
+                        result = { proposalError: `Invalid implementation plan: ${issues.join('; ') || 'required fields or relationships are invalid'}` };
+                    } else if (!observedFiles.size) {
+                        result = { proposalError: 'Read relevant project source with read_file before submitting; model claims alone are not evidence.' };
+                    } else if (args.steps.some(step => step.reuse.some(item => !observedFiles.has(item.path)))) {
+                        result = { proposalError: 'Reuse paths must come from successful read_file results for this project.' };
+                    } else {
+                        const readRefs = sourceRefs.filter(ref => ref.kind === 'file' && observedFiles.has(ref.id));
+                        result = await this.planProposal(root, key, assistant.id, request.leaseToken,
+                            JSON.stringify(args), readRefs, requirements, content);
+                    }
+                    toolEvents.push({ name: 'submit_plan', status: result.proposal ? 'completed' : 'failed', truncated: false });
+                    lastSubmission = result;
+                    if (result.proposal) {
+                        submittedPlan = result;
+                        return 'Proposal accepted for human review. Stop submitting; summarize pending status without claiming approval or application.';
+                    }
+                    const coverage = result.planPreview?.coverage.filter(item => item.status !== 'covered')
+                        .map(item => `${item.text}: ${item.explanation}`).slice(0, 3).join('; ');
+                    return `Proposal rejected: ${result.proposalError ?? 'validation failed'}${coverage ? ` ${coverage}` : ''} ` +
+                        (submissionAttempts < 2 ? 'Revise and resubmit once.' : 'Correction limit reached; no pending proposal.');
+                }
                 if (name === 'run_command') {
                     const record = args as Record<string, unknown>;
                     if (planForbidsCommands(content)) {
@@ -1491,7 +1525,7 @@ export class ChatBackend implements ChatService {
                     ...(planningOutput > 0 ?
                         { maxOutputTokens: budget?.output ?? planningOutput } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
-            const events = localRoadmap ? (async function* (backend: ChatBackend) {
+            const events = localRoadmap && !(planOnly && localMode === 'plan') ? (async function* (backend: ChatBackend) {
                 const guardedGenerate = async function* (retryInstruction?: string) {
                     if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                     yield* generate(retryInstruction);
@@ -1548,6 +1582,7 @@ export class ChatBackend implements ChatService {
                     if (planOnly && (actual.connectionId !== selectedModel!.connectionId ||
                         actual.modelId !== selectedModel!.modelId || actual.providerId !== 'local'))
                         throw new ModelRuntimeFailure('Selected local planning model changed during inference', 'model-unavailable');
+                    if (submittedPlan?.proposal) output = 'Implementation plan submitted for human review. No project files or Roadmap were changed.';
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                         outcome: 'complete', content: output, actualModel: actual, routingProvenance,
                         contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
@@ -1563,15 +1598,16 @@ export class ChatBackend implements ChatService {
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted && !localRoadmap) return preview;
                     const proposalRefs = [...preview.refs, ...sourceRefs];
-                    const result = planOnly ? localMode === 'plan-revision' ?
+                    const result = submittedPlan?.proposal ? submittedPlan : planOnly ? localMode === 'plan-revision' ?
                         (JSON.parse(output) as { type: string }).type === 'no-action' ? {} :
                             await this.planRevisionProposal(root, key, assistant.id, request.leaseToken, output,
                                 planBinding!.plan!.revision, proposalRefs) :
-                        await this.planProposal(root, key, assistant.id, request.leaseToken, output, proposalRefs, requirements, content) :
+                        lastSubmission ?? { proposalError: 'The model did not call submit_plan; no pending proposal was created.' } :
                         helpTurn || bridge ? {} : await this.proposal(root, key, assistant.id,
                             request.leaseToken, output, proposalRefs, draft);
                     if (localRoadmap) {
-                        const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
+                        const kind = submittedPlan?.proposal || planOnly && localMode === 'plan' ?
+                            'implementation-plan' : (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
                             { schemaVersion: 1, kind, refs: proposalRefs,
                                 status: kind === 'no-action' || kind === 'roadmap-gate-focus' &&

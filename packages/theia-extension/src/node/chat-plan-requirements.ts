@@ -15,6 +15,31 @@ const terms = (value: string): string[] => [...new Set(value.replace(/([a-z])([A
 const requestClauses = (content: string): string[] => content.split(/(?<=[.!?;])\s+|;\s*|\n+(?=\s*[-*]\s+)/)
     .map(value => value.trim().replace(/^[-*]\s+/, '').replace(/[.!?;]+$/, ''));
 
+// Inspect the action around an item, not mere occurrence of its name. A constraint
+// repeated in success criteria or an alternative is not a proposed implementation.
+function proposes(fragment: string, item: RegExp): boolean {
+    const clauses = requestClauses(fragment);
+    return clauses.some(clause => {
+        if (!item.test(clause)) return false;
+        const action = /\b(?:add|install|introduce|include|use|require|recommend)\b/gi;
+        for (const match of clause.matchAll(action)) {
+            const tail = clause.slice(match.index!);
+            const target = item.exec(tail);
+            if (!target || target.index > 80) continue;
+            const prefix = clause.slice(0, match.index!).toLowerCase();
+            const between = tail.slice(0, target.index).toLowerCase();
+            if (/\b(?:do\s+not|does\s+not|don'?t|doesn'?t|must\s+not|should\s+not|never|avoid|without|no)\b(?:\W+\w+){0,5}\W*$/i.test(prefix) ||
+                /\b(?:no|not|without|avoid|zero)\b/i.test(between)) continue;
+            return true;
+        }
+        return false;
+    });
+}
+const proposesDependencyCommand = (fragment: string): boolean =>
+    requestClauses(fragment).some(clause =>
+        /\b(?:npm\s+install|yarn\s+add|pnpm\s+add)\b/i.test(clause) &&
+        !/\b(?:do\s+not|does\s+not|don'?t|doesn'?t|must\s+not|never|avoid|without|no)\b/i.test(clause));
+
 export function planForbidsCommands(content: string): boolean {
     return requestClauses(content).some(clause =>
         /\bdo\s+not\b.{0,160}\b(?:execute|run)\s+commands?\b\s*(?:,|$)/i.test(clause));
@@ -65,23 +90,26 @@ export function planExplicitConstraintViolations(content: string, plan: LocalImp
         if (forbidden) for (const item of forbidden[1].split(/,\s*|\s+or\s+/i).map(value =>
             value.trim().replace(/^(?:a|an|any)\s+/i, '')).filter(Boolean)) {
             if (/^new\s+dependenc(?:y|ies)$/i.test(item)) {
-                if (fragments.some(fragment => /\b(?:npm\s+install|yarn\s+add)\b/i.test(fragment) ||
-                    [...fragment.matchAll(/\b(?:add|install|introduce|include|require)\b.{0,50}\b(?:new\s+)?(?:dev)?dependenc(?:y|ies)\b/gi)]
-                        .some(match => !/\b(?:no|without|avoid|zero)\b/i.test(match[0]))))
+                if (fragments.some(fragment => proposes(fragment, /\b(?:new\s+)?(?:dev)?dependenc(?:y|ies)\b/i) ||
+                    proposesDependencyCommand(fragment)))
                     violations.push(`Proposed new dependencies despite: ${clause}`);
-            } else if (new RegExp(`\\b${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(proposed)) {
+            } else if (fragments.some(fragment => proposes(fragment,
+                new RegExp(`\\b${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')))) {
                 violations.push(`Proposed forbidden item ${item} despite: ${clause}`);
             }
         }
         const requiredUse = /^use\s+(.+)$/i.exec(clause);
         if (requiredUse) {
-            const requiredTerms = terms(requiredUse[1]);
-            const found = terms(proposedLower);
-            if (requiredTerms.some(word => !found.includes(word)))
-                violations.push(`Requested use is not demonstrated: ${clause}`);
-            // This is conditional on the developer's exact runner choice, not a default for plans.
-            if (/^Node's\s+built-in\s+test\s+runner$/i.test(requiredUse[1]) &&
-                (!/\bnode:test\b/i.test(proposed) || !/\bnode\s+--test\b/i.test(proposed)))
+            const nodeRunner = /^Node's\s+built-in\s+test\s+runner$/i.test(requiredUse[1]);
+            if (!nodeRunner) {
+                const requiredTerms = terms(requiredUse[1]);
+                const found = terms(proposedLower);
+                if (requiredTerms.some(word => !found.includes(word)))
+                    violations.push(`Requested use is not demonstrated: ${clause}`);
+            }
+            // The named runner has a decidable implementation contract. Requiring
+            // the words "built-in runner" would reject the actual node:test API.
+            if (nodeRunner && (!/\bnode:test\b/i.test(proposed) || !/\bnode\s+--test\b/i.test(proposed)))
                 violations.push(`Requested Node test runner is not implemented by a node:test case and node --test validation: ${clause}`);
         }
         const testResult = /^test\s+that\s+(.+?)\s+returns?\s+(.+)$/i.exec(clause);
