@@ -53,10 +53,13 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
     let answer: unknown = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
         actions: [{ type: 'phase.create', id: 'new:1', title: 'Combat Systems',
             objective: 'Verify combat behavior' }] };
+    const prompts: string[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
             streaming: true, contextWindowTokens: 8192, maxInputTokens: 8192 } }] }] }),
-    async *generate() { yield { type: 'complete' as const, actualModelId: 'q4', text: JSON.stringify(answer) }; } };
+    async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
+        prompts.push(JSON.stringify(request.messages));
+        yield { type: 'complete' as const, actualModelId: 'q4', text: JSON.stringify(answer) }; } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
         composer, undefined, undefined, actions, undefined, undefined, store);
     try {
@@ -69,10 +72,20 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.equal(lease.acquired, true);
         if (!lease.acquired) throw new Error('Chat lease unavailable');
         const before = await readFile(join(root, '.dope', 'roadmap.json'));
-        const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+        const unskilled = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: 'Add a Phase called Combat Systems.',
             context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 1 }] });
+        assert.equal(unskilled.proposal, undefined);
+        assert.equal(unskilled.proposalError, undefined);
+        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
+        assert.doesNotMatch(prompts[0], /Supported action types and fields/);
+        const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/roadmap Add a Phase called Combat Systems.',
+            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 1 }] });
+        assert.match(prompts[1], /Supported action types and fields/);
+        assert.equal((prompts[1].match(/Dope skill \/roadmap/g) ?? []).length, 1);
         assert.ok(turn.proposal);
         assert.equal(turn.proposal.preview?.source, 'validated-roadmap');
         assert.equal(turn.proposal.preview?.entities[0]?.after?.title, 'Combat Systems');
@@ -85,9 +98,10 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
         const retry = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: 'Add a Phase called Combat Systems.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 1 }] });
+            content: '/roadmap', context: [] });
         assert.ok(retry.proposal);
+        assert.ok(retry.refs.some(ref => ref.kind === 'roadmap'));
+        assert.match(prompts[2], /Add a Phase called Combat Systems/);
         await backend.decidePlanningProposal(projectHandle, chatId, lease.token, retry.proposal.id, true);
         const saved = await store.read(root);
         assert.equal(saved.revision, 2);
@@ -101,5 +115,34 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.equal(question.proposalError, undefined);
         assert.equal(question.proposal, undefined);
         assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), beforeQuestion);
+        const phaseList = Array.from({ length: 70 }, (_, order) => ({ id: `phase-${order}`,
+            projectId, title: `Phase ${order}`, objective: `Objective ${order}`, order, dependencies: [] }));
+        const gateList = Array.from({ length: 52 }, (_, order) => ({ id: `gate-${order}`,
+            projectId, parentPhaseId: 'phase-69', designation: `G${order}`, title: `Gate ${order}`,
+            purpose: `Purpose ${order}`, order, dependencies: [], draftAcceptance: 'accepted',
+            criteria: Array.from({ length: 16 }, (_, number) => ({ id: `criterion-${order}-${number}`,
+                projectId, title: `Criterion ${number}`, expectedResult: `Expected ${number}`,
+                order: number, evidence: [] })) }));
+        const large = { schemaVersion: 2 as const, projectId, projectRoot: root, revision: 2,
+            phases: phaseList, gates: gateList, corrections: [] };
+        const largeComposer = new ChatContextComposer({} as never, {} as never, index as never,
+            repository, { read: async () => large } as never);
+        const savedChat = await backend.get(projectHandle, chatId);
+        assert.ok(savedChat);
+        const selectedContext = [{ kind: 'roadmap' as const, id: 'gate-50', projectId, ownerRevision: 2 }];
+        const readOnly = await largeComposer.compose(root, savedChat, 'What does this criterion require?',
+            selectedContext, { conversationalText: true, streaming: true, contextWindowTokens: 16384 });
+        assert.doesNotMatch(JSON.stringify(readOnly.messages), /Supported action types and fields/);
+        assert.match(JSON.stringify(readOnly.messages), /criterion-50-15/);
+        assert.doesNotMatch(JSON.stringify(readOnly.messages), /gate-0/);
+        const skilled = await largeComposer.compose(root, savedChat, '/roadmap Edit gate-50',
+            [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }],
+            { conversationalText: true, streaming: true, contextWindowTokens: 16384 },
+            undefined, false, false, undefined, true, true);
+        assert.match(JSON.stringify(skilled.messages), /Supported action types and fields/);
+        assert.match(JSON.stringify(skilled.messages), /criterion-50-15/);
+        assert.match(JSON.stringify(skilled.messages), /phase-69/);
+        assert.ok(skilled.diagnostics.some(item => item.message.includes('first 64')));
+        assert.ok(skilled.usedTokens <= skilled.budgetTokens);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

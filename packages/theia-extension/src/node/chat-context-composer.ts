@@ -22,6 +22,7 @@ export const GROUNDED_CHAT_INSTRUCTION = "Ground claims about existing project f
 export const PI_CHAT_INSTRUCTION = 'The current project is the workspace root shown below. Source files have not been automatically read or attached. To answer questions about actual files, use the available Pi read_file, list_files, or search tools and ground claims in their results. A path in the user request identifies a file to inspect; it is not file content. Never claim a file was attached unless the user explicitly attached it. Project tools are read-only unless separately authorized.';
 const ROADMAP_ACTION_INSTRUCTION = 'Use the supplied checkpoint capabilities to determine whether its Objective is editable; a request to read does not make a linked checkpoint unlinked or read-only. For a factual or decision question without an edit request, choose type no-action and put the concrete answer in its message field. Answer from the supplied evidence, including owner and document revisions when present, and distinguish those counters. If a fact is absent, say so without inventing it; do not replace available facts with a generic missing-evidence or edit-capability reason. Never copy an instruction phrase as the answer. For a linked Markdown checkpoint, only if capabilities.objective.editable is true and the user requests an Objective change, propose {"type":"roadmap-intent","intent":"set-objective","value":"one line"}. Otherwise choose type no-action with a concrete source-backed reason in its message field. For an unlinked checkpoint, a validated roadmap-proposal action may be used. All proposals require developer approval. Never claim an edit was applied.';
 const GATE_ACTION_INSTRUCTION = 'Use only the current schema-2 Roadmap context. For a question, unsupported action, ambiguous target, qualification without reviewed proof, or missing source, return strict JSON {"type":"no-action","message":"concise useful answer or one clarification"}. For a request to select/focus an existing Phase or Gate return {"type":"roadmap-gate-focus","id":"exact existing ID"}; selection writes no Roadmap data. For an edit return strict JSON {"type":"roadmap-gate-proposal","projectId":"exact supplied ID","ownerRevision":1,"actions":[...]}. For an explicit request to undo the last accepted Chat edit return {"type":"roadmap-gate-undo"}; it still needs review and may be stale. Use the supplied numeric revision and exact existing IDs. One to three atomic actions only; report if the request needs more. New entities use unique temporary IDs new:1, new:2, etc.; later actions in this batch may reference them. The id fields for a new Gate and its criteria are temporary IDs, never the display names or designations. For example, creating Gate G1 Readiness with one criterion uses {"type":"gate.create","id":"new:1","parentPhaseId":"exact existing phase ID","designation":"G1","title":"Readiness","purpose":"testable purpose","criteria":[{"id":"new:2","title":"Demo works","expectedResult":"observable result"}]}. Do not copy the example title or purpose unless requested. Supported action types and fields: phase.create(id,title,objective), phase.edit(id,title,objective), phase.delete(id), phase.reorder(ids complete ordered phase ID list), phase.dependencies(id,dependencies complete ID list), gate.create(id,parentPhaseId,designation,title,purpose,criteria array of {id,title,expectedResult}), gate.edit(id,title,purpose), gate.delete(id), gate.reparent(id,parentPhaseId,order zero-based), gate.reorder(parentPhaseId,ids complete ordered sibling list), gate.dependencies(id,dependencies complete ID list), criterion.add(gateId,id,title,expectedResult), criterion.edit(gateId,id,title,expectedResult), criterion.remove(gateId,id), criterion.reorder(gateId,ids complete ordered list), correction.attach(id,parent {kind,id},title,objective,optional criterionId), correction.edit(id,title,objective), correction.reparent(id,parent {kind,id},optional criterionId), correction.delete(id). Edits require all listed fields; copy unchanged values from current context. Each action object must use the key "type", never "kind". For an existing Gate title edit, the action is {"type":"gate.edit","id":"exact gate ID","title":"new title","purpose":"copy existing purpose"}. The proposal envelope must contain only type, projectId, ownerRevision, and actions; do not include a patch, Markdown, explanation, or any extra field. Dope creates the reviewed source patch from the typed action. A Gate is a testable requirement, not a task. Source-owned linked Markdown definitions use a separate reviewed patch; only one existing Phase, Gate, or Criterion field edit can be proposed there. A linked structural change such as deleting a Gate and Criterion cannot be applied by Chat. The Roadmap Linked Markdown review can accept supported source field changes after Refresh, but structural deletion currently causes a sync conflict; do not suggest that Accept source changes can apply it. For an unsupported linked structural request, return {"type":"no-action","message":"Chat cannot apply that structural change to this linked Roadmap. No files were edited. Open Roadmap Linked Markdown review to inspect the source and sync status. Its current source-change acceptance supports mapped field edits, not this deletion; a separate reviewed structural source and Roadmap reconciliation is needed."}. Do not draft a Markdown patch or suggest that approving Chat can apply a linked structural change. Never output a status, evidence approval, waiver approval, Work run, tool grant, or claim Green. Do not claim any proposal was applied. Return one JSON object without fences.';
+const GATE_READ_INSTRUCTION = 'Use current verified Roadmap facts to answer naturally. Selected Roadmap context is read-only for this Chat turn. For an edit request, explain that /roadmap opens a reviewed proposal and that no change was made. Do not emit a proposal, action grammar, or JSON. Do not claim qualification Green without reviewed evidence.';
 
 export interface ComposedChatContext { messages: ConversationMessage[]; refs: ChatContextRef[];
     diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number;
@@ -222,7 +223,8 @@ export class ChatContextComposer {
                 { omitted: 'Roadmap objective, neighbors, links or evidence omitted by compact query bound' } : {}) };
     }
 
-    private async gateContext(root: string, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
+    private async gateContext(root: string, source: ChatContextSelection, content: string,
+        roadmapSkill: boolean): Promise<{ label: string; text: string; omitted?: string }> {
         if (!this.roadmap) throw new Error('Roadmap context unavailable');
         const index = await this.roadmap.read<RoadmapGateIndex>(root);
         if (index.schemaVersion !== 2 || !index.revision || index.projectRoot !== root ||
@@ -231,31 +233,67 @@ export class ChatContextComposer {
             throw new Error('Stale or foreign Roadmap context; select it again');
         if (index.linkedDocument && (await this.roadmap.previewGateDocumentSync(root)).state !== 'unchanged')
             throw new Error('Linked Roadmap source changed; review synchronization first');
-        const selected = index.phases.find(item => item.id === source.id) ?? index.gates.find(item => item.id === source.id);
-        if (source.id !== 'roadmap' && !selected) throw new Error('Selected Roadmap item is missing');
         const phases = [...index.phases].sort((a, b) => a.order - b.order);
         const gates = [...index.gates].sort((a, b) => a.parentPhaseId.localeCompare(b.parentPhaseId) || a.order - b.order);
-        const compactGate = (gate: RoadmapGateIndex['gates'][number]) => ({ id: gate.id, parentPhaseId: gate.parentPhaseId,
-            designation: gate.designation, title: gate.title, purpose: gate.purpose.slice(0, 300), order: gate.order,
-            dependencies: gate.dependencies, qualification: evaluateGateQualification(gate, gate.qualificationSource),
-            criteria: gate.criteria.slice(0, 12).map(item => ({ id: item.id, title: item.title,
-                expectedResult: item.expectedResult.slice(0, 300), order: item.order,
-                evidence: item.evidence.map(e => ({ id: e.id, result: e.result, review: e.review.status,
-                    stale: e.validation?.reason })).slice(-3) })) });
+        const selected = index.phases.find(item => item.id === source.id) ?? index.gates.find(item => item.id === source.id);
+        if (source.id !== 'roadmap' && !selected) throw new Error('Selected Roadmap item is missing');
+        const mentions = (value: string) => !!value && new RegExp(`(^|[^a-z0-9])${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^a-z0-9])`, 'i').test(content);
+        const matches = source.id === 'roadmap' ? [...phases, ...gates].filter(item =>
+            mentions(item.id) || mentions(item.title) || 'designation' in item && mentions(item.designation)) : [];
+        const criterionMatches = source.id === 'roadmap' ? gates.flatMap(parent => parent.criteria
+            .filter(item => mentions(item.id) || mentions(item.title)).map(item => ({ parent, item }))) : [];
+        const correctionMatches = source.id === 'roadmap' ? index.corrections.filter(item =>
+            mentions(item.id) || mentions(item.title)) : [];
+        const uniqueTargets = new Set([...matches.map(item => item.id),
+            ...criterionMatches.map(item => item.parent.id),
+            ...correctionMatches.map(item => item.parent.id)]);
+        const target = selected ?? (uniqueTargets.size === 1 ?
+            phases.find(item => item.id === [...uniqueTargets][0]) ??
+            gates.find(item => item.id === [...uniqueTargets][0]) : undefined);
+        const criterion = target && 'parentPhaseId' in target ? criterionMatches.find(item => item.parent.id === target.id)?.item : undefined;
+        const correction = correctionMatches.length === 1 ? correctionMatches[0] : undefined;
+        const phase = target && 'parentPhaseId' in target ? phases.find(item => item.id === target.parentPhaseId) :
+            target && 'objective' in target ? target : undefined;
+        const gate = target && 'parentPhaseId' in target ? target : undefined;
+        const linked = index.linkedDocument;
+        const targetData = target ? 'parentPhaseId' in target ? {
+            id: target.id, parentPhaseId: target.parentPhaseId, designation: target.designation,
+            title: target.title, purpose: target.purpose, order: target.order, dependencies: target.dependencies,
+            criteria: target.criteria.map(item => ({ id: item.id, title: item.title,
+                expectedResult: item.expectedResult, order: item.order })),
+            qualification: evaluateGateQualification(target, target.qualificationSource)
+        } : { id: target.id, title: target.title, objective: target.objective, order: target.order,
+            dependencies: target.dependencies,
+            qualification: evaluatePhaseQualification(index, target.id, target.qualificationSource) } : undefined;
+        const nearby = gate ? gates.filter(item => item.parentPhaseId === gate.parentPhaseId) :
+            phase ? gates.filter(item => item.parentPhaseId === phase.id) : [];
+        const readNearby = gate ? nearby.slice(Math.max(0, nearby.findIndex(item => item.id === gate.id) - 2),
+            nearby.findIndex(item => item.id === gate.id) + 3) : nearby.slice(0, 12);
+        const facts = { projectId: index.projectId, ownerRevision: index.revision,
+            selectedId: source.id, linkedDocument: linked && { path: linked.path,
+                sourceHash: linked.sourceHash, syncState: linked.syncState,
+                targetSourceOwned: target ? linked.sections.some(item => item.id === target.id) : undefined },
+            phaseCount: phases.length, gateCount: gates.length, correctionCount: index.corrections.length,
+            ...(targetData ? { target: targetData } : {}),
+            ...(criterion ? { targetCriterion: { id: criterion.id, title: criterion.title,
+                expectedResult: criterion.expectedResult, order: criterion.order } } : {}),
+            ...(correction ? { targetCorrection: { id: correction.id, parent: correction.parent,
+                criterionId: correction.criterionId, title: correction.title, objective: correction.objective } } : {}),
+            ...(phase ? { parentPhase: { id: phase.id, title: phase.title, objective: phase.objective,
+                order: phase.order, dependencies: phase.dependencies } } : {}),
+            ...(roadmapSkill ? { phaseIndex: phases.slice(0, 64).map(item => ({ id: item.id, title: item.title, order: item.order })),
+                phaseIndexRange: phases.length > 64 ? `1–64 of ${phases.length}; provide an exact Phase ID or title for a later item` : undefined,
+                siblingGateIds: nearby.map(item => item.id),
+                matchedTargets: uniqueTargets.size > 1 ? [...uniqueTargets].slice(0, 12) : undefined,
+                lookup: source.id === 'roadmap' && !target && !correction ?
+                    'No unique target resolved. Ask for one exact Phase, Gate, Criterion, or Correction ID before editing an existing item.' : undefined } :
+                { nearbyGates: readNearby.map(item => ({ id: item.id, designation: item.designation, title: item.title,
+                    qualification: evaluateGateQualification(item, item.qualificationSource).status })) }) };
         return { label: selected ? `Roadmap ${'parentPhaseId' in selected ? 'Gate' : 'Phase'}: ${selected.title}` : 'Roadmap',
-            text: JSON.stringify({ projectId: index.projectId, ownerRevision: index.revision,
-                selectedId: source.id, linkedDocument: index.linkedDocument && { path: index.linkedDocument.path,
-                    sourceHash: index.linkedDocument.sourceHash, syncState: index.linkedDocument.syncState,
-                    sourceOwnedIds: index.linkedDocument.sections.map(item => item.id) },
-                phases: phases.slice(0, 24).map(item => ({ id: item.id, title: item.title,
-                    objective: item.objective.slice(0, 400), order: item.order, dependencies: item.dependencies,
-                    qualification: evaluatePhaseQualification(index, item.id, item.qualificationSource) })),
-                gates: gates.slice(0, 48).map(compactGate),
-                corrections: index.corrections.slice(0, 24).map(item => ({ id: item.id, parent: item.parent,
-                    criterionId: item.criterionId, title: item.title, objective: item.objective.slice(0, 300) })) }),
-            ...(phases.length > 24 || gates.length > 48 || index.corrections.length > 24 ||
-                gates.some(item => item.criteria.length > 12) ?
-                { omitted: 'Roadmap entities or criteria omitted by bounded context; ask to narrow the target' } : {}) };
+            text: JSON.stringify(facts),
+            ...(roadmapSkill && phases.length > 64 ? { omitted: 'Phase index lists the first 64 entries; exact target lookup searched every Phase and Gate' } :
+                !roadmapSkill && nearby.length > readNearby.length ?
+                    { omitted: 'Only nearby Gates were included; select an exact Gate for more facts' } : {}) };
     }
 
     private async file(root: string, path: string, maxBytes = 1_000_000): Promise<string> {
@@ -271,7 +309,8 @@ export class ChatContextComposer {
         return actual;
     }
 
-    private async resolve(root: string, active: Chat, source: ChatContextSelection): Promise<{ label: string; text: string; omitted?: string }> {
+    private async resolve(root: string, active: Chat, source: ChatContextSelection, content: string,
+        roadmapSkill: boolean): Promise<{ label: string; text: string; omitted?: string }> {
         if (!source || typeof source.id !== 'string' || !source.id.trim()) throw new Error('Invalid context selection');
         if (source.kind === 'editor' || source.kind === 'selection' || source.kind === 'file') {
             const path = projectPath(source.id);
@@ -291,7 +330,11 @@ export class ChatContextComposer {
             return { label: `${artifact.type}: ${artifact.title}`, text: JSON.stringify(artifact) };
         }
         if (source.kind === 'roadmap-checkpoint') return this.roadmapContext(root, source);
-        if (source.kind === 'roadmap') return this.gateContext(root, source);
+        if (source.kind === 'roadmap') {
+            const recent = roadmapSkill ? active.messages.filter(item => item.role === 'user')
+                .slice(-3).map(item => item.content).join('\n') : '';
+            return this.gateContext(root, source, `${content}\n${recent}`, roadmapSkill);
+        }
         if (source.kind === 'architecture') {
             const state = await readInitialization(root);
             if (!state.initialized) throw new Error('Canonical Architecture unavailable');
@@ -364,7 +407,7 @@ export class ChatContextComposer {
     async compose(root: string, chat: Chat, content: string, selections: ChatContextSelection[],
         capabilities: ConversationModelCapabilities, grounding?: GroundingResult,
         strictHelpJson = false, bridgeMode = false, roadmapOpportunity?: string,
-        piMode = false): Promise<ComposedChatContext> {
+        piMode = false, roadmapSkill = false): Promise<ComposedChatContext> {
         if (!content.trim()) throw new Error('Enter a message before sending');
         if (!Array.isArray(selections) || selections.length > 20) throw new Error('Too many context selections');
         const policy = chat.settings.context;
@@ -384,9 +427,9 @@ export class ChatContextComposer {
             }
             return bytes.subarray(0, low).toString('utf8').replace(/\uFFFD+$/, '');
         };
-        const helpId = selectDopeCapabilityHelp(content);
+        const helpId = roadmapSkill ? undefined : selectDopeCapabilityHelp(content);
         const help = helpId ? await this.helpContext(root, helpId, selections, strictHelpJson) : undefined;
-        const gateAction = !help && selections.some(source => source.kind === 'roadmap');
+        const gateAction = !help && roadmapSkill && selections.some(source => source.kind === 'roadmap');
         const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
         const roadmapInstruction = roadmapAction && !bridgeMode;
         const piInstruction = piMode ? `${PI_CHAT_INSTRUCTION} Workspace root: ${root}` : undefined;
@@ -394,7 +437,9 @@ export class ChatContextComposer {
             (piInstruction ? tokens(piInstruction) : 0) -
             (roadmapOpportunity ? tokens(roadmapOpportunity) : 0) -
             (roadmapInstruction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) -
-            (gateAction ? tokens(GATE_ACTION_INSTRUCTION) : 0) - (help ? tokens(help.instruction) : 0);
+            (gateAction ? tokens(GATE_ACTION_INSTRUCTION) : 0) -
+            (!gateAction && selections.some(source => source.kind === 'roadmap') ? tokens(GATE_READ_INSTRUCTION) : 0) -
+            (help ? tokens(help.instruction) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
         if (grounding) for (const diagnostic of grounding.diagnostics)
@@ -411,7 +456,7 @@ export class ChatContextComposer {
         remaining -= wrapperTokens + memoryTokens;
         if (remaining < 0) throw new Error('Confirmed planning decisions exceed selected model input budget');
         for (const source of orderedSelections) {
-            const resolved = await this.resolve(root, chat, source);
+            const resolved = await this.resolve(root, chat, source, content, roadmapSkill);
             if (resolved.omitted) diagnostics.push({ kind: 'truncated', source: `${source.kind}:${source.id}`, message: resolved.omitted });
             const prefix = `[${source.kind}: ${resolved.label}]\n`;
             let text = resolved.text;
@@ -465,6 +510,8 @@ export class ChatContextComposer {
         if (roadmapOpportunity) messages.push({ role: 'system', content: roadmapOpportunity });
         if (roadmapInstruction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
         if (gateAction) messages.push({ role: 'system', content: GATE_ACTION_INSTRUCTION });
+        else if (selections.some(source => source.kind === 'roadmap'))
+            messages.push({ role: 'system', content: GATE_READ_INSTRUCTION });
         if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];
         if (policy.history === 'recent' && !help) {

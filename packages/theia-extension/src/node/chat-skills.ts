@@ -10,6 +10,10 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     title: 'Explain',
     description: 'Explain a topic clearly using the current conversation.',
     body: 'Explain the requested topic clearly. Use the current conversation for context. Do not claim to have changed files.',
+    enabled: true, provenance: 'builtin', version: 1 },
+{ id: 'builtin:roadmap', name: 'roadmap', title: 'Roadmap',
+    description: 'Discuss or propose a reviewed Phase, Gate, Criterion, or Correction change.',
+    body: 'Use the current verified Roadmap context and earlier saved conversation. Answer read and focus requests from supplied facts. For an edit, use only the exact typed schema-2 action grammar supplied for this turn; one to three atomic actions, current IDs, revision, parent and unchanged required fields. Ask one precise question when the target is ambiguous. Linked Markdown permits only one reviewed existing-field patch; explain unsupported structure without a proposal. A proposal is not an applied change or qualification. Never invent evidence, a Green result, a file read, or authority to run Work.',
     enabled: true, provenance: 'builtin', version: 1 }];
 let serial = Promise.resolve();
 
@@ -95,4 +99,12 @@ export async function resolveChatSkill(content: string): Promise<ChatSkillSnapsh
     return { id: skill.id, name, title: skill.title, description: skill.description,
         body: skill.body, version: skill.version,
         digest: createHash('sha256').update(skill.body).digest('hex') };
+}
+
+/** Saved retry metadata is data, never proof that a protected skill was invoked. */
+export function isBoundRoadmapSkill(skill: ChatSkillSnapshot | undefined): boolean {
+    const builtIn = builtins.find(item => item.id === 'builtin:roadmap');
+    return !!builtIn && !!skill && skill.id === builtIn.id && skill.name === builtIn.name &&
+        skill.version === builtIn.version && skill.body === builtIn.body &&
+        skill.digest === createHash('sha256').update(builtIn.body).digest('hex');
 }

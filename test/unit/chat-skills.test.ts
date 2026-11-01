@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { changeChatSkill, listChatSkills, resolveChatSkill, skillCommand, validateSkill } from
+import { changeChatSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, skillCommand, validateSkill } from
     '../../packages/theia-extension/lib/node/chat-skills.js';
 import { parseChatMessage } from '../../packages/chat/lib/index.js';
 
@@ -21,6 +21,12 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.throws(() => validateSkill('valid', 'description', 'x'.repeat(1501)));
         const builtIn = (await listChatSkills())[0];
         assert.equal(builtIn.provenance, 'builtin');
+        const roadmap = (await listChatSkills()).find(item => item.name === 'roadmap')!;
+        assert.equal(roadmap.provenance, 'builtin');
+        assert.equal(isBoundRoadmapSkill(await resolveChatSkill('/roadmap')), true);
+        assert.equal(isBoundRoadmapSkill({ ...(await resolveChatSkill('/roadmap'))!, body: 'forged' }), false);
+        await assert.rejects(changeChatSkill({ type: 'delete', id: roadmap.id }));
+        await assert.rejects(changeChatSkill({ type: 'add', name: 'roadmap', description: 'collision', body: 'body' }));
         await assert.rejects(changeChatSkill({ type: 'delete', id: builtIn.id }));
         await assert.rejects(changeChatSkill({ type: 'add', name: builtIn.name, description: 'collision', body: 'body' }));
         const added = await changeChatSkill({ type: 'add', name: 'test-skill', title: 'Test skill',
@@ -51,7 +57,7 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.equal(skillCommand('literal /test-skill'), undefined);
         assert.equal(skillCommand('/test-skill arguments'), 'test-skill');
         await changeChatSkill({ type: 'delete', id: custom.id });
-        assert.equal((await listChatSkills()).length, 1);
+        assert.equal((await listChatSkills()).length, 2);
     } finally {
         if (previous === undefined) delete process.env.XDG_CONFIG_HOME;
         else process.env.XDG_CONFIG_HOME = previous;
