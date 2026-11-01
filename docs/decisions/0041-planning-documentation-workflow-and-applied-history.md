@@ -1,3 +1,5 @@
+> **2026-10-31 OWNER-APPROVED SKILLS-FIRST AMENDMENT / DOCS ONLY:** The unexecuted direct Docs-entry order changes: first build/qualify the [Dope Skills framework](../planning/p12/skills-framework-contract.md), then register `/docs-review` and `/docs-apply` in a separate targeted prompt. The approved behavior below is otherwise unchanged. A slash skill is only bounded instructions; **not** approval to write, and Chat Commands Ask/Allow never authorize Docs publication. Exact-source review, explicit approval, Dope-owned journal/recovery, linked Roadmap authority and applied-only History remain mandatory. Explicit Docs review may progressively scan eligible `.md`/`.txt` on demand, but normal Chat/Work must not preload or scan docs every turn. The historical 15-prompt stack remains authored/unrun; no runtime, version or GREEN by this amendment.
+
 # ADR 0041 — Planning documentation workflow and applied-only History
 
 **Decision date:** 2026-10-30 (America/Chicago). **Status:** OWNER-APPROVED DESIGN / AUTHORING ONLY / NOT IMPLEMENTED OR QUALIFIED. **Product:** `0.12.7` unchanged. **Reviewed source:** `c01711345ba3d83900b20242948abdabaeeeb6ac`.
