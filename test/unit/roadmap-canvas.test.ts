@@ -212,7 +212,7 @@ test('Phase Focus uses the selected phase projection and existing checked source
     assert.match(canvas, /selectPhaseFocus\(index, this\.taskStacks, this\.phaseId,/);
     assert.match(canvas, /this\.service\.phaseFocusEvidence\(uri, index\.projectId, phaseId\)/);
     assert.match(canvas, /selected\?\.kind !== 'phase'/);
-    assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.strategicBar, this\.importEntry, this\.inspection, this\.phaseFocus/);
+    assert.match(canvas, /this\.stage\.append\(this\.contextBar, this\.path, this\.status, this\.strategicBar, this\.importEntry, this\.inspection, this\.phaseFocus/);
     assert.match(canvas, /for \(const stack of phase\.stacks\)/);
     assert.match(canvas, /for \(const prompt of stack\.prompts\)/);
     assert.match(canvas, /this\.inspector\.openPrompt\(node\)/);
@@ -233,7 +233,7 @@ test('Details command and selection use one mounted inspector model in the canva
     const inspector = read('packages/theia-extension/src/browser/roadmap-inspector-widget.ts');
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(canvas, /this\.inspectionEditor = new RoadmapInspectorWidget\(inspector\)/);
-    assert.match(canvas, /this\.stage\.append\(this\.path, this\.status, this\.strategicBar, this\.importEntry, this\.inspection/);
+    assert.match(canvas, /this\.stage\.append\(this\.contextBar, this\.path, this\.status, this\.strategicBar, this\.importEntry, this\.inspection/);
     assert.match(canvas, /this\.setInspectionView\('compact'\);\s*this\.setInspectionOpen\(true\)/);
     assert.match(canvas, /this\.inspectionEditor\.node\.hidden = !!item/);
     assert.match(canvas, /this\.details\.onclick = \(\) => this\.openDetails\(\)/);
