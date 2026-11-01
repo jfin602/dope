@@ -116,7 +116,9 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.equal(question.proposal, undefined);
         assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), beforeQuestion);
         const phaseList = Array.from({ length: 70 }, (_, order) => ({ id: `phase-${order}`,
-            projectId, title: `Phase ${order}`, objective: `Objective ${order}`, order, dependencies: [] }));
+            projectId, title: `Phase ${order}`, objective: `Objective ${order}`, order, dependencies: [],
+            implementationStatus: 'unknown' as const, qualificationStatus: 'unknown' as const,
+            gateSetCoverage: { status: 'unreviewed' as const } }));
         const gateList = Array.from({ length: 52 }, (_, order) => ({ id: `gate-${order}`,
             projectId, parentPhaseId: 'phase-69', designation: `G${order}`, title: `Gate ${order}`,
             purpose: `Purpose ${order}`, order, dependencies: [], draftAcceptance: 'accepted',
@@ -142,6 +144,16 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.match(JSON.stringify(skilled.messages), /Supported action types and fields/);
         assert.match(JSON.stringify(skilled.messages), /criterion-50-15/);
         assert.match(JSON.stringify(skilled.messages), /phase-69/);
+        assert.match(JSON.stringify(skilled.messages), /siblingGates/);
+        assert.ok(skilled.messages.some(message => message.content.includes('"designation":"G50"')));
+        assert.match(JSON.stringify(skilled.messages), /Every Gate designation must match G/);
+        const explicitGate = await largeComposer.compose(root, savedChat,
+            '/roadmap Edit gate-50 but keep its title unchanged',
+            [{ kind: 'roadmap', id: 'phase-69', projectId, ownerRevision: 2 }],
+            { conversationalText: true, streaming: true, contextWindowTokens: 16384 },
+            undefined, false, false, undefined, true, true);
+        assert.ok(explicitGate.messages.some(message => message.content.includes('"target":{"id":"gate-50"')));
+        assert.ok(explicitGate.messages.some(message => message.content.includes('"title":"Gate 50"')));
         assert.ok(skilled.diagnostics.some(item => item.message.includes('first 64')));
         assert.ok(skilled.usedTokens <= skilled.budgetTokens);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
