@@ -1,6 +1,6 @@
 > **2026-11-01 OWNER CORRECTION BOUNDARY:** C12 Planning Recovery now consists of **P3-A generic Skills → P3-B protected /roadmap → P3-C P2 Chat/Pi reliability and Planning Recovery closeout**. Documentation management, including /docs-review, /docs-apply, proposal storage, journal/recovery and History, is a separate independently authored [c12-docs-skills correction](../../tasks/c12-docs-skills/README.md). The Docs requirements below remain governing design for that stack, **not an executable Planning Recovery P3-C**. Prior dated Docs-in-P3 sequencing is superseded; no product run, version change or Green follows.
 
-> **CURRENT OWNER-APPROVED EXECUTION ORDER (2026-10-31):** Implement and qualify **P3-A generic Skills → P3-B protected /roadmap → P3-C /docs-review and /docs-apply**. The earlier independent sibling timing is superseded. The original Docs-first P3 remains unexecuted history; no status or version changes follow from renumbering.
+> **HISTORICAL 2026-10-31 EXECUTION ORDER (SUPERSEDED):** Implement and qualify **P3-A generic Skills → P3-B protected /roadmap → P3-C /docs-review and /docs-apply**. The earlier independent sibling timing is superseded. The original Docs-first P3 remains unexecuted history; no status or version changes follow from renumbering.
 
 # Dope Skills — minimal slash-command instruction framework
 
