@@ -3,6 +3,7 @@ import type { Chat, ChatCollection, ChatFolderPath, ChatActivityEvent } from '@d
 import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
     ChatPlanningProposal, ChatRoadmapOffer, ChatStrategicDraftReview, ChatTurnResult,
     ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
+import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 import { isDraftPlanningAction } from './chat-panel-presentation';
@@ -61,6 +62,11 @@ export function chatTree(collection: ChatCollection): ChatTree {
 
 /** Panel-local navigation over the shared project service. */
 export class ChatPanelController {
+    listSkills(): Promise<ChatSkill[]> { return this.connection?.listSkills() ?? Promise.resolve([]); }
+    changeSkill(change: ChatSkillChange): Promise<ChatSkill[]> {
+        if (!this.connection) return Promise.reject(new Error('Chat is disconnected'));
+        return this.connection.changeSkill(change);
+    }
     workspace: string | undefined;
     snapshot: ChatCollection | undefined;
     mode: ChatMode = 'select-chat';

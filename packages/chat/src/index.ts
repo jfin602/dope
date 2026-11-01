@@ -84,6 +84,7 @@ export interface ChatUserMessage {
     createdAt: string;
     content: string;
     contextRefs: ChatContextRef[];
+    skill?: import('./service').ChatSkillSnapshot;
 }
 export interface ChatAssistantMessage {
     schemaVersion: 1;
@@ -367,13 +368,21 @@ function parseExecution(value: unknown): ChatExecution {
     return execution;
 }
 export function parseChatMessage(value: unknown): ChatMessage {
-    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'execution', 'activity', 'planningActivity', 'roadmapAction'],
+    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'execution', 'activity', 'planningActivity', 'roadmapAction'],
         ['schemaVersion', 'id', 'role', 'createdAt', 'content']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported message schema');
     const base = { schemaVersion: 1 as const, id: identifier(v.id), createdAt: time(v.createdAt), content: string(v.content, 'message content', false) };
     if (v.role === 'user') {
         if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || !base.content.trim()) throw new Error('Invalid user message');
-        return { ...base, role: 'user', contextRefs: v.contextRefs.map(parseChatContextRef) };
+        const skill = v.skill === undefined ? undefined : (() => {
+            const s = record(v.skill, ['id', 'name', 'body', 'version', 'digest'],
+                ['id', 'name', 'body', 'version', 'digest']);
+            if (typeof s.id !== 'string' || typeof s.name !== 'string' || typeof s.body !== 'string' ||
+                s.body.length > 1500 || !Number.isSafeInteger(s.version) || typeof s.digest !== 'string' ||
+                !/^[a-f0-9]{64}$/.test(s.digest)) throw new Error('Invalid saved skill');
+            return { id: s.id, name: s.name, body: s.body, version: s.version as number, digest: s.digest };
+        })();
+        return { ...base, role: 'user', contextRefs: v.contextRefs.map(parseChatContextRef), ...(skill ? { skill } : {}) };
     }
     if (v.role === 'assistant') {
         if (v.contextRefs !== undefined) throw new Error('Invalid assistant message');

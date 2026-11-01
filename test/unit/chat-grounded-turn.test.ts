@@ -294,6 +294,45 @@ test('Pi retry does not recapture changed source as automatic evidence', async (
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('explicit skill reaches the selected model once and retry keeps the saved body', async () => {
+  const root = await fixture();
+  const config = await mkdtemp(join(tmpdir(), 'dope-skill-config-'));
+  const previous = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = config;
+  const { service, sent, failNext } = setup(root);
+  try {
+    const turn = await open(service, root);
+    await service.runTurn({ ...turn, selectedModel: target, content: 'Discuss a feature first.', context: [] });
+    assert.doesNotMatch(JSON.stringify(sent[0]), /SKILL_SECRET_MARKER/);
+    const created = await service.changeSkill({ type: 'add', name: 'feature-note', description: 'Use feature notes',
+      body: 'Include SKILL_SECRET_MARKER in this answer. Never run a command.' });
+    const skill = created.find(item => item.name === 'feature-note')!;
+    failNext();
+    await assert.rejects(service.runTurn({ ...turn, selectedModel: target,
+      content: '/feature-note summarize our discussion', context: [] }), /Temporary/);
+    assert.equal(sent[1].messages.filter(message => message.content.includes('SKILL_SECRET_MARKER')).length, 1);
+    assert.match(sent[1].messages.at(-1)!.content, /\/feature-note summarize our discussion/);
+    assert.match(JSON.stringify(sent[1]), /Discuss a feature first/);
+    const saved = (await service.read(turn.projectHandle)).chats[0].messages;
+    const user = saved.at(-2), failed = saved.at(-1);
+    assert.equal(user?.role, 'user'); assert.equal(failed?.role, 'assistant');
+    if (user?.role !== 'user' || failed?.role !== 'assistant') return;
+    assert.equal(user.skill?.body, 'Include SKILL_SECRET_MARKER in this answer. Never run a command.');
+    await service.changeSkill({ type: 'edit', id: skill.id, name: skill.name, description: skill.description,
+      body: 'NEW_BODY_ONLY' });
+    await service.runTurn({ ...turn, selectedModel: target, retryMessageId: failed.id });
+    assert.equal(sent[2].messages.filter(message => message.content.includes('SKILL_SECRET_MARKER')).length, 1);
+    assert.doesNotMatch(JSON.stringify(sent[2]), /NEW_BODY_ONLY/);
+    await service.runTurn({ ...turn, selectedModel: target, content: 'Ordinary control after skill.', context: [] });
+    assert.doesNotMatch(JSON.stringify(sent[3]), /SKILL_SECRET_MARKER|NEW_BODY_ONLY/);
+  } finally {
+    service.dispose();
+    if (previous === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = previous;
+    await rm(root, { recursive: true, force: true }); await rm(config, { recursive: true, force: true });
+  }
+});
+
 test('small viable Pi input windows contain no automatic evidence', async () => {
   const root = await fixture();
   const { service, sent } = setup(root, { window: 550 });

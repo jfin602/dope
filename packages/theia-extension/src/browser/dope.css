@@ -1064,7 +1064,14 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-response-notices > [role="status"]:not(:empty) { margin: 0; padding: 5px 0; overflow-wrap: anywhere; }
 .dope-chat-error-bubble { display: grid; gap: 8px; margin: 8px 0; padding: 10px 12px !important; border: 1px solid var(--theia-errorForeground); border-radius: 8px; background: color-mix(in srgb, var(--theia-errorForeground) 15%, var(--theia-sideBar-background)); color: var(--theia-errorForeground); overflow-wrap: anywhere; }
 .dope-chat-error-bubble button { justify-self: start; background: var(--theia-errorForeground); border-color: var(--theia-errorForeground); color: white; font-weight: 700; }
-.dope-chat-composer { box-sizing: border-box; display: grid; gap: 6px; flex: none; width: calc(100% - 24px); max-width: 940px; min-width: 0; margin: 8px auto 12px; padding: 8px; border: 1px solid var(--theia-widget-border); border-radius: 10px; background: var(--theia-input-background); }
+.dope-chat-composer { position: relative; box-sizing: border-box; display: grid; gap: 6px; flex: none; width: calc(100% - 24px); max-width: 940px; min-width: 0; margin: 8px auto 12px; padding: 8px; border: 1px solid var(--theia-widget-border); border-radius: 10px; background: var(--theia-input-background); }
+.dope-chat-skill-popup { position: absolute; z-index: 5; bottom: calc(100% + 5px); left: 0; right: 0; max-height: 180px; overflow-y: auto; border: 1px solid var(--theia-widget-border); border-radius: 6px; background: var(--theia-editorWidget-background); box-shadow: 0 4px 16px #0005; }
+.dope-chat-skill-popup[hidden] { display: none; }
+.dope-chat-skill-option { display: block; width: 100%; padding: 7px 10px; border: 0; text-align: left; color: var(--theia-foreground); background: transparent; overflow-wrap: anywhere; }
+.dope-chat-skill-option[aria-selected="true"], .dope-chat-skill-option:hover { background: var(--theia-list-hoverBackground); }
+.dope-chat-skill-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.dope-chat-skill-row > span { flex: 1 1 100%; overflow-wrap: anywhere; }
+.dope-chat-settings-form textarea { box-sizing: border-box; width: 100%; min-height: 70px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); border-radius: 4px; }
 .dope-chat-composer:focus-within { border-color: var(--theia-focusBorder); box-shadow: 0 0 0 1px var(--theia-focusBorder); }
 .dope-chat-composer textarea { box-sizing: border-box; width: 100%; height: 4.5em; resize: none; overflow-y: auto; border: 0; outline: 0; color: var(--theia-input-foreground); background: transparent; }
 .dope-chat-composer-toolbar { display: flex; align-items: center; gap: 4px; min-width: 0; }

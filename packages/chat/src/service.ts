@@ -45,6 +45,12 @@ export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseT
     /** Explicit selected-checkpoint, local-only Bridge suggestion; never a write grant. */
     bridgeProposal?: { projectId: string; checkpointId: string; roadmapRevision: number;
         mapId: string; mapRevision: number; branchIds: string[] } }
+export interface ChatSkill { id: string; name: string; description: string; body: string;
+    enabled: boolean; provenance: 'builtin' | 'user'; version: number }
+export interface ChatSkillSnapshot { id: string; name: string; body: string; version: number; digest: string }
+export type ChatSkillChange = { type: 'add'; name: string; description: string; body: string } |
+    { type: 'edit'; id: string; name: string; description: string; body: string } |
+    { type: 'enable'; id: string; enabled: boolean } | { type: 'delete'; id: string };
 /** Captured editor text is transport-only. Other IDs are resolved against current project authorities. */
 export interface ChatContextSelection { kind: ChatContextKind; id: string; projectId?: string; generation?: number;
     ownerRevision?: number; sourceHash?: string;
@@ -101,6 +107,8 @@ export interface ChatClient { notifyChatEvent(event: ChatEvent): void }
 
 /** Transport-neutral service. The backend owns persistence, revisions and lease enforcement. */
 export interface ChatService {
+    listSkills(): Promise<ChatSkill[]>;
+    changeSkill(change: ChatSkillChange): Promise<ChatSkill[]>;
     attach(folderUri: string): Promise<{ projectHandle: string; snapshot: ChatCollection }>;
     read(projectHandle: string): Promise<ChatCollection>;
     list(projectHandle: string): Promise<Chat[]>;

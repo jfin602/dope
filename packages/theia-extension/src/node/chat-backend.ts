@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
     ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
+import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
+import { changeChatSkill, listChatSkills, resolveChatSkill } from './chat-skills';
 import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
@@ -76,6 +78,8 @@ function planningComposerCapabilities(capabilities: ConversationModelCapabilitie
 
 /** One RPC connection owns one project handle; the repository shares durable state and events. */
 export class ChatBackend implements ChatService {
+    listSkills(): Promise<ChatSkill[]> { return listChatSkills(); }
+    changeSkill(change: ChatSkillChange): Promise<ChatSkill[]> { return changeChatSkill(change); }
     private root?: string;
     private handle?: string;
     private disposed = false;
@@ -975,6 +979,11 @@ export class ChatBackend implements ChatService {
                 chat.messages[retryIndex - 1].role !== 'user') throw new Error('Only a failed or cancelled attempt can be retried');
             return chat.messages[retryIndex - 1].content;
         })() : request.content?.trim() ?? '';
+        const skill = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).skill :
+            await resolveChatSkill(content);
+        if (skill && createHash('sha256').update(skill.body).digest('hex') !== skill.digest)
+            throw new Error('Saved skill instructions changed; start a fresh turn');
+        const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}` : undefined;
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const helpTurn = !!selectDopeCapabilityHelp(content);
         const draft = helpTurn ? undefined : await this.draftContext(root, request.chatId, request.planningSteps);
@@ -1044,8 +1053,9 @@ export class ChatBackend implements ChatService {
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
+        const turnPrompt = skillInstruction ? { text: planningPrompt ? `${planningPrompt.text}\n\n${skillInstruction}` : skillInstruction } : planningPrompt;
         const composed = await this.composeTurn(root, contextChat, content, request.context ?? [],
-            model.capabilities, budget, planningPrompt, grounding, !!bridge, opportunity,
+            model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local');
         if (bridge) composed.refs.push(bridge.reference);
         if ((request.context ?? []).some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
@@ -1255,7 +1265,8 @@ export class ChatBackend implements ChatService {
             if (!request.retryMessageId) {
                 if (!request.content?.trim()) throw new Error('Enter a message before sending');
                 const user: ChatUserMessage = { schemaVersion: 1, id: userMessageId, role: 'user',
-                    createdAt: new Date().toISOString(), content: request.content.trim(), contextRefs: preview.refs };
+                    createdAt: new Date().toISOString(), content: request.content.trim(), contextRefs: preview.refs,
+                    ...(skill ? { skill } : {}) };
                 await mutate({ type: 'append-user', chatId: key, message: user });
             }
             const now = new Date().toISOString();
@@ -1301,7 +1312,7 @@ export class ChatBackend implements ChatService {
                         throw new ModelRuntimeFailure('Loaded local context or limits changed; preview this turn again',
                             'unsupported-capability');
                     const next = await this.composeTurn(root, contextChat, content, request.context ?? [],
-                        resolvedModel.capabilities, nextBudget, planningPrompt,
+                        resolvedModel.capabilities, nextBudget, turnPrompt,
                         resolvedConnection?.providerId === 'local' ? undefined :
                             grounding ?? await this.grounder?.ground(root, content),
                         !!bridge, opportunity, resolvedConnection?.providerId === 'local');
@@ -1314,12 +1325,12 @@ export class ChatBackend implements ChatService {
                     }
                     preview = { refs: next.refs, diagnostics: next.diagnostics,
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
-                    return { messages: withRetryInstruction(this.withDraft(next.messages, planningPrompt), retryInstruction), controls, signal: abort.signal,
+                    return { messages: withRetryInstruction(this.withDraft(next.messages, turnPrompt), retryInstruction), controls, signal: abort.signal,
                         ...(resolvedConnection?.providerId === 'local' && projectTools ? { projectTools } : {}),
                         ...(planningOutput > 0 ?
                         { maxOutputTokens: nextBudget?.output ?? planningOutput } : {}) };
                 } }) : this.models!.generate(selectedModel!,
-                { messages: withRetryInstruction(this.withDraft(composed.messages, planningPrompt), retryInstruction), controls, signal: abort.signal,
+                { messages: withRetryInstruction(this.withDraft(composed.messages, turnPrompt), retryInstruction), controls, signal: abort.signal,
                     ...(connection.providerId === 'local' && projectTools ? { projectTools } : {}),
                     ...(planningOutput > 0 ?
                         { maxOutputTokens: budget?.output ?? planningOutput } : {}) },
