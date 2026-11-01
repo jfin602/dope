@@ -1,3 +1,5 @@
+> **2026-10-31 PHASE 3 FORWARD SUPERSESSION / DOCS ONLY:** The original Phase 3 and direct P3 prompt below are preserved unexecuted history, *not* the next executable step. **Phase 3A:** write and independently qualify a targeted Skills foundation prompt (registry, searchable composer slash picker, user text skill manager/persistence, deterministic bounded per-turn Pi injection; no Docs writer). **Phase 3B:** only afterward write a separate targeted prompt for `/docs-review`, `/docs-apply`, on-demand progressive `.md`/`.txt` search/reads, and the verified Dope-owned safe proposal/application path. See [canonical Skills contract](../../planning/p12/skills-framework-contract.md). If proposal/journal/recovery/History owners are absent, stop/split rather than treat skill prose as write authority. Preserve original ADR 0041/15-prompt guards, version `0.12.7`, and historical gates.
+
 # /prompt-plan — c12-planning-recovery
 
 **2026-10-31, docs-only.** Three sequential manual Sol High prompts, each with Ponytail Full if available. `0.12.7` unchanged. Read `scope.md` and `prompt-assessment.md`; product/local reality controls over remote assumptions.
