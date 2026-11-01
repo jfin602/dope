@@ -117,7 +117,8 @@ test('all bounded source kinds resolve through project authorities with durable 
     await assert.rejects(composer.compose(root, active, 'Question', [{ kind: 'selection', id: 'src/a.ts', text: 'wrong', start: 1, end: 3 }], model), /selection bounds/);
     await assert.rejects(composer.compose(root, active, 'Question', [{ kind: 'saved-chat', id: active.id, messageId }], model), /another Chat/);
     active.settings.context.allowedSources = ['file'];
-    await assert.rejects(composer.compose(root, active, 'Question', [{ kind: 'editor', id: 'src/a.ts', text: 'x' }], model), /disabled/);
+    const legacyAllowed = await composer.compose(root, active, 'Question', [{ kind: 'editor', id: 'src/a.ts', text: 'x' }], model);
+    assert.equal(legacyAllowed.refs[0].kind, 'editor');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

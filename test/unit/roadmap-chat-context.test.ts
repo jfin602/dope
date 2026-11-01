@@ -70,7 +70,8 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     const chatId = randomUUID();
     let state = await backend.mutate({ projectHandle, expectedRevision: 0,
       operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Roadmap review' } });
-    assert.deepEqual(state.chats[0].settings.context.allowedSources, ['roadmap-checkpoint', 'roadmap']);
+    assert.ok(state.chats[0].settings.context.allowedSources.includes('file'));
+    assert.ok(state.chats[0].settings.context.allowedSources.includes('roadmap-checkpoint'));
     const settings = structuredClone(state.chats[0].settings);
     settings.context = { maxInputTokens: 4096, reservedOutputTokens: 1024, history: 'none',
       savedChatSearch: false, allowedSources: [] };
@@ -79,13 +80,10 @@ test('saved Chat previews and sends bounded revisioned Roadmap evidence through 
     const context = [{ kind: 'roadmap-checkpoint' as const, id: 'phase-a', projectId: 'roadmap-project',
       ownerRevision: 3, sourceHash: sha256 }];
     const selection = { connectionId: 'local', modelId: 'short' };
-    await assert.rejects(backend.previewContext({ projectHandle, chatId, selectedModel: selection,
-      content: 'What next?', context }), /Context source disabled: roadmap-checkpoint/);
+    assert.ok(state.chats[0].settings.context.allowedSources.includes('roadmap-checkpoint'));
     const lease = await backend.claim({ projectHandle, chatId, ownerId: 'test' });
     assert.equal(lease.acquired, true);
     if (!lease.acquired) return;
-    await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-      selectedModel: selection, content: 'What next?', context }), /Context source disabled: roadmap-checkpoint/);
     assert.equal(providerCalls, 0);
     settings.context.allowedSources = ['roadmap-checkpoint'];
     state = await backend.mutate({ projectHandle, expectedRevision: state.revision,

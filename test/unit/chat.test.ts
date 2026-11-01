@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  CHAT_COLORS, assignedChatColor, availableChatContextTokens, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath,
+  CHAT_COLORS, MANUAL_CHAT_CONTEXT_SOURCES, assignedChatColor, availableChatContextTokens, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath,
   parseChat, parseChatCollection, parseChatColor, parseChatFolderPath, suggestedChatTitle, withAutomaticChatTitle,
 } from '../../packages/chat/lib/index.js';
 import type { Chat, ChatAssistantMessage } from '../../packages/chat/lib/index.js';
@@ -37,10 +37,12 @@ function sampleChat(): Chat {
 
 test('versioned Chat round trips with explicit execution and context provenance', () => {
   const chat = sampleChat();
-  assert.deepEqual(parseChat(JSON.parse(JSON.stringify(chat))), chat);
+  const normalized = structuredClone(chat);
+  normalized.settings.context.allowedSources = [...MANUAL_CHAT_CONTEXT_SOURCES];
+  assert.deepEqual(parseChat(JSON.parse(JSON.stringify(chat))), normalized);
   assert.deepEqual(parseChatCollection({ schemaVersion: 1, revision: 3,
     folders: [{ schemaVersion: 1, path: 'Research', createdAt: now },
-      { schemaVersion: 1, path: 'Research/Nested', createdAt: now }], chats: [chat] }).chats[0], chat);
+      { schemaVersion: 1, path: 'Research/Nested', createdAt: now }], chats: [chat] }).chats[0], normalized);
   const moved = parseChat({ ...chat, folderPath: 'Research', title: 'New name' });
   assert.equal(moved.id, chat.id);
   assert.deepEqual(moved.messages[1], chat.messages[1]);
