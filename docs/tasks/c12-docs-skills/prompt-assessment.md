@@ -1,0 +1,11 @@
+# /prompt-ass — c12-docs-skills
+
+**Status:** Owner-approved separate Docs correction; authoring only (2026-11-01). Original Planning Recovery P3-C Docs prompt preserved verbatim in this stack's archive and replaced by a P2 reliability/Planning Recovery closeout. No product code/tests/qualification by this document.
+
+**Problem:** Documentation editing needs durable project/source-bound review, an approved protected writer, journal/recovery and applied-only History. The original 15-prompt c12-docs-workflow and ADR 0041 describe requirements, not proof of implemented services. A single Docs skills prompt might find missing owners and stop; new sequence instead isolates owners so blockers are explicit and repairable.
+
+**Decisions:** Reuse one saved ChatPanel, independently qualified generic Skills and selected Pi brokered file tools, existing Roadmap linked Markdown writer, Project History. Build review proposal/diff first; protected publication/History second; only then add /docs-review and /docs-apply commands; final independent browser verification. No generic Pi write or shell permission can substitute for explicit Docs application authorization. No second Doc writer, agent, Chat, Work, vector index or automatic docs prefill.
+
+**Risks/mitigations:** project/lease/target/source revision and expected absence; symlink/path traversal/protected/foreign denial; unrelated dirty document preservation; source drift and collision rejection; journal-before-write and idempotent partial recovery; after-byte/hash verification; one History entry only for actually retained effects with immutable original diff; truthfully separate scanned/search-matched from Pi-read sources, with bounded relevant line ranges; linked Roadmap Markdown writer exclusivity. Model text remains untrusted and cannot award authority.
+
+**Exit:** P4 actual Chrome with current local model verifies read-only review zero writes → explicit approval → exact bytes/History, plus rejected/stale/protected/recovery negatives and focused tests/builds. Single-file proof does not imply multi-document full qualification. Advanced Work reference/freshness and owner-native Electron remain independent scope. Not Green if any mandatory core authority cannot be proved.
