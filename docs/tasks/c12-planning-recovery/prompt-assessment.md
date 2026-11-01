@@ -1,3 +1,5 @@
+> **P3 split now authored — 2026-10-31 (DOCS ONLY):** [P3-A](P3-A-skills-framework.txt) implements/qualifies only the generic Skills framework; after its independent Green disposition, [P3-B](P3-B-docs-skills.txt) targets built-in Docs skills, progressive retrieval and source-bound protected apply. The direct [original P3](P3-docs-core-entry.txt) remains byte-identical, unrun, superseded. [Skills contract](../../planning/p12/skills-framework-contract.md) controls. Historical assessments/evidence below remain historical; neither new prompt has been executed or qualified by these edits.
+
 # /prompt-ass — c12-planning-recovery
 
 **2026-10-31, docs-only assessment.** Reviewed GitHub `main` source and the saved C12 Qwen30 qualification. Last local uncommitted changes may differ; manual prompts must inspect actual source. Product `0.12.7`; no code changes/tests from authoring.
@@ -16,7 +18,11 @@
 
 **P2 (targeted):** verify existing schema-2 Chat edit path end to end before coding. Repair only observed problems in action selection, malformed output recovery, grouped atomic preview, revision and linked Markdown. Avoid a second proposal framework or speculative unlimited batching. One real Qwen30 edit + reject/approve disposable tests; representative deterministic action-family coverage and safe negative tests.
 
-**P3 (bounded core):** use original Docs contracts as the safety source, but scope a small functional review/preview/apply path rather than the optional Work reference features. First inspect what's actually implemented; if durable journal/approval/recovery/History foundations are absent and cannot be safely completed in the manual prompt, produce an exact next-step split/blocker rather than deploy a partial unsafe writer.
+**P3 (original, superseded historical assessment):** use original Docs contracts as the safety source, but scope a small functional review/preview/apply path rather than the optional Work reference features. First inspect what's actually implemented; if durable journal/approval/recovery/History foundations are absent and cannot be safely completed in the manual prompt, produce an exact next-step split/blocker rather than deploy a partial unsafe writer.
+
+**P3-A (targeted Skills):** Inspect pinned Pi support, implement the smallest deterministic user/built-in skill registry and slash composer extension; keep skill instructions text-only, user-scoped, bounded and per-turn, with no new model call or authority. Verify an actual selected-model Chrome skill turn versus plain control; keep Docs out.
+
+**P3-B (targeted Docs skills):** After independently qualified P3-A, register protected Docs skills, perform on-demand eligible .md/.txt inventory/search plus progressive Pi section reads, show honest coverage and source-grounded diffs. Source-bound human approval, safe recovery and applied-only History remain requirements. If supporting owners are absent, block/split; no fake operational /docs-apply.
 
 ## Principal risks / controls
 
@@ -29,4 +35,4 @@
 
 ## Assessment disposition
 
-**ASSESSED / APPROVED FOR THREE MANUAL PROMPTS, NOT IMPLEMENTED.** No runner dependence, no new model comparison, no broad Pi integration rewrite, no version bump. Keep original NOT GREEN evidence immutable.
+**ASSESSED / APPROVED FOR P1, P2 AND SEPARATE P3-A/P3-B MANUAL PROMPTS; NOT IMPLEMENTED.** No runner dependence, no new model comparison, no broad Pi integration rewrite, no version bump. Keep original NOT GREEN evidence immutable.
