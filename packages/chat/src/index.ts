@@ -116,10 +116,13 @@ export interface ChatRoadmapAction {
 export interface ChatPlanningActivity {
     schemaVersion: 1;
     kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'no-action' | 'error' | 'cancelled';
-    status: 'pending' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'applied' | 'failed' | 'cancelled';
+    status: 'pending' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'superseded' | 'applied' | 'failed' | 'cancelled';
     refs: ChatContextRef[];
     proposalId?: string;
     appliedRevision?: number;
+    /** Bounded, inert review presentation. Saved history never grants approval authority. */
+    proposal?: import('./service').ChatPlanningProposal;
+    diagnostic?: string;
     /** Backend-verified UI guidance captured for this turn; model content remains untouched. */
     verifiedGuidance?: { capabilityId: string; version: string; text: string };
 }
@@ -429,26 +432,108 @@ export function parseChatRoadmapAction(value: unknown): ChatRoadmapAction {
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'Roadmap diagnostic') }) };
 }
 export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
-    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'verifiedGuidance'],
+    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'diagnostic', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
     const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action',
         'error', 'cancelled'] as const, 'planning activity kind');
-    const status = choice(v.status, ['pending', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'applied',
+    const status = choice(v.status, ['pending', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'superseded', 'applied',
         'failed', 'cancelled'] as const, 'planning activity status');
     if ((kind === 'no-action') !== (status === 'no-action') ||
         (kind === 'bridge-proposal') !== (status === 'suggested') ||
         (status === 'suggested' && v.proposalId !== undefined) ||
-        (kind === 'error') !== (status === 'failed') || (kind === 'cancelled') !== (status === 'cancelled') ||
-        (['pending', 'denied', 'stale', 'applied'].includes(status) && v.proposalId === undefined) ||
-        (['no-action', 'failed', 'cancelled'].includes(status) && v.proposalId !== undefined) ||
+        (kind === 'error') !== (status === 'failed') ||
+        (kind === 'cancelled' ? status !== 'cancelled' :
+            status === 'cancelled' && kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo') ||
+        (['pending', 'denied', 'stale', 'superseded', 'applied'].includes(status) && v.proposalId === undefined) ||
+        (status === 'cancelled' && kind !== 'cancelled' && v.proposalId === undefined) ||
+        (['no-action', 'failed'].includes(status) && v.proposalId !== undefined) ||
+        (status === 'cancelled' && kind === 'cancelled' && v.proposalId !== undefined) ||
         (status === 'applied') !== (v.appliedRevision !== undefined) ||
         (v.verifiedGuidance !== undefined && kind !== 'no-action')) throw new Error('Invalid planning activity state');
     const guidance = v.verifiedGuidance === undefined ? undefined : record(v.verifiedGuidance,
         ['capabilityId', 'version', 'text'], ['capabilityId', 'version', 'text']);
+    let proposal: import('./service').ChatPlanningProposal | undefined;
+    if (v.proposal !== undefined) {
+        if (kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' ||
+            v.proposalId === undefined || JSON.stringify(v.proposal).length > 65536)
+            throw new Error('Invalid saved Roadmap proposal');
+        const p = record(v.proposal, ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'sourceHash',
+            'changedIds', 'action', 'summary', 'preview'],
+            ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'changedIds', 'action', 'summary']);
+        const action = record(p.action, ['type', 'id'], ['type', 'id']);
+        if (p.id !== v.proposalId || !Array.isArray(p.changedIds) || p.changedIds.length > 64 ||
+            p.changedIds.some(id => typeof id !== 'string'))
+            throw new Error('Invalid saved Roadmap proposal');
+        const parseEntity = (value: unknown): import('./service').ChatRoadmapPreviewEntity => {
+            const e = record(value, ['kind', 'id', 'title', 'detail', 'designation', 'parentId', 'order',
+                'dependencies', 'criteria', 'additionalCriteria'], ['kind', 'id']);
+            if (e.dependencies !== undefined && (!Array.isArray(e.dependencies) || e.dependencies.length > 12) ||
+                e.criteria !== undefined && (!Array.isArray(e.criteria) || e.criteria.length > 8))
+                throw new Error('Invalid saved Roadmap entity');
+            return { kind: choice(e.kind, ['phase', 'gate', 'criterion', 'correction'] as const, 'Roadmap entity'),
+                id: string(e.id, 'Roadmap entity ID'),
+                ...(e.title === undefined ? {} : { title: string(e.title, 'Roadmap title') }),
+                ...(e.detail === undefined ? {} : { detail: string(e.detail, 'Roadmap detail', false) }),
+                ...(e.designation === undefined ? {} : { designation: string(e.designation, 'Gate designation') }),
+                ...(e.parentId === undefined ? {} : { parentId: string(e.parentId, 'Roadmap parent') }),
+                ...(e.order === undefined ? {} : { order: count(e.order, 'Roadmap order') }),
+                ...(e.dependencies === undefined ? {} : { dependencies: e.dependencies.map((id: unknown) => string(id, 'Roadmap dependency')) }),
+                ...(e.criteria === undefined ? {} : { criteria: e.criteria.map((item: unknown) => {
+                    const criterion = record(item, ['id', 'title', 'expectedResult'], ['id', 'title', 'expectedResult']);
+                    return { id: string(criterion.id, 'criterion ID'), title: string(criterion.title, 'criterion title'),
+                        expectedResult: string(criterion.expectedResult, 'criterion expected result') };
+                }) }),
+                ...(e.additionalCriteria === undefined ? {} : { additionalCriteria: count(e.additionalCriteria, 'additional criteria') }) };
+        };
+        let savedPreview: import('./service').ChatPlanningProposal['preview'];
+        if (p.preview !== undefined) {
+            const q = record(p.preview, ['source', 'steps', 'entities', 'totalChanged', 'additionalChanges',
+                'parentTitles', 'sourceChanges', 'additionalSourceChanges'],
+                ['source', 'steps', 'entities', 'totalChanged', 'additionalChanges', 'parentTitles']);
+            if (!Array.isArray(q.steps) || q.steps.length > 3 || !Array.isArray(q.entities) ||
+                q.entities.length > 12 || !q.parentTitles || typeof q.parentTitles !== 'object' ||
+                Array.isArray(q.parentTitles) || q.sourceChanges !== undefined &&
+                (!Array.isArray(q.sourceChanges) || q.sourceChanges.length > 8))
+                throw new Error('Invalid saved Roadmap preview');
+            const parentTitles = Object.fromEntries(Object.entries(q.parentTitles).map(([id, title]) =>
+                [string(id, 'Roadmap parent ID'), string(title, 'Roadmap parent title')]));
+            savedPreview = { source: choice(q.source, ['validated-roadmap', 'validated-markdown-patch'] as const, 'Roadmap preview source'),
+                steps: q.steps.map((item: unknown) => {
+                    const step = record(item, ['type', 'id', 'title', 'affectedCount'], ['type', 'id', 'title', 'affectedCount']);
+                    return { type: string(step.type, 'Roadmap action'), id: string(step.id, 'Roadmap action ID'),
+                        title: string(step.title, 'Roadmap action title'), affectedCount: count(step.affectedCount, 'affected count') };
+                }),
+                entities: q.entities.map((item: unknown) => {
+                    const e = record(item, ['id', 'action', 'before', 'after'], ['id', 'action']);
+                    return { id: string(e.id, 'Roadmap change ID'),
+                        action: choice(e.action, ['create', 'edit', 'delete'] as const, 'Roadmap change'),
+                        ...(e.before === undefined ? {} : { before: parseEntity(e.before) }),
+                        ...(e.after === undefined ? {} : { after: parseEntity(e.after) }) };
+                }),
+                totalChanged: count(q.totalChanged, 'Roadmap change count'),
+                additionalChanges: count(q.additionalChanges, 'additional changes'), parentTitles,
+                ...(q.sourceChanges === undefined ? {} : { sourceChanges: q.sourceChanges.map((item: unknown) => {
+                    const line = record(item, ['before', 'after'], ['before', 'after']);
+                    return { before: string(line.before, 'source before', false),
+                        after: string(line.after, 'source after', false) };
+                }) }),
+                ...(q.additionalSourceChanges === undefined ? {} :
+                    { additionalSourceChanges: count(q.additionalSourceChanges, 'additional source changes') }) };
+        }
+        proposal = { id: identifier(p.id), chatId: identifier(p.chatId), messageId: identifier(p.messageId),
+            ownerId: string(p.ownerId, 'Roadmap owner'), revision: count(p.revision, 'Roadmap revision'),
+            changedIds: p.changedIds.map(id => string(id, 'changed Roadmap ID')),
+            action: { type: string(action.type, 'proposal action'), id: string(action.id, 'proposal target') },
+            summary: string(p.summary, 'proposal summary'),
+            ...(p.sourceHash === undefined ? {} : { sourceHash: string(p.sourceHash, 'source hash') }),
+            ...(savedPreview === undefined ? {} : { preview: savedPreview }) };
+    }
     return { schemaVersion: 1, kind, status, refs: v.refs.map(parseChatContextRef),
         ...(v.proposalId === undefined ? {} : { proposalId: string(v.proposalId, 'proposal ID') }),
         ...(v.appliedRevision === undefined ? {} : { appliedRevision: count(v.appliedRevision, 'applied revision') }),
+        ...(proposal === undefined ? {} : { proposal }),
+        ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'planning diagnostic').slice(0, 2000) }),
         ...(guidance === undefined ? {} : { verifiedGuidance: {
             capabilityId: string(guidance.capabilityId, 'guidance capability'),
             version: string(guidance.version, 'guidance version'),

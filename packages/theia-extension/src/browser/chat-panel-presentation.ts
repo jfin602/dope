@@ -31,11 +31,15 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
         rejected: 'Rejected · no change',
         denied: 'Denied · no change',
         stale: 'Stale · no change',
+        superseded: 'Superseded · no change',
         applied: 'Applied',
         failed: 'Failed',
         cancelled: 'Cancelled',
     };
-    return { label, status: statuses[activity.status],
+    const gateDecision = activity.kind === 'roadmap-gate-proposal' || activity.kind === 'roadmap-gate-undo';
+    return { label, status: gateDecision && activity.status === 'denied' ? 'Rejected · no change' :
+        gateDecision && activity.status === 'rejected' ?
+            activity.proposalId ? 'Failed · no change' : 'Denied · no change' : statuses[activity.status],
         alert: ['rejected', 'denied', 'stale', 'failed', 'cancelled'].includes(activity.status) };
 }
 

@@ -1275,14 +1275,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.pools.hidden = true;
         } else this.renderPools();
         this.renderImportEntry();
-        const displayedCount = visible.nodes.length;
-        const diagnostic = projection.diagnostics.length ? ` · ${projection.diagnostics.length} unresolved reference(s)` : '';
-        this.status.textContent = projection.revision === 0 ?
-            this.strategic?.review ? 'Proposed Roadmap on canvas · Not yet accepted. Accept or reject here. Nothing has been published.' :
-            this.proposedDraft ? `Proposed draft on canvas · Review and accept or reject ${this.createState?.mode === 'manual' ? 'in Roadmap' : 'in the selected Chat'}. Nothing has been published.` :
-                this.createState ? `Accepted draft revision ${this.createState.draft.revision} on canvas · Review Phase and Gate definitions before accepting Roadmap structure. Markdown publication requires separate approval.` :
-                    'No Roadmap yet. Import one, create manually, or plan with an existing Chat.' :
-            `${displayedCount} displayed Roadmap cards · Roadmap revision ${projection.revision}${diagnostic}${this.inspector.index?.linkedDocument ? ` · Linked: ${this.inspector.index.linkedDocument.path} (${this.gateSyncPreview?.state ?? this.inspector.index.linkedDocument.syncState})` : ' · Accepted structure; Markdown not published'}${this.reviewedPlan ? ' · Historical implementation plan is read-only.' : ''}${this.taskDiscoveryError ? ' · Prompt discovery unavailable; Refresh to retry.' : ''}`;
+        // The status region is reserved for actionable diagnostics. The linked-source
+        // toolbar and Phase/Gate cards already carry publication and qualification state.
+        this.status.textContent = this.sourceError ?? (projection.diagnostics.length ?
+            `${projection.diagnostics.length} unresolved Roadmap reference(s). Inspect affected cards.` : '');
     }
 
     private renderStrategicBar(): void {

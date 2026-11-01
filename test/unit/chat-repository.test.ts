@@ -295,6 +295,43 @@ test('completed turns retain actual model and failure cannot masquerade as compl
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('Roadmap review details and terminal outcome survive a fresh repository read without approval authority', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id(), proposalId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'panel');
+    if (!lease.acquired) throw new Error('claim failed');
+    state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId, message: {
+      schemaVersion: 1, id: messageId, role: 'assistant', content: '', createdAt: state.chats[0].createdAt,
+      execution: { schemaVersion: 1, id: id(), status: 'pending', selectedModel: model,
+        startedAt: state.chats[0].createdAt },
+    } }, lease.token);
+    state = await repo.mutate(root, state.revision, { type: 'start-assistant', chatId,
+      messageId, actualModel: provenance }, lease.token);
+    state = await repo.mutate(root, state.revision, { type: 'finish-assistant', chatId, messageId,
+      outcome: 'complete', content: '{"type":"roadmap-gate-proposal"}' }, lease.token);
+    const proposal = { id: proposalId, chatId, messageId, ownerId: 'project', revision: 4,
+      changedIds: ['gate'], action: { type: 'gate.edit', id: 'gate' }, summary: 'Old → New',
+      preview: { source: 'validated-roadmap' as const, steps: [{ type: 'gate.edit', id: 'gate',
+        title: 'New', affectedCount: 1 }], entities: [], totalChanged: 1, additionalChanges: 0,
+        parentTitles: {} } };
+    const activity = { schemaVersion: 1 as const, kind: 'roadmap-gate-proposal' as const,
+      status: 'pending' as const, refs: [], proposalId, proposal };
+    await repo.recordPlanningActivity(root, chatId, messageId, lease.token, activity);
+    await repo.recordPlanningActivity(root, chatId, messageId, lease.token,
+      { ...activity, status: 'applied', appliedRevision: 5 }, { proposalId, status: 'pending' });
+    const saved = (await new ChatRepository().read(root)).chats[0].messages[0];
+    assert.equal(saved.role, 'assistant');
+    if (saved.role !== 'assistant') throw new Error('assistant missing');
+    assert.equal(saved.planningActivity?.status, 'applied');
+    assert.equal(saved.planningActivity.appliedRevision, 5);
+    assert.deepEqual(saved.planningActivity.proposal?.preview?.steps, proposal.preview.steps);
+    assert.equal(JSON.stringify(saved.planningActivity).includes('token'), false);
+    await assert.rejects(repo.recordPlanningActivity(root, chatId, messageId, lease.token,
+      activity, { proposalId, status: 'pending' }), /state changed/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('corrupt/future data and symlink/traversal paths fail closed without modifying outside project', async () => {
   const root = await folder(), outside = await folder(), repo = new ChatRepository(), chatId = id();
   try {

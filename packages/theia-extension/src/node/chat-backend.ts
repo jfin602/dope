@@ -599,13 +599,14 @@ export class ChatBackend implements ChatService {
         } finally { this.greenfield?.rejectStrategicDraft(token); }
     }
 
-    private async retirePending(root: string, chatId: string, leaseToken: string): Promise<void> {
+    private async retirePending(root: string, chatId: string, leaseToken: string,
+        status: 'stale' | 'superseded' | 'cancelled' = 'stale'): Promise<void> {
         const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
         for (const message of chat?.messages ?? []) {
             if (message.role !== 'assistant' || message.planningActivity?.status !== 'pending' ||
                 !message.planningActivity.proposalId) continue;
             await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
-                { ...message.planningActivity, status: 'stale' },
+                { ...message.planningActivity, status },
                 { proposalId: message.planningActivity.proposalId, status: 'pending' });
         }
     }
@@ -878,9 +879,11 @@ export class ChatBackend implements ChatService {
         const activity = message.planningActivity;
         if (!activity || activity.status !== 'pending' || activity.proposalId !== proposalId)
             throw new Error('Planning activity is not pending');
-        const record = async (status: ChatPlanningActivity['status'], appliedRevision?: number) => {
+        const record = async (status: ChatPlanningActivity['status'], appliedRevision?: number,
+            diagnostic?: string) => {
             await this.repository.recordPlanningActivity(root, chatId, pending.messageId, leaseToken,
-                { ...activity, status, ...(appliedRevision === undefined ? {} : { appliedRevision }) },
+                { ...activity, status, ...(appliedRevision === undefined ? {} : { appliedRevision }),
+                    ...(diagnostic === undefined ? {} : { diagnostic: diagnostic.slice(0, 2000) }) },
                 { proposalId, status: 'pending' });
             tracePlanning('decision-recorded', chatId, pending.messageId, status);
         };
@@ -933,7 +936,8 @@ export class ChatBackend implements ChatService {
             if ((await this.repository.read(root)).chats.find(chat => chat.id === chatId)?.messages
                 .some(item => item.id === pending.messageId && item.role === 'assistant' &&
                     item.planningActivity?.status === 'pending'))
-                await record(/stale|source|hash|conflict/i.test(String(error)) ? 'stale' : 'rejected');
+                await record(/stale|source|hash|conflict|revision|changed/i.test(String(error)) ? 'stale' : 'rejected',
+                    undefined, String(error));
             throw error;
         } finally { if (pending.handle && this.gateUndo.get(chatId)?.handle !== pending.handle)
             this.planning?.detach(pending.handle); }
@@ -995,7 +999,7 @@ export class ChatBackend implements ChatService {
                 priorReview.offerId, 'ready', 'stale').catch(() => {});
             this.strategicReviews.delete(request.chatId); }
         await this.repository.renew(root, request.chatId, request.leaseToken);
-        await this.retirePending(root, request.chatId, request.leaseToken);
+        await this.retirePending(root, request.chatId, request.leaseToken, 'superseded');
         this.clearProposal(request.chatId);
         const retryIndex = request.retryMessageId ? chat.messages.findIndex(item => item.id === request.retryMessageId) : -1;
         const content = request.retryMessageId ? (() => {
@@ -1485,7 +1489,10 @@ export class ChatBackend implements ChatService {
                                     result.proposal ? 'pending' : 'rejected',
                                 ...(helpTurn && kind === 'no-action' && composed.verifiedGuidance ?
                                     { verifiedGuidance: composed.verifiedGuidance } : {}),
-                                ...(result.proposal ? { proposalId: result.proposal.id } : {}) });
+                                ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
+                                ...(result.proposal ? { proposalId: result.proposal.id,
+                                    ...(['roadmap-gate-proposal', 'roadmap-gate-undo'].includes(kind) ?
+                                        { proposal: result.proposal } : {}) } : {}) });
                         tracePlanning('result-recorded', key, assistant.id,
                             kind === 'no-action' || kind === 'roadmap-gate-focus' &&
                                 'roadmapFocus' in result && result.roadmapFocus ?
@@ -1568,13 +1575,20 @@ export class ChatBackend implements ChatService {
         } catch { /* A title never changes the answer outcome. */ }
     }
     async cancelTurn(projectHandle: string, chatId: string, leaseToken: string): Promise<void> {
-        this.active(projectHandle);
+        const root = this.active(projectHandle);
         const turn = this.turns.get(chatId);
         const preparation = this.roadmapPreparations.get(chatId);
+        const proposal = this.proposals.get(chatId);
         if (turn && turn.token !== leaseToken) throw new Error('Chat turn is not owned by this panel');
         if (preparation && preparation.token !== leaseToken) throw new Error('Roadmap preparation is not owned by this panel');
         if (turn) turn.abort.abort();
         else if (preparation) preparation.abort.abort();
+        else if (proposal) {
+            if (proposal.leaseToken !== leaseToken) throw new Error('Planning proposal is not owned by this panel');
+            await this.repository.renew(root, chatId, leaseToken);
+            await this.retirePending(root, chatId, leaseToken, 'cancelled');
+            this.clearProposal(chatId);
+        }
         else this.pendingCancel.set(chatId, leaseToken);
     }
     dispose(): void {

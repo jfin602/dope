@@ -69,7 +69,7 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
     const prompts: string[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
-            streaming: true, contextWindowTokens: 8192, maxInputTokens: 8192 } }] }] }),
+            streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } }] }] }),
     async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
         prompts.push(JSON.stringify(request.messages));
         yield { type: 'complete' as const, actualModelId: 'q4', text: JSON.stringify(answer) }; } };
@@ -105,7 +105,17 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.equal(turn.proposal.preview?.entities[0]?.action, 'create');
         assert.equal(turn.proposal.preview?.steps[0]?.type, 'phase.create');
         assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
+        let recorded = await backend.get(projectHandle, chatId);
+        let activity = recorded?.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.proposalId === turn.proposal?.id);
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'pending');
+        assert.deepEqual(activity?.role === 'assistant' && activity.planningActivity?.proposal?.preview?.steps,
+            turn.proposal.preview?.steps);
         await backend.decidePlanningProposal(projectHandle, chatId, lease.token, turn.proposal.id, false);
+        recorded = await backend.get(projectHandle, chatId);
+        activity = recorded?.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.proposalId === turn.proposal?.id);
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'denied');
         await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
             turn.proposal.id, true), /unavailable/);
         assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
@@ -116,9 +126,32 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.ok(retry.refs.some(ref => ref.kind === 'roadmap'));
         assert.match(prompts[2], /Add a Phase called Combat Systems/);
         await backend.decidePlanningProposal(projectHandle, chatId, lease.token, retry.proposal.id, true);
+        recorded = await backend.get(projectHandle, chatId);
+        activity = recorded?.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.proposalId === retry.proposal?.id);
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'applied');
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.appliedRevision, 2);
         const saved = await store.read(root);
         assert.equal(saved.revision, 2);
         assert.equal(saved.phases[0].title, 'Combat Systems');
+        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
+            actions: [{ type: 'phase.create', id: 'new:2', title: 'Stale Phase', objective: 'Too old' }] };
+        const invalid = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Stale Phase.',
+            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
+        assert.equal(invalid.proposal, undefined);
+        assert.ok(invalid.proposalError);
+        recorded = await backend.get(projectHandle, chatId);
+        activity = recorded?.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.diagnostic === invalid.proposalError);
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'rejected');
+        assert.deepEqual(await store.read(root), saved);
+        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
+            actions: [{ type: 'phase.create', id: 'new:3', title: 'Superseded Phase', objective: 'Not applied' }] };
+        const replaced = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Superseded Phase.',
+            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
+        assert.ok(replaced.proposal);
         answer = { type: 'no-action', message: 'Combat Systems is the first Phase.' };
         const beforeQuestion = await readFile(join(root, '.dope', 'roadmap.json'));
         const question = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
@@ -128,6 +161,46 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.equal(question.proposalError, undefined);
         assert.equal(question.proposal, undefined);
         assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), beforeQuestion);
+        recorded = await backend.get(projectHandle, chatId);
+        activity = recorded?.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.proposalId === replaced.proposal?.id);
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'superseded');
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
+            replaced.proposal!.id, true), /unavailable/);
+        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
+            actions: [{ type: 'phase.create', id: 'new:4', title: 'Failed Phase', objective: 'Not written' }] };
+        const failed = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Failed Phase.',
+            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
+        assert.ok(failed.proposal);
+        const originalApply = actions.apply;
+        actions.apply = async () => { throw new Error('Fixture writer unavailable'); };
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
+            failed.proposal.id, true), /Fixture writer unavailable/);
+        actions.apply = originalApply;
+        recorded = await backend.get(projectHandle, chatId);
+        activity = recorded?.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.proposalId === failed.proposal?.id);
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'rejected');
+        assert.match(activity?.role === 'assistant' ? activity.planningActivity?.diagnostic ?? '' : '',
+            /Fixture writer unavailable/);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
+            failed.proposal.id, true), /unavailable/);
+        assert.deepEqual(await store.read(root), saved);
+        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
+            actions: [{ type: 'phase.create', id: 'new:5', title: 'Cancelled Phase', objective: 'Not written' }] };
+        const cancelled = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Cancelled Phase.',
+            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
+        assert.ok(cancelled.proposal);
+        await backend.cancelTurn(projectHandle, chatId, lease.token);
+        recorded = await backend.get(projectHandle, chatId);
+        activity = recorded?.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.proposalId === cancelled.proposal?.id);
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'cancelled');
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
+            cancelled.proposal.id, true), /unavailable/);
+        assert.deepEqual(await store.read(root), saved);
         const phaseList = Array.from({ length: 70 }, (_, order) => ({ id: `phase-${order}`,
             projectId, title: `Phase ${order}`, objective: `Objective ${order}`, order, dependencies: [],
             implementationStatus: 'unknown' as const, qualificationStatus: 'unknown' as const,

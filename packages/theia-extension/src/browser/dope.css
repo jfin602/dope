@@ -11,6 +11,7 @@
 .dope-roadmap-context-gates { display: flex; flex-wrap: wrap; gap: 6px; }
 .dope-roadmap-stage-host > [hidden] { display: none !important; }
 .dope-roadmap-stage-host.dope-map-stage > p[role="status"] { position: absolute; left: auto; right: 8px; bottom: 8px; z-index: 2; max-width: min(42%, 28rem); max-height: min(30%, 9rem); overflow: auto; margin: 0; padding: 4px 8px; color: var(--theia-descriptionForeground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 4px; font-size: 11px; overflow-wrap: anywhere; }
+.dope-roadmap-stage-host > p[role="status"]:empty { display: none; }
 .dope-roadmap-import { position: absolute; top: 8px; left: 8px; z-index: 4; box-sizing: border-box; width: min(52rem, calc(100% - 16px)); max-height: calc(100% - 16px); overflow: auto; margin: 0; padding: 12px; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 5px; box-shadow: 0 4px 16px var(--theia-widget-shadow, transparent); }
 .dope-roadmap-import[data-state="compact"] { width: min(34rem, calc(100% - 16px)); }
 .dope-roadmap-import[data-state="minimized"] { width: min(18rem, calc(100% - 16px)); padding: 6px; }
@@ -85,7 +86,7 @@
 .dope-roadmap-node[aria-current="true"] { box-shadow: 0 0 0 2px var(--dope-primary, var(--dope-roadmap-focus, var(--theia-focusBorder))); font-weight: 600; }
 .dope-roadmap-node { transition: box-shadow 180ms ease-out; }
 .dope-roadmap-node:disabled { cursor: default; }
-.dope-roadmap-draft-accepted .dope-roadmap-node { border-style: dashed; }
+.dope-roadmap-draft-accepted .dope-roadmap-node { border-style: solid; }
 .dope-roadmap-draft-proposed .dope-roadmap-node { border-style: dotted; border-left-color: var(--dope-primary, var(--theia-focusBorder)); }
 .dope-roadmap-node .dope-roadmap-authority { font-weight: 600; color: var(--theia-descriptionForeground); }
 .dope-roadmap-draft-proposed .dope-roadmap-authority { color: var(--dope-primary, var(--theia-focusBorder)); }
@@ -1195,6 +1196,15 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-plan-review .dope-chat-roadmap-element-preview[data-action="delete"] { border-left-color: var(--theia-errorForeground); opacity: .85; }
 .dope-chat-plan-review .dope-chat-roadmap-element-preview[data-action="delete"] > strong { text-decoration: line-through; }
 .dope-chat-plan-review .dope-chat-roadmap-element-preview ul { margin: 3px 0; padding-left: 20px; font-size: 12px; }
+.dope-chat-proposal-history { --proposal-accent: var(--theia-descriptionForeground); display: block; padding: 7px 10px; border-left: 3px solid var(--proposal-accent); }
+.dope-chat-proposal-history[data-status="applied"] { --proposal-accent: var(--dope-roadmap-green, var(--theia-testing-iconPassed)); }
+.dope-chat-proposal-history[data-status="stale"], .dope-chat-proposal-history[data-status="denied"] { --proposal-accent: var(--theia-editorWarning-foreground); }
+.dope-chat-proposal-history[data-status="failed"] { --proposal-accent: var(--theia-errorForeground); }
+.dope-chat-proposal-history-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; font-size: 11px; }
+.dope-chat-proposal-history-heading strong { flex: 1 1 12ch; min-width: 0; font-weight: 600; text-transform: capitalize; }
+.dope-chat-proposal-history-heading > span:last-child { color: var(--theia-descriptionForeground); }
+.dope-chat-proposal-history-mark { color: var(--proposal-accent); font-weight: 700; }
+.dope-chat-proposal-history details { margin-top: 3px; }
 .dope-chat-proposal-step { border-left: 2px solid var(--theia-widget-border); padding-left: 8px; text-transform: capitalize; }
 .dope-chat-proposal-source { border-top: 1px solid var(--theia-widget-border); padding-top: 6px; font-size: 12px; }
 .dope-chat-plan-review :is(button, summary):focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
