@@ -1,3 +1,5 @@
+> **2026-10-31 DOPE SKILLS FORWARD DESIGN / DOCS ONLY:** [Minimal Dope Skills framework](planning/p12/skills-framework-contract.md) adds small slash-invoked built-in/custom instructions within the existing ChatPanel, Pi and context-ownership boundary. Qualify the generic framework before the first default Docs review/apply skills. Skill text never expands model, shell, canonical file-write, Work or Roadmap authority. This design is not implementation or qualification.
+
 # Dope Architecture
 
 Status: INITIAL ARCHITECTURE CONTRACT
