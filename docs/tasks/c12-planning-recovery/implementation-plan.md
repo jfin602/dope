@@ -2,7 +2,7 @@
 
 # /prompt-plan — c12-planning-recovery
 
-**2026-10-31, docs-only.** Three sequential manual Sol High prompts, each with Ponytail Full if available. `0.12.7` unchanged. Read `scope.md` and `prompt-assessment.md`; product/local reality controls over remote assumptions.
+**2026-10-31, docs-only.** P1/P2 followed by two independently executed manual P3-A and P3-B Sol High prompts, each with Ponytail Full if available. `0.12.7` unchanged. Read `scope.md` and `prompt-assessment.md`; product/local reality controls over remote assumptions.
 
 ## Phase 1 — remove redundant implementation-plan experiment
 
@@ -19,7 +19,21 @@
 - Test typed review card, diff, reject, accept, stale-source/revision denial, source-owned linked document reconciliation, protected edits, cancel/project switch and no phantom Gate Green. A genuine Qwen30 browser turn must propose a modest edit; human review remains decisive.
 - Gate **C2**: review/approve/reject work with one existing ChatPanel/owner; gaps listed rather than claimed complete. Failures lead to minimal targeted source repairs and one justified replay.
 
-## Phase 3 — smallest safe documentation-management slice
+## Phase 3A — generic Skills framework (forward: [P3-A](P3-A-skills-framework.txt))
+
+- Inspect actual pinned Pi Agent Skills integration, ChatPanel and context composer before coding.
+- Extend existing owners with a protected built-in/custom short-instruction registry, compact slash autocomplete, custom skill manager/persistence and deterministic bounded **per-turn** prompt injection. No Docs commands yet.
+- Verify no double injection, unrelated-turn leakage or extra model calls, stable saved/retry snapshot, name conflicts and safe failure; preserve permissions, Roadmap, Chat and Work.
+- Chrome-test a user-created skill with the selected Pi model and a separate plain-chat control. Gate **C3A** is independently evidenced functional Skills support, never Docs publication.
+
+## Phase 3B — first Docs skills and progressive retrieval (forward: [P3-B](P3-B-docs-skills.txt))
+
+- Require source-bound P3-A qualification and use its registry; no second slash router or agent.
+- Register protected /docs-review and /docs-apply as bounded instructions. Review only eligible .md/.txt project docs via cheap whole-corpus listing/search, progressively read relevant ranges through Pi and disclose searched versus inspected files and omissions. Avoid automatic scans/LLM selection in regular turns.
+- First audit actual review proposal, inspectable diff, explicit approval, safe source-bound document writer, journal/recovery and applied-only History. If missing and beyond narrow scope, **BLOCKED / SPLIT REQUIRED**, not a shell or Chat write shortcut.
+- Test disposable review with no writes, exact approved apply, stale/reject/partial/retry/linked Roadmap protections and one verified applied-only History effect. Gate **C3B** is real proof or an honest blocked handoff.
+
+## Phase 3 — original direct Docs slice (historical/superseded; do not execute)
 
 - Reconcile `c12-docs-workflow` and ADR 0041 with conversational Roadmap instead of rigid implementation-plan prerequisites; do not execute historical P1–P15 automatically.
 - Inspect available safe single-document publication primitives, Chat proposal/approval, linked Roadmap owner and applied-only History. Choose one tightly scoped create/update text-doc path with exact precondition/source hash, durable recovery and actual effect verification. `/docs-review` must be read-only and display inspectable diff; `/docs-apply` must target a reviewed unchanged proposal and require owner authorization.
