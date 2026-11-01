@@ -72,6 +72,7 @@ export class ChatPanelController {
     context: ChatContextSelection[] = [];
     lastContext?: ChatContextPreview;
     planningProposal?: ChatPlanningProposal;
+    planningDecision?: { id: string; status: 'accepted' | 'rejected' | 'failed'; changedIds: string[] };
     roadmapOffer?: ChatRoadmapOffer;
     strategicDraftReview?: ChatStrategicDraftReview;
     planningProposalError?: string;
@@ -641,14 +642,23 @@ export class ChatPanelController {
         try {
             const result = await lease.connection.decidePlanningProposal(lease.handle, lease.chatId,
                 lease.token, proposal.id, approve);
+            this.planningDecision = { id: proposal.id, status: approve && result ? 'accepted' : 'rejected',
+                changedIds: result?.changedIds ?? [] };
             this.planningProposal = undefined;
             this.planningProposalError = approve && result ?
                 `${isDraftPlanningAction(proposal.action.type) ? 'Accepted Roadmap draft' : 'Roadmap'} ` +
                 `updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
         } catch (error) {
+            this.planningDecision = { id: proposal.id, status: 'failed', changedIds: [] };
             this.planningProposal = undefined;
             this.planningProposalError = `Planning proposal was not applied: ${String(error)}. Refresh the selection for the next turn.`;
         } finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
+    canViewPlanningProposal(id: string): boolean {
+        return !!this.lease && this.lease.workspace === this.workspace && this.lease.chatId === this.chatId &&
+            this.planningProposal?.id === id && this.planningProposal.chatId === this.chatId &&
+            !!this.planningProposal.preview && this.planningProposal.revision > 0 &&
+            !this.pending && !this.running && !this.disposed;
     }
     addContext(selection: ChatContextSelection): void {
         if (this.context.length >= 20) throw new Error('Too many context selections');

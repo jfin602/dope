@@ -23,7 +23,8 @@ import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
 import { extractSavedRoadmap, roadmapCreationIntent } from './chat-roadmap-extract';
 import { roadmapRequirementCoverage } from './chat-roadmap-requirements';
-import { bindGateChatActions, gateChatDiff, touchesLinkedSource, validGateChatEnvelope } from './roadmap-gate-chat';
+import { bindGateChatActions, touchesLinkedSource, validGateChatEnvelope } from './roadmap-gate-chat';
+import { linkedRoadmapProposalPreview, roadmapProposalPreview } from './roadmap-proposal-presentation';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { GateDocumentPatch } from '@dope/project-intelligence/lib/node/roadmap-gate-document';
@@ -650,9 +651,10 @@ export class ChatBackend implements ChatService {
                     JSON.stringify([...preview.after.phases, ...preview.after.gates].find(item => item.id === id)));
                 const id = randomUUID();
                 this.proposals.set(chatId, { id, messageId, leaseToken, changedIds, undo });
+                const presentation = roadmapProposalPreview(preview.before, preview.after, [], changedIds);
                 return { proposal: { id, chatId, messageId, ownerId: undo.ownerId,
                     revision: undo.revision, changedIds, action: { type: 'gate-undo', id: changedIds[0] ?? undo.ownerId },
-                    summary: gateChatDiff(preview.before, preview.after, changedIds) } };
+                    summary: JSON.stringify(presentation, null, 2), preview: presentation } };
             }
             if (!validGateChatEnvelope(value) || value.projectId !== ref.projectId ||
                 value.ownerRevision !== ref.ownerRevision)
@@ -692,10 +694,11 @@ export class ChatBackend implements ChatService {
                 this.proposals.set(chatId, { id, messageId, leaseToken, changedIds: [action.id],
                     document: { root, preview } });
                 return { proposal: { id, chatId, messageId, ownerId: before.projectId,
-                    revision: before.revision, changedIds: [action.id],
+                    revision: before.revision, sourceHash: before.linkedDocument.sourceHash, changedIds: [action.id],
                     action: { type: action.type, id: action.id },
                     summary: `Linked Markdown: ${preview.path}\nSource SHA-256: ${preview.beforeHash}\n` +
-                        preview.changedLines.map(line => `- ${line.before}\n+ ${line.after}`).join('\n') } };
+                        preview.changedLines.map(line => `- ${line.before}\n+ ${line.after}`).join('\n'),
+                    preview: linkedRoadmapProposalPreview(before, kind, action.id, preview.changedLines) } };
             }
             const request: PlanningActionRequest = { projectHandle: handle, ownerId: before.projectId,
                 expectedRevision: before.revision, actions,
@@ -703,12 +706,15 @@ export class ChatBackend implements ChatService {
                     { sourceHashes: Object.fromEntries(before.linkedDocument.sections.map(item => [item.id, ref.sourceHash!])) } : {}) };
             const preview = await this.planning.preview(request);
             const id = randomUUID();
+            const presentation = roadmapProposalPreview(before, preview.next as unknown as RoadmapGateIndex,
+                actions, preview.changedIds);
             this.proposals.set(chatId, { id, messageId, leaseToken, handle, request,
                 token: preview.token, changedIds: preview.changedIds });
             return { proposal: { id, chatId, messageId, ownerId: before.projectId, revision: before.revision,
+                sourceHash: before.linkedDocument?.sourceHash,
                 changedIds: preview.changedIds, action: { type: actions.length > 1 ? 'gate-sequence' : actions[0].type,
                     id: 'id' in actions[0] ? actions[0].id ?? before.projectId : before.projectId },
-                summary: gateChatDiff(before, preview.next as unknown as RoadmapGateIndex, preview.changedIds) } };
+                summary: JSON.stringify(presentation, null, 2), preview: presentation } };
         } catch (error) {
             if (handle) this.planning.detach(handle);
             return { proposalError: `Roadmap proposal rejected: ${String(error)}` };

@@ -52,7 +52,17 @@ export interface ChatContextSelection { kind: ChatContextKind; id: string; proje
 export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'history'; source: string; message: string }
 export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
 export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: string; ownerId: string;
-    revision: number; changedIds: string[]; action: { type: string; id: string }; summary: string }
+    revision: number; sourceHash?: string; changedIds: string[]; action: { type: string; id: string }; summary: string;
+    preview?: { source: 'validated-roadmap' | 'validated-markdown-patch';
+        steps: { type: string; id: string; title: string; affectedCount: number }[];
+        entities: { id: string; action: 'create' | 'edit' | 'delete'; before?: ChatRoadmapPreviewEntity;
+            after?: ChatRoadmapPreviewEntity }[];
+        totalChanged: number; additionalChanges: number; parentTitles: Record<string, string>;
+        sourceChanges?: { before: string; after: string }[]; additionalSourceChanges?: number } }
+export interface ChatRoadmapPreviewEntity { kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string;
+    title?: string; detail?: string; designation?: string; parentId?: string; order?: number;
+    dependencies?: string[]; criteria?: { id: string; title: string; expectedResult: string }[];
+    additionalCriteria?: number }
 /** A transient, noncanonical permission to attempt one draft generation. Never a draft or publication grant. */
 export interface ChatRoadmapOffer { id: string; token: string; projectHandle: string; projectId: string; chatId: ChatId; messageId: string;
     ownerId: string; ownerRevision: number; basis: 'empty-owner'; expiresAt: number }

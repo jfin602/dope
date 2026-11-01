@@ -74,8 +74,14 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
             content: 'Add a Phase called Combat Systems.',
             context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 1 }] });
         assert.ok(turn.proposal);
+        assert.equal(turn.proposal.preview?.source, 'validated-roadmap');
+        assert.equal(turn.proposal.preview?.entities[0]?.after?.title, 'Combat Systems');
+        assert.equal(turn.proposal.preview?.entities[0]?.action, 'create');
+        assert.equal(turn.proposal.preview?.steps[0]?.type, 'phase.create');
         assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
         await backend.decidePlanningProposal(projectHandle, chatId, lease.token, turn.proposal.id, false);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
+            turn.proposal.id, true), /unavailable/);
         assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
         const retry = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },

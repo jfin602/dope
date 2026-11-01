@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, roadmapElementPreview, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -157,19 +157,6 @@ test('trusted greenfield creation is described as creation even when it has an o
             status: 'applied' as const, appliedRevision: 2 } };
         assert.match(planningOutcome(accepted)?.summary ?? '', /saved in the accepted draft at revision 2.*not yet canonical/);
     }
-});
-
-test('validated Gate edit has a compact element preview and JSON remains the diagnostic payload', () => {
-    const message = { content: JSON.stringify({ type: 'roadmap-gate-proposal', actions: [{
-        type: 'gate.edit', id: 'gate-one', title: 'Release verification', purpose: 'Verify the release',
-    }] }), planningActivity: { schemaVersion: 1, kind: 'roadmap-gate-proposal', status: 'pending',
-        refs: [{ kind: 'roadmap', id: 'gate-one', label: 'Roadmap Gate: Release readiness' }] } } as ChatAssistantMessage;
-    assert.deepEqual(roadmapElementPreview(message), { kind: 'Gate', id: 'gate-one', title: 'Release verification',
-        detailLabel: 'Purpose', detail: 'Verify the release', previousTitle: 'Release readiness' });
-    assert.deepEqual(planningOutcome(message)?.questions, []);
-    assert.equal(roadmapElementPreview({ ...message, planningActivity: undefined }), undefined);
-    assert.equal(roadmapElementPreview({ ...message, content: '{bad' }), undefined);
-    assert.equal(roadmapElementPreview({ ...message, content: JSON.stringify({ actions: [{ type: 'gate.delete', id: 'gate-one' }] }) }), undefined);
 });
 
 test('completed backend-validated no-action presents its message once without implying a write', () => {

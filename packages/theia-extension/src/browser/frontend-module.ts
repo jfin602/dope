@@ -556,7 +556,24 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 if (state.clear) { widget.clearStrategicReview(projectUri, chatId); return; }
                 await widget.presentStrategicReview(projectUri, projectId, chatId, state, decide);
                 if (openEditor) await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
-            }, context.container.get<FileDialogService>(FileDialogService), context.container.get(FileService));
+            }, context.container.get<FileDialogService>(FileDialogService), context.container.get(FileService),
+            async (projectUri, chatId, proposal, isCurrent) => {
+                const roots = await context.container.get(WorkspaceService).roots;
+                if (!isCurrent() || roots.length !== 1 || roots[0].resource.toString() !== projectUri)
+                    throw new Error('Project or Chat changed before Roadmap preview');
+                await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
+                if (!isCurrent()) throw new Error('Chat proposal changed before Roadmap preview');
+                const widget = await context.container.get(WidgetManager)
+                    .getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                await widget.presentChatProposal(projectUri, chatId, proposal);
+                if (!isCurrent()) {
+                    await widget.clearChatProposal(projectUri, chatId, proposal.id);
+                    throw new Error('Chat proposal changed before Roadmap preview');
+                }
+            }, async (projectUri, chatId, proposalId, accepted, changedIds) => {
+                const widget = await context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                await widget?.clearChatProposal(projectUri, chatId, proposalId, accepted, changedIds);
+            });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

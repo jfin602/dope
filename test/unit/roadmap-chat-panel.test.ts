@@ -11,10 +11,36 @@ import { ChatPlanningSelection } from '../../packages/theia-extension/lib/browse
 import { RoadmapInspectorModel } from '../../packages/theia-extension/lib/browser/roadmap-inspector-model.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
 import type { ChatContextSelection } from '../../packages/chat/src/service.ts';
+import type { ChatPlanningProposal } from '../../packages/chat/src/service.ts';
 import type { ChatClient } from '../../packages/chat/src/service.ts';
 import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/roadmap-store.ts';
 import type { RoadmapService } from '../../packages/theia-extension/src/roadmap-service.ts';
 import type { PlanningMapController } from '../../packages/theia-extension/src/browser/planning-map-controller.ts';
+
+test('Roadmap preview control requires the current leased Chat and validated accepted-index proposal', () => {
+    const controller = new ChatPanelController(() => { throw new Error('no connection'); },
+        () => {}, new ChatOpenOwners(), 'preview');
+    const proposal: ChatPlanningProposal = { id: 'proposal', chatId: 'chat', messageId: 'message',
+        ownerId: 'project', revision: 5, changedIds: ['gate'], action: { type: 'gate.edit', id: 'gate' },
+        summary: '', preview: { source: 'validated-roadmap', steps: [], entities: [], totalChanged: 0,
+            additionalChanges: 0, parentTitles: {} } };
+    Object.assign(controller, { workspace: 'file:///project', chatId: 'chat', planningProposal: proposal,
+        lease: { workspace: 'file:///project', chatId: 'chat', handle: 'handle', token: 'token', connection: {} } });
+    assert.equal(controller.canViewPlanningProposal('proposal'), true);
+    assert.equal(controller.canViewPlanningProposal('another'), false);
+    controller.pending = true;
+    assert.equal(controller.canViewPlanningProposal('proposal'), false);
+    controller.pending = false;
+    controller.workspace = 'file:///other';
+    assert.equal(controller.canViewPlanningProposal('proposal'), false);
+    controller.workspace = 'file:///project';
+    controller.planningProposal = { ...proposal, revision: 0 };
+    assert.equal(controller.canViewPlanningProposal('proposal'), false);
+    controller.planningProposal = { ...proposal, preview: undefined };
+    assert.equal(controller.canViewPlanningProposal('proposal'), false);
+    Object.assign(controller, { lease: undefined });
+    controller.dispose();
+});
 
 test('empty schema-2 Roadmap does not become implicit Chat context', () => {
     const workspace = 'file:///tmp/empty-roadmap-chat';

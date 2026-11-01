@@ -7,29 +7,6 @@ export function isDraftPlanningAction(type: string): boolean {
         'implementation-plan', 'implementation-plan-revision'].includes(type);
 }
 
-/** A small text-only projection of a backend-validated Gate/Criterion edit. */
-export function roadmapElementPreview(message: ChatAssistantMessage): {
-    kind: 'Gate' | 'Criterion'; id: string; title: string; detailLabel: string; detail: string;
-    previousTitle?: string;
-} | undefined {
-    if (message.planningActivity?.kind !== 'roadmap-gate-proposal') return undefined;
-    try {
-        const envelope = JSON.parse(message.content) as { actions?: unknown };
-        if (!Array.isArray(envelope.actions) || envelope.actions.length !== 1) return undefined;
-        const action = envelope.actions[0] as Record<string, unknown>;
-        const gate = action.type === 'gate.edit';
-        if (!gate && action.type !== 'criterion.edit') return undefined;
-        if (typeof action.id !== 'string' || typeof action.title !== 'string' ||
-            typeof action[gate ? 'purpose' : 'expectedResult'] !== 'string') return undefined;
-        const label = message.planningActivity.refs.find(ref =>
-            ref.label?.startsWith(gate ? 'Roadmap Gate:' : 'Roadmap Criterion:'))?.label;
-        return { kind: gate ? 'Gate' : 'Criterion', id: action.id, title: action.title,
-            detailLabel: gate ? 'Purpose' : 'Expected result',
-            detail: action[gate ? 'purpose' : 'expectedResult'] as string,
-            previousTitle: label?.split(':').slice(1).join(':').trim() || undefined };
-    } catch { return undefined; }
-}
-
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
