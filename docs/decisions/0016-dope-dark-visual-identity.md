@@ -152,3 +152,11 @@ Implementation and direct browser/Electron visual evidence for the updated palet
 - UI implementation prompts must follow `AGENTS.md` and the UI Design Compliance Gate in `docs/workflow.md`; they must read this current ADR and any applicable presentation authority, reuse semantic tokens, and avoid hard-coded widget palettes.
 - `c9-theme-fix` owns the bounded theme-token/test correction and one direct real-GUI visual qualification. Focused theme tests and contrast/theme-isolation checks are required; a T3 pass inspects major Dope-owned surfaces, narrow panes, status bar and a non-Dope theme. Failed/unknown gates remain Not Green.
 - This is a presentation-only change: no package-version advancement for the correction, no new theme identity/framework, no application/domain/authority mutation, and no rewriting historical `c4-color-theme` or `c8-chat-work-ui` qualification records.
+
+## Amendment — 2026-11-01: Dope Colors, eligible only under Dope Dark
+
+**Status: owner-approved future product design / docs only; not implemented or qualified.** [ADR 0043](0043-dope-colors-project-identity.md) extends this restrained-orange identity into a curated, user-selectable global accent and independently overridden project accents. The historical palettes and qualification results above remain unchanged; **orange `#FF7A1A` remains Dope Dark's default**, but it is no longer intended to be the only permitted Dope Dark interactive accent.
+
+**Strict boundary:** Dope Colors customization is active **only when the actual selected theme is `dope-dark`**. Other user-selected compatible themes retain their complete styling, have no injected Dope Colors token/window overrides and have no active Dope Colors pickers. Saved selections remain dormant and restore only upon returning to Dope Dark; no automatic theme switching. Keep neutral dark surfaces, restrained intentional action emphasis, status/diagnostic/SCM/syntax truth, independent map/Chat colors and visible non-color cues. Roadmap semantic status tokens must not derive their status meanings from a customizable accent.
+
+ADR 0043 owns global/project precedence, user-local presentation persistence, per-window isolation, curated palette candidates and later Chrome/Electron/contrast qualification. This amendment grants no code change or phase qualification.

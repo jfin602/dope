@@ -28,6 +28,14 @@ Only a material conflict with an actually accepted task/WorkItem requirement or 
 
 Linked Roadmap updates use the existing source adapter and authoritative owner with **Phase -> Gate -> Criterion** semantics. Documentation approval/application, canonical architecture adoption, implementation, validation and Gate qualification remain independent. Commands Ask/Allow governs investigation; it does not grant documentation application, Git mutation, Work execution or promotion authority. No second Chat, Work or History store is introduced.
 
+## Dope Colors — optional Dope Dark project identity (ADR 0043; accepted design, not implemented)
+
+[ADR 0043](decisions/0043-dope-colors-project-identity.md) defines a curated **Dope Dark-only** appearance feature. On the first eligible launch, users may choose a global accent, with orange preselected and a nonblocking Skip action; global appearance settings can change it later. On project creation/opening, users may optionally choose **Inherit Global** (default) or an explicit project color and later edit/reset it in project appearance settings. Color choices reinforce project identity when multiple IDE windows are open; the project label remains readable without color.
+
+Effective appearance under selected `dope-dark`: project override > global user preference > canonical orange. Project overrides persist as user-local presentation metadata associated with validated stable project identity, not as project source or canonical Project Mind/Map/Roadmap data. Multiple windows isolate different projects; windows for the same project reconcile changes. A global change affects inheriting windows, not explicit project overrides. No AI call or project-code mutation is needed.
+
+**Eligibility is strict:** Dope Colors has no visual or configuration effect when the selected theme is **not** `dope-dark`. Its pickers are unavailable and its colored window cues/token overrides deactivated, while selected values remain stored and restore when users voluntarily return to Dope Dark. Alternate themes are never forced or recolored. Curated colors generate accessible interaction tonal variants over neutral dark surfaces; semantic diagnostics, Roadmap/Gate status, syntax, SCM, tests, independent Chat and map palettes retain their own meaning. Contrast, focus, persistence and browser/Electron multi-window isolation require later qualification. No implementation, version change or Green is implied by this entry.
+
 ## Project Mind
 
 Project Mind is the developer-facing durable structured knowledge of one software project.
