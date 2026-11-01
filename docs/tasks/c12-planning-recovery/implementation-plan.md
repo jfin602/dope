@@ -1,3 +1,5 @@
+> **2026-10-31 P3-C ROADMAP SKILL ADDITION / DOCUMENTATION ONLY:** [P3-C](P3-C-roadmap-skill.txt) follows qualified P3-A as a separate protected Roadmap skill specialization. P3-B Docs and P3-C can be independently run in either order after P3-A. Latest P2-R3 and H2 remain NOT GREEN; preserve those evidence gaps, do not mistake prior P2-ready handoff for qualification. See [Skills contract](../../planning/p12/skills-framework-contract.md).
+
 > **2026-10-31 PHASE 3 FORWARD SUPERSESSION / DOCS ONLY:** The original Phase 3 and direct P3 prompt below are preserved unexecuted history, *not* the next executable step. **Phase 3A:** write and independently qualify a targeted Skills foundation prompt (registry, searchable composer slash picker, user text skill manager/persistence, deterministic bounded per-turn Pi injection; no Docs writer). **Phase 3B:** only afterward write a separate targeted prompt for `/docs-review`, `/docs-apply`, on-demand progressive `.md`/`.txt` search/reads, and the verified Dope-owned safe proposal/application path. See [canonical Skills contract](../../planning/p12/skills-framework-contract.md). If proposal/journal/recovery/History owners are absent, stop/split rather than treat skill prose as write authority. Preserve original ADR 0041/15-prompt guards, version `0.12.7`, and historical gates.
 
 # /prompt-plan — c12-planning-recovery
@@ -32,6 +34,14 @@
 - Register protected /docs-review and /docs-apply as bounded instructions. Review only eligible .md/.txt project docs via cheap whole-corpus listing/search, progressively read relevant ranges through Pi and disclose searched versus inspected files and omissions. Avoid automatic scans/LLM selection in regular turns.
 - First audit actual review proposal, inspectable diff, explicit approval, safe source-bound document writer, journal/recovery and applied-only History. If missing and beyond narrow scope, **BLOCKED / SPLIT REQUIRED**, not a shell or Chat write shortcut.
 - Test disposable review with no writes, exact approved apply, stale/reject/partial/retry/linked Roadmap protections and one verified applied-only History effect. Gate **C3B** is real proof or an honest blocked handoff.
+
+## Phase 3C — protected `/roadmap` and selective Roadmap context (forward: [P3-C](P3-C-roadmap-skill.txt))
+
+- Preflight independently qualified P3-A registry and current local P2/H1/H2 state. If skill plumbing is not usable, **STOP — BLOCKED**; do not implement a second slash router. Do not run P3-C automatically after P3-B or treat P2 as Green.
+- Register one protected built-in skill and enforce **real per-turn invocation metadata** in the backend for model-origin schema-2 edit proposals; selected context/model-provided JSON alone cannot authorize. Preserve normal questions, read-only selection, existing manual editor/import/greenfield/linked sync and no-action/Focus flows. Preserve typed 19 actions, 1–3 atomic limit, validated exact-source approval and History.
+- Refactor broad selected-Roadmap context composition into deterministic small relevance-gated read-only overview, targeted selected facts and skill-time required current target/source fields. Support unselected skill invocations via verified index lookup and unambiguous target resolution. Expand necessary data when requested; fail safely if required fields do not fit instead of truncating. Don't re-inject editing instructions except on verified skill turns.
+- Keep Pi brokered file reads, permission/Ask/Allow, selected provider, retry snapshot and saved Chat lease boundaries. Retry preserves the exact skill body but rechecks live project, source, revision and approval status. Skill activation neither applies an edit nor awards qualification.
+- Gate **C3C**: exact source-linked Chrome unskilled-denial and explicit-skill reviewed-edit Accept/Reject, linked Markdown safe field vs structural refusal, no edit-grammar leakage, large Roadmap/16K token comparison, no extra selector calls, controlled failures and regression tests/typecheck/build. Native owner Electron separately unqualified.
 
 ## Phase 3 — original direct Docs slice (historical/superseded; do not execute)
 
