@@ -1,3 +1,5 @@
+> **2026-10-31 SKILLS-FIRST CHAT EXTENSION / DOCS ONLY:** Introduce a bounded searchable slash-skills popup in the **existing fixed-height ChatPanel composer**, with protected built-ins, user-managed text-only skills and explicit per-turn instruction injection using the existing Pi/context owners. Dope's friendly `/name` alias must resolve deterministically alongside Pi's native `/skill:name` behavior where compatible; do not double-inject. Preserve selected model, Chat Commands Ask/Allow, tools/broker/sandbox, saved conversation, Roadmap, Work, copying and composer stability. First qualify framework; only then add Docs skills and progressive review. [Skills contract](skills-framework-contract.md). No runtime feature is implemented by these words.
+
 # Phase 12 — full Pi agentic Chat and Planning permissions
 
 **Owner decision:** 2026-10-30. **Status at adoption:** APPROVED DESIGN / NOT THEN IMPLEMENTED. **Version:** 0.12.7 unchanged; see current-source amendment below. **Correction:** [c12-pi-agentic-chat](../../tasks/c12-pi-agentic-chat/README.md).
