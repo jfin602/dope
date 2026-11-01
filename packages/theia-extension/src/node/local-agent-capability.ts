@@ -36,26 +36,32 @@ export class LocalAgentCapabilityProbe {
             if (!(await bounded(this.sandbox())).available) return 'unavailable';
             if (abort.aborted) return timeout.aborted ? 'timed-out' : 'cancelled';
             const budget = new LocalContextBudget(connection.id, modelId, before);
-            const nonce = randomUUID();
             const path = 'dope-synthetic-capability-probe.txt';
-            const messages: LocalTurnMessage[] = [
-                { role: 'system', content: 'This is a synthetic tool protocol check. Call read on dope-synthetic-capability-probe.txt with maxBytes 128. Then include the exact value returned by the tool in your final answer.' },
-                { role: 'user', content: 'Read the synthetic probe file and report its value.' }
-            ];
             const common = { connection, modelId, loadedModelIds: [modelId], inventory, budget,
                 ...(credential === undefined ? {} : { credential }), signal: abort, timeoutMs: this.timeoutMs,
                 maxOutputTokens: 512 };
-            const first = await bounded(this.transport.turn({ ...common, messages }));
-            if (first.kind !== 'tools' || first.calls.length !== 1) return 'unsupported';
-            const call = first.calls[0];
-            if (call.name !== 'read' || call.arguments.path !== path || call.arguments.maxBytes !== 128)
-                return 'unsupported';
-            messages.push({ role: 'assistant', content: '', tool_calls: [{ id: call.id, type: 'function',
-                function: { name: call.name, arguments: JSON.stringify(call.arguments) } }] });
-            messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify({ id: call.id,
-                name: call.name, status: 'completed', output: nonce, truncated: false }) });
-            const second = await bounded(this.transport.turn({ ...common, messages }));
-            return second.kind === 'final' && second.text.includes(nonce) ? 'supported' : 'unsupported';
+            // A single sampled response can omit a supported tool. Require a complete
+            // independent round trip on either of two bounded attempts; never infer
+            // support from the retry alone or from model metadata.
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const nonce = randomUUID();
+                const messages: LocalTurnMessage[] = [
+                    { role: 'system', content: 'This is a synthetic tool protocol check. Call read on dope-synthetic-capability-probe.txt with maxBytes 128. Then include the exact value returned by the tool in your final answer.' },
+                    { role: 'user', content: 'Read the synthetic probe file and report its value.' }
+                ];
+                const first = await bounded(this.transport.turn({ ...common, messages }));
+                if (first.kind !== 'tools' || first.calls.length !== 1) continue;
+                const call = first.calls[0];
+                if (call.name !== 'read' || call.arguments.path !== path || call.arguments.maxBytes !== 128)
+                    continue;
+                messages.push({ role: 'assistant', content: '', tool_calls: [{ id: call.id, type: 'function',
+                    function: { name: call.name, arguments: JSON.stringify(call.arguments) } }] });
+                messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify({ id: call.id,
+                    name: call.name, status: 'completed', output: nonce, truncated: false }) });
+                const second = await bounded(this.transport.turn({ ...common, messages }));
+                if (second.kind === 'final' && second.text.includes(nonce)) return 'supported';
+            }
+            return 'unsupported';
         } catch (error) {
             return timeout.aborted ? 'timed-out' : abort.aborted ? 'cancelled' : error instanceof ModelRuntimeFailure &&
                 error.failureClass === 'unsupported-capability' ? 'unsupported' :

@@ -55,7 +55,8 @@ async function fixture(run: (state: { store: AIRegistryStore; controller: AIInve
 
 test('Local Coding Agent eligibility requires synthetic tool continuation and live sandbox/context', async () => {
     let sandbox = true;
-    let mode: 'tools' | 'no-tool' | 'wrong-args' | 'deferred' = 'tools';
+    let mode: 'tools' | 'no-tool' | 'wrong-args' | 'deferred' | 'flaky' = 'tools';
+    let flakyCalls = 0;
     let release: (() => void) | undefined;
     const transport = { async turn(request: { messages: { role: string; content: string }[];
         maxOutputTokens: number }) {
@@ -66,6 +67,7 @@ test('Local Coding Agent eligibility requires synthetic tool continuation and li
         }
         if (mode === 'deferred') await new Promise<void>(resolve => { release = resolve; });
         if (mode === 'no-tool') return { kind: 'final' as const, text: 'OK' };
+        if (mode === 'flaky' && flakyCalls++ === 0) return { kind: 'final' as const, text: 'OK' };
         return { kind: 'tools' as const, calls: [{ id: 'probe-call', name: 'read' as const,
             arguments: { path: 'dope-synthetic-capability-probe.txt', maxBytes: mode === 'wrong-args' ? 1 : 128 } }] };
     } };
@@ -96,6 +98,10 @@ test('Local Coding Agent eligibility requires synthetic tool continuation and li
         mode = 'wrong-args';
         assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'unsupported');
         assert.equal((await capability())?.source, 'unknown');
+        mode = 'flaky';
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'supported');
+        assert.equal(flakyCalls, 2);
+        assert.deepEqual(await capability(), { source: 'adapter-known', value: true });
         mode = 'tools'; sandbox = false;
         assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'unavailable');
         sandbox = true;

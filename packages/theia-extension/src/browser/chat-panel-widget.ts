@@ -2100,16 +2100,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const activity = planningActivityPresentation(message);
                 const outcome = message.execution.status === 'failed' ? undefined : planningOutcome(message);
                 if (outcome) {
-                    const explanation = document.createElement('div');
-                    explanation.className = 'dope-chat-planning-outcome';
-                    const summary = document.createElement('p'); summary.textContent = outcome.summary;
-                    explanation.append(summary);
-                    if (outcome.questions.length) {
-                        const questions = document.createElement('p');
-                        questions.textContent = outcome.questions.join(' ');
-                        explanation.append(questions);
+                    if (message.planningActivity?.kind === 'no-action' &&
+                        message.planningActivity.status === 'no-action') {
+                        content.append(renderUntrustedMessageMarkdown(this.markdown, outcome.summary));
+                    } else {
+                        const explanation = document.createElement('div');
+                        explanation.className = 'dope-chat-planning-outcome';
+                        const summary = document.createElement('p'); summary.textContent = outcome.summary;
+                        explanation.append(summary);
+                        if (outcome.questions.length) {
+                            const questions = document.createElement('p');
+                            questions.textContent = outcome.questions.join(' ');
+                            explanation.append(questions);
+                        }
+                        content.append(explanation);
                     }
-                    content.append(explanation);
                 }
                 if (activity) {
                     const planAnswer = implementationPlanAnswer(message);

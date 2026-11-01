@@ -1,0 +1,43 @@
+# C12 Planning Recovery P2-R2 — fast-track browser repair and qualification
+
+Date: 2026-10-31 America/Chicago (2026-11-01 UTC). **P2-R2 NOT GREEN for the tested browser scope.** Manual connected Codex in-app browser run; no phase runner, commit, version bump, dependency change, native GUI run, or real-project Roadmap write.
+
+## Source and operating basis
+
+- HEAD: `f6b7396c11961fe796da05d9d8ae5b90649ce47b` on `main`; product version `0.12.7`. Preflight worktree was clean. Final worktree is dirty with the three code/test files below and this new report; no owner changes were discarded.
+- Browser/server: `http://127.0.0.1:3018/#/tmp/dope-c12-p2-linked-IPuMHJ` in the Codex in-app browser. The pre-existing server stopped responding during preflight; the same port was restarted after the final browser build. Browser and server are open at close, showing linked Roadmap and saved Chat.
+- Local model: LM Studio connection `21d03643-2aca-407e-b090-af59979b6c2f`, endpoint `http://127.0.0.1:1234/v1`, loaded `qwen3.5-9b` Q4_K_M with 16,384 context and parallel 2. Structured Output was not enabled. The separately documented preferred Qwen3-Coder-30B Q4 model was listed but unloaded; no claim is made for it.
+- The referenced `docs/planning/p12/chat-roadmap-hybrid-proposal-review.md` is absent from this checkout. H1–H3 were not started or altered.
+
+## Repair and verification disposition
+
+Changed `packages/theia-extension/src/node/local-agent-capability.ts`: one synthetic response can omit or misform a supported tool call, as P2-R1 observed by alternating unsupported/supported results on the same loaded model. The probe now allows one additional bounded, independent synthetic attempt **only after an unsupported protocol result**. Each attempt has a fresh nonce and must complete the exact `read` call and nonce-bearing final response. Transport, timeout, cancellation, sandbox, identity, context, registry, and permission gates remain in force. Neither metadata nor an unsuccessful attempt grants eligibility; a model that fails both attempts remains unsupported. Healthy verified turns do not add probe calls. `test/unit/ai-inventory.test.ts` covers first-sample miss then complete success, persistent no-tool/wrong-argument failures, and existing refresh/context/connection invalidation.
+
+The observed same-model inconsistency demonstrates a sampled verification weakness, but this run did not capture the raw failed P2-R1 model response or prove whether the model or protocol caused that particular miss. One final-source AI Center verification completed **supported**, showing `agentExecution: yes (adapter-known)` for the loaded model. Subsequent Pi file read and Roadmap turns ran without a new verification gate. Repeated fresh verification across reconnects was not completed; stable long-run same-model access is **not qualified**.
+
+Changed `packages/theia-extension/src/browser/chat-panel-widget.ts`: a completed validated `no-action` answer now renders as ordinary assistant Markdown, while its saved Planning metadata remains available. Pending/applied/failed proposal presentation is retained. The two named persistent notices (`Following active selection: Roadmap ...` and `Roadmap Chat editing is not yet qualified ...`) were already absent from this source and were absent in the final browser replay; no banner was added. The partial Gate mini-card was left intact.
+
+## Final-source browser matrix
+
+| Gate | Result | Direct observation |
+| --- | --- | --- |
+| C1 normal Chat | **FAIL** | `What is 1 + 1? Do not use tools.` emitted visible reasoning with zero observed tool calls but no final answer after 71 seconds. It was cancelled for C7; no normal-stop or correct final is claimed. |
+| C2 source access | **PASS in disposable fixture** | Created `src/counter.js` only under the linked `/tmp` fixture. Pi showed one completed `read_file · src/counter.js`, then answered `counter(4)` is `5` from its exact source. No automatic source-byte attachment or model write was observed. |
+| C3 Roadmap read-only | **PASS** | `Read ROADMAP.md using read_file once...` showed live reasoning and one completed read, then rendered the exact `### Gate G1 [id: gate-one] [phase: phase-one]: Release readiness` heading as ordinary assistant content. No validation failure, proposal, or named notice. Both linked source hashes remained unchanged. |
+| C4 unlinked edit | **PASS** | In `/tmp/dope-c12-p2-unlinked-vRy7wy`, a G2 `Smoke check` plus `Window opens` Criterion preview showed exact proposed records. Reject left `.dope/roadmap.json` at SHA-256 `b3938edc...`. A separate proposal was reviewed and approved; revision 3 SHA-256 `83db47ec...` contains exactly G2 and its Criterion. G1 remained, both Gate qualification statuses are `unknown`, and phase coverage displayed `0 of 2 gates qualified`. |
+| C5 linked Markdown | **PARTIAL** | A final-source single-field Gate title proposal showed the exact heading diff against source SHA-256 `e16a9a8a...`, with no preapproval write. It was used for C6 and intentionally denied as stale, so an approved final-source linked field effect was not exercised. A separate structural deletion request completed with useful no-action guidance and no pending mutation. |
+| C6 stale source | **PASS** | After the linked title preview, appended a disposable comment to `ROADMAP.md` (SHA-256 `f9efb929...`). Apply reported `Stale · no change` and `Stale or ambiguous linked Gate source. Refresh the selection for the next turn.` Roadmap remained SHA-256 `a9f0e0fc...`; the newer Markdown bytes survived the attempted approval. The original Markdown was restored only after verifying its expected drift hash, returning to SHA-256 `e16a9a8a...`; browser refresh showed linked source unchanged. |
+| C7 cancellation/history | **PARTIAL** | The 71-second arithmetic turn was cancelled, saved as `Canceled`, and had no arithmetic final. Reopening that saved Chat preserved its status; the next linked structural turn completed normally. The browser did not directly inspect the exact next-turn prompt bytes to prove cancelled reasoning was absent, though focused context/activity tests passed. |
+| C8 copy/UI | **PARTIAL / FAIL for clean-console requirement** | Left-click Copy Response showed `Copied`; right-click exposed `Copy with Reasoning` and showed `Copied with reasoning`; Copy Transcript showed `Copied`. Browser clipboard reads returned empty, so exported bytes are not claimed. Chat settings, attachment menu, model selection, context chips and Ask/Allow were visible/operable. Browser logs contained repeated Theia `Cannot get key code from the keyboard event` errors during automation; origin was not isolated, so clean console is not claimed. No layout overflow was observed in the inspected state, but a full viewport/scroll sweep was not completed. |
+
+Linked fixture hashes at close: `ROADMAP.md` `e16a9a8a2c68fb0c1e9a320405e0cf9bd5242d48635a35e2acc28563075331cf`; `.dope/roadmap.json` `a9f0e0fc640dbdacb2b72fac7acce3ed4650be6ad3e57c6781eef15daf8221b5`. The added `src/counter.js` belongs only to the disposable fixture.
+
+## Automated checks and remaining work
+
+- `npm run typecheck`: **PASS**.
+- `npm run build:browser`: **PASS**, browser/node bundles zero errors.
+- `npm run build:electron`: **PASS**, browser/node/electron bundles zero errors. This is not native Electron UI evidence.
+- Focused final-source suites: **151/151 PASS**; adjacent context/Pi/Gate suites: **54/54 PASS**. The separate `test/unit/roadmap-chat-context.test.ts` run: **0/2 PASS**. Its current expectations for automatic selected Roadmap evidence and the old checkpoint-capability instruction conflict with the current Pi tool-driven source context; one case throws `Selected Roadmap identity, field capability or source does not fit`, and the other receives the current no-auto-source instruction. Assertions were not weakened. The earlier 215-test P2-R1 aggregate was not reproduced as a passing final-source group.
+- `git diff --check`: **PASS**. No full `npm run check` was run.
+
+Green remains blocked by C1 normal completion, final-source approved linked field effect, direct next-turn context isolation proof, clipboard byte evidence, clean-console disposition, repeated verification/reconnect stability, and the two failing context tests. C2/C3/C4/C6 and structural no-write guidance are source-bound positives, not a full P2, C12, Docs, Phase 12, or native Green. Native Electron GUI is **unobserved**. H1–H3 and P3-A were not started; readiness is **pending P2-R2 correction/qualification and the missing hybrid contract**, with the owner to choose sequencing.
