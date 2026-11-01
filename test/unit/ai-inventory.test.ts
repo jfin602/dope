@@ -98,6 +98,8 @@ test('Local Coding Agent eligibility requires synthetic tool continuation and li
         sandbox = true;
         assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'supported');
         assert.deepEqual(await capability(), { source: 'adapter-known', value: true });
+        await controller.refreshModels('desk');
+        assert.deepEqual(await capability(), { source: 'adapter-known', value: true });
         assert.deepEqual((await controller.findEligibleModels({ usableOnly: true,
             capabilities: ['agentExecution'] })).models.map(item => item.providerModelKey), ['alpha']);
         assert.equal((await store.read()).models.find(item => item.providerModelKey === 'alpha')?.capabilities

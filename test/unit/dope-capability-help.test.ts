@@ -24,8 +24,7 @@ test('help labels and routes match current UI controls and command registrations
     assert.match(roadmap, /sourceState === 'conflict'/);
     assert.match(roadmap, /sourceState === 'relink-needed'/);
     assert.match(roadmap, /linkedDocument\?\.pending/);
-    assert.match(chat, /menuButton\('Follow active planning selection'/);
-    assert.match(chat, /this\.button\('Pin selected checkpoint \/ Planning Map'/);
+    assert.match(chat, /state\.planningMode === 'pin' \? 'Follow selection' : 'Pin selection'/);
     assert.match(chat, /!state\.workspace \|\| !this\.planningSelection\?\.current\(state\.workspace\)/);
     assert.match(center, /AI_CENTER_COMMAND = 'dope\.aiCenter\.open'/);
     assert.match(center, /label: 'Open AI Center'/);
@@ -95,6 +94,7 @@ test('Roadmap source guidance does not take planning edits, factual turns or oth
         ['What is the progress of my Roadmap?', undefined],
         ['What changed in the Roadmap this week?', undefined],
         ['How do I change the linked issue on my Roadmap?', undefined],
+        ['Remove Gate gate-one and its Criterion from this linked Roadmap. This is a structural source-owned change. Can Chat apply this? Explain the correct next step; do not edit files.', undefined],
         ['How do I replace the Roadmap link to my Planning Map?', 'planning-map-link'],
         ['How do I change a Planning Map link?', 'planning-map-link'],
         ['How do I edit this checkpoint Objective?', 'roadmap-objective'],

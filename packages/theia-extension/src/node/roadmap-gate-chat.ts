@@ -23,6 +23,20 @@ export function validGateChatEnvelope(value: unknown): value is { type: 'roadmap
         ACTIONS.has(action.type) && Object.keys(action).length <= 8);
 }
 
+/** A linked section may only enter the dedicated single-field Markdown review path. */
+export function touchesLinkedSource(actions: GatePlanningAction[], sectionIds: readonly string[]): boolean {
+    const owned = new Set(sectionIds);
+    const containsOwnedId = (value: unknown): boolean => {
+        if (typeof value === 'string') return owned.has(value);
+        if (Array.isArray(value)) return value.some(containsOwnedId);
+        if (record(value)) return Object.entries(value).some(([key, entry]) =>
+            key !== 'title' && key !== 'objective' && key !== 'purpose' &&
+            key !== 'expectedResult' && key !== 'designation' && containsOwnedId(entry));
+        return false;
+    };
+    return actions.some(containsOwnedId);
+}
+
 /** Temporary IDs have meaning only inside this one model output; the owner assigns durable IDs. */
 export function bindGateChatActions(actions: GatePlanningAction[]): GatePlanningAction[] {
     const ids = new Map<string, string>();

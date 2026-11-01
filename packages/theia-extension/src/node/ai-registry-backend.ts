@@ -146,6 +146,13 @@ export class AIInventoryController {
         if (this.inFlight.has(id)) throw new Error('Connection check already in progress');
         const connection = await this.connection(id);
         if (connection.lifecycle === 'disabled') throw new ModelRuntimeFailure('Connection disabled', 'connection-unavailable');
+        const prior = await this.inventory();
+        const verified = prior.registry.models.filter(model => model.connectionId === id &&
+            model.capabilities.agentExecution?.source === 'adapter-known' &&
+            model.capabilities.agentExecution.value === true).map(model => ({
+                model, context: prior.loadedLocalModels?.find(item => item.connectionId === id &&
+                    item.providerModelKey === model.providerModelKey)?.contextWindowTokens
+            }));
         this.invalidateProbes();
         this.inFlight.add(id);
         this.health.set(id, 'checking'); this.tested.delete(id); this.clearLoaded(id); this.changed();
@@ -210,6 +217,21 @@ export class AIInventoryController {
                 const context = model.capabilities.contextWindowTokens;
                 if (model.capabilities.conversationalText && context && Number.isSafeInteger(context) && context > 0)
                     this.loadedLocalModels.set(JSON.stringify([id, model.id]), context);
+            }
+            const settled = await this.store.read();
+            if (connection.config.type === 'local' &&
+                startingCredentialGeneration === this.credentialChanges.get(id) &&
+                JSON.stringify(settled.connections.find(item => item.id === id)) === JSON.stringify(connection)) {
+                for (const entry of verified) {
+                    const next = settled.models.find(item => item.connectionId === id &&
+                        item.providerModelKey === entry.model.providerModelKey);
+                    const context = this.loadedLocalModels.get(JSON.stringify([id, entry.model.providerModelKey]));
+                    if (next?.enabled && next.state === 'ready' && context === entry.context &&
+                        JSON.stringify({ ...next, capabilities: { ...next.capabilities, agentExecution: undefined } }) ===
+                        JSON.stringify({ ...entry.model, state: 'ready',
+                            capabilities: { ...entry.model.capabilities, agentExecution: undefined } }))
+                        this.localExecution.set(JSON.stringify([id, next.providerModelKey]), context!);
+                }
             }
             this.health.set(id, discovered.length ? 'ready' : 'degraded'); this.changed();
             return this.inventory();

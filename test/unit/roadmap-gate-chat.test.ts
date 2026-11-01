@@ -10,7 +10,7 @@ import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
-import { bindGateChatActions, validGateChatEnvelope } from '../../packages/theia-extension/lib/node/roadmap-gate-chat.js';
+import { bindGateChatActions, touchesLinkedSource, validGateChatEnvelope } from '../../packages/theia-extension/lib/node/roadmap-gate-chat.js';
 
 test('Chat only accepts bounded structural proposals and binds temporary IDs within a batch', () => {
     const envelope = { type: 'roadmap-gate-proposal', projectId: 'owner-1', ownerRevision: 2,
@@ -30,6 +30,18 @@ test('Chat only accepts bounded structural proposals and binds temporary IDs wit
         { type: 'phase.create', id: 'new:1', title: 'B', objective: 'B' }] as never), /distinct/);
 });
 
+test('linked source IDs are recognized across structural and multi-action references', () => {
+    const sections = ['phase-one', 'gate-one', 'criterion-one'];
+    assert.equal(touchesLinkedSource([{ type: 'gate.delete', id: 'gate-one' }] as never, sections), true);
+    assert.equal(touchesLinkedSource([{ type: 'gate.edit', id: 'gate-one', title: 'New', purpose: 'Same' },
+        { type: 'criterion.edit', gateId: 'gate-one', id: 'criterion-one', title: 'Same', expectedResult: 'New' }] as never,
+    sections), true);
+    assert.equal(touchesLinkedSource([{ type: 'gate.create', id: 'new:1', parentPhaseId: 'phase-one',
+        designation: 'G2', title: 'New', purpose: 'New', criteria: [] }] as never, sections), true);
+    assert.equal(touchesLinkedSource([{ type: 'gate.create', id: 'new:1', parentPhaseId: 'other-phase',
+        designation: 'G2', title: 'New', purpose: 'New', criteria: [] }] as never, sections), false);
+});
+
 test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer applies it', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-gate-chat-'));
     const store = new RoadmapStore(), repository = new ChatRepository();
@@ -38,13 +50,13 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         inputsCurrent: async () => false };
     const composer = new ChatContextComposer({} as never, {} as never, index as never, repository, store);
     const actions = new ProjectPlanningActions(store);
+    let answer: unknown = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
+        actions: [{ type: 'phase.create', id: 'new:1', title: 'Combat Systems',
+            objective: 'Verify combat behavior' }] };
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
             streaming: true, contextWindowTokens: 8192, maxInputTokens: 8192 } }] }] }),
-    async *generate() { yield { type: 'complete' as const, actualModelId: 'q4', text: JSON.stringify({
-        type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
-        actions: [{ type: 'phase.create', id: 'new:1', title: 'Combat Systems',
-            objective: 'Verify combat behavior' }] }) }; } };
+    async *generate() { yield { type: 'complete' as const, actualModelId: 'q4', text: JSON.stringify(answer) }; } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
         composer, undefined, undefined, actions, undefined, undefined, store);
     try {
@@ -74,5 +86,14 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         const saved = await store.read(root);
         assert.equal(saved.revision, 2);
         assert.equal(saved.phases[0].title, 'Combat Systems');
+        answer = { type: 'no-action', message: 'Combat Systems is the first Phase.' };
+        const beforeQuestion = await readFile(join(root, '.dope', 'roadmap.json'));
+        const question = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: 'Which Phase comes first?',
+            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
+        assert.equal(question.proposalError, undefined);
+        assert.equal(question.proposal, undefined);
+        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), beforeQuestion);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

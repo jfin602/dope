@@ -13,7 +13,7 @@ import { ChatProjectGrounder, type GroundingResult } from './chat-project-ground
 import { runChatInvestigationCommand } from './chat-command-broker';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
-import { LocalPlanningOutputFailure, localPlanningJson, requestsRoadmapOwnerRevision,
+import { LocalPlanningOutputFailure, allowsPlainGateAnswer, localPlanningJson, requestsRoadmapOwnerRevision,
     roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
 import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview,
     type StrategicDraftPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
@@ -23,7 +23,7 @@ import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
 import { extractSavedRoadmap, roadmapCreationIntent } from './chat-roadmap-extract';
 import { roadmapRequirementCoverage } from './chat-roadmap-requirements';
-import { bindGateChatActions, gateChatDiff, validGateChatEnvelope } from './roadmap-gate-chat';
+import { bindGateChatActions, gateChatDiff, touchesLinkedSource, validGateChatEnvelope } from './roadmap-gate-chat';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { GateDocumentPatch } from '@dope/project-intelligence/lib/node/roadmap-gate-document';
@@ -619,6 +619,12 @@ export class ChatBackend implements ChatService {
         try {
             const value: unknown = JSON.parse(output);
             if (value && typeof value === 'object' && !Array.isArray(value) &&
+                (value as { type?: string }).type === 'no-action' &&
+                Object.keys(value).sort().join(',') === 'message,type' &&
+                typeof (value as { message?: unknown }).message === 'string' &&
+                !!(value as { message: string }).message.trim() &&
+                (value as { message: string }).message.length <= 4000) return {};
+            if (value && typeof value === 'object' && !Array.isArray(value) &&
                 (value as { type?: string }).type === 'roadmap-gate-focus' &&
                 Object.keys(value).sort().join(',') === 'id,type') {
                 const id = (value as { id?: unknown }).id;
@@ -662,6 +668,10 @@ export class ChatBackend implements ChatService {
             const actions = bindGateChatActions(value.actions);
             const mapped = before.linkedDocument?.sections.find(section =>
                 actions.length === 1 && 'id' in actions[0] && section.id === actions[0].id);
+            if (before.linkedDocument && touchesLinkedSource(actions,
+                before.linkedDocument.sections.map(section => section.id)) &&
+                (actions.length !== 1 || !mapped || !['phase.edit', 'gate.edit', 'criterion.edit'].includes(actions[0].type)))
+                throw new Error('Linked Roadmap structure needs reviewed Markdown synchronization');
             if (mapped) {
                 const action = actions[0];
                 const kind = action.type === 'phase.edit' ? 'phase' : action.type === 'gate.edit' ? 'gate' :
@@ -1318,7 +1328,9 @@ export class ChatBackend implements ChatService {
                 const complete = await localPlanningJson(guardedGenerate, abort.signal, budget!.maxOutputBytes,
                     localMode, eligibleObjective, { requiredOwnerRevision: requestedRevision,
                         maxSteps: request.planningSteps,
+                        allowPlainNoAction: localMode === 'gate' && allowsPlainGateAnswer(content),
                         validateBridge: bridge ? value => bridge.validate(value) : undefined,
+                        onActivity: recordActivity,
                         onRetry: cause => tracePlanning('retry', key, assistant!.id, cause) });
                 await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                 tracePlanning('validated', key, assistant!.id);

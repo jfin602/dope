@@ -253,7 +253,8 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     const markdown = await readFile(new URL('../../packages/theia-extension/src/browser/untrusted-message-markdown.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
-    assert.match(widget, /shell\.append\(header, region\)/);
+    assert.match(widget, /if \(!this\.settingsOpen\) shell\.append\(header\)/);
+    assert.match(widget, /shell\.append\(region\)/);
     assert.match(widget, /shell\.append\(composer, menu\)/);
     assert.match(css, /\.dope-chat-scroll \{[^}]*overflow: auto/);
     assert.match(css, /\.dope-chat-shell \{[^}]*flex-direction: column/);

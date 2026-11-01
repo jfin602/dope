@@ -117,12 +117,14 @@ export function selectDopeCapabilityHelp(question: string): DopeHelpId | undefin
         /\b(?:how|where)\b/i.test(question) && /\b(?:edit|change|update)\b/i.test(question))
         return 'roadmap-objective';
     if (/\b(?:roadmap|markdown|linked\s+(?:file|document|source))\b/i.test(question)) {
+        const structuralEdit = /\b(?:create|add|remove|delete|reparent|reorder|move)\b/i.test(question) &&
+            /\b(?:phase|gate|criterion|criteria)\b/i.test(question);
         const otherPlanningTarget = /\b(?:objective|checkpoint|title|status|issues?|planning\s+maps?|dependenc(?:y|ies))\b/i.test(question);
         const sourceBinding = /\b(?:roadmap|markdown)\s+(?:file|document|source|link)\b/i.test(question) ||
             /\b(?:linked|selected)\s+(?:(?:the|a|my)\s+)?(?:(?:wrong|different)\s+)?(?:roadmap|markdown|file|document|source)\b/i.test(question);
         const sourceChange = /\b(?:unlink|relink|replace|switch)\b/i.test(question) ||
             sourceBinding && /\b(?:change|wrong|different)\b/i.test(question);
-        if (!otherPlanningTarget && sourceChange &&
+        if (!structuralEdit && !otherPlanningTarget && sourceChange &&
             (sourceBinding || /\b(?:unlink|relink|replace|switch)\s+(?:(?:to|from)\s+)?(?:(?:the|a|my)\s+)?(?:(?:wrong|different|linked)\s+)?(?:roadmap|markdown)\b/i.test(question)))
             return 'roadmap-change-file';
         if (/\b(?:refresh|sync|conflict|source.changed|relink.needed)\b/i.test(question)) return 'roadmap-refresh';

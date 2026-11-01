@@ -1,10 +1,43 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { localPlanningJson, parseStrategicDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget,
+import { allowsPlainGateAnswer, localPlanningJson, parseStrategicDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget,
     verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
+
+test('strict Planning buffers JSON while forwarding genuine activity before validation', async () => {
+    const seen: string[] = [];
+    const output = JSON.stringify({ type: 'no-action', message: 'The Gate remains unchanged.' });
+    const result = await localPlanningJson(async function* () {
+        yield { type: 'activity', kind: 'thinking', text: 'Checking source' };
+        yield { type: 'activity', kind: 'tool', text: 'read_file: completed · ROADMAP.md' };
+        yield { type: 'delta', text: output.slice(0, 20) };
+        yield { type: 'delta', text: output.slice(20) };
+        assert.deepEqual(seen, ['thinking:Checking source', 'tool:read_file: completed · ROADMAP.md']);
+        yield complete(output);
+    }, new AbortController().signal, 4096, 'gate', true, {
+        onActivity: (kind, text) => seen.push(`${kind}:${text}`)
+    });
+    assert.equal(result.text, output);
+    assert.equal(seen.length, 2);
+    const failureActivity: string[] = [];
+    await assert.rejects(localPlanningJson(async function* () {
+        yield { type: 'activity', kind: 'thinking', text: 'Could not finish' };
+        yield complete('{"type":"final","text":"not a planning envelope"}');
+    }, new AbortController().signal, 4096, 'gate', true, {
+        onActivity: (kind, text) => failureActivity.push(`${kind}:${text}`)
+    }), /strict JSON/);
+    assert.deepEqual(failureActivity, ['thinking:Could not finish', 'thinking:Could not finish']);
+    const cancelled = new AbortController();
+    await assert.rejects(localPlanningJson(async function* () {
+        yield { type: 'activity', kind: 'thinking', text: 'Started' };
+        cancelled.abort();
+        yield complete(output);
+    }, cancelled.signal, 4096, 'gate', true, {
+        onActivity: (kind, text) => seen.push(`${kind}:${text}`)
+    }), /cancelled/);
+});
 
 test('whole strategic envelope requires complete output and exact owner identity', () => {
     const draft = { type: 'strategic-roadmap-draft', projectId: 'project', ownerRevision: 0,
@@ -89,6 +122,43 @@ test('non-tools JSON fallback repairs once and never accepts a second malformed 
     calls = 0;
     await assert.rejects(localPlanningJson(async function* () { calls++; yield complete('{bad'); }, controller.signal), /two attempts/);
     assert.equal(calls, 2);
+});
+
+test('schema-two question retry asks for a no-action JSON envelope after plain prose', async () => {
+    const hints: Array<string | undefined> = [];
+    const answer = '{"type":"no-action","message":"G1 verifies demo readiness."}';
+    const result = await localPlanningJson(async function* (hint) {
+        hints.push(hint);
+        yield complete(hints.length === 1 ? 'G1 verifies demo readiness.' : answer);
+    }, new AbortController().signal, 4096, 'gate');
+    assert.equal(result.text, answer);
+    assert.equal(hints[0], undefined);
+    assert.match(hints[1]!, /For a question or no edit/);
+    assert.match(hints[1]!, /"type":"no-action"/);
+});
+
+test('an explicitly read-only schema-two question can show bounded plain prose as no-action', async () => {
+    const prose = 'G1 verifies demo readiness.';
+    const result = await localPlanningJson(async function* () { yield complete(prose); },
+        new AbortController().signal, 4096, 'gate', true, { allowPlainNoAction: true });
+    assert.deepEqual(JSON.parse(result.text), { type: 'no-action', message: prose });
+    await assert.rejects(localPlanningJson(async function* () { yield complete(prose); },
+        new AbortController().signal, 4096, 'gate'), /strict JSON/);
+    await assert.rejects(localPlanningJson(async function* () { yield complete('{bad'); },
+        new AbortController().signal, 4096, 'gate', true, { allowPlainNoAction: true }), /strict JSON/);
+});
+
+test('explicit read-only Gate requests accept prose while edit requests still require typed proposals', async () => {
+    const readRequest = 'Read ROADMAP.md using read_file once. What is the exact Gate G1 heading? Answer only; do not edit files.';
+    const prose = 'The exact Gate G1 heading is: Release readiness.';
+    assert.equal(allowsPlainGateAnswer(readRequest), true);
+    assert.equal(allowsPlainGateAnswer('What is the exact Gate G1 heading?'), true);
+    assert.equal(allowsPlainGateAnswer('Remove Gate G1 and its Criterion; explain the next step.'), false);
+    assert.equal(allowsPlainGateAnswer('Read ROADMAP.md and propose a change to Gate G1.'), false);
+    const result = await localPlanningJson(async function* () { yield complete(prose); },
+        new AbortController().signal, 4096, 'gate', true,
+        { allowPlainNoAction: allowsPlainGateAnswer(readRequest) });
+    assert.deepEqual(JSON.parse(result.text), { type: 'no-action', message: prose });
 });
 
 test('a copied no-action placeholder is retried once and never published as an answer', async () => {

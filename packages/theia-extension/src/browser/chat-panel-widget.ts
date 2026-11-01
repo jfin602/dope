@@ -2084,7 +2084,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (!(state.running && message.id === activeAssistant?.id)) content.textContent = 'Working...';
             } else if (message.role === 'assistant') {
                 const activity = planningActivityPresentation(message);
-                const outcome = planningOutcome(message);
+                const outcome = message.execution.status === 'failed' ? undefined : planningOutcome(message);
                 if (outcome) {
                     const explanation = document.createElement('div');
                     explanation.className = 'dope-chat-planning-outcome';
@@ -2128,10 +2128,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     if (activity.alert) item.classList.add('dope-chat-message-alert');
                 } else if (message.planningActivity?.status === 'failed' ||
                     message.planningActivity?.status === 'cancelled') {
-                    const note = document.createElement('p');
-                    note.className = 'dope-chat-planning-invalid';
-                    note.textContent = 'No final response · Unvalidated local planning output';
-                    content.append(note);
                     if (body) {
                         const raw = document.createElement('pre');
                         raw.className = 'dope-chat-planning-invalid-raw';
@@ -2140,7 +2136,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     }
                 } else if (message.execution.status === 'complete')
                     content.append(renderUntrustedMessageMarkdown(this.markdown, body));
-                else if (message.execution.status !== 'pending' && message.execution.status !== 'streaming') {
+                else if (message.execution.status === 'cancelled') {
                     const note = document.createElement('p'); note.textContent = 'No final response'; content.append(note);
                 }
             } else content.textContent = body;
@@ -2282,17 +2278,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 footer.append(actions, time);
                 item.append(footer, info);
             }
-            if (message.role === 'assistant' &&
-                message.execution.failure?.includes('Verify Local agent execution') &&
-                !state.error.includes('Verify Local agent execution')) {
+            if (message.role === 'assistant' && message.execution.status === 'failed' &&
+                message.execution.failure && !state.error) {
                 const recovery = document.createElement('div');
                 recovery.className = 'dope-chat-error-bubble';
                 const description = document.createElement('span');
                 description.textContent = message.execution.failure;
                 const target = message.execution.selectedModel;
-                recovery.append(description, this.button('Open tool verification', () => {
-                    void this.aiCenter?.openLocalAgentVerification(this.id, target.connectionId, target.modelId);
-                }));
+                recovery.append(description);
+                if (message.execution.failure.includes('Verify Local agent execution'))
+                    recovery.append(this.button('Open tool verification', () => {
+                        void this.aiCenter?.openLocalAgentVerification(this.id, target.connectionId, target.modelId);
+                    }));
                 item.append(recovery);
             }
             transcript.append(item);

@@ -31,8 +31,17 @@ function citesOwnerRevision(answer: string, revision: number): boolean {
 export interface LocalPlanningAnswerCheck {
     requiredOwnerRevision?: number;
     maxSteps?: 2 | 3;
+    allowPlainNoAction?: boolean;
     onRetry?: (cause: 'invalid-envelope' | 'missing-owner-revision') => void;
+    onActivity?: (kind: 'thinking' | 'provisional' | 'answer' | 'tool', text: string) => void;
     validateBridge?: (value: Record<string, unknown>) => Promise<boolean>;
+}
+
+/** Read-only Gate turns may finish in prose; only typed envelopes can propose a write. */
+export function allowsPlainGateAnswer(request: string): boolean {
+    const withoutNegatedEdits = request.replace(/\b(?:do not|don't|no)\s+(?:edit|change|modify)\b/gi, '');
+    return /^\s*(?:what|why|how|when|where|which|who|is|are|does|do|can|could|would|read|inspect|show|summarize|explain)\b/i.test(request) &&
+        !/\b(?:propos(?:e|al)|apply|approve|reject|create|add|remove|delete|reparent|reorder|edit|change|modify)\b/i.test(withoutNegatedEdits);
 }
 
 /** One completed model envelope; a Gate is a proposed requirement with explicit criteria, never a task. */
@@ -121,6 +130,11 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                 streamedBytes += Buffer.byteLength(event.text, 'utf8');
                 if (streamedBytes > maxOutputBytes) fail('Local planning output exceeds the reserved size');
             } else if (event.type === 'complete') complete = event;
+            else if (event.type === 'activity') {
+                const kind = (event as T & { kind?: string }).kind;
+                if (kind === 'thinking' || kind === 'provisional' || kind === 'answer' || kind === 'tool')
+                    check.onActivity?.(kind, event.text);
+            }
         }
         if (!complete) throw new LocalPlanningOutputFailure('Local planning stream ended without completion', lastInvalid);
         if (Buffer.byteLength(complete.text, 'utf8') <= maxOutputBytes) lastInvalid = complete.text;
@@ -129,6 +143,12 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             if (complete.finishReason && !['stop', 'eos', 'end_turn'].includes(complete.finishReason))
                 throw new Error('unfinished');
             if (Buffer.byteLength(complete.text, 'utf8') > maxOutputBytes) throw new Error('oversized');
+            const plain = complete.text.trim();
+            if (mode === 'gate' && check.allowPlainNoAction && check.requiredOwnerRevision === undefined &&
+                plain.length > 0 && plain.length <= 4000 && !plain.startsWith('{') &&
+                !plain.startsWith('[') && !plain.startsWith('```') &&
+                !EMPTY_NO_ACTION_MESSAGES.has(plain.toLowerCase()))
+                return { ...complete, text: JSON.stringify({ type: 'no-action', message: plain }) };
             const value: unknown = JSON.parse(complete.text);
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object required');
             const raw = value as Record<string, unknown>;
@@ -177,8 +197,11 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             // A retry must change the model's task, especially when Pi starts a fresh tool session.
 
         }
-        if (attempt + 1 < MAX_ATTEMPTS)
+        if (attempt + 1 < MAX_ATTEMPTS) {
+            if (mode === 'gate' && !incompleteOwnerRevision)
+                retryInstruction = 'The previous response was not an accepted schema-2 Roadmap JSON envelope. Return exactly one JSON object with no prose or fences. For a question or no edit, use {"type":"no-action","message":"your concrete answer"}. For an edit, use the supported roadmap-gate-proposal envelope and action fields from the system instruction. Preserve the facts and never claim an unapproved write.';
             check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
+        }
     }
     return fail(incompleteOwnerRevision ?
         'Local planning answer omitted the requested current Roadmap owner revision after two attempts' :
