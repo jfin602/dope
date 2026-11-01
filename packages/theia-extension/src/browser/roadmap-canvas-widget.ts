@@ -347,7 +347,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         private readonly openMind: (id?: string, workspace?: string) => Promise<boolean> = async () => false,
         private readonly savedChats: (workspace: string) => { id: string; title: string }[] = () => [],
         private readonly storage?: Pick<StorageService, 'getData' | 'setData'>,
-        private readonly openWork: () => Promise<void> = async () => {}) {
+        private readonly openWork: () => Promise<void> = async () => {},
+        private readonly openLinkedDocument?: (workspace: string, path: string) => Promise<void>) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -1694,6 +1695,15 @@ export class RoadmapCanvasWidget extends BaseWidget {
         detail.textContent = `Linked source: ${linked.path} · accepted SHA-256 ${linked.sourceHash}. ` +
             'Canonical Roadmap acceptance and Markdown publication are separate approvals.';
         this.importEntry.append(detail);
+        if (this.openLinkedDocument) {
+            const openSource = document.createElement('button'); openSource.type = 'button';
+            openSource.textContent = 'Open linked Markdown';
+            openSource.onclick = () => void this.openLinkedDocument!(uri, linked.path).catch(error => {
+                if (this.projectUri === uri) { this.sourceError = `Could not open ${linked.path}: ${String(error)}`;
+                    this.renderImportEntry(); }
+            });
+            this.importEntry.append(openSource);
+        }
         if (this.sourceError) {
             const error = document.createElement('p'); error.setAttribute('role', 'alert');
             error.textContent = this.sourceError; this.importEntry.append(error);
@@ -1801,6 +1811,19 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const sync = this.syncPreview;
             linked.textContent = `Linked Markdown: ${index.linkedDocument.path} · ${sync?.state ?? index.linkedDocument.syncState}`;
             this.importEntry.append(linked);
+            if (this.openLinkedDocument) {
+                const openSource = document.createElement('button'); openSource.type = 'button';
+                openSource.textContent = 'Open linked Markdown';
+                openSource.onclick = () => {
+                    const uri = this.projectUri, path = index.linkedDocument?.path;
+                    if (!uri || !path) return;
+                    void this.openLinkedDocument!(uri, path).catch(error => {
+                        if (this.projectUri === uri) { this.sourceError = `Could not open ${path}: ${String(error)}`;
+                            this.renderImportEntry(); }
+                    });
+                };
+                this.importEntry.append(openSource);
+            }
             const ownership = document.createElement('p');
             ownership.textContent = 'The linked Markdown stays at its original path. Review external changes before applying supported title, objective, order or prose fields; status evidence is preserved.';
             this.importEntry.append(ownership);
@@ -1916,6 +1939,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const input = document.createElement('input'); input.type = 'text';
             input.value = state?.path ?? 'ROADMAP.md'; input.setAttribute('aria-label', 'Publication destination');
             input.onchange = () => {
+                if (state?.preview) void this.service.applyRoadmapPublication(state.uri, state.preview, false)
+                    .catch(() => undefined);
                 this.publication = { uri: this.projectUri!, projectId: gateIndex.projectId,
                     revision: gateIndex.revision, path: input.value, busy: false };
                 this.renderImportEntry();

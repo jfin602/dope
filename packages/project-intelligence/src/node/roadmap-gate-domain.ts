@@ -178,6 +178,8 @@ export interface RoadmapGateLinkedDocument {
     path: string;
     sourceHash: string;
     syncState: 'synced' | 'source-changed' | 'conflict' | 'pending-sync' | 'missing';
+    /** Hash of the reviewed publisher intent, for safe result replay after response loss. */
+    publicationIntentHash?: string;
     sections: { sectionKey: string; kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string }[];
     lastSynced?: { sourceHash: string; fields: { kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string;
         title: string; detail: string }[] };
@@ -400,8 +402,10 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     }
     if (raw.linkedDocument !== undefined) {
         const doc = raw.linkedDocument;
-        assertion(record(doc) && keys(doc, ['projectId', 'projectRoot', 'path', 'sourceHash', 'syncState', 'sections'], ['lastSynced', 'pending']) &&
+        assertion(record(doc) && keys(doc, ['projectId', 'projectRoot', 'path', 'sourceHash', 'syncState', 'sections'],
+            ['lastSynced', 'pending', 'publicationIntentHash']) &&
             doc.projectId === projectId && doc.projectRoot === projectRoot && path(doc.path) && /\.md$/i.test(doc.path) &&
+            (doc.publicationIntentHash === undefined || hash(doc.publicationIntentHash)) &&
             hash(doc.sourceHash) && member(doc.syncState, ['synced', 'source-changed', 'conflict', 'pending-sync', 'missing']) &&
             Array.isArray(doc.sections) && doc.sections.length <= MAX_ENTITIES, 'linked document');
         const sections = (doc as unknown as RoadmapGateLinkedDocument).sections;

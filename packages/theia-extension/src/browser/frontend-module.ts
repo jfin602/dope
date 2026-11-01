@@ -495,6 +495,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 return [...chats].map(([id, title]) => ({ id, title }));
             }, context.container.get(StorageService), async () => {
                 await context.container.get(CommandRegistry).executeCommand('dope.work.openPromptStack');
+            }, async (workspace, path) => {
+                await open(context.container.get(OpenerService), new URI(workspace).resolve(path));
             }) })).inSingletonScope();
     // Saved pre-overlay workbench layouts may restore this sidebar. It shares the model but cannot edit.
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>

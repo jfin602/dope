@@ -52,6 +52,11 @@ test('approved schema-2 publication round-trips and remains qualification-neutra
     assert.deepEqual(mapped.diagnostics, []);
     assert.deepEqual(await new RoadmapStore().read(root), result);
     assert.equal((await store.applyRoadmapPublication(root, approved, true)).revision, result.revision);
+    assert.equal((await new RoadmapStore().applyRoadmapPublication(root, approved, true)).revision, result.revision);
+    await assert.rejects(store.applyRoadmapPublication(root,
+        { ...approved, approvalId: 'different-intent' }, true), /Stale/);
+    await assert.rejects(store.applyRoadmapPublication(root,
+        { ...approved, content: 'changed preview' }, true), /Stale/);
     assert.equal(changes, 1);
 }));
 
@@ -66,6 +71,23 @@ test('edited dependency metadata is a source conflict, never silently synchroniz
     assert.match(sync.diagnostics.join(' '), /topology differs/);
     assert.deepEqual((await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root))
         .gates[1].dependencies, ['gate-1']);
+}));
+
+test('published mapped text follows the existing reviewed source synchronization', async () => fixture(async (root, store) => {
+    const preview = await store.previewRoadmapPublication(root, 'ROADMAP.md');
+    const published = await store.applyRoadmapPublication(root, preview, true);
+    const source = join(root, 'ROADMAP.md');
+    await writeFile(source, (await readFile(source, 'utf8')).replace('Objective: Deliver the result',
+        'Objective: Deliver the revised result'));
+    const sync = await store.previewGateDocumentSync(root);
+    assert.equal(sync.state, 'source-changed');
+    assert.deepEqual(sync.changes.map(change => [change.kind, change.id, change.field]),
+        [['phase', 'phase-one', 'detail']]);
+    const accepted = await store.applyGateDocumentSync(root, sync, true);
+    assert.equal(accepted.phases[0].objective, 'Deliver the revised result');
+    assert.equal(accepted.linkedDocument?.syncState, 'synced');
+    assert.notEqual(accepted.linkedDocument?.sourceHash, published.linkedDocument?.sourceHash);
+    assert.equal((await store.previewGateDocumentSync(root)).state, 'unchanged');
 }));
 
 test('collision, unsafe path, symlink, stale approval and conflicting review do not publish', async () => fixture(async (root, store) => {

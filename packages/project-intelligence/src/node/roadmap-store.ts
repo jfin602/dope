@@ -1008,6 +1008,7 @@ export class RoadmapStore {
             throw new Error('Pending publication no longer matches the accepted Roadmap');
         const linked: NonNullable<RoadmapGateIndex['linkedDocument']> = {
             projectId: current.projectId, projectRoot: root, path: pending.path, sourceHash: pending.sourceHash,
+            publicationIntentHash: publicationHash(JSON.stringify({ ...generated, approvalId: pending.approvalId })),
             syncState: 'synced', sections: generated.sections,
             lastSynced: { sourceHash: pending.sourceHash, fields: generated.fields } };
         const mapped = await readGateMappedDocument(root, linked);
@@ -1032,6 +1033,7 @@ export class RoadmapStore {
             const current = await this.read<RoadmapGateIndex>(root);
             if (current.linkedDocument?.path === preview.path &&
                 current.linkedDocument.sourceHash === preview.sourceHash &&
+                current.linkedDocument.publicationIntentHash === publicationHash(JSON.stringify(preview)) &&
                 current.projectId === preview.projectId && current.projectRoot === preview.projectRoot &&
                 await verifiedPublicationFile(root, preview.path, preview.sourceHash)) return current;
             if (current.pendingPublication) throw new Error('Pending Roadmap publication requires recovery');
