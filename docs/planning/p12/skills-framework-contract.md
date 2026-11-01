@@ -4,7 +4,7 @@
 
 **Owner decision:** 2026-10-31 (America/Chicago). **Status:** APPROVED DESIGN / DOCUMENTATION ONLY; NOT IMPLEMENTED, TESTED OR QUALIFIED. **Product version:** `0.12.7` unchanged. The actual local checkout, including uncommitted owner changes, governs later implementation over GitHub `main`.
 
-**Sequence:** First author/run and independently qualify **one targeted generic Skills framework prompt**; only then author/run **one separate targeted default Docs skills prompt**. This supersedes the unexecuted [c12-planning-recovery P3](../../tasks/c12-planning-recovery/P3-docs-core-entry.txt) **for future execution**, without modifying its historical bytes or running the [15-prompt Docs stack](../../tasks/c12-docs-workflow/README.md). P1/P2 results, previous failures and C12/Phase 12/native gaps remain historical evidence.
+**Sequence:** Independently qualify **P3-A generic Skills** first; then implement/qualify **P3-B protected `/roadmap`** (including deferred Roadmap-specific H3 gates); then implement/qualify **P3-C protected Docs skills**. These are separate manual prompts, with no automatic continuation. This supersedes the unexecuted [c12-planning-recovery P3](../../tasks/c12-planning-recovery/P3-docs-core-entry.txt) **for future execution**, without modifying its historical bytes or running the [15-prompt Docs stack](../../tasks/c12-docs-workflow/README.md). P1/P2 results, previous failures and C12/Phase 12/native gaps remain historical evidence.
 
 ## Goal and ownership
 
