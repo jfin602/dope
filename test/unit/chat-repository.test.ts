@@ -32,6 +32,28 @@ test('simultaneous claims across repository instances have exactly one writer', 
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('read follows a replaced manifest during concurrent Chat revisions', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    await Promise.all([
+      (async () => {
+        for (let step = 0; step < 40; step++)
+          state = await repo.mutate(root, state.revision,
+            { type: 'rename-chat', chatId, title: `Revision ${step}` });
+      })(),
+      (async () => {
+        for (let step = 0; step < 120; step++) {
+          const snapshot = await repo.read(root);
+          assert.equal(snapshot.chats.length, 1);
+          assert.equal(snapshot.chats[0].id, chatId);
+        }
+      })()
+    ]);
+    assert.equal((await repo.read(root)).chats[0].title, 'Revision 39');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('delete Chat removes its saved file and index entry after the writer releases it', async () => {
   const root = await folder(), repo = new ChatRepository(), chatId = id(), keptId = id();
   try {

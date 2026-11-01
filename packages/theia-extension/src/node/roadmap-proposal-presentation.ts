@@ -55,15 +55,18 @@ export function roadmapProposalPreview(before: RoadmapGateIndex, after: RoadmapG
 }
 
 export function linkedRoadmapProposalPreview(before: RoadmapGateIndex, kind: 'phase' | 'gate' | 'criterion',
-    id: string, lines: readonly { before: string; after: string }[]): Preview {
+    id: string, patch: { edit: { title?: string; detail?: string };
+        changedLines: readonly { before: string; after: string }[] }): Preview {
     const entity = find(before, id);
-    const entities: Entity[] = [{ id, action: 'edit', before: entity, after: entity }];
+    const after = entity && { ...entity, title: patch.edit.title ?? entity.title,
+        detail: patch.edit.detail ?? entity.detail };
+    const entities: Entity[] = [{ id, action: 'edit', before: entity, after }];
     return { source: 'validated-markdown-patch', steps: [{ type: `${kind}.edit`, id,
         title: entity?.title ?? id, affectedCount: 1 }],
         entities, totalChanged: 1,
         additionalChanges: 0, parentTitles: parents(before, before, entities),
-        sourceChanges: lines.slice(0, 8).map(line => ({ before: line.before.length > 8192 ?
+        sourceChanges: patch.changedLines.slice(0, 8).map(line => ({ before: line.before.length > 8192 ?
             `${line.before.slice(0, 8191)}…` : line.before, after: line.after.length > 8192 ?
             `${line.after.slice(0, 8191)}…` : line.after })),
-        additionalSourceChanges: Math.max(0, lines.length - 8) };
+        additionalSourceChanges: Math.max(0, patch.changedLines.length - 8) };
 }

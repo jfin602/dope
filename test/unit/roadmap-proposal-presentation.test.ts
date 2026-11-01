@@ -51,9 +51,10 @@ test('linked card source lines come from checked Markdown patch', async () => {
         const before = await store.read(root);
         const patch = await store.previewGateDocumentPatch(root, { kind: 'gate', id: 'gate-one',
             sourceHash: before.linkedDocument!.sourceHash, title: 'Check second' });
-        const preview = linkedRoadmapProposalPreview(before, 'gate', 'gate-one', patch.changedLines);
+        const preview = linkedRoadmapProposalPreview(before, 'gate', 'gate-one', patch);
         assert.equal(preview.source, 'validated-markdown-patch');
         assert.deepEqual(preview.sourceChanges, patch.changedLines);
         assert.equal(preview.entities[0].before?.title, 'Check first');
+        assert.equal(preview.entities[0].after?.title, 'Check second');
     });
 });

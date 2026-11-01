@@ -156,28 +156,37 @@ export class ChatRepository {
     private async raw(root: string, legacyIds = new Set<string>()): Promise<ChatCollection> {
         const { base, exists } = await this.paths(root);
         if (!exists) return { schemaVersion: 1, revision: 0, folders: [], chats: [] };
-        const manifest = await this.manifest(base);
-        for (const folder of manifest.folders) await this.folder(base, folder.path);
-        const chats: Chat[] = [];
-        for (const entry of manifest.entries) {
-            const parent = await this.folder(base, entry.folderPath);
-            const file = join(parent, entry.file);
-            if (!await regular(file)) throw new Error(`Missing Chat file: ${file}`);
-            let chat: Chat;
+        for (let attempt = 0; attempt < 4; attempt++) {
+            legacyIds.clear();
+            const manifest = await this.manifest(base);
             try {
-                const stored = JSON.parse(await safeText(file));
-                if (stored && typeof stored === 'object' && !Array.isArray(stored) &&
-                    (!Object.hasOwn(stored, 'color') || !Object.hasOwn(stored.settings ?? {}, 'modelPolicy'))) {
-                    chat = parseChat({ ...stored, color: stored.color ?? assignedChatColor(stored.id) });
-                    legacyIds.add(chat.id);
-                } else chat = parseChat(stored);
+                for (const folder of manifest.folders) await this.folder(base, folder.path);
+                const chats: Chat[] = [];
+                for (const entry of manifest.entries) {
+                    const parent = await this.folder(base, entry.folderPath);
+                    const file = join(parent, entry.file);
+                    if (!await regular(file)) throw new Error(`Missing Chat file: ${file}`);
+                    let chat: Chat;
+                    try {
+                        const stored = JSON.parse(await safeText(file));
+                        if (stored && typeof stored === 'object' && !Array.isArray(stored) &&
+                            (!Object.hasOwn(stored, 'color') || !Object.hasOwn(stored.settings ?? {}, 'modelPolicy'))) {
+                            chat = parseChat({ ...stored, color: stored.color ?? assignedChatColor(stored.id) });
+                            legacyIds.add(chat.id);
+                        } else chat = parseChat(stored);
+                    }
+                    catch { throw new Error(`Corrupt or unsupported Chat file: ${file}`); }
+                    if (chat.id !== entry.id || chat.folderPath !== entry.folderPath || chat.revision !== entry.revision)
+                        throw new Error(`Chat manifest/file mismatch: ${file}`);
+                    chats.push(chat);
+                }
+                return parseChatCollection({ schemaVersion: 1, revision: manifest.revision, folders: manifest.folders, chats });
+            } catch (error) {
+                if (attempt === 3 || !/^(?:Error: )?(?:Missing Chat file:|Corrupt or unsupported Chat file:)/.test(String(error)) ||
+                    (await this.manifest(base)).revision === manifest.revision) throw error;
             }
-            catch { throw new Error(`Corrupt or unsupported Chat file: ${file}`); }
-            if (chat.id !== entry.id || chat.folderPath !== entry.folderPath || chat.revision !== entry.revision)
-                throw new Error(`Chat manifest/file mismatch: ${file}`);
-            chats.push(chat);
         }
-        return parseChatCollection({ schemaVersion: 1, revision: manifest.revision, folders: manifest.folders, chats });
+        throw new Error('Chat manifest changed during read; retry');
     }
     /** One bounded, current-format owner file; never runs lease recovery or legacy migration. */
     async peekMetadata(root: string, chatId: string): Promise<{ title: string; revision: number; updatedAt: string; lastInteractedAt: string } | undefined> {

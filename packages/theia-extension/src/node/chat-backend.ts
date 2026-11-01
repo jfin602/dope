@@ -698,7 +698,7 @@ export class ChatBackend implements ChatService {
                     action: { type: action.type, id: action.id },
                     summary: `Linked Markdown: ${preview.path}\nSource SHA-256: ${preview.beforeHash}\n` +
                         preview.changedLines.map(line => `- ${line.before}\n+ ${line.after}`).join('\n'),
-                    preview: linkedRoadmapProposalPreview(before, kind, action.id, preview.changedLines) } };
+                    preview: linkedRoadmapProposalPreview(before, kind, action.id, preview) } };
             }
             const request: PlanningActionRequest = { projectHandle: handle, ownerId: before.projectId,
                 expectedRevision: before.revision, actions,
