@@ -1,4 +1,6 @@
-> **CURRENT P3 SEQUENCE (2026-10-31):** [P3-A Skills](P3-A-skills-framework.txt) → [P3-B Roadmap](P3-B-roadmap-skill.txt) → [P3-C Docs](P3-C-docs-skills.txt). Execute/disposition Roadmap specialization before Docs; older either-order text is superseded.
+> **CURRENT FORWARD CORRECTION BOUNDARY (2026-11-01):** [P3-A Skills](P3-A-skills-framework.txt) → [P3-B /roadmap](P3-B-roadmap-skill.txt) → [P3-C P2 reliability and independent Planning Recovery closeout](P3-C-planning-closeout.txt). Move Docs review/apply and protected publication to fresh [c12-docs-skills](../c12-docs-skills/README.md). Historical older P3-C Docs sections below are superseded, not to run. No implementation/qualification/version change by this amendment.
+
+> **CURRENT P3 SEQUENCE (2026-10-31):** [P3-A Skills](P3-A-skills-framework.txt) → [P3-B Roadmap](P3-B-roadmap-skill.txt) → [P3-C Docs](../c12-docs-skills/archive-original-P3-C-docs-skills.txt). Execute/disposition Roadmap specialization before Docs; older either-order text is superseded.
 
 > **2026-10-31 P3-B ROADMAP SKILL ADDITION / DOCUMENTATION ONLY:** [P3-B](P3-B-roadmap-skill.txt) follows qualified P3-A as a separate protected Roadmap skill specialization. Run P3-B Roadmap before P3-C Docs after P3-A qualification. Latest P2-R3 and H2 remain NOT GREEN; preserve those evidence gaps, do not mistake prior P2-ready handoff for qualification. See [Skills contract](../../planning/p12/skills-framework-contract.md).
 
@@ -38,12 +40,11 @@
 - Keep Pi brokered file reads, permission/Ask/Allow, selected provider, retry snapshot and saved Chat lease boundaries. Retry preserves the exact skill body but rechecks live project, source, revision and approval status. Skill activation neither applies an edit nor awards qualification.
 - Gate **C3C**: exact source-linked Chrome unskilled-denial and explicit-skill reviewed-edit Accept/Reject, linked Markdown safe field vs structural refusal, no edit-grammar leakage, large Roadmap/16K token comparison, no extra selector calls, controlled failures and regression tests/typecheck/build. Native owner Electron separately unqualified.
 
-## Phase 3C — first Docs skills and progressive retrieval (forward: [P3-C](P3-C-docs-skills.txt))
+## Phase 3C — P2 reliability and Planning Recovery closeout (forward: [P3-C](P3-C-planning-closeout.txt))
 
-- Require source-bound P3-A qualification and use its registry; no second slash router or agent.
-- Register protected /docs-review and /docs-apply as bounded instructions. Review only eligible .md/.txt project docs via cheap whole-corpus listing/search, progressively read relevant ranges through Pi and disclose searched versus inspected files and omissions. Avoid automatic scans/LLM selection in regular turns.
-- First audit actual review proposal, inspectable diff, explicit approval, safe source-bound document writer, journal/recovery and applied-only History. If missing and beyond narrow scope, **BLOCKED / SPLIT REQUIRED**, not a shell or Chat write shortcut.
-- Test disposable review with no writes, exact approved apply, stale/reject/partial/retry/linked Roadmap protections and one verified applied-only History effect. Gate **C3B** is real proof or an honest blocked handoff.
+- Independently inspect P3-A and P3-B dispositions, previous P2-R3 and H3 source-bound NOT GREEN evidence and current local code.
+- Revisit generic P2 failures: normal Chat output-limit/finish, cancellation context isolation, real browser copy-handler/clipboard payload, same-model verification after reconnect and Theia keyboard error attribution. Preserve source/permission and hybrid Roadmap safety; re-run a focused final-source smoke, not an entire H3 matrix already assigned to P3-B.
+- Run minimal proven root-cause fixes, focused tests, typecheck/build and real Codex browser checks. Close c12-planning-recovery GREEN only if independent P1, P2, H3, P3-A/B and generic P3-C mandatory gates genuinely pass; otherwise retain honest NOT GREEN/open-blockers closeout. No Docs implementation. Gate **C3C** is source-bound closeout, not Docs publication.
 
 ## Phase 3 — original direct Docs slice (historical/superseded; do not execute)
 
