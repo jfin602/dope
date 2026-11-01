@@ -75,6 +75,7 @@ export class ChatPanelController {
     pending = false;
     error = '';
     draft = '';
+    private autoRoadmapPrefix = false;
     context: ChatContextSelection[] = [];
     lastContext?: ChatContextPreview;
     planningProposal?: ChatPlanningProposal;
@@ -142,7 +143,8 @@ export class ChatPanelController {
         this.loading = !!workspace;
         this.pending = false;
         this.error = '';
-        this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
+        this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
+        this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapOffer = undefined; this.strategicDraftReview = undefined;
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
 
@@ -316,7 +318,8 @@ export class ChatPanelController {
         }
         if (chatId === this.chatId && this.mode === 'chat' && this.lease) return true;
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
-        this.draft = ''; this.context = []; this.lastContext = undefined; this.planningProposal = undefined;
+        this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
+        this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapOffer = undefined; this.strategicDraftReview = undefined;
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
 
@@ -510,6 +513,9 @@ export class ChatPanelController {
         this.changed();
     }
     private async turnContext(): Promise<ChatContextSelection[]> {
+        // An explicit element selection defines the Roadmap scope for this turn.
+        // The ambient Phase focus would otherwise add sibling Gates behind the chip.
+        if (this.context.some(item => item.kind === 'roadmap' && item.elementKind)) return this.context;
         const selection = this.activePlanning;
         if (!selection || !this.planning || !this.workspace) return this.context;
         const current = await this.planning.resolve(this.workspace, selection, this.planningMode === 'pin');
@@ -522,6 +528,11 @@ export class ChatPanelController {
         confirmHosted?: () => boolean, bridgeBranchIds?: string[]): Promise<boolean> {
         const lease = this.lease;
         if (!lease || this.running || this.pending || !this.chat || !retryMessageId && !this.draft.trim()) return false;
+        if (!retryMessageId && this.context.some(item => item.kind === 'roadmap' && item.elementKind) &&
+            !/^\/roadmap(?=\s|$)/.test(this.draft)) {
+            this.error = 'Selected Roadmap elements require /roadmap at the start of the message.';
+            this.changed(); return false;
+        }
         const content = this.draft;
         const offerReply = !retryMessageId && /^yes,?\s+create the roadmap[.!]?$/i.test(content.trim());
         const keepReview = !!this.strategicDraftReview && !retryMessageId &&
@@ -578,6 +589,7 @@ export class ChatPanelController {
             this.planningProposalErrorMessageId = result.proposalError ? result.proposal?.messageId : undefined;
             completed = true;
             this.context = [];
+            this.autoRoadmapPrefix = false;
             return true;
         } catch (error) {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {
@@ -666,16 +678,53 @@ export class ChatPanelController {
             !!this.planningProposal.preview && this.planningProposal.revision > 0 &&
             !this.pending && !this.running && !this.disposed;
     }
+    setDraft(value: string): void {
+        if (this.autoRoadmapPrefix && !/^\/roadmap(?=\s|$)/.test(value)) this.autoRoadmapPrefix = false;
+        this.draft = value;
+    }
+    addRoadmapElements(selections: ChatContextSelection[]): void {
+        if (!selections.length || selections.some(item => item.kind !== 'roadmap' || !item.elementKind ||
+            !item.projectId || !Number.isSafeInteger(item.ownerRevision)))
+            throw new Error('Invalid Roadmap element selection');
+        const existing = new Set(this.context.filter(item => item.kind === 'roadmap' && item.elementKind)
+            .map(item => `${item.elementKind}:${item.id}`));
+        const fresh = selections.filter(item => !existing.has(`${item.elementKind}:${item.id}`));
+        if (new Set(fresh.map(item => `${item.elementKind}:${item.id}`)).size !== fresh.length ||
+            this.context.length + fresh.length > 20) throw new Error('Too many or duplicate context selections');
+        if (fresh.length && !existing.size && /^\/[a-z0-9-]+(?=\s|$)/i.test(this.draft) &&
+            !/^\/roadmap(?=\s|$)/.test(this.draft))
+            throw new Error('Remove the conflicting slash command before attaching Roadmap elements');
+        for (const item of fresh) this.addContext(item);
+    }
     addContext(selection: ChatContextSelection): void {
         if (this.context.length >= 20) throw new Error('Too many context selections');
         if (this.context.some(item => item.kind === selection.kind && item.id === selection.id &&
+            item.elementKind === selection.elementKind &&
             item.messageId === selection.messageId && item.start === selection.start && item.end === selection.end &&
             item.text === selection.text &&
             item.ownerRevision === selection.ownerRevision && item.sourceHash === selection.sourceHash)) return;
+        if (selection.kind === 'roadmap' && selection.elementKind &&
+            !this.context.some(item => item.kind === 'roadmap' && item.elementKind)) {
+            if (/^\/[a-z0-9-]+(?=\s|$)/i.test(this.draft) && !/^\/roadmap(?=\s|$)/.test(this.draft))
+                throw new Error('Remove the conflicting slash command before attaching Roadmap elements');
+            if (!/^\/roadmap(?=\s|$)/.test(this.draft)) {
+                this.draft = `/roadmap ${this.draft}`;
+                this.autoRoadmapPrefix = true;
+            }
+        }
         this.context.push(selection); this.lastContext = undefined; this.changed();
     }
-    removeContext(index: number): void { this.context.splice(index, 1); this.lastContext = undefined; this.changed(); }
-    clearContext(): void { this.context = []; this.lastContext = undefined; this.changed(); }
+    removeContext(index: number): void {
+        this.context.splice(index, 1);
+        if (!this.context.some(item => item.kind === 'roadmap' && item.elementKind) && this.autoRoadmapPrefix) {
+            if (/^\/roadmap(?=\s|$)/.test(this.draft)) this.draft = this.draft.replace(/^\/roadmap(?:\s|$)/, '');
+            this.autoRoadmapPrefix = false;
+        }
+        this.lastContext = undefined; this.changed();
+    }
+    clearContext(): void {
+        while (this.context.length) this.removeContext(this.context.length - 1);
+    }
     async previewContext(model: ChatModelSelection): Promise<void> {
         const lease = this.lease;
         if (!lease) throw new Error('Chat unavailable');

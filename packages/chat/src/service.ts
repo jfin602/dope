@@ -55,6 +55,8 @@ export type ChatSkillChange = { type: 'add'; name: string; title?: string; descr
 /** Captured editor text is transport-only. Other IDs are resolved against current project authorities. */
 export interface ChatContextSelection { kind: ChatContextKind; id: string; projectId?: string; generation?: number;
     ownerRevision?: number; sourceHash?: string;
+    elementKind?: 'phase' | 'gate' | 'criterion' | 'correction';
+    label?: string;
     messageId?: string; text?: string; start?: number; end?: number; direction?: 'upstream' | 'downstream' }
 export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'history'; source: string; message: string }
 export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }

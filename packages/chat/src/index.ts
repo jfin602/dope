@@ -31,6 +31,7 @@ export interface ChatContextRef {
     generation?: number;
     ownerRevision?: number;
     sourceHash?: string;
+    elementKind?: 'phase' | 'gate' | 'criterion' | 'correction';
     messageId?: string;
     start?: number;
     end?: number;
@@ -234,7 +235,7 @@ function parseModelProvenance(value: unknown): ChatModelProvenance {
 }
 export function parseChatContextRef(value: unknown): ChatContextRef {
     const v = record(value, ['schemaVersion', 'kind', 'id', 'label', 'origin', 'excerpt', 'estimatedTokens',
-        'includedBytes', 'contentHash', 'projectId', 'generation', 'ownerRevision', 'sourceHash', 'messageId', 'start', 'end'],
+        'includedBytes', 'contentHash', 'projectId', 'generation', 'ownerRevision', 'sourceHash', 'elementKind', 'messageId', 'start', 'end'],
         ['schemaVersion', 'kind', 'id', 'label', 'estimatedTokens']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported context reference schema');
     const ref: ChatContextRef = { schemaVersion: 1, kind: choice(v.kind, contextKinds, 'context kind'), id: string(v.id, 'context ID'),
@@ -249,6 +250,11 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     if (v.projectId !== undefined) ref.projectId = string(v.projectId, 'context project ID');
     if (v.generation !== undefined) ref.generation = count(v.generation, 'context generation');
     if (v.ownerRevision !== undefined) ref.ownerRevision = count(v.ownerRevision, 'context owner revision');
+    if (v.elementKind !== undefined) {
+        if (ref.kind !== 'roadmap') throw new Error('Roadmap element kind requires Roadmap context');
+        ref.elementKind = choice(v.elementKind, ['phase', 'gate', 'criterion', 'correction'] as const,
+            'Roadmap element kind');
+    }
     if (v.sourceHash !== undefined) {
         if (typeof v.sourceHash !== 'string' || !/^[0-9a-f]{64}$/.test(v.sourceHash)) throw new Error('Invalid context source hash');
         ref.sourceHash = v.sourceHash;

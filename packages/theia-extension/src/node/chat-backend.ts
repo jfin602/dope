@@ -684,7 +684,9 @@ export class ChatBackend implements ChatService {
             if (before.schemaVersion !== 2 || before.projectId !== ref.projectId ||
                 before.revision !== ref.ownerRevision || before.linkedDocument?.sourceHash !== ref.sourceHash ||
                 ref.id !== 'roadmap' && !before.phases.some(item => item.id === ref.id) &&
-                !before.gates.some(item => item.id === ref.id))
+                !before.gates.some(item => item.id === ref.id) &&
+                !before.gates.some(item => item.criteria.some(criterion => criterion.id === ref.id)) &&
+                !before.corrections.some(item => item.id === ref.id))
                 throw new Error('Roadmap selection or source changed');
             if (ref.id === 'roadmap' && value.actions.some(action =>
                 ['gate.edit', 'gate.delete', 'gate.reparent', 'gate.dependencies', 'criterion.add',
@@ -1009,7 +1011,15 @@ export class ChatBackend implements ChatService {
         const roadmapSkill = isBoundRoadmapSkill(skill);
         if (skill?.name === 'roadmap' && !roadmapSkill)
             throw new Error('Saved /roadmap identity changed; start a fresh turn');
-        const selections = [...request.context ?? []];
+        const retryElementRefs = retryIndex >= 0 ?
+            (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs.filter(ref =>
+                ref.kind === 'roadmap' && ref.elementKind) : [];
+        const selections = retryElementRefs.length ? [
+            ...retryElementRefs.map(ref => ({ kind: 'roadmap' as const, id: ref.id,
+                elementKind: ref.elementKind, projectId: ref.projectId,
+                ownerRevision: ref.ownerRevision, sourceHash: ref.sourceHash })),
+            ...(request.context ?? []).filter(item => item.kind !== 'roadmap')
+        ] : [...request.context ?? []];
         if (roadmapSkill && !selections.some(item => item.kind === 'roadmap')) {
             if (!this.roadmapStore) throw new Error('Current Roadmap owner is unavailable');
             const index = await this.roadmapStore.read<RoadmapGateIndex>(root);

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { isAbsolute, join, relative } from 'node:path';
 import { availableChatContextTokens, type Chat, type ChatContextRef } from '@dope/chat';
 import type { ChatContextDiagnostic, ChatContextSelection } from '@dope/chat/lib/service';
+import { roadmapElementContext } from './roadmap-element-context';
 import type { ConversationMessage, ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import { projectPath, queryStaticFlow } from '@dope/software-map';
 import { readArchitecture } from '@dope/code-analysis/lib/node/architecture-file';
@@ -298,6 +299,22 @@ export class ChatContextComposer {
                     { omitted: 'Only nearby Gates were included; select an exact Gate for more facts' } : {}) };
     }
 
+    private async selectedRoadmapElements(root: string, sources: ChatContextSelection[]):
+        Promise<{ label: string; text: string; omitted?: string }> {
+        if (!this.roadmap) throw new Error('Roadmap context unavailable');
+        const index = await this.roadmap.read<RoadmapGateIndex>(root);
+        if (index.schemaVersion !== 2 || index.projectRoot !== root || !index.revision)
+            throw new Error('Open a current schema-2 Roadmap before using selected elements');
+        if (index.linkedDocument && (await this.roadmap.previewGateDocumentSync(root)).state !== 'unchanged')
+            throw new Error('Linked Roadmap source changed; review synchronization first');
+        const text = roadmapElementContext(index, sources);
+        const current = await this.roadmap.read<RoadmapGateIndex>(root);
+        if (current.projectId !== index.projectId || current.revision !== index.revision ||
+            current.linkedDocument?.sourceHash !== index.linkedDocument?.sourceHash)
+            throw new Error('Roadmap changed while preparing selected elements; select them again');
+        return { label: `Selected Roadmap elements: ${sources.map(item => `${item.elementKind} ${item.id}`).join(', ')}`, text };
+    }
+
     private async file(root: string, path: string, maxBytes = 1_000_000): Promise<string> {
         projectPath(path);
         if (path.startsWith('.dope/')) throw new Error('Use a typed project context source for .dope data');
@@ -449,6 +466,11 @@ export class ChatContextComposer {
                 source: diagnostic.source, message: diagnostic.message });
         const orderedSelections = [...selections.filter(source => source.kind === 'roadmap' || source.kind === 'roadmap-checkpoint'),
             ...selections.filter(source => source.kind !== 'roadmap' && source.kind !== 'roadmap-checkpoint')];
+        const elementSelections = orderedSelections.filter(source => source.kind === 'roadmap' && source.elementKind);
+        if (orderedSelections.some(source => source.elementKind && source.kind !== 'roadmap'))
+            throw new Error('Roadmap element kind requires Roadmap context');
+        if (elementSelections.length && !roadmapSkill)
+            throw new Error('Selected Roadmap elements require the protected /roadmap command');
         const memory = !help && (roadmapAction || chat.messages.some(message => message.role === 'assistant' &&
             message.execution.status === 'complete' &&
             message.planningActivity?.status === 'applied')) ? this.decisionContext(chat) : undefined;
@@ -458,7 +480,9 @@ export class ChatContextComposer {
         remaining -= wrapperTokens + memoryTokens;
         if (remaining < 0) throw new Error('Confirmed planning decisions exceed selected model input budget');
         for (const source of orderedSelections) {
-            const resolved = await this.resolve(root, chat, source, content, roadmapSkill);
+            if (source.elementKind && source !== elementSelections[0]) continue;
+            const resolved = source.elementKind ? await this.selectedRoadmapElements(root, elementSelections) :
+                await this.resolve(root, chat, source, content, roadmapSkill);
             if (resolved.omitted) diagnostics.push({ kind: 'truncated', source: `${source.kind}:${source.id}`, message: resolved.omitted });
             const prefix = `[${source.kind}: ${resolved.label}]\n`;
             let text = resolved.text;
@@ -485,8 +509,15 @@ export class ChatContextComposer {
                 ...(source.generation !== undefined ? { generation: source.generation } : {}),
                 ...(source.ownerRevision !== undefined ? { ownerRevision: source.ownerRevision } : {}),
                 ...(source.sourceHash !== undefined ? { sourceHash: source.sourceHash } : {}),
+                ...(source.elementKind ? { elementKind: source.elementKind } : {}),
                 ...(source.kind === 'selection' ? { start: source.start, end: source.end } : {}),
                 ...(source.kind === 'saved-chat' ? { messageId: source.messageId } : {}) });
+            if (source.elementKind) for (const other of elementSelections.slice(1)) refs.push({
+                schemaVersion: 1, kind: 'roadmap', id: other.id,
+                label: `Roadmap ${other.elementKind}: ${other.id}`, origin: 'manual',
+                estimatedTokens: 0, includedBytes: 0, projectId: other.projectId,
+                ownerRevision: other.ownerRevision, sourceHash: other.sourceHash,
+                elementKind: other.elementKind });
         }
         if (memoryBlock) attached.push(memoryBlock);
         for (const block of grounding?.blocks ?? []) {

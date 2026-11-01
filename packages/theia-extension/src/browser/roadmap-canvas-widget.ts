@@ -18,7 +18,7 @@ import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import type { ChatStrategicDraftReview, ChatEvent, ChatPlanningProposal } from '@dope/chat/lib/service';
+import type { ChatStrategicDraftReview, ChatEvent, ChatPlanningProposal, ChatContextSelection } from '@dope/chat/lib/service';
 import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
@@ -66,10 +66,18 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
     proposalChanges?: ProposalChange[]; proposalSource?: boolean;
     proposalSourceChanges?: { before: string; after: string }[];
     selectedGateId?: string; select: (id: string) => void; selectGate: (gateId: string, phaseId: string) => void;
+    contextPick?: { selected: readonly string[]; toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) => void };
     activate: (id: string) => void;
     reveal: (id: string, element: HTMLButtonElement) => void } }): React.ReactElement {
     const item = data.item;
     const card = item.phaseCard;
+    const pick = (kind: NonNullable<ChatContextSelection['elementKind']>, id: string, label: string) =>
+        data.contextPick ? React.createElement('button', { type: 'button',
+            key: `context:${kind}:${id}`, className: 'dope-roadmap-context-pick nodrag nopan',
+            'aria-label': `${data.contextPick.selected.includes(`${kind}:${id}`) ? 'Remove' : 'Select'} ${label} for Chat context`,
+            'aria-pressed': data.contextPick.selected.includes(`${kind}:${id}`),
+            onClick: (event: React.MouseEvent) => { event.stopPropagation(); data.contextPick?.toggle(kind, id); } },
+            data.contextPick.selected.includes(`${kind}:${id}`) ? `✓ ${label}` : `+ ${label}`) : null;
     if (card) return React.createElement(React.Fragment, null,
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
         React.createElement(Handle, { id: 'right-target', type: 'target', position: Position.Right, isConnectable: false }),
@@ -86,6 +94,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             React.createElement('small', { className: 'dope-roadmap-phase-label' }, `PHASE ${card.number}`),
             React.createElement('strong', null, item.title),
             React.createElement('span', { className: 'dope-roadmap-status' }, item.statusLabel)),
+        pick('phase', item.id, `Phase ${card.number}`),
         React.createElement('span', { className: 'dope-roadmap-phase-divider', 'aria-hidden': true }),
         React.createElement('span', { className: 'dope-roadmap-phase-count' },
             card.required ? `${card.qualified} of ${card.required} gates qualified` : 'No accepted gates · Unplanned'),
@@ -98,6 +107,8 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             ...((data.proposalChanges ?? []).filter(change => change.id === item.id).map(change =>
                 React.createElement(ProposedChange, { key: change.id, change, source: !!data.proposalSource,
                     sourceChanges: data.proposalSourceChanges }))),
+            data.contextPick ? React.createElement('div', { className: 'dope-roadmap-context-gates' },
+                ...card.gates.map(gate => pick('gate', gate.id, `${gate.designation} · ${gate.title}`))) : null,
             ...card.gates.map(gate => React.createElement('details', { key: gate.id,
                 open: data.proposalChanges?.some(change => change.id === gate.id ||
                     change.before?.parentId === gate.id || change.after?.parentId === gate.id) || undefined,
@@ -127,6 +138,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     React.createElement('strong', null, 'Criteria'),
                     gate.criteria.length ? gate.criteria.map(criterion => React.createElement('details', { key: criterion.id },
                         React.createElement('summary', null, criterion.title),
+                        pick('criterion', criterion.id, `Criterion · ${criterion.title}`),
                         React.createElement('p', null, `Expected: ${criterion.expectedResult}`),
                         React.createElement('p', null, criterion.evidence.length ?
                             criterion.evidence.map(evidence => `${evidence.result} (${evidence.review.status}${evidence.validation ? ', stale' : ''}): ${evidence.summary}`).join('; ') :
@@ -135,6 +147,8 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     React.createElement('p', null, `Corrections: ${card.corrections.filter(correction =>
                         correction.parent.kind === 'gate' && correction.parent.id === gate.id)
                         .map(correction => correction.title).join(', ') || 'None recorded.'}`),
+                    ...card.corrections.filter(correction => correction.parent.kind === 'gate' && correction.parent.id === gate.id)
+                        .map(correction => pick('correction', correction.id, `Correction · ${correction.title}`)),
                     React.createElement('button', { type: 'button', className: 'nodrag',
                         onClick: event => { event.stopPropagation(); data.selectGate(gate.id, item.id); } },
                         `Open ${gate.designation} details`)))),
@@ -145,8 +159,9 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     React.createElement(ProposedChange, { change, source: !!data.proposalSource,
                         sourceChanges: data.proposalSourceChanges })))),
             ...card.corrections.filter(correction => correction.parent.kind === 'phase').map(correction =>
-                React.createElement('span', { key: correction.id, className: 'dope-roadmap-correction-row' },
-                    `Phase correction · ${correction.title} · ${correction.qualificationStatus}`)))),
+                React.createElement('div', { key: correction.id, className: 'dope-roadmap-correction-row' },
+                    `Phase correction · ${correction.title} · ${correction.qualificationStatus}`,
+                    pick('correction', correction.id, `Correction · ${correction.title}`))))),
         React.createElement(Handle, { id: 'right', type: 'source', position: Position.Right, isConnectable: false }));
     return React.createElement(React.Fragment, null,
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
@@ -192,6 +207,10 @@ export const ROADMAP_CANVAS_ID = 'dope-roadmap-canvas';
 /** A single ordinary center tab; it neither owns nor opens a ChatPanel. */
 export class RoadmapCanvasWidget extends BaseWidget {
     private readonly status = document.createElement('p');
+    private readonly contextBar = document.createElement('section');
+    private contextPicker?: { uri: string; projectId: string; revision: number; sourceHash?: string;
+        selected: Map<string, { kind: NonNullable<ChatContextSelection['elementKind']>; id: string; label: string }>;
+        resolve: (value: ChatContextSelection[] | undefined) => void };
     private readonly strategicBar = document.createElement('section');
     private strategic?: { uri: string; projectId: string; chatId: string; stage?: Extract<ChatEvent, { kind: 'planning-progress' }>['stage'];
         review?: ChatStrategicDraftReview; error?: string; busy?: boolean; decide: (approve: boolean) => Promise<void> };
@@ -405,7 +424,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.path.setAttribute('aria-label', 'Roadmap canvas');
         this.path.tabIndex = 0;
         this.path.title = 'Shift+Arrow pans. In Arrange mode, Alt+Arrow moves the selected card.';
-        this.path.onkeydown = event => this.onPathKey(event);
+        this.path.onkeydown = event => {
+            if (event.key === 'Escape' && this.contextPicker) {
+                event.preventDefault(); event.stopPropagation(); this.cancelContextPicker(); return;
+            }
+            this.onPathKey(event);
+        };
         this.pools.className = 'dope-roadmap-pools';
         this.pools.id = 'dope-roadmap-pool-panel';
         this.pools.setAttribute('aria-label', 'Detached Ideas and Issues');
@@ -503,7 +527,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.strategicBar.setAttribute('aria-label', 'Strategic Roadmap review');
         this.strategicBar.setAttribute('aria-live', 'polite');
         this.strategicBar.hidden = true;
-        this.stage.append(this.path, this.status, this.strategicBar, this.importEntry, this.inspection, this.phaseFocus, this.poolButton, this.pools);
+        this.contextBar.className = 'dope-roadmap-context-bar';
+        this.contextBar.setAttribute('aria-label', 'Select Roadmap elements for Chat');
+        this.contextBar.hidden = true;
+        this.contextBar.onkeydown = event => {
+            if (event.key === 'Escape') { event.preventDefault(); this.cancelContextPicker(); }
+        };
+        this.stage.append(this.contextBar, this.path, this.status, this.strategicBar, this.importEntry, this.inspection, this.phaseFocus, this.poolButton, this.pools);
         this.node.append(this.toolbar, this.stage);
         this.stageResize.observe(this.stage);
         this.setSourceOpen(false);
@@ -587,6 +617,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.service.listImplementationPlans(projectUri)]);
             if (this.isDisposed || request !== this.request) return;
             const switched = this.projectUri !== projectUri || this.projectId !== index.projectId;
+            if (this.contextPicker && (this.contextPicker.uri !== projectUri ||
+                this.contextPicker.projectId !== index.projectId)) this.cancelContextPicker();
             if (this.chatProposal && (this.chatProposal.uri !== projectUri ||
                 this.chatProposal.proposal.ownerId !== index.projectId ||
                 this.chatProposal.proposal.revision !== index.revision ||
@@ -780,6 +812,93 @@ export class RoadmapCanvasWidget extends BaseWidget {
             void this.flow.setCenter(point.x + 250, point.y + 150,
                 { zoom: Math.max(this.flow.getZoom(), 0.65), duration: 0 });
         });
+    }
+
+    canPickContext(uri: string): boolean {
+        const index = this.inspector.gateIndex;
+        return this.isVisible && !this.isDisposed && this.projectUri === uri &&
+            !!index && index.schemaVersion === 2 && index.projectRoot === decodeURIComponent(new URL(uri).pathname) &&
+            index.revision > 0 && this.projectId === index.projectId;
+    }
+
+    async beginContextPicker(uri: string): Promise<ChatContextSelection[] | undefined> {
+        if (!this.canPickContext(uri)) throw new Error('Open Chat and the same project Roadmap side by side first');
+        if (this.contextPicker) throw new Error('Finish or cancel the current Roadmap selection');
+        const index = await this.service.read(uri) as unknown as RoadmapGateIndex;
+        if (!this.canPickContext(uri) || index.schemaVersion !== 2 || index.revision !== this.inspector.gateIndex?.revision ||
+            index.projectId !== this.projectId)
+            throw new Error('Roadmap changed; refresh and try again');
+        return new Promise(resolve => {
+            this.contextPicker = { uri, projectId: index.projectId, revision: index.revision,
+                sourceHash: index.linkedDocument?.sourceHash, selected: new Map(), resolve };
+            this.render();
+            this.contextBar.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+        });
+    }
+
+    private toggleContextElement(kind: NonNullable<ChatContextSelection['elementKind']>, id: string): void {
+        const picker = this.contextPicker, index = this.inspector.gateIndex;
+        if (!picker || !index || picker.projectId !== index.projectId || picker.revision !== index.revision) {
+            this.status.textContent = 'Roadmap changed; cancel and select again.'; return;
+        }
+        const key = `${kind}:${id}`;
+        if (picker.selected.has(key)) picker.selected.delete(key);
+        else {
+            if (picker.selected.size >= 20) { this.status.textContent = 'Select at most 20 Roadmap elements.'; return; }
+            const phase = index.phases.find(item => item.id === id);
+            const gate = index.gates.find(item => item.id === id);
+            const criterion = index.gates.flatMap(item => item.criteria).find(item => item.id === id);
+            const correction = index.corrections.find(item => item.id === id);
+            const label = kind === 'phase' && phase ? `Phase · ${phase.title}` :
+                kind === 'gate' && gate ? `${gate.designation} · ${gate.title}` :
+                kind === 'criterion' && criterion ? `Criterion · ${criterion.title}` :
+                kind === 'correction' && correction ? `Correction · ${correction.title}` : undefined;
+            if (!label) { this.status.textContent = 'Roadmap element is unavailable; refresh and try again.'; return; }
+            picker.selected.set(key, { kind, id, label });
+        }
+        this.render();
+    }
+
+    private async addSelectedContext(): Promise<void> {
+        const picker = this.contextPicker;
+        if (!picker || !picker.selected.size) return;
+        try {
+            const current = await this.service.read(picker.uri) as unknown as RoadmapGateIndex;
+            if (!this.canPickContext(picker.uri) || current.schemaVersion !== 2 ||
+                current.projectId !== picker.projectId || current.revision !== picker.revision ||
+                current.linkedDocument?.sourceHash !== picker.sourceHash ||
+                current.linkedDocument && (await this.service.previewGateDocumentSync(picker.uri)).state !== 'unchanged')
+                throw new Error('Roadmap source changed; cancel and select again');
+            const selections: ChatContextSelection[] = [...picker.selected.values()].map(item => ({
+                kind: 'roadmap', elementKind: item.kind, id: item.id, label: item.label,
+                projectId: picker.projectId, ownerRevision: picker.revision, sourceHash: picker.sourceHash }));
+            this.contextPicker = undefined;
+            this.render();
+            picker.resolve(selections);
+        } catch (error) { this.status.textContent = String(error); }
+    }
+
+    private cancelContextPicker(): void {
+        const picker = this.contextPicker;
+        if (!picker) return;
+        this.contextPicker = undefined;
+        this.render();
+        picker.resolve(undefined);
+    }
+
+    private renderContextPicker(): void {
+        const picker = this.contextPicker;
+        this.contextBar.replaceChildren();
+        this.contextBar.hidden = !picker;
+        if (!picker) return;
+        const label = document.createElement('strong');
+        label.textContent = `Select Roadmap elements · ${picker.selected.size} selected`;
+        const add = document.createElement('button');
+        add.type = 'button'; add.textContent = 'Add Selected'; add.disabled = !picker.selected.size;
+        add.onclick = () => void this.addSelectedContext();
+        const cancel = document.createElement('button');
+        cancel.type = 'button'; cancel.textContent = 'Cancel'; cancel.onclick = () => this.cancelContextPicker();
+        this.contextBar.append(label, add, cancel);
     }
 
     async clearChatProposal(uri: string, chatId: string, proposalId: string, accepted = false,
@@ -1143,6 +1262,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const visible = roadmapVisibleGraph(projection, this.detail, this.selectedId,
             this.expanded, this.collapsed, 96, this.promptWindow);
         this.renderFlow(visible);
+        this.renderContextPicker();
         this.renderStrategicBar();
         this.renderDraftInspection();
         this.renderPhaseFocus();
@@ -1311,6 +1431,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
             return {
                 id: item.id, type: 'checkpoint', position,
                 data: { item, selected: item.id === this.selectedId, selectedGateId: this.selectedId,
+                    contextPick: this.contextPicker ? { selected: [...this.contextPicker.selected.keys()],
+                        toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) =>
+                            this.toggleContextElement(kind, id) } : undefined,
                     proposalChanges: changes.filter(change => proposalPhase(change) === item.id),
                     proposalSource: proposal?.preview?.source === 'validated-markdown-patch',
                     proposalSourceChanges: proposal?.preview?.sourceChanges,
@@ -2668,7 +2791,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }
     }
 
-    override dispose(): void { ++this.request; ++this.importSerial; ++this.createSerial;
+    override dispose(): void { this.cancelContextPicker(); ++this.request; ++this.importSerial; ++this.createSerial;
         this.flushPresentation();
         this.stageResize.disconnect();
         window.removeEventListener('focus', this.focusRecheck);

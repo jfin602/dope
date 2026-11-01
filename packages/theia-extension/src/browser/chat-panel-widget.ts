@@ -276,7 +276,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly viewRoadmapProposal?: (uri: string, chatId: string, proposal: ChatPlanningProposal,
             isCurrent: () => boolean) => Promise<void>,
         private readonly clearRoadmapProposal?: (uri: string, chatId: string, proposalId: string,
-            accepted: boolean, changedIds: string[]) => Promise<void>) {
+            accepted: boolean, changedIds: string[]) => Promise<void>,
+        private readonly roadmapPicker?: { available: (projectUri: string) => boolean;
+            begin: (projectUri: string) => Promise<ChatContextSelection[] | undefined> }) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -2635,7 +2637,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const selectSkill = (skill: ChatSkill) => {
             const token = /^\/[a-z0-9-]*/i.exec(input.value)?.[0] ?? '/';
             input.value = `/${skill.name}${input.value.slice(token.length) || ' '}`;
-            state.draft = input.value; skillPopup.hidden = true;
+            state.setDraft(input.value); skillPopup.hidden = true;
             input.focus(); input.setSelectionRange(skill.name.length + 2, skill.name.length + 2);
             resizeChatInput(input);
             updateSkillHighlight();
@@ -2681,6 +2683,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const workspace = state.workspace, chatId = state.chatId;
             if (!workspace || !chatId) return;
             action('File', 'file', () => void this.pickProjectFile(workspace, chatId));
+            if (this.roadmapPicker?.available(workspace)) action('Roadmap Element', 'milestone', () => {
+                void this.roadmapPicker!.begin(workspace).then(selections => {
+                    if (!selections?.length) return;
+                    if (this.controller.workspace !== workspace || this.controller.chatId !== chatId)
+                        throw new Error('Chat or project changed; select Roadmap elements again');
+                    this.controller.addRoadmapElements(selections);
+                }).catch(error => { this.status.textContent = `Could not attach Roadmap elements: ${String(error)}`; });
+            });
             const code = this.selectedCode();
             if (code) action('Selected code', 'code', () => {
                 try {
@@ -2827,7 +2837,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         submitButton.classList.add('dope-chat-composer-submit');
         input.oninput = () => {
-            state.draft = input.value;
+            state.setDraft(input.value);
             if (!state.running) submitButton.disabled =
                 !(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel) ||
                 state.pending || !state.draft.trim();
@@ -2856,9 +2866,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const row = document.createElement('li');
                 const label = document.createElement('span');
                 const title = item.kind === 'saved-chat' ? state.snapshot?.chats.find(chat => chat.id === item.id)?.title : undefined;
-                const kind = item.kind === 'saved-chat' ? 'Chat' : item.kind === 'selection' ? 'Code' :
+                const kind = item.kind === 'roadmap' && item.elementKind ? 'Roadmap' :
+                    item.kind === 'saved-chat' ? 'Chat' : item.kind === 'selection' ? 'Code' :
                     item.kind === 'file' ? 'File' : 'Planning';
-                label.textContent = `${kind}: ${title ?? item.id}${item.start !== undefined ? `:${item.start}-${item.end}` : ''}`;
+                label.textContent = `${kind}: ${item.label ?? title ?? item.id}${item.start !== undefined ? `:${item.start}-${item.end}` : ''}`;
                 const remove = this.button('×', () => state.removeContext(index));
                 remove.setAttribute('aria-label', `Remove ${label.textContent}`);
                 row.append(label, remove);

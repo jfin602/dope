@@ -768,3 +768,28 @@ test('each ChatPanel opens its own RPC channel on the backend Chat route', async
     assert.match(frontend, /chatServicePath\}\/\$\{options\.instanceId\}/);
     assert.match(backend, /chatServicePath\}\/\:panelId/);
 });
+
+test('Roadmap element chips add one protected prefix and preserve manual commands', () => {
+    const selection = (id: string) => ({ kind: 'roadmap' as const, elementKind: 'gate' as const,
+        id, projectId: 'project-1', ownerRevision: 4 });
+    const panel = new ChatPanelController(() => { throw new Error('unused'); }, () => {});
+    panel.setDraft('Change the selected Gate purpose');
+    panel.addRoadmapElements([selection('gate-one'), selection('gate-two')]);
+    assert.equal(panel.draft, '/roadmap Change the selected Gate purpose');
+    assert.equal(panel.context.length, 2);
+    panel.removeContext(0);
+    assert.match(panel.draft, /^\/roadmap /);
+    panel.removeContext(0);
+    assert.equal(panel.draft, 'Change the selected Gate purpose');
+
+    panel.setDraft('/roadmap Explain this');
+    panel.addRoadmapElements([selection('gate-one')]);
+    assert.equal(panel.draft, '/roadmap Explain this');
+    panel.removeContext(0);
+    assert.equal(panel.draft, '/roadmap Explain this');
+
+    panel.setDraft('/explain Conflicting command');
+    assert.throws(() => panel.addRoadmapElements([selection('gate-one')]), /conflicting slash command/);
+    assert.equal(panel.context.length, 0);
+    panel.dispose();
+});

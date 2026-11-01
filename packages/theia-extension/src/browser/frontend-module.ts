@@ -573,6 +573,16 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             }, async (projectUri, chatId, proposalId, accepted, changedIds) => {
                 const widget = await context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
                 await widget?.clearChatProposal(projectUri, chatId, proposalId, accepted, changedIds);
+            }, {
+                available: projectUri => !!context.container.get(WidgetManager)
+                    .tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)?.canPickContext(projectUri),
+                begin: projectUri => {
+                    const widget = context.container.get(WidgetManager)
+                        .tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                    if (!widget?.canPickContext(projectUri))
+                        throw new Error('Open Chat and the same project Roadmap side by side first');
+                    return widget.beginContextPicker(projectUri);
+                }
             });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
