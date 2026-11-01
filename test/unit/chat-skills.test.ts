@@ -17,24 +17,33 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.throws(() => validateSkill('docs-apply', 'description', 'body'));
         assert.throws(() => validateSkill('a--b', 'description', 'body'));
         assert.throws(() => validateSkill('valid', '', 'body'));
+        assert.throws(() => validateSkill('valid', 'description', 'body', ''));
         assert.throws(() => validateSkill('valid', 'description', 'x'.repeat(1501)));
         const builtIn = (await listChatSkills())[0];
         assert.equal(builtIn.provenance, 'builtin');
         await assert.rejects(changeChatSkill({ type: 'delete', id: builtIn.id }));
         await assert.rejects(changeChatSkill({ type: 'add', name: builtIn.name, description: 'collision', body: 'body' }));
-        const added = await changeChatSkill({ type: 'add', name: 'test-skill', description: 'Test', body: 'First body' });
+        const added = await changeChatSkill({ type: 'add', name: 'test-skill', title: 'Test skill',
+            description: 'Test summary', body: 'First body' });
         const custom = added.find(skill => skill.name === 'test-skill')!;
+        assert.equal(custom.title, 'Test skill');
         assert.equal(JSON.parse(await readFile(join(directory, 'dope', 'chat-skills.json'), 'utf8')).length, 1);
         assert.equal((await listChatSkills()).find(skill => skill.id === custom.id)?.body, 'First body');
         const snapshot = await resolveChatSkill('/test-skill apply to earlier context');
         assert.equal(snapshot?.body, 'First body');
+        assert.equal(snapshot?.title, 'Test skill');
+        assert.equal(snapshot?.description, 'Test summary');
         assert.equal(snapshot?.version, 1);
-        await changeChatSkill({ type: 'edit', id: custom.id, name: 'test-skill', description: 'Test', body: 'Second body' });
+        await changeChatSkill({ type: 'edit', id: custom.id, name: 'test-skill', title: 'Updated skill',
+            description: 'Updated summary', body: 'Second body' });
         assert.equal(snapshot?.body, 'First body');
+        assert.equal(snapshot?.title, 'Test skill');
         assert.equal((await resolveChatSkill('/test-skill'))?.body, 'Second body');
         const saved = parseChatMessage({ schemaVersion: 1, id: randomUUID(), role: 'user', createdAt: new Date().toISOString(),
             content: '/test-skill', contextRefs: [], skill: snapshot });
         assert.equal(saved.role === 'user' && saved.skill?.body, 'First body');
+        assert.equal(saved.role === 'user' && saved.skill?.title, 'Test skill');
+        assert.equal(saved.role === 'user' && saved.skill?.description, 'Test summary');
         await changeChatSkill({ type: 'enable', id: custom.id, enabled: false });
         await assert.rejects(resolveChatSkill('/test-skill'), /disabled/);
         await assert.rejects(resolveChatSkill('/unknown'), /Unknown skill/);

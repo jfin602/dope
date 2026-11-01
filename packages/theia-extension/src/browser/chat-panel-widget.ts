@@ -56,6 +56,19 @@ function copyChatText(text: string): Promise<void> {
         navigator.clipboard?.writeText(text) ?? Promise.reject(new Error('Clipboard unavailable'));
 }
 
+function appendSkillText(target: HTMLElement, content: string,
+    skill: { name: string; title?: string; description?: string }): void {
+    const command = `/${skill.name}`;
+    if (!content.startsWith(command) || content.length > command.length && !/\s/.test(content[command.length])) {
+        target.textContent = content; return;
+    }
+    const token = document.createElement('span'); token.className = 'dope-chat-skill-token';
+    token.textContent = command;
+    const detail = `${skill.title || skill.name} — ${skill.description || 'Skill used for this turn'}`;
+    token.dataset.skillDetail = detail;
+    target.append(token, document.createTextNode(content.slice(command.length)));
+}
+
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly copyMenu = new ChatCopyContextMenu();
     private readonly copyFeedbackTimers = new WeakMap<HTMLElement, {
@@ -123,13 +136,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.settingsEntering = true;
         this.settingsDraft = structuredClone(chat.settings);
         this.settingsChatId = chat.id;
-        void this.loadSkills();
         this.render();
     }
+    private skillsOpen = false;
+    private skillFormOpen = false;
     private skills?: ChatSkill[];
     private skillsLoading = false;
     private skillEditId?: string;
     private skillName = '';
+    private skillTitle = '';
     private skillDescription = '';
     private skillBody = '';
     private skillError = '';
@@ -144,8 +159,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         try {
             this.skills = await this.controller.changeSkill(change);
             this.skillError = ''; this.skillEditId = undefined;
-            this.skillName = ''; this.skillDescription = ''; this.skillBody = '';
+            this.skillName = ''; this.skillTitle = ''; this.skillDescription = ''; this.skillBody = '';
+            this.skillFormOpen = false;
         } catch (error) { this.skillError = String(error); }
+        this.render();
+    }
+    private openSkills(): void {
+        this.skillsOpen = true;
+        if (this.controller.mode === 'chat') this.controller.select(undefined);
+        if (!this.skills && !this.skillsLoading) void this.loadSkills();
+        this.render();
+    }
+    private closeSkills(): void {
+        this.skillsOpen = false; this.skillFormOpen = false; this.skillEditId = undefined; this.skillError = '';
         this.render();
     }
     private settingsEntering = false;
@@ -1747,47 +1773,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         history.checked = draft.context.history === 'recent';
         history.onchange = () => { draft.context.history = history.checked ? 'recent' : 'none'; };
         field(conversation, 'Use previous messages', history);
-        const skillsSection = section('Skills');
-        const skillsNote = document.createElement('p'); skillsNote.className = 'dope-chat-settings-note';
-        skillsNote.textContent = 'Use /name at the start of a message. Instructions apply only to that turn and do not grant tools or file access.';
-        skillsSection.append(skillsNote);
-        for (const skill of this.skills ?? []) {
-            const row = document.createElement('div'); row.className = 'dope-chat-skill-row';
-            const label = document.createElement('span');
-            label.textContent = `/${skill.name} · ${skill.description} · ${skill.provenance}`;
-            row.append(label);
-            if (skill.provenance === 'user') {
-                row.append(this.button('Edit', () => {
-                    this.skillEditId = skill.id; this.skillName = skill.name;
-                    this.skillDescription = skill.description; this.skillBody = skill.body; this.render();
-                }));
-                row.append(this.button(skill.enabled ? 'Disable' : 'Enable', () =>
-                    void this.changeSkill({ type: 'enable', id: skill.id, enabled: !skill.enabled })));
-                row.append(this.button('Delete', () => {
-                    if (window.confirm(`Delete /${skill.name}?`)) void this.changeSkill({ type: 'delete', id: skill.id });
-                }));
-            }
-            skillsSection.append(row);
-        }
-        const skillField = (label: string, value: string, set: (value: string) => void, multiline = false) => {
-            const control = multiline ? document.createElement('textarea') : document.createElement('input');
-            control.value = value; control.setAttribute('aria-label', label);
-            if (multiline) control.maxLength = 1500;
-            control.oninput = () => set(control.value);
-            field(skillsSection, label, control);
-        };
-        skillField('Command name', this.skillName, value => this.skillName = value);
-        skillField('Description', this.skillDescription, value => this.skillDescription = value);
-        skillField('Instructions', this.skillBody, value => this.skillBody = value, true);
-        skillsSection.append(this.button(this.skillEditId ? 'Save skill' : 'Add skill', () => void this.changeSkill(
-            this.skillEditId ? { type: 'edit', id: this.skillEditId, name: this.skillName,
-                description: this.skillDescription, body: this.skillBody } :
-                { type: 'add', name: this.skillName, description: this.skillDescription, body: this.skillBody })));
-        if (this.skillEditId) skillsSection.append(this.button('Cancel edit', () => {
-            this.skillEditId = undefined; this.skillName = ''; this.skillDescription = ''; this.skillBody = ''; this.render();
-        }));
-        if (this.skillError) { const note = document.createElement('p'); note.className = 'dope-chat-settings-error';
-            note.setAttribute('role', 'alert'); note.textContent = this.skillError; skillsSection.append(note); }
         const advanced = document.createElement('details'); advanced.className = 'dope-chat-settings-advanced';
         const advancedTitle = document.createElement('summary'); advancedTitle.textContent = 'Advanced settings';
         advanced.append(advancedTitle); form.append(advanced);
@@ -1834,6 +1819,80 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         pullTab.title = 'Close chat settings';
         overlay.append(form, pullTab);
         return overlay;
+    }
+    private renderSkillsDrawer(): HTMLElement {
+        const drawer = document.createElement('section');
+        drawer.className = 'dope-chat-skills-drawer';
+        drawer.setAttribute('role', 'dialog');
+        drawer.setAttribute('aria-label', 'Skills');
+        drawer.onkeydown = event => {
+            if (event.key === 'Escape') this.closeSkills();
+        };
+        const header = document.createElement('header');
+        const title = document.createElement('h3'); title.textContent = 'Skills';
+        const close = this.button('×', () => this.closeSkills());
+        close.setAttribute('aria-label', 'Close Skills');
+        header.append(title, close); drawer.append(header);
+        const list = document.createElement('div'); list.className = 'dope-chat-skills-list';
+        for (const skill of this.skills ?? []) {
+            const row = document.createElement('div'); row.className = 'dope-chat-skills-row';
+            if (!skill.enabled) row.classList.add('dope-chat-skills-disabled');
+            const name = document.createElement('strong'); name.textContent = `/${skill.name}`;
+            const title = document.createElement('span'); title.textContent = skill.title;
+            title.className = 'dope-chat-skills-title';
+            const description = document.createElement('span'); description.textContent = skill.description;
+            description.className = 'dope-chat-skills-description';
+            row.append(name, title, description);
+            if (skill.provenance === 'user') {
+                const actions = document.createElement('div'); actions.className = 'dope-chat-skills-actions';
+                actions.append(this.button('Edit', () => {
+                    this.skillEditId = skill.id; this.skillName = skill.name; this.skillTitle = skill.title;
+                    this.skillDescription = skill.description; this.skillBody = skill.body;
+                    this.skillFormOpen = true; this.render();
+                }), this.button(skill.enabled ? 'Disable' : 'Enable', () =>
+                    void this.changeSkill({ type: 'enable', id: skill.id, enabled: !skill.enabled })),
+                this.button('Delete', () => {
+                    if (window.confirm(`Delete /${skill.name}?`)) void this.changeSkill({ type: 'delete', id: skill.id });
+                }));
+                row.append(actions);
+            }
+            list.append(row);
+        }
+        drawer.append(list);
+        if (!this.skillFormOpen) {
+            const add = this.button('Add Skill', () => {
+                this.skillEditId = undefined; this.skillName = ''; this.skillTitle = '';
+                this.skillDescription = ''; this.skillBody = '';
+                this.skillError = ''; this.skillFormOpen = true; this.render();
+            });
+            add.className = 'dope-chat-skills-add'; drawer.append(add);
+        } else {
+            const form = document.createElement('div'); form.className = 'dope-chat-skills-form';
+            const field = (label: string, value: string, set: (value: string) => void, multiline = false) => {
+                const wrapper = document.createElement('label'); wrapper.textContent = label;
+                const input = multiline ? document.createElement('textarea') : document.createElement('input');
+                input.value = value; input.setAttribute('aria-label', label);
+                if (multiline) input.maxLength = 1500;
+                input.oninput = () => set(input.value);
+                wrapper.append(input); form.append(wrapper);
+            };
+            field('Command name', this.skillName, value => this.skillName = value);
+            field('Title', this.skillTitle, value => this.skillTitle = value);
+            field('Summary', this.skillDescription, value => this.skillDescription = value);
+            field('Instructions', this.skillBody, value => this.skillBody = value, true);
+            form.append(this.button(this.skillEditId ? 'Save Skill' : 'Add Skill', () => void this.changeSkill(
+                this.skillEditId ? { type: 'edit', id: this.skillEditId, name: this.skillName, title: this.skillTitle,
+                    description: this.skillDescription, body: this.skillBody } :
+                    { type: 'add', name: this.skillName, title: this.skillTitle,
+                        description: this.skillDescription, body: this.skillBody })));
+            form.append(this.button('Cancel', () => { this.skillFormOpen = false; this.skillError = ''; this.render(); }));
+            drawer.append(form);
+        }
+        if (this.skillError) {
+            const error = document.createElement('p'); error.setAttribute('role', 'alert');
+            error.className = 'dope-chat-skills-error'; error.textContent = this.skillError; drawer.append(error);
+        }
+        return drawer;
     }
     private renderTree(node: ChatTree): HTMLElement {
         const list = document.createElement('ul');
@@ -2086,7 +2145,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             create.append(this.button('New Chat', () => void state.newChat(''), state.pending),
                 this.button('New Folder', () => void this.name('New folder').then(name => {
                     if (name) void state.newFolder('', name);
-                }), state.pending));
+                }), state.pending), this.button('Skills', () => this.openSkills()));
             header.append(heading, create);
             if (!this.usableModels().length)
                 header.append(this.button('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); }));
@@ -2095,8 +2154,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             navigation.setAttribute('aria-label', 'Chats and folders');
             navigation.append(this.renderTree(chatTree(state.snapshot)));
             this.content.append(header, navigation);
+            if (this.skillsOpen) this.content.append(this.renderSkillsDrawer());
             return;
         }
+        this.skillsOpen = false;
         const chat = state.chat;
         if (!chat) { state.select(undefined); return; }
         if (this.settingsChatId !== chat.id) {
@@ -2262,6 +2323,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 else if (message.execution.status === 'cancelled') {
                     const note = document.createElement('p'); note.textContent = 'No final response'; content.append(note);
                 }
+            } else if (message.role === 'user' && message.skill) {
+                const current = this.skills?.find(skill => skill.id === message.skill?.id);
+                appendSkillText(content, body, { name: message.skill.name,
+                    title: message.skill.title ?? current?.title,
+                    description: message.skill.description ?? current?.description });
             } else content.textContent = body;
             if (message.role === 'assistant' && state.running && message.id === activeAssistant?.id &&
                 state.stream?.messageId === message.id && state.stream.executionId === message.execution.id &&
@@ -2431,7 +2497,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             item.dataset.color = chat.color;
             item.setAttribute('aria-label', 'You');
             const content = document.createElement('div');
-            content.className = 'dope-chat-message-content'; content.textContent = state.transientUser.content;
+            content.className = 'dope-chat-message-content';
+            const command = /^\/([a-z0-9-]+)(?=\s|$)/.exec(state.transientUser.content)?.[1];
+            const skill = this.skills?.find(entry => entry.name === command && entry.enabled);
+            if (skill) appendSkillText(content, state.transientUser.content, skill);
+            else content.textContent = state.transientUser.content;
             item.append(content); transcript.append(item);
         }
         if (state.running && !activeAssistant) {
@@ -2473,9 +2543,35 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const composer = document.createElement('div'); composer.className = 'dope-chat-composer';
         const input = document.createElement('textarea'); input.rows = 1; input.placeholder = 'Message';
         input.setAttribute('aria-label', 'Message'); input.value = state.draft;
+        const inputWrap = document.createElement('div'); inputWrap.className = 'dope-chat-input-wrap';
+        const mirror = document.createElement('div'); mirror.className = 'dope-chat-input-mirror';
+        mirror.setAttribute('aria-hidden', 'true');
+        const skillTooltip = document.createElement('span');
+        skillTooltip.className = 'dope-chat-skill-tooltip'; skillTooltip.hidden = true;
+        inputWrap.append(mirror, input, skillTooltip);
+        const updateSkillHighlight = () => {
+            const command = /^\/([a-z0-9-]+)(?=\s|$)/.exec(input.value)?.[1];
+            const skill = this.skills?.find(entry => entry.name === command && entry.enabled);
+            inputWrap.classList.toggle('dope-chat-input-has-skill', !!skill);
+            mirror.replaceChildren(); mirror.hidden = !skill; skillTooltip.hidden = true;
+            if (skill) {
+                appendSkillText(mirror, input.value, skill);
+                skillTooltip.textContent = `${skill.title} — ${skill.description}`;
+                mirror.scrollTop = input.scrollTop; mirror.scrollLeft = input.scrollLeft;
+            }
+        };
+        input.onscroll = () => { mirror.scrollTop = input.scrollTop; mirror.scrollLeft = input.scrollLeft; };
+        input.onmousemove = event => {
+            if (!skillPopup.hidden) { skillTooltip.hidden = true; return; }
+            const token = mirror.querySelector<HTMLElement>('.dope-chat-skill-token');
+            const bounds = token?.getBoundingClientRect();
+            skillTooltip.hidden = !bounds || event.clientX < bounds.left || event.clientX > bounds.right ||
+                event.clientY < bounds.top || event.clientY > bounds.bottom;
+        };
+        input.onmouseleave = () => { skillTooltip.hidden = true; };
         if (!this.skills && !this.skillsLoading) void this.loadSkills();
         const skillPopup = document.createElement('div'); skillPopup.className = 'dope-chat-skill-popup';
-        skillPopup.setAttribute('role', 'listbox'); skillPopup.setAttribute('aria-label', 'Skills');
+        skillPopup.setAttribute('role', 'dialog'); skillPopup.setAttribute('aria-label', 'Skills');
         let skillChoices: ChatSkill[] = [];
         let skillIndex = 0;
         const updateSkillPopup = () => {
@@ -2485,19 +2581,30 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 !/\s/.test(input.value[match[0].length])) { skillPopup.hidden = true; return; }
             const query = match[1].toLowerCase();
             const candidates = (this.skills ?? []).filter(skill => skill.enabled);
+            const detected = candidates.find(skill => skill.name === query);
             skillChoices = candidates.filter(skill => skill.name.startsWith(query)).concat(
                 candidates.filter(skill => !skill.name.startsWith(query) && skill.name.includes(query))).slice(0, 8);
-            skillIndex = Math.min(skillIndex, skillChoices.length - 1);
-            skillPopup.replaceChildren(); skillPopup.hidden = skillChoices.length === 0;
+            skillIndex = detected ? skillChoices.findIndex(skill => skill.id === detected.id) :
+                Math.max(0, Math.min(skillIndex, skillChoices.length - 1));
+            skillPopup.replaceChildren(); skillPopup.hidden = false;
             skillChoices.forEach((skill, index) => {
                 const option = document.createElement('button'); option.type = 'button';
                 option.className = 'dope-chat-skill-option'; option.setAttribute('role', 'option');
                 option.setAttribute('aria-selected', String(index === skillIndex));
-                option.textContent = `/${skill.name} · ${skill.description} · ${skill.provenance}`;
+                const name = document.createElement('strong'); name.textContent = `/${skill.name}`;
+                const title = document.createElement('span'); title.textContent = skill.title;
+                title.className = 'dope-chat-skill-option-title';
+                const summary = document.createElement('span'); summary.textContent = skill.description;
+                summary.className = 'dope-chat-skill-option-summary';
+                option.append(name, title, summary);
                 option.onmousedown = event => event.preventDefault();
                 option.onclick = () => selectSkill(skill);
                 skillPopup.append(option);
             });
+            const add = document.createElement('button'); add.type = 'button';
+            add.className = 'dope-chat-skill-add'; add.textContent = '+ Add Skill';
+            add.onclick = () => { this.skillFormOpen = true; this.openSkills(); };
+            skillPopup.append(add);
         };
         const selectSkill = (skill: ChatSkill) => {
             const token = /^\/[a-z0-9-]*/i.exec(input.value)?.[0] ?? '/';
@@ -2505,6 +2612,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.draft = input.value; skillPopup.hidden = true;
             input.focus(); input.setSelectionRange(skill.name.length + 2, skill.name.length + 2);
             resizeChatInput(input);
+            updateSkillHighlight();
         };
         const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
         const menu = document.createElement('div'); menu.className = 'dope-chat-composer-menu'; menu.popover = 'auto';
@@ -2678,7 +2786,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             input.onkeydown = event => {
                 if (!event.isComposing && !skillPopup.hidden) {
                     if (event.key === 'Escape') { skillPopup.hidden = true; event.preventDefault(); return; }
-                    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    if (skillChoices.length && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
                         skillIndex = (skillIndex + (event.key === 'ArrowDown' ? 1 : -1) + skillChoices.length) % skillChoices.length;
                         updateSkillPopup(); event.preventDefault(); return;
                     }
@@ -2699,10 +2807,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 state.pending || !state.draft.trim();
             resizeChatInput(input);
             updateSkillPopup();
+            updateSkillHighlight();
         };
         toolbar.append(more, modelPicker, commandLabel, submitButton);
-        composer.append(skillPopup, input, toolbar);
+        composer.append(skillPopup, inputWrap, toolbar);
         updateSkillPopup();
+        updateSkillHighlight();
         const responseNotices = document.createElement('div');
         responseNotices.className = 'dope-chat-response-notices';
         responseNotices.setAttribute('aria-label', 'Chat notices and reviews');

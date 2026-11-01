@@ -7,17 +7,18 @@ import type { ChatSkill, ChatSkillChange, ChatSkillSnapshot } from '@dope/chat/l
 const skillsPath = () => join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'dope', 'chat-skills.json');
 const reserved = new Set(['docs-review', 'docs-apply', 'roadmap', 'skill']);
 const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
+    title: 'Explain',
     description: 'Explain a topic clearly using the current conversation.',
     body: 'Explain the requested topic clearly. Use the current conversation for context. Do not claim to have changed files.',
     enabled: true, provenance: 'builtin', version: 1 }];
 let serial = Promise.resolve();
 
-export function validateSkill(name: string, description: string, body: string): void {
+export function validateSkill(name: string, description: string, body: string, title = name): void {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name) || name.length > 64 || reserved.has(name))
         throw new Error('Use a unique lowercase skill name (letters, digits, hyphens; 1–64 characters)');
-    if (!description.trim() || description.length > 240 || !body.trim() || body.length > 1500 ||
-        /[\x00-\x08\x0b-\x1f\x7f]/u.test(description + body))
-        throw new Error('Skill needs a description and plain-text instructions (up to 1,500 characters)');
+    if (!title.trim() || title.length > 80 || !description.trim() || description.length > 240 ||
+        !body.trim() || body.length > 1500 || /[\x00-\x08\x0b-\x1f\x7f]/u.test(title + description + body))
+        throw new Error('Skill needs a title, summary, and plain-text instructions (up to 1,500 characters)');
 }
 async function readUsers(): Promise<ChatSkill[]> {
     const path = skillsPath();
@@ -34,10 +35,11 @@ async function readUsers(): Promise<ChatSkill[]> {
             typeof skill.name !== 'string' || typeof skill.description !== 'string' ||
             typeof skill.body !== 'string' || typeof skill.enabled !== 'boolean' ||
             !Number.isSafeInteger(skill.version) || skill.version < 1) throw new Error('Saved skill is invalid');
-        validateSkill(skill.name, skill.description, skill.body);
+        const title = typeof skill.title === 'string' ? skill.title : skill.name;
+        validateSkill(skill.name, skill.description, skill.body, title);
         if (names.has(skill.name)) throw new Error('Saved skill names collide');
         names.add(skill.name);
-        return skill;
+        return { ...skill, title };
     });
 }
 async function writeUsers(skills: ChatSkill[]): Promise<void> {
@@ -52,10 +54,11 @@ export function changeChatSkill(change: ChatSkillChange): Promise<ChatSkill[]> {
     const action = serial.then(async () => {
         const users = await readUsers();
         if (change.type === 'add') {
-            validateSkill(change.name, change.description, change.body);
+            validateSkill(change.name, change.description, change.body, change.title ?? change.name);
             if (users.some(item => item.name === change.name) || builtins.some(item => item.name === change.name))
                 throw new Error('Skill name already exists');
-            users.push({ id: randomUUID(), name: change.name, description: change.description.trim(),
+            users.push({ id: randomUUID(), name: change.name, title: (change.title ?? change.name).trim(),
+                description: change.description.trim(),
                 body: change.body.trim(), enabled: true, provenance: 'user', version: 1 });
         } else {
             const index = users.findIndex(item => item.id === change.id);
@@ -64,11 +67,12 @@ export function changeChatSkill(change: ChatSkillChange): Promise<ChatSkill[]> {
             else if (change.type === 'enable') users[index] = { ...users[index], enabled: change.enabled,
                 version: users[index].version + 1 };
             else {
-                validateSkill(change.name, change.description, change.body);
+                validateSkill(change.name, change.description, change.body, change.title ?? users[index].title);
                 if (builtins.some(item => item.name === change.name) ||
                     users.some((item, at) => at !== index && item.name === change.name))
                     throw new Error('Skill name already exists');
-                users[index] = { ...users[index], name: change.name, description: change.description.trim(),
+                users[index] = { ...users[index], name: change.name, title: (change.title ?? users[index].title).trim(),
+                    description: change.description.trim(),
                     body: change.body.trim(), version: users[index].version + 1 };
             }
         }
@@ -86,8 +90,9 @@ export async function resolveChatSkill(content: string): Promise<ChatSkillSnapsh
     const name = skillCommand(content);
     if (!name) return undefined;
     const skill = (await listChatSkills()).find(item => item.name === name);
-    if (!skill) throw new Error(`Unknown skill /${name}. Open Chat settings to manage Skills.`);
-    if (!skill.enabled) throw new Error(`Skill /${name} is disabled. Enable it in Chat settings.`);
-    return { id: skill.id, name, body: skill.body, version: skill.version,
+    if (!skill) throw new Error(`Unknown skill /${name}. Open Skills from Select Chat to manage commands.`);
+    if (!skill.enabled) throw new Error(`Skill /${name} is disabled. Enable it from Select Chat > Skills.`);
+    return { id: skill.id, name, title: skill.title, description: skill.description,
+        body: skill.body, version: skill.version,
         digest: createHash('sha256').update(skill.body).digest('hex') };
 }

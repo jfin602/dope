@@ -375,12 +375,15 @@ export function parseChatMessage(value: unknown): ChatMessage {
     if (v.role === 'user') {
         if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || !base.content.trim()) throw new Error('Invalid user message');
         const skill = v.skill === undefined ? undefined : (() => {
-            const s = record(v.skill, ['id', 'name', 'body', 'version', 'digest'],
+            const s = record(v.skill, ['id', 'name', 'title', 'description', 'body', 'version', 'digest'],
                 ['id', 'name', 'body', 'version', 'digest']);
             if (typeof s.id !== 'string' || typeof s.name !== 'string' || typeof s.body !== 'string' ||
                 s.body.length > 1500 || !Number.isSafeInteger(s.version) || typeof s.digest !== 'string' ||
+                s.title !== undefined && (typeof s.title !== 'string' || s.title.length > 80) ||
+                s.description !== undefined && (typeof s.description !== 'string' || s.description.length > 240) ||
                 !/^[a-f0-9]{64}$/.test(s.digest)) throw new Error('Invalid saved skill');
-            return { id: s.id, name: s.name, body: s.body, version: s.version as number, digest: s.digest };
+            return { id: s.id, name: s.name, body: s.body, version: s.version as number, digest: s.digest,
+                ...(s.title ? { title: s.title } : {}), ...(s.description ? { description: s.description } : {}) };
         })();
         return { ...base, role: 'user', contextRefs: v.contextRefs.map(parseChatContextRef), ...(skill ? { skill } : {}) };
     }
