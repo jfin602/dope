@@ -38,7 +38,7 @@
 | [P3-C](P3-C-docs-skills.txt) | Register default Docs skills; progressive eligible .md/.txt retrieval and protected review/apply | Real reviewed proposal, verified approved writes/recovery/History or explicit BLOCKED/SPLIT REQUIRED |
 | [Old P3 — historical, do not run](P3-docs-core-entry.txt) | Preserved original direct Docs-first prompt | Superseded and unexecuted |
 
-P1, P2, P3-A, P3-C and P3-B are **manual** GPT-6 Sol High prompts with an available Ponytail skill in Full mode for the **implementation agent only**, never a persistent injection into Qwen/Pi. Use Codex in-app browser to check UI. No automatic runner, no self-commits, no 0.12.7 change. Run each prompt only after inspecting and preserving the actual local checkout; GitHub `main` documentation may lag uncommitted product changes.
+P1, P2, P3-A, P3-B and P3-C are **manual** GPT-6 Sol High prompts with an available Ponytail skill in Full mode for the **implementation agent only**, never a persistent injection into Qwen/Pi. Use Codex in-app browser to check UI. No automatic runner, no self-commits, no 0.12.7 change. Run each prompt only after inspecting and preserving the actual local checkout; GitHub `main` documentation may lag uncommitted product changes.
 
 P3-C does **not** purport to replace the original 15-prompt `c12-docs-workflow` specification. Advanced automatic document-reference delivery, Work context/freshness, large recovery matrices and full native closeout remain separately scoped. Do not promise all Docs management is GREEN in a single prompt.
 
