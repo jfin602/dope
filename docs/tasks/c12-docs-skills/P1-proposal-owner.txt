@@ -1,0 +1,7 @@
+TASK: c12-docs-skills / P1 — durable documentation review proposal (NO PUBLICATION)
+MODEL: GPT-6 Sol High. MANUAL, target <=8m/hard 15m per bounded cycle. Read BOOT.md/AGENTS.md/docs/workflow.md, stack README/assessment/plan, ADR 0041, Docs contract and latest Planning Recovery closeout. Inspect actual local HEAD/status, owner dirty source and current service tests. Preserve all work: no reset/stash/clean/self-commit/version/provider/dependency change. Disposable fixtures only.
+1. Inventory implemented Docs proposal/diff, Chat, Roadmap source and History owners; don't infer implementation from authored 15-prompt stack or create parallel service.
+2. Implement/reuse a single protected durable proposal with exact eligible project-local .md/.txt create/update target, source hash/expected absence, project/worktree/root/lease/revision, bounded before/after bytes/diff and stable digest. Explicit source-grounded review only, no canonical writes, no History, no model file/shell permission bypass.
+3. Reject symlink, traversal, foreign/protected/linked Roadmap-owned source, generated/binary/oversize, stale/collision/ambiguous target. Restarts cannot transform expired previews into authority.
+4. Focused tests for identity/validation/diff, zero writes, stale/foreign/collision, restart and protected paths. Run typecheck and affected builds if source changed. Record exact source and PASS/FAIL/GAP.
+STOP BLOCKED if required owner cannot be implemented narrowly. No P2 auto-run, no commit/version bump; leave browser/server open.
