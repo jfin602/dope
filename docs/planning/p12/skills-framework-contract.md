@@ -1,10 +1,12 @@
+> **2026-11-01 OWNER CORRECTION BOUNDARY:** C12 Planning Recovery now consists of **P3-A generic Skills → P3-B protected /roadmap → P3-C P2 Chat/Pi reliability and Planning Recovery closeout**. Documentation management, including /docs-review, /docs-apply, proposal storage, journal/recovery and History, is a separate independently authored [c12-docs-skills correction](../../tasks/c12-docs-skills/README.md). The Docs requirements below remain governing design for that stack, **not an executable Planning Recovery P3-C**. Prior dated Docs-in-P3 sequencing is superseded; no product run, version change or Green follows.
+
 > **CURRENT OWNER-APPROVED EXECUTION ORDER (2026-10-31):** Implement and qualify **P3-A generic Skills → P3-B protected /roadmap → P3-C /docs-review and /docs-apply**. The earlier independent sibling timing is superseded. The original Docs-first P3 remains unexecuted history; no status or version changes follow from renumbering.
 
 # Dope Skills — minimal slash-command instruction framework
 
 **Owner decision:** 2026-10-31 (America/Chicago). **Status:** APPROVED DESIGN / DOCUMENTATION ONLY; NOT IMPLEMENTED, TESTED OR QUALIFIED. **Product version:** `0.12.7` unchanged. The actual local checkout, including uncommitted owner changes, governs later implementation over GitHub `main`.
 
-**Sequence:** Independently qualify **P3-A generic Skills** first; then implement/qualify **P3-B protected `/roadmap`** (including deferred Roadmap-specific H3 gates); then implement/qualify **P3-C protected Docs skills**. These are separate manual prompts, with no automatic continuation. This supersedes the unexecuted [c12-planning-recovery P3](../../tasks/c12-planning-recovery/P3-docs-core-entry.txt) **for future execution**, without modifying its historical bytes or running the [15-prompt Docs stack](../../tasks/c12-docs-workflow/README.md). P1/P2 results, previous failures and C12/Phase 12/native gaps remain historical evidence.
+**Sequence:** Independently qualify P3-A generic Skills, disposition P3-B protected /roadmap including Roadmap H3 carryover, then run P3-C generic P2 reliability/Planning Recovery closeout. Only then enter the separate c12-docs-skills correction; its Docs P1–P4 are separately initiated. No automatic continuation. This supersedes the unexecuted [c12-planning-recovery P3](../../tasks/c12-planning-recovery/P3-docs-core-entry.txt) **for future execution**, without modifying its historical bytes or running the [15-prompt Docs stack](../../tasks/c12-docs-workflow/README.md). P1/P2 results, previous failures and C12/Phase 12/native gaps remain historical evidence.
 
 ## Goal and ownership
 
@@ -24,7 +26,7 @@ Pi natively supports Agent Skills directories with `SKILL.md`, name/description 
 
 ## Targeted implementation prompt 2 — protected `/roadmap` skill (C12 P3-B)
 
-**Owner-approved forward amendment, 2026-10-31 America/Chicago; documentation only.** [P3-B](../../tasks/c12-planning-recovery/P3-B-roadmap-skill.txt) follows an independently qualified P3-A registry. P3-C Docs follows after P3-B's disposition, not a replacement for P2 Roadmap functionality or an assertion that P2, P3-A, P3-C, H1–H3, C12, or native Electron is Green. GitHub `main` records dated P2-R3 and H2 **NOT GREEN**; local implementation work must recheck the actual checkout and unresolved evidence before changing source.
+**Owner-approved forward amendment, 2026-10-31 America/Chicago; documentation only.** [P3-B](../../tasks/c12-planning-recovery/P3-B-roadmap-skill.txt) follows an independently qualified P3-A registry. P3-C Planning Recovery closeout follows after P3-B's disposition, not a replacement for P2 Roadmap functionality or an assertion that P2, P3-A, P3-C, H1–H3, C12, or native Electron is Green. GitHub `main` records dated P2-R3 and H2 **NOT GREEN**; local implementation work must recheck the actual checkout and unresolved evidence before changing source.
 
 **Behavior:** The protected built-in `/roadmap` is a *turn-scoped, explicitly invoked* entry to model-generated **schema-2 canonical Roadmap edit proposals**, not a standalone agent, model, writer, or security capability. Dope resolves the skill deterministically at Send, retains the bound identity/instructions snapshot for retry, and authorizes the edit-proposal route only when current-turn invocation is verified by Dope-owned request metadata—not model-visible command text or selected Roadmap context. No automatic skill activation in this delivery. The user may first discuss a change naturally and then enter `/roadmap` without restating the conversation. A missing/disabled/renamed invocation fails safely with visible explanation. Retry can reuse the exact skill snapshot but **must freshly validate** the current Roadmap root, revision, linked source, lease, and approval authority.
 
@@ -34,7 +36,7 @@ Pi natively supports Agent Skills directories with `SKILL.md`, name/description 
 
 **Qualification:** Independently compare same-model, same-window normal/selected/`/roadmap` requests by actual serialized input tokens, tool calls, first response and total elapsed time when observable. Include a sufficiently large schema-2 fixture and a 16,384-context profile, no-context-overflow/mandatory-data-omission assertions, unselected and ambiguous-target requests, 19-action compatibility sampling, plain selected non-edit control, explicit mutation/preview/Reject/Accept, linked source-owned single-field approvals vs structural refusal, stale/conflict/cross-project/cancel/retry/lease denial, skill-body isolation, permission isolation, History exactness and existing hybrid preview reuse. Use the real connected Chrome UI and selected local Pi model on disposable fixtures, plus focused tests/typecheck/browser/Electron builds; native installed Electron remains independent. No production product work or qualification is performed by this documentation amendment.
 
-## Targeted implementation prompt 3 — default Docs skills and progressive retrieval
+## Separate c12-docs-skills correction — default Docs skills and progressive retrieval
 
 Register two protected built-ins using the **qualified** generic framework. Preserve [ADR 0041](../../decisions/0041-planning-documentation-workflow-and-applied-history.md) and [the Docs application contract](documentation-workflow-contract.md) as governing authority.
 
