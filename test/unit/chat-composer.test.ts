@@ -105,12 +105,13 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
         assert.equal(panel.chat!.messages.at(-2)?.id, failed.id);
         assert.equal(panel.chat!.messages.at(-1)?.role, 'assistant');
         assert.equal(panel.chat!.messages.length, 5);
+        const persistedSettings = structuredClone(panel.chat!.settings);
         await panel.select(undefined);
         const relocated = new ChatPanelController(() => fixture(repository, registry), () => {});
         try {
             await relocated.attach(workspace);
             assert.equal(await relocated.select(id), true);
-            assert.deepEqual(relocated.chat!.settings, settings);
+            assert.deepEqual(relocated.chat!.settings, persistedSettings);
             assert.equal(relocated.chat!.messages[1].role, 'assistant');
         } finally { relocated.dispose(); }
     } finally { panel.dispose(); await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }); }
@@ -200,11 +201,11 @@ test('cancel and stale deltas cannot create a completed answer in another Chat o
 test('panel source keeps input and toolbar rows with AI Center repair, settings and transcript status', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.match(source, /composer\.append\(input, toolbar\)/);
-    assert.match(source, /menuButton\('Add context'/);
-    assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
+    assert.match(source, /heading\.textContent = 'Add Context:';/);
+    assert.match(source, /action\('File'/);
     assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;\s*this\.render\(\)/);
     assert.match(source, /Manage AI connections/);
-    assert.match(source, /Why this model\?/);
+    assert.match(source, /Show response info/);
     assert.match(source, /Open AI Center/);
     assert.match(source, /Chat settings/);
     assert.match(source, /execution\.status/);
@@ -243,11 +244,14 @@ test('composer textarea keeps the same height for short and long drafts', () => 
 test('composer keeps actions in the popover and only controls on the footer', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-    for (const action of ['Add context', 'Clear context', 'Preview context', 'Refresh models', 'Manage AI connections', 'Retry'])
-        assert.match(source, new RegExp(`menuButton\\('${action}'`));
-    assert.match(source, /\['Ask', 'Explain', 'Trace', 'Find Related'\]/);
-    assert.match(source, /menuButton\(kind, \(\) => this\.behavior\(kind\)\)/);
-    assert.match(source, /toolbar\.append\(more, modelSelector, commandLabel, submitButton\)/);
+    for (const action of ['File', 'Selected code', 'Current planning selection', 'Saved Chat excerpt'])
+        assert.match(source, new RegExp(`action\\('${action}'`));
+    assert.doesNotMatch(source, /menuButton\('Add context'|menuButton\('Refresh models'/);
+    assert.match(source, /terminalIcon\.className = codicon\('terminal'\)/);
+    assert.match(source, /modelIcon\.className = codicon\('sparkle'\)/);
+    assert.match(source, /addIcon\.className = codicon\('add'\)/);
+    assert.match(source, /toolbar\.append\(more, modelPicker, commandLabel, submitButton\)/);
+    assert.match(css, /button\.dope-chat-composer-more[^\n]+background: transparent/);
     assert.match(source, /scroll\.append\(responseNotices\)/);
     assert.doesNotMatch(source, /composer\.append\((?:progress|planning|notice|selectedContext|review|note|preview|details)\)/);
     assert.match(source, /this\.button\('', submit,/);

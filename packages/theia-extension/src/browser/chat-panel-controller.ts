@@ -652,6 +652,10 @@ export class ChatPanelController {
     }
     addContext(selection: ChatContextSelection): void {
         if (this.context.length >= 20) throw new Error('Too many context selections');
+        if (this.context.some(item => item.kind === selection.kind && item.id === selection.id &&
+            item.messageId === selection.messageId && item.start === selection.start && item.end === selection.end &&
+            item.text === selection.text &&
+            item.ownerRevision === selection.ownerRevision && item.sourceHash === selection.sourceHash)) return;
         this.context.push(selection); this.lastContext = undefined; this.changed();
     }
     removeContext(index: number): void { this.context.splice(index, 1); this.lastContext = undefined; this.changed(); }

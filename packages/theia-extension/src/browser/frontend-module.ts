@@ -16,6 +16,7 @@ import { ServiceConnectionProvider } from '@theia/core/lib/browser/messaging/ser
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
+import { FileDialogService } from '@theia/filesystem/lib/browser/file-dialog/file-dialog-service';
 import { OpenerService } from '@theia/core/lib/browser';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { ThemeService } from '@theia/core/lib/browser/theming';
@@ -555,7 +556,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 if (state.clear) { widget.clearStrategicReview(projectUri, chatId); return; }
                 await widget.presentStrategicReview(projectUri, projectId, chatId, state, decide);
                 if (openEditor) await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
-            });
+            }, context.container.get<FileDialogService>(FileDialogService), context.container.get(FileService));
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

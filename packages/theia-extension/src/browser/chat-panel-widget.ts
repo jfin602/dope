@@ -5,14 +5,17 @@ import { Emitter, type Event } from '@theia/core/lib/common';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { ConnectionStatus, type ConnectionStatusService } from '@theia/core/lib/browser/connection-status-service';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
+import URI from '@theia/core/lib/common/uri';
+import { FileService } from '@theia/filesystem/lib/browser/file-service';
+import { FileDialogService } from '@theia/filesystem/lib/browser/file-dialog/file-dialog-service';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import type { ChatOperation } from '@dope/chat/lib/service';
-import { CHAT_COLORS, MANUAL_CHAT_CONTEXT_SOURCES, type ChatSettings, type ChatContextKind, type ChatModelSelection, type ChatAssistantMessage } from '@dope/chat';
+import { CHAT_COLORS, type ChatSettings, type ChatModelSelection, type ChatAssistantMessage } from '@dope/chat';
 import type { ChatContextSelection, ChatStrategicDraftReview, ChatEvent } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { AICenterContribution } from './ai-center-contribution';
-import { ChatOpenOwners, ChatPanelController, chatTree, readOnlyPrompt } from './chat-panel-controller';
+import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
 import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
@@ -217,7 +220,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly presentStrategicRoadmap?: (projectUri: string, projectId: string, chatId: string,
             state: { stage?: Extract<ChatEvent, { kind: 'planning-progress' }>['stage'];
                 review?: ChatStrategicDraftReview; error?: string; clear?: boolean; busy?: boolean },
-            decide: (approve: boolean) => Promise<void>, open: boolean) => Promise<void>) {
+            decide: (approve: boolean) => Promise<void>, open: boolean) => Promise<void>,
+        private readonly fileDialogs?: FileDialogService, private readonly files?: FileService) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -1544,66 +1548,44 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.models = models; this.render();
         } catch (error) { if (request === this.modelsRequest) this.status.textContent = String(error); }
     }
-    private async addContext(kind: ChatContextKind): Promise<void> {
-        const chat = this.controller.chat;
-        if (!chat) return;
-        if (kind === 'saved-chat' && !chat.settings.context.savedChatSearch) {
-            this.status.textContent = 'Enable saved Chat retrieval in Advanced settings first.'; return;
-        }
-        const workspace = this.controller.workspace, chatId = chat.id;
-        try {
-            let selection: ChatContextSelection;
-            if (kind === 'editor' || kind === 'selection') {
-                const editor = this.editors?.currentEditor?.editor;
-                const workspace = this.controller.workspace;
-                if (!editor || !workspace) throw new Error('Open a project file in the editor first');
-                const root = decodeURIComponent(new URL(workspace).pathname).replace(/\/$/, '');
-                const file = decodeURIComponent(new URL(editor.document.uri.toString()).pathname);
-                if (!file.startsWith(`${root}/`)) throw new Error('Current editor is outside this project');
-                const path = file.slice(root.length + 1);
-                if (kind === 'selection') {
-                    const range = editor.selection;
-                    if (!range) throw new Error('Select editor text first');
-                    const start = editor.document.offsetAt(range.start), end = editor.document.offsetAt(range.end);
-                    if (start === end) throw new Error('Select editor text first');
-                    selection = { kind, id: path, text: editor.document.getText(range), start, end };
-                } else selection = { kind, id: path, text: editor.document.getText() };
-            } else if (kind === 'physical-map' || kind === 'flow') {
-                const map = this.map;
-                if (!map?.selectedId || !map.status || map.workspace !== this.controller.workspace)
-                    throw new Error('Select a current Physical Map identity first');
-                selection = { kind, id: map.selectedId, projectId: 'project:root', generation: map.status.generation,
-                    ...(kind === 'flow' ? { direction: 'downstream' as const } : {}) };
-            } else if (kind === 'saved-chat') {
-                const query = await this.name('Search saved Chats by content');
-                if (!query) return;
-                const hits = await this.controller.searchSaved(query);
-                if (!hits.length) throw new Error('No saved Chat matches');
-                const choice = await this.name(`Choose excerpt: ${hits.map((hit, index) =>
-                    `${index + 1} ${hit.title}: ${hit.excerpt}`).join(' | ')}`, '1');
-                if (!choice) return;
-                const hit = hits[Number(choice) - 1];
-                if (!hit) throw new Error('Invalid saved Chat excerpt choice');
-                selection = { kind, id: hit.chatId, messageId: hit.messageId };
-            } else {
-                const id = await this.name(kind === 'work-item' ? 'Map ID:WorkItem ID' : `${kind} ID or project-relative path`);
-                if (!id) return;
-                selection = { kind: kind as ChatContextKind, id };
-            }
-            if (this.controller.workspace !== workspace || this.controller.chatId !== chatId) return;
-            this.controller.addContext(selection);
-        } catch (error) { this.status.textContent = String(error); }
+    private projectRelativePath(workspace: string, uri: string): string {
+        const root = decodeURIComponent(new URL(workspace).pathname).replace(/\/$/, '');
+        const file = decodeURIComponent(new URL(uri).pathname);
+        if (!file.startsWith(`${root}/`)) throw new Error('Choose a file inside the active project');
+        const path = file.slice(root.length + 1);
+        if (path === '.dope' || path.startsWith('.dope/')) throw new Error('Private project data cannot be attached as a file');
+        return path;
     }
-    private behavior(kind: 'Ask' | 'Explain' | 'Trace' | 'Find Related'): void {
-        const state = this.controller;
-        const selected = this.map && this.map.workspace === state.workspace ? this.map.selectedId : undefined;
-        state.draft = readOnlyPrompt(kind, state.draft);
-        if (kind !== 'Ask' && selected) {
-            const contextKind = kind === 'Trace' ? 'flow' : 'physical-map';
-            void this.addContext(contextKind);
-        }
-        this.render();
-        this.content.querySelector<HTMLTextAreaElement>('textarea')?.focus();
+    private selectedCode(): ChatContextSelection | undefined {
+        const workspace = this.controller.workspace;
+        const editor = this.editors?.currentEditor?.editor;
+        const range = editor?.selection;
+        if (!workspace || !editor || !range) return undefined;
+        let path: string;
+        try { path = this.projectRelativePath(workspace, editor.document.uri.toString()); }
+        catch { return undefined; }
+        const start = editor.document.offsetAt(range.start), end = editor.document.offsetAt(range.end);
+        if (start === end) return undefined;
+        return { kind: 'selection', id: path, text: editor.document.getText(range), start, end };
+    }
+    private attachSelection(selection: ChatContextSelection, workspace?: string, chatId?: string): void {
+        if (!workspace || !chatId || this.controller.workspace !== workspace || this.controller.chatId !== chatId)
+            throw new Error('Chat or project changed; choose the context again');
+        this.controller.addContext(selection);
+    }
+    private async pickProjectFile(workspace: string, chatId: string): Promise<void> {
+        try {
+            if (!this.fileDialogs || !this.files) throw new Error('Project file picker is unavailable');
+            const root = await this.files.resolve(new URI(workspace));
+            const selected = await this.fileDialogs.showOpenDialog({ title: 'Attach project file',
+                openLabel: 'Attach', canSelectFiles: true, canSelectFolders: false }, root);
+            if (!selected) return;
+            const path = this.projectRelativePath(workspace, selected.toString());
+            const info = await this.files.resolve(selected);
+            if (!info.isFile || info.size === undefined || info.size > 1_000_000)
+                throw new Error('File is unavailable or exceeds the 1 MB context limit');
+            this.attachSelection({ kind: 'file', id: path }, workspace, chatId);
+        } catch (error) { this.status.textContent = `Could not attach file: ${String(error)}`; }
     }
     private usableModels(): Array<{ selection: ChatModelSelection; label: string;
         controls: readonly { id: string; values: readonly string[] }[] }> {
@@ -2289,6 +2271,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const infoIcon = document.createElement('span'); infoIcon.className = codicon('info');
                 infoIcon.setAttribute('aria-hidden', 'true'); infoButton.append(infoIcon);
                 actions.append(copy, infoButton);
+                if (['failed', 'cancelled'].includes(message.execution.status)) {
+                    const retry = this.button('Retry', () => {
+                        if (this.selectedModel()) void state.runTurn(state.turnModel, message.id,
+                            () => window.confirm('Send this Chat message, history and selected project context to the hosted model?'));
+                    }, state.running || state.pending || !this.selectedModel());
+                    retry.className = 'dope-chat-response-retry';
+                    actions.append(retry);
+                }
                 footer.append(actions, time);
                 item.append(footer, info);
             }
@@ -2358,71 +2348,151 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
         const menu = document.createElement('div'); menu.className = 'dope-chat-composer-menu'; menu.popover = 'auto';
         menu.id = `${this.id}-composer-actions`;
-        menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', 'Composer actions');
-        const more = this.button('+', () => {
+        menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', 'Attach context');
+        const more = this.button('', () => {
+            if (menu.matches(':popover-open')) { menu.hidePopover(); return; }
+            buildMenu();
             const bounds = more.getBoundingClientRect();
-            menu.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - 232))}px`;
-            menu.style.bottom = `${window.innerHeight - bounds.top + 6}px`;
+            menu.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - 208))}px`;
+            menu.style.bottom = `${Math.max(8, window.innerHeight - bounds.top + 6)}px`;
             menu.showPopover();
-            sources.focus();
+            menu.querySelector<HTMLElement>('button, input')?.focus();
         });
         more.className = 'dope-chat-composer-more';
-        more.title = 'More actions'; more.setAttribute('aria-label', 'More actions');
+        more.title = 'Attach context'; more.setAttribute('aria-label', 'Attach context');
+        const addIcon = document.createElement('span'); addIcon.className = codicon('add');
+        addIcon.setAttribute('aria-hidden', 'true'); more.append(addIcon);
         more.setAttribute('aria-haspopup', 'dialog'); more.setAttribute('aria-controls', menu.id);
         more.setAttribute('aria-expanded', 'false');
         menu.addEventListener('toggle', () => more.setAttribute('aria-expanded', String(menu.matches(':popover-open'))));
-        menu.addEventListener('focusout', event => {
-            if (event.relatedTarget && !menu.contains(event.relatedTarget as Node) && menu.matches(':popover-open'))
-                menu.hidePopover();
-        });
-        const menuButton = (label: string, action: () => void, disabled = false) => {
-            const button = this.button(label, () => { menu.hidePopover(); action(); }, disabled);
-            menu.append(button);
+        menu.onkeydown = event => {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+            const choices = [...menu.querySelectorAll<HTMLElement>('button, input')];
+            const index = choices.indexOf(document.activeElement as HTMLElement);
+            choices[(index + (event.key === 'ArrowDown' ? 1 : -1) + choices.length) % choices.length]?.focus();
+            event.preventDefault();
         };
-        const sources = document.createElement('select');
-        sources.setAttribute('aria-label', 'Context source');
-        for (const kind of MANUAL_CHAT_CONTEXT_SOURCES.filter(item => item !== 'saved-chat' || chat.settings.context.savedChatSearch))
-            sources.append(new Option(kind.replace(/-/g, ' '), kind));
-        menu.append(sources);
-        menuButton('Add context', () => void this.addContext(sources.value as ChatContextKind), !sources.options.length);
-        for (const kind of ['Ask', 'Explain', 'Trace', 'Find Related'] as const)
-            menuButton(kind, () => this.behavior(kind));
-        if (state.context.length) menuButton('Clear context', () => state.clearContext());
-        menuButton('Follow active planning selection', () => state.followPlanning());
-        const pinPlanning = this.button('Pin selected checkpoint / Planning Map', () => {
-            menu.hidePopover(); state.pinPlanning();
-        }, !state.workspace || !this.planningSelection?.current(state.workspace));
-        pinPlanning.className = 'dope-chat-pin-planning';
-        menu.append(pinPlanning);
+        const buildMenu = () => {
+            menu.replaceChildren();
+            const heading = document.createElement('div');
+            heading.className = 'dope-chat-attach-heading';
+            heading.textContent = 'Add Context:';
+            menu.append(heading);
+            const action = (label: string, icon: string, run: () => void) => {
+                const button = this.button('', () => { menu.hidePopover(); run(); });
+                const glyph = document.createElement('span'); glyph.className = codicon(icon); glyph.setAttribute('aria-hidden', 'true');
+                button.append(glyph, document.createTextNode(label)); menu.append(button);
+            };
+            const workspace = state.workspace, chatId = state.chatId;
+            if (!workspace || !chatId) return;
+            action('File', 'file', () => void this.pickProjectFile(workspace, chatId));
+            const code = this.selectedCode();
+            if (code) action('Selected code', 'code', () => {
+                try {
+                    const current = this.selectedCode();
+                    if (!current || current.id !== code.id || current.start !== code.start ||
+                        current.end !== code.end || current.text !== code.text)
+                        throw new Error('Editor selection changed; select the code again');
+                    this.attachSelection(current, workspace, chatId);
+                } catch (error) { this.status.textContent = String(error); }
+            });
+            const planning = this.planningSelection?.current(workspace);
+            const included = state.activePlanning;
+            if (planning && !(included?.kind === planning.kind && included.id === planning.id &&
+                included.projectId === planning.projectId && included.ownerRevision === planning.ownerRevision))
+                action('Current planning selection', 'target', () => {
+                    void this.planningSelection!.resolve(workspace, planning, true).then(resolved => {
+                        this.attachSelection(resolved, workspace, chatId);
+                    }).catch(error => { this.status.textContent = `Could not attach planning selection: ${String(error)}`; });
+                });
+            if (chat.settings.context.savedChatSearch) action('Saved Chat excerpt', 'comment-discussion', () => {
+                menu.replaceChildren(heading);
+                const search = document.createElement('input'); search.type = 'search';
+                search.placeholder = 'Search saved Chats'; search.setAttribute('aria-label', 'Search saved Chats');
+                const results = document.createElement('div'); results.className = 'dope-chat-attach-results';
+                const find = async () => {
+                    results.textContent = 'Searching…';
+                    try {
+                        const hits = await state.searchSaved(search.value.trim());
+                        if (state.workspace !== workspace || state.chatId !== chatId || !menu.matches(':popover-open')) return;
+                        results.replaceChildren();
+                        if (!hits.length) results.textContent = 'No matching saved messages';
+                        for (const hit of hits) {
+                            const choice = this.button(`${hit.title} · ${hit.excerpt}`, () => {
+                                try { this.attachSelection({ kind: 'saved-chat', id: hit.chatId,
+                                    messageId: hit.messageId }, workspace, chatId); menu.hidePopover(); }
+                                catch (error) { this.status.textContent = String(error); }
+                            });
+                            results.append(choice);
+                        }
+                    } catch (error) { results.textContent = `Search failed: ${String(error)}`; }
+                };
+                search.onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); void find(); } };
+                const searchButton = this.button('Search', () => void find());
+                menu.append(search, searchButton, results); menu.showPopover(); search.focus();
+            });
+            if (menu.childElementCount === 1) {
+                const empty = document.createElement('div');
+                empty.className = 'dope-chat-attach-empty';
+                empty.textContent = 'No context available to attach';
+                menu.append(empty);
+            }
+        };
+        const modelPicker = document.createElement('label'); modelPicker.className = 'dope-chat-model-picker';
+        const modelIcon = document.createElement('span'); modelIcon.className = codicon('sparkle');
+        modelIcon.setAttribute('aria-hidden', 'true');
         const modelSelector = document.createElement('select'); modelSelector.setAttribute('aria-label', 'Model for next turn');
-        const usable = this.usableModels();
+        modelPicker.append(modelIcon, modelSelector);
         if (chat.settings.modelPolicy.type === 'follow-interactive') modelSelector.append(new Option('Follow Interactive', ''));
-        for (const entry of usable) modelSelector.append(new Option(entry.label, JSON.stringify(entry.selection)));
+        for (const connection of this.models.connections) {
+            if (!connection.ready && !connection.models.length) {
+                const option = new Option(`${connection.label} · Connection unavailable`, '');
+                option.disabled = true; option.className = 'dope-chat-model-error';
+                modelSelector.append(option);
+            }
+            for (const model of connection.models) {
+                const option = new Option(`${connection.label} · ${model.label}`,
+                    JSON.stringify({ connectionId: connection.id, modelId: model.id }));
+                if (!connection.ready || !model.usable) {
+                    option.disabled = true; option.className = 'dope-chat-model-error';
+                    option.title = connection.ready ? 'Model unavailable' : 'Connection unavailable';
+                }
+                modelSelector.append(option);
+            }
+        }
         const selected = this.selectedModel();
         if (selected) modelSelector.value = JSON.stringify(selected);
         else if (chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel) modelSelector.value = '';
-        else modelSelector.append(new Option('Selected model unavailable', '', true, true));
+        else {
+            const option = new Option('No Model', '', true, true);
+            option.className = 'dope-chat-model-error';
+            modelSelector.append(option);
+            modelPicker.dataset.unavailable = 'true';
+        }
+        const selectedIndex = modelSelector.selectedIndex;
+        const manageModels = '__manage_models__';
+        modelSelector.append(new Option('Manage Models', manageModels));
         modelSelector.onchange = () => {
+            if (modelSelector.value === manageModels) {
+                modelSelector.selectedIndex = selectedIndex;
+                void this.aiCenter?.openFromChat(this.id);
+                return;
+            }
             state.turnModel = modelSelector.value ? JSON.parse(modelSelector.value) as ChatModelSelection : undefined;
             this.render();
         };
         const commandLabel = document.createElement('label');
         commandLabel.className = 'dope-chat-command-mode';
-        commandLabel.textContent = 'Commands: ';
+        commandLabel.dataset.mode = state.commandMode;
+        const terminalIcon = document.createElement('span');
+        terminalIcon.className = codicon('terminal');
+        terminalIcon.setAttribute('aria-hidden', 'true');
         const commandMode = document.createElement('select');
         commandMode.setAttribute('aria-label', 'Commands');
         commandMode.append(new Option('Ask', 'ask'), new Option('Allow', 'allow'));
         commandMode.value = state.commandMode;
         commandMode.onchange = () => void state.setCommandMode(commandMode.value as 'ask' | 'allow');
-        commandLabel.append(commandMode);
-        if (selected && (state.context.length || state.activePlanning)) menuButton('Preview context', () => {
-            void state.previewContext(selected).catch(error => { this.status.textContent = String(error); });
-        });
-        if (!selected && chat.settings.modelPolicy.type === 'exact')
-            menuButton('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); });
-        if (chat.settings.modelPolicy.type === 'follow-interactive')
-            menuButton('Configure Interactive role', () => { void this.aiCenter?.openRole('interactive'); });
-        menuButton('Refresh models', () => void this.loadModels());
+        commandLabel.append(terminalIcon, commandMode);
         let submitButton: HTMLButtonElement;
         if (state.running) {
             submitButton = this.button('', () => void state.cancel());
@@ -2430,19 +2500,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const icon = document.createElement('span'); icon.className = codicon('debug-stop');
             icon.setAttribute('aria-hidden', 'true'); submitButton.append(icon);
         } else {
-            const retry = [...chat.messages].reverse().find(message => message.role === 'assistant' &&
-                ['failed', 'cancelled'].includes(message.execution.status));
             const canSend = Boolean(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel);
             const confirmHosted = () => window.confirm('Send this Chat message, history and selected project context to the hosted model chosen by Interactive?');
-            if (state.activePlanning?.kind === 'roadmap-checkpoint' && state.workspace)
-                menuButton('Suggest Bridge change (local)', () => {
-                    const entered = window.prompt('Affected Architecture branch IDs, comma separated');
-                    if (entered === null) return;
-                    const branchIds = entered.split(',').map(id => id.trim()).filter(Boolean);
-                    if (!branchIds.length) { state.error = 'Select at least one affected Architecture branch'; this.update(); return; }
-                    void state.runTurn(state.turnModel, undefined, undefined, branchIds);
-                }, !canSend || state.pending || !state.draft.trim());
-            if (retry) menuButton('Retry', () => { if (canSend) void state.runTurn(state.turnModel, retry.id, confirmHosted); }, !canSend);
             const submit = () => {
                 if (!canSend || state.pending || !state.draft.trim()) return;
                 const previousTop = scroll.scrollTop;
@@ -2469,7 +2528,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 state.pending || !state.draft.trim();
             resizeChatInput(input);
         };
-        toolbar.append(more, modelSelector, commandLabel, submitButton);
+        toolbar.append(more, modelPicker, commandLabel, submitButton);
         composer.append(input, toolbar);
         const responseNotices = document.createElement('div');
         responseNotices.className = 'dope-chat-response-notices';
@@ -2487,6 +2546,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         planning.hidden = !activePlanning;
         planning.textContent = activePlanning ? `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
             `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : activePlanning.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${activePlanning.id}` : '';
+        if (activePlanning) {
+            planning.append(' ', this.button(state.planningMode === 'pin' ? 'Follow selection' : 'Pin selection',
+                () => state.planningMode === 'pin' ? state.followPlanning() : state.pinPlanning()));
+            if (activePlanning.kind === 'roadmap-checkpoint' && !state.running) planning.append(' ',
+                this.button('Suggest Bridge change', () => {
+                    const entered = window.prompt('Affected Architecture branch IDs, comma separated');
+                    if (entered === null) return;
+                    const branchIds = entered.split(',').map(id => id.trim()).filter(Boolean);
+                    if (!branchIds.length) { this.status.textContent = 'Select an affected Architecture branch'; return; }
+                    void state.runTurn(state.turnModel, undefined, undefined, branchIds);
+                }, state.pending || !state.draft.trim() || !this.selectedModel()));
+        }
         responseNotices.append(planning);
         if (activePlanning?.kind === 'roadmap') {
             const notice = document.createElement('p');
@@ -2500,11 +2571,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.context.forEach((item, index) => {
                 const row = document.createElement('li');
                 const label = document.createElement('span');
-                label.textContent = `${item.kind}: ${item.id}${item.start !== undefined ? `:${item.start}-${item.end}` : ''}`;
-                row.append(label, this.button('Remove', () => state.removeContext(index)));
+                const title = item.kind === 'saved-chat' ? state.snapshot?.chats.find(chat => chat.id === item.id)?.title : undefined;
+                const kind = item.kind === 'saved-chat' ? 'Chat' : item.kind === 'selection' ? 'Code' :
+                    item.kind === 'file' ? 'File' : 'Planning';
+                label.textContent = `${kind}: ${title ?? item.id}${item.start !== undefined ? `:${item.start}-${item.end}` : ''}`;
+                const remove = this.button('×', () => state.removeContext(index));
+                remove.setAttribute('aria-label', `Remove ${label.textContent}`);
+                row.append(label, remove);
                 selectedContext.append(row);
             });
-            responseNotices.append(selectedContext);
+            composer.prepend(selectedContext);
         }
         if (state.planningProposal) {
             const proposal = state.planningProposal;

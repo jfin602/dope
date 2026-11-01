@@ -144,11 +144,11 @@ test('selection resolver rejects missing and foreign owner state; map views neve
     const canvas = await readFile(new URL('../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts', import.meta.url), 'utf8');
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.doesNotMatch(canvas, /openChatPanel|ChatPanelWidget|activateWidget/);
-    assert.match(widget, /Follow active planning selection/);
-    assert.match(widget, /Pin selected checkpoint \/ Planning Map/);
+    assert.match(widget, /Follow selection/);
+    assert.match(widget, /Pin selection/);
     assert.match(widget, /planningContext: this\.controller\.planningMode/);
-    assert.match(widget, /'work-item', 'roadmap-checkpoint', 'roadmap', 'saved-chat'/);
-    assert.match(widget, /state\.context\.length \|\| state\.activePlanning/);
+    assert.match(widget, /Current planning selection/);
+    assert.match(widget, /this\.planningSelection!\.resolve\(workspace, planning, true\)/);
 });
 
 test('Bridge request remains bound to the selected Prepare Work checkpoint and map revision', () => {
