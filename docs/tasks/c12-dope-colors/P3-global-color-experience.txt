@@ -1,0 +1,24 @@
+TASK: Correction 12 / P3 — First-run global Dope Colors and settings
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Do not bump package versions, internal pins, lockfiles, model/provider settings or install dependencies without explicit owner approval.
+
+PREFLIGHT / SAFE EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0043, ADR 0016 (2026-11-01 amendment), docs/ARCHITECTURE.md presentation boundary, and c12-dope-colors README/assessment/plan. Inspect actual current local git HEAD/status, package 0.12.7, owner changes and active concurrent C12 work. Preserve all dirty files: no reset, stash, clean, force-pull, self-commit, silent roadmap edits, or /activate; do not start an unrelated stack. Runner owns the implementation checkpoint on PASS. No browser evidence claimed. Target <=8m per bounded gate, soft 10m/hard 15m; STOP with exact blocker if unsafe/conflicting.
+
+OBJECTIVE
+Add discoverable, optional global Dope Color selection on first eligible Dope Dark launch and later in existing application appearance/settings UI, without modifying external themes.
+
+IMPLEMENT
+1. Use P2 controller and existing workbench/settings contribution, not another settings framework or startup shell. On first eligible `dope-dark` use, surface a small skippable choice with orange selected; store explicit chosen/dismissed state. Do not block file/editor/workspace startup. Returning users and previously dismissed onboarding must not be repeatedly interrupted.
+2. Add a standard, discoverable global appearance action in existing Dope settings/menu. Use eight labeled curated swatches and visually distinct selection check plus accessible names. Apply safely/immediately only to current eligible Dope Dark window; propagate global preference to other inheriting windows via P2.
+3. For other selected themes, the global Dope Colors control is hidden/disabled with a clear 'Requires Dope Dark' explanation; no automatic theme switch, no color DOM cue, no stored-selection deletion. Switching back restores the last selection.
+4. Keep focus order, Escape/Skip, keyboard, narrow-pane access, drag/select/Chat layouts and ordinary Theia appearance control intact. Do not build project picker/header here.
+
+QUALIFICATION / STOP
+Focused tests for orange first launch, Skip once, chosen value and persisted dismiss/restart, accessible swatch keyboard/labels, non-blocking startup, global update in inherited windows and strict negative `theme !== dope-dark`. Test rapid theme changes during onboarding and bad storage. Run focused UI tests/typecheck/browser build, report exact results. No claim of direct Chrome; STOP.

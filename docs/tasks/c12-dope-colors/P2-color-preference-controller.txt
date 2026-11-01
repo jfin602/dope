@@ -1,0 +1,24 @@
+TASK: Correction 12 / P2 — Persist global and project color without cross-window leaks
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Do not bump package versions, internal pins, lockfiles, model/provider settings or install dependencies without explicit owner approval.
+
+PREFLIGHT / SAFE EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0043, ADR 0016 (2026-11-01 amendment), docs/ARCHITECTURE.md presentation boundary, and c12-dope-colors README/assessment/plan. Inspect actual current local git HEAD/status, package 0.12.7, owner changes and active concurrent C12 work. Preserve all dirty files: no reset, stash, clean, force-pull, self-commit, silent roadmap edits, or /activate; do not start an unrelated stack. Runner owns the implementation checkpoint on PASS. No browser evidence claimed. Target <=8m per bounded gate, soft 10m/hard 15m; STOP with exact blocker if unsafe/conflicting.
+
+OBJECTIVE
+Provide a minimal presentation-only controller that resolves a global Dope Dark color and validated per-project override safely for each window and survives restart. No UI yet.
+
+IMPLEMENT
+1. Inspect the actual supported Theia `ThemeService`, PreferenceService and user/local presentation persistence APIs, existing `SmapPresentationState` race tests, `WorkspaceService` and stable Project Mind identity seam. Prefer genuine user-scoped persisted preferences/events, not renderer-local storage that only looks synchronized. Do not invent a backend protocol.
+2. Define versioned validated data with global default orange, optional per-project preset override keyed to durable validated project ID and an explicit inherit/reset path. Do not write canonical `.dope/project-mind.json`, Roadmap, Architecture or project source; never initialize Project Mind just to color a window. For uninitialized/multi-root/remote/invalid identity show global/no-override and handle any safe temporary fallback/reconciliation explicitly.
+3. Bind effective accent to this frontend window only while real selected theme ID is `dope-dark`. Change to any other theme must instantly deactivate/remove overrides and window identity cue state, retain saved choices and not auto-change theme. On returning to Dope Dark restore appropriate global/project value.
+4. Synchronize same-project and global preference updates across real windows using proven supported API; explicit project overrides must be immune to unrelated global updates. Protect against stale async identity reads, workspace switch, rapid theme changes, corrupt preferences, competing writes, missing project and disposal. Publish a small event/subscription API for P3/P4.
+
+QUALIFICATION / STOP
+New isolated unit tests for default, first use, valid/invalid/legacy keys, global/inherit/override/reset, rename/reopen identity, missing project, interleaved async loads, same vs different projects in two controllers, theme off/on, stale window updates and read-only canonical project bytes. Prove cross-window transport or report blocker rather than mock success. Focused tests and relevant build/typecheck; no UI beyond required lifecycle hook; STOP.

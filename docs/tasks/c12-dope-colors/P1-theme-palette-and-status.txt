@@ -1,0 +1,24 @@
+TASK: Correction 12 / P1 — Centralize Dope Dark accents and isolate semantic status
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Do not bump package versions, internal pins, lockfiles, model/provider settings or install dependencies without explicit owner approval.
+
+PREFLIGHT / SAFE EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0043, ADR 0016 (2026-11-01 amendment), docs/ARCHITECTURE.md presentation boundary, and c12-dope-colors README/assessment/plan. Inspect actual current local git HEAD/status, package 0.12.7, owner changes and active concurrent C12 work. Preserve all dirty files: no reset, stash, clean, force-pull, self-commit, silent roadmap edits, or /activate; do not start an unrelated stack. Runner owns the implementation checkpoint on PASS. No browser evidence claimed. Target <=8m per bounded gate, soft 10m/hard 15m; STOP with exact blocker if unsafe/conflicting.
+
+OBJECTIVE
+Deliver a curated, testable eight-accent token foundation for Dope Dark **without** changing what Roadmap Gate states, diagnostics, syntax or other semantic colors mean. Keep Dope Orange as default.
+
+IMPLEMENT
+1. Inspect the real theme registration and centralized `.dope-dark` CSS tokens; define one validated palette of eight stable preset IDs (orange, blue, purple, emerald, crimson, amber, cyan, pink), seed references from ADR 0043 and contrast-safe derived tones. Keep `#FF7A1A` as default; non-orange seeds are candidates and may need tuned tones.
+2. Reuse one `dope-dark` theme. Map derived primary/hover/pressed/on-accent/selected/focus tokens through central scoped CSS only. Preserve neutral editor/workbench `#1F1F1F`, subdued secondary controls and restrained action emphasis. No widget-specific literals, eight registered themes, broad CSS redesign or change to user-selected external themes.
+3. Audit `--dope-roadmap-planned`, `--dope-roadmap-active`, Gate status rules and any other semantic status referencing `--dope-primary`, `--dope-highlight` or `--dope-deep`. Decouple status palettes so project green/blue/purple cannot imply GREEN/planned/failed. Preserve Chat organization, map/Flow node palettes, SCM, diagnostics, syntax and tests.
+4. Audit actual unscoped orange fallback selectors outside `.dope-dark`. Replace/guard so non-Dope themes keep their own intended colors even when no Dope token exists. Do not alter theme selection/default or add settings yet.
+
+QUALIFICATION / STOP
+Extend `test/unit/dope-theme.test.ts` plus narrow theme/status tests: exact historic orange default, each variant's contrast and token-role mapping, non-Dope CSS/theme isolation, stable Gate status under each project accent, no widget hex proliferation. Do not delete old tests simply to pass; update those made obsolete by intentional derivation. Run focused tests, `git diff --check`, affected typecheck/build. Report actual PASS/FAIL/GAP, source. No P2 work; STOP.

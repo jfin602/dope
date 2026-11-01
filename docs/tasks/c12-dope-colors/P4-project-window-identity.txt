@@ -1,0 +1,25 @@
+TASK: Correction 12 / P4 — Project override and visual window identity
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Do not bump package versions, internal pins, lockfiles, model/provider settings or install dependencies without explicit owner approval.
+
+PREFLIGHT / SAFE EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0043, ADR 0016 (2026-11-01 amendment), docs/ARCHITECTURE.md presentation boundary, and c12-dope-colors README/assessment/plan. Inspect actual current local git HEAD/status, package 0.12.7, owner changes and active concurrent C12 work. Preserve all dirty files: no reset, stash, clean, force-pull, self-commit, silent roadmap edits, or /activate; do not start an unrelated stack. Runner owns the implementation checkpoint on PASS. No browser evidence claimed. Target <=8m per bounded gate, soft 10m/hard 15m; STOP with exact blocker if unsafe/conflicting.
+
+OBJECTIVE
+Give each eligible project an optional preset override or Inherit Global and a restrained project-specific visible cue in its own Dope Dark window; keep project names readable.
+
+IMPLEMENT
+1. Extend **existing** project creation/opening entrypoints with an optional non-blocking color selection affordance; never force a modal or create/open process rewrite. Expose same action through project appearance/settings. Offer Inherit Global (default) and eight named presets; reset clears override rather than freezing global copy.
+2. Read validated stable project identity and P2 controller; until stable ID is safely available do not persist an override under a guessed identity or modify canonical `.dope` files. Show global fallback and truthful unavailable state as appropriate.
+3. Within existing Dope-owned workbench/window header/title/project identifier add a small color cue (dot/stripe/active region) and actual project label. Use supported Theia/Electron DOM presentation hooks; do not repaint OS-native chrome or replace `ApplicationShell`. Keep ordinary editor, project switch, title, Git segment and accessibility behaviors unchanged.
+4. Accent only eligible owning window when `dope-dark` selected. Non-Dope themes must show no new cue or applied palette; global changes propagate to inheritors and not overrides; two distinct project windows retain their own color; windows for same project converge. Dispose/remove old cues on switch/close.
+5. Do not conflate this project identity preset with Chat 10-color organization or per-node map/Flow choices, and never color semantic status by project hue.
+
+QUALIFICATION / STOP
+Focused tests against real project lifecycle/identity, cross-window event resolution, two-project A/B, same-project dual windows, reload and project rename, inherit/override/reset, no-project/multi-root, external-theme zero cue, keyboard/non-color label and no canonical writes. Relevant typecheck/browser build; no GUI Green from mock; STOP.

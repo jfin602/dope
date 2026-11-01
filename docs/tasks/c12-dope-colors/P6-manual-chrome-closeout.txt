@@ -1,0 +1,28 @@
+TASK: Correction 12 / P6 — Manual Chrome and native color closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Do not bump package versions, internal pins, lockfiles, model/provider settings or install dependencies without explicit owner approval.
+
+PREFLIGHT / SAFE EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0043, ADR 0016 (2026-11-01 amendment), docs/ARCHITECTURE.md presentation boundary, and c12-dope-colors README/assessment/plan. Inspect actual current local git HEAD/status, package 0.12.7, owner changes and active concurrent C12 work. Preserve all dirty files: no reset, stash, clean, force-pull, self-commit, silent roadmap edits, or /activate; do not start an unrelated stack. This is manual, not a headless runner gate. Target <=8m per bounded gate, soft 10m/hard 15m; STOP with exact blocker if unsafe/conflicting.
+
+OBJECTIVE
+Independently qualify Dope Colors through **actual connected Codex Chrome UI interactions**, document exact-source outcomes and record owner-native Electron evidence or an honest gap. This is the **only final closeout**.
+
+IMPLEMENT
+MANUAL CLOSEOUT — NEVER RUN THROUGH HEADLESS PHASE RUNNER.
+1. Confirm P1–P5 exact tested commits, local HEAD/dirty tree, product `0.12.7`, actual current ThemeService selection, runnable browser and model-independent UI. Use disposable projects with distinct names; do not tamper with canonical Roadmap, Project Mind, owner worktrees or other C12 agents.
+2. In actual connected Codex Chrome, simulate first eligible usage only via a genuine fresh temporary **user preference profile** (not source editing/faked screenshots). Verify orange default, modal/affordance Skip, selection persistence and global settings accessibility. Existing user preferences must be preserved. Test keyboard focus, screenreader/labels where inspectable, narrow and full layouts.
+3. Open **two actual Dope browser windows** on project A and B; set different overrides (e.g. emerald and purple). Verify project names plus restrained window cue without cross-window leakage; switch A to Inherit Global and update global color, verify only inheriting window updates. Open same project in two windows and verify an override update converges. Reload/reopen, switch workspace, leave project and confirm stale cue removed.
+4. Visit all eight swatches and sample action/hover/pressed, selection, links, Git segment, focus, editor and status surfaces; record actual computed colors and AA contrast (4.5:1 normal text, 3:1 applicable nontext), with meaningful Gate state colors, diagnostics, syntax, source-control and independent Chat/map palette unaffected.
+5. Switch from `dope-dark` to at least one existing light/custom theme and, when available, an eligible dark/high-contrast theme. Confirm **zero Dope Colors CSS overrides/window cue/picker behavior**, no forced theme switch, normal appearance retained; return to Dope Dark and confirm stored selection restores. Test rapid switching/reload and no startup accent flash when feasible. Fail if non-Dope theme is affected.
+6. Recheck final-source focused unit/integration, relevant typecheck/browser+Electron builds, `git diff --check` and aggregate `npm run check` if not already run on same source. Capture screenshots/observations, exact SHA/version, palette, preference states, computed styles and test logs. The owner must separately operate installed native Electron/AppImage for true multiple-native-window evidence; if unavailable label **NATIVE EVIDENCE GAP**, never equate Chrome with native.
+7. Write honest `docs/tasks/c12-dope-colors/closeout.md` only during real qualification with per-gate PASS/FAIL/GAP and exact source, tests, outstanding blocker/recovery. Update README status only to observed scope. Browser scoped PASS may be reported separately, but no fully qualified/native claim without required native proof. No retroactive product Phase 12 Green, no self-commit/automatic version change.
+
+QUALIFICATION / STOP
+Manual observed evidence only; missing dual-window sync/other-theme immunity/semantic invariants/contrast means NOT GREEN. Report remaining work, do not rubber-stamp. STOP.

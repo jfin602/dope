@@ -1,0 +1,25 @@
+TASK: Correction 12 / P5 — Integrate and regression-qualify theme isolation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Do not bump package versions, internal pins, lockfiles, model/provider settings or install dependencies without explicit owner approval.
+
+PREFLIGHT / SAFE EXECUTION
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0043, ADR 0016 (2026-11-01 amendment), docs/ARCHITECTURE.md presentation boundary, and c12-dope-colors README/assessment/plan. Inspect actual current local git HEAD/status, package 0.12.7, owner changes and active concurrent C12 work. Preserve all dirty files: no reset, stash, clean, force-pull, self-commit, silent roadmap edits, or /activate; do not start an unrelated stack. Runner owns the implementation checkpoint on PASS. No browser evidence claimed. Target <=8m per bounded gate, soft 10m/hard 15m; STOP with exact blocker if unsafe/conflicting.
+
+OBJECTIVE
+Assess exact P1–P4 source as one product behavior; repair only bounded findings, run source-bound deterministic integration/build checks, and prepare a truthful handoff to the manual Chrome closeout.
+
+IMPLEMENT
+1. Inspect P1–P4 actual passing commits and source, active local branch/dirty tree, newest frontend theme/registry and settings. Do not simply trust P1-P4 summaries if implementation drifted.
+2. Exercise deterministic 8-color variant matrix (foreground/background/focus/hover/pressed/selection), on-accent text contrast AA >=4.5:1 and relevant nontext focus/indicator >=3:1, in actual resolved CSS where available; preserve charcoal panels. Verify meaningful Gate states, errors/warnings/success, SCM, syntax, Chat and map/Flow color semantics under every accent.
+3. Exercise global/inherit/override/reset, first-use dismissal, same/different project across windows, project root relink/reopen, invalid IDs, startup/theme-switch mid-load, restart and preference sync. Theme `dope-dark` -> third-party/light/high-contrast -> `dope-dark` must have zero inactive overrides, no auto-theme switch, restored color only on return. Check any existing unscoped orange fallback that the first stage missed.
+4. Make only narrow source/tests fixes needed to pass these targets; if systemic identity/persistence/ThemeService issue appears, STOP and request a revised bounded gate rather than broad architecture rewrite. Do not fabricate real Chrome or packaged Electron results.
+5. Run focused theme/controller/UI/Roadmap/map regressions, `git diff --check`, relevant typecheck and browser/Electron builds. Run `npm run check` once on a coherent final candidate if feasible in the bounded gate; if not, state unrun/pending explicitly. Record exact source fingerprint and all evidence for P6.
+
+QUALIFICATION / STOP
+Exit only when every **deterministic** mandatory test is real PASS; otherwise NOT GREEN/BLOCKED with exact source/test failure. Manual actual Chrome and owner-native Electron remain P6. Do not self-commit, mark Phase 12 Green, alter product version or run browser automation in this headless gate. STOP.
