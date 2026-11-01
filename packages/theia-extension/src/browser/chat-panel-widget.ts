@@ -1518,8 +1518,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             details.append(this.activityText(diagnostic));
             if (diagnostic.truncated) {
                 const limit = document.createElement('span'); limit.className = 'dope-chat-stream-limit';
-                limit.textContent = 'Activity display limited; captured record may be truncated.';
+                limit.textContent = 'Activity capture stopped before completion; later activity was not captured.';
                 details.append(limit);
+            }
+            if (diagnostic.issue === 'persistence-failed') {
+                const failure = document.createElement('span'); failure.className = 'dope-chat-stream-limit';
+                failure.textContent = 'Activity persistence failed; the recovered record may be incomplete.';
+                details.append(failure);
+            }
+            if (diagnostic.issue === 'interrupted') {
+                const interrupted = document.createElement('span'); interrupted.className = 'dope-chat-stream-note';
+                interrupted.textContent = 'Generation interrupted; recent activity may not have reached storage.';
+                details.append(interrupted);
+            }
+            if (diagnostic.issue === 'provider-truncated') {
+                const provider = document.createElement('span'); provider.className = 'dope-chat-stream-note';
+                provider.textContent = 'Provider stopped at its output limit; reasoning may be incomplete.';
+                details.append(provider);
             }
         } else if (!active) {
             const note = document.createElement('span');
@@ -1555,7 +1570,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (!item || !scroll || !diagnostic) return false;
         let details = item.querySelector<HTMLDetailsElement>('.dope-chat-stream-activity');
         if (!details) {
-            this.appendReasoningActivity(item, undefined, diagnostic, true, state.runStartedAt ?? new Date().toISOString());
+            this.appendReasoningActivity(item, stream.messageId, diagnostic, true,
+                state.runStartedAt ?? new Date().toISOString());
             details = item.querySelector<HTMLDetailsElement>('.dope-chat-stream-activity')!;
         }
         const note = details.querySelector<HTMLElement>('.dope-chat-stream-note');
@@ -1570,12 +1586,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             note?.remove();
         }
         const body = details.querySelector<HTMLElement>('.dope-chat-stream-text');
-        if (body) body.replaceWith(this.activityText(diagnostic));
-        else details.append(this.activityText(diagnostic));
+        const selection = window.getSelection();
+        const selecting = body && selection && !selection.isCollapsed && body.contains(selection.anchorNode);
+        if (!selecting) {
+            if (body) body.replaceWith(this.activityText(diagnostic));
+            else details.append(this.activityText(diagnostic));
+        }
         let limit = details.querySelector<HTMLElement>('.dope-chat-stream-limit');
         if (diagnostic.truncated && !limit) {
             limit = document.createElement('span'); limit.className = 'dope-chat-stream-limit';
-            limit.textContent = 'Activity display limited; captured record may be truncated.';
+            limit.textContent = 'Activity capture stopped before completion; later activity was not captured.';
             details.append(limit);
         } else if (!diagnostic.truncated) limit?.remove();
         if (this.scrollFollow.following) scroll.scrollTop = scroll.scrollHeight;
@@ -2353,6 +2373,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         message.execution.status === 'complete' ? 'Finished' :
                             message.execution.status === 'cancelled' ? 'Canceled' :
                                 ['failed', 'interrupted'].includes(message.execution.status) ? 'Error' : 'Working...');
+                if (message.execution.finishReason === 'length') {
+                    const providerLimit = document.createElement('span');
+                    providerLimit.className = 'dope-chat-stream-note';
+                    providerLimit.textContent = 'Provider reported an output length limit; only delivered activity is available.';
+                    item.append(providerLimit);
+                }
                 if (!diagnostic && message.execution.tokenUsage?.reasoningTokens !== undefined) {
                     const usage = document.createElement('span');
                     usage.className = 'dope-chat-stream-note';

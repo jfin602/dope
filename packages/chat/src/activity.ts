@@ -12,10 +12,9 @@ export interface ChatExecutionActivity {
     executionId: string;
     events: ChatActivityEvent[];
     truncated: boolean;
+    issue?: 'resource-limit' | 'persistence-failed' | 'interrupted' | 'provider-truncated';
 }
 
-const MAX_TEXT_BYTES = 128 * 1024;
-const MAX_EVENTS = 512;
 const encoder = new TextEncoder();
 const kinds: readonly ChatActivityKind[] = ['thinking', 'provisional', 'answer', 'tool', 'truncated'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -36,12 +35,13 @@ export function parseExecutionActivity(value: unknown, chatId: string, messageId
     executionId: string): ChatExecutionActivity {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid Chat activity');
     const v = value as Record<string, unknown>;
-    if (Object.keys(v).some(key => !['schemaVersion', 'chatId', 'messageId', 'executionId', 'events', 'truncated'].includes(key)) ||
+    if (Object.keys(v).some(key => !['schemaVersion', 'chatId', 'messageId', 'executionId', 'events', 'truncated', 'issue'].includes(key)) ||
         v.schemaVersion !== 1 || v.chatId !== chatId || v.messageId !== messageId ||
         v.executionId !== executionId || !uuid.test(chatId) || !uuid.test(messageId) || !uuid.test(executionId) ||
-        !Array.isArray(v.events) || v.events.length > MAX_EVENTS || typeof v.truncated !== 'boolean')
+        !Array.isArray(v.events) || typeof v.truncated !== 'boolean' ||
+        v.issue !== undefined && v.issue !== 'resource-limit' && v.issue !== 'persistence-failed' &&
+        v.issue !== 'interrupted' && v.issue !== 'provider-truncated')
         throw new Error('Invalid Chat activity identity or bound');
-    let bytes = 0;
     const events = v.events.map((item: unknown, index): ChatActivityEvent => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Invalid Chat activity event');
         const event = item as Record<string, unknown>;
@@ -54,19 +54,17 @@ export function parseExecutionActivity(value: unknown, chatId: string, messageId
                     safeChatToolPath(tool[3]) !== tool[3]))) ||
             (event.kind === 'truncated' && event.text !== '[Activity truncated]'))
             throw new Error('Invalid Chat activity event');
-        bytes += encoder.encode(event.text).length;
         return { sequence: index + 1, kind: event.kind as ChatActivityKind, text: event.text as string };
     });
-    if (bytes > MAX_TEXT_BYTES || Boolean(events.at(-1)?.kind === 'truncated') !== v.truncated ||
+    if (Boolean(events.at(-1)?.kind === 'truncated') !== v.truncated ||
         events.some((event, index) => event.kind === 'truncated' && index !== events.length - 1))
         throw new Error('Invalid Chat activity limit');
-    return { schemaVersion: 1, chatId, messageId, executionId, events, truncated: v.truncated };
+    return { schemaVersion: 1, chatId, messageId, executionId, events, truncated: v.truncated,
+        ...(v.issue ? { issue: v.issue as ChatExecutionActivity['issue'] } : {}) };
 }
 
 export class ChatActivityRecorder {
     private readonly events: ChatActivityEvent[] = [];
-    private bytes = 0;
-    private truncated = false;
     private tail = '';
     constructor(private readonly chatId: string, private readonly messageId: string,
         private readonly executionId: string) {}
@@ -74,7 +72,7 @@ export class ChatActivityRecorder {
     eventsSince(index: number): readonly ChatActivityEvent[] { return this.events.slice(index); }
 
     add(kind: Exclude<ChatActivityKind, 'truncated'>, text: string): void {
-        if (this.truncated || !text) return;
+        if (!text) return;
         if (kind !== 'tool') {
             const clean = text.replace(sensitive, '[redacted]');
             // A credential may be split across provider deltas. Keep only a short
@@ -87,29 +85,22 @@ export class ChatActivityRecorder {
         const push = () => {
             if (!chunk) return;
             this.events.push({ sequence: this.events.length + 1, kind, text: chunk });
-            this.bytes += chunkBytes;
             chunk = ''; chunkBytes = 0;
         };
         for (const char of text) {
-            const size = encoder.encode(char).length;
+            const codePoint = char.codePointAt(0)!;
+            const size = codePoint < 0x80 ? 1 : codePoint < 0x800 ? 2 : codePoint < 0x10000 ? 3 : 4;
             if (chunkBytes + size > 8192) push();
-            if (this.events.length >= MAX_EVENTS - 1 ||
-                this.bytes + chunkBytes + size + encoder.encode('[Activity truncated]').length > MAX_TEXT_BYTES) {
-                push(); this.markTruncated(); return;
-            }
             chunk += char; chunkBytes += size;
         }
         push();
     }
 
-    private markTruncated(): void {
-        this.truncated = true;
-        this.events.push({ sequence: this.events.length + 1, kind: 'truncated', text: '[Activity truncated]' });
-    }
-
-    snapshot(): ChatExecutionActivity {
-        return parseExecutionActivity({ schemaVersion: 1, chatId: this.chatId, messageId: this.messageId,
-            executionId: this.executionId, events: this.events, truncated: this.truncated },
-            this.chatId, this.messageId, this.executionId);
+    snapshot(issue?: ChatExecutionActivity['issue']): ChatExecutionActivity {
+        // Events are append-only. Avoid revalidating/copying the entire stream
+        // while the provider is still generating; repository writes validate it.
+        return { schemaVersion: 1, chatId: this.chatId, messageId: this.messageId,
+            executionId: this.executionId, events: this.events.slice(), truncated: false,
+            ...(issue ? { issue } : {}) };
     }
 }

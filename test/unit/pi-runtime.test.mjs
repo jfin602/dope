@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { dispatch, compactExact } from '../../packages/pi-runtime/worker.mjs';
+import { dispatch, compactExact, frameStreamEvent } from '../../packages/pi-runtime/worker.mjs';
 import { resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { runChatInvestigationCommand } from '../../packages/theia-extension/lib/node/chat-command-broker.js';
 
@@ -21,6 +21,14 @@ const model = {
   input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   contextWindow: 4096, maxTokens: 512
 };
+
+test('Pi transport splits large Unicode reasoning deltas without changing content or order', () => {
+  const input = `begin-${'😀x'.repeat(6_000)}-end`;
+  const frames = [...frameStreamEvent({ type: 'activity', kind: 'thinking', text: input })];
+  assert.ok(frames.length > 1);
+  assert.ok(frames.every(frame => Buffer.byteLength(frame.text, 'utf8') <= 8192));
+  assert.equal(frames.map(frame => frame.text).join(''), input);
+});
 
 test('bundled Pi constructs and disposes without tools or project extensions', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-test-'));
@@ -164,6 +172,38 @@ test('verified Qwen3.5 emits exposed thinking separately from final text', async
     await dispatch({ type: 'close' });
     await assert.rejects(dispatch({ type: 'open', cwd, model: thinkingModel,
       thinkingLevel: 'xhigh' }), /Unsupported Pi thinking level/);
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi preserves a synthetic reasoning stream beyond the former capture ceiling', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-long-thinking-'));
+  const reasoning = Array.from({ length: 400 }, (_, index) =>
+    `START-${String(index).padStart(4, '0')} ${'reason '.repeat(75)} END-${String(index).padStart(4, '0')}\n`);
+  const events = [];
+  try {
+    globalThis.fetch = async () => {
+      const chunks = reasoning.map(text =>
+        `data: ${JSON.stringify({ id: 'fixture', object: 'chat.completion.chunk', created: 1,
+          model: 'qwen3.5-9b', choices: [{ index: 0, delta: { reasoning_content: text }, finish_reason: null }] })}\n\n`);
+      chunks.push('data: {"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}]}\n\n',
+        'data: [DONE]\n\n');
+      return new Response(chunks.join(''), { status: 200,
+        headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', cwd, model: { ...model, id: 'qwen3.5-9b', name: 'Qwen3.5 9B',
+      reasoning: true, contextWindow: 200_000, maxTokens: 100_000,
+      compat: { thinkingFormat: 'qwen-chat-template' } } });
+    const result = await dispatch({ type: 'turn', maxOutputTokens: 100_000,
+      messages: [{ role: 'user', content: 'Think.' }], emit: event => events.push(event) });
+    assert.equal(result.text, 'done');
+    assert.ok(reasoning.join('').length > 128 * 1024);
+    assert.equal(events.filter(event => event.type === 'activity').map(event => event.text).join(''),
+      reasoning.join(''));
   } finally {
     await dispatch({ type: 'close' });
     globalThis.fetch = originalFetch;

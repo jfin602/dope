@@ -447,6 +447,25 @@ export async function dispatch(message) {
   }
 }
 
+export function* frameStreamEvent(event) {
+  if ((event.type !== 'delta' && event.type !== 'activity') || typeof event.text !== 'string') {
+    yield event; return;
+  }
+  // The broker validates individual protocol frames. Split a large provider
+  // delta into ordered frames instead of rejecting provider-delivered text.
+  let chunk = '';
+  let bytes = 0;
+  for (const char of event.text) {
+    const size = Buffer.byteLength(char, 'utf8');
+    if (bytes + size > 8192) {
+      yield { ...event, text: chunk };
+      chunk = ''; bytes = 0;
+    }
+    chunk += char; bytes += size;
+  }
+  if (chunk || !event.text) yield { ...event, text: chunk };
+}
+
 async function accept(line) {
   let id;
   let message;
@@ -456,8 +475,10 @@ async function accept(line) {
     id = message.id;
     if (activeRequest && message.type !== 'tool-result') throw new Error('Pi worker busy');
     if (message.type !== 'tool-result') { activeRequest = true; claimed = true; }
-    const data = await dispatch({ ...message, emit: event =>
-      process.stdout.write(`${JSON.stringify({ id, event })}\n`) });
+    const data = await dispatch({ ...message, emit: event => {
+      for (const frame of frameStreamEvent(event))
+        process.stdout.write(`${JSON.stringify({ id, event: frame })}\n`);
+    } });
     process.stdout.write(`${JSON.stringify({ id, ok: true, data })}\n`);
   } catch (error) {
     const safe = /cannot be compacted safely/.test(String(error?.message)) ?

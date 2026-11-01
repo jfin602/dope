@@ -6,7 +6,7 @@ import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCa
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
-test('saved and live diagnostic activity stays bounded and outside the final answer', () => {
+test('saved and live diagnostic activity retains full content in the existing viewer', () => {
     const events = Array.from({ length: 12 }, (_, index) => ({ sequence: index + 1,
         kind: 'provisional' as const, text: 'Read src/counter.js. '.repeat(100) }));
     const base = { id: 'turn', content: '', execution: { id: 'execution', status: 'cancelled' },
@@ -14,8 +14,11 @@ test('saved and live diagnostic activity stays bounded and outside the final ans
     const cancelled = chatActivityPresentation(base)!;
     assert.equal(cancelled.label, 'Provisional output');
     assert.equal(cancelled.unavailable, true);
-    assert.ok(cancelled.text.length <= 12_000);
-    assert.equal(cancelled.truncated, true);
+    assert.ok(cancelled.text.length > 12_000);
+    assert.equal(cancelled.truncated, false);
+    assert.match(cancelled.text, /^Read/);
+    assert.equal(cancelled.parts.map(part => part.kind === 'tool' ? '' : part.text).join('').length,
+        cancelled.text.length);
     assert.deepEqual(chatStreamingActivityPresentation(events), cancelled);
     assert.equal(chatStreamingActivityPresentation([]), undefined);
     assert.equal(chatResponseCopyText(base), '');

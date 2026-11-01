@@ -227,11 +227,11 @@ export class ChatPanelController {
                     if (current && (current.messageId !== event.messageId || current.executionId !== event.executionId ||
                         event.sequence !== current.activitySequence + 1)) return;
                     if (!current && event.sequence !== 1) return;
+                    const events = current?.events ?? [];
+                    events.push({ sequence: event.sequence, kind: event.activityKind, text: event.text });
                     this.stream = { chatId: event.chatId, messageId: event.messageId, executionId: event.executionId,
                         content: current?.content ?? '', sequence: current?.sequence ?? -1,
-                        activitySequence: event.sequence,
-                        events: [...(current?.events ?? []), { sequence: event.sequence,
-                            kind: event.activityKind, text: event.text }] };
+                        activitySequence: event.sequence, events };
                     this.changed('activity'); return;
                 }
                 if (event.kind === 'lease-changed' && event.chatId === this.retryChatId) {

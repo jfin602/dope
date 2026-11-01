@@ -638,7 +638,7 @@ test('diagnostic copy is scoped, chronological, persistent and separate from cle
     assert.equal(chatDiagnosticCopyText(reopened, { transcript: true }), diagnostic);
 });
 
-test('diagnostic copy marks storage truncation and exports metadata, not tool payloads or tokens', () => {
+test('diagnostic copy exports all captured long activity, metadata, and no secrets', () => {
     const chatId = randomUUID(); const messageId = randomUUID(); const executionId = randomUUID();
     const recorder = new ChatActivityRecorder(chatId, messageId, executionId);
     recorder.add('thinking', 'api_key=veryprivate');
@@ -650,7 +650,8 @@ test('diagnostic copy marks storage truncation and exports metadata, not tool pa
     const exported = chatDiagnosticCopyText({ id: chatId, messages: [message] } as
         import('../../packages/chat/lib/index.js').Chat, { messageId })!;
     assert.match(exported, /\[redacted\]/);
-    assert.match(exported, /Activity truncated/);
+    assert.doesNotMatch(exported, /Activity truncated|storage limit reached/);
+    assert.ok(exported.includes('A'.repeat(140_000)));
     assert.match(exported, /run_command · completed/);
     assert.match(exported, /No final response/);
     assert.doesNotMatch(exported, /veryprivate|approval token|raw tool output/);

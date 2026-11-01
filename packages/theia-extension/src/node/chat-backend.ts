@@ -1109,20 +1109,27 @@ export class ChatBackend implements ChatService {
         let activity: ChatActivityRecorder | undefined;
         let activitySequence = 0;
         let activityCount = 0;
+        let activityPersisted = 0;
+        let activityTimer: ReturnType<typeof setTimeout> | undefined;
         let activityWrite = Promise.resolve();
+        const flushActivity = () => {
+            if (activityTimer) { clearTimeout(activityTimer); activityTimer = undefined; }
+            if (!assistant || !activity) return activityWrite;
+            const batch = activity.eventsSince(activityPersisted);
+            activityPersisted += batch.length;
+            if (batch.length) activityWrite = activityWrite.then(() =>
+                this.repository.appendActivity(root, key, assistant!.id, assistant!.execution.id,
+                    batch, request.leaseToken));
+            return activityWrite;
+        };
         const recordActivity = (kind: 'thinking' | 'provisional' | 'answer' | 'tool', text: string) => {
             if (!assistant || !activity || !text) return;
             activity.add(kind, text);
             const recorded = activity.eventsSince(activityCount);
             activityCount += recorded.length;
-            if (recorded.length) {
-                const snapshot = activity.snapshot();
-                activityWrite = activityWrite.then(async () => {
-                    await mutate({ type: 'record-assistant-activity', chatId: key,
-                        messageId: assistant!.id, activity: snapshot });
-                });
-                void activityWrite.catch(() => undefined); // Observed at the terminal mutation below.
-            }
+            if (recorded.length && !activityTimer) activityTimer = setTimeout(() => {
+                void flushActivity().catch(() => undefined); // Terminal mutation observes write failure.
+            }, 250);
             for (const item of recorded) try {
                 this.client.notifyChatEvent({ projectHandle: request.projectHandle, kind: 'assistant-activity',
                     chatId: key, messageId: assistant.id, executionId: assistant.execution.id,
@@ -1392,13 +1399,17 @@ export class ChatBackend implements ChatService {
                     }
                     if (abort.signal.aborted)
                         throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
-                    await activityWrite;
+                    await flushActivity();
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
-                        outcome: 'complete', content: output, activity: activity?.snapshot(), actualModel: actual, routingProvenance,
+                        outcome: 'complete', content: output,
+                        activity: activity?.snapshot(event.finishReason === 'length' ? 'provider-truncated' : undefined),
+                        actualModel: actual, routingProvenance,
                         contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                         tokenUsage: event.usage, ...(event.compaction ? { compaction: event.compaction } : {}),
                         ...(event.finishReason ? { finishReason: event.finishReason } : {}),
                         ...(toolEvents.length ? { sourceRefs, toolEvents } : {}) });
+                    void this.repository.removeActivityLog(root, key, assistant.id, assistant.execution.id)
+                        .catch(() => undefined);
                     const titledChat = completed.chats.find(item => item.id === key);
                     const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
                     const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;
@@ -1441,13 +1452,20 @@ export class ChatBackend implements ChatService {
                 if (localRoadmap && error instanceof LocalPlanningOutputFailure && error.rawText)
                     recordActivity('provisional', error.rawText);
                 const cancelled = abort.signal.aborted || error instanceof ModelRuntimeFailure && error.failureClass === 'cancelled';
-                const failure = error instanceof ModelRuntimeFailure ? error.message : 'Conversation failed';
-                try { await activityWrite; } catch { /* Final mutation below still carries the bounded snapshot. */ }
+                const storageCode = (error as NodeJS.ErrnoException)?.code;
+                const failure = error instanceof ModelRuntimeFailure ? error.message :
+                    storageCode === 'ENOSPC' || storageCode === 'EDQUOT' ? 'Chat storage exhausted during activity capture' :
+                    storageCode === 'EIO' ? 'Chat activity storage failed with an I/O error' :
+                    error instanceof Error && /^(?:Pi Chat stream backpressure limit exceeded|Pi worker output limit exceeded|Chat activity storage limit reached)$/u.test(error.message) ?
+                        error.message : 'Conversation failed';
+                try { await flushActivity(); } catch { /* Final mutation below still carries the captured snapshot. */ }
                 try { await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: '', activity: activity?.snapshot(),
                     contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                     ...(toolEvents.length ? { sourceRefs, toolEvents } : {}),
-                    ...(!cancelled ? { failure } : {}) }); }
+                    ...(!cancelled ? { failure } : {}) });
+                    void this.repository.removeActivityLog(root, key, assistant.id, assistant.execution.id)
+                        .catch(() => undefined); }
                 catch { /* A lost lease or newer revision is recovered by ChatRepository. */ }
                 if (localRoadmap) try {
                     await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
@@ -1457,6 +1475,7 @@ export class ChatBackend implements ChatService {
             }
             throw error;
         } finally {
+            if (activityTimer) clearTimeout(activityTimer);
             if (this.turns.get(key)?.abort === abort) this.turns.delete(key);
             if (this.pendingCancel.get(key) === request.leaseToken) this.pendingCancel.delete(key);
         }

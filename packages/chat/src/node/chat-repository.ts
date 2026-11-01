@@ -7,6 +7,7 @@ import { MANUAL_CHAT_CONTEXT_SOURCES, assignedChatColor, compareChatsByInteracti
     parseChatCollection, parseChatColor, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
 import type { Chat, ChatCollection, ChatFolder, ChatPlanningActivity, ChatRoadmapAction } from '../index';
 import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
+import { parseExecutionActivity, type ChatActivityEvent, type ChatExecutionActivity } from '../activity';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const DEFAULT_SETTINGS = { schemaVersion: 1 as const, modelPolicy: { type: 'follow-interactive' as const }, context: { maxInputTokens: 8192, reservedOutputTokens: 1024,
@@ -290,6 +291,55 @@ export class ChatRepository {
         return lease.root === base ? lease : undefined;
     }
     private active(lease: Lease | undefined): lease is Lease { return !!lease && lease.expiresAt > Date.now() && live(lease.pid); }
+    private activityFile(base: string, chatId: string, messageId: string, executionId: string): string {
+        return join(base, '.activity', `${uuid(chatId)}.${uuid(messageId)}.${uuid(executionId)}.jsonl`);
+    }
+    /** Append a batch without rewriting the Chat or blocking provider callbacks. */
+    async appendActivity(root: string, chatId: string, messageId: string, executionId: string,
+        events: readonly ChatActivityEvent[], leaseToken: string): Promise<void> {
+        if (!events.length) return;
+        const { base } = await this.paths(root, true);
+        const lease = await this.lease(base, chatId);
+        if (!lease || !this.active(lease) || lease.token !== leaseToken) throw new Error('Chat ownership lease required');
+        const file = this.activityFile(base, chatId, messageId, executionId);
+        await directory(join(base, '.activity'), true);
+        const line = JSON.stringify({ chatId, messageId, executionId, events }) + '\n';
+        const handle = await open(file, constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | constants.O_NOFOLLOW, 0o600);
+        try {
+            const info = await handle.stat();
+            if (!info.isFile()) throw new Error('Unsafe Chat activity log');
+            await handle.writeFile(line);
+            await handle.sync();
+        } finally { await handle.close(); }
+    }
+    private async activityFromLog(base: string, chatId: string, messageId: string,
+        executionId: string): Promise<ChatExecutionActivity | undefined> {
+        const file = this.activityFile(base, chatId, messageId, executionId);
+        if (!await regular(file)) return undefined;
+        const source = await safeText(file);
+        const events: ChatActivityEvent[] = [];
+        let failed = !source.endsWith('\n');
+        const lines = source.split('\n');
+        if (failed) lines.pop(); // An interrupted append can leave an incomplete final batch.
+        for (const line of lines) {
+            if (!line) continue;
+            try {
+                const batch = JSON.parse(line) as { chatId: string; messageId: string; executionId: string;
+                    events: ChatActivityEvent[] };
+                if (batch.chatId !== chatId || batch.messageId !== messageId || batch.executionId !== executionId ||
+                    !Array.isArray(batch.events) || batch.events.some((event, index) =>
+                        event.sequence !== events.length + index + 1)) throw new Error('Corrupt Chat activity log');
+                events.push(...batch.events);
+            } catch { failed = true; break; }
+        }
+        return parseExecutionActivity({ schemaVersion: 1, chatId, messageId, executionId, events,
+            truncated: events.at(-1)?.kind === 'truncated',
+            issue: failed ? 'persistence-failed' : 'interrupted' }, chatId, messageId, executionId);
+    }
+    async removeActivityLog(root: string, chatId: string, messageId: string, executionId: string): Promise<void> {
+        const { base } = await this.paths(root);
+        await rm(this.activityFile(base, chatId, messageId, executionId), { force: true });
+    }
     private async write(root: string, next: ChatCollection): Promise<void> {
         const { base } = await this.paths(root, true);
         const current = await this.manifest(base);
@@ -328,13 +378,14 @@ export class ChatRepository {
         let changed = false;
         for (const chat of current.chats) {
             const active = this.active(await this.lease(base, chat.id));
-            const messages = chat.messages.map(message => {
+            const messages = await Promise.all(chat.messages.map(async message => {
                 if (active) return message;
                 if (message.role !== 'assistant' || !['pending', 'streaming'].includes(message.execution.status)) return message;
                 changed = true;
-                return { ...message, content: '', execution: { ...message.execution, status: 'failed' as const,
+                const logged = await this.activityFromLog(base, chat.id, message.id, message.execution.id);
+                return { ...message, ...(logged ? { activity: logged } : {}), content: '', execution: { ...message.execution, status: 'failed' as const,
                     finishedAt: now, failure: interrupted } };
-            });
+            }));
             const wasInterrupted = messages.some((message, i) => message !== chat.messages[i]);
             if (legacyIds.has(chat.id)) changed = true;
             chats.push(!wasInterrupted && !legacyIds.has(chat.id) ? chat : parseChat({ ...chat,
@@ -343,6 +394,10 @@ export class ChatRepository {
         if (!changed) return current;
         const next = parseChatCollection({ ...current, revision: current.revision + 1, chats });
         await this.write(root, next);
+        for (const chat of current.chats) for (const message of chat.messages)
+            if (message.role === 'assistant' && ['pending', 'streaming'].includes(message.execution.status) &&
+                !this.active(await this.lease(base, chat.id)))
+                await rm(this.activityFile(base, chat.id, message.id, message.execution.id), { force: true });
         this.emit(root, { revision: next.revision, kind: 'changed' });
         return next;
     }

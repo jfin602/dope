@@ -122,6 +122,7 @@ export class PiRuntimeHost {
             finishReason: string; usage: PiTokenUsage; compaction?: PiContextRecord }> {
         if (signal?.aborted) throw new Error('Pi turn cancelled');
         const queue: ({ type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string })[] = [];
+        let queueBytes = 0;
         let wake: (() => void) | undefined;
         let settled = false;
         let result: { text: string; modelId: string; finishReason: string;
@@ -132,15 +133,20 @@ export class PiRuntimeHost {
         signal?.addEventListener('abort', onAbort, { once: true });
         const task = this.request<typeof result>({ type: 'turn', messages, maxOutputTokens }, event => {
             if (event.type !== 'delta' && event.type !== 'activity') throw new Error('Invalid Pi Chat stream event');
-            if (Buffer.byteLength(event.text, 'utf8') > 8192 || queue.length >= 128)
+            const bytes = Buffer.byteLength(event.text, 'utf8');
+            if (bytes > 8192 || queue.length >= 8192 || queueBytes + bytes > 16 * 1024 * 1024)
                 throw new Error('Pi Chat stream backpressure limit exceeded');
-            queue.push(event); notify();
+            queueBytes += bytes; queue.push(event); notify();
         }, onTool).then(value => { result = value; }, error => { failure = error; })
             .finally(() => { settled = true; notify(); });
         try {
             while (!settled || queue.length) {
                 if (signal?.aborted) throw new Error('Pi turn cancelled');
-                if (queue.length) { yield queue.shift()!; continue; }
+                if (queue.length) {
+                    const next = queue.shift()!;
+                    queueBytes -= Buffer.byteLength(next.text, 'utf8');
+                    yield next; continue;
+                }
                 await new Promise<void>(resolve => { wake = resolve; });
             }
             await task;
@@ -236,8 +242,9 @@ export class PiRuntimeHost {
                 clearTimeout(pending.timer);
                 if (record.ok) pending.resolve(record.data);
                 else pending.reject(new Error(record.error ?? 'Pi worker rejected request'));
-            } catch {
-                this.fail(new Error('Invalid Pi worker protocol'));
+            } catch (error) {
+                this.fail(error instanceof Error && error.message === 'Pi Chat stream backpressure limit exceeded' ?
+                    error : new Error('Invalid Pi worker protocol'));
                 return;
             }
         }

@@ -369,16 +369,32 @@ export function chatDiagnosticCopyText(chat: Pick<Chat, 'id' | 'messages'>,
         const activity = activityFor(message);
         const lines = [`Assistant [message ${message.id}; execution ${message.execution.id}; ${message.execution.status}]:`];
         let lastTextKind: 'thinking' | 'provisional' | undefined;
+        let labelledKind: 'thinking' | 'provisional' | undefined;
+        let textChunks: string[] = [];
+        const flushText = () => {
+            if (!lastTextKind) return;
+            lines.push(`${labelledKind === lastTextKind ? '' :
+                `[${lastTextKind === 'thinking' ? 'Reasoning' : 'Provisional output'}]\n`}${textChunks.join('')}`);
+            labelledKind = lastTextKind;
+            lastTextKind = undefined; textChunks = [];
+        };
         for (const part of visibleTimeline(message)) {
-            if (part.kind === 'tool') lines.push(chatToolCallLabel(part));
+            if (part.kind === 'tool') { flushText(); lines.push(chatToolCallLabel(part)); }
             else {
-                lines.push(lastTextKind === part.kind ? part.text :
-                    `[${part.kind === 'thinking' ? 'Reasoning' : 'Provisional output'}]\n${part.text}`);
+                if (lastTextKind !== part.kind) flushText();
                 lastTextKind = part.kind;
+                textChunks.push(part.text);
             }
         }
-        if (activity?.events.some(event => event.kind === 'truncated')) lines.push('[Activity truncated]');
-        if (activity?.truncated && !activity.events.some(event => event.kind === 'truncated')) lines.push('[Activity truncated]');
+        flushText();
+        if (activity?.events.some(event => event.kind === 'truncated') || activity?.truncated)
+            lines.push('[Activity capture stopped before completion]');
+        if (activity && 'issue' in activity && activity.issue === 'persistence-failed')
+            lines.push('[Activity persistence failed; the recovered record may be incomplete]');
+        if (activity && 'issue' in activity && activity.issue === 'interrupted')
+            lines.push('[Generation interrupted; recent activity may not have reached storage]');
+        if (activity && 'issue' in activity && activity.issue === 'provider-truncated')
+            lines.push('[Provider stopped at its output limit; reasoning may be incomplete]');
         const final = chatResponseCopyText(message);
         lines.push(final ? `Final response:\n${final}` : 'No final response');
         return lines.reduce((copy, line) => copy ?
@@ -389,7 +405,7 @@ export function chatDiagnosticCopyText(chat: Pick<Chat, 'id' | 'messages'>,
         assistantText(message)).join('\n\n');
 }
 
-/** A bounded display projection of diagnostics, never conversational answer text. */
+/** A display projection of diagnostics, never conversational answer text. */
 export function chatActivityPresentation(message: ChatAssistantMessage,
     stream?: { messageId: string; executionId: string; content?: string;
         events: import('@dope/chat').ChatActivityEvent[] }):
@@ -399,7 +415,8 @@ export function chatActivityPresentation(message: ChatAssistantMessage,
         matchingStream.events : message.activity?.events ?? [];
     if (!events.length && message.execution.status === 'complete') return undefined;
     const display = presentChatActivity(events, !!message.activity?.truncated, message,
-        message.execution.status === 'complete' || !!matchingStream?.content);
+        message.execution.status === 'complete' || !!matchingStream?.content,
+        message.activity?.issue);
     return message.execution.status === 'complete' && !display.parts.length && !display.truncated ? undefined : display;
 }
 
@@ -418,6 +435,7 @@ export interface ChatActivityDisplay {
     parts: ChatActivityPart[];
     unavailable: boolean;
     truncated: boolean;
+    issue?: 'resource-limit' | 'persistence-failed' | 'interrupted' | 'provider-truncated';
 }
 
 /** Preserve the event order; a completion updates its call at the original position. */
@@ -428,7 +446,8 @@ function activityTimeline(events: readonly import('@dope/chat').ChatActivityEven
     for (const event of events) {
         if (event.kind === 'thinking' || event.kind === 'provisional' && !omitProvisional) {
             const last = parts.at(-1);
-            if (last?.kind === event.kind) last.text += event.text;
+            if (last?.kind === event.kind && last.text.length + event.text.length <= 8192)
+                last.text += event.text;
             else parts.push({ kind: event.kind, text: event.text });
         } else if (event.kind === 'tool') {
             const match = toolPattern.exec(event.text);
@@ -470,29 +489,16 @@ export function chatToolCallLabel(part: Extract<ChatActivityPart, { kind: 'tool'
 }
 
 function presentChatActivity(events: import('@dope/chat').ChatActivityEvent[], savedTruncated: boolean,
-    message?: ChatAssistantMessage, omitProvisional = false): ChatActivityDisplay {
+    message?: ChatAssistantMessage, omitProvisional = false,
+    issue?: import('@dope/chat').ChatExecutionActivity['issue']): ChatActivityDisplay {
     const timeline = activityTimeline(events, message, omitProvisional);
     const text = timeline.filter((part): part is Extract<ChatActivityPart, { kind: 'thinking' | 'provisional' }> =>
         part.kind !== 'tool').map(part => part.text).join('');
-    const limit = 12_000;
-    const truncated = text.length > limit || events.some(event => event.kind === 'truncated') ||
-        savedTruncated;
-    let remaining = limit;
-    const parts: ChatActivityPart[] = [];
-    for (let index = timeline.length - 1; index >= 0; index--) {
-        const part = timeline[index];
-        if (part.kind === 'tool') {
-            if (remaining > 0) parts.unshift(part);
-        } else if (remaining > 0) {
-            const clipped = part.text.slice(-remaining);
-            remaining -= clipped.length;
-            parts.unshift({ ...part, text: clipped });
-        }
-    }
+    const truncated = events.some(event => event.kind === 'truncated') || savedTruncated;
     return { label: timeline.some(part => part.kind === 'thinking') ? 'Reasoning / Activity' :
         timeline.some(part => part.kind === 'provisional') ? 'Provisional output' : 'Tool activity',
-        text: text.length > limit ? text.slice(-limit) : text,
-        parts, unavailable: !timeline.some(part => part.kind === 'thinking'), truncated };
+        text, parts: timeline, unavailable: !timeline.some(part => part.kind === 'thinking'), truncated,
+        ...(issue ? { issue } : {}) };
 }
 
 export function chatTranscriptCopyText(chat: Pick<Chat, 'messages'>,
