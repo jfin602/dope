@@ -15,6 +15,8 @@ import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roa
 import { criterionHash, evaluateGateQualification, evaluatePhaseQualification, parseRoadmapGateIndex,
     sameRoadmapSource } from './roadmap-gate-domain';
 import type { Criterion, GateEvidence, RoadmapCorrection, RoadmapGate, RoadmapGateIndex, RoadmapPhase, RoadmapSourceProof } from './roadmap-gate-domain';
+import { checkedPublicationDestination, publicationHash, serializeRoadmapPublication, verifiedPublicationFile } from './roadmap-publication';
+import type { RoadmapPublicationPreview } from './roadmap-publication';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
@@ -356,6 +358,7 @@ export function parseRetiredCheckpointIndex(value: unknown, root: string): Roadm
 
 export class RoadmapStore {
     private readonly listeners = new Set<(change: RoadmapChange) => void>();
+    private readonly publicationReviews = new Map<string, RoadmapPublicationPreview>();
 
     onChange(listener: (change: RoadmapChange) => void): () => void {
         this.listeners.add(listener);
@@ -441,10 +444,12 @@ export class RoadmapStore {
         candidate: RoadmapGateIndex): Promise<RoadmapGateIndex> {
         if (!revision(expectedRevision) || !id(candidate.projectId) || candidate.projectId === 'uninitialized')
             throw new Error('Invalid Roadmap owner or revision');
+        if (candidate.pendingPublication) throw new Error('Publication intent requires reviewed publisher');
         const next = await this.locked(root, async () => {
             const { file } = await this.paths(root);
             const expectedHash = await this.indexHash(file);
             const current = await this.read<RoadmapGateIndex>(root);
+            if (current.pendingPublication) throw new Error('Pending Roadmap publication requires recovery');
             if (current.revision !== expectedRevision) throw new Error('Stale Roadmap revision');
             if (expectedProjectId !== current.projectId) throw new Error('Roadmap identity changed; reattach');
             if (current.revision > 0 && candidate.projectId !== current.projectId)
@@ -575,6 +580,7 @@ export class RoadmapStore {
             const { file } = await this.paths(root);
             const expectedHash = await this.indexHash(file);
             const current = await this.read<RoadmapGateIndex>(root);
+            if (current.pendingPublication) throw new Error('Pending Roadmap publication requires recovery');
             if (!current.revision || current.projectId !== expectedProjectId)
                 throw new Error('Roadmap identity changed; reattach');
             if (current.revision !== expectedRevision) throw new Error('Stale Roadmap revision');
@@ -952,6 +958,120 @@ export class RoadmapStore {
         if (!previewOnly) this.publish({ root, projectId: next.projectId, revision: next.revision,
             changedIds: [...next.phases, ...next.gates, ...next.corrections].map(item => item.id) });
         return next;
+    }
+
+    /** A review is issued by this owner, never reconstructed from caller-provided Markdown. */
+    async previewRoadmapPublication(root: string, path = 'ROADMAP.md'): Promise<RoadmapPublicationPreview> {
+        const current = await this.read<RoadmapGateIndex>(root);
+        if (current.pendingPublication) throw new Error('Pending Roadmap publication requires recovery');
+        await checkedPublicationDestination(root, path);
+        const preview: RoadmapPublicationPreview = { ...serializeRoadmapPublication(current, path),
+            approvalId: randomUUID() };
+        this.publicationReviews.set(preview.approvalId, preview);
+        if (this.publicationReviews.size > 32) this.publicationReviews.delete(this.publicationReviews.keys().next().value!);
+        return preview;
+    }
+
+    private async settleRoadmapPublication(root: string, current: RoadmapGateIndex,
+        expectedHash: string | null): Promise<RoadmapGateIndex> {
+        const pending = current.pendingPublication;
+        if (!pending) throw new Error('No pending Roadmap publication');
+        const destination = join(root, pending.path);
+        const temporary = join(dirname(destination), `.${pending.approvalId}.dope-roadmap-publish.tmp`);
+        if (!(await verifiedPublicationFile(root, pending.path, pending.sourceHash))) {
+            await checkedPublicationDestination(root, pending.path);
+            let tempExists = false;
+            try { await lstat(temporary); tempExists = true; }
+            catch (error) { if (!missing(error)) throw error; }
+            if (!tempExists) {
+                const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL |
+                    constants.O_NOFOLLOW, 0o600);
+                try { await handle.writeFile(pending.content); await handle.sync(); }
+                finally { await handle.close(); }
+            }
+            if (!(await verifiedPublicationFile(root, temporary.slice(root.length + 1), pending.sourceHash)))
+                throw new Error('Pending publication staging file is missing');
+            try { await hardLink(temporary, destination); }
+            catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== 'EEXIST' ||
+                    !(await verifiedPublicationFile(root, pending.path, pending.sourceHash))) throw error;
+            }
+            const parent = await open(dirname(destination), 'r');
+            try { await parent.sync(); } finally { await parent.close(); }
+        }
+        if (!(await verifiedPublicationFile(root, pending.path, pending.sourceHash)))
+            throw new Error('Publication file is missing or differs from approved bytes');
+        const basis = { ...current, revision: pending.basisRevision };
+        delete basis.pendingPublication;
+        const generated = serializeRoadmapPublication(basis, pending.path);
+        if (generated.sourceHash !== pending.sourceHash || generated.content !== pending.content)
+            throw new Error('Pending publication no longer matches the accepted Roadmap');
+        const linked: NonNullable<RoadmapGateIndex['linkedDocument']> = {
+            projectId: current.projectId, projectRoot: root, path: pending.path, sourceHash: pending.sourceHash,
+            syncState: 'synced', sections: generated.sections,
+            lastSynced: { sourceHash: pending.sourceHash, fields: generated.fields } };
+        const mapped = await readGateMappedDocument(root, linked);
+        if (mapped.hash !== pending.sourceHash || mapped.diagnostics.length ||
+            JSON.stringify(mapped.fields) !== JSON.stringify(generated.fields))
+            throw new Error('Published document failed linked-source mapping; recovery remains pending');
+        const next: RoadmapGateIndex = { ...basis, revision: current.revision + 1,
+            phases: current.phases.map(phase => ({ ...phase, draftAcceptance: 'published' })),
+            gates: current.gates.map(gate => ({ ...gate, draftAcceptance: 'published' })), linkedDocument: linked };
+        await this.replace(root, next, expectedHash);
+        await rm(temporary, { force: true });
+        return next;
+    }
+
+    async applyRoadmapPublication(root: string, preview: RoadmapPublicationPreview,
+        approved: boolean): Promise<RoadmapGateIndex> {
+        if (!approved) { this.publicationReviews.delete(preview.approvalId); return this.read<RoadmapGateIndex>(root); }
+        let settled = false;
+        const result = await this.locked(root, async () => {
+            const { file } = await this.paths(root);
+            let expectedHash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (current.linkedDocument?.path === preview.path &&
+                current.linkedDocument.sourceHash === preview.sourceHash &&
+                current.projectId === preview.projectId && current.projectRoot === preview.projectRoot &&
+                await verifiedPublicationFile(root, preview.path, preview.sourceHash)) return current;
+            if (current.pendingPublication) throw new Error('Pending Roadmap publication requires recovery');
+            if (JSON.stringify(this.publicationReviews.get(preview.approvalId)) !== JSON.stringify(preview) ||
+                current.projectId !== preview.projectId || current.projectRoot !== preview.projectRoot ||
+                current.revision !== preview.revision)
+                throw new Error('Stale or foreign Roadmap publication approval; preview again');
+            await checkedPublicationDestination(root, preview.path);
+            const fresh = serializeRoadmapPublication(current, preview.path);
+            const { approvalId: _approvalId, ...reviewed } = preview;
+            if (JSON.stringify(fresh) !== JSON.stringify(reviewed))
+                throw new Error('Roadmap publication preview changed; preview again');
+            const marker: RoadmapGateIndex = { ...current, revision: current.revision + 1,
+                pendingPublication: { approvalId: preview.approvalId, basisRevision: current.revision,
+                    path: preview.path, sourceHash: preview.sourceHash, content: preview.content } };
+            await this.replace(root, marker, expectedHash);
+            expectedHash = await this.indexHash(file);
+            const next = await this.settleRoadmapPublication(root, marker, expectedHash);
+            settled = true;
+            return next;
+        });
+        this.publicationReviews.delete(preview.approvalId);
+        if (settled) this.publish({ root, projectId: result.projectId, revision: result.revision,
+            changedIds: [...result.phases, ...result.gates].map(item => item.id) });
+        return result;
+    }
+
+    async recoverRoadmapPublication(root: string): Promise<RoadmapGateIndex> {
+        let settled = false;
+        const result = await this.locked(root, async () => {
+            const { file } = await this.paths(root);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (!current.pendingPublication) return current;
+            const next = await this.settleRoadmapPublication(root, current, await this.indexHash(file));
+            settled = true;
+            return next;
+        });
+        if (settled) this.publish({ root, projectId: result.projectId, revision: result.revision,
+            changedIds: [...result.phases, ...result.gates].map(item => item.id) });
+        return result;
     }
 
     private async readRetired(root: string): Promise<RoadmapIndex> {

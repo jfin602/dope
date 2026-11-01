@@ -193,6 +193,9 @@ export interface RoadmapGateIndex {
     gates: RoadmapGate[];
     corrections: RoadmapCorrection[];
     linkedDocument?: RoadmapGateLinkedDocument;
+    /** Durable approved file creation intent. A pending intent is never canonical. */
+    pendingPublication?: { approvalId: string; basisRevision: number; path: string;
+        sourceHash: string; content: string };
 }
 
 const MAX_INDEX_BYTES = 4 * 1024 * 1024;
@@ -254,7 +257,8 @@ export function isRoadmapGateSchemaShape(value: unknown): boolean {
 export function parseRoadmapGateIndex(value: unknown, projectRoot: string, projectId: string): RoadmapGateIndex {
     assertion(isRoadmapGateSchemaShape(value), 'schema 2 shape');
     const raw = value as Record<string, unknown>;
-    assertion(keys(raw, ['schemaVersion', 'projectId', 'projectRoot', 'revision', 'phases', 'gates', 'corrections'], ['linkedDocument']) &&
+    assertion(keys(raw, ['schemaVersion', 'projectId', 'projectRoot', 'revision', 'phases', 'gates', 'corrections'],
+        ['linkedDocument', 'pendingPublication']) &&
         identifier(projectId) && projectId !== 'uninitialized' && raw.projectId === projectId &&
         raw.projectRoot === projectRoot && natural(raw.revision) && (raw.revision as number) > 0, 'project or index fields');
     let bytes: number;
@@ -382,6 +386,17 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
             assertion(evaluatePhaseQualification(raw as unknown as RoadmapGateIndex, phase.id,
                 phase.qualificationSource).status === 'green', 'unverified Phase Green');
         if (phase.qualificationStatus === 'waived') assertion(!!phase.exception, 'unreviewed Phase waiver');
+    }
+    if (raw.pendingPublication !== undefined) {
+        const pending = raw.pendingPublication;
+        assertion(record(pending) && keys(pending, ['approvalId', 'basisRevision', 'path', 'sourceHash', 'content']) &&
+            identifier(pending.approvalId) && natural(pending.basisRevision) &&
+            pending.basisRevision === (raw.revision as number) - 1 && path(pending.path) &&
+            !String(pending.path).split('/').includes('.dope') && /\.md$/i.test(pending.path as string) &&
+            hash(pending.sourceHash) && typeof pending.content === 'string' &&
+            Buffer.byteLength(pending.content) <= 2 * 1024 * 1024 &&
+            createHash('sha256').update(pending.content).digest('hex') === pending.sourceHash &&
+            raw.linkedDocument === undefined, 'pending publication');
     }
     if (raw.linkedDocument !== undefined) {
         const doc = raw.linkedDocument;

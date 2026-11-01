@@ -34,8 +34,9 @@ export function gateField(index: RoadmapGateIndex, kind: GateSectionKind, id: st
 /** Parse only the linked file with the importer's exact Gate grammar and stable IDs. */
 export async function readGateMappedDocument(root: string, linked: RoadmapGateLinkedDocument): Promise<{
     hash: string; content: string; fields: GateMappedField[]; lines: Map<string, { title: number; detail: number }>;
-    diagnostics: string[]; structure: { phases: string[]; gates: { id: string; parentPhaseId: string;
-        designation: string; criteria: string[] }[] } }> {
+    diagnostics: string[]; structure: { phases: { id: string; order: number; dependencies: string[] }[];
+        gates: { id: string; parentPhaseId: string; designation: string; order: number;
+            dependencies: string[]; criteria: string[] }[] } }> {
     const source = await checkedRoadmapDocumentFile(root, linked.path);
     const content = source.bytes.toString('utf8');
     if (!Buffer.from(content).equals(source.bytes)) throw new Error('Unsupported linked Roadmap encoding');
@@ -49,6 +50,18 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
     }
     const parsed = parseGateSource(linked.path, digest(source.bytes), rawLines, fenced);
     const diagnostics = [...parsed.diagnostics];
+    const metadata = (at: number, fallbackOrder: number): { order: number; dependencies: string[] } => {
+        const orderLine = rawLines[at + 2] ?? '';
+        const orderMatch = /^Order: (0|[1-9]\d*)$/.exec(orderLine);
+        const dependencyLine = rawLines[at + (orderMatch ? 3 : 2)] ?? '';
+        const dependenciesMatch = /^Dependencies: (none|[a-z0-9][a-z0-9-]*(?:, [a-z0-9][a-z0-9-]*)*)$/.exec(dependencyLine);
+        if (orderLine.startsWith('Order:') && !orderMatch) diagnostics.push(`Invalid section order at line ${at + 3}`);
+        if (dependencyLine.startsWith('Dependencies:') && !dependenciesMatch)
+            diagnostics.push(`Invalid dependencies at line ${at + (orderMatch ? 4 : 3)}`);
+        const dependencies = dependenciesMatch?.[1] === 'none' || !dependenciesMatch ? [] : dependenciesMatch[1].split(', ');
+        if (new Set(dependencies).size !== dependencies.length) diagnostics.push(`Duplicate dependencies at line ${at + 1}`);
+        return { order: orderMatch ? Number(orderMatch[1]) : fallbackOrder, dependencies };
+    };
     if (fence) diagnostics.push('Unclosed Markdown fence');
     for (const section of [...parsed.phases, ...parsed.gates]) {
         const start = section.source.line - 1;
@@ -83,16 +96,21 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
         fields.push(mapped.field); lines.set(fieldKey(section.kind, section.id), { title: mapped.title, detail: mapped.detail });
     }
     return { hash: digest(source.bytes), content, fields, lines, diagnostics,
-        structure: { phases: parsed.phases.map(item => item.id), gates: parsed.gates.map(item => ({
+        structure: { phases: parsed.phases.map((item, order) => ({ id: item.id,
+            ...metadata(item.source.line - 1, order) })), gates: parsed.gates.map(item => ({
             id: item.id, parentPhaseId: item.parentPhaseId, designation: item.designation,
+            ...metadata(item.source.line - 1, parsed.gates.filter(gate => gate.parentPhaseId === item.parentPhaseId)
+                .findIndex(gate => gate.id === item.id)),
             criteria: item.criteria.map(criterion => criterion.id) })) } };
 }
 
 function structureDiagnostics(index: RoadmapGateIndex, mapped: Awaited<ReturnType<typeof readGateMappedDocument>>): string[] {
-    const expected = { phases: [...index.phases].sort((a, b) => a.order - b.order).map(item => item.id),
+    const expected = { phases: [...index.phases].sort((a, b) => a.order - b.order).map(item => ({
+            id: item.id, order: item.order, dependencies: item.dependencies })),
         gates: [...index.gates].sort((a, b) => index.phases.find(p => p.id === a.parentPhaseId)!.order -
             index.phases.find(p => p.id === b.parentPhaseId)!.order || a.order - b.order).map(item => ({
             id: item.id, parentPhaseId: item.parentPhaseId, designation: item.designation,
+            order: item.order, dependencies: item.dependencies,
             criteria: [...item.criteria].sort((a, b) => a.order - b.order).map(c => c.id) })) };
     return same(expected, mapped.structure) ? [] : ['Phase, Gate or Criterion topology differs from accepted Roadmap'];
 }

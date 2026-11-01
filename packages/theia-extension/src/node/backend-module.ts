@@ -201,6 +201,12 @@ export default new ContainerModule(bind => {
                 acceptGateImport: async (uri, revision, projectId, importPreview) => context.container.get(RoadmapStore)
                     .acceptGateImport(await context.container.get(PlanningStore).root(uri), revision,
                         projectId === 'uninitialized' ? randomUUID() : projectId, importPreview),
+                previewRoadmapPublication: async (uri, path) => store.previewRoadmapPublication(
+                    await context.container.get(PlanningStore).root(uri), path),
+                applyRoadmapPublication: async (uri, preview, approved) => store.applyRoadmapPublication(
+                    await context.container.get(PlanningStore).root(uri), preview, approved),
+                recoverRoadmapPublication: async uri => store.recoverRoadmapPublication(
+                    await context.container.get(PlanningStore).root(uri)),
                 previewGateDocumentPatch: async (uri, edit) => store.previewGateDocumentPatch(
                     await context.container.get(PlanningStore).root(uri), edit),
                 publishGateDocumentPatch: async (uri, preview, approved) => store.publishGateDocumentPatch(

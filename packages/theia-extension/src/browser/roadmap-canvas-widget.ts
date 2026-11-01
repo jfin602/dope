@@ -7,6 +7,7 @@ import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
+import type { RoadmapPublicationPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import type { GateDocumentSyncPreview, GateDocumentRelinkPreview } from '@dope/project-intelligence/lib/node/roadmap-gate-document';
 import { projectRoadmapTasks, selectPhaseFocus, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
@@ -261,6 +262,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private sourceView: 'expanded' | 'compact' | 'minimized' = 'compact';
     private sourceFocus?: HTMLElement;
     private sourceError?: string;
+    private publication?: { uri: string; projectId: string; revision: number; path: string;
+        preview?: RoadmapPublicationPreview; busy: boolean; error?: string };
     private syncApplying = false;
     private syncChecking = false;
     private readonly poolFilter = document.createElement('input');
@@ -1894,9 +1897,59 @@ export class RoadmapCanvasWidget extends BaseWidget {
             return;
         }
         if (index.revision !== 0) {
+            const gateIndex = index as unknown as RoadmapGateIndex;
             const note = document.createElement('p');
-            note.textContent = 'This accepted Roadmap structure has no linked Markdown. No canonical file has been published.';
+            note.textContent = gateIndex.pendingPublication ?
+                'Roadmap publication was interrupted. Review recovery before starting another change.' :
+                'Accepted Roadmap · Markdown not yet published';
             this.importEntry.append(note);
+            if (gateIndex.pendingPublication) {
+                const recover = document.createElement('button'); recover.type = 'button';
+                recover.textContent = 'Recover publication';
+                recover.onclick = () => void this.recoverPublication(); this.importEntry.append(recover);
+                return;
+            }
+            const state = this.publication?.uri === this.projectUri &&
+                this.publication.projectId === gateIndex.projectId && this.publication.revision === gateIndex.revision ?
+                this.publication : undefined;
+            const label = document.createElement('label'); label.textContent = 'Project-relative .md destination';
+            const input = document.createElement('input'); input.type = 'text';
+            input.value = state?.path ?? 'ROADMAP.md'; input.setAttribute('aria-label', 'Publication destination');
+            input.onchange = () => {
+                this.publication = { uri: this.projectUri!, projectId: gateIndex.projectId,
+                    revision: gateIndex.revision, path: input.value, busy: false };
+                this.renderImportEntry();
+            };
+            label.append(input); this.importEntry.append(label);
+            const publish = document.createElement('button'); publish.type = 'button';
+            publish.textContent = state?.preview ? 'Refresh publication preview' : 'Publish & Link Markdown';
+            publish.disabled = !!state?.busy;
+            publish.onclick = () => void this.previewPublication(input.value);
+            this.importEntry.append(publish);
+            const existing = document.createElement('p');
+            existing.textContent = 'To use an existing file, review its import separately. Publication creates a new file and never overwrites a destination.';
+            this.importEntry.append(existing);
+            if (state?.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
+                error.textContent = state.error; this.importEntry.append(error); }
+            if (state?.preview) {
+                const preview = state.preview;
+                const summary = document.createElement('p');
+                summary.textContent = `${preview.path} · Roadmap revision ${preview.revision} · ${preview.phaseCount} Phase(s), ` +
+                    `${preview.gateCount} Gate(s), ${preview.criterionCount} criteria · destination absent and safe · SHA-256 ${preview.sourceHash}`;
+                this.importEntry.append(summary);
+                for (const warning of preview.warnings) { const disclosure = document.createElement('p');
+                    disclosure.textContent = warning; this.importEntry.append(disclosure); }
+                const contents = document.createElement('pre'); contents.tabIndex = 0;
+                contents.textContent = preview.content; contents.style.maxHeight = '18rem'; contents.style.overflow = 'auto';
+                this.importEntry.append(contents);
+                const approve = document.createElement('button'); approve.type = 'button';
+                approve.textContent = 'Approve publication'; approve.disabled = state.busy;
+                approve.onclick = () => void this.applyPublication(preview);
+                const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel';
+                cancel.onclick = () => { this.publication = undefined; this.renderImportEntry();
+                    void this.service.applyRoadmapPublication(state.uri, preview, false).catch(() => undefined); };
+                this.importEntry.append(approve, cancel);
+            }
             return;
         }
         const heading = document.createElement('h3'); heading.textContent = 'Start your Roadmap';
@@ -2163,6 +2216,62 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const list = document.createElement('ul');
         for (const diagnostic of diagnostics) { const item = document.createElement('li'); item.textContent = diagnostic; list.append(item); }
         group.append(heading, list); this.importEntry.append(group);
+    }
+
+    private async previewPublication(path: string): Promise<void> {
+        const uri = this.projectUri, index = this.inspector.index;
+        if (!uri || !index || !index.revision || index.linkedDocument) return;
+        const state: NonNullable<typeof this.publication> = { uri, projectId: index.projectId,
+            revision: index.revision, path, busy: true };
+        this.publication = state;
+        this.renderImportEntry();
+        try {
+            const preview = await this.service.previewRoadmapPublication(uri, path);
+            if (this.publication !== state || this.projectUri !== uri) return;
+            state.preview = preview;
+        } catch (error) {
+            if (this.publication !== state) return;
+            state.error = `Publication preview failed: ${String(error)}`;
+        } finally {
+            if (this.publication === state) { state.busy = false; this.renderImportEntry(); }
+        }
+    }
+
+    private async applyPublication(preview: RoadmapPublicationPreview): Promise<void> {
+        const state = this.publication;
+        if (!state || state.busy || state.preview !== preview || this.projectUri !== state.uri ||
+            this.inspector.index?.projectId !== state.projectId || this.inspector.index.revision !== state.revision) return;
+        state.busy = true; state.error = undefined; this.renderImportEntry();
+        try {
+            const result = await this.service.applyRoadmapPublication(state.uri, preview, true);
+            if (this.publication !== state || this.projectUri !== state.uri) return;
+            if (result.linkedDocument?.path !== preview.path || result.linkedDocument.syncState !== 'synced')
+                throw new Error('Publication acknowledgement did not confirm a synchronized linked document');
+            this.publication = undefined;
+            this.inspector.setSnapshot(state.uri, result as unknown as RoadmapIndex);
+            await this.refresh();
+        } catch (error) {
+            if (this.publication === state) {
+                state.preview = undefined;
+                state.error = `Publication was not confirmed: ${String(error)}. Refresh and review recovery.`;
+            }
+        } finally {
+            if (this.publication === state) { state.busy = false; this.renderImportEntry(); }
+        }
+    }
+
+    private async recoverPublication(): Promise<void> {
+        const uri = this.projectUri;
+        if (!uri) return;
+        try {
+            const result = await this.service.recoverRoadmapPublication(uri);
+            if (this.projectUri !== uri) return;
+            this.inspector.setSnapshot(uri, result as unknown as RoadmapIndex);
+            await this.refresh();
+        } catch (error) {
+            if (this.projectUri === uri) { this.sourceError = `Publication recovery needs review: ${String(error)}`;
+                this.renderImportEntry(); }
+        }
     }
 
     private showSetupMessage(message: string): void {
