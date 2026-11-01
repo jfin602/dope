@@ -12,6 +12,18 @@ const record = (value: unknown): value is Record<string, unknown> =>
     !!value && typeof value === 'object' && !Array.isArray(value);
 const temporary = (value: string): boolean => /^new:[a-z0-9-]{1,32}$/i.test(value);
 
+/** A partial Gate name cannot authorize a model-selected target when several Gates share it. */
+export function ambiguousGateReferences(index: RoadmapGateIndex, request: string): string[] {
+    const mentions = (value: string): boolean => !!value && new RegExp(
+        `(^|[^a-z0-9])${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^a-z0-9])`, 'i').test(request);
+    if (index.gates.some(gate => mentions(gate.id) || mentions(gate.designation))) return [];
+    const words = new Set((request.toLowerCase().match(/[a-z0-9]{4,}/g) ?? [])
+        .filter(word => !['roadmap', 'gate', 'gates', 'change', 'purpose', 'title', 'field', 'other',
+            'unchanged', 'verify', 'verification'].includes(word)));
+    return index.gates.filter(gate => gate.title.toLowerCase().match(/[a-z0-9]{4,}/g)?.some(word => words.has(word)))
+        .map(gate => `${gate.designation} (${gate.title}; ${gate.id})`).slice(0, 3);
+}
+
 export function validGateChatEnvelope(value: unknown): value is { type: 'roadmap-gate-proposal';
     projectId: string; ownerRevision: number; actions: GatePlanningAction[] } {
     if (!record(value) || Object.keys(value).sort().join(',') !== 'actions,ownerRevision,projectId,type' ||

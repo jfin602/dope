@@ -10,7 +10,20 @@ import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
-import { bindGateChatActions, touchesLinkedSource, validGateChatEnvelope } from '../../packages/theia-extension/lib/node/roadmap-gate-chat.js';
+import { ambiguousGateReferences, bindGateChatActions, touchesLinkedSource, validGateChatEnvelope } from '../../packages/theia-extension/lib/node/roadmap-gate-chat.js';
+
+test('an indirect Gate name shared by two Gates needs an exact identity', () => {
+    const index = { gates: [
+        { id: 'gate-one', designation: 'G1', title: 'Readiness' },
+        { id: 'gate-two', designation: 'G2', title: 'Other readiness' }
+    ] } as never;
+    assert.equal(ambiguousGateReferences(index,
+        'Change the purpose of a readiness Gate to verify ambiguity.').length, 2);
+    assert.deepEqual(ambiguousGateReferences(index,
+        'Change the purpose of Gate gate-one to verify final behavior.'), []);
+    assert.deepEqual(ambiguousGateReferences(index,
+        'Change the purpose of G2 to verify final behavior.'), []);
+});
 
 test('Chat only accepts bounded structural proposals and binds temporary IDs within a batch', () => {
     const envelope = { type: 'roadmap-gate-proposal', projectId: 'owner-1', ownerRevision: 2,

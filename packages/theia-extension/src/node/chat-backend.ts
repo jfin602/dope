@@ -25,7 +25,7 @@ import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
 import { extractSavedRoadmap, roadmapCreationIntent } from './chat-roadmap-extract';
 import { roadmapRequirementCoverage } from './chat-roadmap-requirements';
-import { bindGateChatActions, touchesLinkedSource, validGateChatEnvelope } from './roadmap-gate-chat';
+import { ambiguousGateReferences, bindGateChatActions, touchesLinkedSource, validGateChatEnvelope } from './roadmap-gate-chat';
 import { linkedRoadmapProposalPreview, roadmapProposalPreview } from './roadmap-proposal-presentation';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
@@ -628,7 +628,7 @@ export class ChatBackend implements ChatService {
     }
 
     private async gateProposal(root: string, chatId: string, messageId: string, leaseToken: string,
-        output: string, refs: ChatContextPreview['refs'], roadmapSkill: boolean):
+        output: string, refs: ChatContextPreview['refs'], roadmapSkill: boolean, requestText: string):
         Promise<{ proposal?: ChatPlanningProposal; proposalError?: string;
             roadmapFocus?: ChatTurnResult['roadmapFocus'] }> {
         const ref = refs.find(item => item.kind === 'roadmap');
@@ -686,6 +686,13 @@ export class ChatBackend implements ChatService {
                 ref.id !== 'roadmap' && !before.phases.some(item => item.id === ref.id) &&
                 !before.gates.some(item => item.id === ref.id))
                 throw new Error('Roadmap selection or source changed');
+            if (ref.id === 'roadmap' && value.actions.some(action =>
+                ['gate.edit', 'gate.delete', 'gate.reparent', 'gate.dependencies', 'criterion.add',
+                    'criterion.edit', 'criterion.remove', 'criterion.reorder'].includes(action.type))) {
+                const candidates = ambiguousGateReferences(before, requestText);
+                if (candidates.length > 1)
+                    throw new Error(`Ambiguous Gate target. Which Gate do you mean: ${candidates.join(' or ')}? No change was made.`);
+            }
             const actions = bindGateChatActions(value.actions);
             const mapped = before.linkedDocument?.sections.find(section =>
                 actions.length === 1 && 'id' in actions[0] && section.id === actions[0].id);
@@ -742,12 +749,12 @@ export class ChatBackend implements ChatService {
 
     private async proposal(root: string, chatId: string, messageId: string, leaseToken: string,
         output: string, refs: ChatContextPreview['refs'], draft?: { handle: string; revision: number; projectId: string },
-        roadmapSkill = false):
+        roadmapSkill = false, requestText = ''):
         Promise<{ proposal?: ChatPlanningProposal; proposalError?: string;
             roadmapFocus?: ChatTurnResult['roadmapFocus'] }> {
         if (!output.trimStart().startsWith('{')) return {};
         if (refs.some(ref => ref.kind === 'roadmap'))
-            return this.gateProposal(root, chatId, messageId, leaseToken, output, refs, roadmapSkill);
+            return this.gateProposal(root, chatId, messageId, leaseToken, output, refs, roadmapSkill, requestText);
         if (!draft && (!this.planning || !refs.some(ref => ref.kind === 'roadmap-checkpoint'))) return {};
         let handle: string | undefined;
         try {
@@ -1457,7 +1464,7 @@ export class ChatBackend implements ChatService {
                     if (abort.signal.aborted && !localRoadmap) return preview;
                     const proposalRefs = [...preview.refs, ...sourceRefs];
                     const result = helpTurn || bridge ? {} : await this.proposal(root, key, assistant.id,
-                        request.leaseToken, output, proposalRefs, draft, roadmapSkill);
+                        request.leaseToken, output, proposalRefs, draft, roadmapSkill, request.content);
                     if (localRoadmap) {
                         const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
