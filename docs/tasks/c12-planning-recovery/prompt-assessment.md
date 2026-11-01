@@ -41,4 +41,4 @@
 
 ## Assessment disposition
 
-**ASSESSED / APPROVED FOR P1, P2 AND SEPARATE P3-A/P3-C/P3-B MANUAL PROMPTS; P3-B NOT IMPLEMENTED OR QUALIFIED.** No runner dependence, no new model comparison, no broad Pi integration rewrite, no version bump. Keep original NOT GREEN evidence immutable.
+**ASSESSED / APPROVED FOR P1, P2 AND SEPARATE P3-A/P3-B/P3-C MANUAL PROMPTS; P3-B NOT IMPLEMENTED OR QUALIFIED.** No runner dependence, no new model comparison, no broad Pi integration rewrite, no version bump. Keep original NOT GREEN evidence immutable.
