@@ -213,7 +213,8 @@ test('panel source keeps input and toolbar rows with AI Center repair, settings 
     assert.match(source, /dope-chat-composer/);
     assert.match(source, /composer\.append\(input, toolbar\)/);
     assert.match(source, /dope-chat-selected-context/);
-    assert.match(source, /dope-chat-context-diagnostics/);
+    assert.match(source, /review\.className = 'dope-chat-plan-review'/);
+    assert.match(source, /region\.append\(review\)/);
     assert.match(source, /type: 'set-color'/);
     assert.match(source, /type: 'set-settings'/);
 });

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, roadmapElementPreview, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -159,6 +159,19 @@ test('trusted greenfield creation is described as creation even when it has an o
     }
 });
 
+test('validated Gate edit has a compact element preview and JSON remains the diagnostic payload', () => {
+    const message = { content: JSON.stringify({ type: 'roadmap-gate-proposal', actions: [{
+        type: 'gate.edit', id: 'gate-one', title: 'Release verification', purpose: 'Verify the release',
+    }] }), planningActivity: { schemaVersion: 1, kind: 'roadmap-gate-proposal', status: 'pending',
+        refs: [{ kind: 'roadmap', id: 'gate-one', label: 'Roadmap Gate: Release readiness' }] } } as ChatAssistantMessage;
+    assert.deepEqual(roadmapElementPreview(message), { kind: 'Gate', id: 'gate-one', title: 'Release verification',
+        detailLabel: 'Purpose', detail: 'Verify the release', previousTitle: 'Release readiness' });
+    assert.deepEqual(planningOutcome(message)?.questions, []);
+    assert.equal(roadmapElementPreview({ ...message, planningActivity: undefined }), undefined);
+    assert.equal(roadmapElementPreview({ ...message, content: '{bad' }), undefined);
+    assert.equal(roadmapElementPreview({ ...message, content: JSON.stringify({ actions: [{ type: 'gate.delete', id: 'gate-one' }] }) }), undefined);
+});
+
 test('completed backend-validated no-action presents its message once without implying a write', () => {
     const content = JSON.stringify({ type: 'no-action', message: 'Use the Roadmap source menu to review the linked file.' });
     const message = { content, execution: { status: 'complete' }, planningActivity: {
@@ -167,7 +180,12 @@ test('completed backend-validated no-action presents its message once without im
     assert.deepEqual(planningOutcome(message), {
         summary: 'Use the Roadmap source menu to review the linked file.', questions: [],
     });
-    assert.equal(planningActivityPresentation(message)?.status, 'No change');
+    assert.equal(planningActivityPresentation(message), undefined);
+    assert.equal(chatResponseCopyText(message), 'Use the Roadmap source menu to review the linked file.');
+    const prose = { ...message, content: 'Gate G1 is Release readiness.' };
+    assert.equal(planningOutcome(prose), undefined);
+    assert.equal(planningActivityPresentation(prose), undefined);
+    assert.equal(chatResponseCopyText(prose), prose.content);
     for (const damaged of [
         { ...message, planningActivity: undefined },
         { ...message, execution: { status: 'streaming' } },
@@ -198,14 +216,14 @@ test('verified guidance is distinct from preserved model text and requires a val
     execution: { status: 'complete' }, planningActivity: { schemaVersion: 1, kind: 'no-action',
         status: 'no-action', refs: [], verifiedGuidance: { capabilityId: 'roadmap-change-file',
             version: '0.11.8-m1', text: 'Review the replacement preview and explicitly confirm it. The old file remains on disk.' } } } as ChatAssistantMessage;
-    assert.equal(planningActivityPresentation(message)?.label, 'Verified Dope guidance');
+    assert.equal(planningActivityPresentation(message), undefined);
     assert.match(planningOutcome(message)?.summary ?? '', /explicitly confirm/);
     assert.doesNotMatch(planningOutcome(message)?.summary ?? '', /conflicted|I changed/);
     assert.match(message.content, /conflicted/);
     for (const content of ['garbage', '{"type":"no-action","message":"ok","extra":true}',
         '{"type":"unknown","message":"ok"}']) {
         const damaged = { ...message, content };
-        assert.equal(planningActivityPresentation(damaged)?.label, 'No planning action');
+        assert.equal(planningActivityPresentation(damaged), undefined);
         assert.doesNotMatch(planningOutcome(damaged)?.summary ?? '', /explicitly confirm/);
     }
 });
@@ -242,6 +260,10 @@ test('untrusted Markdown omits image tokens before DOM creation without a docume
     assert.match(renderUntrustedMessageHtml('<img src="https://example.test/raw">'), /&lt;img src=&quot;/);
     assert.match(renderUntrustedMessageHtml('**bold** and [link](https://example.test/page)'),
         /<strong>bold<\/strong> and <a href="https:\/\/example\.test\/page">link<\/a>/);
+    assert.match(renderUntrustedMessageHtml('The heading is: ``` ### Gate G1: Release readiness ```'),
+        /The heading is: <code>### Gate G1: Release readiness<\/code>/);
+    assert.match(renderUntrustedMessageHtml('```ts\nconst x = 1;\n```'),
+        /<pre><code>const x = 1;/);
     assert.match(markdown, /DOMPurify\.sanitize\(renderUntrustedMessageHtml\(text\)/);
     assert.match(markdown, /RETURN_DOM_FRAGMENT: true/);
     assert.match(markdown, /FORBID_TAGS: \['img'/);
@@ -266,6 +288,7 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(widget, /for \(const value of CHAT_COLORS\)/);
     assert.match(widget, /type: 'set-color', chatId, color: value/);
     assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, body\)/);
+    assert.doesNotMatch(widget, /summary\.textContent = `Context ·/);
     assert.match(widget, /state\.stream\.executionId === message\.execution\.id/);
     assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, state\.stream\.content\)/);
     assert.match(markdown, /messageMarkdown\.renderer\.rules\.image =/);

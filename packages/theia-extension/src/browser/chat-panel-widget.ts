@@ -17,7 +17,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, roadmapElementPreview, implementationPlanAnswer, isDraftPlanningAction, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
@@ -266,7 +266,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             void this.directController?.resolveTarget();
             void this.workController?.phase.refresh();
             if (this.panel.work?.kind === 'task') void this.workController?.select(this.panel.work); });
-        this.planningListener = planningSelection?.onChange(() => this.updatePlanningLabel());
+        this.planningListener = planningSelection?.onChange(() => this.render());
         this.initialAttach = this.attach();
         if (this.module === 'chat') void this.loadModels();
     }
@@ -403,18 +403,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.cancelScrollAnimation?.();
         this.scrollAnimationUntil = performance.now() + 200;
         this.animateLatest(scroll);
-    }
-    private updatePlanningLabel(): void {
-        const state = this.controller;
-        const active = state.activePlanning;
-        const label = this.content.querySelector<HTMLElement>('.dope-chat-planning-context');
-        if (label) {
-            label.hidden = !active;
-            label.textContent = active ? `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
-                `${active.kind === 'roadmap-checkpoint' ? 'checkpoint' : active.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${active.id}` : '';
-        }
-        const pin = this.content.querySelector<HTMLButtonElement>('.dope-chat-pin-planning');
-        if (pin) pin.disabled = !state.workspace || !this.planningSelection?.current(state.workspace);
     }
     private animateLatest(scroll: HTMLElement): void {
         const remaining = Math.max(0, this.scrollAnimationUntil - performance.now());
@@ -2039,6 +2027,32 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         editIcon.className = codicon('edit'); editIcon.setAttribute('aria-hidden', 'true');
         editTitle.append(editIcon);
         header.append(editTitle);
+        const activePlanning = state.activePlanning;
+        if (activePlanning) {
+            const pinned = state.planningMode === 'pin';
+            const selectionMode = this.button('', () => pinned ? state.followPlanning() : state.pinPlanning(),
+                !pinned && (!state.workspace || !this.planningSelection?.current(state.workspace)));
+            selectionMode.className = 'dope-chat-title-edit';
+            selectionMode.setAttribute('aria-label', pinned ? 'Follow planning selection' : 'Pin planning selection');
+            selectionMode.title = pinned ? 'Follow planning selection' : 'Pin planning selection';
+            const pinIcon = document.createElement('span');
+            pinIcon.className = codicon(pinned ? 'pinned' : 'pin'); pinIcon.setAttribute('aria-hidden', 'true');
+            selectionMode.append(pinIcon); header.append(selectionMode);
+            if (activePlanning.kind === 'roadmap-checkpoint' && !state.running) {
+                const bridge = this.button('', () => {
+                    const entered = window.prompt('Affected Architecture branch IDs, comma separated');
+                    if (entered === null) return;
+                    const branchIds = entered.split(',').map(id => id.trim()).filter(Boolean);
+                    if (!branchIds.length) { this.status.textContent = 'Select an affected Architecture branch'; return; }
+                    void state.runTurn(state.turnModel, undefined, undefined, branchIds);
+                }, state.pending || !state.draft.trim() || !this.selectedModel());
+                bridge.className = 'dope-chat-title-edit';
+                bridge.setAttribute('aria-label', 'Suggest Bridge change'); bridge.title = 'Suggest Bridge change';
+                const bridgeIcon = document.createElement('span');
+                bridgeIcon.className = codicon('git-merge'); bridgeIcon.setAttribute('aria-hidden', 'true');
+                bridge.append(bridgeIcon); header.append(bridge);
+            }
+        }
         const shell = document.createElement('section'); shell.className = 'dope-chat-shell';
         const region = document.createElement('div'); region.className = 'dope-chat-transcript-region';
         if (this.settingsOpen) region.classList.add('dope-chat-settings-region');
@@ -2100,6 +2114,25 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (activity) {
                     const planAnswer = implementationPlanAnswer(message);
                     if (planAnswer) content.append(renderUntrustedMessageMarkdown(this.markdown, planAnswer));
+                    const preview = roadmapElementPreview(message);
+                    if (preview) {
+                        const card = document.createElement('section');
+                        card.className = 'dope-chat-roadmap-element-preview';
+                        card.setAttribute('aria-label', `Proposed ${preview.kind} ${preview.id}`);
+                        const kind = document.createElement('small');
+                        kind.textContent = `${preview.kind} · ${preview.id} · ${activity.status}`;
+                        const title = document.createElement('strong'); title.textContent = preview.title;
+                        const detail = document.createElement('p');
+                        detail.textContent = `${preview.detailLabel}: ${preview.detail}`;
+                        card.append(kind, title, detail);
+                        if (preview.previousTitle && preview.previousTitle !== preview.title) {
+                            const change = document.createElement('p');
+                            change.className = 'dope-chat-roadmap-element-change';
+                            change.textContent = `Title: ${preview.previousTitle} → ${preview.title}`;
+                            card.append(change);
+                        }
+                        content.append(card);
+                    } else {
                     const details = document.createElement('details');
                     details.className = 'dope-chat-planning-activity';
                     details.open = this.openPlanningActivities.has(message.id);
@@ -2125,6 +2158,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     this.bindDiagnosticCopy(copy, message);
                     details.append(summary, raw, copy);
                     content.append(details);
+                    }
                     if (activity.alert) item.classList.add('dope-chat-message-alert');
                 } else if (message.planningActivity?.status === 'failed' ||
                     message.planningActivity?.status === 'cancelled') {
@@ -2134,7 +2168,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         raw.textContent = body;
                         content.append(raw);
                     }
-                } else if (message.execution.status === 'complete')
+                } else if (message.execution.status === 'complete' &&
+                    !(message.planningActivity?.kind === 'no-action' && outcome))
                     content.append(renderUntrustedMessageMarkdown(this.markdown, body));
                 else if (message.execution.status === 'cancelled') {
                     const note = document.createElement('p'); note.textContent = 'No final response'; content.append(note);
@@ -2232,6 +2267,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     info.append(row);
                 };
                 detail('Status', `${execution.status}${execution.failure ? ` · ${execution.failure}` : ''}`);
+                if (roadmapElementPreview(message)) {
+                    const raw = document.createElement('details');
+                    const label = document.createElement('summary'); label.textContent = 'Original proposal JSON';
+                    const payload = document.createElement('pre'); payload.textContent = message.content;
+                    const copyJson = this.button('Copy JSON', () => void copyChatText(message.content)
+                        .then(() => { copyJson.textContent = 'Copied'; }, () => { copyJson.textContent = 'Copy failed'; }));
+                    raw.append(label, payload, copyJson); info.append(raw);
+                }
                 detail('Selected', `${execution.selectedModel.connectionId}/${execution.selectedModel.modelId}`);
                 if (execution.actualModel) detail('Actual',
                     `${execution.actualModel.providerId}/${execution.actualModel.modelLabel}`);
@@ -2537,31 +2580,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             progress.textContent = 'Validating local planning result…';
             responseNotices.append(progress);
         }
-        const planning = document.createElement('div');
-        planning.className = 'dope-chat-planning-context';
-        const activePlanning = state.activePlanning;
-        planning.hidden = !activePlanning;
-        planning.textContent = activePlanning ? `${state.planningMode === 'pin' ? 'Pinned' : 'Following active selection'}: ` +
-            `${activePlanning.kind === 'roadmap-checkpoint' ? 'checkpoint' : activePlanning.kind === 'roadmap' ? 'Roadmap' : 'Planning Map'} ${activePlanning.id}` : '';
-        if (activePlanning) {
-            planning.append(' ', this.button(state.planningMode === 'pin' ? 'Follow selection' : 'Pin selection',
-                () => state.planningMode === 'pin' ? state.followPlanning() : state.pinPlanning()));
-            if (activePlanning.kind === 'roadmap-checkpoint' && !state.running) planning.append(' ',
-                this.button('Suggest Bridge change', () => {
-                    const entered = window.prompt('Affected Architecture branch IDs, comma separated');
-                    if (entered === null) return;
-                    const branchIds = entered.split(',').map(id => id.trim()).filter(Boolean);
-                    if (!branchIds.length) { this.status.textContent = 'Select an affected Architecture branch'; return; }
-                    void state.runTurn(state.turnModel, undefined, undefined, branchIds);
-                }, state.pending || !state.draft.trim() || !this.selectedModel()));
-        }
-        responseNotices.append(planning);
-        if (activePlanning?.kind === 'roadmap') {
-            const notice = document.createElement('p');
-            notice.className = 'dope-chat-context-diagnostics';
-            notice.textContent = 'Roadmap Chat editing is not yet qualified. Review any proposed change before applying it; use Roadmap manual controls for dependable structure edits.';
-            responseNotices.append(notice);
-        }
         if (state.context.length) {
             const selectedContext = document.createElement('ul');
             selectedContext.className = 'dope-chat-selected-context';
@@ -2582,7 +2600,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (state.planningProposal) {
             const proposal = state.planningProposal;
             const review = document.createElement('section');
-            review.className = 'dope-chat-context-diagnostics dope-chat-plan-review';
+            review.className = 'dope-chat-plan-review';
+            review.setAttribute('role', 'dialog');
             review.setAttribute('aria-label', 'Roadmap proposal review');
             const heading = document.createElement('strong');
             const draftProposal = isDraftPlanningAction(proposal.action.type);
@@ -2595,14 +2614,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const diffLabel = document.createElement('summary'); diffLabel.textContent = 'Review before and after';
             const diffText = document.createElement('pre'); diffText.textContent = proposal.summary;
             diff.append(diffLabel, diffText);
-            review.append(heading, affected, diff,
+            const decisions = document.createElement('div');
+            decisions.className = 'dope-chat-plan-review-actions';
+            decisions.append(
                 this.button(draftProposal ? 'Accept into draft' : 'Apply proposal',
                     () => void state.decidePlanningProposal(true), state.pending),
                 this.button('Reject proposal', () => void state.decidePlanningProposal(false), state.pending));
-            const source = Array.from(transcript.children).find(item =>
-                (item as HTMLElement).dataset.messageId === proposal.messageId);
-            if (source) source.append(review);
-            else responseNotices.append(review);
+            review.append(heading, affected, diff, decisions);
+            region.append(review);
         }
         if (state.planningProposalError) {
             const note = document.createElement('p');
@@ -2612,26 +2631,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 (item as HTMLElement).dataset.messageId === state.planningProposalErrorMessageId);
             if (source) source.append(note);
             else responseNotices.append(note);
-        }
-        if (state.lastContext) {
-            const details = document.createElement('details');
-            details.className = 'dope-chat-context-diagnostics';
-            const summary = document.createElement('summary');
-            summary.textContent = `Context · ${state.lastContext.refs.length} sources · ~${state.lastContext.usedTokens}/${state.lastContext.budgetTokens} estimated tokens`;
-            details.append(summary);
-            const description = document.createElement('small');
-            description.textContent = state.lastContext.diagnostics.map(item =>
-                    `${item.source}: ${item.message}`).join(' ');
-            details.append(description);
-            const included = document.createElement('ul');
-            included.setAttribute('aria-label', 'Included context preview');
-            for (const ref of state.lastContext.refs) {
-                const item = document.createElement('li');
-                item.textContent = `${ref.kind}: ${ref.label} (${ref.estimatedTokens} estimated tokens)`;
-                included.append(item);
-            }
-            details.append(included);
-            responseNotices.append(details);
         }
         responseNotices.prepend(this.status);
         scroll.append(responseNotices);

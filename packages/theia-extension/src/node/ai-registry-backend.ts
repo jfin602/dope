@@ -39,7 +39,7 @@ export class AIInventoryController {
     private readonly localExecution = new Map<string, number>();
     private probeGeneration = 0;
     private readonly fingerprints = new Map<string, string>();
-    private readonly inFlight = new Set<string>();
+    private readonly inFlight = new Map<string, Promise<AIInventoryState>>();
     private readonly changes = new Map<string, number>();
     private readonly credentialChanges = new Map<string, number>();
     private readonly listeners = new Set<() => void>();
@@ -143,7 +143,14 @@ export class AIInventoryController {
         return 'unavailable';
     }
     async refreshModels(id: string, reconnect = false): Promise<AIInventoryState> {
-        if (this.inFlight.has(id)) throw new Error('Connection check already in progress');
+        const pending = this.inFlight.get(id);
+        if (pending) return pending;
+        const refresh = this.refreshModelsOnce(id, reconnect);
+        this.inFlight.set(id, refresh);
+        try { return await refresh; }
+        finally { if (this.inFlight.get(id) === refresh) this.inFlight.delete(id); }
+    }
+    private async refreshModelsOnce(id: string, reconnect: boolean): Promise<AIInventoryState> {
         const connection = await this.connection(id);
         if (connection.lifecycle === 'disabled') throw new ModelRuntimeFailure('Connection disabled', 'connection-unavailable');
         const prior = await this.inventory();
@@ -154,7 +161,6 @@ export class AIInventoryController {
                     item.providerModelKey === model.providerModelKey)?.contextWindowTokens
             }));
         this.invalidateProbes();
-        this.inFlight.add(id);
         this.health.set(id, 'checking'); this.tested.delete(id); this.clearLoaded(id); this.changed();
         const startingCredentialGeneration = this.credentialChanges.get(id);
         try {
@@ -239,9 +245,13 @@ export class AIInventoryController {
             if (this.health.get(id) === 'checking') this.health.set(id, this.failure(error));
             this.changed();
             throw error;
-        } finally { this.inFlight.delete(id); }
+        }
     }
     async verifyLocalAgentExecution(id: string, modelId: string, signal?: AbortSignal): Promise<LocalCapabilityResult> {
+        if (this.inFlight.has(id)) {
+            try { await this.inFlight.get(id); }
+            catch { return 'unavailable'; }
+        }
         this.invalidateProbes(); this.changed();
         const generation = this.probeGeneration;
         const current = await this.inventory();

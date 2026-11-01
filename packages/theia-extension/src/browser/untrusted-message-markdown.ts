@@ -20,7 +20,11 @@ messageMarkdown.renderer.rules.fence = (tokens, index) => {
 
 /** Image tokens become text before HTML parsing can create an image request. */
 export function renderUntrustedMessageHtml(text: string): string {
-    return messageMarkdown.render(text);
+    // Some local models put an entire fenced snippet inside a prose line.
+    // Markdown treats that as literal backticks; present it as inline code.
+    const inlineFences = text.replace(/```[ \t]*([^\r\n`]*?\S[^\r\n`]*?)[ \t]*```/gu,
+        (_match, content: string) => `\`${content.trim()}\``);
+    return messageMarkdown.render(inlineFences);
 }
 
 /** Shared presentation boundary for untrusted Chat and AgentRun prose. */

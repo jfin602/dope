@@ -740,7 +740,6 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-panel button:hover:not(:disabled) { background: var(--theia-button-secondaryHoverBackground); }
 .dope-chat-panel button:focus-visible, .dope-chat-panel summary:focus-visible, .dope-chat-panel select:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-chat-panel button:disabled { opacity: .55; cursor: default; }
-.dope-chat-panel .dope-chat-planning-context { color: var(--theia-descriptionForeground); font-size: 12px; overflow-wrap: anywhere; padding: 3px 0; }
 .dope-chat-panel ul, .dope-chat-panel ol { list-style: none; padding-left: 14px; }
 .dope-chat-panel li { margin: 5px 0; }
 .dope-chat-panel summary { cursor: pointer; overflow-wrap: anywhere; }
@@ -911,6 +910,14 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-message-alert .dope-chat-activity-status { color: var(--theia-errorForeground); font-weight: 600; }
 .dope-chat-planning-activity > .dope-chat-activity-raw { max-height: 20rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dope-chat-planning-activity > button { margin: 0 0 4px; }
+.dope-chat-roadmap-element-preview { box-sizing: border-box; display: grid; gap: 4px; min-width: 0; max-width: 100%;
+    margin: 8px 0; padding: 9px 11px; border: 1px solid var(--theia-widget-border);
+    border-left: 3px solid var(--dope-primary); border-radius: 7px;
+    color: var(--theia-editor-foreground, var(--theia-foreground)); background: var(--theia-editor-background); overflow-wrap: anywhere; }
+.dope-chat-roadmap-element-preview small { color: var(--theia-descriptionForeground); font-size: 11px; }
+.dope-chat-roadmap-element-preview strong { font-size: 13px; }
+.dope-chat-roadmap-element-preview p { margin: 0; font-size: 12px; }
+.dope-chat-roadmap-element-preview .dope-chat-roadmap-element-change { color: var(--dope-primary); font-size: 11px; }
 .dope-chat-planning-outcome { margin: 0 0 8px; max-width: 72ch; overflow-wrap: anywhere; }
 .dope-chat-planning-outcome p { margin: 0 0 5px; }
 .dope-chat-planning-outcome p + p { color: var(--theia-descriptionForeground); font-size: 0.92em; }
@@ -1101,9 +1108,20 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-selected-context li { display: inline-flex; gap: 4px; align-items: center; max-width: 100%; margin: 0; padding: 2px 5px; border: 1px solid var(--theia-widget-border); border-radius: 5px; font-size: 11px; }
 .dope-chat-selected-context li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dope-chat-context-diagnostics { color: var(--theia-descriptionForeground); font-size: 11px; }
-.dope-chat-plan-review { min-width: 0; overflow-wrap: anywhere; }
-.dope-chat-plan-review ul { margin: 6px 0; padding-inline-start: 20px; max-height: 18rem; overflow: auto; }
-.dope-chat-plan-review button { max-width: 100%; white-space: normal; }
+.dope-chat-plan-review { box-sizing: border-box; position: absolute; z-index: 12; left: 8px; right: 8px; bottom: 8px;
+    display: grid; gap: 8px; min-width: 0; max-height: min(65%, 430px); padding: 12px; overflow-y: auto; overflow-x: hidden;
+    color: var(--theia-editor-foreground, var(--theia-foreground)); background: var(--theia-editorWidget-background, var(--theia-editor-background));
+    border: 1px solid var(--theia-focusBorder); border-radius: 8px; box-shadow: 0 8px 24px #0009; overflow-wrap: anywhere; }
+.dope-chat-plan-review strong { font-size: 12px; }
+.dope-chat-plan-review p { margin: 0; color: var(--theia-descriptionForeground); font-size: 11px; }
+.dope-chat-plan-review details { min-width: 0; font-size: 12px; }
+.dope-chat-plan-review pre { box-sizing: border-box; max-width: 100%; max-height: 180px; margin: 6px 0 0; padding: 8px;
+    overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font: 11px/1.4 var(--theia-code-font-family, monospace);
+    color: var(--theia-editor-foreground, var(--theia-foreground)); background: var(--theia-editor-background);
+    border: 1px solid var(--theia-widget-border); border-radius: 4px; }
+.dope-chat-plan-review-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.dope-chat-plan-review-actions button { max-width: 100%; white-space: normal; }
+.dope-chat-panel .dope-chat-plan-review-actions button:first-child { color: var(--dope-on-primary); background: var(--dope-action-background); }
 .dope-chat-panel [data-color="blue"] { --chat-color: #2860ae; --chat-ink: white; }
 .dope-chat-panel [data-color="cyan"] { --chat-color: #087f91; --chat-ink: white; }
 .dope-chat-panel [data-color="teal"] { --chat-color: #087969; --chat-ink: white; }

@@ -20,6 +20,7 @@ async function fixture(run: (state: { store: AIRegistryStore; controller: AIInve
     runtime: ModelConnectionsRegistry; credentials: AICredentialManager;
     connectFake: () => Promise<void>;
     change: (models: ReturnType<typeof loaded>[]) => void;
+    delayDiscovery: (gate?: Promise<void>) => void;
     calls: { messages: unknown; maxOutputTokens?: number }[];
     fail: (error?: Error) => void; generationFail: (error?: Error) => void }) => Promise<void>,
     probe?: LocalAgentCapabilityProbe) {
@@ -31,11 +32,12 @@ async function fixture(run: (state: { store: AIRegistryStore; controller: AIInve
     let models = [loaded('alpha', 4096), loaded('beta', 8192)];
     let error: Error | undefined;
     let generationError: Error | undefined;
+    let discoveryGate: Promise<void> | undefined;
     const calls: { messages: unknown; maxOutputTokens?: number }[] = [];
     try {
         await store.mutate({ version: 1, expectedRevision: 0, mutation: { type: 'create-connection', connection: local('desk') } });
         const fake = {
-            async discoverModels() { if (error) throw error; return models; },
+            async discoverModels() { await discoveryGate; if (error) throw error; return models; },
             async *generateConversation(request) {
                 calls.push({ messages: request.messages, maxOutputTokens: request.maxOutputTokens });
                 if (generationError) throw generationError;
@@ -46,6 +48,7 @@ async function fixture(run: (state: { store: AIRegistryStore; controller: AIInve
         await runtime.connect('desk', fake);
         await run({ store, controller, runtime, credentials, calls, connectFake: () => runtime.connect('desk', fake),
             change(next) { models = next; },
+            delayDiscovery(gate) { discoveryGate = gate; },
             fail(next) { error = next; }, generationFail(next) { generationError = next; } });
     } finally { controller.dispose(); store.dispose(); await rm(directory, { recursive: true, force: true }); }
 }
@@ -142,6 +145,29 @@ test('Local Coding Agent eligibility requires synthetic tool continuation and li
         assert.deepEqual((await controller.inventory()).registry.models.find(item => item.connectionId === 'codex')?.capabilities.agentExecution, { source: 'adapter-known', value: true });
         runtime.disconnect('desk');
         assert.equal((await capability('beta'))?.source, 'unknown');
+    }, probe);
+});
+
+test('overlapping discovery reuses one refresh and keeps an unchanged verified loaded model', async () => {
+    let probes = 0;
+    const probe = { async probe() { probes++; return 'supported' as const; } } as LocalAgentCapabilityProbe;
+    await fixture(async ({ controller, delayDiscovery, change }) => {
+        await controller.refreshModels('desk');
+        assert.equal(await controller.verifyLocalAgentExecution('desk', 'alpha'), 'supported');
+        let release!: () => void;
+        delayDiscovery(new Promise<void>(resolve => { release = resolve; }));
+        const first = controller.refreshModels('desk');
+        const second = controller.refreshModels('desk');
+        release();
+        await Promise.all([first, second]);
+        assert.deepEqual((await controller.inventory()).registry.models.find(item => item.providerModelKey === 'alpha')
+            ?.capabilities.agentExecution, { source: 'adapter-known', value: true });
+        assert.equal(probes, 1);
+        change([loaded('alpha', 8192), loaded('beta', 8192)]);
+        delayDiscovery();
+        await controller.refreshModels('desk');
+        assert.equal((await controller.inventory()).registry.models.find(item => item.providerModelKey === 'alpha')
+            ?.capabilities.agentExecution?.source, 'unknown');
     }, probe);
 });
 

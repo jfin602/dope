@@ -7,11 +7,35 @@ export function isDraftPlanningAction(type: string): boolean {
         'implementation-plan', 'implementation-plan-revision'].includes(type);
 }
 
+/** A small text-only projection of a backend-validated Gate/Criterion edit. */
+export function roadmapElementPreview(message: ChatAssistantMessage): {
+    kind: 'Gate' | 'Criterion'; id: string; title: string; detailLabel: string; detail: string;
+    previousTitle?: string;
+} | undefined {
+    if (message.planningActivity?.kind !== 'roadmap-gate-proposal') return undefined;
+    try {
+        const envelope = JSON.parse(message.content) as { actions?: unknown };
+        if (!Array.isArray(envelope.actions) || envelope.actions.length !== 1) return undefined;
+        const action = envelope.actions[0] as Record<string, unknown>;
+        const gate = action.type === 'gate.edit';
+        if (!gate && action.type !== 'criterion.edit') return undefined;
+        if (typeof action.id !== 'string' || typeof action.title !== 'string' ||
+            typeof action[gate ? 'purpose' : 'expectedResult'] !== 'string') return undefined;
+        const label = message.planningActivity.refs.find(ref =>
+            ref.label?.startsWith(gate ? 'Roadmap Gate:' : 'Roadmap Criterion:'))?.label;
+        return { kind: gate ? 'Gate' : 'Criterion', id: action.id, title: action.title,
+            detailLabel: gate ? 'Purpose' : 'Expected result',
+            detail: action[gate ? 'purpose' : 'expectedResult'] as string,
+            previousTitle: label?.split(':').slice(1).join(':').trim() || undefined };
+    } catch { return undefined; }
+}
+
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
     if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action'].includes(activity.kind))
         return undefined;
+    if (activity.kind === 'no-action' && activity.status === 'no-action') return undefined;
     const label = activity.verifiedGuidance && noActionEnvelope(message) ? 'Verified Dope guidance' :
         activity.kind === 'no-action' ? 'No planning action' :
         activity.kind === 'implementation-plan' ? 'Implementation plan' :
@@ -137,6 +161,8 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
 export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
     const activity = message.planningActivity;
     if (!activity) return undefined;
+    if (activity.kind === 'no-action' && activity.status === 'no-action' && !noActionEnvelope(message))
+        return undefined;
     if (activity.kind === 'implementation-plan' || activity.kind === 'implementation-plan-revision') return { summary:
         activity.status === 'pending' ? 'The plan is ready for review. The accepted draft and canonical Roadmap are unchanged.' :
         activity.status === 'applied' ? 'The reviewed plan was saved in the noncanonical draft.' :
@@ -202,7 +228,9 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         summary: `The approved proposal to ${change} was saved at revision ${revision}.`,
         questions: ['Does the saved result match your current objective?', 'Would you like to review the linked source or next checkpoint?'],
     };
-    if (activity.status === 'pending') return {
+    if (activity.status === 'pending') return activity.kind === 'roadmap-gate-proposal' ? {
+        summary: `Review the proposed change to ${target} before applying it. Nothing was written.`, questions: []
+    } : {
         summary: `A proposal to ${change} was previewed and is awaiting approval; ${activity.kind.startsWith('roadmap-draft') ? 'the accepted draft and canonical Roadmap are unchanged' : 'no write yet'}.`,
         questions: ['Does the proposed change match your intent?', 'Should you review the affected source before deciding?'],
     };
@@ -323,6 +351,8 @@ export function canDragChatTranscript(target: Element, spacePan = false): boolea
 export function chatResponseCopyText(message: ChatAssistantMessage, streamingContent?: string): string {
     if (streamingContent !== undefined) return '';
     if (message.execution && message.execution.status !== 'complete') return '';
+    if (message.planningActivity?.kind === 'no-action' && message.planningActivity.status === 'no-action')
+        return planningOutcome(message)?.summary ?? (/^\s*\{/u.test(message.content) ? '' : message.content);
     const activity = planningActivityPresentation(message);
     if (activity) {
         const outcome = planningOutcome(message);
