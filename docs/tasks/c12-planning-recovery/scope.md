@@ -1,3 +1,5 @@
+> **2026-10-31 FORWARD OWNER AMENDMENT / DOCS ONLY:** The historical item 5 direct-P3 sequence below is replaced for future execution: after independent P2 disposition, author/run one targeted **Skills framework** prompt, then a separate **default Docs skills/progressive retrieval/safe apply** prompt. Do not rewrite or execute old P3 or automatically run the original 15 Docs prompts. Reuse existing ChatPanel and Pi; skill instructions alone grant no writes or tool permissions. [Skills framework contract](../../planning/p12/skills-framework-contract.md). ADR 0041 publication, linked Roadmap owner, durable recovery and applied-only History requirements remain intact.
+
 # Owner-approved scope change — conversational Planning, not implementation-plan product
 
 **Date:** 2026-10-31. **Applies at:** `0.12.7`. **Status:** forward design directive, not source implementation/qualification.
