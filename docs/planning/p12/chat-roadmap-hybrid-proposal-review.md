@@ -10,6 +10,8 @@ The mini-card is an intentionally compact projection of the actual reviewed befo
 
 **2026-10-31 P3-B forward invocation boundary (documentation only):** In the later protected-Skills integration, the **AI-generated schema-2 edit-proposal entry** used in step 1 requires a Dope-verified, turn-scoped `/roadmap` invocation. A selected Phase/Gate or model-produced proposal envelope alone is not authorization. Read-only Chat remains freeform/selection-based. The skill does not approve or apply: existing proposal/lease/revision/source checks and the exact same Chat Accept/Reject, mini-card and optional canvas overlay remain the only applicable review path. Manual editors, greenfield Roadmap creation and linked document reconciliation keep their own existing authority. This requirement starts only after separate P3-B implementation and Chrome qualification; H1–H3 and P2 historical results are not upgraded by this design.
 
+**Separate input context versus output preview (2026-11-01):** [Roadmap Element picker](roadmap-element-context-picker.md) starts from Chat **Add Context** to select existing authoritative records for the *next user prompt*, inserting a user-triggered protected `/roadmap` prefix with trusted invocation. This document's **View in Roadmap** instead displays a *pending AI output proposal* for inspection. Neither selection nor a transient preview approves an edit. Picker is later work after Skills qualification and does not change H1–H3 status.
+
 ### Minimal user journey
 
 1. An explicit conversational edit yields a **typed, source/revision-bound pending proposal** through the existing `gateProposal`/planning preview path. Freeform discussion and read-only answers do **not** create the card.

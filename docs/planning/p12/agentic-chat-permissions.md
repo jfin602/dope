@@ -37,6 +37,10 @@ Use a compact visible two-option control beside model selection in the **existin
 - Mode is scoped to one Chat/project/active app session. A new Chat starts Ask; switching project or restarting app resets Ask; another Chat cannot inherit this Chat's Allow. Persist audit results, never a reusable authority token.
 - Reads, listings and text/path searches do not require approval. Stream compact expandable tool activity without contaminating copied AI response or transcript with debug/secret metadata. Preserve drag-to-scroll, selection/copy and cancellation.
 
+### Add Context → Roadmap Element (approved follow-on; not implemented)
+
+When existing Chat and Roadmap are simultaneously visible for the same project, the current Add Context menu offers **Roadmap Element** beside File. The accessible Roadmap multi-picker attaches removable stable-identity chips within the **existing fixed-height composer** without sending. First chip visibly prefixes `/roadmap` unless already typed; removing the final chip removes only a system-inserted prefix. At Send the protected skill is also verified in Dope-owned turn metadata, not raw text. Load complete bounded selected source/revision-aware elements, exclude unrelated siblings, preserve canonical versus accepted-unpublished draft distinction and refuse stale/oversized mandatory context. No selection is edit approval. See [full picker contract](roadmap-element-context-picker.md). This later design does not alter already authored P3-A/P3-B/P3-C prompts.
+
 ## Pi agent tool bridge
 Use Pi's actual custom-tool/multi-step agent loop through the existing pinned worker and Dope host. Expose brokered read/list/path search/text search backed by ChatProjectGrounder's current safe realpath/symlink checks, content limits, source hashes and evidence. Chat/Planning tools are read-only or sandboxed commands; do not expose Pi built-in unrestricted read/write/bash tools in the host process. Pi makes tool-selection decisions, Dope enforces effects. Cap input/output/tool calls and accurately report truncation/omissions; no silent provider fallback.
 
