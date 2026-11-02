@@ -7,7 +7,7 @@ import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
-import type { RoadmapPublicationPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
+import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import type { GateDocumentSyncPreview, GateDocumentRelinkPreview } from '@dope/project-intelligence/lib/node/roadmap-gate-document';
 import { projectRoadmapTasks, selectPhaseFocus, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
@@ -263,7 +263,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private sourceFocus?: HTMLElement;
     private sourceError?: string;
     private publication?: { uri: string; projectId: string; revision: number; path: string;
-        preview?: RoadmapPublicationPreview; busy: boolean; error?: string };
+        preview?: RoadmapPublicationPreview; existingPreview?: RoadmapExistingLinkPreview;
+        busy: boolean; error?: string };
     private syncApplying = false;
     private syncChecking = false;
     private readonly poolFilter = document.createElement('input');
@@ -1935,12 +1936,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const state = this.publication?.uri === this.projectUri &&
                 this.publication.projectId === gateIndex.projectId && this.publication.revision === gateIndex.revision ?
                 this.publication : undefined;
-            const label = document.createElement('label'); label.textContent = 'Project-relative .md destination';
+            const label = document.createElement('label'); label.textContent = 'Project-relative .md path';
             const input = document.createElement('input'); input.type = 'text';
             input.value = state?.path ?? 'ROADMAP.md'; input.setAttribute('aria-label', 'Publication destination');
             input.onchange = () => {
                 if (state?.preview) void this.service.applyRoadmapPublication(state.uri, state.preview, false)
                     .catch(() => undefined);
+                if (state?.existingPreview) void this.service.applyExistingRoadmapLink(state.uri,
+                    state.existingPreview, false).catch(() => undefined);
                 this.publication = { uri: this.projectUri!, projectId: gateIndex.projectId,
                     revision: gateIndex.revision, path: input.value, busy: false };
                 this.renderImportEntry();
@@ -1951,9 +1954,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
             publish.disabled = !!state?.busy;
             publish.onclick = () => void this.previewPublication(input.value);
             this.importEntry.append(publish);
-            const existing = document.createElement('p');
-            existing.textContent = 'To use an existing file, review its import separately. Publication creates a new file and never overwrites a destination.';
-            this.importEntry.append(existing);
+            const linkExisting = document.createElement('button'); linkExisting.type = 'button';
+            linkExisting.textContent = 'Link Existing Markdown'; linkExisting.disabled = !!state?.busy;
+            linkExisting.onclick = () => void this.previewExistingLink(input.value);
+            this.importEntry.append(linkExisting);
             if (state?.error) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
                 error.textContent = state.error; this.importEntry.append(error); }
             if (state?.preview) {
@@ -1974,6 +1978,32 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 cancel.onclick = () => { this.publication = undefined; this.renderImportEntry();
                     void this.service.applyRoadmapPublication(state.uri, preview, false).catch(() => undefined); };
                 this.importEntry.append(approve, cancel);
+            }
+            if (state?.existingPreview) {
+                const preview = state.existingPreview;
+                const summary = document.createElement('p');
+                summary.textContent = `${preview.path} · Roadmap revision ${preview.revision} · ` +
+                    `${preview.phaseCount} Phase(s), ${preview.gateCount} Gate(s), ${preview.criterionCount} criteria · ` +
+                    `existing SHA-256 ${preview.sourceHash} · ` +
+                    (preview.compatible ? 'Mapped identity and fields match' : 'Not compatible');
+                this.importEntry.append(summary);
+                const effect = document.createElement('p');
+                effect.textContent = preview.compatible ?
+                    'Approval links this existing file as canonical without changing its bytes or qualification state.' :
+                    'Direct linking is blocked. Review import or reconcile the document and preview again.';
+                this.importEntry.append(effect);
+                if (preview.diagnostics.length) this.appendImportDiagnostics('Link mismatches', preview.diagnostics);
+                if (preview.compatible) {
+                    const approve = document.createElement('button'); approve.type = 'button';
+                    approve.textContent = 'Approve existing link'; approve.disabled = state.busy;
+                    approve.onclick = () => void this.applyExistingLink(preview);
+                    this.importEntry.append(approve);
+                }
+                const cancel = document.createElement('button'); cancel.type = 'button';
+                cancel.textContent = 'Cancel';
+                cancel.onclick = () => { this.publication = undefined; this.renderImportEntry();
+                    void this.service.applyExistingRoadmapLink(state.uri, preview, false).catch(() => undefined); };
+                this.importEntry.append(cancel);
             }
             return;
         }
@@ -2257,6 +2287,47 @@ export class RoadmapCanvasWidget extends BaseWidget {
         } catch (error) {
             if (this.publication !== state) return;
             state.error = `Publication preview failed: ${String(error)}`;
+        } finally {
+            if (this.publication === state) { state.busy = false; this.renderImportEntry(); }
+        }
+    }
+
+    private async previewExistingLink(path: string): Promise<void> {
+        const uri = this.projectUri, index = this.inspector.index;
+        if (!uri || !index || !index.revision || index.linkedDocument) return;
+        const state: NonNullable<typeof this.publication> = { uri, projectId: index.projectId,
+            revision: index.revision, path, busy: true };
+        this.publication = state; this.renderImportEntry();
+        try {
+            const preview = await this.service.previewExistingRoadmapLink(uri, path);
+            if (this.publication !== state || this.projectUri !== uri) return;
+            state.existingPreview = preview;
+        } catch (error) {
+            if (this.publication === state) state.error = `Existing Markdown review failed: ${String(error)}`;
+        } finally {
+            if (this.publication === state) { state.busy = false; this.renderImportEntry(); }
+        }
+    }
+
+    private async applyExistingLink(preview: RoadmapExistingLinkPreview): Promise<void> {
+        const state = this.publication;
+        if (!state || state.busy || state.existingPreview !== preview || this.projectUri !== state.uri ||
+            this.inspector.index?.projectId !== state.projectId || this.inspector.index.revision !== state.revision) return;
+        state.busy = true; state.error = undefined; this.renderImportEntry();
+        try {
+            const result = await this.service.applyExistingRoadmapLink(state.uri, preview, true);
+            if (this.publication !== state || this.projectUri !== state.uri) return;
+            if (result.linkedDocument?.path !== preview.path ||
+                result.linkedDocument.sourceHash !== preview.sourceHash || result.linkedDocument.syncState !== 'synced')
+                throw new Error('Existing link acknowledgement did not confirm synchronized source');
+            this.publication = undefined;
+            this.inspector.setSnapshot(state.uri, result as unknown as RoadmapIndex);
+            await this.refresh();
+        } catch (error) {
+            if (this.publication === state) {
+                state.existingPreview = undefined;
+                state.error = `Existing link was not confirmed: ${String(error)}. Refresh and review again.`;
+            }
         } finally {
             if (this.publication === state) { state.busy = false; this.renderImportEntry(); }
         }

@@ -34,7 +34,8 @@ export function gateField(index: RoadmapGateIndex, kind: GateSectionKind, id: st
 /** Parse only the linked file with the importer's exact Gate grammar and stable IDs. */
 export async function readGateMappedDocument(root: string, linked: RoadmapGateLinkedDocument): Promise<{
     hash: string; content: string; fields: GateMappedField[]; lines: Map<string, { title: number; detail: number }>;
-    diagnostics: string[]; structure: { phases: { id: string; order: number; dependencies: string[] }[];
+    diagnostics: string[]; missingMetadata: string[];
+    structure: { phases: { id: string; order: number; dependencies: string[] }[];
         gates: { id: string; parentPhaseId: string; designation: string; order: number;
             dependencies: string[]; criteria: string[] }[] } }> {
     const source = await checkedRoadmapDocumentFile(root, linked.path);
@@ -50,6 +51,7 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
     }
     const parsed = parseGateSource(linked.path, digest(source.bytes), rawLines, fenced);
     const diagnostics = [...parsed.diagnostics];
+    const missingMetadata: string[] = [];
     const metadata = (at: number, fallbackOrder: number): { order: number; dependencies: string[] } => {
         const orderLine = rawLines[at + 2] ?? '';
         const orderMatch = /^Order: (0|[1-9]\d*)$/.exec(orderLine);
@@ -58,6 +60,8 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
         if (orderLine.startsWith('Order:') && !orderMatch) diagnostics.push(`Invalid section order at line ${at + 3}`);
         if (dependencyLine.startsWith('Dependencies:') && !dependenciesMatch)
             diagnostics.push(`Invalid dependencies at line ${at + (orderMatch ? 4 : 3)}`);
+        if (!orderMatch || !dependenciesMatch)
+            missingMetadata.push(`Missing explicit Order or Dependencies for section at line ${at + 1}`);
         const dependencies = dependenciesMatch?.[1] === 'none' || !dependenciesMatch ? [] : dependenciesMatch[1].split(', ');
         if (new Set(dependencies).size !== dependencies.length) diagnostics.push(`Duplicate dependencies at line ${at + 1}`);
         return { order: orderMatch ? Number(orderMatch[1]) : fallbackOrder, dependencies };
@@ -95,7 +99,7 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
         }
         fields.push(mapped.field); lines.set(fieldKey(section.kind, section.id), { title: mapped.title, detail: mapped.detail });
     }
-    return { hash: digest(source.bytes), content, fields, lines, diagnostics,
+    return { hash: digest(source.bytes), content, fields, lines, diagnostics, missingMetadata,
         structure: { phases: parsed.phases.map((item, order) => ({ id: item.id,
             ...metadata(item.source.line - 1, order) })), gates: parsed.gates.map(item => ({
             id: item.id, parentPhaseId: item.parentPhaseId, designation: item.designation,
@@ -104,7 +108,7 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
             criteria: item.criteria.map(criterion => criterion.id) })) } };
 }
 
-function structureDiagnostics(index: RoadmapGateIndex, mapped: Awaited<ReturnType<typeof readGateMappedDocument>>): string[] {
+export function structureDiagnostics(index: RoadmapGateIndex, mapped: Awaited<ReturnType<typeof readGateMappedDocument>>): string[] {
     const expected = { phases: [...index.phases].sort((a, b) => a.order - b.order).map(item => ({
             id: item.id, order: item.order, dependencies: item.dependencies })),
         gates: [...index.gates].sort((a, b) => index.phases.find(p => p.id === a.parentPhaseId)!.order -

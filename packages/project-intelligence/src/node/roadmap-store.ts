@@ -7,7 +7,7 @@ import { checkedRoadmapDocumentFile, planRoadmapDocumentPatch, publishRoadmapDoc
 import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPendingRecovery } from './roadmap-document-sync';
 import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
-import { gateField, planGateDocumentPatch, previewGateDocumentSync, previewGateDocumentRelink,
+import { gateField, planGateDocumentPatch, previewGateDocumentSync, previewGateDocumentRelink, structureDiagnostics,
     readGateMappedDocument } from './roadmap-gate-document';
 import type { GateDocumentEdit, GateDocumentPatch, GateDocumentSyncPreview, GateDocumentRelinkPreview,
     GateMappedField } from './roadmap-gate-document';
@@ -15,8 +15,9 @@ import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roa
 import { criterionHash, evaluateGateQualification, evaluatePhaseQualification, parseRoadmapGateIndex,
     sameRoadmapSource } from './roadmap-gate-domain';
 import type { Criterion, GateEvidence, RoadmapCorrection, RoadmapGate, RoadmapGateIndex, RoadmapPhase, RoadmapSourceProof } from './roadmap-gate-domain';
-import { checkedPublicationDestination, publicationHash, serializeRoadmapPublication, verifiedPublicationFile } from './roadmap-publication';
-import type { RoadmapPublicationPreview } from './roadmap-publication';
+import { checkedPublicationDestination, checkedPublicationPath, publicationHash, serializeRoadmapPublication,
+    verifiedPublicationFile } from './roadmap-publication';
+import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from './roadmap-publication';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
@@ -359,6 +360,7 @@ export function parseRetiredCheckpointIndex(value: unknown, root: string): Roadm
 export class RoadmapStore {
     private readonly listeners = new Set<(change: RoadmapChange) => void>();
     private readonly publicationReviews = new Map<string, RoadmapPublicationPreview>();
+    private readonly existingLinkReviews = new Map<string, RoadmapExistingLinkPreview>();
 
     onChange(listener: (change: RoadmapChange) => void): () => void {
         this.listeners.add(listener);
@@ -960,6 +962,88 @@ export class RoadmapStore {
         return next;
     }
 
+    private async inspectExistingRoadmapLink(root: string, current: RoadmapGateIndex,
+        path: string): Promise<Omit<RoadmapExistingLinkPreview, 'approvalId'>> {
+        if (current.pendingPublication || current.linkedDocument)
+            throw new Error('Roadmap already has a linked or pending publication');
+        await checkedPublicationPath(root, path);
+        // The serializer verifies that every accepted record has a supported Markdown mapping.
+        const expected = serializeRoadmapPublication(current, path);
+        const linked: NonNullable<RoadmapGateIndex['linkedDocument']> = {
+            projectId: current.projectId, projectRoot: root, path,
+            sourceHash: expected.sourceHash, syncState: 'synced', sections: expected.sections,
+        };
+        const mapped = await readGateMappedDocument(root, linked);
+        const diagnostics = [...mapped.diagnostics, ...mapped.missingMetadata, ...structureDiagnostics(current, mapped)];
+        for (const field of expected.fields) {
+            const source = mapped.fields.find(item => item.kind === field.kind && item.id === field.id);
+            if (!source) diagnostics.push(`Missing ${field.kind} ${field.id}`);
+            else if (JSON.stringify(source) !== JSON.stringify(field))
+                diagnostics.push(`${field.kind} ${field.id} title or detail differs from accepted Roadmap`);
+        }
+        if (mapped.fields.length !== expected.fields.length)
+            diagnostics.push('Mapped section count differs from accepted Roadmap');
+        return { projectId: current.projectId, projectRoot: root, revision: current.revision,
+            path, sourceHash: mapped.hash, phaseCount: expected.phaseCount, gateCount: expected.gateCount,
+            criterionCount: expected.criterionCount, compatible: diagnostics.length === 0,
+            diagnostics, sections: expected.sections, fields: mapped.fields };
+    }
+
+    async previewExistingRoadmapLink(root: string, path: string): Promise<RoadmapExistingLinkPreview> {
+        const current = await this.read<RoadmapGateIndex>(root);
+        const preview = { ...await this.inspectExistingRoadmapLink(root, current, path), approvalId: randomUUID() };
+        if (preview.compatible) {
+            this.existingLinkReviews.set(preview.approvalId, preview);
+            if (this.existingLinkReviews.size > 32)
+                this.existingLinkReviews.delete(this.existingLinkReviews.keys().next().value!);
+        }
+        return preview;
+    }
+
+    async applyExistingRoadmapLink(root: string, preview: RoadmapExistingLinkPreview,
+        approved: boolean): Promise<RoadmapGateIndex> {
+        if (!approved) { this.existingLinkReviews.delete(preview.approvalId);
+            return this.read<RoadmapGateIndex>(root); }
+        let applied = false;
+        const result = await this.locked(root, async () => {
+            const { file } = await this.paths(root);
+            const expectedHash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            const intentHash = publicationHash(JSON.stringify(preview));
+            if (current.linkedDocument?.publicationIntentHash === intentHash &&
+                current.linkedDocument.path === preview.path && current.linkedDocument.sourceHash === preview.sourceHash &&
+                current.projectId === preview.projectId && current.projectRoot === preview.projectRoot &&
+                await verifiedPublicationFile(root, preview.path, preview.sourceHash)) return current;
+            if (!preview.compatible ||
+                JSON.stringify(this.existingLinkReviews.get(preview.approvalId)) !== JSON.stringify(preview) ||
+                current.projectId !== preview.projectId || current.projectRoot !== preview.projectRoot ||
+                current.revision !== preview.revision)
+                throw new Error('Stale or incompatible existing Markdown review; preview again');
+            const fresh = await this.inspectExistingRoadmapLink(root, current, preview.path);
+            const { approvalId: _approvalId, ...reviewed } = preview;
+            if (JSON.stringify(fresh) !== JSON.stringify(reviewed) ||
+                !(await verifiedPublicationFile(root, preview.path, preview.sourceHash)))
+                throw new Error('Stale existing Markdown source or Roadmap; preview again');
+            const linked: NonNullable<RoadmapGateIndex['linkedDocument']> = {
+                projectId: current.projectId, projectRoot: root, path: preview.path,
+                sourceHash: preview.sourceHash, publicationIntentHash: intentHash, syncState: 'synced',
+                sections: preview.sections,
+                lastSynced: { sourceHash: preview.sourceHash, fields: preview.fields },
+            };
+            const next: RoadmapGateIndex = { ...current, revision: current.revision + 1,
+                phases: current.phases.map(phase => ({ ...phase, draftAcceptance: 'published' })),
+                gates: current.gates.map(gate => ({ ...gate, draftAcceptance: 'published' })),
+                linkedDocument: linked };
+            await this.replace(root, next, expectedHash);
+            applied = true;
+            return next;
+        });
+        this.existingLinkReviews.delete(preview.approvalId);
+        if (applied) this.publish({ root, projectId: result.projectId, revision: result.revision,
+            changedIds: [...result.phases, ...result.gates].map(item => item.id) });
+        return result;
+    }
+
     /** A review is issued by this owner, never reconstructed from caller-provided Markdown. */
     async previewRoadmapPublication(root: string, path = 'ROADMAP.md'): Promise<RoadmapPublicationPreview> {
         const current = await this.read<RoadmapGateIndex>(root);
@@ -989,7 +1073,7 @@ export class RoadmapStore {
                 try { await handle.writeFile(pending.content); await handle.sync(); }
                 finally { await handle.close(); }
             }
-            if (!(await verifiedPublicationFile(root, temporary.slice(root.length + 1), pending.sourceHash)))
+            if (!(await verifiedPublicationFile(root, temporary.slice(root.length + 1), pending.sourceHash, true)))
                 throw new Error('Pending publication staging file is missing');
             try { await hardLink(temporary, destination); }
             catch (error) {

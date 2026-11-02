@@ -26,6 +26,9 @@
 .dope-roadmap-import button:last-child { margin-right: 0; }
 .dope-roadmap-import button:disabled { opacity: .6; cursor: default; }
 .dope-roadmap-import button:focus-visible, .dope-roadmap-import select:focus-visible, .dope-roadmap-import summary:focus-visible, .dope-roadmap-import:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-roadmap-import input[type="text"] { box-sizing: border-box; width: 100%; min-width: 0; }
+.dope-roadmap-import input:focus-visible, .dope-roadmap-import pre:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-roadmap-import pre { max-width: 100%; }
 .dope-roadmap-import-chooser { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 12px; }
 .dope-roadmap-import-chooser label { display: grid; gap: 4px; min-width: 0; flex: 1 1 16rem; }
 .dope-roadmap-inspection { position: absolute; top: 8px; right: 8px; z-index: 3; box-sizing: border-box; width: min(44rem, calc(100% - 16px)); max-height: calc(100% - 16px); overflow: auto; padding: 8px; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 5px; box-shadow: 0 4px 16px var(--theia-widget-shadow, transparent); }

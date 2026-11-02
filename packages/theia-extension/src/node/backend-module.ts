@@ -207,6 +207,10 @@ export default new ContainerModule(bind => {
                     await context.container.get(PlanningStore).root(uri), preview, approved),
                 recoverRoadmapPublication: async uri => store.recoverRoadmapPublication(
                     await context.container.get(PlanningStore).root(uri)),
+                previewExistingRoadmapLink: async (uri, path) => store.previewExistingRoadmapLink(
+                    await context.container.get(PlanningStore).root(uri), path),
+                applyExistingRoadmapLink: async (uri, preview, approved) => store.applyExistingRoadmapLink(
+                    await context.container.get(PlanningStore).root(uri), preview, approved),
                 previewGateDocumentPatch: async (uri, edit) => store.previewGateDocumentPatch(
                     await context.container.get(PlanningStore).root(uri), edit),
                 publishGateDocumentPatch: async (uri, preview, approved) => store.publishGateDocumentPatch(

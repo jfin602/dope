@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { lstat, open, realpath, stat } from 'node:fs/promises';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { parseGateSource } from './roadmap-import';
 import type { RoadmapGateIndex, RoadmapGateLinkedDocument } from './roadmap-gate-domain';
 import type { GateMappedField } from './roadmap-gate-document';
@@ -22,31 +22,67 @@ export interface RoadmapPublicationPreview {
     fields: GateMappedField[];
 }
 
+export interface RoadmapExistingLinkPreview {
+    approvalId: string;
+    projectId: string;
+    projectRoot: string;
+    revision: number;
+    path: string;
+    sourceHash: string;
+    phaseCount: number;
+    gateCount: number;
+    criterionCount: number;
+    compatible: boolean;
+    diagnostics: string[];
+    sections: RoadmapGateLinkedDocument['sections'];
+    fields: GateMappedField[];
+}
+
 export const publicationHash = (content: string | Buffer): string =>
     createHash('sha256').update(content).digest('hex');
 
-/** Publication uses a project-root filename so no mutable intermediate directory can redirect creation. */
-export async function checkedPublicationDestination(root: string, path: string): Promise<string> {
+/** Check every existing component before a reviewed project-relative Markdown operation. */
+export async function checkedPublicationPath(root: string, path: string, staging = false): Promise<string> {
     if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root ||
-        !(await stat(root)).isDirectory() || !path || path.length > 512 || !/\.md$/i.test(path) ||
+        !(await stat(root)).isDirectory() || !path || path.length > 512 ||
+        !(staging ? /^\.[0-9a-f-]+\.dope-roadmap-publish\.tmp$/.test(path.split('/').at(-1)!) : /\.md$/i.test(path)) ||
         isAbsolute(path) || path.includes('\\') || path.includes(':') || /[\x00-\x1f\x7f]/.test(path) ||
-        path.includes('/') || path === '.' || path === '..' || path === '.dope')
-        throw new Error('Unsafe publication path; choose a project-root .md filename');
+        path.split('/').some(part => !part || part === '.' || part === '..' || part === '.dope' ||
+            part.trim() !== part || part.endsWith('.')))
+        throw new Error('Unsafe publication path; choose a safe project-relative .md file');
     const file = join(root, path);
+    let parent = root;
+    for (const part of path.split('/').slice(0, -1)) {
+        parent = join(parent, part);
+        let info;
+        try { info = await lstat(parent); }
+        catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+                throw new Error(`Publication parent does not exist: ${parent.slice(root.length + 1)}. Create the directory first`);
+            throw error;
+        }
+        if (!info.isDirectory() || info.isSymbolicLink() || await realpath(parent) !== parent)
+            throw new Error('Unsafe publication parent');
+    }
+    return file;
+}
+
+export async function checkedPublicationDestination(root: string, path: string): Promise<string> {
+    const file = await checkedPublicationPath(root, path);
     try { await lstat(file); throw new Error(`Destination already exists: ${path}. Link/import it or select another path`); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     return file;
 }
 
-export async function verifiedPublicationFile(root: string, path: string, expectedHash: string): Promise<boolean> {
-    const parent = dirname(join(root, path));
-    if (await realpath(root) !== root || await realpath(parent) !== parent) throw new Error('Unsafe publication parent');
+export async function verifiedPublicationFile(root: string, path: string, expectedHash: string,
+    staging = false): Promise<boolean> {
+    const file = await checkedPublicationPath(root, path, staging);
     let info;
-    try { info = await lstat(join(root, path)); }
+    try { info = await lstat(file); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; }
     if (!info.isFile() || info.isSymbolicLink() || info.size > 2 * 1024 * 1024)
         throw new Error('Publication destination is unsafe or changed');
-    const handle = await open(join(root, path), constants.O_RDONLY | constants.O_NOFOLLOW);
+    const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
         const opened = await handle.stat();
         if (!opened.isFile() || opened.ino !== info.ino || opened.dev !== info.dev ||

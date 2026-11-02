@@ -22,7 +22,8 @@ export interface RoadmapDocumentCapabilities {
 export async function checkedRoadmapDocumentFile(root: string, path: string): Promise<{ file: string; directory: string; bytes: Buffer; mode: number }> {
     if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root || !(await stat(root)).isDirectory() ||
         !path || isAbsolute(path) || !/\.md$/i.test(path) || path.includes('\\') || path.includes(':') ||
-        path.split('/').some(part => !part || part === '.' || part === '..')) throw new Error('Unsafe linked Roadmap path');
+        path.split('/').some(part => !part || part === '.' || part === '..' || part === '.dope' ||
+            part.trim() !== part || part.endsWith('.'))) throw new Error('Unsafe linked Roadmap path');
     let current = root;
     for (const part of path.split('/')) {
         current = join(current, part);

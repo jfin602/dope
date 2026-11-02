@@ -1,6 +1,6 @@
 import type { RoadmapIndex, RoadmapChange, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
-import type { RoadmapPublicationPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
+import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import type { GateDocumentEdit, GateDocumentPatch, GateDocumentSyncPreview, GateDocumentRelinkPreview } from
     '@dope/project-intelligence/lib/node/roadmap-gate-document';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
@@ -48,6 +48,9 @@ export interface RoadmapService {
     previewRoadmapPublication(projectUri: string, path: string): Promise<RoadmapPublicationPreview>;
     applyRoadmapPublication(projectUri: string, preview: RoadmapPublicationPreview, approved: boolean): Promise<RoadmapGateIndex>;
     recoverRoadmapPublication(projectUri: string): Promise<RoadmapGateIndex>;
+    previewExistingRoadmapLink(projectUri: string, path: string): Promise<RoadmapExistingLinkPreview>;
+    applyExistingRoadmapLink(projectUri: string, preview: RoadmapExistingLinkPreview,
+        approved: boolean): Promise<RoadmapGateIndex>;
     previewGateDocumentPatch(projectUri: string, edit: GateDocumentEdit): Promise<GateDocumentPatch>;
     publishGateDocumentPatch(projectUri: string, preview: GateDocumentPatch, approved: boolean): Promise<RoadmapGateIndex>;
     previewGateDocumentSync(projectUri: string): Promise<GateDocumentSyncPreview>;
