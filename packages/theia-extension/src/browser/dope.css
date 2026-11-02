@@ -983,6 +983,15 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-stream-note { display: block; margin: 5px 0 2px; color: var(--theia-descriptionForeground); font-size: 11px; }
 .dope-chat-stream-text { color: var(--theia-foreground); user-select: text; }
 .dope-chat-stream-prose p { white-space: pre-wrap; }
+.dope-chat-reasoning-chunk { animation: none; }
+.dope-chat-reasoning-chunk.dope-chat-reasoning-fade { animation: dope-chat-reasoning-in 180ms ease-out both; }
+@keyframes dope-chat-reasoning-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+    .dope-chat-reasoning-chunk.dope-chat-reasoning-fade { animation: none; }
+}
+.dope-chat-reasoning-generating { display: inline-block; width: 5px; height: 5px; margin: 5px 2px;
+    border-radius: 50%; background: var(--theia-descriptionForeground); opacity: .65; }
+.dope-chat-reasoning-generating[hidden] { display: none; }
 .dope-chat-stream-prose + .dope-chat-stream-prose,
 .dope-chat-stream-prose + .dope-chat-stream-tool,
 .dope-chat-stream-tool + .dope-chat-stream-prose { margin-top: 0.75em; }

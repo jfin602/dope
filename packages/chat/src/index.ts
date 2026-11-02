@@ -53,6 +53,7 @@ export interface ChatSettings {
     schemaVersion: 1;
     modelPolicy: ChatModelPolicy;
     reasoningControls?: Record<string, string>;
+    reasoningDisplay?: { mode: 'paragraphs' | 'short-chunks' | 'live-tokens'; fadeIn: boolean };
     context: ChatContextPolicy;
 }
 
@@ -269,7 +270,7 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     return ref;
 }
 export function parseChatSettings(value: unknown): ChatSettings {
-    const v = record(value, ['schemaVersion', 'modelPolicy', 'defaultModel', 'reasoningControls', 'context'], ['schemaVersion', 'context']);
+    const v = record(value, ['schemaVersion', 'modelPolicy', 'defaultModel', 'reasoningControls', 'reasoningDisplay', 'context'], ['schemaVersion', 'context']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported Chat settings schema');
     if (v.modelPolicy !== undefined && v.defaultModel !== undefined) throw new Error('Ambiguous Chat model policy');
     const c = record(v.context, ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources'],
@@ -291,6 +292,12 @@ export function parseChatSettings(value: unknown): ChatSettings {
             throw new Error('Invalid reasoning controls');
         settings.reasoningControls = Object.fromEntries(Object.entries(v.reasoningControls).map(([key, value]) =>
             [string(key, 'reasoning control'), string(value, 'reasoning value')]));
+    }
+    if (v.reasoningDisplay !== undefined) {
+        const display = record(v.reasoningDisplay, ['mode', 'fadeIn'], ['mode', 'fadeIn']);
+        if (typeof display.fadeIn !== 'boolean') throw new Error('Invalid reasoning animation preference');
+        settings.reasoningDisplay = { mode: choice(display.mode,
+            ['paragraphs', 'short-chunks', 'live-tokens'], 'reasoning display mode'), fadeIn: display.fadeIn };
     }
     return settings;
 }

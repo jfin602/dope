@@ -35,6 +35,7 @@ import { AgentRunController } from './agent-run-controller';
 import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
 import { panelFocusTarget } from './history-focus-target';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
+import { ReasoningRevealBuffer } from './reasoning-reveal';
 
 function copyChatText(text: string): Promise<void> {
     // Keep the copy command inside the click gesture. Some desktop browser
@@ -205,6 +206,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private readonly openResponseInfo = new Set<string>();
     private readonly activityExpansion = new Map<string, boolean>();
     private readonly activityAutoCollapsed = new Set<string>();
+    private liveReasoning?: { key: string; body: HTMLElement; runs: Array<{
+        kind: 'thinking' | 'provisional' | 'tool'; raw: string; node: HTMLElement;
+        buffer?: ReasoningRevealBuffer }> };
     private promptStacksOnly = false;
     private lastWorkSelection?: WorkSelection;
     private readonly rootsListener;
@@ -1786,7 +1790,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 note.textContent = 'Provisional output';
                 details.append(note);
             }
-            details.append(this.activityText(diagnostic));
+            if (active) {
+                const body = document.createElement('div');
+                body.className = 'dope-chat-stream-text dope-chat-message-content';
+                details.append(body);
+            } else details.append(this.activityText(diagnostic));
             if (diagnostic.truncated) {
                 const limit = document.createElement('span'); limit.className = 'dope-chat-stream-limit';
                 limit.textContent = 'Activity capture stopped before completion; later activity was not captured.';
@@ -1835,7 +1843,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const stream = state.stream;
         if (this.panel.mode !== 'chat' || state.mode !== 'chat' || !state.running ||
             !stream || stream.chatId !== state.chatId) return false;
-        const item = this.content.querySelector<HTMLElement>('.dope-chat-message[aria-label="Assistant working"]');
+        const item = [...this.content.querySelectorAll<HTMLElement>('.dope-chat-message')].find(candidate =>
+            candidate.dataset.messageId === stream.messageId) ??
+            this.content.querySelector<HTMLElement>('.dope-chat-message[aria-label="Assistant working"]');
         const scroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
         const diagnostic = chatStreamingActivityPresentation(stream.events, !!stream.content);
         if (!item || !scroll || !diagnostic) return false;
@@ -1856,20 +1866,82 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         } else {
             note?.remove();
         }
-        const body = details.querySelector<HTMLElement>('.dope-chat-stream-text');
-        const selection = window.getSelection();
-        const selecting = body && selection && !selection.isCollapsed && body.contains(selection.anchorNode);
-        if (!selecting) {
-            if (body) body.replaceWith(this.activityText(diagnostic));
-            else details.append(this.activityText(diagnostic));
+        let body = details.querySelector<HTMLElement>('.dope-chat-stream-text');
+        if (!body) {
+            body = document.createElement('div');
+            body.className = 'dope-chat-stream-text dope-chat-message-content';
+            details.append(body);
         }
+        const key = `${stream.chatId}:${stream.messageId}:${stream.executionId}`;
+        if (!this.liveReasoning || this.liveReasoning.key !== key || this.liveReasoning.body !== body) {
+            body.replaceChildren();
+            this.liveReasoning = { key, body, runs: [] };
+        }
+        const mode = state.chat?.settings.reasoningDisplay?.mode ?? 'paragraphs';
+        const fade = state.chat?.settings.reasoningDisplay?.fadeIn !== false;
+        const runs = diagnostic.parts.reduce<Array<{ kind: 'thinking' | 'provisional' | 'tool'; text: string }>>(
+            (result, part) => {
+                const last = result.at(-1);
+                if (part.kind !== 'tool' && last?.kind === part.kind) last.text += part.text;
+                else result.push({ kind: part.kind, text: part.kind === 'tool' ? chatToolCallLabel(part) : part.text });
+                return result;
+            }, []);
+        let presentation = this.liveReasoning;
+        if (presentation.runs.length > runs.length || presentation.runs.some((run, index) =>
+            run.kind !== runs[index].kind || run.kind !== 'tool' && !runs[index].text.startsWith(run.raw))) {
+            body.replaceChildren();
+            presentation = this.liveReasoning = { key, body, runs: [] };
+        }
+        let revealed = false;
+        const appendChunk = (container: HTMLElement, chunk: string) => {
+            const prose = renderUntrustedMessageMarkdown(this.markdown, chunk);
+            prose.className = 'dope-chat-stream-prose dope-chat-reasoning-chunk';
+            if (fade) prose.classList.add('dope-chat-reasoning-fade');
+            container.append(prose);
+            revealed = true;
+        };
+        runs.forEach((part, index) => {
+            let run = presentation.runs[index];
+            if (!run) {
+                const node = document.createElement('div');
+                node.className = part.kind === 'tool' ? 'dope-chat-stream-tool' : 'dope-chat-reasoning-run';
+                body!.append(node);
+                run = { kind: part.kind, raw: '', node,
+                    ...(part.kind !== 'tool' ? { buffer: new ReasoningRevealBuffer(mode) } : {}) };
+                presentation.runs.push(run);
+            }
+            if (run.kind === 'tool') {
+                if (run.raw !== part.text) { run.node.textContent = part.text; revealed = true; }
+            } else if (run.buffer) {
+                if (mode === 'live-tokens') {
+                    if (run.raw !== part.text) {
+                        const prose = renderUntrustedMessageMarkdown(this.markdown, part.text);
+                        prose.className = 'dope-chat-stream-prose';
+                        run.node.replaceChildren(prose); revealed = true;
+                    }
+                } else for (const chunk of run.buffer.update(part.text)) appendChunk(run.node, chunk);
+            }
+            run.raw = part.text;
+            if (index < runs.length - 1 && run.buffer)
+                for (const chunk of run.buffer.flush()) appendChunk(run.node, chunk);
+        });
+        let indicator = details.querySelector<HTMLElement>('.dope-chat-reasoning-generating');
+        const pending = mode !== 'live-tokens' && presentation.runs.some(run => run.buffer?.bufferedLength);
+        if (!indicator) {
+            indicator = document.createElement('span');
+            indicator.className = 'dope-chat-reasoning-generating';
+            indicator.setAttribute('aria-label', 'Generating reasoning');
+            indicator.setAttribute('role', 'status');
+            details.append(indicator);
+        }
+        indicator.hidden = !pending;
         let limit = details.querySelector<HTMLElement>('.dope-chat-stream-limit');
         if (diagnostic.truncated && !limit) {
             limit = document.createElement('span'); limit.className = 'dope-chat-stream-limit';
             limit.textContent = 'Activity capture stopped before completion; later activity was not captured.';
             details.append(limit);
         } else if (!diagnostic.truncated) limit?.remove();
-        if (this.scrollFollow.following) scroll.scrollTop = scroll.scrollHeight;
+        if (revealed && this.scrollFollow.following && details.open) scroll.scrollTop = scroll.scrollHeight;
         return true;
     }
     private stopElapsedTicker(): void {
@@ -1996,14 +2068,28 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const heading = document.createElement('h4'); heading.textContent = label;
             group.append(heading); form.append(group); return group;
         };
-        const appearance = section('Appearance'); appearance.append(color);
-        const modelSection = section('Model');
         const field = (parent: HTMLElement, label: string, input: HTMLElement) => {
             const row = document.createElement('label');
             row.className = input instanceof HTMLInputElement && input.type === 'checkbox' ?
                 'dope-chat-settings-check' : 'dope-chat-settings-field';
             row.textContent = label; row.append(input); parent.append(row);
         };
+        const appearance = section('Appearance'); appearance.append(color);
+        const reasoningDisplay = section('Reasoning display');
+        const displayMode = document.createElement('select');
+        displayMode.append(new Option('Paragraphs', 'paragraphs'), new Option('Short Chunks', 'short-chunks'),
+            new Option('Live Tokens', 'live-tokens'));
+        displayMode.value = draft.reasoningDisplay?.mode ?? 'paragraphs';
+        displayMode.onchange = () => { draft.reasoningDisplay = {
+            mode: displayMode.value as NonNullable<ChatSettings['reasoningDisplay']>['mode'],
+            fadeIn: draft.reasoningDisplay?.fadeIn ?? true }; };
+        field(reasoningDisplay, 'Display mode', displayMode);
+        const fadeIn = document.createElement('input'); fadeIn.type = 'checkbox';
+        fadeIn.checked = draft.reasoningDisplay?.fadeIn ?? true;
+        fadeIn.onchange = () => { draft.reasoningDisplay = {
+            mode: draft.reasoningDisplay?.mode ?? 'paragraphs', fadeIn: fadeIn.checked }; };
+        field(reasoningDisplay, 'Fade in new sections', fadeIn);
+        const modelSection = section('Model');
         const model = document.createElement('select');
         model.append(new Option('Follow Interactive role', ''));
         for (const entry of this.usableModels()) model.append(new Option(entry.label,
@@ -2359,6 +2445,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 'dope-chat-content dope-chat-content-conversation';
         if (this.panel.mode === 'work' && !this.panel.work) this.content.classList.add('dope-work-select');
         this.scrollFollow.select(this.panel.mode === 'chat' && state.mode === 'chat' ? state.chatId : undefined);
+        if (this.liveReasoning && (this.panel.mode !== 'chat' || state.mode !== 'chat' ||
+            state.chatId !== state.stream?.chatId || !state.running || !state.stream ||
+            !this.liveReasoning.key.startsWith(`${state.stream.chatId}:${state.stream.messageId}:`)))
+            this.liveReasoning = undefined;
         const oldScroll = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
         const scrollTop = oldScroll?.scrollTop ?? 0;
         const settingsScrollTop = this.content.querySelector<HTMLElement>('.dope-chat-settings-form')?.scrollTop ?? 0;
@@ -2617,6 +2707,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     !(message.planningActivity?.kind === 'no-action' && outcome))
                     content.append(renderUntrustedMessageMarkdown(this.markdown, body));
                 else if (message.execution.status === 'cancelled') {
+                    content.classList.add('dope-chat-final-answer');
                     const note = document.createElement('p'); note.textContent = 'No final response'; content.append(note);
                 }
             } else if (message.role === 'user' && message.skill) {
@@ -3206,6 +3297,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const settings = shell.querySelector<HTMLElement>('.dope-chat-settings-form');
         if (settings) settings.scrollTop = settingsScrollTop;
         latest.hidden = !this.scrollFollow.latestBelow;
+        if (state.running && state.stream?.chatId === chat.id) this.updateLiveStreamActivity();
         this.syncElapsedTicker();
         if (focused) {
             const replacement = [...this.content.querySelectorAll<HTMLElement>('[aria-label]')]
@@ -3222,6 +3314,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             void this.clearRoadmapProposal?.(viewed.uri, viewed.chatId, viewed.id, false, []).catch(() => {});
         }
         this.copyMenu.close(false);
+        this.liveReasoning = undefined;
         this.stopElapsedTicker();
         this.endTranscriptDrag();
         document.removeEventListener('keydown', this.spacePanKeyDown);
