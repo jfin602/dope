@@ -299,7 +299,7 @@ export class ChatContextComposer {
                     { omitted: 'Only nearby Gates were included; select an exact Gate for more facts' } : {}) };
     }
 
-    private async selectedRoadmapElements(root: string, sources: ChatContextSelection[]):
+    private async selectedRoadmapElements(root: string, sources: ChatContextSelection[], content: string):
         Promise<{ label: string; text: string; omitted?: string }> {
         if (!this.roadmap) throw new Error('Roadmap context unavailable');
         const index = await this.roadmap.read<RoadmapGateIndex>(root);
@@ -307,7 +307,7 @@ export class ChatContextComposer {
             throw new Error('Open a current schema-2 Roadmap before using selected elements');
         if (index.linkedDocument && (await this.roadmap.previewGateDocumentSync(root)).state !== 'unchanged')
             throw new Error('Linked Roadmap source changed; review synchronization first');
-        const text = roadmapElementContext(index, sources);
+        const text = roadmapElementContext(index, sources, content);
         const current = await this.roadmap.read<RoadmapGateIndex>(root);
         if (current.projectId !== index.projectId || current.revision !== index.revision ||
             current.linkedDocument?.sourceHash !== index.linkedDocument?.sourceHash)
@@ -481,7 +481,7 @@ export class ChatContextComposer {
         if (remaining < 0) throw new Error('Confirmed planning decisions exceed selected model input budget');
         for (const source of orderedSelections) {
             if (source.elementKind && source !== elementSelections[0]) continue;
-            const resolved = source.elementKind ? await this.selectedRoadmapElements(root, elementSelections) :
+            const resolved = source.elementKind ? await this.selectedRoadmapElements(root, elementSelections, content) :
                 await this.resolve(root, chat, source, content, roadmapSkill);
             if (resolved.omitted) diagnostics.push({ kind: 'truncated', source: `${source.kind}:${source.id}`, message: resolved.omitted });
             const prefix = `[${source.kind}: ${resolved.label}]\n`;

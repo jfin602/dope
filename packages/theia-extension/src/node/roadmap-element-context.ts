@@ -3,7 +3,8 @@ import { evaluateGateQualification, evaluatePhaseQualification,
 import type { ChatContextSelection } from '@dope/chat/lib/service';
 
 /** Build one complete, selective payload from the current structured owner snapshot. */
-export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatContextSelection[]): string {
+export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatContextSelection[],
+    request = ''): string {
     if (!selections.length || selections.length > 20 || selections.some(item =>
         item.kind !== 'roadmap' || !item.elementKind || item.projectId !== index.projectId ||
         item.ownerRevision !== index.revision || item.sourceHash !== index.linkedDocument?.sourceHash))
@@ -97,6 +98,37 @@ export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatC
         else throw new Error('Unsupported Roadmap element selection');
     }
     const includedIds = new Set([...entities.keys()].map(key => key.slice(key.indexOf(':') + 1)));
+    // Relationship edits need complete sibling order, even when the user
+    // selected just one element. Ordinary field edits keep sibling data out.
+    const needsSiblingOrder = /\b(?:reorder|move|reparent|before|after)\b/i.test(request);
+    const selectedGateIds = new Set(selections.flatMap(item => {
+        if (item.elementKind === 'gate') return [item.id];
+        if (item.elementKind === 'criterion') {
+            const parent = index.gates.find(gate => gate.criteria.some(criterion => criterion.id === item.id));
+            return parent ? [parent.id] : [];
+        }
+        return [];
+    }));
+    const siblingGateOrder = !needsSiblingOrder ? undefined :
+        [...new Set([...selectedGateIds].map(id => gate(id).parentPhaseId))].map(parentPhaseId => ({
+            parentPhaseId,
+            gates: index.gates.filter(item => item.parentPhaseId === parentPhaseId)
+                .sort((a, b) => a.order - b.order)
+                .map(item => ({ id: item.id, designation: item.designation, order: item.order }))
+        }));
+    const siblingCriterionOrder = !needsSiblingOrder ? undefined : [...selectedGateIds].map(gateId => ({ gateId,
+        criteria: gate(gateId).criteria.map(item => ({ id: item.id, order: item.order })) }));
+    const movingToPhase = /\b(?:move|reparent)\b/i.test(request);
+    const mentions = (value: string) => !!value && new RegExp(
+        `(^|[^a-z0-9])${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^a-z0-9])`, 'i').test(request);
+    const destinationPhases = !movingToPhase ? undefined : index.phases.filter(item =>
+        mentions(item.id) || mentions(item.title)).map(item => ({
+            id: item.id, title: item.title, objective: item.objective, order: item.order,
+            dependencies: item.dependencies,
+            siblingGates: index.gates.filter(gate => gate.parentPhaseId === item.id)
+                .sort((a, b) => a.order - b.order)
+                .map(gate => ({ id: gate.id, designation: gate.designation, order: gate.order }))
+        }));
     const linked = index.linkedDocument;
     return JSON.stringify({
         source: { projectId: index.projectId, projectRoot: index.projectRoot, ownerRevision: index.revision,
@@ -107,6 +139,8 @@ export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatC
                 'Accepted structure is not automatically published as Markdown' },
         selected: selections.map(item => ({ kind: item.elementKind, id: item.id })),
         ancestors: [...ancestors.values()], entities: [...entities.values()],
+        ...(needsSiblingOrder ? { siblingGateOrder, siblingCriterionOrder } : {}),
+        ...(movingToPhase ? { destinationPhases } : {}),
         unrecordedFields: ['description when absent', 'evidence when no evidence records exist']
     });
 }
