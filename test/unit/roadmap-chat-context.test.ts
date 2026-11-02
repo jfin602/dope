@@ -35,7 +35,7 @@ test('Pi Chat binds selected Roadmap identity without automatic source bytes', a
     const plain = await composer.compose(root, chat, 'What is in docs/phase.md?', [], capabilities,
       undefined, false, false, undefined, true);
     assert.deepEqual(plain.refs, []);
-    assert.match(plain.messages[0].content, /use the available Pi read_file, list_files, or search tools/);
+    assert.match(plain.messages[0].content, /Pi read_file, list_files or search tools/);
     assert.doesNotMatch(plain.messages.at(-1)!.content, /Evidence from source/);
     const selected = await composer.compose(root, chat, 'What is the selected Phase?', context,
       capabilities, undefined, false, false, undefined, true);
@@ -189,7 +189,7 @@ test('source-change help has one grounded no-action route in preview and saved C
     await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token, selectedModel: selection,
       content: 'Change the checkpoint Objective to Prepare release', context });
     assert.match(sent.at(-1)!.find(item => item.role === 'system')?.content ?? '',
-      /use the available Pi read_file, list_files, or search tools/);
+      /Pi read_file, list_files or search tools/);
     assert.doesNotMatch(sent.at(-1)!.find(item => item.role === 'system')?.content ?? '', /Dope UI help/);
     // A restored backend reads the same saved Chat without changing its model or authority.
     await backend.release(projectHandle, chatId, lease.token);

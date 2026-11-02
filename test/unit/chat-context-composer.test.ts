@@ -31,6 +31,26 @@ test('ordinary Chat distinguishes factual recall from requested advice and prese
   assert.doesNotMatch(GROUNDED_CHAT_INSTRUCTION, /PixiJS|tower defense|strict JSON|truncate/);
 });
 
+test('Pi Chat retains project discovery, source truth, and read-only authority in the budgeted message', async () => {
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const result = await composer.compose('/fixture/project', chat(), 'Inspect src/index.ts', [],
+    { ...model, contextWindowTokens: 4096, maxInputTokens: 4096 }, undefined, false, false,
+    undefined, true);
+  assert.deepEqual(result.messages.map(item => item.role), ['system', 'user']);
+  assert.match(result.messages[0].content, /Workspace root: \/fixture\/project/);
+  assert.match(result.messages[0].content, /not automatically read or attached/);
+  assert.match(result.messages[0].content, /read_file, list_files or search tools/);
+  assert.match(result.messages[0].content, /successful results/);
+  assert.match(result.messages[0].content, /path in the request is not file content/);
+  assert.match(result.messages[0].content, /read-only unless separately authorized/);
+  assert.deepEqual(result.refs, []);
+  assert.equal(result.messages[1].content, 'Inspect src/index.ts');
+  const charged = (value: string) => Math.ceil(Buffer.byteLength(JSON.stringify(value), 'utf8') / 3) + 4;
+  assert.equal(result.usedTokens, charged(result.messages[0].content) + charged(result.messages[1].content));
+  assert.ok(result.usedTokens < result.budgetTokens);
+});
+
 test('recent context keeps complete exchanges and excludes cancelled, failed and provisional turns', async () => {
   const active = chat(); active.settings.context.maxInputTokens = 2000;
   const user = (content: string) => ({ schemaVersion: 1 as const, id: id(), role: 'user' as const,

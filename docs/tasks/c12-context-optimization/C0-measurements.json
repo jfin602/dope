@@ -734,5 +734,33 @@
     "c2BLiveGreen": true,
     "c2CombinedScopedGreen": true,
     "c1ReadyUnderC2QContract": true
+  },
+  "c1PromptDiet": {
+    "date": "2026-11-02",
+    "disposition": "GREEN_DETERMINISTIC_SCOPE",
+    "entryAndFinalHead": "35c0e3fc12ddd34e6fdfbd95f19af64d58aed3e0",
+    "branch": "main",
+    "packageVersion": "0.12.7",
+    "sourceEditsUncommitted": true,
+    "measurementMethod": "synthetic first-turn fixtures intercepted at the bundled Pi worker OpenAI-compatible provider fetch; exact JSON UTF-8 request bytes, not model tokens or live production traffic",
+    "reproductionCommand": "node scripts/measure-c1-prompt.mjs",
+    "fixtureSha256BeforeAndAfter": "44240c31f15bb1d7b0ee068d28581895e99e69c35482c77536ef15c8fbfb7b27",
+    "providerInputTokens": null,
+    "liveModelCheck": false,
+    "scenarios": {
+      "ordinaryChat": { "beforeRequestBytes": 2945, "afterRequestBytes": 2795, "savingBytes": 150, "messageCount": 2, "toolSchemaBytes": 1885 },
+      "projectAwareChat": { "beforeRequestBytes": 3107, "afterRequestBytes": 2957, "savingBytes": 150, "messageCount": 4, "toolSchemaBytes": 1885 },
+      "protectedRoadmap": { "beforeRequestBytes": 8586, "afterRequestBytes": 8436, "savingBytes": 150, "messageCount": 2, "toolSchemaBytes": 1885 },
+      "work": { "beforeRequestBytes": 2810, "afterRequestBytes": 2810, "savingBytes": 0, "messageCount": 2, "toolSchemaBytes": 2112 }
+    },
+    "componentBytes": {
+      "chatPiInstructionIncludingFixtureRoot": { "before": 493, "after": 343 },
+      "protectedRoadmapGrammarUnchanged": 4345,
+      "protectedRoadmapSkillBodyUnchanged": 885,
+      "workFixedPromptFixtureUnchanged": 378
+    },
+    "qualification": { "extensionBuildPassed": true, "focusedTestsPassed": 45,
+      "roadmapLocalTestsPassedSeparately": 21,
+      "combinedRunTemporaryDirectoryCleanupRaceObserved": true }
   }
 }
