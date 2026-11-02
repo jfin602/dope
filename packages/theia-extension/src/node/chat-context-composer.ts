@@ -13,6 +13,7 @@ import { ProjectMindStore } from '@dope/project-intelligence/lib/node/project-mi
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { RoadmapStore, type RoadmapCheckpoint, type RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { RoadmapGreenfield } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import { evaluateGateQualification, evaluatePhaseQualification,
     type RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
@@ -34,7 +35,8 @@ export class ChatContextComposer {
     constructor(private readonly mind: ProjectMindStore, private readonly planning: PlanningStore,
         private readonly index: SoftwareMapIndex, private readonly chats: ChatRepository,
         private readonly roadmap?: RoadmapStore,
-        private readonly planningLinkCurrent?: (root: string, link: RoadmapLink) => Promise<boolean>) {}
+        private readonly planningLinkCurrent?: (root: string, link: RoadmapLink) => Promise<boolean>,
+        private readonly greenfield?: RoadmapGreenfield) {}
 
     /** Only backend-recorded applied actions are decisions; model prose is never promoted. */
     private decisionContext(chat: Chat): string | undefined {
@@ -299,12 +301,50 @@ export class ChatContextComposer {
                     { omitted: 'Only nearby Gates were included; select an exact Gate for more facts' } : {}) };
     }
 
-    private async selectedRoadmapElements(root: string, sources: ChatContextSelection[], content: string):
+    private async selectedRoadmapElements(root: string, chatId: string, sources: ChatContextSelection[], content: string):
         Promise<{ label: string; text: string; omitted?: string }> {
         if (!this.roadmap) throw new Error('Roadmap context unavailable');
+        if (new Set(sources.map(item => `${item.elementKind}:${item.id}`)).size !== sources.length)
+            throw new Error('Duplicate Roadmap element selection');
         const index = await this.roadmap.read<RoadmapGateIndex>(root);
+        if (index.schemaVersion === 2 && index.projectRoot === root && index.revision === 0) {
+            await this.greenfield?.ensureRestored(root);
+            const bound = this.greenfield?.chatDraft(root, chatId);
+            if (!bound || sources.some(item => item.projectId !== index.projectId || item.ownerRevision !== 0 ||
+                item.draftHandle !== bound.handle || item.draftRevision !== bound.draft.revision ||
+                !['phase', 'gate', 'criterion'].includes(item.elementKind ?? '')))
+                throw new Error('Selected Roadmap draft changed; select its elements again');
+            const phases = bound.draft.phases;
+            const selected = sources.map(item => {
+                const phase = phases.find(value => value.id === item.id ||
+                    value.gates?.some(gate => gate.id === item.id || gate.criteria.some(criterion => criterion.id === item.id)));
+                const gate = phase?.gates?.find(value => value.id === item.id ||
+                    value.criteria.some(criterion => criterion.id === item.id));
+                if (!phase || item.elementKind === 'gate' && gate?.id !== item.id ||
+                    item.elementKind === 'criterion' && !gate?.criteria.some(value => value.id === item.id) ||
+                    item.elementKind === 'phase' && phase.id !== item.id)
+                    throw new Error('Selected Roadmap draft element is missing; select it again');
+                return { kind: item.elementKind, id: item.id, phase: {
+                    id: phase.id, title: phase.title, objective: phase.objective,
+                    gates: (phase.gates ?? []).map(value => ({ id: value.id, designation: value.designation,
+                        title: value.title, purpose: value.purpose })) },
+                    ...(gate ? { gate: { id: gate.id, parentPhaseId: gate.parentPhaseId,
+                        designation: gate.designation, title: gate.title, purpose: gate.purpose,
+                        criteria: gate.criteria } } : {}) };
+            });
+            const current = this.greenfield?.chatDraft(root, chatId);
+            if (current?.handle !== bound.handle || current.draft.revision !== bound.draft.revision ||
+                (await this.roadmap.read<RoadmapGateIndex>(root)).revision !== 0)
+                throw new Error('Roadmap draft changed while preparing context; select again');
+            return { label: `Selected draft Roadmap elements: ${sources.map(item => `${item.elementKind} ${item.id}`).join(', ')}`,
+                text: JSON.stringify({ source: { projectId: index.projectId, draftHandle: bound.handle,
+                    draftRevision: bound.draft.revision, publicationState: 'accepted draft, not canonical' },
+                    selected }) };
+        }
         if (index.schemaVersion !== 2 || index.projectRoot !== root || !index.revision)
             throw new Error('Open a current schema-2 Roadmap before using selected elements');
+        if (sources.some(item => item.draftHandle))
+            throw new Error('Selected Roadmap draft was published or replaced; select its elements again');
         if (index.linkedDocument && (await this.roadmap.previewGateDocumentSync(root)).state !== 'unchanged')
             throw new Error('Linked Roadmap source changed; review synchronization first');
         const text = roadmapElementContext(index, sources, content);
@@ -448,7 +488,8 @@ export class ChatContextComposer {
         };
         const helpId = roadmapSkill ? undefined : selectDopeCapabilityHelp(content);
         const help = helpId ? await this.helpContext(root, helpId, selections, strictHelpJson) : undefined;
-        const gateAction = !help && roadmapSkill && selections.some(source => source.kind === 'roadmap');
+        const gateAction = !help && roadmapSkill && selections.some(source =>
+            source.kind === 'roadmap' && !source.draftHandle);
         const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
         const roadmapInstruction = roadmapAction && !bridgeMode;
         const piInstruction = piMode ? `${PI_CHAT_INSTRUCTION} Workspace root: ${root}` : undefined;
@@ -457,7 +498,8 @@ export class ChatContextComposer {
             (roadmapOpportunity ? tokens(roadmapOpportunity) : 0) -
             (roadmapInstruction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) -
             (gateAction ? tokens(GATE_ACTION_INSTRUCTION) : 0) -
-            (!gateAction && selections.some(source => source.kind === 'roadmap') ? tokens(GATE_READ_INSTRUCTION) : 0) -
+            (!gateAction && selections.some(source => source.kind === 'roadmap' && !source.draftHandle) ?
+                tokens(GATE_READ_INSTRUCTION) : 0) -
             (help ? tokens(help.instruction) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
         const refs: ChatContextRef[] = [], diagnostics: ChatContextDiagnostic[] = [], attached: string[] = [];
@@ -481,7 +523,7 @@ export class ChatContextComposer {
         if (remaining < 0) throw new Error('Confirmed planning decisions exceed selected model input budget');
         for (const source of orderedSelections) {
             if (source.elementKind && source !== elementSelections[0]) continue;
-            const resolved = source.elementKind ? await this.selectedRoadmapElements(root, elementSelections, content) :
+            const resolved = source.elementKind ? await this.selectedRoadmapElements(root, chat.id, elementSelections, content) :
                 await this.resolve(root, chat, source, content, roadmapSkill);
             if (resolved.omitted) diagnostics.push({ kind: 'truncated', source: `${source.kind}:${source.id}`, message: resolved.omitted });
             const prefix = `[${source.kind}: ${resolved.label}]\n`;
@@ -509,6 +551,8 @@ export class ChatContextComposer {
                 ...(source.generation !== undefined ? { generation: source.generation } : {}),
                 ...(source.ownerRevision !== undefined ? { ownerRevision: source.ownerRevision } : {}),
                 ...(source.sourceHash !== undefined ? { sourceHash: source.sourceHash } : {}),
+                ...(source.draftHandle !== undefined ? { draftHandle: source.draftHandle,
+                    draftRevision: source.draftRevision } : {}),
                 ...(source.elementKind ? { elementKind: source.elementKind } : {}),
                 ...(source.kind === 'selection' ? { start: source.start, end: source.end } : {}),
                 ...(source.kind === 'saved-chat' ? { messageId: source.messageId } : {}) });
@@ -517,6 +561,7 @@ export class ChatContextComposer {
                 label: `Roadmap ${other.elementKind}: ${other.id}`, origin: 'manual',
                 estimatedTokens: 0, includedBytes: 0, projectId: other.projectId,
                 ownerRevision: other.ownerRevision, sourceHash: other.sourceHash,
+                draftHandle: other.draftHandle, draftRevision: other.draftRevision,
                 elementKind: other.elementKind });
         }
         if (memoryBlock) attached.push(memoryBlock);
@@ -543,7 +588,7 @@ export class ChatContextComposer {
         if (roadmapOpportunity) messages.push({ role: 'system', content: roadmapOpportunity });
         if (roadmapInstruction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
         if (gateAction) messages.push({ role: 'system', content: GATE_ACTION_INSTRUCTION });
-        else if (selections.some(source => source.kind === 'roadmap'))
+        else if (selections.some(source => source.kind === 'roadmap' && !source.draftHandle))
             messages.push({ role: 'system', content: GATE_READ_INSTRUCTION });
         if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];

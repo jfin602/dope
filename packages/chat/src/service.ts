@@ -54,7 +54,7 @@ export type ChatSkillChange = { type: 'add'; name: string; title?: string; descr
     { type: 'enable'; id: string; enabled: boolean } | { type: 'delete'; id: string };
 /** Captured editor text is transport-only. Other IDs are resolved against current project authorities. */
 export interface ChatContextSelection { kind: ChatContextKind; id: string; projectId?: string; generation?: number;
-    ownerRevision?: number; sourceHash?: string;
+    ownerRevision?: number; sourceHash?: string; draftHandle?: string; draftRevision?: number;
     elementKind?: 'phase' | 'gate' | 'criterion' | 'correction';
     label?: string;
     messageId?: string; text?: string; start?: number; end?: number; direction?: 'upstream' | 'downstream' }

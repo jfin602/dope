@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { roadmapElementContext } from '../../packages/theia-extension/lib/node/roadmap-element-context.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { roadmapLocalBudget, verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-skills.js';
 import { parseChatContextRef } from '../../packages/chat/lib/index.js';
+import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import type { RoadmapGateIndex } from '../../packages/project-intelligence/lib/node/roadmap-gate-domain.js';
 import type { ChatContextSelection } from '../../packages/chat/lib/service.js';
 
@@ -158,6 +163,55 @@ test('saved Chat parses Roadmap element identity without widening other context 
         estimatedTokens: 5, elementKind: 'gate' };
     assert.equal(parseChatContextRef(ref).elementKind, 'gate');
     assert.throws(() => parseChatContextRef({ ...ref, kind: 'file' }), /requires Roadmap context/);
+});
+
+test('selected draft Phase and newly approved Gate carry exact noncanonical context and stale revisions fail', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-draft-selector-'));
+    try {
+        const store = new RoadmapStore(), drafts = new RoadmapGreenfield(store);
+        const chatId = '123e4567-e89b-42d3-a456-426614174000';
+        const { handle } = await drafts.begin(root);
+        drafts.bindChat(root, handle, chatId);
+        const phases = drafts.previewEditSequence(handle, 0, [
+            { type: 'create-phase', title: 'Foundation' },
+            { type: 'create-phase', title: 'Tower defense' }]);
+        await drafts.applyEdit(handle, phases, true);
+        const owner = await store.read(root);
+        const first = drafts.read(handle).phases[0];
+        const selection = (kind: 'phase' | 'gate', id: string, revision: number): ChatContextSelection =>
+            ({ kind: 'roadmap', elementKind: kind, id, projectId: owner.projectId, ownerRevision: 0,
+                draftHandle: handle, draftRevision: revision });
+        const composer = new ChatContextComposer({} as never, {} as never, {} as never, {} as never,
+            store, undefined, drafts);
+        const chat = { id: chatId, messages: [], settings: { context: { maxInputTokens: 12000,
+            reservedOutputTokens: 1024, history: 'recent', savedChatSearch: false, allowedSources: [] } } } as never;
+        const capabilities = { conversationalText: true, streaming: true, contextWindowTokens: 16384 };
+        const phaseRef = selection('phase', first.id, 2);
+        const phaseContext = await composer.compose(root, chat, '/roadmap Add a gate to Phase 1', [phaseRef],
+            capabilities, undefined, false, false, undefined, false, true);
+        assert.match(JSON.stringify(phaseContext.messages), /Foundation|accepted draft, not canonical/);
+        assert.doesNotMatch(JSON.stringify(phaseContext.messages), /roadmap-gate-proposal/);
+        assert.equal(parseChatContextRef(phaseContext.refs[0]).draftHandle, handle);
+        const rejected = drafts.previewEdit(handle, 2, { type: 'create-gate', phaseId: first.id,
+            title: 'Playable wave', purpose: 'A wave can finish' });
+        await assert.rejects(drafts.applyEdit(handle, rejected, false), /approval/);
+        assert.equal(drafts.read(handle).phases[0].gates?.length ?? 0, 0);
+        const approved = drafts.previewEdit(handle, 2, rejected.action);
+        await drafts.applyEdit(handle, approved, true);
+        const gate = drafts.read(handle).phases[0].gates![0];
+        const gateRef = selection('gate', gate.id, 3);
+        const gateContext = await composer.compose(root, chat, '/roadmap Change the selected gate purpose', [gateRef],
+            capabilities, undefined, false, false, undefined, false, true);
+        assert.match(JSON.stringify(gateContext.messages), /Playable wave|A wave can finish|Foundation/);
+        assert.deepEqual(gateContext.refs.map(ref => [ref.id, ref.draftRevision]), [[gate.id, 3]]);
+        const edit = drafts.previewEdit(handle, 3, { type: 'edit-gate', phaseId: first.id,
+            gateId: gate.id, purpose: 'All enemies are resolved' });
+        await drafts.applyEdit(handle, edit, true);
+        assert.equal(drafts.read(handle).phases[0].gates![0].purpose, 'All enemies are resolved');
+        await assert.rejects(composer.compose(root, chat, '/roadmap Edit gate', [gateRef], capabilities,
+            undefined, false, false, undefined, false, true), /changed/);
+        assert.equal((await store.read(root)).revision, 0);
+    } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('unrelated ordinary Chat does not read Roadmap or include its edit grammar', async () => {

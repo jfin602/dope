@@ -296,7 +296,7 @@ export default new ContainerModule(bind => {
             const service = new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex));
             try { return !!await new RoadmapPlanningLinks(root, service).resolve(root, link); }
             finally { service.dispose(); }
-        })).inSingletonScope();
+        }, context.container.get(RoadmapGreenfield))).inSingletonScope();
     bind(ChatProjectGrounder).toDynamicValue(context => new ChatProjectGrounder(
         context.container.get(SoftwareMapIndex))).inSingletonScope();
     bind(AIRegistryStore).toSelf().inSingletonScope();

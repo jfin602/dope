@@ -199,6 +199,54 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('/roadmap starts reviewed creation when the project has no accepted Roadmap', async () => {
+    const root = await folder(), repository = new ChatRepository(), roadmapStore = new RoadmapStore();
+    const greenfield = new RoadmapGreenfield(roadmapStore);
+    const sent: { content: string }[][] = [];
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
+            streaming: true, contextWindowTokens: 32768 } }] }] }),
+    async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
+        sent.push(request.messages);
+        yield { type: 'complete' as const,
+            text: 'Phase 1 — Playable core\nBuild one map and one tower.\n- Place a tower\n' +
+                'Phase 2 — MVP loop\nAdd waves and progression.\n- Defeat an enemy wave',
+            actualModelId: 'q4', finishReason: 'stop' };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Plan a PixiJS tower defense MVP' }],
+        refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 32768 }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        composer as never, undefined, undefined, undefined, greenfield, undefined, roadmapStore);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        const selection = { connectionId: 'local', modelId: 'q4' };
+        const content = '/roadmap i want to make a pixijs tower defense game. generate a roadmap for my mvp';
+        const preview = await backend.previewContext({ projectHandle, chatId, selectedModel: selection,
+            content, context: [] });
+        assert.deepEqual(preview.refs, []);
+        const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: selection, content });
+        assert.ok(sent.some(messages => messages.some(message =>
+            /When no accepted Roadmap exists/.test(message.content))));
+        assert.ok(turn.roadmapOffer, 'the explicit creation request should offer review');
+        assert.equal((await roadmapStore.read(root)).revision, 0, 'the answer and offer do not write a Roadmap');
+        assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
+        const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
+            turn.roadmapOffer.id, turn.roadmapOffer.token, true, selection);
+        assert.notEqual(review, 'declined');
+        if (review === 'declined') throw new Error('Review missing');
+        assert.deepEqual(review.phases.map(phase => phase.title), ['Playable core', 'MVP loop']);
+        assert.equal((await roadmapStore.read(root)).revision, 0, 'review is still noncanonical');
+        assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token,
+            review.token, true), 1);
+        assert.equal((await roadmapStore.read(root)).revision, 0, 'accepted draft awaits Roadmap approval');
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('ordinary Chat opportunity suppresses duplicate or unverifiable offers without model inference', async () => {
     const repository = new ChatRepository();
     const state = { projectId: 'p1', revision: 0, canonicalMarkdown: false, pendingCreation: false, checkpoints: 0,

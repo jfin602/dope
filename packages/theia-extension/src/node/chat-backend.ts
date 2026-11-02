@@ -56,6 +56,10 @@ function tracePlanning(stage: string, chatId: string, messageId: string, status?
     console.info('[dope-chat-planning-trace]', JSON.stringify({ at: new Date().toISOString(),
         stage, chatId, messageId, ...(status ? { status } : {}) }));
 }
+function requestsRoadmapCreation(content: string): boolean {
+    const request = content.replace(/^\/roadmap(?:\s|$)/, '').trim();
+    return /\b(?:make|create|start|build|generate|draft)\b/i.test(request);
+}
 
 function evidenceIdentity(ref: { kind: string; id: string; contentHash?: string; sourceHash?: string;
     projectId?: string; generation?: number }) {
@@ -210,6 +214,30 @@ export class ChatBackend implements ChatService {
                 'Do not infer absence or offer draft creation; suggest checking Roadmap first.';
         }
     }
+    /** A protected edit needs a current owner; an empty owner enters the reviewed creation flow. */
+    private async bindRoadmapSkill(root: string, selections: ChatContextSelection[], chatId?: string): Promise<boolean> {
+        if (!this.roadmapStore) throw new Error('Current Roadmap owner is unavailable');
+        const index = await this.roadmapStore.read<RoadmapGateIndex>(root);
+        if (index.schemaVersion !== 2 || index.projectRoot !== root)
+            throw new Error('Current Roadmap owner is invalid');
+        if (!index.revision) {
+            if (selections.some(item => item.kind === 'roadmap')) {
+                await this.greenfield?.ensureRestored(root);
+                const bound = chatId && this.greenfield?.chatDraft(root, chatId);
+                if (!bound || selections.filter(item => item.kind === 'roadmap').some(item => !item.elementKind ||
+                    item.projectId !== index.projectId || item.ownerRevision !== 0 ||
+                    item.draftHandle !== bound.handle || item.draftRevision !== bound.draft.revision))
+                    throw new Error('Selected Roadmap draft changed; select its elements again');
+            }
+            return true;
+        }
+        if (selections.some(item => item.kind === 'roadmap' && item.draftHandle))
+            throw new Error('Selected Roadmap draft was published or replaced; select its elements again');
+        if (!selections.some(item => item.kind === 'roadmap'))
+            selections.push({ kind: 'roadmap', id: 'roadmap', projectId: index.projectId,
+                ownerRevision: index.revision, sourceHash: index.linkedDocument?.sourceHash });
+        return false;
+    }
 
     private async composeTurn(root: string, chat: Chat, content: string, context: ChatContextSelection[],
         model: ConversationModelCapabilities, budget?: ReturnType<typeof roadmapLocalBudget>,
@@ -276,16 +304,9 @@ export class ChatBackend implements ChatService {
         const skill = await resolveChatSkill(request.content);
         const roadmapSkill = isBoundRoadmapSkill(skill);
         const selections = [...request.context];
-        if (roadmapSkill && !selections.some(item => item.kind === 'roadmap')) {
-            if (!this.roadmapStore) throw new Error('Current Roadmap owner is unavailable');
-            const index = await this.roadmapStore.read<RoadmapGateIndex>(root);
-            if (index.schemaVersion !== 2 || index.projectRoot !== root || !index.revision)
-                throw new Error('Open a current schema-2 Roadmap before using /roadmap');
-            selections.push({ kind: 'roadmap', id: 'roadmap', projectId: index.projectId,
-                ownerRevision: index.revision, sourceHash: index.linkedDocument?.sourceHash });
-        }
+        const greenfieldSkill = roadmapSkill && await this.bindRoadmapSkill(root, selections, request.chatId);
         const helpTurn = !roadmapSkill && !!selectDopeCapabilityHelp(request.content);
-        const draft = helpTurn || roadmapSkill ? undefined : await this.draftContext(root, request.chatId);
+        const draft = helpTurn || roadmapSkill && !greenfieldSkill ? undefined : await this.draftContext(root, request.chatId);
         const opportunity = await this.roadmapOpportunity(root, request.content, !helpTurn && !draft &&
             !selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap' || item.kind === 'planning-map'));
         const connection = (await this.models.list()).connections.find(item => item.id === request.selectedModel.connectionId);
@@ -802,7 +823,7 @@ export class ChatBackend implements ChatService {
         Promise<{ proposal?: ChatPlanningProposal; proposalError?: string;
             roadmapFocus?: ChatTurnResult['roadmapFocus'] }> {
         if (!output.trimStart().startsWith('{')) return {};
-        if (refs.some(ref => ref.kind === 'roadmap'))
+        if (!draft && refs.some(ref => ref.kind === 'roadmap'))
             return this.gateProposal(root, chatId, messageId, leaseToken, output, refs, roadmapSkill, requestText);
         if (!draft && (!this.planning || !refs.some(ref => ref.kind === 'roadmap-checkpoint'))) return {};
         let handle: string | undefined;
@@ -1098,18 +1119,13 @@ export class ChatBackend implements ChatService {
                 ownerRevision: ref.ownerRevision, sourceHash: ref.sourceHash })),
             ...(request.context ?? []).filter(item => item.kind !== 'roadmap')
         ] : [...request.context ?? []];
-        if (roadmapSkill && !selections.some(item => item.kind === 'roadmap')) {
-            if (!this.roadmapStore) throw new Error('Current Roadmap owner is unavailable');
-            const index = await this.roadmapStore.read<RoadmapGateIndex>(root);
-            if (index.schemaVersion !== 2 || index.projectRoot !== root || !index.revision)
-                throw new Error('Open a current schema-2 Roadmap before using /roadmap');
-            selections.push({ kind: 'roadmap', id: 'roadmap', projectId: index.projectId,
-                ownerRevision: index.revision, sourceHash: index.linkedDocument?.sourceHash });
-        }
+        const greenfieldSkill = roadmapSkill && await this.bindRoadmapSkill(root, selections, request.chatId);
+        if (greenfieldSkill && publicationIntent) throw new Error('Accept a Roadmap before publishing it');
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}` : undefined;
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const helpTurn = !roadmapSkill && !!selectDopeCapabilityHelp(content);
-        const draft = helpTurn || roadmapSkill ? undefined : await this.draftContext(root, request.chatId, request.planningSteps);
+        const draft = helpTurn || roadmapSkill && !greenfieldSkill ? undefined :
+            await this.draftContext(root, request.chatId, request.planningSteps);
         const bridgeSelection = request.bridgeProposal;
         if (bridgeSelection && (helpTurn || draft || request.planningSteps || !this.bridgePlanning ||
             selections.filter(item => item.kind === 'roadmap-checkpoint' &&
@@ -1674,7 +1690,8 @@ export class ChatBackend implements ChatService {
                     }
                     const roadmapOffer = !request.retryMessageId && !localRoadmap &&
                         !bridgeSelection && !request.planningSteps ?
-                        await this.offerRoadmap(root, key, assistant.id, request.leaseToken, opportunity, output)
+                        await this.offerRoadmap(root, key, assistant.id, request.leaseToken, opportunity, output,
+                            greenfieldSkill && requestsRoadmapCreation(content))
                             .catch(() => undefined) : undefined;
                     return { ...preview, ...result, ...(roadmapOffer ? { roadmapOffer } : {}) };
                 }

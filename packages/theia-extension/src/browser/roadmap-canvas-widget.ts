@@ -218,6 +218,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly status = document.createElement('p');
     private readonly contextBar = document.createElement('section');
     private contextPicker?: { uri: string; projectId: string; revision: number; sourceHash?: string;
+        draftHandle?: string; draftRevision?: number;
         selected: Map<string, { kind: NonNullable<ChatContextSelection['elementKind']>; id: string; label: string }>;
         resolve: (value: ChatContextSelection[] | undefined) => void };
     private readonly strategicBar = document.createElement('section');
@@ -892,7 +893,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const index = this.inspector.gateIndex;
         return this.isVisible && !this.isDisposed && this.projectUri === uri &&
             !!index && index.schemaVersion === 2 && index.projectRoot === decodeURIComponent(new URL(uri).pathname) &&
-            index.revision > 0 && this.projectId === index.projectId;
+            (index.revision > 0 || this.createState?.mode === 'chat' && !!this.createState.draft.phases.length &&
+                this.createState.projectId === index.projectId && !this.proposedDraft && !this.strategic?.review) &&
+            this.projectId === index.projectId;
     }
 
     async beginContextPicker(uri: string): Promise<ChatContextSelection[] | undefined> {
@@ -902,9 +905,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (!this.canPickContext(uri) || index.schemaVersion !== 2 || index.revision !== this.inspector.gateIndex?.revision ||
             index.projectId !== this.projectId)
             throw new Error('Roadmap changed; refresh and try again');
+        const draft = !index.revision ? this.createState : undefined;
+        if (draft && !draft.draft.phases.length) throw new Error('Accepted draft elements are unavailable');
         return new Promise(resolve => {
             this.contextPicker = { uri, projectId: index.projectId, revision: index.revision,
-                sourceHash: index.linkedDocument?.sourceHash, selected: new Map(), resolve };
+                sourceHash: index.linkedDocument?.sourceHash, draftHandle: draft?.handle,
+                draftRevision: draft?.draft.revision, selected: new Map(), resolve };
             this.render();
             this.contextBar.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
         });
@@ -915,16 +921,22 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (!picker || !index || picker.projectId !== index.projectId || picker.revision !== index.revision) {
             this.status.textContent = 'Roadmap changed; cancel and select again.'; return;
         }
+        if (picker.draftHandle && (this.createState?.handle !== picker.draftHandle ||
+            this.createState.draft.revision !== picker.draftRevision)) {
+            this.cancelContextPicker(); return;
+        }
         const key = `${kind}:${id}`;
         if (picker.selected.has(key)) picker.selected.delete(key);
         else {
             if (picker.selected.size >= 20) { this.status.textContent = 'Select at most 20 Roadmap elements.'; return; }
-            const phase = index.phases.find(item => item.id === id);
-            const gate = index.gates.find(item => item.id === id);
-            const criterion = index.gates.flatMap(item => item.criteria).find(item => item.id === id);
+            const draft = picker.draftHandle ? this.createState?.draft : undefined;
+            const phase = draft ? draft.phases.find(item => item.id === id) : index.phases.find(item => item.id === id);
+            const gate = draft ? draft.phases.flatMap(item => item.gates ?? []).find(item => item.id === id) : index.gates.find(item => item.id === id);
+            const criterion = draft ? draft.phases.flatMap(item => item.gates ?? []).flatMap(item => item.criteria)
+                .find(item => item.id === id) : index.gates.flatMap(item => item.criteria).find(item => item.id === id);
             const correction = index.corrections.find(item => item.id === id);
-            const label = kind === 'phase' && phase ? `Phase · ${phase.title}` :
-                kind === 'gate' && gate ? `${gate.designation} · ${gate.title}` :
+            const label = kind === 'phase' && phase ? `${draft ? 'Draft ' : ''}Phase · ${phase.title}` :
+                kind === 'gate' && gate ? `${draft ? 'Draft ' : ''}${gate.designation} · ${gate.title}` :
                 kind === 'criterion' && criterion ? `Criterion · ${criterion.title}` :
                 kind === 'correction' && correction ? `Correction · ${correction.title}` : undefined;
             if (!label) { this.status.textContent = 'Roadmap element is unavailable; refresh and try again.'; return; }
@@ -941,11 +953,20 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (!this.canPickContext(picker.uri) || current.schemaVersion !== 2 ||
                 current.projectId !== picker.projectId || current.revision !== picker.revision ||
                 current.linkedDocument?.sourceHash !== picker.sourceHash ||
+                picker.draftHandle && (this.createState?.handle !== picker.draftHandle ||
+                    this.createState.draft.revision !== picker.draftRevision ||
+                    ![...picker.selected.values()].every(item => item.kind === 'phase' ?
+                        this.createState!.draft.phases.some(phase => phase.id === item.id) :
+                        this.createState!.draft.phases.some(phase => phase.gates?.some(gate =>
+                            item.kind === 'gate' ? gate.id === item.id :
+                                gate.criteria.some(criterion => criterion.id === item.id)))) ||
+                    current.revision !== 0) ||
                 current.linkedDocument && (await this.service.previewGateDocumentSync(picker.uri)).state !== 'unchanged')
                 throw new Error('Roadmap source changed; cancel and select again');
             const selections: ChatContextSelection[] = [...picker.selected.values()].map(item => ({
                 kind: 'roadmap', elementKind: item.kind, id: item.id, label: item.label,
-                projectId: picker.projectId, ownerRevision: picker.revision, sourceHash: picker.sourceHash }));
+                projectId: picker.projectId, ownerRevision: picker.revision, sourceHash: picker.sourceHash,
+                draftHandle: picker.draftHandle, draftRevision: picker.draftRevision }));
             this.contextPicker = undefined;
             this.render();
             picker.resolve(selections);
@@ -1074,6 +1095,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
             sequence: this.draftSequence })) return;
         this.draftSequence = change.sequence;
         this.draftEpoch = change.epoch;
+        if (this.contextPicker?.draftHandle === change.handle &&
+            (change.kind === 'cancelled' || change.kind === 'accepted' &&
+                change.revision !== this.contextPicker.draftRevision)) this.cancelContextPicker();
         if (change.kind === 'cancelled') { this.createState = undefined; this.proposedDraft = undefined; }
         else if (change.kind === 'accepted') { state.draft = change.draft!; state.preview = undefined; this.proposedDraft = undefined; }
         else this.proposedDraft = change.kind === 'proposed' ? change.draft : undefined;

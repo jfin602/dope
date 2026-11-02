@@ -793,3 +793,18 @@ test('Roadmap element chips add one protected prefix and preserve manual command
     assert.equal(panel.context.length, 0);
     panel.dispose();
 });
+
+test('new draft selection replaces stale chips from an earlier draft revision', () => {
+    const panel = new ChatPanelController(() => { throw new Error('unused'); }, () => {});
+    const selection = (id: string, draftRevision: number) => ({ kind: 'roadmap' as const,
+        elementKind: 'phase' as const, id, projectId: 'project-1', ownerRevision: 0,
+        draftHandle: 'draft-one', draftRevision });
+    panel.addRoadmapElements([selection('phase-one', 1)]);
+    panel.addRoadmapElements([selection('phase-one', 2)]);
+    assert.equal(panel.context.length, 1);
+    assert.equal(panel.context[0].draftRevision, 2);
+    assert.throws(() => panel.addRoadmapElements([
+        selection('phase-one', 2), selection('phase-two', 3)]), /Mixed Roadmap selection sources/);
+    assert.equal(panel.context.length, 1);
+    panel.dispose();
+});

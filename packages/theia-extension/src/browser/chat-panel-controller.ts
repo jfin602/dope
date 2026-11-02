@@ -692,6 +692,16 @@ export class ChatPanelController {
         if (!selections.length || selections.some(item => item.kind !== 'roadmap' || !item.elementKind ||
             !item.projectId || !Number.isSafeInteger(item.ownerRevision)))
             throw new Error('Invalid Roadmap element selection');
+        const source = selections[0];
+        if (selections.some(item => item.projectId !== source.projectId ||
+            item.ownerRevision !== source.ownerRevision || item.sourceHash !== source.sourceHash ||
+            item.draftHandle !== source.draftHandle || item.draftRevision !== source.draftRevision))
+            throw new Error('Mixed Roadmap selection sources');
+        if (this.context.some(item => item.kind === 'roadmap' && item.elementKind &&
+            (item.projectId !== source.projectId || item.ownerRevision !== source.ownerRevision ||
+                item.sourceHash !== source.sourceHash || item.draftHandle !== source.draftHandle ||
+                item.draftRevision !== source.draftRevision)))
+            this.context = this.context.filter(item => item.kind !== 'roadmap' || !item.elementKind);
         const existing = new Set(this.context.filter(item => item.kind === 'roadmap' && item.elementKind)
             .map(item => `${item.elementKind}:${item.id}`));
         const fresh = selections.filter(item => !existing.has(`${item.elementKind}:${item.id}`));
@@ -708,7 +718,8 @@ export class ChatPanelController {
             item.elementKind === selection.elementKind &&
             item.messageId === selection.messageId && item.start === selection.start && item.end === selection.end &&
             item.text === selection.text &&
-            item.ownerRevision === selection.ownerRevision && item.sourceHash === selection.sourceHash)) return;
+            item.ownerRevision === selection.ownerRevision && item.sourceHash === selection.sourceHash &&
+            item.draftHandle === selection.draftHandle && item.draftRevision === selection.draftRevision)) return;
         if (selection.kind === 'roadmap' && selection.elementKind &&
             !this.context.some(item => item.kind === 'roadmap' && item.elementKind)) {
             if (/^\/[a-z0-9-]+(?=\s|$)/i.test(this.draft) && !/^\/roadmap(?=\s|$)/.test(this.draft))

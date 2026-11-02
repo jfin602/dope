@@ -31,6 +31,8 @@ export interface ChatContextRef {
     generation?: number;
     ownerRevision?: number;
     sourceHash?: string;
+    draftHandle?: string;
+    draftRevision?: number;
     elementKind?: 'phase' | 'gate' | 'criterion' | 'correction';
     messageId?: string;
     start?: number;
@@ -252,7 +254,7 @@ function parseModelProvenance(value: unknown): ChatModelProvenance {
 }
 export function parseChatContextRef(value: unknown): ChatContextRef {
     const v = record(value, ['schemaVersion', 'kind', 'id', 'label', 'origin', 'excerpt', 'estimatedTokens',
-        'includedBytes', 'contentHash', 'projectId', 'generation', 'ownerRevision', 'sourceHash', 'elementKind', 'messageId', 'start', 'end'],
+        'includedBytes', 'contentHash', 'projectId', 'generation', 'ownerRevision', 'sourceHash', 'draftHandle', 'draftRevision', 'elementKind', 'messageId', 'start', 'end'],
         ['schemaVersion', 'kind', 'id', 'label', 'estimatedTokens']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported context reference schema');
     const ref: ChatContextRef = { schemaVersion: 1, kind: choice(v.kind, contextKinds, 'context kind'), id: string(v.id, 'context ID'),
@@ -267,6 +269,11 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     if (v.projectId !== undefined) ref.projectId = string(v.projectId, 'context project ID');
     if (v.generation !== undefined) ref.generation = count(v.generation, 'context generation');
     if (v.ownerRevision !== undefined) ref.ownerRevision = count(v.ownerRevision, 'context owner revision');
+    if (v.draftHandle !== undefined) ref.draftHandle = string(v.draftHandle, 'context draft handle');
+    if (v.draftRevision !== undefined) ref.draftRevision = count(v.draftRevision, 'context draft revision');
+    if ((ref.draftHandle === undefined) !== (ref.draftRevision === undefined) ||
+        ref.draftHandle !== undefined && (ref.kind !== 'roadmap' || ref.elementKind === undefined && v.elementKind === undefined))
+        throw new Error('Invalid Roadmap draft context');
     if (v.elementKind !== undefined) {
         if (ref.kind !== 'roadmap') throw new Error('Roadmap element kind requires Roadmap context');
         ref.elementKind = choice(v.elementKind, ['phase', 'gate', 'criterion', 'correction'] as const,
