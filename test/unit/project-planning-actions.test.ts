@@ -106,3 +106,70 @@ test('a failing later step rejects the entire reviewed batch without writing', a
     assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
     assert.equal((await store.read<RoadmapGateIndex>(root)).revision, 2);
 }));
+
+test('all schema-two action families use reviewed previews and preserve unrelated structure', async () => fixture(async (root, store, actions) => {
+    const { projectHandle } = await actions.attach(root);
+    const run = async (action: PlanningActionRequest['actions'][number], check: (next: RoadmapGateIndex) => void) => {
+        const current = await store.read<RoadmapGateIndex>(root);
+        const bytes = await readFile(join(root, '.dope', 'roadmap.json'));
+        const proposal = request(projectHandle, current.revision, action);
+        const preview = await actions.preview(proposal);
+        check(preview.next as RoadmapGateIndex);
+        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), bytes);
+        const applied = await actions.apply(proposal, preview.token, true) as RoadmapGateIndex;
+        assert.equal(applied.revision, current.revision + 1);
+        check(applied);
+        assert.deepEqual(await store.read<RoadmapGateIndex>(root), applied);
+    };
+    await run({ type: 'phase.create', id: 'phase-2', title: 'Second', objective: 'Keep second' },
+        next => assert.equal(next.phases.length, 2));
+    await run({ type: 'phase.edit', id: 'phase-1', title: 'First revised', objective: 'Deliver one' },
+        next => assert.equal(next.phases[0].title, 'First revised'));
+    await run({ type: 'phase.reorder', ids: ['phase-2', 'phase-1'] },
+        next => assert.equal(next.phases.find(item => item.id === 'phase-2')?.order, 0));
+    await run({ type: 'phase.dependencies', id: 'phase-2', dependencies: ['phase-1'] },
+        next => assert.deepEqual(next.phases[1].dependencies, ['phase-1']));
+    await run(createGate, next => assert.equal(next.gates[0].parentPhaseId, 'phase-1'));
+    await run({ type: 'gate.create', id: 'gate-2', parentPhaseId: 'phase-2', designation: 'G2',
+        title: 'Other', purpose: 'Preserve other', criteria: [{ id: 'criterion-2', title: 'Other check',
+            expectedResult: 'Other observed' }] }, next => assert.equal(next.gates.length, 2));
+    await run({ type: 'gate.edit', id: 'gate-1', title: 'Review revised', purpose: 'Confirm the result' },
+        next => assert.equal(next.gates[0].title, 'Review revised'));
+    await run({ type: 'gate.reparent', id: 'gate-1', parentPhaseId: 'phase-2', order: 0 }, next => {
+        assert.equal(next.gates.length, 2);
+        assert.equal(next.gates.find(item => item.id === 'gate-1')?.parentPhaseId, 'phase-2');
+        assert.equal(next.gates.find(item => item.id === 'gate-1')?.order, 0);
+        assert.equal(next.gates.find(item => item.id === 'gate-2')?.order, 1);
+        assert.equal(next.gates.find(item => item.id === 'gate-2')?.purpose, 'Preserve other');
+    });
+    await run({ type: 'gate.reorder', parentPhaseId: 'phase-2', ids: ['gate-2', 'gate-1'] },
+        next => assert.equal(next.gates.find(item => item.id === 'gate-2')?.order, 0));
+    await run({ type: 'gate.dependencies', id: 'gate-1', dependencies: ['gate-2'] },
+        next => assert.deepEqual(next.gates.find(item => item.id === 'gate-1')?.dependencies, ['gate-2']));
+    await run({ type: 'criterion.add', gateId: 'gate-1', id: 'criterion-3', title: 'Parent verified',
+        expectedResult: 'Gate belongs to Second' }, next => assert.equal(next.gates[0].criteria.length, 2));
+    await run({ type: 'criterion.edit', gateId: 'gate-1', id: 'criterion-3', title: 'Parent verified',
+        expectedResult: 'Second owns Gate' }, next => assert.equal(next.gates[0].criteria[1].expectedResult, 'Second owns Gate'));
+    await run({ type: 'criterion.reorder', gateId: 'gate-1', ids: ['criterion-3', 'criterion-1'] },
+        next => assert.equal(next.gates[0].criteria.find(item => item.id === 'criterion-3')?.order, 0));
+    await run({ type: 'correction.attach', id: 'correction-1', parent: { kind: 'gate', id: 'gate-1' },
+        title: 'Repair', objective: 'Fix it' }, next => assert.equal(next.corrections.length, 1));
+    await run({ type: 'correction.edit', id: 'correction-1', title: 'Repair revised', objective: 'Fix it' },
+        next => assert.equal(next.corrections[0].title, 'Repair revised'));
+    await run({ type: 'correction.reparent', id: 'correction-1', parent: { kind: 'phase', id: 'phase-1' } },
+        next => assert.deepEqual(next.corrections[0].parent, { kind: 'phase', id: 'phase-1' }));
+    await run({ type: 'correction.delete', id: 'correction-1' }, next => assert.equal(next.corrections.length, 0));
+    await run({ type: 'criterion.remove', gateId: 'gate-1', id: 'criterion-3' },
+        next => assert.deepEqual(next.gates[0].criteria.map(item => item.id), ['criterion-1']));
+    await run({ type: 'gate.dependencies', id: 'gate-1', dependencies: [] },
+        next => assert.deepEqual(next.gates[0].dependencies, []));
+    await run({ type: 'gate.delete', id: 'gate-1' }, next => {
+        assert.deepEqual(next.gates.map(item => item.id), ['gate-2']);
+        assert.equal(next.gates[0].order, 0);
+    });
+    await run({ type: 'phase.dependencies', id: 'phase-2', dependencies: [] },
+        next => assert.deepEqual(next.phases[1].dependencies, []));
+    await run({ type: 'phase.delete', id: 'phase-1' },
+        next => assert.deepEqual(next.phases.map(item => item.id), ['phase-2']));
+    assert.equal((await store.read<RoadmapGateIndex>(root)).gates[0].qualificationStatus, 'unknown');
+}));
