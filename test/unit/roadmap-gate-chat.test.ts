@@ -132,7 +132,16 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.ok(retry.proposal);
         assert.ok(retry.refs.some(ref => ref.kind === 'roadmap'));
         assert.match(prompts[2], /Add a Phase called Combat Systems/);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, 'wrong-lease',
+            retry.proposal.id, true), /unavailable/);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, randomUUID(), lease.token,
+            retry.proposal.id, true), /unavailable/);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
+            randomUUID(), true), /unavailable/);
+        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
         await backend.decidePlanningProposal(projectHandle, chatId, lease.token, retry.proposal.id, true);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
+            retry.proposal.id, true), /unavailable/);
         recorded = await backend.get(projectHandle, chatId);
         activity = recorded?.messages.find(message => message.role === 'assistant' &&
             message.planningActivity?.proposalId === retry.proposal?.id);
@@ -268,5 +277,27 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.ok(explicitGate.messages.some(message => message.content.includes('"title":"Gate 50"')));
         assert.ok(skilled.diagnostics.some(item => item.message.includes('first 64')));
         assert.ok(skilled.usedTokens <= skilled.budgetTokens);
+        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
+            summary: 'Create a Lease Bound Phase.',
+            actions: [{ type: 'phase.create', id: 'new:6', title: 'Lease Bound Phase',
+                objective: 'Must remain uncommitted' }] };
+        const leaseBound = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/roadmap Add Lease Bound Phase.',
+            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
+        assert.ok(leaseBound.proposal);
+        const beforeRelease = await readFile(join(root, '.dope', 'roadmap.json'));
+        await backend.release(projectHandle, chatId, lease.token);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
+            leaseBound.proposal.id, true), /unavailable/);
+        const nextLease = await backend.claim({ projectHandle, chatId, ownerId: 'next-panel' });
+        assert.ok(nextLease.acquired);
+        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, nextLease.token,
+            leaseBound.proposal.id, true), /unavailable/);
+        recorded = await backend.get(projectHandle, chatId);
+        activity = recorded?.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.proposalId === leaseBound.proposal?.id);
+        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'stale');
+        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), beforeRelease);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
