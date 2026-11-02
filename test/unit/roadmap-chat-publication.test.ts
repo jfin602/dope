@@ -107,7 +107,7 @@ test('protected Chat publish and link share RoadmapStore, require approval and s
             assert.deepEqual(decisions?.map(message => message.role === 'assistant' &&
                 message.planningActivity?.status), number === 0 ?
                 ['rejected', 'denied', 'stale', 'applied'] : ['rejected', 'denied', 'applied']);
-            assert.ok(modelCalls >= 2);
+            assert.equal(modelCalls, 0, 'typed publication intent does not need a model generation');
             backend.dispose();
         }
     } finally { for (const root of roots) await rm(root, { recursive: true, force: true }); }

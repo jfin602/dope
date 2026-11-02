@@ -1206,7 +1206,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-proposal-history[data-status="stale"], .dope-chat-proposal-history[data-status="denied"] { --proposal-accent: var(--theia-editorWarning-foreground); }
 .dope-chat-proposal-history[data-status="failed"] { --proposal-accent: var(--theia-errorForeground); }
 .dope-chat-proposal-history-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; font-size: 11px; }
-.dope-chat-proposal-history-heading strong { flex: 1 1 12ch; min-width: 0; font-weight: 600; text-transform: capitalize; }
+.dope-chat-proposal-history-heading strong { flex: 1 1 12ch; min-width: 0; font-weight: 600; }
 .dope-chat-proposal-history-heading > span:last-child { color: var(--theia-descriptionForeground); }
 .dope-chat-proposal-history-mark { color: var(--proposal-accent); font-weight: 700; }
 .dope-chat-proposal-history .dope-chat-proposal-diagnostic { margin-top: 6px; color: var(--proposal-accent); line-height: 1.4; }

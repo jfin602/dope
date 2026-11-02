@@ -7,7 +7,7 @@ import { changeChatSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill,
 import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
-import { ModelRuntimeFailure, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
+import { ModelRuntimeFailure, type ConversationEvent, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import type { AIRoleHardConstraints, RoutingProvenance } from '@dope/ai';
 import { ModelConnectionsRegistry } from './model-connections';
 import { ChatContextComposer } from './chat-context-composer';
@@ -1466,7 +1466,12 @@ export class ChatBackend implements ChatService {
                     ...(planningOutput > 0 ?
                         { maxOutputTokens: budget?.output ?? planningOutput } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
-            const events = localRoadmap ? (async function* (backend: ChatBackend) {
+            // The current protected command is already a complete typed intent. No model output
+            // can add authority or improve the owner-issued publication preview.
+            const events = publicationIntent ? (async function* (): AsyncGenerator<ConversationEvent> {
+                yield { type: 'complete', text: 'Roadmap Markdown request received.',
+                    usage: { tokenMeasurement: 'unavailable' }, finishReason: 'deterministic-intent' };
+            })() : localRoadmap ? (async function* (backend: ChatBackend) {
                 const guardedGenerate = async function* (retryInstruction?: string) {
                     if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                     yield* generate(retryInstruction);
@@ -1516,7 +1521,7 @@ export class ChatBackend implements ChatService {
                     if (localRoadmap) this.planningProgress(key, assistant.id, 'validating');
                     if (event.provenance) actual = { schemaVersion: 1, ...event.provenance };
                     else if (event.actualModelId) actual = { ...actual, modelId: event.actualModelId };
-                    if (following) {
+                    if (following && !publicationIntent) {
                         const route = (event as Extract<RoutedConversationEvent, { type: 'complete' }>).routingProvenance;
                         routingProvenance = route;
                         actual = { schemaVersion: 1, connectionId: route.actualTarget.connectionId,
@@ -1524,7 +1529,7 @@ export class ChatBackend implements ChatService {
                             modelLabel: route.executionLabels.model };
                         if (sequence === 0) await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id,
                             actualModel: actual, routingProvenance });
-                    } else {
+                    } else if (!publicationIntent) {
                         routingProvenance = exactRoutingProvenance(request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
                             { connectionId: actual.connectionId, modelId: actual.modelId }, requestHard,
                             { connection: connection.label ?? connection.id, provider: actual.providerId,
@@ -1536,8 +1541,9 @@ export class ChatBackend implements ChatService {
                     if (publicationIntent) output = 'Roadmap Markdown request received. Check the verified result below before any decision.';
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                         outcome: 'complete', content: output,
-                        activity: activity?.snapshot(event.finishReason === 'length' ? 'provider-truncated' : undefined),
-                        actualModel: actual, routingProvenance,
+                        activity: activity?.snapshot(event.finishReason === 'length' && !publicationIntent ?
+                            'provider-truncated' : undefined),
+                        ...(publicationIntent ? {} : { actualModel: actual, routingProvenance }),
                         contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                         tokenUsage: event.usage, ...(event.compaction ? { compaction: event.compaction } : {}),
                         ...(event.finishReason ? { finishReason: event.finishReason } : {}),
