@@ -112,7 +112,9 @@ export async function readHistoryWorkGitMetadata(project: HistoryProject, observ
                 diagnostic('agent', `Run ${id} has no matching project task`); continue;
             }
             result.entries.push({ ...project, kind: 'event', source: 'agent', sourceId: `run:${id}`,
-                owner: { kind: 'agent-run', runId: id }, title: `Agent run: ${task.objective.slice(0, 100)}`,
+                owner: { kind: 'agent-run', runId: id },
+                title: run.resumedFrom ? `Resumed from ${run.resumedFrom.runId.slice(0, 8)}: ${task.objective.slice(0, 85)}` :
+                    `Agent run: ${task.objective.slice(0, 100)}`,
                 status: historyAgentRunStatus(run), availability: 'available',
                 occurredAt: run.endedAt ?? run.startedAt ?? run.createdAt, observedAt: null });
         }

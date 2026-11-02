@@ -329,6 +329,41 @@ export class ExecutionWorkspace {
         } catch (error) { await workspace.dispose(); throw error; }
     }
 
+    /** Partial archives are evidence, never review candidates. Rebuild only in a new clone. */
+    static async restorePartial(projectRoot: string, savedRoot: string, delta: CandidateDelta,
+        fingerprint: string): Promise<ExecutionWorkspace> {
+        const workspace = await ExecutionWorkspace.create(projectRoot);
+        let total = 0;
+        try {
+            if (!delta.effects.length) throw new Error('Partial candidate has no changes');
+            for (const effect of delta.effects) {
+                if (!['create', 'modify'].includes(effect.kind) || !effect.after)
+                    throw new Error('Partial candidate contains an unsupported effect');
+                const source = await safeTarget(savedRoot, effect.path, 'file');
+                const handle = await open(source, constants.O_RDONLY | constants.O_NOFOLLOW);
+                let bytes: Buffer;
+                try {
+                    const info = await handle.stat();
+                    if (!info.isFile() || info.size > 32 * 1024 * 1024 || (total += info.size) > 64 * 1024 * 1024)
+                        throw new Error('Partial candidate exceeds archive limits');
+                    bytes = await handle.readFile();
+                } finally { await handle.close(); }
+                if (createHash('sha256').update(bytes).digest('hex') !== effect.after)
+                    throw new Error('Partial candidate archive hash changed');
+                const target = await safeTarget(workspace.root, effect.path,
+                    effect.kind === 'create' ? 'absent' : 'file');
+                await mkdir(join(target, '..'), { recursive: true });
+                const output = await open(target, constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW, 0o600);
+                try { await output.writeFile(bytes); } finally { await output.close(); }
+            }
+            if (JSON.stringify(await workspace.delta()) !== JSON.stringify(delta) ||
+                await workspace.fingerprint() !== fingerprint)
+                throw new Error('Partial candidate identity changed during restoration');
+            await workspace.assertActiveBasis(projectRoot, workspace.root);
+            return workspace;
+        } catch (error) { await workspace.dispose(); throw error; }
+    }
+
     async delta(): Promise<CandidateDelta> {
         const current = await scan(this.root);
         const ignored = await ignoredNewPaths(this.root, [...current.keys()].filter(path =>

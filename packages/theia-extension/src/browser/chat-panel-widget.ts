@@ -1511,6 +1511,52 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 provenanceText.textContent = run.provenance ? `${run.provenance.providerId} · ${run.provenance.modelId}` : 'Coding Agent';
                 provenance.append(provenanceTitle, provenanceText); scroll.append(provenance);
                 if (run.outcome) detail(`Run outcome: ${run.outcome.summary}`, 'dope-work-detail');
+                if (run.resumedFrom)
+                    detail(`Resumed from run ${run.resumedFrom.runId} · restored candidate ${run.resumedFrom.candidateFingerprint.slice(0, 12)}`, 'dope-work-detail');
+                const resume = controller.resumePreview;
+                if (resume?.sourceRunId === run.id && resume.eligible && !controller.resumeOpen)
+                    primary('Resume from saved candidate', () => void controller.openResumePreview(), !controller.resumeBusy);
+                if (resume?.sourceRunId === run.id && controller.resumeOpen && resume.task) {
+                    const section = document.createElement('section'); section.className = 'dope-work-review';
+                    const title = document.createElement('h3'); title.textContent = 'Review saved candidate continuation'; section.append(title);
+                    const facts = [
+                        `Task: ${resume.task.objective}`,
+                        `Original run: ${run.id} · ${run.status}`,
+                        `Source HEAD: ${run.basis?.head ?? 'unknown'}`,
+                        `Verified candidate: ${resume.candidateFingerprint}`,
+                        `Change counts: ${resume.effects?.effects.filter(effect => effect.kind === 'create').length ?? 0} created, ` +
+                            `${resume.effects?.effects.filter(effect => effect.kind === 'modify').length ?? 0} modified`,
+                        `Changes: ${resume.effects?.effects.map(effect => `${effect.kind} ${effect.path}`).join(', ') ?? 'none'}`,
+                        `Uncertain prior commands: ${resume.uncertainCommands?.join(', ') || 'none recorded'}${resume.transcriptIncomplete ? ' · transcript incomplete' : ''}. None will be replayed.`,
+                        `Selected model: ${controller.resumeTarget?.modelId ?? 'Unavailable'}`,
+                        `Fresh grant: workspace read, write, process, test, build; project create and modify` +
+                            (resume.task.origin.kind === 'work-item' ?
+                                ` within delegated paths: ${resume.task.origin.scope.delegablePaths.join(', ')}` : ''),
+                        `Validation: ${resume.task.completion.validation.map(target => target.label).join(', ')}`,
+                        'Restored changes require normal validation and human candidate review before application.'
+                    ];
+                    for (const fact of facts) { const item = document.createElement('p'); item.className = 'dope-work-detail';
+                        item.textContent = fact; section.append(item); }
+                    const approval = document.createElement('label'); approval.className = 'dope-work-grant';
+                    const accepted = document.createElement('input'); accepted.type = 'checkbox';
+                    accepted.checked = controller.resumeAccepted;
+                    accepted.onchange = () => { controller.resumeAccepted = accepted.checked; this.render(); };
+                    approval.append(accepted, ' Approve a fresh execution grant and resume this candidate'); section.append(approval);
+                    if (controller.resumeTarget?.locality === 'hosted') {
+                        const hostedApproval = document.createElement('label'); hostedApproval.className = 'dope-work-grant';
+                        const hosted = document.createElement('input'); hosted.type = 'checkbox';
+                        hosted.checked = controller.resumeHostedAuthorized;
+                        hosted.onchange = () => { controller.resumeHostedAuthorized = hosted.checked; this.render(); };
+                        hostedApproval.append(hosted, ' Authorize sending project data to the hosted Coding Agent');
+                        section.append(hostedApproval);
+                    }
+                    section.append(this.button('Cancel', () => controller.cancelResumePreview()),
+                        this.button('Confirm Resume', () => void controller.confirmResume().then(newRun => {
+                            if (newRun) this.selectWork({ kind: 'run', id: newRun.id });
+                        }), controller.resumeBusy || !controller.resumeAccepted || !controller.resumeTarget ||
+                        controller.resumeTarget.locality === 'hosted' && !controller.resumeHostedAuthorized));
+                    scroll.append(section);
+                }
                 if (controller.selectedTask?.origin.kind === 'direct' && run.status === 'running')
                     primary('Stop Work', () => {
                         const project = this.panel.workspace;

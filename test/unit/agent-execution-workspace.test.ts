@@ -106,3 +106,28 @@ test('Dope state is a visible blocked candidate, never an authoritative write', 
     assert.deepEqual(result.decision.blocked, [{ kind: 'create', path: '.dope/architecture.json' }]);
     await assert.rejects(readFile(join(root, '.dope/architecture.json')), { code: 'ENOENT' });
 }));
+
+test('partial archive restores exact create and modify bytes only into a fresh clone', async () => fixture(async (root, workspace) => {
+    const archive = await mkdtemp(join(tmpdir(), 'dope-partial-archive-'));
+    try {
+        await writeFile(join(workspace.root, 'a.ts'), 'restored edit\n');
+        await writeFile(join(workspace.root, 'new.ts'), 'restored create\n');
+        const { delta, fingerprint } = await workspace.freezeCandidate();
+        await writeFile(join(archive, 'a.ts'), 'restored edit\n');
+        await writeFile(join(archive, 'new.ts'), 'restored create\n');
+        const restored = await ExecutionWorkspace.restorePartial(root, archive, delta, fingerprint);
+        try {
+            assert.equal(await readFile(join(restored.root, 'a.ts'), 'utf8'), 'restored edit\n');
+            assert.equal(await readFile(join(restored.root, 'new.ts'), 'utf8'), 'restored create\n');
+            assert.deepEqual(await restored.delta(), delta);
+            assert.equal(await restored.fingerprint(), fingerprint);
+            assert.equal(await readFile(join(root, 'a.ts'), 'utf8'), 'first\n');
+            await assert.rejects(readFile(join(root, 'new.ts')), { code: 'ENOENT' });
+        } finally { await restored.dispose(); }
+        await writeFile(join(archive, 'new.ts'), 'corrupt');
+        await assert.rejects(ExecutionWorkspace.restorePartial(root, archive, delta, fingerprint), /hash changed/);
+        await rm(join(archive, 'new.ts'));
+        await symlink(join(root, 'a.ts'), join(archive, 'new.ts'));
+        await assert.rejects(ExecutionWorkspace.restorePartial(root, archive, delta, fingerprint), /unsafe|substituted/i);
+    } finally { await rm(archive, { recursive: true, force: true }); }
+}));

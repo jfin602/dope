@@ -21,6 +21,11 @@ export interface WorkItemLaunchRequest {
     /** Set only after the developer explicitly approves the supplied validation commands. */
     validationApproved?: boolean;
 }
+export interface CandidateResumePreview {
+    eligible: boolean; reason?: string; sourceRunId: string; task?: AgentTask;
+    candidateFingerprint?: string; effects?: AgentRun['candidateDelta'];
+    outcome?: AgentRun['outcome']; uncertainCommands?: string[]; transcriptIncomplete?: boolean;
+}
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     createTask(projectHandle: string, task: AgentTask): Promise<AgentTask>;
@@ -29,6 +34,10 @@ export interface AgentRuntimeService {
     readTask(projectHandle: string, taskId: string): Promise<AgentTask | undefined>;
     listTasks(projectHandle: string): Promise<AgentTask[]>;
     readRun(projectHandle: string, runId: string): Promise<AgentRun | undefined>;
+    previewCandidateResume(projectHandle: string, runId: string): Promise<CandidateResumePreview>;
+    resumeCandidate(projectHandle: string, folderUri: string, runId: string,
+        expectedFingerprint: string, newTask: AgentTask, grant: ExecutionGrant,
+        hostedProjectDataAuthorized: boolean): Promise<AgentRun>;
     readMapImpact(projectHandle: string, runId: string): Promise<AgentMapImpact | undefined>;
     readSteering(projectHandle: string, runId: string): Promise<AgentSteeringState | undefined>;
     requestSteering(projectHandle: string, taskId: string, runId: string, expectedRevision: number,

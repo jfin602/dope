@@ -693,7 +693,7 @@ export class AgentStore implements AgentTranscriptStorage {
                 (!current.candidateReview || next.reviewDecision?.kind !==
                     (next.status === 'completed' ? 'accept' : 'reject')))
                 throw new Error('Blocked run requires an explicit candidate review decision');
-            for (const key of ['version', 'id', 'taskId', 'grantId', 'grantRevision', 'requestedPolicy', 'projectRoot', 'projectId', 'createdAt', 'executionWorkspace'] as const)
+            for (const key of ['version', 'id', 'taskId', 'grantId', 'grantRevision', 'requestedPolicy', 'projectRoot', 'projectId', 'createdAt', 'executionWorkspace', 'resumedFrom'] as const)
                 if (!same(current[key], next[key])) throw new Error('Immutable AgentRun field changed');
             if (current.startedAt && current.startedAt !== next.startedAt || current.endedAt && current.endedAt !== next.endedAt ||
                 current.provenance && !same(current.provenance, next.provenance) || current.basis && !same(current.basis, next.basis) ||

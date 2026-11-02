@@ -154,6 +154,43 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     readTask(handle: string, taskId: string): Promise<AgentTask | undefined> { return this.store.readTask(this.active(handle), taskId); }
     listTasks(handle: string): Promise<AgentTask[]> { return this.store.listTasks(this.active(handle)); }
     readRun(handle: string, runId: string): Promise<AgentRun | undefined> { return this.store.readRun(this.active(handle), runId); }
+    private async workItemResumeAllowed(root: string, task: AgentTask): Promise<boolean> {
+        if (task.origin.kind !== 'work-item') return true;
+        if (!this.planning) return false;
+        const snapshot = await this.planning.read(root);
+        const origin = task.origin;
+        const map = snapshot.maps.find(item => item.id === origin.planningMapId);
+        const work = map?.workItems.find(item => item.id === origin.workItemId);
+        const within = (parent: string, child: string) => child === parent || child.startsWith(`${parent}/`);
+        return snapshot.projectId === origin.projectId && task.projectId === origin.projectId &&
+            map?.revision === origin.mapRevision && JSON.stringify(map.basis) === JSON.stringify(origin.basis) &&
+            map.status === 'active' && !!work && ['ready', 'in-progress'].includes(work.status) &&
+            work.assignment === origin.scope.assignment &&
+            origin.scope.delegablePaths.every(path => work.delegablePaths?.some(allowed => within(allowed, path))) &&
+            !origin.scope.delegablePaths.some(path => work.humanReservedPaths?.some(reserved =>
+                within(path, reserved) || within(reserved, path)));
+    }
+    async previewCandidateResume(handle: string, runId: string) {
+        if (!this.execution) throw new Error('Agent execution unavailable');
+        const root = this.active(handle);
+        const preview = await this.execution.previewCandidateResume(root, runId);
+        if (preview.eligible && preview.task && !await this.workItemResumeAllowed(root, preview.task))
+            return { eligible: false, sourceRunId: runId,
+                reason: 'WorkItem project or delegation basis changed' };
+        return preview;
+    }
+    async resumeCandidate(handle: string, folderUri: string, runId: string, expectedFingerprint: string,
+        newTask: AgentTask, grant: ExecutionGrant, hostedProjectDataAuthorized: boolean): Promise<AgentRun> {
+        if (!this.execution) throw new Error('Agent execution unavailable');
+        const root = this.active(handle);
+        if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
+        const source = await this.store.readRun(root, runId);
+        const originalTask = source && await this.store.readTask(root, source.taskId);
+        if (!originalTask || !await this.workItemResumeAllowed(root, originalTask))
+            throw new Error('WorkItem project or delegation basis changed');
+        return this.execution.resumeCandidate(root, folderUri, runId, expectedFingerprint,
+            newTask, grant, hostedProjectDataAuthorized);
+    }
     readMapImpact(handle: string, runId: string) { return this.store.readMapImpact(this.active(handle), runId); }
     readSteering(handle: string, runId: string): Promise<AgentSteeringState | undefined> {
         return this.store.readSteering(this.active(handle), runId);

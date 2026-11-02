@@ -1,7 +1,8 @@
 import type { AgentMapImpact, AgentRun, AgentSteeringRequest, AgentSteeringState, AgentTask,
     AgentTranscriptEntry, AgentTaskSequence, ProposedAction } from '@dope/agent-core';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
-import { createDefaultExecutionGrant } from '@dope/agent-core';
+import type { CandidateResumePreview } from '@dope/contracts/lib/agent-runtime-service';
+import { createDefaultExecutionGrant, parseAgentTask } from '@dope/agent-core';
 import { PhaseStackController } from './phase-stack-controller';
 import type { WorkSelection } from './shared-panel-state';
 import type { AgentTarget } from './agent-run-controller';
@@ -273,6 +274,12 @@ export class WorkSelectionController {
     runs: AgentRun[] = [];
     selectedRun?: AgentRun;
     selectedTask?: AgentTask;
+    resumePreview?: CandidateResumePreview;
+    resumeOpen = false;
+    resumeAccepted = false;
+    resumeHostedAuthorized = false;
+    resumeBusy = false;
+    resumeTarget?: AgentTarget;
     transcript: AgentTranscriptEntry[] = [];
     transcriptState: 'recorded' | 'not-recorded' = 'not-recorded';
     transcriptIncomplete = false;
@@ -335,6 +342,7 @@ export class WorkSelectionController {
         this.startBusy = false; this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false;
         this.selectedTaskId = undefined; this.startTarget = undefined;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.message = '';
+        this.resumePreview = undefined; this.resumeOpen = false; this.resumeAccepted = false;
         this.selectionState = 'idle';
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.changed();
@@ -409,6 +417,7 @@ export class WorkSelectionController {
         this.selectedTaskId = selection?.kind === 'task' ? selection.id : undefined;
         this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startTarget = undefined;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.transcriptIncomplete = false;
+        this.resumePreview = undefined; this.resumeOpen = false; this.resumeAccepted = false;
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
         if (!selection && this.phase.handle) this.phase.cancelSelection();
@@ -439,6 +448,16 @@ export class WorkSelectionController {
                 selection.kind === 'task' ? await this.runtime.readTask(handle, selection.id) : undefined;
             if (serial !== this.serial || handle !== this.handle) return;
             this.selectedRun = run; this.selectedTask = task;
+            if (run && ['failed', 'cancelled', 'interrupted'].includes(run.status)) {
+                void this.runtime.previewCandidateResume(handle, run.id).then(preview => {
+                    if (serial !== this.serial || handle !== this.handle || this.selectedRun?.id !== run.id) return;
+                    this.resumePreview = preview; this.changed();
+                }).catch(() => {
+                    if (serial !== this.serial || handle !== this.handle || this.selectedRun?.id !== run.id) return;
+                    this.resumePreview = { eligible: false, reason: 'Saved candidate could not be verified', sourceRunId: run.id };
+                    this.changed();
+                });
+            }
             if (!navigationOnly && selection.kind === 'task' && task?.origin.kind === 'work-item' && this.resolveTarget) {
                 try {
                     const result = await this.resolveTarget(task.modelPolicy);
@@ -480,6 +499,49 @@ export class WorkSelectionController {
         }
     }
     acceptStartGrant(accepted: boolean): void { this.acceptedStartGrant = accepted; this.changed(); }
+    async openResumePreview(): Promise<void> {
+        const handle = this.handle, run = this.selectedRun;
+        if (!handle || !run || this.resumeBusy) return;
+        this.resumeBusy = true; this.changed();
+        try {
+            const preview = await this.runtime.previewCandidateResume(handle, run.id);
+            if (handle !== this.handle || this.selectedRun?.id !== run.id) return;
+            this.resumePreview = preview; this.resumeOpen = preview.eligible;
+            this.resumeAccepted = false; this.resumeHostedAuthorized = false;
+            const result = preview.eligible && preview.task ? await this.resolveTarget?.(preview.task.modelPolicy) : undefined;
+            this.resumeTarget = result?.target;
+            if (!preview.eligible) this.message = preview.reason ?? 'Saved candidate cannot be restored.';
+        } catch { this.message = 'Saved candidate verification failed.'; }
+        finally { this.resumeBusy = false; this.changed(); }
+    }
+    cancelResumePreview(): void {
+        this.resumeOpen = false; this.resumeAccepted = false; this.resumeHostedAuthorized = false; this.changed();
+    }
+    async confirmResume(): Promise<AgentRun | undefined> {
+        const handle = this.handle, project = this.project, run = this.selectedRun;
+        const preview = this.resumePreview, task = preview?.task, target = this.resumeTarget;
+        if (!handle || !project || !run || !preview?.eligible || !task || !target || !this.resumeOpen ||
+            !this.resumeAccepted || this.resumeBusy || target.locality === 'hosted' && !this.resumeHostedAuthorized) return;
+        this.resumeBusy = true; this.resumeAccepted = false; this.changed();
+        try {
+            const fresh = await this.resolveTarget?.(task.modelPolicy);
+            if (!fresh?.target || fresh.target.connectionId !== target.connectionId ||
+                fresh.target.modelId !== target.modelId || fresh.target.locality !== target.locality)
+                throw new Error('Selected model changed; review continuation again.');
+            const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
+            const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1,
+                taskId: newTask.id, acceptedAt: new Date().toISOString() });
+            const newRun = await this.runtime.resumeCandidate(handle, project, run.id,
+                preview.candidateFingerprint!, newTask, grant,
+                target.locality === 'hosted' && this.resumeHostedAuthorized);
+            this.resumeOpen = false; this.resumeHostedAuthorized = false;
+            await this.refresh();
+            await this.select({ kind: 'run', id: newRun.id });
+            return newRun;
+        } catch (error) { this.message = error instanceof Error ? error.message : 'Continuation failed';
+            this.resumeOpen = false; await this.refresh(); }
+        finally { this.resumeBusy = false; this.changed(); }
+    }
     authorizeHostedProjectData(authorized: boolean): void {
         this.hostedProjectDataAuthorized = authorized; this.changed();
     }

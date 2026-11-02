@@ -77,6 +77,7 @@ export interface AgentRun {
     validationResults: ValidationResult[]; changeSummary?: ChangeSummary;
     validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
     candidateFingerprint?: string;
+    resumedFrom?: { runId: string; candidateFingerprint: string };
     candidateReview?: CandidateReview;
     reviewDecision?: CandidateReviewDecision;
     authorityDecision?: AuthorityDecision; appliedFiles?: string[];
@@ -348,7 +349,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
@@ -427,6 +428,10 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(x.validationBasis === undefined ? {} : { validationBasis: select(x.validationBasis, ['execution-workspace'] as const) }),
         ...(candidateDelta === undefined ? {} : { candidateDelta }),
         ...(x.candidateFingerprint === undefined ? {} : { candidateFingerprint: hash(x.candidateFingerprint) }),
+        ...(x.resumedFrom === undefined ? {} : { resumedFrom: (() => {
+            const source = record(x.resumedFrom, ['runId', 'candidateFingerprint']);
+            return { runId: id(source.runId), candidateFingerprint: hash(source.candidateFingerprint) };
+        })() }),
         ...(review === undefined ? {} : { candidateReview: {
             state: 'ready' as const, revision: integer(review.revision), candidateFingerprint: hash(review.candidateFingerprint),
             diff: typeof review.diff === 'string' && review.diff.length <= 48_000 ? review.diff : (() => { throw new Error('Invalid review diff'); })(),

@@ -285,6 +285,56 @@ test('capacity failure after a candidate edit stops without automatic replay and
     assert.deepEqual(stopped.runIds, [run.id]);
 }));
 
+test('saved direct candidate resumes in a new run with fresh grant and immutable original', async () => fixture(async f => {
+    const uri = pathToFileURL(f.root).href;
+    const first = await f.backend.start(f.handle, uri, 'task-1', grant(), true);
+    const original = await readFile(join(f.root, 'README.md'));
+    const changed = Buffer.concat([original, Buffer.from('\nresume fixture\n')]);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'README.md'), changed);
+    await writeFile(join(f.adapter.starts[0].executionRoot, 'resume-created.txt'), 'created once\n');
+    f.adapter.fail('controlled provider failure');
+    const stopped = await terminal(f.store, f.root, first.id);
+    await released(f.runtime, f.root);
+    assert.equal(stopped.status, 'failed');
+    const archive = (await f.store.partialCandidateRoot(f.root, first.id))!;
+    await writeFile(join(archive, 'resume-created.txt'), 'corrupt archive');
+    assert.equal((await f.backend.previewCandidateResume(f.handle, first.id)).eligible, false);
+    await writeFile(join(archive, 'resume-created.txt'), 'created once\n');
+    await writeFile(join(f.root, 'README.md'), 'dirty authoritative source\n');
+    assert.equal((await f.backend.previewCandidateResume(f.handle, first.id)).eligible, false);
+    await writeFile(join(f.root, 'README.md'), original);
+    const preview = await f.backend.previewCandidateResume(f.handle, first.id);
+    assert.equal(preview.eligible, true);
+    assert.deepEqual(preview.effects?.effects.map(effect => [effect.kind, effect.path]),
+        [['modify', 'README.md'], ['create', 'resume-created.txt']]);
+    const newTask = { ...preview.task!, id: 'task-resumed', createdAt: new Date().toISOString() };
+    const freshGrant = createDefaultExecutionGrant({ id: 'grant-resumed', revision: 1,
+        taskId: newTask.id, acceptedAt: new Date().toISOString() });
+    await assert.rejects(f.backend.resumeCandidate(f.handle, uri, first.id,
+        '0'.repeat(64), newTask, freshGrant, true), /candidate|fingerprint|evidence/i);
+    await assert.rejects(f.backend.resumeCandidate(f.handle, uri, first.id,
+        preview.candidateFingerprint!, newTask,
+        createDefaultExecutionGrant({ id: stopped.grantId, revision: 1, taskId: newTask.id,
+            acceptedAt: new Date().toISOString() }), true), /grant/i);
+    const second = await f.backend.resumeCandidate(f.handle, uri, first.id,
+        preview.candidateFingerprint!, newTask, freshGrant, true);
+    assert.equal(second.resumedFrom?.runId, first.id);
+    assert.notEqual(second.id, first.id);
+    assert.equal(second.grantId, freshGrant.id);
+    assert.equal(await readFile(join(f.adapter.starts[1].executionRoot, 'README.md'), 'utf8'), changed.toString());
+    assert.equal(await readFile(join(f.adapter.starts[1].executionRoot, 'resume-created.txt'), 'utf8'), 'created once\n');
+    assert.deepEqual(await readFile(join(f.root, 'README.md')), original);
+    await assert.rejects(readFile(join(f.root, 'resume-created.txt')), { code: 'ENOENT' });
+    await assert.rejects(f.backend.resumeCandidate(f.handle, uri, first.id,
+        preview.candidateFingerprint!, { ...newTask, id: 'task-duplicate' },
+        createDefaultExecutionGrant({ id: 'grant-duplicate', revision: 1, taskId: 'task-duplicate',
+            acceptedAt: new Date().toISOString() }), true), /already active|already has a continuation/i);
+    f.adapter.fail('second controlled stop');
+    await terminal(f.store, f.root, second.id);
+    await released(f.runtime, f.root);
+    assert.deepEqual(await f.store.readRun(f.root, first.id), stopped);
+}));
+
 test('phase-stack review rejects a validated candidate without promotion or checkpoint', async () => fixture(async f => {
     const { sequence, accepted } = await preparedSequence(f);
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);

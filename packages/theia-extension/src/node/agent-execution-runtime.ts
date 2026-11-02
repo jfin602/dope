@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseExecutionGrant, projectPath } from '@dope/agent-core';
+import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseAgentTask, parseExecutionGrant, projectPath } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
@@ -459,13 +459,71 @@ export class AgentExecutionRuntime {
         return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, false);
     }
 
+    async previewCandidateResume(root: string, runId: string): Promise<{
+        eligible: boolean; reason?: string; sourceRunId: string; task?: AgentTask;
+        candidateFingerprint?: string; effects?: AgentRun['candidateDelta']; outcome?: AgentRun['outcome'];
+        uncertainCommands?: string[]; transcriptIncomplete?: boolean;
+    }> {
+        const unavailable = (reason: string) => ({ eligible: false, reason, sourceRunId: runId });
+        const run = await this.store.readRun(root, runId);
+        if (!run || !['failed', 'cancelled', 'interrupted'].includes(run.status) ||
+            this.active.has(root) && this.active.get(root)?.run?.id === runId || run.candidateReview || run.reviewDecision ||
+            run.authorityDecision || run.appliedFiles?.length)
+            return unavailable('Run is not a stopped, unpromoted candidate');
+        const task = await this.store.readTask(root, run.taskId);
+        if (!task || !['direct', 'work-item'].includes(task.origin.kind) ||
+            !run.basis?.head || !run.basis.clean || !run.executionWorkspace ||
+            !run.candidateDelta?.effects.length || !run.candidateFingerprint || !run.provenance)
+            return unavailable('Original task, source, or candidate evidence is incomplete');
+        if (run.candidateDelta.effects.some(effect => !['create', 'modify'].includes(effect.kind)))
+            return unavailable('Archive contains unsupported deletion or rename effects');
+        if ((await this.store.listRuns(root)).some(other => other.resumedFrom?.runId === runId))
+            return unavailable('This archive already has a continuation run');
+        if (this.active.has(root) && this.active.get(root)?.run)
+            return unavailable('Another Work run is active');
+        let saved: string | undefined;
+        try { saved = await this.store.partialCandidateRoot(root, runId); }
+        catch { return unavailable('Archived candidate directory is unsafe'); }
+        if (!saved) return unavailable('Archived candidate bytes are missing');
+        try {
+            const basis = await captureGitBasis(root);
+            if (!basis.clean || basis.head !== run.basis.head)
+                return unavailable('Authoritative source basis changed');
+            const workspace = await ExecutionWorkspace.restorePartial(root, saved, run.candidateDelta, run.candidateFingerprint);
+            await workspace.dispose();
+            const uncertainCommands: string[] = [];
+            let transcriptIncomplete = false;
+            let cursor = 0;
+            for (let page = 0; page < 20; page++) {
+                const batch = await this.store.readTranscript(root, runId, cursor, 100);
+                transcriptIncomplete ||= batch.incomplete || batch.state === 'not-recorded';
+                for (const entry of batch.entries) if (entry.kind === 'command' &&
+                    ['running', 'interrupted'].includes(entry.status) && uncertainCommands.length < 10)
+                    uncertainCommands.push(entry.command.slice(0, 160));
+                cursor = batch.nextSequence;
+                if (!batch.hasMore) break;
+                if (page === 19) transcriptIncomplete = true;
+            }
+            return { eligible: true, sourceRunId: run.id, task,
+                candidateFingerprint: run.candidateFingerprint, effects: run.candidateDelta,
+                outcome: run.outcome, uncertainCommands, transcriptIncomplete };
+        } catch { return unavailable('Archived candidate failed integrity or source verification'); }
+    }
+
+    async resumeCandidate(root: string, folderUri: string, runId: string, expectedFingerprint: string,
+        newTask: AgentTask, grant: ExecutionGrant, hostedAuthorized: boolean): Promise<AgentRun> {
+        return this.startInternal(root, folderUri, newTask.id, grant, hostedAuthorized, false, undefined,
+            { runId, expectedFingerprint, newTask });
+    }
+
     async startSequence(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
         hostedAuthorized: boolean, acceptedDirty?: AcceptedDirtyBasis): Promise<AgentRun> {
         return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, true, acceptedDirty);
     }
 
     private async startInternal(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
-        hostedAuthorized: boolean, sequence: boolean, acceptedDirty?: AcceptedDirtyBasis): Promise<AgentRun> {
+        hostedAuthorized: boolean, sequence: boolean, acceptedDirty?: AcceptedDirtyBasis,
+        resume?: { runId: string; expectedFingerprint: string; newTask: AgentTask }): Promise<AgentRun> {
         if (this.disposed) throw new Error('Agent Runtime disposed');
         if (await this.store.root(folderUri) !== root) throw new Error('Accepted project root does not match attached project');
         const prior = this.active.get(root);
@@ -483,10 +541,26 @@ export class AgentExecutionRuntime {
             const existing = await this.store.listRuns(root);
             if (existing.some(run => ['running', 'cancelling', 'blocked'].includes(run.status)))
                 throw new Error('A mutation run requires restart reconciliation before another start');
-            const task = await this.store.readTask(root, taskId);
+            let sourceRun: AgentRun | undefined;
+            let resumeEvidence: Awaited<ReturnType<AgentExecutionRuntime['previewCandidateResume']>> | undefined;
+            let task = await this.store.readTask(root, taskId);
+            if (resume) {
+                const preview = await this.previewCandidateResume(root, resume.runId);
+                if (!preview.eligible || preview.candidateFingerprint !== resume.expectedFingerprint || !preview.task)
+                    throw new Error(preview.reason ?? 'Candidate resume evidence changed');
+                resumeEvidence = preview;
+                sourceRun = await this.store.readRun(root, resume.runId);
+                const proposed = parseAgentTask(resume.newTask);
+                const original = preview.task;
+                if (task || proposed.id !== taskId || proposed.id === original.id ||
+                    !sourceRun?.endedAt || proposed.createdAt < sourceRun.endedAt ||
+                    JSON.stringify({ ...proposed, id: original.id, createdAt: original.createdAt }) !== JSON.stringify(original))
+                    throw new Error('Continuation task differs from original task or already exists');
+                task = proposed;
+            }
             if (!task) throw new Error('Persisted AgentTask required');
             active.task = task;
-            if (task.origin.kind === 'work-item' && existing.some(run => run.taskId === task.id))
+            if (!resume && task.origin.kind === 'work-item' && existing.some(run => run.taskId === task.id))
                 throw new Error('WorkItem AgentTask already has an AgentRun; launch a new task for another attempt');
             if (!(sequence ? task.origin.kind === 'phase-stack' :
                 task.origin.kind === 'direct' || task.origin.kind === 'work-item') ||
@@ -502,9 +576,12 @@ export class AgentExecutionRuntime {
                 throw new Error('Direct Work requires a validation command and candidate review before Start');
             const grant = parseExecutionGrant(offeredGrant);
             if (grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
-                grant.acceptedAt < task.createdAt)
+                grant.acceptedAt < task.createdAt || resume && sourceRun &&
+                    (grant.id === sourceRun.grantId || grant.acceptedAt < sourceRun.endedAt!))
                 throw new Error('Accepted ExecutionGrant does not match the task/project');
             const selected = await this.select(task.modelPolicy, hostedAuthorized);
+            if (resume && JSON.stringify(selected.provenance) !== JSON.stringify(sourceRun?.provenance))
+                throw new Error('Original model binding changed; choose and authorize a new Work task');
             if (selected.provenance.runtimeKind === 'local' && task.controls.reasoningEffort)
                 throw new Error('Local Coding Agent does not support reasoning effort controls');
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
@@ -514,7 +591,25 @@ export class AgentExecutionRuntime {
                 if (!sequence || acceptedDirty.head !== basis.head) throw new Error('Dirty basis requires matching sequence HEAD');
                 await assertDirtyBasis(root, acceptedDirty);
             } else if (!basis.clean) throw new Error('Phase 8B requires a clean project worktree');
-            active.workspace = await ExecutionWorkspace.create(root, acceptedDirty);
+            if (resume) {
+                if (!sourceRun?.candidateDelta || !sourceRun.candidateFingerprint)
+                    throw new Error('Original candidate evidence missing');
+                for (const effect of sourceRun.candidateDelta.effects) {
+                    if (!checkEffect(grant, { kind: `project-${effect.kind}`, scope: 'project', path: effect.path }).allowed ||
+                        task.origin.kind === 'work-item' && (
+                            !task.origin.scope.delegablePaths.some(path => effect.path === path || effect.path.startsWith(`${path}/`)) ||
+                            task.origin.scope.humanReservedPaths.some(path => effect.path === path || effect.path.startsWith(`${path}/`))))
+                        throw new Error('Restored candidate exceeds fresh grant or delegated scope');
+                }
+                const saved = await this.store.partialCandidateRoot(root, resume.runId);
+                if (!saved) throw new Error('Archived candidate bytes missing');
+                active.workspace = await ExecutionWorkspace.restorePartial(root, saved,
+                    sourceRun.candidateDelta, sourceRun.candidateFingerprint);
+                await active.workspace.assertActiveBasis(root, active.workspace.root);
+                if ((await captureGitBasis(root)).head !== sourceRun.basis?.head)
+                    throw new Error('Original source HEAD changed');
+                await this.store.createTask(root, task);
+            } else active.workspace = await ExecutionWorkspace.create(root, acceptedDirty);
             active.initialCandidateFingerprint = await active.workspace.fingerprint();
             active.grant = grant;
             const now = new Date().toISOString();
@@ -522,11 +617,12 @@ export class AgentExecutionRuntime {
                 status: 'pending', grantId: grant.id, grantRevision: grant.revision,
                 requestedPolicy: task.modelPolicy, projectRoot: '.', ...(task.projectId ? { projectId: task.projectId } : {}),
                 createdAt: now, basis, executionWorkspace: { id: active.workspace.id, basisHead: active.workspace.head },
-                changedFiles: [], validationResults: [] };
+                changedFiles: [], validationResults: [],
+                ...(resume ? { resumedFrom: { runId: resume.runId, candidateFingerprint: resume.expectedFingerprint } } : {}) };
             active.run = await this.store.createRun(root, pending);
             await this.update(active, run => ({ ...run, status: 'running', startedAt: now,
                 provenance: selected.provenance }));
-            await this.event(active, 'status', 'Agent run started', { status: 'running' });
+            await this.event(active, 'status', resume ? 'Resumed from verified saved candidate' : 'Agent run started', { status: 'running' });
             await this.transcript(active, { kind: 'marker', at: '', code: 'run-started' });
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
             if (selected.provenance.runtimeKind === 'local') {
@@ -537,6 +633,19 @@ export class AgentExecutionRuntime {
                     current.adapter !== selected.adapter)
                     throw new Error('Selected Local Coding Agent target, role or capacity changed before start');
             }
+            const continuation = resume && sourceRun && active.run ?
+                `\n\nEarlier Work run ${sourceRun.id} stopped (${sourceRun.status}). ` +
+                `This new run is ${active.run.id}; its isolated workspace contains verified saved candidate ` +
+                `${sourceRun.candidateFingerprint}. Changed files: ` +
+                `${sourceRun.candidateDelta?.effects.slice(0, 20).map(effect => `${effect.kind} ${effect.path}`).join(', ') ?? 'none'}` +
+                `${(sourceRun.candidateDelta?.effects.length ?? 0) > 20 ? ' (additional paths omitted)' : ''}. ` +
+                `Prior failure: ${sourceRun.outcome?.summary ?? 'inspect original run'}. ` +
+                `Prior successful commands: ${sourceRun.commandEvidence?.filter(item => item.result === 'passed')
+                    .slice(0, 5).map(item => item.commandSummary).join(', ') || 'none recorded'}. ` +
+                `Uncertain commands: ${resumeEvidence?.uncertainCommands?.slice(0, 5).join(', ') || 'none recorded'}` +
+                `${resumeEvidence?.transcriptIncomplete ? ' (prior transcript incomplete)' : ''}. ` +
+                `No old tool request was replayed. Inspect restored files before editing; complete the original task ` +
+                `under this run's grant, required validation, and human review.` : '';
             const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
                 grant, taskId: task.id,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
@@ -544,7 +653,7 @@ export class AgentExecutionRuntime {
                 ...(selected.loadedContext === undefined ? {} : {
                     selectedLoadedContextTokens: selected.loadedContext,
                     selectedRegistryRevision: selected.registryRevision }),
-                prompt: `${task.objective}\n\n${task.instructions}`,
+                prompt: `${task.objective}\n\n${task.instructions}${continuation}`,
                 ...(task.controls.reasoningEffort ? { reasoningEffort: task.controls.reasoningEffort } : {}),
                 onEvent: observation => this.observed(active, observation) };
             const handle = await selected.adapter.start(request);
