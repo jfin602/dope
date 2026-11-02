@@ -56,6 +56,51 @@ test('ordered append, command reconstruction, pagination and reopen without acti
     await assert.rejects(reopened.readTranscript(root, 'run-1', 0, AGENT_TRANSCRIPT_PAGE_LIMIT + 1), /integer/);
 }));
 
+test('Work reasoning, correlated tool outcomes and partial failure survive reload without fabrication', async () => fixture(async (root, store, file) => {
+    await store.appendTranscript(root, 'run-1', { kind: 'marker', at, code: 'run-started' });
+    await store.appendTranscript(root, 'run-1', { kind: 'reasoning', at, text: 'First thought.' });
+    await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-1', toolName: 'read_file',
+        phase: 'requested', detail: '{"fields":["path","offset"]}', brokerInvoked: false });
+    await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-1', toolName: 'read_file',
+        phase: 'recoverable', stage: 'request-parse', code: 'SOURCE_IDENTITY_REQUIRED',
+        brokerInvoked: false, effectExecuted: false });
+    await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-2', toolName: 'read_file',
+        phase: 'completed', detail: '{"offset":0,"endOffset":8,"truncated":true}', brokerInvoked: true });
+    await store.appendTranscript(root, 'run-1', { kind: 'marker', at, code: 'observation-omitted' });
+    await store.appendTranscript(root, 'run-1', { kind: 'message', at, text: 'Partial final answer.', truncated: true });
+    await store.appendTranscript(root, 'run-1', { kind: 'marker', at, code: 'run-ended' });
+    const reopened = new AgentStore();
+    const page = await reopened.readTranscript(root, 'run-1', 0, 20);
+    assert.deepEqual(page.entries.map(entry => entry.kind),
+        ['marker', 'reasoning', 'work', 'work', 'work', 'marker', 'message', 'marker']);
+    assert.deepEqual(page.entries.filter(entry => entry.kind === 'work').map(entry => [entry.toolId, entry.phase]),
+        [['pi-1', 'requested'], ['pi-1', 'recoverable'], ['pi-2', 'completed']]);
+    assert.equal(page.entries.find(entry => entry.kind === 'message')?.truncated, true);
+    assert.deepEqual((await reopened.readTranscript(root, 'run-1', 0, 20)).entries, page.entries);
+    assert.doesNotMatch(await readFile(file, 'utf8'), /raw provider|source body/);
+}));
+
+test('Work without emitted reasoning retains tools and final only', async () => fixture(async (root, store) => {
+    await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-1', toolName: 'list_files',
+        phase: 'completed', detail: '{"resultCount":2}', brokerInvoked: true });
+    await store.appendTranscript(root, 'run-1', { kind: 'message', at, text: 'Listed two files.' });
+    const entries = (await new AgentStore().readTranscript(root, 'run-1', 0, 10)).entries;
+    assert.deepEqual(entries.map(entry => entry.kind), ['work', 'message']);
+}));
+
+test('cancelled Work retains its partial request without inventing a result or final answer', async () => fixture(async (root, store) => {
+    await store.appendTranscript(root, 'run-1', { kind: 'marker', at, code: 'run-started' });
+    await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-1',
+        toolName: 'read_file', phase: 'requested', brokerInvoked: false });
+    await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-1',
+        toolName: 'read_file', phase: 'cancelled', stage: 'request-check', brokerInvoked: false,
+        effectExecuted: false });
+    await store.appendTranscript(root, 'run-1', { kind: 'marker', at, code: 'run-ended' });
+    const entries = (await new AgentStore().readTranscript(root, 'run-1', 0, 20)).entries;
+    assert.deepEqual(entries.map(entry => entry.kind), ['marker', 'work', 'work', 'marker']);
+    assert.equal(entries.some(entry => entry.kind === 'message'), false);
+}));
+
 test('bounded content redacts secrets and private paths, rejects non-visible content and marks ceiling', async () => fixture(async (root, store, file) => {
     await store.appendTranscript(root, 'run-1', { kind: 'message', at,
         text: `A normal explanation with password=abc123 and /home/alice/private/file, then ${'x'.repeat(13_000)}` });

@@ -121,6 +121,11 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         assert.ok(events.some(event => event.summary === 'Pi model turn running'));
         assert.ok(events.some(event => event.summary === 'Pi edit_file started'));
         assert.ok(events.some(event => event.summary === 'Pi run_command ended'));
+        assert.equal(events.some(event => event.kind === 'reasoning'), false);
+        assert.ok(events.some(event => event.kind === 'work-observation' &&
+            event.toolName === 'read_file' && event.phase === 'completed' && event.brokerInvoked === true));
+        assert.ok(events.some(event => event.kind === 'work-observation' &&
+            event.toolName === 'run_command' && event.phase === 'failed' && event.brokerInvoked === true));
         const commandStart = events.findIndex(event => event.kind === 'command-started');
         const commandEnd = events.findIndex(event => event.kind === 'command-completed');
         assert.ok(commandStart >= 0 && commandEnd > commandStart);
@@ -196,7 +201,9 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
     const project = join(parent, 'project');
     let workspace: ExecutionWorkspace | undefined;
     const observed: any[] = [];
-    const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>) {
+    const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>, stream: (event: any) => void) {
+        stream({ type: 'work', sequence: 1, kind: 'reasoning', text: 'Check the candidate range. password=' });
+        stream({ type: 'work', sequence: 2, kind: 'reasoning', text: 'hiddenvalue ' });
         const malformed = await tool({ id: 1, name: 'read_file', arguments: { path: 'CANDIDATE.txt', offset: 9000 } });
         observed.push(malformed);
         observed.push(await tool({ id: 2, name: 'read_file', arguments: {
@@ -211,6 +218,7 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
             path: 'CANDIDATE.txt', offset: Math.min(9000, page.fileBytes),
             expectedSourceHash: page.sourceHash } });
         observed.push(later);
+        stream({ type: 'work', sequence: 3, kind: 'reasoning_omitted' });
         return { modelId: 'fixture-model', text: 'Candidate read complete' };
     }, dispose() {} };
     const factory: any = { create() { return host; }, release() {} };
@@ -238,6 +246,16 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
         assert.equal(observed[4].status, 'completed');
         assert.ok(JSON.parse(observed[4].output).endOffset > 8192);
         assert.ok(events.some(event => /SOURCE_IDENTITY_REQUIRED; offset 9000;.*broker not executed/.test(event.summary)));
+        assert.equal(events[2].kind, 'reasoning');
+        assert.doesNotMatch(JSON.stringify(events.filter(event => event.kind === 'reasoning')), /hiddenvalue|password=/);
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-1' &&
+            event.phase === 'recoverable' && event.stage === 'request-parse' &&
+            event.code === 'SOURCE_IDENTITY_REQUIRED' && event.brokerInvoked === false));
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-3' &&
+            event.phase === 'completed' && event.brokerInvoked === true));
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-4' &&
+            event.phase === 'recoverable' && event.code === 'INVALID_OFFSET'));
+        assert.ok(events.some(event => event.kind === 'observation-gap'));
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.deepEqual(await readFile(join(workspace.root, 'CANDIDATE.txt')), original);
         adapter.dispose();
@@ -250,6 +268,7 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
     let workspace: ExecutionWorkspace | undefined;
     let invocations = 0;
     let revoked = false;
+    const observations: any[] = [];
     try {
         await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
         workspace = await ExecutionWorkspace.create(project);
@@ -260,7 +279,7 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
         const request = { projectRoot: project, executionRoot: workspace.root, grant,
             taskId: 'task-output', connectionId: 'local', registrationId: 'local',
             modelId: 'model', prompt: 'Run one approved command and inspect its output.',
-            onEvent() {} };
+            onEvent(event: unknown) { observations.push(event); } };
         const host: any = { async start() {}, async runWork(_prompt: string, onTool: (call: any) => Promise<any>) {
             const first = await onTool({ id: 1, name: 'run_command',
                 arguments: { kind: 'build', commandId: 'sample-output' } });
@@ -304,5 +323,15 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
         await assert.rejects(handle.result, /denied/);
         assert.equal(invocations, 1);
         assert.equal(await readFile(join(workspace.root, 'command-count'), 'utf8'), '1');
+        assert.ok(observations.some(event => event.kind === 'work-observation' &&
+            event.toolName === 'read_command_output' && event.phase === 'completed' &&
+            event.brokerInvoked === false));
+        assert.ok(observations.some(event => event.kind === 'work-observation' &&
+            event.toolName === 'read_command_output' && event.phase === 'recoverable' &&
+            event.code === 'OUTPUT_HANDLE_EXPIRED'));
+        assert.ok(observations.some(event => event.kind === 'work-observation' &&
+            event.toolName === 'read_command_output' && event.phase === 'denied' &&
+            event.stage === 'workspace-check'));
+        assert.doesNotMatch(JSON.stringify(observations), /"handle"\s*:/);
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });

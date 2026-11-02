@@ -411,13 +411,25 @@ export async function dispatch(message) {
       sessionConsumed = true;
       workRequestId = message.id;
       let sequence = 0;
+      let reasoningDeltas = 0;
+      let reasoningOmitted = false;
       const emitWork = (kind, extra = {}) => {
         if (++sequence > 512) throw new Error('Pi Work event limit exceeded');
         message.emit?.({ type: 'work', sequence, kind, ...extra });
       };
       const unsubscribe = session.subscribe(event => {
-        // The pinned SDK emits these structured events. Never forward message text,
-        // tool arguments, provider diagnostics or Pi's own session identity.
+        // Forward only explicit SDK thinking deltas. Bounded observation must not
+        // stop a model turn or delay a tool reply when the provider is verbose.
+        if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'thinking_delta' &&
+            typeof event.assistantMessageEvent.delta === 'string' && event.assistantMessageEvent.delta) {
+          if (++reasoningDeltas <= 96) emitWork('reasoning',
+            { text: event.assistantMessageEvent.delta.slice(0, 2000),
+              truncated: event.assistantMessageEvent.delta.length > 2000 });
+          if (!reasoningOmitted && (reasoningDeltas === 97 || event.assistantMessageEvent.delta.length > 2000)) {
+            reasoningOmitted = true;
+            emitWork('reasoning_omitted');
+          }
+        }
         if (['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled'].includes(event.type))
           emitWork(event.type, event.type === 'agent_settled' ? { aborted: event.aborted === true } : {});
         if (event.type === 'tool_execution_start' || event.type === 'tool_execution_end')
@@ -430,7 +442,8 @@ export async function dispatch(message) {
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (!assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted')
         throw new Error('Pi Work turn failed');
-      return { text: assistant.content.filter(item => item.type === 'text').map(item => item.text).join('').slice(0, 8192),
+      const fullText = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
+      return { text: fullText.slice(0, 65536), textTruncated: fullText.length > 65536,
         modelId: assistant.responseModel ?? assistant.model,
         usage: { inputTokens: assistant.usage?.input, outputTokens: assistant.usage?.output,
           totalTokens: assistant.usage?.totalTokens,

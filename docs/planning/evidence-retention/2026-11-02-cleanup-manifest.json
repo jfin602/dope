@@ -1,0 +1,717 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-02T17:58:18.310304+00:00",
+  "baseline_head": "f21a19f36243587f63212f42bf2dc484dbd2067c",
+  "initial_worktree_changes": [
+    " M packages/agent-core/src/execution.ts",
+    " M packages/agent-core/src/transcript.ts",
+    " M packages/pi-runtime/worker.mjs",
+    " M packages/theia-extension/src/browser/agent-transcript-widget.ts",
+    " M packages/theia-extension/src/node/agent-execution-runtime.ts",
+    " M packages/theia-extension/src/node/pi-runtime-host.ts",
+    " M packages/theia-extension/src/node/pi-work-execution.ts",
+    " M test/unit/agent-transcript-store.test.ts",
+    " M test/unit/pi-work-execution.test.ts"
+  ],
+  "entries": [
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.4.6.AppImage",
+      "stage": "A",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "historical build 0.4.6",
+      "initial_size_bytes": 189752868,
+      "initial_allocated_bytes": 189759488,
+      "sha256": "782665b124653a4e687231dd9fdbea614172e1e1189b8d28ee5f25999b52f2a2",
+      "retained_equivalent": [
+        {
+          "path": "/home/jfin/.local/opt/dope/releases/0.4.6-20261001T030539Z-c7e0d66269d3-1106b0/Dope.AppImage",
+          "sha256": "782665b124653a4e687231dd9fdbea614172e1e1189b8d28ee5f25999b52f2a2",
+          "build_metadata_path": "/home/jfin/.local/opt/dope/releases/0.4.6-20261001T030539Z-c7e0d66269d3-1106b0/build.json",
+          "build_metadata_sha256": "f77b02adc1630862050d0457bf9249e9591bcf1acd244c1038972925f8090381"
+        }
+      ],
+      "reason": "byte-identical installed release exists",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": true,
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 189759488
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.7.13.AppImage",
+      "stage": "A",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "historical build 0.7.13",
+      "initial_size_bytes": 191052756,
+      "initial_allocated_bytes": 191057920,
+      "sha256": "b111267e87c9133fd163bd253aa2231334e7dea90a6b8c3fd9b266610f46c428",
+      "retained_equivalent": [
+        {
+          "path": "/home/jfin/.local/opt/dope/releases/0.7.13-20261004T051658Z-805a3124a4a4-cc21c2/Dope.AppImage",
+          "sha256": "b111267e87c9133fd163bd253aa2231334e7dea90a6b8c3fd9b266610f46c428",
+          "build_metadata_path": "/home/jfin/.local/opt/dope/releases/0.7.13-20261004T051658Z-805a3124a4a4-cc21c2/build.json",
+          "build_metadata_sha256": "baf1ca5a5b81a3f8da6bf6464b6788ce348ce100d243e7397c08ece8ddb666fa"
+        }
+      ],
+      "reason": "byte-identical installed release exists",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": true,
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 191057920
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.7.31.AppImage",
+      "stage": "A",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "historical build 0.7.31",
+      "initial_size_bytes": 191085916,
+      "initial_allocated_bytes": 191090688,
+      "sha256": "884d3304544be40db7791d95058955c67bfab7bc1c0994c372803f3b76486584",
+      "retained_equivalent": [
+        {
+          "path": "/home/jfin/.local/opt/dope/releases/0.7.31-20261005T031703Z-e78bcd15930d-5bd777/Dope.AppImage",
+          "sha256": "884d3304544be40db7791d95058955c67bfab7bc1c0994c372803f3b76486584",
+          "build_metadata_path": "/home/jfin/.local/opt/dope/releases/0.7.31-20261005T031703Z-e78bcd15930d-5bd777/build.json",
+          "build_metadata_sha256": "74fd83b4f6c4956847990894673f48250d64e118021df75969207f9955a93e31"
+        }
+      ],
+      "reason": "byte-identical installed release exists",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": true,
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 191090688
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.8.20.AppImage",
+      "stage": "A",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "historical build 0.8.20",
+      "initial_size_bytes": 191155727,
+      "initial_allocated_bytes": 191160320,
+      "sha256": "a097062ff9f7b8d3731a7a8663763ac913283050677fa87505825a35b3bf96e5",
+      "retained_equivalent": [
+        {
+          "path": "/home/jfin/.local/opt/dope/releases/0.8.20-20261007T160848Z-60c18c9546d9-8fa4d8/Dope.AppImage",
+          "sha256": "a097062ff9f7b8d3731a7a8663763ac913283050677fa87505825a35b3bf96e5",
+          "build_metadata_path": "/home/jfin/.local/opt/dope/releases/0.8.20-20261007T160848Z-60c18c9546d9-8fa4d8/build.json",
+          "build_metadata_sha256": "46366e3c34da2a5edeca990dcabea78756f965a2021c1f765e001e67344336ac"
+        }
+      ],
+      "reason": "byte-identical installed release exists",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": true,
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 191160320
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.10.16.AppImage",
+      "stage": "A",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "historical build 0.10.16",
+      "initial_size_bytes": 191299114,
+      "initial_allocated_bytes": 191303680,
+      "sha256": "35b06a8a5ec53bb5b4e97c3fa82c0c25f97523a76201ef190895be14673aa4d0",
+      "retained_equivalent": [
+        {
+          "path": "/home/jfin/.local/opt/dope/releases/0.10.16-20261016T213729Z-9040fa86b131-77a66f/Dope.AppImage",
+          "sha256": "35b06a8a5ec53bb5b4e97c3fa82c0c25f97523a76201ef190895be14673aa4d0",
+          "build_metadata_path": "/home/jfin/.local/opt/dope/releases/0.10.16-20261016T213729Z-9040fa86b131-77a66f/build.json",
+          "build_metadata_sha256": "66f3904c812c569d15ddb4abe2ae44ccc1989220085c196eaeaad0f0d91ae1fb"
+        }
+      ],
+      "reason": "byte-identical installed release exists",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": true,
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 191303680
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.11.8.AppImage",
+      "stage": "A",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "historical build 0.11.8",
+      "initial_size_bytes": 191393761,
+      "initial_allocated_bytes": 191397888,
+      "sha256": "3c516d7cdf5e9a27ccb1719ef824821bbdc612812d0d05558970b720133496e8",
+      "retained_equivalent": [
+        {
+          "path": "/home/jfin/.local/opt/dope/releases/0.11.8-20261029T185905Z-d19833b4a24f-cdc48b/Dope.AppImage",
+          "sha256": "3c516d7cdf5e9a27ccb1719ef824821bbdc612812d0d05558970b720133496e8",
+          "build_metadata_path": "/home/jfin/.local/opt/dope/releases/0.11.8-20261029T185905Z-d19833b4a24f-cdc48b/build.json",
+          "build_metadata_sha256": "b72b6556cb39c6c73ba3a5ec7e2a2d516c37ba46f78b74ae08aca395eed5bd0d"
+        }
+      ],
+      "reason": "byte-identical installed release exists",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": true,
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 191397888
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.0.5.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 0",
+      "initial_size_bytes": 187871338,
+      "initial_allocated_bytes": 187879424,
+      "sha256": "627841c8fc93059c0a76126ba9debcf461c793b14d6349a9d93ad44489ccfe74",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p0/P5-linux-package-evidence.md",
+          "docs/tasks/p0/closeout.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p0/P5-linux-package-evidence.md",
+          "docs/tasks/p0/closeout.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 187879424
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.0.6.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 0",
+      "initial_size_bytes": 187871351,
+      "initial_allocated_bytes": 187875328,
+      "sha256": "2f181035d88c33ff4f6122745752f469d0ffe53628ee517612accf7309e8e5b0",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p0/closeout.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p0/closeout.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 187875328
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.1.4.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 1",
+      "initial_size_bytes": 188125714,
+      "initial_allocated_bytes": 188133376,
+      "sha256": "bf8ba3d101378e021a6247a0bb43a22c0c0b9dfca071ce3f6c51be067ced4c62",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p1/P4-linux-package-evidence.md",
+          "docs/tasks/p1/P5-native-dogfooding-evidence.md",
+          "docs/tasks/p1/closeout.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p1/P4-linux-package-evidence.md",
+          "docs/tasks/p1/P5-native-dogfooding-evidence.md",
+          "docs/tasks/p1/closeout.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188133376
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.1.5.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 1",
+      "initial_size_bytes": 188096997,
+      "initial_allocated_bytes": 188104704,
+      "sha256": "8d604a9732f7b771bee1b29a2b1343ae58dfc7a82316921de5bc7d5e6f997058",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p1/P5-native-dogfooding-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p1/P5-native-dogfooding-evidence.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188104704
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.1.6.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 1",
+      "initial_size_bytes": 188096991,
+      "initial_allocated_bytes": 188104704,
+      "sha256": "ebf37e0730a73b93a1720a7aae5007ec8f07c8da9145b00bf64e3e52fb04c659",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p1/closeout.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p1/closeout.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188104704
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.2.4.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 2",
+      "initial_size_bytes": 188121373,
+      "initial_allocated_bytes": 188129280,
+      "sha256": "68a2ac9f48be518d6c07e7434741ad2ea42ecd7b1d4a76850c0c19c4c0037766",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p2/P4-restart-package-evidence.md",
+          "docs/tasks/p2/P5-project-mind-dogfooding-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p2/P5-project-mind-dogfooding-evidence.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188129280
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.2.5.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 2",
+      "initial_size_bytes": 188121340,
+      "initial_allocated_bytes": 188129280,
+      "sha256": "f4cfaee120f4d7bae2b1a58d48728d4ed6e3a00e8b68489470002014fb1dfae0",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p2/P5-project-mind-dogfooding-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p2/P5-project-mind-dogfooding-evidence.md",
+          "docs/tasks/p2/closeout.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188129280
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.2.6.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 2",
+      "initial_size_bytes": 188121357,
+      "initial_allocated_bytes": 188129280,
+      "sha256": "649b037891ff9abcfca6e567e45b1324bb44855a4cb4646d6a492bd83fa5dfe0",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p2/closeout.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p2/closeout.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188129280
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.3.4.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 3",
+      "initial_size_bytes": 188121666,
+      "initial_allocated_bytes": 188125184,
+      "sha256": "eb7a3f03c15fc13db247f64662d66d8385841bb52f8b10b69bfccc7914de7b3d",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p3/P4-planning-restart-package-evidence.md",
+          "docs/tasks/p3/P5-planning-dogfooding-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p3/P4-planning-restart-package-evidence.md",
+          "docs/tasks/p3/P5-planning-dogfooding-evidence.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188125184
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.3.5.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 3",
+      "initial_size_bytes": 188121766,
+      "initial_allocated_bytes": 188129280,
+      "sha256": "416482af4772cbb4ecf67e47e7a68feff58b92a3ab3341a6a08ea3ec40294abb",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p3/P5-planning-dogfooding-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p3/P5-planning-dogfooding-evidence.md",
+          "docs/tasks/p3/closeout.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188129280
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.3.6.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 3",
+      "initial_size_bytes": 188113080,
+      "initial_allocated_bytes": 188121088,
+      "sha256": "ecea5850e2140b115228dff25538f4402b1bc8dac7d65e8fa69e9cd2f9328e31",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p3/closeout.md"
+        ],
+        "matching_hash_report_references": [],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 188121088
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.4.4.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 4",
+      "initial_size_bytes": 189204228,
+      "initial_allocated_bytes": 189210624,
+      "sha256": "f4827a456e56a481323a68939ea9ef7864990ebd43de871e0175e9494d0d4d27",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p4/P5-physical-model-dogfooding-evidence.md",
+          "docs/tasks/p4/P4-software-model-restart-package-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p4/P5-physical-model-dogfooding-evidence.md",
+          "docs/tasks/p4/P4-software-model-restart-package-evidence.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 189210624
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.4.5.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 4",
+      "initial_size_bytes": 189203893,
+      "initial_allocated_bytes": 189206528,
+      "sha256": "1ff4846b9d19c6f34928dc0f79e928b617e7e26c5bad6e5f009a1e960af35fea",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [],
+        "matching_hash_report_references": [],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 189206528
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.5.11.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 5",
+      "initial_size_bytes": 189876338,
+      "initial_allocated_bytes": 189882368,
+      "sha256": "2d87f695d7aa341b35b02db80f5be6e375cc9ee36a405e1c9df3a5d73b8b6c39",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p5/P11-visual-planning-dogfooding-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p5/P11-visual-planning-dogfooding-evidence.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 189882368
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.6.7.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 6",
+      "initial_size_bytes": 191011882,
+      "initial_allocated_bytes": 191016960,
+      "sha256": "df72d44cafe9a7fd848572500e4ffe2b445a9be22e58c6e1c44a50f0772aacb2",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p6/closeout.md",
+          "docs/tasks/p6/P7-flow-dogfooding-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p6/closeout.md",
+          "docs/tasks/p6/P7-flow-dogfooding-evidence.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 191016960
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.7.12.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 7",
+      "initial_size_bytes": 191044015,
+      "initial_allocated_bytes": 191049728,
+      "sha256": "a81a68d742fcfd2924e90e23d284e95637a42988395457f519bd21a6681c7807",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p7/P12-ai-presence-dogfooding-evidence.md",
+          "docs/tasks/p7/closeout.md",
+          "docs/tasks/p7/P12-blocker-correction-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p7/closeout.md",
+          "docs/tasks/p7/P12-blocker-correction-evidence.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 191049728
+    },
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.7.22.AppImage",
+      "stage": "D",
+      "classification": "generated historical AppImage",
+      "phase_or_gate": "Phase 7",
+      "initial_size_bytes": 191070029,
+      "initial_allocated_bytes": 191074304,
+      "sha256": "87cb23635de99983680ffc786f444d668ae1f2d125bf5396ac35d3a0ac83efb4",
+      "retained_equivalent": null,
+      "reason": "historical qualification package; authoritative result and artifact hash retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "installed_release_match": null,
+        "historical_report_references": [
+          "docs/tasks/p7b/P9-ai-center-qualification-evidence.md"
+        ],
+        "matching_hash_report_references": [
+          "docs/tasks/p7b/P9-ai-center-qualification-evidence.md"
+        ],
+        "installed_releases_untouched": true,
+        "retention_basis": "Phase 0\u20137 historical package. Historical reports preserve tested identity/outcome; manifest preserves current package hash. Not used by active Phase 12 qualification.",
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 191074304
+    },
+    {
+      "path": "/home/jfin/.cache/dope-p8b-post-qualification/app-profile/cache",
+      "stage": "B",
+      "classification": "inactive qualification profile cache",
+      "phase_or_gate": "Phase 8B P8 qualification",
+      "initial_size_bytes": 147943252,
+      "initial_allocated_bytes": 151023616,
+      "sha256": null,
+      "retained_equivalent": null,
+      "reason": "reproducible browser/font/shader cache only",
+      "verification": {
+        "file_count": 1105,
+        "symlinks": [],
+        "open_by_process": false,
+        "final_check": "inactive; regular cache files only; no symlink, mount, open file, profile process, or durable-state name; config and electron preserved"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 151023616
+    },
+    {
+      "path": "/home/jfin/dev/dope-p9-trace/backend.log",
+      "stage": "C",
+      "classification": "raw backend diagnostic log",
+      "phase_or_gate": "Phase 9D final qualification",
+      "initial_size_bytes": 280478580,
+      "initial_allocated_bytes": 280485888,
+      "sha256": "84e7658f60d1d4b25625a4ef6647eb56cb89d9129aad97ec96c17400f41805ec",
+      "retained_equivalent": "/home/jfin/dev/dope/docs/tasks/p9d/qualification/backend-log-consolidation-2026-11-02.md",
+      "reason": "diagnostic findings consolidated into bounded report; original provenance retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 280485888
+    },
+    {
+      "path": "/home/jfin/dev/dope-p9-trace/backend-normal.log",
+      "stage": "C",
+      "classification": "raw backend diagnostic log",
+      "phase_or_gate": "Phase 9D final qualification",
+      "initial_size_bytes": 521184008,
+      "initial_allocated_bytes": 521191424,
+      "sha256": "b256899aa497e2f716abb39d14592ea8f3a00a11ca44015835d80432dcf553bf",
+      "retained_equivalent": "/home/jfin/dev/dope/docs/tasks/p9d/qualification/backend-log-consolidation-2026-11-02.md",
+      "reason": "diagnostic findings consolidated into bounded report; original provenance retained",
+      "verification": {
+        "regular_file": true,
+        "open_by_process": false,
+        "final_check": "same hash and size; closed; exact regular file unlinked"
+      },
+      "final_disposition": "removed",
+      "reclaimed_allocated_bytes": 521191424
+    }
+  ],
+  "protected_baseline": [
+    {
+      "path": "/home/jfin/dev/dope/dist/linux/Dope-0.12.7.AppImage",
+      "exists": true,
+      "sha256": "3f97198ac7f81b8c1526e5b8a4cc052e29d68f4aadfecd5be8a716ff24d7b8d7"
+    },
+    {
+      "path": "/home/jfin/.local/opt/dope/current/Dope.AppImage",
+      "exists": true,
+      "sha256": "3f97198ac7f81b8c1526e5b8a4cc052e29d68f4aadfecd5be8a716ff24d7b8d7"
+    },
+    {
+      "path": "/home/jfin/dev/dope-p9-trace/history-final-connect.30142",
+      "exists": true,
+      "sha256": "67cb2a22e60469646ab29083ed876ad363fe5ddfad2eed1521c25fa9844c48da"
+    }
+  ]
+}

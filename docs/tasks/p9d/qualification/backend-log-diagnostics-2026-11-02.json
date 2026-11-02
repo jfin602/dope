@@ -1,0 +1,764 @@
+{
+  "schema_version": 1,
+  "source": "Phase 9D pre-final backend diagnostics; OS connection trace retained separately",
+  "logs": [
+    {
+      "path": "/home/jfin/dev/dope-p9-trace/backend.log",
+      "lines": 3585094,
+      "warn_error_lines": {
+        "WARN": 357325,
+        "ERROR": 537739
+      },
+      "signatures": [
+        {
+          "component": "core:BackendApplication",
+          "level": "ERROR",
+          "signature": "Could not read message start; expected <MessageStart>; raw malformed frame omitted",
+          "count": 26,
+          "first_utc": "2026-10-12T18:20:04.076Z",
+          "last_utc": "2026-10-12T18:20:04.093Z",
+          "representative": "2026-10-12T18:20:04.093Z core:BackendApplication ERROR Could not read message start; expected <MessageStart>; raw malformed frame omitted"
+        },
+        {
+          "component": "core:BackendApplication",
+          "level": "ERROR",
+          "signature": "Error: ping timeout",
+          "count": 2,
+          "first_utc": "2026-10-12T18:21:09.128Z",
+          "last_utc": "2026-10-12T18:25:24.291Z",
+          "representative": "2026-10-12T18:21:09.128Z core:BackendApplication ERROR Error: ping timeout"
+        },
+        {
+          "component": "core:BackendApplication",
+          "level": "ERROR",
+          "signature": "Uncaught Exception: Error: ping timeout",
+          "count": 2,
+          "first_utc": "2026-10-12T18:21:09.128Z",
+          "last_utc": "2026-10-12T18:25:24.291Z",
+          "representative": "2026-10-12T18:21:09.128Z core:BackendApplication ERROR Uncaught Exception:  Error: ping timeout"
+        },
+        {
+          "component": "core:FrontendConnectionStatusService",
+          "level": "ERROR",
+          "signature": "Error: reconnecting channel",
+          "count": 1,
+          "first_utc": "2026-10-12T18:23:54.120Z",
+          "last_utc": "2026-10-12T18:23:54.120Z",
+          "representative": "2026-10-12T18:23:54.120Z core:FrontendConnectionStatusService ERROR Error: reconnecting channel"
+        },
+        {
+          "component": "plugin-ext:HostedPluginSupport",
+          "level": "ERROR",
+          "signature": "Failed to start plugins for 'main' host Error: no local service handler with id NotificationMain",
+          "count": 2,
+          "first_utc": "2026-10-12T18:19:38.171Z",
+          "last_utc": "2026-10-12T18:23:55.355Z",
+          "representative": "2026-10-12T18:19:38.171Z plugin-ext:HostedPluginSupport ERROR Failed to start plugins for 'main' host Error: no local service handler with id NotificationMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "Promise rejection not handled in one second: Error: no local service handler with id DebugMain , reason: Error: no local service handler with id DebugMain",
+          "count": 20,
+          "first_utc": "2026-10-12T18:19:39.141Z",
+          "last_utc": "2026-10-12T18:23:59.518Z",
+          "representative": "2026-10-12T18:19:39.141Z plugin-host ERROR Promise rejection not handled in one second: Error: no local service handler with id DebugMain , reason: Error: no local service handler with id DebugMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "Promise rejection not handled in one second: Error: no local service handler with id LoggerMain , reason: Error: no local service handler with id LoggerMain",
+          "count": 268830,
+          "first_utc": "2026-10-12T18:19:39.023Z",
+          "last_utc": "2026-10-12T18:25:24.282Z",
+          "representative": "2026-10-12T18:19:39.023Z plugin-host ERROR Promise rejection not handled in one second: Error: no local service handler with id LoggerMain , reason: Error: no local service handler with id LoggerMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "Promise rejection not handled in one second: Error: no local service handler with id WorkspaceMain , reason: Error: no local service handler with id WorkspaceMain",
+          "count": 2,
+          "first_utc": "2026-10-12T18:19:39.006Z",
+          "last_utc": "2026-10-12T18:23:55.883Z",
+          "representative": "2026-10-12T18:19:39.006Z plugin-host ERROR Promise rejection not handled in one second: Error: no local service handler with id WorkspaceMain , reason: Error: no local service handler with id WorkspaceMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "With stack trace: Error: no local service handler with id DebugMain",
+          "count": 20,
+          "first_utc": "2026-10-12T18:19:39.141Z",
+          "last_utc": "2026-10-12T18:23:59.518Z",
+          "representative": "2026-10-12T18:19:39.141Z plugin-host ERROR With stack trace: Error: no local service handler with id DebugMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "With stack trace: Error: no local service handler with id LoggerMain",
+          "count": 268830,
+          "first_utc": "2026-10-12T18:19:39.023Z",
+          "last_utc": "2026-10-12T18:25:24.282Z",
+          "representative": "2026-10-12T18:19:39.023Z plugin-host ERROR With stack trace: Error: no local service handler with id LoggerMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "With stack trace: Error: no local service handler with id WorkspaceMain",
+          "count": 2,
+          "first_utc": "2026-10-12T18:19:39.006Z",
+          "last_utc": "2026-10-12T18:23:55.883Z",
+          "representative": "2026-10-12T18:19:39.006Z plugin-host ERROR With stack trace: Error: no local service handler with id WorkspaceMain"
+        },
+        {
+          "component": "root",
+          "level": "ERROR",
+          "signature": "Error: Data read, but end of buffer not reached <n>",
+          "count": 2,
+          "first_utc": "2026-10-12T18:20:59.743Z",
+          "last_utc": "2026-10-12T18:20:59.743Z",
+          "representative": "2026-10-12T18:20:59.743Z root ERROR Error: Data read, but end of buffer not reached 64"
+        },
+        {
+          "component": "core:FrontendStopwatch",
+          "level": "WARN",
+          "signature": "Frontend AVi.onDidInitializeLayout took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since frontend page start]",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.630Z",
+          "last_utc": "2026-10-12T18:27:05.925Z",
+          "representative": "2026-10-12T18:17:37.630Z core:FrontendStopwatch WARN Frontend AVi.onDidInitializeLayout took longer than the expected maximum 100 milliseconds: 119.8 ms [2.595 s since frontend page start]"
+        },
+        {
+          "component": "core:FrontendStopwatch",
+          "level": "WARN",
+          "signature": "Frontend Mf.initializeLayout took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since frontend page start]",
+          "count": 1,
+          "first_utc": "2026-10-12T18:17:37.473Z",
+          "last_utc": "2026-10-12T18:17:37.473Z",
+          "representative": "2026-10-12T18:17:37.473Z core:FrontendStopwatch WARN Frontend Mf.initializeLayout took longer than the expected maximum 100 milliseconds: 546.6 ms [2.437 s since frontend page start]"
+        },
+        {
+          "component": "core:PreferenceSchemaServiceImpl",
+          "level": "WARN",
+          "signature": "Default overrides registered for these keys, but preferences not registered [ 'jestrunner.enableTestExplorer' ]",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:36.526Z",
+          "last_utc": "2026-10-12T18:27:04.984Z",
+          "representative": "2026-10-12T18:17:36.526Z core:PreferenceSchemaServiceImpl WARN Default overrides registered for these keys, but preferences not registered [ 'jestrunner.enableTestExplorer' ]"
+        },
+        {
+          "component": "core:PreferenceSchemaServiceImpl",
+          "level": "WARN",
+          "signature": "Trying to register default override for non-existent preference: workbench.editor.restoreViewState",
+          "count": 4,
+          "first_utc": "2026-10-12T18:17:37.072Z",
+          "last_utc": "2026-10-12T18:27:05.409Z",
+          "representative": "2026-10-12T18:17:37.072Z core:PreferenceSchemaServiceImpl WARN Trying to register default override for non-existent preference: workbench.editor.restoreViewState"
+        },
+        {
+          "component": "core:Stopwatch",
+          "level": "WARN",
+          "signature": "Backend DefaultMessagingService.initialize took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since backend process start]",
+          "count": 1,
+          "first_utc": "2026-10-12T18:16:41.823Z",
+          "last_utc": "2026-10-12T18:16:41.823Z",
+          "representative": "2026-10-12T18:16:41.823Z core:Stopwatch WARN Backend DefaultMessagingService.initialize took longer than the expected maximum 50 milliseconds: 80.0 ms [1.085 s since backend process start]"
+        },
+        {
+          "component": "core:Stopwatch",
+          "level": "WARN",
+          "signature": "Backend Object.initialize took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since backend process start]",
+          "count": 1,
+          "first_utc": "2026-10-12T18:16:41.824Z",
+          "last_utc": "2026-10-12T18:16:41.824Z",
+          "representative": "2026-10-12T18:16:41.824Z core:Stopwatch WARN Backend Object.initialize took longer than the expected maximum 50 milliseconds: 78.0 ms [1.085 s since backend process start]"
+        },
+        {
+          "component": "core:Stopwatch",
+          "level": "WARN",
+          "signature": "Backend PluginLocalizationServer.initialize took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since backend process start]",
+          "count": 1,
+          "first_utc": "2026-10-12T18:16:41.824Z",
+          "last_utc": "2026-10-12T18:16:41.824Z",
+          "representative": "2026-10-12T18:16:41.824Z core:Stopwatch WARN Backend PluginLocalizationServer.initialize took longer than the expected maximum 50 milliseconds: 79.2 ms [1.086 s since backend process start]"
+        },
+        {
+          "component": "monaco:TextmateRegistry",
+          "level": "WARN",
+          "signature": "'cpp' language is remapped from 'source.cpp.embedded.macro' to 'source.cpp' scope",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z monaco:TextmateRegistry WARN 'cpp' language is remapped from 'source.cpp.embedded.macro' to 'source.cpp' scope"
+        },
+        {
+          "component": "monaco:TextmateRegistry",
+          "level": "WARN",
+          "signature": "'php' language is remapped from 'source.php' to 'text.html.php' scope",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z monaco:TextmateRegistry WARN 'php' language is remapped from 'source.php' to 'text.html.php' scope"
+        },
+        {
+          "component": "monaco:TextmateRegistry",
+          "level": "WARN",
+          "signature": "a registered grammar configuration for 'cpp' language is overridden",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z monaco:TextmateRegistry WARN a registered grammar configuration for 'cpp' language is overridden"
+        },
+        {
+          "component": "monaco:TextmateRegistry",
+          "level": "WARN",
+          "signature": "a registered grammar configuration for 'php' language is overridden",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z monaco:TextmateRegistry WARN a registered grammar configuration for 'php' language is overridden"
+        },
+        {
+          "component": "plugin-ext:LocalPluginDeployerResolver",
+          "level": "WARN",
+          "signature": "The local plugin referenced by local-dir:<local-path> does not exist.",
+          "count": 1,
+          "first_utc": "2026-10-12T18:16:41.854Z",
+          "last_utc": "2026-10-12T18:16:41.854Z",
+          "representative": "2026-10-12T18:16:41.854Z plugin-ext:LocalPluginDeployerResolver WARN The local plugin referenced by local-dir:<local-path> does not exist."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.html]: Language for 'source.smarty' not found.",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z plugin-ext:PluginContributionHandler WARN [2db21ee7-3194-4c9b-93cd-3831869f59d4][vscode.html]: Language for 'source.smarty' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.coffee' not found.",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z plugin-ext:PluginContributionHandler WARN [2db21ee7-3194-4c9b-93cd-3831869f59d4][vscode.markdown]: Language for 'meta.embedded.block.coffee' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.dosbatch' not found.",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z plugin-ext:PluginContributionHandler WARN [2db21ee7-3194-4c9b-93cd-3831869f59d4][vscode.markdown]: Language for 'meta.embedded.block.dosbatch' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.objc' not found.",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z plugin-ext:PluginContributionHandler WARN [2db21ee7-3194-4c9b-93cd-3831869f59d4][vscode.markdown]: Language for 'meta.embedded.block.objc' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.perl6' not found.",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z plugin-ext:PluginContributionHandler WARN [2db21ee7-3194-4c9b-93cd-3831869f59d4][vscode.markdown]: Language for 'meta.embedded.block.perl6' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.scala' not found.",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z plugin-ext:PluginContributionHandler WARN [2db21ee7-3194-4c9b-93cd-3831869f59d4][vscode.markdown]: Language for 'meta.embedded.block.scala' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.vs_net' not found.",
+          "count": 2,
+          "first_utc": "2026-10-12T18:17:37.081Z",
+          "last_utc": "2026-10-12T18:27:05.487Z",
+          "representative": "2026-10-12T18:17:37.081Z plugin-ext:PluginContributionHandler WARN [2db21ee7-3194-4c9b-93cd-3831869f59d4][vscode.markdown]: Language for 'meta.embedded.block.vs_net' not found."
+        },
+        {
+          "component": "plugin-host",
+          "level": "WARN",
+          "signature": "No reply handler for error reply with id: <n>",
+          "count": 84481,
+          "first_utc": "2026-10-12T18:19:56.542Z",
+          "last_utc": "2026-10-12T18:25:20.643Z",
+          "representative": "2026-10-12T18:19:56.542Z plugin-host WARN No reply handler for error reply with id: 52948"
+        },
+        {
+          "component": "plugin-host",
+          "level": "WARN",
+          "signature": "No reply handler for reply with id: <n>",
+          "count": 272683,
+          "first_utc": "2026-10-12T18:19:38.002Z",
+          "last_utc": "2026-10-12T18:25:21.934Z",
+          "representative": "2026-10-12T18:19:38.002Z plugin-host WARN No reply handler for reply with id: 0"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onEditSession:file, please open an issue: <external-url>",
+          "count": 4,
+          "first_utc": "2026-10-12T18:17:37.926Z",
+          "last_utc": "2026-10-12T18:27:06.272Z",
+          "representative": "2026-10-12T18:17:37.926Z plugin-manager WARN Unsupported activation events: onEditSession:file, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onOpenExternalUri:http, onOpenExternalUri:https, please open an issue: <external-url>",
+          "count": 4,
+          "first_utc": "2026-10-12T18:17:37.926Z",
+          "last_utc": "2026-10-12T18:27:06.272Z",
+          "representative": "2026-10-12T18:17:37.926Z plugin-manager WARN Unsupported activation events: onOpenExternalUri:http, onOpenExternalUri:https, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onProfile, onProfile:github, please open an issue: <external-url>",
+          "count": 4,
+          "first_utc": "2026-10-12T18:17:37.925Z",
+          "last_utc": "2026-10-12T18:27:06.272Z",
+          "representative": "2026-10-12T18:17:37.925Z plugin-manager WARN Unsupported activation events: onProfile, onProfile:github, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onTerminalShellIntegration:*, please open an issue: <external-url>",
+          "count": 4,
+          "first_utc": "2026-10-12T18:17:37.926Z",
+          "last_utc": "2026-10-12T18:27:06.272Z",
+          "representative": "2026-10-12T18:17:37.926Z plugin-manager WARN Unsupported activation events: onTerminalShellIntegration:*, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onTunnel, please open an issue: <external-url>",
+          "count": 4,
+          "first_utc": "2026-10-12T18:17:37.926Z",
+          "last_utc": "2026-10-12T18:27:06.273Z",
+          "representative": "2026-10-12T18:17:37.926Z plugin-manager WARN Unsupported activation events: onTunnel, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onWalkthrough:nodejsWelcome, please open an issue: <external-url>",
+          "count": 4,
+          "first_utc": "2026-10-12T18:17:37.926Z",
+          "last_utc": "2026-10-12T18:27:06.272Z",
+          "representative": "2026-10-12T18:17:37.926Z plugin-manager WARN Unsupported activation events: onWalkthrough:nodejsWelcome, please open an issue: <external-url>"
+        },
+        {
+          "component": "root",
+          "level": "WARN",
+          "signature": "No reply handler for error reply with id: <n>",
+          "count": 18,
+          "first_utc": "2026-10-12T18:19:37.993Z",
+          "last_utc": "2026-10-12T18:23:55.355Z",
+          "representative": "2026-10-12T18:19:37.993Z root WARN No reply handler for error reply with id: 116"
+        },
+        {
+          "component": "root",
+          "level": "WARN",
+          "signature": "No reply handler for reply with id: <n>",
+          "count": 84,
+          "first_utc": "2026-10-12T18:19:37.992Z",
+          "last_utc": "2026-10-12T18:23:55.142Z",
+          "representative": "2026-10-12T18:19:37.992Z root WARN No reply handler for reply with id: 1"
+        }
+      ]
+    },
+    {
+      "path": "/home/jfin/dev/dope-p9-trace/backend-normal.log",
+      "lines": 6715652,
+      "warn_error_lines": {
+        "WARN": 529561,
+        "ERROR": 1030960
+      },
+      "signatures": [
+        {
+          "component": "core:BackendApplication",
+          "level": "ERROR",
+          "signature": "Error: ping timeout",
+          "count": 2,
+          "first_utc": "2026-10-12T18:35:02.164Z",
+          "last_utc": "2026-10-12T19:03:43.807Z",
+          "representative": "2026-10-12T18:35:02.164Z core:BackendApplication ERROR Error: ping timeout"
+        },
+        {
+          "component": "core:BackendApplication",
+          "level": "ERROR",
+          "signature": "Uncaught Exception: Error: ping timeout",
+          "count": 2,
+          "first_utc": "2026-10-12T18:35:02.164Z",
+          "last_utc": "2026-10-12T19:03:43.807Z",
+          "representative": "2026-10-12T18:35:02.164Z core:BackendApplication ERROR Uncaught Exception:  Error: ping timeout"
+        },
+        {
+          "component": "plugin-ext:HostedPluginSupport",
+          "level": "ERROR",
+          "signature": "Failed to start plugins for 'main' host Error: no local service handler with id NotificationMain",
+          "count": 2,
+          "first_utc": "2026-10-12T18:32:09.036Z",
+          "last_utc": "2026-10-12T19:00:48.798Z",
+          "representative": "2026-10-12T18:32:09.036Z plugin-ext:HostedPluginSupport ERROR Failed to start plugins for 'main' host Error: no local service handler with id NotificationMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "Promise rejection not handled in one second: Error: no local service handler with id DebugMain , reason: Error: no local service handler with id DebugMain",
+          "count": 20,
+          "first_utc": "2026-10-12T18:32:10.014Z",
+          "last_utc": "2026-10-12T19:00:49.876Z",
+          "representative": "2026-10-12T18:32:10.014Z plugin-host ERROR Promise rejection not handled in one second: Error: no local service handler with id DebugMain , reason: Error: no local service handler with id DebugMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "Promise rejection not handled in one second: Error: no local service handler with id LoggerMain , reason: Error: no local service handler with id LoggerMain",
+          "count": 515455,
+          "first_utc": "2026-10-12T18:32:09.930Z",
+          "last_utc": "2026-10-12T19:03:42.560Z",
+          "representative": "2026-10-12T18:32:09.930Z plugin-host ERROR Promise rejection not handled in one second: Error: no local service handler with id LoggerMain , reason: Error: no local service handler with id LoggerMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "Promise rejection not handled in one second: Error: no local service handler with id WorkspaceMain , reason: Error: no local service handler with id WorkspaceMain",
+          "count": 2,
+          "first_utc": "2026-10-12T18:32:09.916Z",
+          "last_utc": "2026-10-12T19:00:49.640Z",
+          "representative": "2026-10-12T18:32:09.916Z plugin-host ERROR Promise rejection not handled in one second: Error: no local service handler with id WorkspaceMain , reason: Error: no local service handler with id WorkspaceMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "With stack trace: Error: no local service handler with id DebugMain",
+          "count": 20,
+          "first_utc": "2026-10-12T18:32:10.014Z",
+          "last_utc": "2026-10-12T19:00:49.876Z",
+          "representative": "2026-10-12T18:32:10.014Z plugin-host ERROR With stack trace: Error: no local service handler with id DebugMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "With stack trace: Error: no local service handler with id LoggerMain",
+          "count": 515455,
+          "first_utc": "2026-10-12T18:32:09.930Z",
+          "last_utc": "2026-10-12T19:03:42.560Z",
+          "representative": "2026-10-12T18:32:09.930Z plugin-host ERROR With stack trace: Error: no local service handler with id LoggerMain"
+        },
+        {
+          "component": "plugin-host",
+          "level": "ERROR",
+          "signature": "With stack trace: Error: no local service handler with id WorkspaceMain",
+          "count": 2,
+          "first_utc": "2026-10-12T18:32:09.916Z",
+          "last_utc": "2026-10-12T19:00:49.640Z",
+          "representative": "2026-10-12T18:32:09.916Z plugin-host ERROR With stack trace: Error: no local service handler with id WorkspaceMain"
+        },
+        {
+          "component": "core:ApplicationShell",
+          "level": "WARN",
+          "signature": "Widget was activated, but did not accept focus after 2000ms: dope-chat-panel:<id>",
+          "count": 2,
+          "first_utc": "2026-10-12T18:53:11.826Z",
+          "last_utc": "2026-10-12T18:57:12.767Z",
+          "representative": "2026-10-12T18:53:11.826Z core:ApplicationShell WARN Widget was activated, but did not accept focus after 2000ms: dope-chat-panel:c1b76c6b-90ae-4d39-9f63-0242d9963e13"
+        },
+        {
+          "component": "core:ApplicationShell",
+          "level": "WARN",
+          "signature": "Widget was activated, but did not accept focus after 2000ms: dope-physical-map-canvas",
+          "count": 1,
+          "first_utc": "2026-10-12T18:40:46.624Z",
+          "last_utc": "2026-10-12T18:40:46.624Z",
+          "representative": "2026-10-12T18:40:46.624Z core:ApplicationShell WARN Widget was activated, but did not accept focus after 2000ms: dope-physical-map-canvas"
+        },
+        {
+          "component": "core:FrontendStopwatch",
+          "level": "WARN",
+          "signature": "Frontend AVi.onDidInitializeLayout took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since frontend page start]",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:26.237Z",
+          "last_utc": "2026-10-12T18:38:58.604Z",
+          "representative": "2026-10-12T18:28:26.237Z core:FrontendStopwatch WARN Frontend AVi.onDidInitializeLayout took longer than the expected maximum 100 milliseconds: 461.0 ms [1.593 s since frontend page start]"
+        },
+        {
+          "component": "core:PreferenceSchemaServiceImpl",
+          "level": "WARN",
+          "signature": "Default overrides registered for these keys, but preferences not registered [ 'jestrunner.enableTestExplorer' ]",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.374Z",
+          "last_utc": "2026-10-12T18:38:57.539Z",
+          "representative": "2026-10-12T18:28:25.374Z core:PreferenceSchemaServiceImpl WARN Default overrides registered for these keys, but preferences not registered [ 'jestrunner.enableTestExplorer' ]"
+        },
+        {
+          "component": "core:PreferenceSchemaServiceImpl",
+          "level": "WARN",
+          "signature": "Trying to register default override for non-existent preference: workbench.editor.restoreViewState",
+          "count": 6,
+          "first_utc": "2026-10-12T18:28:25.758Z",
+          "last_utc": "2026-10-12T18:38:58.006Z",
+          "representative": "2026-10-12T18:28:25.758Z core:PreferenceSchemaServiceImpl WARN Trying to register default override for non-existent preference: workbench.editor.restoreViewState"
+        },
+        {
+          "component": "core:Stopwatch",
+          "level": "WARN",
+          "signature": "Backend DefaultMessagingService.initialize took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since backend process start]",
+          "count": 1,
+          "first_utc": "2026-10-12T18:27:21.933Z",
+          "last_utc": "2026-10-12T18:27:21.933Z",
+          "representative": "2026-10-12T18:27:21.933Z core:Stopwatch WARN Backend DefaultMessagingService.initialize took longer than the expected maximum 50 milliseconds: 68.3 ms [1.013 s since backend process start]"
+        },
+        {
+          "component": "core:Stopwatch",
+          "level": "WARN",
+          "signature": "Backend Object.initialize took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since backend process start]",
+          "count": 1,
+          "first_utc": "2026-10-12T18:27:21.933Z",
+          "last_utc": "2026-10-12T18:27:21.933Z",
+          "representative": "2026-10-12T18:27:21.933Z core:Stopwatch WARN Backend Object.initialize took longer than the expected maximum 50 milliseconds: 67.3 ms [1.013 s since backend process start]"
+        },
+        {
+          "component": "core:Stopwatch",
+          "level": "WARN",
+          "signature": "Backend PluginLocalizationServer.initialize took longer than the expected maximum <n> milliseconds: <n> ms [<n> s since backend process start]",
+          "count": 1,
+          "first_utc": "2026-10-12T18:27:21.933Z",
+          "last_utc": "2026-10-12T18:27:21.933Z",
+          "representative": "2026-10-12T18:27:21.933Z core:Stopwatch WARN Backend PluginLocalizationServer.initialize took longer than the expected maximum 50 milliseconds: 68.1 ms [1.014 s since backend process start]"
+        },
+        {
+          "component": "monaco:TextmateRegistry",
+          "level": "WARN",
+          "signature": "'cpp' language is remapped from 'source.cpp.embedded.macro' to 'source.cpp' scope",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.798Z",
+          "last_utc": "2026-10-12T18:38:58.046Z",
+          "representative": "2026-10-12T18:28:25.798Z monaco:TextmateRegistry WARN 'cpp' language is remapped from 'source.cpp.embedded.macro' to 'source.cpp' scope"
+        },
+        {
+          "component": "monaco:TextmateRegistry",
+          "level": "WARN",
+          "signature": "'php' language is remapped from 'source.php' to 'text.html.php' scope",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.800Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.800Z monaco:TextmateRegistry WARN 'php' language is remapped from 'source.php' to 'text.html.php' scope"
+        },
+        {
+          "component": "monaco:TextmateRegistry",
+          "level": "WARN",
+          "signature": "a registered grammar configuration for 'cpp' language is overridden",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.799Z",
+          "last_utc": "2026-10-12T18:38:58.046Z",
+          "representative": "2026-10-12T18:28:25.799Z monaco:TextmateRegistry WARN a registered grammar configuration for 'cpp' language is overridden"
+        },
+        {
+          "component": "monaco:TextmateRegistry",
+          "level": "WARN",
+          "signature": "a registered grammar configuration for 'php' language is overridden",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.800Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.800Z monaco:TextmateRegistry WARN a registered grammar configuration for 'php' language is overridden"
+        },
+        {
+          "component": "plugin-ext:LocalPluginDeployerResolver",
+          "level": "WARN",
+          "signature": "The local plugin referenced by local-dir:<local-path> does not exist.",
+          "count": 1,
+          "first_utc": "2026-10-12T18:27:21.953Z",
+          "last_utc": "2026-10-12T18:27:21.953Z",
+          "representative": "2026-10-12T18:27:21.953Z plugin-ext:LocalPluginDeployerResolver WARN The local plugin referenced by local-dir:<local-path> does not exist."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.html]: Language for 'source.smarty' not found.",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.799Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.799Z plugin-ext:PluginContributionHandler WARN [2d7eb311-dd63-46a2-a212-6622b812d426][vscode.html]: Language for 'source.smarty' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.coffee' not found.",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.799Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.799Z plugin-ext:PluginContributionHandler WARN [2d7eb311-dd63-46a2-a212-6622b812d426][vscode.markdown]: Language for 'meta.embedded.block.coffee' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.dosbatch' not found.",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.799Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.799Z plugin-ext:PluginContributionHandler WARN [2d7eb311-dd63-46a2-a212-6622b812d426][vscode.markdown]: Language for 'meta.embedded.block.dosbatch' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.objc' not found.",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.799Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.799Z plugin-ext:PluginContributionHandler WARN [2d7eb311-dd63-46a2-a212-6622b812d426][vscode.markdown]: Language for 'meta.embedded.block.objc' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.perl6' not found.",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.799Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.799Z plugin-ext:PluginContributionHandler WARN [2d7eb311-dd63-46a2-a212-6622b812d426][vscode.markdown]: Language for 'meta.embedded.block.perl6' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.scala' not found.",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.799Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.799Z plugin-ext:PluginContributionHandler WARN [2d7eb311-dd63-46a2-a212-6622b812d426][vscode.markdown]: Language for 'meta.embedded.block.scala' not found."
+        },
+        {
+          "component": "plugin-ext:PluginContributionHandler",
+          "level": "WARN",
+          "signature": "[<id>][vscode.markdown]: Language for 'meta.embedded.block.vs_net' not found.",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.799Z",
+          "last_utc": "2026-10-12T18:38:58.047Z",
+          "representative": "2026-10-12T18:28:25.799Z plugin-ext:PluginContributionHandler WARN [2d7eb311-dd63-46a2-a212-6622b812d426][vscode.markdown]: Language for 'meta.embedded.block.vs_net' not found."
+        },
+        {
+          "component": "plugin-host",
+          "level": "WARN",
+          "signature": "No reply handler for error reply with id: <n>",
+          "count": 7383,
+          "first_utc": "2026-10-12T18:32:39.686Z",
+          "last_utc": "2026-10-12T19:03:07.241Z",
+          "representative": "2026-10-12T18:32:39.686Z plugin-host WARN No reply handler for error reply with id: 53320"
+        },
+        {
+          "component": "plugin-host",
+          "level": "WARN",
+          "signature": "No reply handler for reply with id: <n>",
+          "count": 522021,
+          "first_utc": "2026-10-12T18:32:08.913Z",
+          "last_utc": "2026-10-12T19:03:41.703Z",
+          "representative": "2026-10-12T18:32:08.913Z plugin-host WARN No reply handler for reply with id: 0"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onEditSession:file, please open an issue: <external-url>",
+          "count": 5,
+          "first_utc": "2026-10-12T18:28:26.372Z",
+          "last_utc": "2026-10-12T19:00:48.766Z",
+          "representative": "2026-10-12T18:28:26.372Z plugin-manager WARN Unsupported activation events: onEditSession:file, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onOpenExternalUri:http, onOpenExternalUri:https, please open an issue: <external-url>",
+          "count": 5,
+          "first_utc": "2026-10-12T18:28:26.372Z",
+          "last_utc": "2026-10-12T19:00:48.766Z",
+          "representative": "2026-10-12T18:28:26.372Z plugin-manager WARN Unsupported activation events: onOpenExternalUri:http, onOpenExternalUri:https, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onProfile, onProfile:github, please open an issue: <external-url>",
+          "count": 5,
+          "first_utc": "2026-10-12T18:28:26.372Z",
+          "last_utc": "2026-10-12T19:00:48.766Z",
+          "representative": "2026-10-12T18:28:26.372Z plugin-manager WARN Unsupported activation events: onProfile, onProfile:github, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onTerminalShellIntegration:*, please open an issue: <external-url>",
+          "count": 5,
+          "first_utc": "2026-10-12T18:28:26.372Z",
+          "last_utc": "2026-10-12T19:00:48.766Z",
+          "representative": "2026-10-12T18:28:26.372Z plugin-manager WARN Unsupported activation events: onTerminalShellIntegration:*, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onTunnel, please open an issue: <external-url>",
+          "count": 5,
+          "first_utc": "2026-10-12T18:28:26.372Z",
+          "last_utc": "2026-10-12T19:00:48.766Z",
+          "representative": "2026-10-12T18:28:26.372Z plugin-manager WARN Unsupported activation events: onTunnel, please open an issue: <external-url>"
+        },
+        {
+          "component": "plugin-manager",
+          "level": "WARN",
+          "signature": "Unsupported activation events: onWalkthrough:nodejsWelcome, please open an issue: <external-url>",
+          "count": 5,
+          "first_utc": "2026-10-12T18:28:26.372Z",
+          "last_utc": "2026-10-12T19:00:48.766Z",
+          "representative": "2026-10-12T18:28:26.372Z plugin-manager WARN Unsupported activation events: onWalkthrough:nodejsWelcome, please open an issue: <external-url>"
+        },
+        {
+          "component": "root",
+          "level": "WARN",
+          "signature": "No reply handler for error reply with id: <n>",
+          "count": 12,
+          "first_utc": "2026-10-12T18:32:08.906Z",
+          "last_utc": "2026-10-12T19:00:48.794Z",
+          "representative": "2026-10-12T18:32:08.906Z root WARN No reply handler for error reply with id: 137"
+        },
+        {
+          "component": "root",
+          "level": "WARN",
+          "signature": "No reply handler for reply with id: <n>",
+          "count": 57,
+          "first_utc": "2026-10-12T18:32:08.905Z",
+          "last_utc": "2026-10-12T19:00:48.766Z",
+          "representative": "2026-10-12T18:32:08.905Z root WARN No reply handler for reply with id: 1"
+        },
+        {
+          "component": "terminal:ShellTerminalServer",
+          "level": "WARN",
+          "signature": "Couldn't attach - can't find terminal with id: <n>",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.619Z",
+          "last_utc": "2026-10-12T18:38:57.850Z",
+          "representative": "2026-10-12T18:28:25.619Z terminal:ShellTerminalServer WARN Couldn't attach - can't find terminal with id: 1366312863"
+        },
+        {
+          "component": "terminal:TerminalWidgetImpl",
+          "level": "WARN",
+          "signature": "Failed attaching to terminal id <n>, the terminal is most likely gone. Starting up a new terminal instead.",
+          "count": 3,
+          "first_utc": "2026-10-12T18:28:25.666Z",
+          "last_utc": "2026-10-12T18:38:57.917Z",
+          "representative": "2026-10-12T18:28:25.666Z terminal:TerminalWidgetImpl WARN Failed attaching to terminal id 1366312863, the terminal is most likely gone. Starting up a new terminal instead."
+        }
+      ]
+    }
+  ]
+}

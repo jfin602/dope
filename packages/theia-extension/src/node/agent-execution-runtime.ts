@@ -279,7 +279,7 @@ export class AgentExecutionRuntime {
     private observed(active: Active, observation: AgentExecutionEvent): void {
         if (active.stopping || active.denied || !active.run ||
             ['completed', 'cancelled', 'failed', 'interrupted'].includes(active.run.status)) return;
-        if (!observation || !['agent-message', 'command-started', 'command-completed',
+        if (!observation || !['reasoning', 'observation-gap', 'work-observation', 'agent-message', 'command-started', 'command-completed',
             'file-changed', 'status', 'warning', 'authority-denied', 'provider-event'].includes(observation.kind)) {
             active.denied = true;
             void this.serial(active, () => this.event(active, 'authority', 'Invalid adapter observation')).catch(() => {});
@@ -296,8 +296,9 @@ export class AgentExecutionRuntime {
         const kind: AgentRunEvent['kind'] = observation.kind === 'file-changed' ? 'file' :
             observation.kind.startsWith('command-') ? 'process' : observation.kind === 'authority-denied' ?
                 'authority' : 'message';
+        const observedSummary = 'summary' in observation ? observation.summary : '';
         const piSummary = /^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|(?:read_file|list_files|edit_file|run_command|dope_(?:read|list|edit|process)) (?:started|ended|failed)|Work tool stopped at (?:request-check|request-parse|workspace-check|model-check|candidate-check|broker-execute))$/u
-            .test(observation.summary) ? observation.summary : undefined;
+            .test(observedSummary) ? observedSummary : undefined;
         const summary = piSummary ?? (observation.kind === 'agent-message' ? 'Agent message received' :
             observation.kind === 'command-started' ? 'Project command started' :
             observation.kind === 'command-completed' ? 'Project command completed' :
@@ -317,9 +318,23 @@ export class AgentExecutionRuntime {
             active.commands.set(observation.commandId, { command: observation.command && observation.command.length <= 160 ?
                 observation.command : '', started: Date.now() });
         void this.serial(active, async () => {
-            await this.event(active, kind, summary, path ? { path } : {});
-            if (observation.kind === 'agent-message' && observation.text && observation.text !== active.lastMessage) {
-                await this.transcript(active, { kind: 'message', at: '', text: observation.text });
+            if (observation.kind !== 'reasoning' && observation.kind !== 'work-observation' && observation.kind !== 'observation-gap')
+                await this.event(active, kind, summary, path ? { path } : {});
+            if (observation.kind === 'observation-gap') {
+                await this.transcript(active, { kind: 'marker', at: '', code: 'observation-omitted' });
+            } else if (observation.kind === 'reasoning' && observation.text) {
+                await this.transcript(active, { kind: 'reasoning', at: '', text: observation.text });
+            } else if (observation.kind === 'work-observation') {
+                await this.transcript(active, { kind: 'work', at: '', toolId: observation.toolId,
+                    toolName: observation.toolName, phase: observation.phase,
+                    ...(observation.detail === undefined ? {} : { detail: observation.detail }),
+                    ...(observation.stage === undefined ? {} : { stage: observation.stage }),
+                    ...(observation.code === undefined ? {} : { code: observation.code }),
+                    ...(observation.brokerInvoked === undefined ? {} : { brokerInvoked: observation.brokerInvoked }),
+                    ...(observation.effectExecuted === undefined ? {} : { effectExecuted: observation.effectExecuted }) });
+            } else if (observation.kind === 'agent-message' && observation.text && observation.text !== active.lastMessage) {
+                await this.transcript(active, { kind: 'message', at: '', text: observation.text,
+                    truncated: observation.truncated });
                 active.lastMessage = observation.text;
             } else if (observation.kind === 'command-started' && observation.commandId && observation.command &&
                 !active.transcriptCommands.has(observation.commandId)) {

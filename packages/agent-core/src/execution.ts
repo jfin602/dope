@@ -2,6 +2,11 @@ import type { ExecutionGrant } from './authority';
 
 /** Ephemeral provider observations. The runtime decides what bounded subset to persist. */
 export type AgentExecutionEvent =
+    | { kind: 'observation-gap' }
+    | { kind: 'reasoning'; text: string }
+    | { kind: 'work-observation'; toolId: string; toolName: string;
+        phase: import('./transcript').WorkPhase; detail?: string; stage?: string; code?: string;
+        brokerInvoked?: boolean; effectExecuted?: boolean }
     | { kind: 'agent-message'; summary: string; text: string; truncated: boolean; redacted: boolean }
     | { kind: 'command-started' | 'command-completed'; summary: string; commandId?: string;
         command?: string; commandTruncated?: boolean; commandRedacted?: boolean; commandDropped?: boolean; cwd?: string;

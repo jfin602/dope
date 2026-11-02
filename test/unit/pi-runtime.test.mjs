@@ -547,6 +547,32 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
   }
 });
 
+test('Pi Work emits exposed thinking in order and keeps a non-reasoning final separate', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-thinking-'));
+  const events = [];
+  try {
+    globalThis.fetch = async () => new Response([
+      'data: {"id":"work-thinking","object":"chat.completion.chunk","created":1,"model":"qwen3.5-9b","choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"Check candidate. "},"finish_reason":null}]}\n\n',
+      'data: {"id":"work-thinking","object":"chat.completion.chunk","created":1,"model":"qwen3.5-9b","choices":[{"index":0,"delta":{"content":"Finished."},"finish_reason":null}]}\n\n',
+      'data: {"id":"work-thinking","object":"chat.completion.chunk","created":1,"model":"qwen3.5-9b","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\n',
+      'data: [DONE]\n\n'
+    ].join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    const thinkingModel = { ...model, id: 'qwen3.5-9b', name: 'Qwen3.5 9B', reasoning: true,
+      compat: { thinkingFormat: 'qwen-chat-template' } };
+    await dispatch({ type: 'open', mode: 'work', cwd, model: thinkingModel });
+    const answer = await dispatch({ type: 'work', id: 77, prompt: 'Inspect candidate.', emit: event => events.push(event) });
+    assert.equal(answer.text, 'Finished.');
+    assert.ok(events.some(event => event.kind === 'reasoning' && event.text === 'Check candidate. '));
+    assert.ok(events.findIndex(event => event.kind === 'reasoning') < events.findIndex(event => event.kind === 'agent_end'));
+    assert.equal(events.some(event => event.kind === 'reasoning_omitted'), false);
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('a failed approved Work test reaches Pi as repair feedback on the next model turn', async () => {
   const originalFetch = globalThis.fetch;
   const originalWrite = process.stdout.write;

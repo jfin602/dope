@@ -7,21 +7,27 @@ export const AGENT_TRANSCRIPT_BYTES_LIMIT = 8 * 1024 * 1024;
 export const AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT = 16 * 1024;
 
 export type AgentTranscriptInput =
-    | { kind: 'message'; at: string; text: string }
+    | { kind: 'message'; at: string; text: string; truncated?: boolean }
+    | { kind: 'reasoning'; at: string; text: string }
+    | { kind: 'work'; at: string; toolId: string; toolName: string; phase: WorkPhase;
+        detail?: string; stage?: string; code?: string; brokerInvoked?: boolean; effectExecuted?: boolean }
     | { kind: 'command-start'; at: string; commandId: string; command: string; cwd?: string }
     | { kind: 'command-finish'; at: string; commandId: string; status: 'completed' | 'failed' | 'cancelled' | 'interrupted';
         exitCode?: number; durationMs?: number; stdout?: string; stderr?: string; output?: string;
         stdoutTruncated?: boolean; stderrTruncated?: boolean; outputTruncated?: boolean }
-    | { kind: 'marker'; at: string; code: 'run-started' | 'run-ended' };
+    | { kind: 'marker'; at: string; code: 'run-started' | 'run-ended' | 'observation-omitted' };
 
 export type AgentTranscriptEntry =
     | { version: 1; runId: string; sequence: number; at: string; kind: 'message'; text: string; truncated: boolean }
+    | { version: 1; runId: string; sequence: number; at: string; kind: 'reasoning'; text: string; truncated: boolean }
+    | { version: 1; runId: string; sequence: number; at: string; kind: 'work'; toolId: string; toolName: string;
+        phase: WorkPhase; detail?: string; stage?: string; code?: string; brokerInvoked?: boolean; effectExecuted?: boolean }
     | { version: 1; runId: string; sequence: number; at: string; kind: 'command'; commandId: string;
         command: string; commandTruncated: boolean; cwd?: string; status: 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
         completedSequence?: number; exitCode?: number; durationMs?: number; stdout?: string; stderr?: string; output?: string;
         stdoutTruncated?: boolean; stderrTruncated?: boolean; outputTruncated?: boolean }
     | { version: 1; runId: string; sequence: number; at: string; kind: 'marker';
-        code: 'run-started' | 'run-ended' | 'transcript-incomplete' };
+        code: 'run-started' | 'run-ended' | 'transcript-incomplete' | 'observation-omitted' };
 
 export type AgentTranscriptRecord = AgentTranscriptEntry | {
     version: 1; runId: string; sequence: number; at: string; kind: 'command-finish'; commandId: string;
@@ -29,6 +35,9 @@ export type AgentTranscriptRecord = AgentTranscriptEntry | {
     stdout?: string; stderr?: string; output?: string;
     stdoutTruncated?: boolean; stderrTruncated?: boolean; outputTruncated?: boolean;
 };
+
+export type WorkPhase = 'requested' | 'validating' | 'executing' | 'completed' | 'failed' | 'recoverable' | 'denied' | 'cancelled';
+const workPhases = ['requested', 'validating', 'executing', 'completed', 'failed', 'recoverable', 'denied', 'cancelled'] as const;
 
 export interface AgentTranscriptStorage {
     appendTranscript(root: string, runId: string, input: AgentTranscriptInput): Promise<{
@@ -71,11 +80,28 @@ export function prepareAgentTranscriptRecord(runId: string, sequence: number, in
     const base = { version: AGENT_TRANSCRIPT_VERSION, runId: id(runId), sequence: integer(sequence, AGENT_TRANSCRIPT_ENTRY_LIMIT), at: timestamp(input.at) };
     let result: AgentTranscriptRecord;
     switch (input.kind) {
-        case 'message': {
+        case 'reasoning': {
             record(input, ['kind', 'at', 'text']);
+            const { text, truncated } = clean(input.text, 2_000);
+            if (!text) throw new Error('Empty transcript reasoning');
+            result = { ...base, kind: 'reasoning', text, truncated }; break;
+        }
+        case 'work': {
+            record(input, ['kind', 'at', 'toolId', 'toolName', 'phase', 'detail', 'stage', 'code', 'brokerInvoked', 'effectExecuted']);
+            result = { ...base, kind: 'work', toolId: id(input.toolId), toolName: safe(input.toolName, 64),
+                phase: select(input.phase, workPhases),
+                ...(input.detail === undefined ? {} : { detail: clean(input.detail, 1_000).text }),
+                ...(input.stage === undefined ? {} : { stage: safe(input.stage, 64) }),
+                ...(input.code === undefined ? {} : { code: safe(input.code, 64) }),
+                ...(input.brokerInvoked === undefined ? {} : { brokerInvoked: bool(input.brokerInvoked) }),
+                ...(input.effectExecuted === undefined ? {} : { effectExecuted: bool(input.effectExecuted) }) }; break;
+        }
+        case 'message': {
+            record(input, ['kind', 'at', 'text', 'truncated']);
             const { text, truncated } = clean(input.text, 12_000);
             if (!text) throw new Error('Empty transcript message');
-            result = { ...base, kind: 'message', text, truncated }; break;
+            result = { ...base, kind: 'message', text,
+                truncated: truncated || (input.truncated === undefined ? false : bool(input.truncated)) }; break;
         }
         case 'command-start': {
             record(input, ['kind', 'at', 'commandId', 'command', 'cwd']);
@@ -103,23 +129,25 @@ export function prepareAgentTranscriptRecord(runId: string, sequence: number, in
         }
         case 'marker':
             record(input, ['kind', 'at', 'code']);
-            result = { ...base, kind: 'marker', code: select(input.code, ['run-started', 'run-ended'] as const) }; break;
+            result = { ...base, kind: 'marker', code: select(input.code, ['run-started', 'run-ended', 'observation-omitted'] as const) }; break;
         default: throw new Error('Invalid transcript kind');
     }
     return parseAgentTranscriptRecord(result);
 }
 
 export function parseAgentTranscriptRecord(value: unknown): AgentTranscriptRecord {
-    const common = record(value, ['version', 'runId', 'sequence', 'at', 'kind', 'text', 'truncated', 'commandId', 'command', 'commandTruncated',
+    const common = record(value, ['version', 'runId', 'sequence', 'at', 'kind', 'text', 'truncated', 'toolId', 'toolName', 'phase', 'detail', 'stage', 'brokerInvoked', 'effectExecuted', 'commandId', 'command', 'commandTruncated',
         'cwd', 'status', 'completedSequence', 'exitCode', 'durationMs', 'stdout', 'stderr', 'output',
         'stdoutTruncated', 'stderrTruncated', 'outputTruncated', 'code']);
     if (common.version !== AGENT_TRANSCRIPT_VERSION) throw new Error('Unsupported transcript version');
     const base = { version: AGENT_TRANSCRIPT_VERSION, runId: id(common.runId),
         sequence: integer(common.sequence, AGENT_TRANSCRIPT_ENTRY_LIMIT), at: timestamp(common.at) };
     if (!base.sequence) throw new Error('Invalid transcript sequence');
-    const kind = select(common.kind, ['message', 'command', 'command-finish', 'marker'] as const);
+    const kind = select(common.kind, ['message', 'reasoning', 'work', 'command', 'command-finish', 'marker'] as const);
     const allowed = {
         message: ['version', 'runId', 'sequence', 'at', 'kind', 'text', 'truncated'],
+        reasoning: ['version', 'runId', 'sequence', 'at', 'kind', 'text', 'truncated'],
+        work: ['version', 'runId', 'sequence', 'at', 'kind', 'toolId', 'toolName', 'phase', 'detail', 'stage', 'code', 'brokerInvoked', 'effectExecuted'],
         command: ['version', 'runId', 'sequence', 'at', 'kind', 'commandId', 'command', 'commandTruncated', 'cwd', 'status'],
         'command-finish': ['version', 'runId', 'sequence', 'at', 'kind', 'commandId', 'status', 'exitCode', 'durationMs',
             'stdout', 'stderr', 'output', 'stdoutTruncated', 'stderrTruncated', 'outputTruncated'],
@@ -131,7 +159,19 @@ export function parseAgentTranscriptRecord(value: unknown): AgentTranscriptRecor
         if (!text) throw new Error('Empty transcript message');
         return freeze({ ...base, kind, text, truncated: bool(common.truncated) });
     }
-    if (kind === 'marker') return freeze({ ...base, kind, code: select(common.code, ['run-started', 'run-ended', 'transcript-incomplete'] as const) });
+    if (kind === 'reasoning') {
+        const text = safe(common.text, 2_000);
+        if (!text) throw new Error('Empty transcript reasoning');
+        return freeze({ ...base, kind, text, truncated: bool(common.truncated) });
+    }
+    if (kind === 'work') return freeze({ ...base, kind,
+        toolId: id(common.toolId), toolName: safe(common.toolName, 64), phase: select(common.phase, workPhases),
+        ...(common.detail === undefined ? {} : { detail: safe(common.detail, 1_000, true) }),
+        ...(common.stage === undefined ? {} : { stage: safe(common.stage, 64) }),
+        ...(common.code === undefined ? {} : { code: safe(common.code, 64) }),
+        ...(common.brokerInvoked === undefined ? {} : { brokerInvoked: bool(common.brokerInvoked) }),
+        ...(common.effectExecuted === undefined ? {} : { effectExecuted: bool(common.effectExecuted) }) });
+    if (kind === 'marker') return freeze({ ...base, kind, code: select(common.code, ['run-started', 'run-ended', 'transcript-incomplete', 'observation-omitted'] as const) });
     const commandId = id(common.commandId);
     if (kind === 'command') {
         if (common.status !== 'running') throw new Error('Invalid transcript command start');

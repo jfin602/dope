@@ -197,10 +197,23 @@ export class AgentTranscriptWidget extends BaseWidget {
                     const pre = document.createElement('pre'); pre.textContent = output; details.append(pre);
                 }
                 transcript.append(details);
+            } else if (entry.kind === 'reasoning') {
+                const note = document.createElement('pre'); note.className = 'dope-work-system';
+                note.textContent = `Reasoning${entry.truncated ? ' [truncated]' : ''}: ${entry.text}`;
+                transcript.append(note);
+            } else if (entry.kind === 'work') {
+                const note = document.createElement('pre'); note.className = 'dope-work-system';
+                note.textContent = `${entry.toolName} · ${entry.phase} · ${entry.toolId}` +
+                    (entry.stage ? ` · ${entry.stage}` : '') + (entry.code ? ` · ${entry.code}` : '') +
+                    (entry.brokerInvoked === undefined ? '' : ` · broker ${entry.brokerInvoked ? 'invoked' : 'not invoked'}`) +
+                    (entry.effectExecuted === undefined ? '' : ` · effect ${entry.effectExecuted ? 'executed' : 'not executed'}`) +
+                    (entry.detail ? `\n${entry.detail}` : '');
+                transcript.append(note);
             } else {
                 const note = document.createElement('small'); note.className = 'dope-work-system';
                 note.textContent = entry.code === 'transcript-incomplete' ? 'Transcript truncated: recording limit reached.' :
-                    entry.code === 'run-started' ? 'Run started.' : 'Run ended.';
+                    entry.code === 'run-started' ? 'Run started.' :
+                    entry.code === 'observation-omitted' ? 'Some reasoning activity was omitted from the saved transcript.' : 'Run ended.';
                 transcript.append(note);
             }
         }

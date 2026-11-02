@@ -1,4 +1,5 @@
 import type { AgentExecutionAdapter, AgentExecutionHandle, AgentExecutionRequest } from '@dope/agent-core/lib/execution';
+import type { LocalToolRequest } from '@dope/agent-core/lib/node/local-tool-contracts';
 import { createHash, randomBytes } from 'node:crypto';
 import { parseExecutionGrant, checkEffect } from '@dope/agent-core/lib/authority';
 import { parseLocalToolRequests, recoverableLocalReadError } from '@dope/agent-core/lib/node/local-tool-contracts';
@@ -34,6 +35,40 @@ function bytePage(value: string, offset: number, maxBytes: number): { text: stri
     return { text: '', endOffset: offset };
 }
 
+/** A typed, validated argument summary. Source bodies, commands and handles never enter History. */
+export function workToolDetail(call: LocalToolRequest): string {
+    switch (call.name) {
+        case 'read': return JSON.stringify({ path: call.arguments.path, offset: call.arguments.offset ?? null,
+            maxBytes: call.arguments.maxBytes, sourceIdentitySupplied: call.arguments.expectedSourceHash !== undefined });
+        case 'list': return JSON.stringify({ path: call.arguments.path, maxEntries: call.arguments.maxEntries });
+        case 'edit': return JSON.stringify({ path: call.arguments.path, operation: call.arguments.operation,
+            contentBytes: Buffer.byteLength(call.arguments.content, 'utf8'),
+            contentSha256: createHash('sha256').update(call.arguments.content).digest('hex') });
+        case 'process': return JSON.stringify({ commandId: call.arguments.commandId, kind: call.arguments.kind });
+        case 'output': return JSON.stringify({ outputRecordSupplied: true,
+            offset: call.arguments.offset, maxBytes: call.arguments.maxBytes });
+    }
+}
+
+function workResultDetail(call: LocalToolRequest, output: string, truncated: boolean): string {
+    const detail: Record<string, unknown> = { outputBytes: Buffer.byteLength(output, 'utf8'), truncated };
+    if (call.name === 'read' || call.name === 'output' || call.name === 'process' || call.name === 'list') {
+        try {
+            const parsed = JSON.parse(output) as Record<string, unknown>;
+            if (call.name === 'list' && Array.isArray(parsed)) detail.resultCount = parsed.length;
+            for (const key of ['offset', 'endOffset', 'nextOffset', 'outputBytes', 'sourceHash',
+                'outputIdentity', 'captureTruncated', 'truncated', 'count', 'fileBytes']) {
+                const value = parsed[key];
+                if (typeof value === 'number' || typeof value === 'boolean' || value === null ||
+                    key.endsWith('Hash') && typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value) ||
+                    key === 'outputIdentity' && typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value))
+                    detail[key] = value;
+            }
+        } catch { /* Non-JSON results expose only safe byte count and status. */ }
+    }
+    return JSON.stringify(detail);
+}
+
 /** Pi's structured lifecycle is advisory. Dope's run, validation and review remain authoritative. */
 export function piWorkObservation(event: PiWorkEvent):
     { kind: 'status' | 'warning' | 'provider-event'; summary: string } {
@@ -48,6 +83,8 @@ export function piWorkObservation(event: PiWorkEvent):
         case 'tool_execution_end': return event.isError ?
             { kind: 'warning', summary: `Pi ${event.toolName} failed` } :
             { kind: 'provider-event', summary: `Pi ${event.toolName} ended` };
+        case 'reasoning': case 'reasoning_omitted':
+            return { kind: 'provider-event', summary: 'Pi reasoning observation' };
     }
 }
 
@@ -98,6 +135,19 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
             captureTruncated: boolean; identity: string; commandId: string; kind: 'test' | 'build';
             candidateHash: string; expiresAt: number }>();
         let lastPiSequence = 0;
+        let pendingReasoning = '';
+        let reasoningGap = false;
+        const emitReasoning = (value: string) => {
+            const cleaned = safe(value, value.length);
+            for (let index = 0; index < cleaned.length; index += 1800) {
+                const text = cleaned.slice(index, index + 1800);
+                if (text.trim()) request.onEvent({ kind: 'reasoning', text });
+            }
+        };
+        const flushReasoning = () => {
+            if (pendingReasoning) emitReasoning(pendingReasoning);
+            pendingReasoning = '';
+        };
         const result = (async () => {
             try {
                 request.onEvent({ kind: 'status', summary: 'Pi Work started' });
@@ -109,16 +159,28 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     throw new Error('Pi Work prompt and source reference exceed bounded context');
                 const answer = await host.runWork(scopedPrompt, async raw => {
                   let stage = 'request-check';
+                  const toolId = Number.isSafeInteger(raw.id) && raw.id > 0 ? `pi-${raw.id}` : 'pi-invalid';
+                  const toolName = expectedTools.includes(raw.name) ? raw.name : 'unknown';
+                  let brokerInvoked = false;
+                  const observe = (phase: 'requested' | 'validating' | 'executing' | 'completed' | 'failed' | 'recoverable' | 'denied' | 'cancelled',
+                      extra: { detail?: string; stage?: string; code?: string; effectExecuted?: boolean } = {}) =>
+                      request.onEvent({ kind: 'work-observation', toolId, toolName, phase,
+                          brokerInvoked, ...extra });
                   try {
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
+                    observe('requested', { detail: JSON.stringify({ fields: raw.arguments && typeof raw.arguments === 'object' &&
+                        !Array.isArray(raw.arguments) ? Object.keys(raw.arguments).filter(key => /^[A-Za-z][A-Za-z0-9]{0,40}$/u.test(key)).slice(0, 8) : [],
+                        argumentType: Array.isArray(raw.arguments) ? 'array' : typeof raw.arguments }) });
                     if (!Number.isSafeInteger(raw.id) || raw.id < 1 || seenTools.has(raw.id) || ++count > 32)
                         throw new Error('Invalid Pi Work tool event');
                     seenTools.add(raw.id);
                     if (!expectedTools.includes(raw.name)) throw new Error('Unsupported Pi Work tool');
                     const name = workToolNames[raw.name as keyof typeof workToolNames];
                     stage = 'request-parse';
+                    observe('validating', { stage });
                     const [call] = parseLocalToolRequests(JSON.stringify([{
                         id: `pi-${raw.id}`, name, arguments: raw.arguments }]));
+                    observe('validating', { detail: workToolDetail(call), stage });
                     stage = 'workspace-check';
                     this.workspace(request); // Revocation, run status and ownership are checked on every invocation.
                     stage = 'model-check';
@@ -129,8 +191,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     await broker.assertActive();
                     this.workspace(request);
                     stage = 'broker-execute';
-                    if (call.name === 'process') request.onEvent({ kind: 'command-started', summary: 'Approved candidate command started',
-                        commandId: call.id, command: call.arguments.commandId, status: 'running' });
+                    if (call.name === 'process') observe('validating', {
+                        stage: 'grant-check', detail: JSON.stringify({ grantVerified: true, grantRevision: grant.revision }) });
                     let response;
                     if (call.name === 'output') {
                         const record = outputs.get(call.arguments.handle);
@@ -143,6 +205,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             outputs.delete(call.arguments.handle);
                             request.onEvent({ kind: 'provider-event',
                                 summary: 'Pi Work read_command_output: OUTPUT_HANDLE_EXPIRED; broker not executed' });
+                            observe('recoverable', { stage: 'output-read', code: 'OUTPUT_HANDLE_EXPIRED', effectExecuted: false });
                             return { status: 'failed' as const,
                                 output: 'OUTPUT_HANDLE_EXPIRED: This retained output is unavailable. A new approved command is required.' };
                         }
@@ -154,9 +217,11 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         if (!page) {
                             request.onEvent({ kind: 'provider-event',
                                 summary: 'Pi Work read_command_output: INVALID_OFFSET; broker not executed' });
+                            observe('recoverable', { stage: 'output-read', code: 'INVALID_OFFSET', effectExecuted: false });
                             return { status: 'failed' as const,
                                 output: 'INVALID_OFFSET: Use a UTF-8 byte offset within the retained output.' };
                         }
+                        observe('executing', { detail: workToolDetail(call), stage: 'output-read', effectExecuted: false });
                         const outputBytes = Buffer.byteLength(record.text, 'utf8');
                         response = { status: 'completed' as const, truncated: false,
                             output: JSON.stringify({ status: record.status, outputIdentity: record.identity,
@@ -164,7 +229,13 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                                 nextOffset: page.endOffset < outputBytes ? page.endOffset : null,
                                 outputBytes, text: page.text, sanitized: true,
                                 captureTruncated: record.captureTruncated }) };
-                    } else response = await broker.execute(call, abort.signal);
+                    } else {
+                        observe('validating', { detail: workToolDetail(call), stage: 'broker-dispatch', effectExecuted: false });
+                        brokerInvoked = true;
+                        response = await broker.execute(call, abort.signal);
+                        if (response.status === 'completed' || response.status === 'failed')
+                            observe('executing', { stage: 'broker-execute' });
+                    }
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
                     if (call.name === 'read') {
                         const page = response.status === 'completed' && call.arguments.offset !== undefined ?
@@ -194,11 +265,28 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             outputBytes: Buffer.byteLength(sanitized, 'utf8'), text: first.text,
                             sanitized: true, captureTruncated: response.truncated }) };
                     }
-                    if (call.name === 'process') request.onEvent({ kind: 'command-completed',
+                    if (call.name === 'process' && (response.status === 'completed' || response.status === 'failed'))
+                        request.onEvent({ kind: 'command-started', summary: 'Approved candidate command started',
+                            commandId: call.id, command: call.arguments.commandId, status: 'running' });
+                    if (call.name === 'process' && (response.status === 'completed' || response.status === 'failed')) request.onEvent({ kind: 'command-completed',
                         summary: 'Approved candidate command finished', commandId: call.id,
-                        command: call.arguments.commandId, status: response.status === 'completed' ? 'completed' :
-                            response.status === 'cancelled' ? 'cancelled' : 'failed',
-                        output: safe(response.output), outputTruncated: response.truncated || safe(response.output) !== response.output });
+                        command: call.arguments.commandId, status: response.status === 'completed' ? 'completed' : 'failed',
+                        output: (() => {
+                            try { return safe((JSON.parse(response.output) as { text?: string }).text ?? '', 4000); }
+                            catch { return safe(response.output, 4000); }
+                        })(),
+                        outputTruncated: response.truncated });
+                    const resultCode = response.status === 'failed' &&
+                        (call.name === 'read' || call.name === 'output') &&
+                        response.output.startsWith('INVALID_OFFSET:') ? 'INVALID_OFFSET' : undefined;
+                    observe(response.status === 'completed' ? 'completed' : response.status === 'denied' ? 'denied' :
+                        response.status === 'cancelled' ? 'cancelled' :
+                        resultCode === 'INVALID_OFFSET' ? 'recoverable' : 'failed', {
+                        stage: call.name === 'output' ? 'output-read' : 'broker-execute',
+                        detail: workResultDetail(call, response.output, response.truncated),
+                        code: response.status === 'denied' ? 'AUTHORITY_DENIED' : resultCode,
+                        effectExecuted: (response.status === 'completed' || response.status === 'failed') &&
+                            call.name === 'process' || response.status === 'completed' && call.name === 'edit' });
                     if (response.status === 'denied') {
                         denied = true;
                         request.onEvent({ kind: 'authority-denied',
@@ -225,9 +313,24 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             'page invalid-or-default';
                         request.onEvent({ kind: 'provider-event',
                             summary: `Pi Work read_file argument validation: ${feedback.split(':')[0]}; ${offset}; ${pageSize}; hash supplied ${rawArgs.expectedSourceHash !== undefined}; broker not executed` });
+                        observe('recoverable', { stage, code: feedback.split(':', 1)[0],
+                            detail: JSON.stringify({ offset, pageSize, sourceIdentitySupplied: rawArgs.expectedSourceHash !== undefined }),
+                            effectExecuted: false });
                         return { status: 'failed' as const, output: feedback };
                     }
                     denied = true;
+                    const identityCode = error instanceof Error &&
+                        ['Authoritative Git basis changed', 'Authoritative project changed during execution'].includes(error.message) ?
+                        'SOURCE_BASIS_CHANGED' : error instanceof Error && error.message === 'Execution workspace identity changed' ?
+                        'WORKSPACE_IDENTITY_CHANGED' : error instanceof Error && error.message === 'Command output unavailable' ?
+                        'OUTPUT_SOURCE_CHANGED' : error instanceof Error && error.message === 'Command output authority unavailable' ?
+                        'OUTPUT_AUTHORITY_DENIED' : undefined;
+                    observe(cancelled || this.disposed ? 'cancelled' : 'denied', { stage,
+                        code: identityCode ?? (stage === 'request-parse' ? 'INVALID_OR_UNAUTHORIZED_ARGUMENTS' :
+                            stage === 'model-check' ? 'MODEL_SELECTION_CHANGED' :
+                            stage === 'workspace-check' || stage === 'candidate-check' ? 'WORKSPACE_AUTHORITY_UNAVAILABLE' :
+                            stage === 'request-check' ? 'INVALID_TOOL_REQUEST' : 'UNEXPECTED_RUNTIME_FAILURE'),
+                        ...(brokerInvoked ? {} : { effectExecuted: false }) });
                     request.onEvent({ kind: 'provider-event', summary: `Pi Work tool stopped at ${stage}` });
                     request.onEvent({ kind: 'authority-denied',
                         summary: `Pi Work tool denied at ${stage}` });
@@ -238,8 +341,28 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (event.sequence !== lastPiSequence + 1 || event.sequence > 512)
                         throw new Error('Pi Work event order changed');
                     lastPiSequence = event.sequence;
-                    request.onEvent(piWorkObservation(event));
+                    if (event.kind === 'reasoning') {
+                        pendingReasoning += event.text ?? '';
+                        const boundary = Math.max(pendingReasoning.lastIndexOf(' '), pendingReasoning.lastIndexOf('\n'));
+                        if (boundary >= 0) {
+                            emitReasoning(pendingReasoning.slice(0, boundary + 1));
+                            pendingReasoning = pendingReasoning.slice(boundary + 1);
+                        }
+                        if (pendingReasoning.length > 2048) {
+                            pendingReasoning = '';
+                            if (!reasoningGap) { reasoningGap = true; request.onEvent({ kind: 'observation-gap' }); }
+                        }
+                    } else {
+                        if (event.kind === 'reasoning_omitted') {
+                            pendingReasoning = '';
+                            if (!reasoningGap) { reasoningGap = true; request.onEvent({ kind: 'observation-gap' }); }
+                        } else {
+                            flushReasoning();
+                            request.onEvent(piWorkObservation(event));
+                        }
+                    }
                 });
+                flushReasoning();
                 if (cancelled || denied || answer.modelId !== request.modelId) throw new Error('Pi Work denied or model changed');
                 await this.bridge.assertWorkSelection({ connectionId: request.connectionId,
                     modelId: request.modelId, registryRevision: boundRegistryRevision,
@@ -261,9 +384,13 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 if (answer.usage?.tokenMeasurement === 'provider-reported')
                     request.onEvent({ kind: 'provider-event', summary:
                         `Pi reported tokens: input ${answer.usage.inputTokens ?? 0}, output ${answer.usage.outputTokens ?? 0}, total ${answer.usage.totalTokens ?? 0}` });
-                const text = safe(answer.text, 512);
+                if (typeof answer.text !== 'string' || Buffer.byteLength(answer.text, 'utf8') > 262144 ||
+                    answer.textTruncated !== undefined && typeof answer.textTruncated !== 'boolean')
+                    throw new Error('Invalid Pi Work final answer');
+                const text = safe(answer.text, 12_000);
                 if (text.trim()) request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text,
-                    truncated: answer.text.length > 512, redacted: text !== answer.text });
+                    truncated: answer.textTruncated === true || answer.text.length > 12_000,
+                    redacted: text !== answer.text });
             } finally { outputs.clear(); this.factory.release(host); this.active.delete(host); }
         })();
         result.catch(() => {});

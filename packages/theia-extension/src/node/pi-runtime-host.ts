@@ -10,7 +10,8 @@ export interface PiRuntimeDiagnostics {
 
 export type PiWorkEvent = { type: 'work'; sequence: number;
     kind: 'agent_start' | 'turn_start' | 'turn_end' | 'agent_end' | 'agent_settled' |
-        'tool_execution_start' | 'tool_execution_end'; toolName?: string; isError?: boolean; aborted?: boolean };
+        'tool_execution_start' | 'tool_execution_end' | 'reasoning' | 'reasoning_omitted';
+    toolName?: string; isError?: boolean; aborted?: boolean; text?: string; truncated?: boolean };
 export interface PiContextRecord { originalSha256: string; compactedSha256: string; tokensBefore: number }
 export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; totalTokens?: number;
     reasoningTokens?: number;
@@ -98,7 +99,7 @@ export class PiRuntimeHost {
     }
 
     runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void):
-        Promise<{ text: string; modelId: string; usage?: PiTokenUsage; compaction?: PiContextRecord }> {
+        Promise<{ text: string; textTruncated?: boolean; modelId: string; usage?: PiTokenUsage; compaction?: PiContextRecord }> {
         return this.request({ type: 'work', prompt }, event => {
             if (event.type !== 'work') throw new Error('Invalid Pi Work stream event');
             onEvent?.(event);
@@ -222,11 +223,16 @@ export class PiRuntimeHost {
                         const event = record.event;
                         if (!pending.onTool || !pending.onEvent || !Number.isSafeInteger(event.sequence) ||
                             event.sequence !== (pending.lastWorkSequence ?? 0) + 1 || event.sequence > 512 ||
+                            Object.keys(event).some(key => !['type', 'sequence', 'kind', 'toolName', 'isError', 'aborted', 'text', 'truncated'].includes(key)) ||
                             !['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled',
-                                'tool_execution_start', 'tool_execution_end'].includes(event.kind) ||
-                            (event.toolName !== undefined && (!['read_file', 'list_files', 'edit_file', 'run_command']
+                                'tool_execution_start', 'tool_execution_end', 'reasoning', 'reasoning_omitted'].includes(event.kind) ||
+                            (event.toolName !== undefined && (!['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']
                                 .includes(event.toolName) || !event.kind.startsWith('tool_execution_'))) ||
                             (event.kind.startsWith('tool_execution_') !== (event.toolName !== undefined)) ||
+                            (event.kind === 'reasoning' ? typeof event.text !== 'string' ||
+                                Buffer.byteLength(event.text, 'utf8') > 8000 ||
+                                (event.truncated !== undefined && typeof event.truncated !== 'boolean') :
+                                event.text !== undefined || event.truncated !== undefined) ||
                             (event.isError !== undefined && (event.kind !== 'tool_execution_end' || typeof event.isError !== 'boolean')) ||
                             (event.aborted !== undefined && (event.kind !== 'agent_settled' || typeof event.aborted !== 'boolean')))
                             throw new Error('Invalid Pi Work event');
