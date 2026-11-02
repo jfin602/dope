@@ -816,6 +816,19 @@ body.theia-light:not(.dope-dark) {
 .dope-work-command-correlation { display: block; margin: 7px 0 4px; color: var(--theia-descriptionForeground); }
 .dope-agent-transcript-panel .dope-work-command pre { box-sizing: border-box; max-width: 100%; max-height: 18rem; margin: 5px 0; padding: 7px; white-space: pre; overflow: auto; background: var(--theia-editor-background); }
 .dope-agent-transcript-panel .dope-work-system { margin: 9px 0; font-size: 12px; }
+.dope-agent-transcript-panel .dope-work-reasoning { margin: 8px 0; min-width: 0; }
+.dope-agent-transcript-panel .dope-work-reasoning > summary { color: var(--theia-descriptionForeground); font-size: 12px; cursor: pointer; }
+.dope-agent-transcript-panel .dope-work-reasoning-body { min-width: 0; overflow-wrap: anywhere; }
+.dope-agent-transcript-panel .dope-work-reasoning-body :is(pre, .dope-message-code) { max-width: 100%; overflow-x: auto; }
+.dope-agent-transcript-panel .dope-work-tool { min-width: 0; overflow-wrap: anywhere; border-left: 3px solid var(--theia-descriptionForeground); }
+.dope-agent-transcript-panel .dope-work-tool[data-status="completed"] { border-left-color: var(--theia-successForeground, var(--theia-descriptionForeground)); }
+.dope-agent-transcript-panel .dope-work-tool:is([data-status="failed"], [data-status="denied"]) { border-left-color: var(--theia-errorForeground); }
+.dope-agent-transcript-panel .dope-work-tool[data-status="recoverable"] { border-left-color: var(--theia-warningForeground); }
+.dope-agent-transcript-panel .dope-work-tool > summary { overflow-wrap: anywhere; cursor: pointer; }
+.dope-agent-transcript-panel .dope-work-tool-body { padding: 2px 8px; }
+.dope-agent-transcript-panel .dope-work-tool-detail { white-space: pre-wrap; overflow-wrap: anywhere; }
+.dope-agent-transcript-panel .dope-work-final-divider { width: 100%; margin: 8px 0 14px; border: 0; border-top: 1px solid var(--theia-widget-border); }
+.dope-agent-transcript-panel .dope-work-message > h3 { margin: 0 0 8px; font-size: 13px; }
 
 /* Work uses matched Theia surface/text pairs in Light and other installed themes.
    Keep these tokens local: the other Chat and dock surfaces have their own palette. */

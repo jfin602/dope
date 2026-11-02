@@ -55,3 +55,50 @@ export function workCommandOutput(entry: Extract<AgentTranscriptEntry, { kind: '
         lines.push('Output not recorded by adapter.');
     return lines;
 }
+
+export type WorkToolEntry = Extract<AgentTranscriptEntry, { kind: 'work' }>;
+function metadata(detail?: string): Record<string, unknown> {
+    if (!detail) return {};
+    try {
+        const value: unknown = JSON.parse(detail);
+        return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+    } catch { return {}; }
+}
+const requestKeys = ['path', 'offset', 'maxBytes', 'maxEntries', 'sourceIdentitySupplied',
+    'commandId', 'kind', 'operation', 'contentBytes', 'contentSha256', 'outputRecordSupplied',
+    'fields', 'argumentType'];
+const resultKeys = ['endOffset', 'nextOffset', 'outputBytes', 'sourceHash', 'outputIdentity',
+    'captureTruncated', 'truncated', 'count', 'resultCount', 'fileBytes'];
+function fields(value: Record<string, unknown>, keys: string[]): string[] {
+    return keys.flatMap(key => value[key] === undefined ? [] :
+        [`${key}: ${Array.isArray(value[key]) ? (value[key] as unknown[]).join(', ') : String(value[key])}`]);
+}
+export function workToolStatus(phase: WorkToolEntry['phase']): string {
+    return ({ requested: 'Running', validating: 'Validating', executing: 'Running', completed: 'Completed',
+        failed: 'Failed', recoverable: 'Invalid arguments', denied: 'Authority denied', cancelled: 'Cancelled' })[phase];
+}
+
+/** R4-A detail is a bounded, sanitized summary; preserve its actual words rather than guessing fields. */
+export function workToolLabel(entry: WorkToolEntry, history: WorkToolEntry[] = [entry]): string {
+    const data = history.map(item => metadata(item.detail)).find(item => typeof item.path === 'string' ||
+        typeof item.commandId === 'string') ?? {};
+    const context = typeof data.path === 'string' ? data.path :
+        typeof data.commandId === 'string' ? data.commandId : undefined;
+    const concise = context && context.length > 72 ? `${context.slice(0, 69)}…` : context;
+    return `${entry.toolName}${concise ? ` · ${concise}` : ''} · ${workToolStatus(entry.phase)}`;
+}
+
+export function workToolDetails(entries: WorkToolEntry[]): string[] {
+    const latest = entries.at(-1);
+    if (!latest) return ['Metadata unavailable.'];
+    const request = entries.flatMap(entry => fields(metadata(entry.detail), requestKeys));
+    const result = entries.flatMap(entry => fields(metadata(entry.detail), resultKeys));
+    const lines = ['Request', ...(request.length ? [...new Set(request)] : ['Metadata unavailable.']),
+        'Execution', `Lifecycle: ${workToolStatus(latest.phase)}`];
+    if (latest.stage) lines.push(`Stage: ${latest.stage}`);
+    if (latest.brokerInvoked !== undefined) lines.push(`Broker invoked: ${latest.brokerInvoked ? 'yes' : 'no'}`);
+    if (latest.effectExecuted !== undefined) lines.push(`Effect executed: ${latest.effectExecuted ? 'yes' : 'no'}`);
+    lines.push('Result', ...(result.length ? [...new Set(result)] : ['Metadata unavailable.']));
+    if (latest.code) lines.push(`Code: ${latest.code}`);
+    return lines;
+}

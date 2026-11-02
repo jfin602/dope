@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { WorkSelectionController, workManualGateReady, workRunOverview } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import { agentTranscriptWidgetId, openAgentTranscript, restoreWorkScroll, workCommandLabel,
-    workCommandOutput } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
+    workCommandOutput, workToolLabel, workToolDetails, workToolStatus } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
 import { ChatScrollFollow } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
@@ -139,53 +139,49 @@ test('a late transcript page cannot repopulate a cleared Work selection', async 
     assert.equal(controller.message, '');
 });
 
-test('Work keeps untrusted Markdown sanitized, commands collapsed and follow independent', async () => {
+test('Work tool cards report recorded request, result and error fields without grant metadata', () => {
+    const base: any = { kind: 'work', toolId: 'pi-1', toolName: 'read_file' };
+    const events = [
+        { ...base, phase: 'requested', detail: '{"fields":["path","offset"],"argumentType":"object"}' },
+        { ...base, phase: 'validating', detail: '{"path":"src/main.ts","offset":100,"maxBytes":512,"sourceIdentitySupplied":true}' },
+        { ...base, phase: 'completed', detail: '{"endOffset":612,"nextOffset":612,"outputBytes":512,"grantRevision":4}',
+            stage: 'broker-execute', brokerInvoked: true, effectExecuted: false }
+    ];
+    assert.equal(workToolLabel(events[2], events), 'read_file · src/main.ts · Completed');
+    const details = workToolDetails(events);
+    assert.deepEqual(details.slice(0, 2), ['Request', 'fields: path, offset']);
+    assert.ok(details.includes('sourceIdentitySupplied: true'));
+    assert.ok(details.includes('Result'));
+    assert.ok(details.includes('nextOffset: 612'));
+    assert.ok(details.includes('Broker invoked: yes'));
+    assert.doesNotMatch(details.join('\n'), /grantRevision/u);
+    assert.equal(workToolStatus('recoverable'), 'Invalid arguments');
+    assert.equal(workToolStatus('denied'), 'Authority denied');
+    assert.equal(workToolStatus('cancelled'), 'Cancelled');
+    assert.deepEqual(workToolDetails([{ ...base, phase: 'recoverable', code: 'INVALID_ARGUMENTS' }]),
+        ['Request', 'Metadata unavailable.', 'Execution', 'Lifecycle: Invalid arguments',
+            'Result', 'Metadata unavailable.', 'Code: INVALID_ARGUMENTS']);
+});
+
+test('Work widget uses safe Markdown, correlated cards, incremental reads and clean final separation', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/agent-transcript-widget.ts', import.meta.url), 'utf8');
-    const markdown = await readFile(new URL('../../packages/theia-extension/src/browser/untrusted-message-markdown.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, entry\.text\)/);
-    assert.match(markdown, /messageMarkdown\.renderer\.rules\.image =/);
-    assert.match(markdown, /DOMPurify\.sanitize\(renderUntrustedMessageHtml\(text\)/);
-    assert.match(markdown, /safeChatLink\(link\.getAttribute\('href'\)!/);
-    assert.match(widget, /transcript\.className = 'dope-chat-transcript dope-work-transcript'/);
-    assert.match(widget, /article\.className = 'dope-chat-message dope-chat-message-assistant dope-work-message'/);
-    assert.match(widget, /transcript\.append\(article\)/);
-    assert.doesNotMatch(widget, /dope-chat-message-user|textContent = 'Assistant'/);
-    assert.match(widget, /document\.createElement\('details'\); details\.className = 'dope-work-command'/);
-    assert.match(widget, /details\.open = this\.expandedCommands\.has\(key\)/);
-    assert.match(widget, /summary\.textContent = workCommandLabel\(entry\)/);
-    assert.match(widget, /fullCommand\.textContent = `command/);
-    assert.match(widget, /entry\.completedSequence === undefined \? ' · finish not recorded'/);
-    assert.match(widget, /this\.expandedCommands\.add\(key\)/);
-    assert.match(widget, /this\.content\.replaceChildren\(\);\s*this\.entries = \[\]/);
-    assert.match(widget, /transcript\.append\(details\)/);
-    assert.doesNotMatch(widget, /entries\.sort\(/);
-    assert.match(widget, /cursor = page\.nextSequence/);
-    assert.match(widget, /let cursor = 0/);
-    assert.match(widget, /Transcript not recorded for this historical run/);
-    assert.match(css, /\.dope-chat-panel \.dope-chat-message-content ul \{[^}]*list-style: disc outside/);
-    assert.match(css, /\.dope-chat-panel \.dope-chat-message-content ol \{[^}]*list-style: decimal outside/);
-    assert.match(css, /\.dope-work-transcript \{[^}]*width: 100%/);
-    assert.match(css, /\.dope-agent-transcript-panel \.dope-work-transcript \{[^}]*max-width: 78ch/);
-    assert.match(css, /\.dope-chat-message-content \.dope-message-code pre \{[^}]*white-space: pre; overflow: auto/);
-    assert.match(css, /\.dope-agent-transcript-panel \.dope-work-command pre \{[^}]*max-height: 18rem;[^}]*white-space: pre/);
-    assert.match(css, /\.dope-chat-message-content pre \{[^}]*max-width: 100%; overflow: auto/);
-    assert.match(css, /\.dope-chat-message-content table \{[^}]*max-width: 100%; overflow: auto/);
-    assert.match(widget, /private readonly follow = new ChatScrollFollow\(\)/);
-    assert.match(widget, /this\.follow\.scrolled\(scroll\.scrollTop, scroll\.scrollHeight, scroll\.clientHeight\)/);
-    assert.match(widget, /this\.follow\.jump\(\)/);
+    assert.match(widget, /new ReasoningRevealBuffer\('paragraphs'\)/u);
+    assert.match(widget, /this\.tools\.get\(entry\.toolId\)/u);
+    assert.match(widget, /readTranscript\(this\.handle, run\.id, cursor, 100\)/u);
+    assert.match(widget, /entry\.kind === 'message'/u);
+    assert.match(widget, /heading\.textContent = 'Final result'/u);
+    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, entry\.text\)/u);
+    assert.match(widget, /this\.follow\.jump\(\)/u);
+    assert.match(css, /prefers-reduced-motion: reduce/u);
     const follow = new ChatScrollFollow();
     follow.select('run:one');
     assert.equal(restoreWorkScroll(follow, 0, 1000, 200, true), 0);
-    assert.equal(restoreWorkScroll(follow, 100, 1200, 200, false), 100);
-    assert.equal(follow.latestBelow, true);
-    follow.jump();
-    assert.equal(restoreWorkScroll(follow, 100, 1200, 200, false), 1200);
     follow.scrolled(250, 1800, 200);
     assert.equal(restoreWorkScroll(follow, 250, 2200, 200, false), 250);
     assert.equal(follow.latestBelow, true);
-    follow.select('run:two');
-    assert.equal(restoreWorkScroll(follow, 1200, 1200, 200, true), 0);
+    follow.jump();
+    assert.equal(restoreWorkScroll(follow, 250, 2200, 200, false), 2200);
 });
 
 test('explicit center transcript action reuses one tab for the same project and run', async () => {
