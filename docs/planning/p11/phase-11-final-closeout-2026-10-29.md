@@ -25,3 +25,13 @@ A second disposable project demonstrated Phase creation, Gate preview/reject wit
 At the owner's instruction to mark the remaining parts nonimportant and close, the following checks were not completed: a direct stale-apply denial after the preview was replaced, foreign-owner no-write through Chrome, and independent native Electron GUI parity. Source tests/builds and the observed browser flow are the evidence above; they do not prove these missing cases. The stale card label is also accepted as a known issue for this owner close. No local-model Chat authoring or Inspector Edit qualification is asserted: M2 and M3 remain deferred, the original M2/P14 NOT GREEN records stay intact, and no unrun runner prompt is marked PASS.
 
 Phase 12 Pi P1 remains separate and unstarted. Its standalone Pi/Qwen qualification, preflight and deliberate owner Run are still required. Deferred Gate-to-Work/prompt integration and broader Phase 11 historical gaps require separate scope and evidence.
+
+## Evidence index — retention review 2026-11-02
+
+| Item | Authoritative pointer |
+| --- | --- |
+| Scope and disposition | This owner closeout covers only narrowed deterministic Roadmap at `203d76b3305cac33037001594cb866977bf13579` / `0.11.8`; broad Bridge/Work/Hunts/G3 is **NOT GREEN**. The prior source/test recovery and Chrome observations above remain the authoritative gate record. |
+| Tested configuration | Built bundle in real Chrome, no local-model inference, plus 807/807 final-source aggregate. The retired `0.11.8` repository AppImage matched an installed release byte for byte; the Chrome result does not become native evidence. |
+| Unresolved and superseded | Stale “Accepted draft” label, unrun stale-apply/foreign-owner Chrome checks, native GUI parity, M2 Chat authoring and M3 Inspector Edit. Original M2/P14 NOT GREEN and broad Bridge records remain historical. |
+| Retained artifacts | [Three-card Chrome screenshot](qualification-evidence/phase11-three-cards-chrome.png) SHA-256 `49f5902492552ef21b201a3af0586550c5d627b0bcab740e9b6ec7276a37faee`, source hashes above, and [artifact manifest](../evidence-retention/2026-11-02-cleanup-manifest.json) identifying the installed package copy. The former `dist/linux/Dope-0.11.8.AppImage` path is retired. |
+| Next review | Reopen if narrow Roadmap behavior regresses or the deferred browser/native/broad qualification is explicitly undertaken. |

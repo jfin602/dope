@@ -50,3 +50,13 @@ Thus **Phase 10 is now OWNER-CLOSED / GREEN FOR THE APPROVED RECOVERY SCOPE**, w
 Retain coherent project version **`0.10.16`** and existing 13 root/app/package manifest versions plus 20 internal `@dope/*` pins. A **separate, explicitly approved version-only `0.11.0` baseline**, if chosen, must be established using actual Git/version-state checks without product source/dependency/lockfile changes; that baseline is not itself Phase 11 qualification. Phase 11 requires separate executable planning and owner action to begin, following [Phase 11's plan](../p11/phase-11-plan.md) and [repository workflow](../../workflow.md).
 
 **No version bump, source edit, model default change, R6 replay, Phase 11 activation or Phase 12 activation occurs in this closeout.**
+
+## Evidence index — retention review 2026-11-02
+
+| Item | Authoritative pointer |
+| --- | --- |
+| Scope and disposition | Owner-closed Green for approved recovery scope at `af2b0f031c521d5992e3f3cd2125e80f3e6ad619` / `0.10.16`; [R6 closeout](../../tasks/c10-green-recovery/closeout.md), [assertion matrix](../../tasks/c10-green-recovery/qualification/r6-closeout/acceptance-matrix.md), and this owner decision. |
+| Tested configuration | Qwen3-Coder Q4_K_M / 32,768, CPU-only, parallel 4 for the observed planning profile; browser and independent native UI in their recorded scopes. The `0.10.16` AppImage in `dist/linux` was a duplicate of an unchanged installed release, not the basis for a new qualification claim. |
+| Open limits and superseded reports | Native/independent-browser/whole-host network negatives, Q4/64K, unclassified browser crash and other providers remain outside scope. [Original P16 NOT GREEN](../../tasks/p10/closeout.md) and prior failed R cycles stay intact. |
+| Retained artifacts | R6 evidence, R4 private network traces and installed `0.10.16` release remain; [manifest](../evidence-retention/2026-11-02-cleanup-manifest.json) records the retired repository package hash and exact retained installed copy. |
+| Next review | Reopen on broader egress claim, a regression affecting the approved source, or a new native/package qualification. |

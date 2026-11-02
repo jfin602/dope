@@ -1,0 +1,14 @@
+# Phase 12 evidence index — 2026-11-02 retention review
+
+**Phase 12 remains OPEN.** This index points to existing qualification results; it does not issue a new phase disposition or alter any historical NOT GREEN report. Current qualification files, runner state, project state and the `0.12.7` package remain protected.
+
+| Scope | Disposition and verified source | Authoritative evidence and limits |
+| --- | --- | --- |
+| Original P12 Pi integration and B1–B9 | **NOT GREEN / package ready with browser and owner-native gaps**, `0.12.7`; final evidence source `99907526c65637c7cda3973d3a622f2416974b53`. | [Final disposition](../../tasks/p12/qualification/p8-final-recovery/final-disposition.md), [B1–B9 matrix](../../tasks/p12/qualification/p8-final-recovery/b1-b9-matrix.md), [owner-native checklist](../../tasks/p12/qualification/p8-final-recovery/native-owner-checklist.md). B3/B4/B6/B8 and native obligations remain open in their recorded scope. |
+| Pi Chat continuity | **Scoped browser Green** at `2c4c1028f601e8507a8bee418e5b7efe616566de` plus recorded dirty diff. | [Final disposition](../../tasks/p12/qualification/pi-chat-continuity/final-disposition.md) covers saved same-Chat and cross-Chat continuity with local Qwen; no whole Phase 12, Work or native Green. |
+| Pi coding Work | **Scoped Codex-browser Green** for one held candidate at `9f478d07e87e166d08c15ab4e920adae109f18cd` plus recorded dirty source. | [Work recovery](../../tasks/p12/qualification/pi-work-recovery/final-disposition.md). Acceptance/rejection, History restoration and native parity remain outside that result. |
+| C12 Planning Recovery | **Green for owner-approved reduced scope** at product source `9600cf460f372299501267a5a9828d413af53562` / `0.12.7`. | [P3-C reduced closeout](../../tasks/c12-planning-recovery/qualification/2026-11-01-p3-c-reduced-final-closeout.md) links P1, P3-A, P3-B Core, reasoning/copy and linked Markdown evidence. Earlier exhaustive P3-B/P2/H3 NOT GREEN remain history. System clipboard readback, exact reconnect without re-verification, native GUI and B-R2 protected Chat publication remain separate. |
+
+The original P12 package evidence identifies a `Dope-0.12.7.AppImage` with SHA-256 `312f23224818699f47c1643ef21475c40ebfb9cef4d81446abb0f897d3afe6f2`. At this retention review, the protected current `dist/linux/Dope-0.12.7.AppImage` and installed-current release both hash to `3f97198ac7f81b8c1526e5b8a4cc052e29d68f4aadfecd5be8a716ff24d7b8d7`. These are distinct artifacts; the earlier extraction result is **not** silently transferred to the current bytes. See the [cleanup manifest](../evidence-retention/2026-11-02-cleanup-manifest.json). No Phase 12 artifact was removed.
+
+**Next evidence review trigger:** a completed B1–B9/native gate, B-R2 or Docs/Work qualification, a Phase 12 owner-close decision, or an approved superseding package build. Until then, preserve active evidence and unresolved failure diagnostics.

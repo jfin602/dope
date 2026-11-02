@@ -28,3 +28,13 @@ These checks were **not rerun by this owner disposition or version baseline**. Q
 Version-only `0.10.0` commit updates 13 root/app/package manifests and 20 internal `@dope/*` pins (33 fields). It changes no product source, tests, dependencies or `yarn.lock`. The **last qualified Phase 9 product source remains `0.9.35` / `af3447c`**; `0.10.0` is not separately tested or qualified. See `docs/planning/p10/baseline.md`.
 
 **Phase 10 Unified Roadmap & Local-First AI Planning is DESIGN APPROVED / BASELINE ESTABLISHED / NOT ACTIVATED / NOT QUALIFIED.** It requires separate owner activation and proper implementation/qualification gates. Fixed-version `c9-codex-chat` and `c9-theme-fix` corrections are not automatically rebased, implemented or qualified by this version transition. Phase 11 Human-Centered UI and Phase 12 Living Software Knowledge Model remain inactive.
+
+## Evidence index — retention review 2026-11-02
+
+| Item | Authoritative pointer |
+| --- | --- |
+| Scope and disposition | Owner-closed Green for ADR 0034 at `af3447ccc419cc9c06051dbd4046a9145d7bf0ae` / `0.9.35`; this closeout and [final Phase 9D report](../../tasks/p9d/final-qualification.md). |
+| Tested configuration | Real GUI, disposable Git project, local LM Studio Qwen3-Coder Q3_K_L / 16,384 for explicit understanding, traced backend loopback; no packaged-native distribution result. |
+| Historical failures | [Original P13 NOT GREEN](../../tasks/p9d/closeout.md) and [five-cycle repair NOT GREEN](../../tasks/p9d/qualification-repair-loop.md) retain their own source and result. |
+| Retained evidence | [Backend-log consolidation](../../tasks/p9d/qualification/backend-log-consolidation-2026-11-02.md) records pre-final warnings/errors and original hashes; final `history-final-connect.30142` remains at its cited path with SHA-256 `67cb2a22e60469646ab29083ed876ad363fe5ddfad2eed1521c25fa9844c48da`. [Cleanup manifest](../evidence-retention/2026-11-02-cleanup-manifest.json) records removal of only two pre-final raw backend logs. |
+| Next review | Reopen if a History regression requires the raw diagnostic signature classes, final connection-trace scope is challenged, or Phase 9 is requalified. |

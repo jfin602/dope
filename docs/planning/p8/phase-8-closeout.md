@@ -35,3 +35,13 @@ ADR 0028/0029/0031 authority remains unchanged: developer-accepted grant, isolat
 **Phase 8: OWNER-CLOSED / GREEN for approved scope.** **Phase 9 — Development Sessions: NEXT / NOT ACTIVATED.** Phase 9 requires separate owner activation, fresh docs/architecture review, explicit source/version baseline and an optimized implementation Prompt Stack. No `0.9.0` manifest has been created; Phase 10 background alignment is not implemented.
 
 This is a **documentation-only** owner closeout based on committed P14 evidence. No new GUI run, local inference, aggregate, sandbox test, native build, package or deployment was performed for this decision. Historical P14 logs, original P13 Not Green and later c8-fix Green evidence remain intact.
+
+## Evidence index — retention review 2026-11-02
+
+| Item | Authoritative pointer |
+| --- | --- |
+| Scope and disposition | Owner-closed Green for the approved Phase 8 coding-agent scope at source `bcc5cb8b9f7ee565bf443122ca18b92beb6e0d06` / `0.8.47`; this closeout and [8E P14](../../tasks/p8e/closeout.md). |
+| Tested configuration | Real Dope GUI, local LM Studio Qwen3-Coder Q3_K_L at observed 16,384 context, Linux x86-64 sandbox; hosted Codex only with explicit consent. No Phase 8 final packaged-native distribution claim. |
+| Unresolved and superseded | Live provider failure variants and package-native distribution remain outside scope. Original [8D P13 NOT GREEN](../../tasks/p8d/closeout.md) is preserved; later [8D correction](../../tasks/c8-fix/closeout.md) has its own source. |
+| Retained artifacts | P14 final report and focused logs; earlier `0.8.20` repository AppImage was retired after an identical installed copy was hashed. [Exact artifact manifest](../evidence-retention/2026-11-02-cleanup-manifest.json) records both paths and SHA-256. Historical report paths identify artifacts at test time, not files still present in `dist/linux`. |
+| Next review | Reopen evidence retention if Phase 8 scope is expanded, a regression needs the historical package, or a later qualification supersedes the final report. |
