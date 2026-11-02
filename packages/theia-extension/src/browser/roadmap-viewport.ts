@@ -12,6 +12,27 @@ export interface RoadmapViewportState {
     placements: Record<string, { x: number; y: number }>;
 }
 
+/** A review camera frames whole cards so the surrounding Roadmap stays in view. */
+export function roadmapProposalCamera(bounds: { x: number; y: number; width: number; height: number },
+    stage: { width: number; height: number }, current: { x: number; y: number; zoom: number },
+    rightInset = 0): { viewport: { x: number; y: number; zoom: number }; duration: number } | undefined {
+    const inset = stage.width - rightInset >= 360 ? rightInset : 0;
+    const width = stage.width - inset;
+    const padding = Math.min(48, Math.max(20, width * 0.045));
+    const zoom = Math.min(1, (width - padding * 2) / Math.max(1, bounds.width),
+        (stage.height - padding * 2) / Math.max(1, bounds.height));
+    const viewport = {
+        x: (width - bounds.width * zoom) / 2 - bounds.x * zoom,
+        y: (stage.height - bounds.height * zoom) / 2 - bounds.y * zoom,
+        zoom,
+    };
+    const distance = Math.hypot(viewport.x - current.x, viewport.y - current.y);
+    const zoomChange = Math.abs(viewport.zoom - current.zoom);
+    if (distance < 1 && zoomChange < 0.002) return undefined;
+    return { viewport, duration: Math.round(Math.min(520, Math.max(120,
+        120 + distance * 0.35 + zoomChange * 220))) };
+}
+
 export const roadmapViewportKey = (uri: string, projectId: string): string =>
     `dope.roadmap.viewport.v2:${encodeURIComponent(uri)}:${encodeURIComponent(projectId)}`;
 

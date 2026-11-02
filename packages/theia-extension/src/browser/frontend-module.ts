@@ -559,14 +559,16 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 await widget.presentStrategicReview(projectUri, projectId, chatId, state, decide);
                 if (openEditor) await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
             }, context.container.get<FileDialogService>(FileDialogService), context.container.get(FileService),
-            async (projectUri, chatId, proposal, isCurrent) => {
+            async (projectUri, chatId, proposal, isCurrent, activate = true) => {
                 const roots = await context.container.get(WorkspaceService).roots;
                 if (!isCurrent() || roots.length !== 1 || roots[0].resource.toString() !== projectUri)
                     throw new Error('Project or Chat changed before Roadmap preview');
-                await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
+                if (activate) await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
                 if (!isCurrent()) throw new Error('Chat proposal changed before Roadmap preview');
-                const widget = await context.container.get(WidgetManager)
-                    .getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                const widgets = context.container.get(WidgetManager);
+                const widget = activate ? await widgets.getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID) :
+                    widgets.tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                if (!widget || !isCurrent()) throw new Error('Active Roadmap editor changed before preview');
                 await widget.presentChatProposal(projectUri, chatId, proposal);
                 if (!isCurrent()) {
                     await widget.clearChatProposal(projectUri, chatId, proposal.id);
@@ -578,6 +580,12 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             }, {
                 available: projectUri => !!context.container.get(WidgetManager)
                     .tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)?.canPickContext(projectUri),
+                active: () => {
+                    const widget = context.container.get(WidgetManager)
+                        .tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                    return !!widget && widget.isVisible &&
+                        context.container.get(ApplicationShell).getCurrentWidget('main') === widget;
+                },
                 begin: projectUri => {
                     const widget = context.container.get(WidgetManager)
                         .tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);

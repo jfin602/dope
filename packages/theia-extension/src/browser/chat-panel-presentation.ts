@@ -7,6 +7,12 @@ export function isDraftPlanningAction(type: string): boolean {
         'implementation-plan', 'implementation-plan-revision'].includes(type);
 }
 
+/** A verified Roadmap decision is shown by its inline review card, not an activity row. */
+export function isInlineRoadmapProposal(message: ChatAssistantMessage): boolean {
+    return message.planningActivity?.kind === 'roadmap-gate-proposal' ||
+        message.planningActivity?.kind === 'roadmap-gate-undo';
+}
+
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;

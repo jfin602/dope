@@ -3,10 +3,27 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera,
-    roadmapUserViewportEvent, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot } from
+    roadmapUserViewportEvent, roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot, roadmapProposalCamera } from
     '../../packages/theia-extension/src/browser/roadmap-viewport.ts';
 
 const widget = readFileSync(resolve(import.meta.dirname, '../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts'), 'utf8');
+
+test('proposal camera fits whole Roadmap cards, shortens small pans, and skips an unchanged camera', () => {
+    const bounds = { x: 100, y: 80, width: 1120, height: 640 };
+    const stage = { width: 1500, height: 900 };
+    const first = roadmapProposalCamera(bounds, stage, { x: 0, y: 0, zoom: 1 }, 360)!;
+    assert.ok(first.viewport.zoom < 1);
+    assert.ok(first.viewport.x + bounds.x * first.viewport.zoom >= 20);
+    assert.ok(first.viewport.x + (bounds.x + bounds.width) * first.viewport.zoom <= stage.width - 360 - 20);
+    assert.ok(first.viewport.y + bounds.y * first.viewport.zoom >= 20);
+    assert.ok(first.viewport.y + (bounds.y + bounds.height) * first.viewport.zoom <= stage.height - 20);
+    assert.equal(roadmapProposalCamera(bounds, stage, first.viewport, 360), undefined);
+    const nearby = roadmapProposalCamera(bounds, stage,
+        { ...first.viewport, x: first.viewport.x + 20 }, 360)!;
+    const distant = roadmapProposalCamera(bounds, stage,
+        { ...first.viewport, x: first.viewport.x + 600 }, 360)!;
+    assert.ok(nearby.duration < distant.duration);
+});
 
 test('gesture policy keeps navigation separate from arrangement and semantic edges', () => {
     assert.deepEqual(roadmapGestures(false), { panOnDrag: true, zoomOnScroll: true, zoomOnPinch: true,

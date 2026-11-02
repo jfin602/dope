@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -83,6 +83,47 @@ test('only persisted trusted planning activity receives a compact label and hone
     assert.equal(planningActivityPresentation({ ...message, planningActivity: {
         schemaVersion: 1, kind: 'error', status: 'failed', refs: [],
     } }) , undefined);
+});
+
+test('only verified Roadmap decision turns use the inline proposal card across saved statuses', () => {
+    const message = { id: 'origin', role: 'assistant', content: '{"type":"gate.move"}',
+        execution: { status: 'complete' }, planningActivity: { schemaVersion: 1,
+            kind: 'roadmap-gate-proposal', status: 'pending', refs: [], proposalId: 'proposal' } } as ChatAssistantMessage;
+    for (const status of ['pending', 'applied', 'denied', 'stale', 'failed'] as const) {
+        const restored = { ...message, planningActivity: { ...message.planningActivity!, status } };
+        assert.equal(isInlineRoadmapProposal(restored), true);
+        assert.match(planningOutcome(restored)!.summary, /proposal|change/i);
+    }
+    assert.equal(isInlineRoadmapProposal({ ...message, planningActivity: undefined }), false);
+    assert.equal(isInlineRoadmapProposal({ ...message,
+        planningActivity: { ...message.planningActivity!, kind: 'no-action' } }), false);
+    assert.equal(isInlineRoadmapProposal({ ...message, id: 'other', planningActivity: undefined }), false);
+});
+
+test('Roadmap proposal presentation stays in the originating response and automatic preview keeps editor focus', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
+    const canvas = await readFile(new URL('../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    assert.match(widget, /if \(activity && !isInlineRoadmapProposal\(message\)\)/);
+    assert.match(widget, /if \(savedProposal\) content\.append\(savedProposal\)/);
+    assert.match(widget, /return this\.roadmapProposalReviewCard\(this\.controller\.planningProposal\)/);
+    assert.match(widget, /diagnostic\.textContent = activity\.diagnostic;\s*card\.append\(diagnostic\)/);
+    assert.match(widget, /saved\.planningActivity\?\.diagnostic !== state\.planningProposalError/);
+    assert.match(widget, /item\.append\(footer, info\)/);
+    assert.match(css, /\.dope-chat-message-roadmap-proposal \.dope-chat-message-content \{[^}]*max-width: 100%/);
+    assert.match(css, /\.dope-chat-message-roadmap-proposal \.dope-chat-plan-review \{[^}]*width: 100%/);
+    assert.match(widget, /if \(state\.running\) \{\s*this\.autoPreviewTurn =/);
+    assert.match(widget, /this\.autoPreviewedProposals\.has\(key\)/);
+    assert.match(widget, /this\.viewCurrentRoadmapProposal\(proposal, true\)/);
+    assert.match(module, /if \(activate\) await context\.container\.get\(CommandRegistry\)\.executeCommand\('dope\.roadmap\.open'\)/);
+    assert.match(module, /getCurrentWidget\('main'\) === widget/);
+    assert.match(canvas, /querySelectorAll<HTMLElement>\('\[data-proposal-entity\]'\)/);
+    assert.match(canvas, /this\.chatProposalCameraObserver\.observe\(this\.path/);
+    assert.match(canvas, /this\.queueChatProposalCamera\(\)/);
+    assert.match(canvas, /roadmapProposalCamera\(\{ x: start\.x, y: start\.y/);
+    assert.match(canvas, /if \(!camera\) \{ this\.recordUserCamera\(flow\.getViewport\(\)\); return; \}/);
+    assert.match(canvas, /flow\.setViewport\(camera\.viewport, \{ duration, ease: t => t \* t \* \(3 - 2 \* t\) \}\)/);
 });
 
 test('draft review labels only draft action types', () => {

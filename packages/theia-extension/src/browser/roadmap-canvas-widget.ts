@@ -26,7 +26,7 @@ import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
-    roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot,
+    roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot, roadmapProposalCamera,
     type RoadmapViewportState } from './roadmap-viewport';
 import './dope.css';
 
@@ -225,6 +225,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
         review?: ChatStrategicDraftReview; error?: string; busy?: boolean; decide: (approve: boolean) => Promise<void> };
     private strategicFitToken?: string;
     private chatProposal?: { uri: string; chatId: string; proposal: ChatPlanningProposal };
+    private pendingChatProposalCamera?: string;
+    private chatProposalCameraQueued = false;
+    private chatProposalCameraAnimating = false;
+    private chatProposalCameraSerial = 0;
+    private readonly chatProposalCameraObserver = new MutationObserver(() => this.queueChatProposalCamera());
     private readonly path = document.createElement('div');
     private root?: Root;
     private flow?: ReactFlowInstance;
@@ -235,6 +240,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly stageResize = new ResizeObserver(() => {
         this.applyInitialCamera();
         this.restoreVisibleCameraOnResize();
+        this.queueChatProposalCamera();
         if (this.stage.clientWidth < 1240 && this.sourceOpen && this.inspectionOpen &&
             this.sourceView === 'expanded' && this.inspectionView === 'expanded') this.setSourceOpen(false);
     });
@@ -635,8 +641,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.chatProposal && (this.chatProposal.uri !== projectUri ||
                 this.chatProposal.proposal.ownerId !== index.projectId ||
                 this.chatProposal.proposal.revision !== index.revision ||
-                this.chatProposal.proposal.sourceHash !== index.linkedDocument?.sourceHash))
+                this.chatProposal.proposal.sourceHash !== index.linkedDocument?.sourceHash)) {
                 this.chatProposal = undefined;
+                this.pendingChatProposalCamera = undefined;
+                this.chatProposalCameraObserver.disconnect();
+            }
             if (switched) {
                 if (this.strategic && (this.strategic.uri !== projectUri || this.strategic.projectId !== index.projectId))
                     this.strategic = undefined;
@@ -793,7 +802,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const roots = await this.workspaces.roots;
         if (roots.length !== 1 || roots[0].resource.toString() !== uri)
             throw new Error('Project changed before Roadmap review');
-        await this.refresh();
+        if (this.projectUri !== uri || !this.projection || !this.inspector.index ||
+            this.inspector.index.revision !== proposal.revision) await this.refresh();
         const index = await this.service.read(uri);
         if ((index as unknown as RoadmapGateIndex).schemaVersion !== 2 || this.isDisposed ||
             this.projectUri !== uri || this.inspector.index?.projectId !== proposal.ownerId ||
@@ -818,16 +828,63 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.selectGate(gate.id, phaseId, index.projectId, index.revision);
         else if (focusId && this.projection?.nodes.some(item => item.id === focusId)) this.select(focusId);
         else this.render();
-        const phase = this.projection?.nodes.find(item => item.id === (phaseId ?? focusId));
-        if (phase) requestAnimationFrame(() => {
-            if (this.chatProposal?.proposal.id !== proposal.id || !this.flow) return;
-            const positions = roadmapSpatialLayout(this.projection!);
-            const point = this.placements.get(phase.id) ?? positions.get(phase.id);
-            if (!point) return;
-            this.initialCameraPending = false;
-            this.automaticCamera = undefined;
-            void this.flow.setCenter(point.x + 250, point.y + 150,
-                { zoom: Math.max(this.flow.getZoom(), 0.65), duration: 0 });
+        this.pendingChatProposalCamera = proposal.id;
+        this.chatProposalCameraObserver.observe(this.path, { childList: true, subtree: true });
+        this.queueChatProposalCamera();
+    }
+
+    private queueChatProposalCamera(): void {
+        if (!this.pendingChatProposalCamera || this.chatProposalCameraQueued) return;
+        this.chatProposalCameraQueued = true;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            this.chatProposalCameraQueued = false;
+            this.focusChatProposalCamera();
+        }));
+    }
+
+    private focusChatProposalCamera(): void {
+        const proposal = this.chatProposal?.proposal, flow = this.flow;
+        if (!proposal || proposal.id !== this.pendingChatProposalCamera || !flow || !this.isVisible ||
+            !this.stage.clientWidth || !this.stage.clientHeight) return;
+        const ids = new Set(proposal.preview?.entities.map(entity => entity.id));
+        const targets = [...this.path.querySelectorAll<HTMLElement>('[data-proposal-entity]')]
+            .filter(element => ids.has(element.dataset.proposalEntity ?? ''));
+        if (!targets.length) return;
+        const cards = new Set(targets.map(target => target.closest<HTMLElement>('.react-flow__node') ?? target));
+        const phases = [...this.path.querySelectorAll<HTMLElement>('[data-phase-id]')]
+            .map(phase => phase.closest<HTMLElement>('.react-flow__node') ?? phase);
+        if (phases.length <= 3) phases.forEach(phase => cards.add(phase));
+        else {
+            const center = targets.reduce((sum, target) => sum + target.getBoundingClientRect().x, 0) / targets.length;
+            const neighbor = phases.filter(phase => !cards.has(phase)).sort((a, b) =>
+                Math.abs(a.getBoundingClientRect().x - center) - Math.abs(b.getBoundingClientRect().x - center))[0];
+            if (neighbor) cards.add(neighbor);
+        }
+        const bounds = [...cards].map(card => card.getBoundingClientRect());
+        if (!bounds.length || bounds.some(rect => !rect.width || !rect.height)) return;
+        const left = Math.min(...bounds.map(rect => rect.left));
+        const top = Math.min(...bounds.map(rect => rect.top));
+        const right = Math.max(...bounds.map(rect => rect.right));
+        const bottom = Math.max(...bounds.map(rect => rect.bottom));
+        const start = flow.screenToFlowPosition({ x: left, y: top });
+        const end = flow.screenToFlowPosition({ x: right, y: bottom });
+        const rightInset = this.inspectionOpen && !this.inspection.hidden ?
+            this.inspection.getBoundingClientRect().width + 16 : 0;
+        const camera = roadmapProposalCamera({ x: start.x, y: start.y,
+            width: end.x - start.x, height: end.y - start.y },
+        { width: this.stage.clientWidth, height: this.stage.clientHeight }, flow.getViewport(), rightInset);
+        this.pendingChatProposalCamera = undefined;
+        this.chatProposalCameraObserver.disconnect();
+        if (!camera) { this.recordUserCamera(flow.getViewport()); return; }
+        const serial = ++this.chatProposalCameraSerial;
+        this.chatProposalCameraAnimating = true;
+        this.initialCameraPending = false;
+        this.automaticCamera = undefined;
+        const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : camera.duration;
+        void flow.setViewport(camera.viewport, { duration, ease: t => t * t * (3 - 2 * t) }).then(applied => {
+            if (serial !== this.chatProposalCameraSerial || flow !== this.flow) return;
+            this.chatProposalCameraAnimating = false;
+            if (applied) this.recordUserCamera(flow.getViewport());
         });
     }
 
@@ -923,6 +980,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (this.chatProposal?.uri !== uri || this.chatProposal.chatId !== chatId ||
             this.chatProposal.proposal.id !== proposalId) return;
         this.chatProposal = undefined;
+        if (this.pendingChatProposalCamera === proposalId) {
+            this.pendingChatProposalCamera = undefined;
+            this.chatProposalCameraObserver.disconnect();
+        }
         if (accepted) {
             await this.refresh();
             const index = this.inspector.gateIndex;
@@ -1520,10 +1581,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             onInit: (flow: ReactFlowInstance) => { this.flow = flow;
                 if (this.viewport) void flow.setViewport(this.viewport);
                 this.queueInitialCamera();
+                this.queueChatProposalCamera();
                 requestAnimationFrame(() => { if (flow === this.flow) this.restoreVisibleCameraOnResize(); }); },
             onMoveStart: (event: unknown) => {
-                if (roadmapUserViewportEvent(event) && cameraGeneration === this.cameraGeneration && cameraProjectUri === this.projectUri)
+                if (roadmapUserViewportEvent(event) && cameraGeneration === this.cameraGeneration && cameraProjectUri === this.projectUri) {
                     this.initialCameraPending = false;
+                    ++this.chatProposalCameraSerial;
+                    this.chatProposalCameraAnimating = false;
+                }
             },
             onMoveEnd: (event: unknown, viewport: { x: number; y: number; zoom: number }) => {
                 if (!this.projectId || !this.projectUri || cameraGeneration !== this.cameraGeneration ||
@@ -1574,6 +1639,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     /** A saved full-width camera may clip its selected card in a narrower editor.
      * Derive the temporary camera from the saved intent so widening restores it. */
     private restoreVisibleCameraOnResize(): void {
+        if (this.pendingChatProposalCamera || this.chatProposalCameraAnimating) return;
         const flow = this.flow, saved = this.viewport, projection = this.projection, id = this.selectedId;
         if (!flow || !saved || !projection || !id || !this.stage.clientWidth || !this.stage.clientHeight) return;
         const card = [...this.path.querySelectorAll<HTMLButtonElement>('button[data-checkpoint-id]')]
@@ -1674,15 +1740,24 @@ export class RoadmapCanvasWidget extends BaseWidget {
     protected override onAfterAttach(msg: Message): void {
         super.onAfterAttach(msg);
         this.root = createRoot(this.path);
+        if (this.pendingChatProposalCamera)
+            this.chatProposalCameraObserver.observe(this.path, { childList: true, subtree: true });
         this.renderFlow();
     }
 
     protected override onActivateRequest(msg: Message): void {
         super.onActivateRequest(msg);
+        this.queueChatProposalCamera();
         if (this.phaseOpen) void this.refreshPhaseEvidence();
     }
 
+    protected override onAfterShow(msg: Message): void {
+        super.onAfterShow(msg);
+        this.queueChatProposalCamera();
+    }
+
     protected override onBeforeDetach(msg: Message): void {
+        this.chatProposalCameraObserver.disconnect();
         if (this.flow) this.displayedViewport = this.flow.getViewport();
         this.root?.unmount();
         this.root = undefined;

@@ -935,6 +935,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-message-content { max-width: min(100%, 72ch); min-width: 0; line-height: 1.55; overflow-wrap: anywhere; }
 .dope-chat-message-user .dope-chat-message-content { white-space: pre-wrap; background: var(--chat-color); color: var(--chat-ink); border-radius: 16px 16px 4px 16px; padding: 9px 13px; }
 .dope-chat-message-assistant .dope-chat-message-content { width: 100%; }
+.dope-chat-message-roadmap-proposal .dope-chat-message-content { box-sizing: border-box; max-width: 100%; }
 .dope-chat-message-assistant > .dope-chat-final-answer { box-sizing: border-box;
     border-top: 1px solid var(--theia-widget-border); margin-top: 8px; padding-top: 8px; }
 .dope-chat-message-content :first-child { margin-top: 0; }
@@ -1184,6 +1185,7 @@ body.theia-light:not(.dope-dark) {
     display: grid; gap: 8px; min-width: 0; max-width: 72ch; margin: 8px 0; padding: 12px; overflow: hidden;
     color: var(--theia-editor-foreground, var(--theia-foreground)); background: var(--theia-editorWidget-background, var(--theia-editor-background));
     border: 1px solid var(--theia-widget-border); border-radius: 8px; overflow-wrap: anywhere; }
+.dope-chat-message-roadmap-proposal .dope-chat-plan-review { width: 100%; max-width: 100%; }
 .dope-chat-plan-review strong { font-size: 12px; }
 .dope-chat-plan-review p { margin: 0; color: var(--theia-descriptionForeground); font-size: 11px; }
 .dope-chat-plan-review details { min-width: 0; font-size: 12px; }
@@ -1207,6 +1209,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-proposal-history-heading strong { flex: 1 1 12ch; min-width: 0; font-weight: 600; text-transform: capitalize; }
 .dope-chat-proposal-history-heading > span:last-child { color: var(--theia-descriptionForeground); }
 .dope-chat-proposal-history-mark { color: var(--proposal-accent); font-weight: 700; }
+.dope-chat-proposal-history .dope-chat-proposal-diagnostic { margin-top: 6px; color: var(--proposal-accent); line-height: 1.4; }
 .dope-chat-proposal-history details { margin-top: 3px; }
 .dope-chat-proposal-step { border-left: 2px solid var(--theia-widget-border); padding-left: 8px; text-transform: capitalize; }
 .dope-chat-proposal-source { border-top: 1px solid var(--theia-widget-border); padding-top: 6px; font-size: 12px; }

@@ -477,7 +477,7 @@ test('selector and transcript retain keyboard and dark theme surfaces', async ()
 
 test('pending planning disclosure stays separate from review and failure feedback', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
-    assert.match(source, /if \(state\.planningProposal\) \{/);
+    assert.match(source, /private roadmapProposalReviewCard\(proposal: ChatPlanningProposal\)/);
     assert.match(source, /isDraftPlanningAction\(proposal\.action\.type\)/);
     assert.match(source, /'Accept into draft' : 'Apply proposal'/);
     assert.match(source, /this\.button\('Reject proposal'/);

@@ -374,7 +374,13 @@ export class ChatPanelController {
             }
             this.lease = { workspace, chatId, connection, handle, token: claim.token };
             this.restoreAttempts = 0;
-            this.chatId = chatId; this.mode = 'chat'; this.stream = undefined; this.changed();
+            this.chatId = chatId; this.mode = 'chat'; this.stream = undefined;
+            const pendingProposal = [...(this.chat?.messages ?? [])].reverse().find(message =>
+                message.role === 'assistant' && message.planningActivity?.status === 'pending' &&
+                message.planningActivity.proposal?.chatId === chatId);
+            if (pendingProposal?.role === 'assistant')
+                this.planningProposal = pendingProposal.planningActivity?.proposal;
+            this.changed();
             this.renewal = setInterval(() => {
                 if (this.lease?.token !== claim.token) return;
                 void connection.renew(handle, chatId, claim.token).catch(() => {
