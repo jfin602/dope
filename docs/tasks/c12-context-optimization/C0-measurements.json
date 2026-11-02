@@ -393,5 +393,25 @@
     "durationMs": null,
     "answerCorrect": null,
     "workFileRanges": "DEFERRED TO C2-B"
+  },
+  "c2BResult": {
+    "date": "2026-11-02",
+    "disposition": "DETERMINISTICALLY QUALIFIED / LIVE QUALIFICATION PENDING",
+    "entryHead": "36ebf4284b59aaf0483504d67edfbd40c39de5cf",
+    "packageVersion": "0.12.7",
+    "productChangesUncommitted": true,
+    "entryTreeClean": true,
+    "focusedTestsPassed": 21,
+    "focusedTestsFailed": 0,
+    "affectedPackageBuildsPassed": 2,
+    "piRuntimeIntegrityPassed": true,
+    "workFilePaging": "exact authorized UTF-8 pages beyond 16 KiB; stale, foreign and revoked reads denied",
+    "commandOutputContinuation": "sanitized bounded pages from one completed approved command; original command executed once",
+    "liveStatus": "PENDING",
+    "liveReason": "Codex in-app browser had no tabs and local Dope server was unavailable; no real Pi Work turn was run",
+    "liveToolCalls": null,
+    "providerInputTokens": null,
+    "providerOutputTokens": null,
+    "durationMs": null
   }
 }

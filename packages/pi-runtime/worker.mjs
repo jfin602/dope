@@ -101,11 +101,13 @@ function isolatedExtension() {
     tools: new Map(), messageRenderers: new Map(), commands: new Map(), flags: new Map(), shortcuts: new Map() };
 }
 const WORK_TOOLS = {
-  read_file: { path: Type.String(), maxBytes: Type.Integer() },
+  read_file: { path: Type.String(), maxBytes: Type.Integer(), offset: Type.Optional(Type.Integer()),
+    expectedSourceHash: Type.Optional(Type.String()) },
   list_files: { path: Type.String(), maxEntries: Type.Integer() },
   edit_file: { operation: Type.Union([Type.Literal('create'), Type.Literal('modify')]),
     path: Type.String(), content: Type.String() },
-  run_command: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() }
+  run_command: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() },
+  read_command_output: { handle: Type.String(), offset: Type.Integer(), maxBytes: Type.Integer() }
 };
 const CHAT_TOOLS = {
   read_file: { path: Type.String(), offset: Type.Optional(Type.Integer()),
@@ -162,9 +164,10 @@ function chatTools() {
 function workTools() {
   return Object.entries(WORK_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'read_file' ?
-      'Read one file from the authorized candidate workspace using a relative path and maximum byte count.' :
+      'Read an authorized candidate file. Supply offset and expectedSourceHash to page; use nextOffset and sourceHash from the reply.' :
       name === 'list_files' ? 'List one directory in the authorized candidate workspace using a relative path and entry limit.' :
       name === 'edit_file' ? 'Create or modify one file in the authorized candidate workspace. Canonical project files are not edited.' :
+      name === 'read_command_output' ? 'Read a retained page of a completed approved command result by handle and UTF-8 byte offset; does not rerun it.' :
       'Run an approved test or build command by its granted commandId in the authorized candidate workspace.',
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {

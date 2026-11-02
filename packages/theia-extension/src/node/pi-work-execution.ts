@@ -1,6 +1,6 @@
 import type { AgentExecutionAdapter, AgentExecutionHandle, AgentExecutionRequest } from '@dope/agent-core/lib/execution';
-import { createHash } from 'node:crypto';
-import { parseExecutionGrant } from '@dope/agent-core/lib/authority';
+import { createHash, randomBytes } from 'node:crypto';
+import { parseExecutionGrant, checkEffect } from '@dope/agent-core/lib/authority';
 import { parseLocalToolRequests } from '@dope/agent-core/lib/node/local-tool-contracts';
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
 import { preflightLocalToolSandbox } from '@dope/agent-core/lib/node/local-tool-sandbox';
@@ -9,14 +9,30 @@ import { localWorkspaceBroker } from './local-agent-turn-loop';
 import type { PiModelBridge } from './pi-model-bridge';
 import type { PiRuntimeFactory, PiRuntimeHost, PiWorkEvent } from './pi-runtime-host';
 
-const expectedTools = ['edit_file', 'list_files', 'run_command', 'read_file'];
+const expectedTools = ['edit_file', 'list_files', 'run_command', 'read_file', 'read_command_output'];
 const workToolNames = { read_file: 'read', list_files: 'list', edit_file: 'edit',
-    run_command: 'process' } as const;
+    run_command: 'process', read_command_output: 'output' } as const;
 const secret = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|api[_-]?key|password|secret|token|authorization)\s*[:=]\s*\S+|\bBearer\s+\S+|(?:^|[\s"'(])(?:\/[A-Za-z0-9._~-]+\/[^\s"')]+|[A-Za-z]:\\Users\\[^\s"')]+)/giu;
 const safe = (text: string, max = 4000) => text
     .replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think>/gimu, '[reasoning omitted]')
     .replace(/^.*(?:\bdebug\b|\btraceback\b|\bchain of thought\b|<think\b).*$/gimu, '[diagnostic omitted]')
     .replace(secret, '[redacted]').replace(/[\u0000-\u001f\u007f]/gu, ' ').slice(0, max);
+const safeCommandOutput = (value: string) => value
+    .replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think>/gimu, '[reasoning omitted]')
+    .replace(/^.*(?:\bdebug\b|\bchain of thought\b).*$/gimu, '[diagnostic omitted]')
+    .replace(secret, '[redacted]').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/gu, ' ');
+function bytePage(value: string, offset: number, maxBytes: number): { text: string; endOffset: number } | undefined {
+    const bytes = Buffer.from(value, 'utf8');
+    if (offset > bytes.length || offset < 0) return undefined;
+    try { new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, offset)); }
+    catch { return undefined; }
+    let endOffset = Math.min(bytes.length, offset + maxBytes);
+    while (endOffset > offset) {
+        try { return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(offset, endOffset)), endOffset }; }
+        catch { endOffset--; }
+    }
+    return { text: '', endOffset: offset };
+}
 
 /** Pi's structured lifecycle is advisory. Dope's run, validation and review remain authoritative. */
 export function piWorkObservation(event: PiWorkEvent):
@@ -78,6 +94,9 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         const abort = new AbortController();
         let count = 0;
         const seenTools = new Set<number>();
+        const outputs = new Map<string, { text: string; status: 'completed' | 'failed';
+            captureTruncated: boolean; identity: string; commandId: string; kind: 'test' | 'build';
+            candidateHash: string; expiresAt: number }>();
         let lastPiSequence = 0;
         const result = (async () => {
             try {
@@ -112,8 +131,48 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     stage = 'broker-execute';
                     if (call.name === 'process') request.onEvent({ kind: 'command-started', summary: 'Approved candidate command started',
                         commandId: call.id, command: call.arguments.commandId, status: 'running' });
-                    const response = await broker.execute(call, abort.signal);
+                    let response;
+                    if (call.name === 'output') {
+                        const record = outputs.get(call.arguments.handle);
+                        const currentGrant = parseExecutionGrant(request.grant);
+                        if (!record || Date.now() > record.expiresAt ||
+                            !checkEffect(currentGrant, { kind: 'workspace-process', scope: 'workspace', path: '.' }).allowed ||
+                            !checkEffect(currentGrant, { kind: record.kind === 'test' ? 'workspace-test' : 'workspace-build',
+                                scope: 'workspace', path: '.' }).allowed ||
+                            await workspace.fingerprint() !== record.candidateHash) {
+                            outputs.delete(call.arguments.handle);
+                            throw new Error('Command output unavailable');
+                        }
+                        const page = bytePage(record.text, call.arguments.offset, call.arguments.maxBytes);
+                        if (!page) throw new Error('Invalid output offset');
+                        const outputBytes = Buffer.byteLength(record.text, 'utf8');
+                        response = { status: 'completed' as const, truncated: false,
+                            output: JSON.stringify({ status: record.status, outputIdentity: record.identity,
+                                offset: call.arguments.offset, endOffset: page.endOffset,
+                                nextOffset: page.endOffset < outputBytes ? page.endOffset : null,
+                                outputBytes, text: page.text, sanitized: true,
+                                captureTruncated: record.captureTruncated }) };
+                    } else response = await broker.execute(call, abort.signal);
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
+                    if (call.name === 'process' && (response.status === 'completed' || response.status === 'failed')) {
+                        const sanitized = safeCommandOutput(response.output);
+                        const handle = randomBytes(16).toString('hex');
+                        const identity = createHash('sha256').update(JSON.stringify([
+                            request.taskId, workspace.id, call.arguments.kind, call.arguments.commandId,
+                            response.status, sanitized])).digest('hex');
+                        const candidateHash = await workspace.fingerprint();
+                        outputs.set(handle, { text: sanitized, status: response.status,
+                            captureTruncated: response.truncated, identity,
+                            commandId: call.arguments.commandId, kind: call.arguments.kind,
+                            candidateHash, expiresAt: Date.now() + 120_000 });
+                        while (outputs.size > 2) outputs.delete(outputs.keys().next().value!);
+                        const first = bytePage(sanitized, 0, 1024)!;
+                        response = { ...response, output: JSON.stringify({ status: response.status,
+                            outputIdentity: identity, handle, offset: 0, endOffset: first.endOffset,
+                            nextOffset: first.endOffset < Buffer.byteLength(sanitized, 'utf8') ? first.endOffset : null,
+                            outputBytes: Buffer.byteLength(sanitized, 'utf8'), text: first.text,
+                            sanitized: true, captureTruncated: response.truncated }) };
+                    }
                     if (call.name === 'process') request.onEvent({ kind: 'command-completed',
                         summary: 'Approved candidate command finished', commandId: call.id,
                         command: call.arguments.commandId, status: response.status === 'completed' ? 'completed' :
@@ -128,7 +187,9 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     }
                     if (response.status === 'completed' && call.name === 'edit') request.onEvent({ kind: 'file-changed',
                         summary: 'Candidate file changed', path: call.arguments.path });
-                    return { status: response.status, output: safe(response.output, 1024) };
+                    return { status: response.status, output: (call.name === 'read' &&
+                        call.arguments.offset !== undefined || call.name === 'process' || call.name === 'output') ?
+                        response.output : safe(response.output, 1024) };
                   } catch {
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
                     denied = true;
@@ -168,7 +229,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 const text = safe(answer.text, 512);
                 if (text.trim()) request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text,
                     truncated: answer.text.length > 512, redacted: text !== answer.text });
-            } finally { this.factory.release(host); this.active.delete(host); }
+            } finally { outputs.clear(); this.factory.release(host); this.active.delete(host); }
         })();
         result.catch(() => {});
         return { result, terminate: () => { cancelled = true; abort.abort(); host.dispose(); },

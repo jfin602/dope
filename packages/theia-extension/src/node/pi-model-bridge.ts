@@ -133,7 +133,7 @@ export class PiModelBridge {
                 { thinkingFormat: 'qwen-chat-template' } : { supportsReasoningEffort: true } } : {}),
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: loaded, maxTokens: maxOutputTokens }, cwd, credential, thinkingLevel);
-        const expected = options.tools ? ['edit_file', 'list_files', 'read_file', 'run_command'] :
+        const expected = options.tools ? ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command'] :
             options.chatTools ? ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
             JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected))

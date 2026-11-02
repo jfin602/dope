@@ -14,6 +14,7 @@ export interface LocalSandboxPolicy {
 
 export interface LocalSandboxResult {
     exitCode: number; stdout: string; stderr: string; timedOut: boolean; cancelled: boolean;
+    stdoutTruncated: boolean; stderrTruncated: boolean;
 }
 export class LocalSandboxUnavailable extends Error {
     constructor(reason: string) { super(`Local tool sandbox unavailable: ${reason}`); }
@@ -165,6 +166,7 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
         }
         void filter.close().finally(() => rm(filterDirectory, { recursive: true, force: true }));
         let stdout = '', stderr = '', settled = false, timedOut = false, cancelled = false;
+        let stdoutTruncated = false, stderrTruncated = false;
         const kill = () => { if (child.pid) try { process.kill(-child.pid, 'SIGKILL'); } catch { /* exited */ } };
         const abort = () => { cancelled = true; kill(); };
         signal?.addEventListener('abort', abort, { once: true });
@@ -174,10 +176,19 @@ export async function launchLocalSandboxedTool(policy: LocalSandboxPolicy, comma
             if (settled) return;
             settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort);
             if (error) reject(new LocalSandboxUnavailable('sandbox process could not start'));
-            else resolve({ exitCode: code ?? 1, stdout, stderr, timedOut, cancelled });
+            else resolve({ exitCode: code ?? 1, stdout, stderr, timedOut, cancelled,
+                stdoutTruncated, stderrTruncated });
         };
-        child.stdout!.on('data', chunk => { stdout = (stdout + chunk).slice(0, MAX_OUTPUT); });
-        child.stderr!.on('data', chunk => { stderr = (stderr + chunk).slice(0, MAX_OUTPUT); });
+        child.stdout!.on('data', chunk => {
+            const combined = stdout + chunk;
+            stdoutTruncated ||= combined.length > MAX_OUTPUT;
+            stdout = combined.slice(0, MAX_OUTPUT);
+        });
+        child.stderr!.on('data', chunk => {
+            const combined = stderr + chunk;
+            stderrTruncated ||= combined.length > MAX_OUTPUT;
+            stderr = combined.slice(0, MAX_OUTPUT);
+        });
         child.on('error', error => done(error));
         child.on('close', code => done(undefined, code));
     });

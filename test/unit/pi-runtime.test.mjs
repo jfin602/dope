@@ -516,7 +516,7 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
     globalThis.fetch = async (_url, options) => {
       const body = JSON.parse(options.body);
       assert.deepEqual(body.tools.map(item => item.function.name).sort(),
-        ['edit_file', 'list_files', 'read_file', 'run_command']);
+        ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
       const response = ++turn === 1 ? [
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-1', type: 'function',
           function: { name: 'read_file', arguments: '{"path":"src/main.ts","maxBytes":100}' } }] }, finish_reason: null },
@@ -533,7 +533,7 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
         headers: { 'content-type': 'text/event-stream' } });
     };
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model });
-    assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_file', 'run_command']);
+    assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
     const answer = await dispatch({ type: 'work', id: 7, prompt: 'Inspect src/main.ts.' });
     assert.equal(answer.modelId, 'offline-fixture');
     assert.equal(seen.length, 1);

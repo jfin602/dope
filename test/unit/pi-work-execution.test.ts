@@ -29,7 +29,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         const wire = JSON.parse(String(options?.body));
         assert.equal(wire.model, 'synthetic-local');
         assert.deepEqual(wire.tools.map((item: any) => item.function.name).sort(),
-            ['edit_file', 'list_files', 'read_file', 'run_command']);
+            ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
         const next = calls[turn++];
         const chunks = next ? [
             { delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`, type: 'function',
@@ -83,7 +83,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
                 provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
                 reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
                 contextWindow: 4096, maxTokens: 512 }, cwd);
-            assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_file', 'run_command']);
+            assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
             return { endpoint };
         }, async assertWorkSelection() {} };
         const grant = createDefaultExecutionGrant({ id: 'grant-1', revision: 0, taskId: 'task-1',
@@ -189,4 +189,65 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
         await workspace?.dispose();
         await rm(parent, { recursive: true, force: true });
     }
+});
+
+test('Pi Work retains sanitized command pages without rerunning the approved command', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'dope-pi-output-'));
+    const project = join(parent, 'project');
+    let workspace: ExecutionWorkspace | undefined;
+    let invocations = 0;
+    let revoked = false;
+    try {
+        await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
+        workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'sample-output.mjs'),
+            `import fs from 'node:fs';\nfs.writeFileSync('/work/command-count', String(Number(fs.existsSync('/work/command-count') ? fs.readFileSync('/work/command-count', 'utf8') : '0') + 1));\nconsole.log('A'.repeat(1015) + ' password=hidden-value ' + 'B'.repeat(1300));\n`);
+        const grant = createDefaultExecutionGrant({ id: 'grant-output', revision: 0,
+            taskId: 'task-output', acceptedAt: new Date().toISOString() });
+        const request = { projectRoot: project, executionRoot: workspace.root, grant,
+            taskId: 'task-output', connectionId: 'local', registrationId: 'local',
+            modelId: 'model', prompt: 'Run one approved command and inspect its output.',
+            onEvent() {} };
+        const host: any = { async start() {}, async runWork(_prompt: string, onTool: (call: any) => Promise<any>) {
+            const first = await onTool({ id: 1, name: 'run_command',
+                arguments: { kind: 'build', commandId: 'sample-output' } });
+            const initial = JSON.parse(first.output);
+            assert.equal(first.status, 'completed');
+            assert.equal(initial.sanitized, true);
+            assert.equal(initial.captureTruncated, false);
+            assert.ok(initial.nextOffset > 0);
+            assert.match(initial.text, /^A+/);
+            invocations++;
+            const later = await onTool({ id: 2, name: 'read_command_output',
+                arguments: { handle: initial.handle, offset: initial.nextOffset, maxBytes: 2048 } });
+            const page = JSON.parse(later.output);
+            assert.equal(page.outputIdentity, initial.outputIdentity);
+            assert.equal(page.offset, initial.nextOffset);
+            assert.match(initial.text + page.text, /\[redacted\]/);
+            assert.doesNotMatch(initial.text + page.text, /hidden-value/);
+            assert.equal(page.nextOffset, null);
+            assert.equal(await readFile(join(workspace!.root, 'command-count'), 'utf8'), '1');
+            const now = Date.now;
+            Date.now = () => now() + 120_001;
+            try {
+                await assert.rejects(onTool({ id: 3, name: 'read_command_output',
+                    arguments: { handle: initial.handle, offset: 0, maxBytes: 128 } }), /denied/);
+            } finally { Date.now = now; }
+            revoked = true;
+            await assert.rejects(onTool({ id: 4, name: 'read_command_output',
+                arguments: { handle: initial.handle, offset: 0, maxBytes: 128 } }), /denied/);
+            return { modelId: 'model', text: 'done' };
+        }, dispose() {} };
+        const factory: any = { create: () => host, release() {} };
+        const bridge: any = { async bind() { return { endpoint: 'http://127.0.0.1:9/v1', registryRevision: 1 }; },
+            async assertWorkSelection() {} };
+        const adapter = new PiWorkExecutionAdapter(bridge, factory, () => {
+            if (revoked) throw new Error('Run revoked');
+            return workspace!;
+        }, () => [{ id: 'sample-output', kind: 'build', executable: 'node', argv: ['sample-output.mjs'] }]);
+        const handle = await adapter.start(request);
+        await assert.rejects(handle.result, /denied/);
+        assert.equal(invocations, 1);
+        assert.equal(await readFile(join(workspace.root, 'command-count'), 'utf8'), '1');
+    } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });

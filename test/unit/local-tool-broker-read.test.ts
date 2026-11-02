@@ -29,8 +29,6 @@ test('broker reads only candidate files under the fixed grant and isolated Linux
         await writeFile(join(work, '.env'), 'secret environment');
         await writeFile(join(work, 'token.key'), 'secret key');
         await writeFile(privateFile, 'outside private');
-        await symlink(privateFile, join(work, 'escape'));
-        await symlink('/proc/self/fd/0', join(work, 'proc-fd'));
         await writeFile(join(work, 'large.txt'), 'x'.repeat(400));
         const grant = createDefaultExecutionGrant({ id: 'grant-1', revision: 0, taskId: 'task-1',
             acceptedAt: new Date().toISOString() });
@@ -53,6 +51,56 @@ test('broker reads only candidate files under the fixed grant and isolated Linux
             [{ name: 'main.ts', kind: 'file' }]);
         assert.deepEqual(await run('read', 'large.txt', 16), { id: 'call-1', name: 'read',
             status: 'completed', output: 'x'.repeat(16), truncated: true });
+        const source = ('  const café = "😀";\n\treturn café;\n').repeat(650);
+        await writeFile(join(work, 'paged.ts'), source);
+        let offset = 0;
+        let sourceHash: string | undefined;
+        let reconstructed = '';
+        do {
+            const page = await brokerLocalRead(request, { id: 'page-1', name: 'read',
+                arguments: { path: 'paged.ts', maxBytes: 1024, offset,
+                    ...(sourceHash ? { expectedSourceHash: sourceHash } : {}) } }, undefined, workspace);
+            assert.equal(page.status, 'completed');
+            const data = JSON.parse(page.output);
+            assert.equal(data.offset, offset);
+            assert.equal(data.fileBytes, Buffer.byteLength(source));
+            sourceHash = data.sourceHash;
+            reconstructed += data.text;
+            if (data.nextOffset === null) {
+                assert.equal(data.truncated, false);
+                break;
+            }
+            assert.ok(data.nextOffset > offset);
+            offset = data.nextOffset;
+        } while (true);
+        assert.equal(reconstructed, source);
+        assert.ok(offset > 16_384);
+        const eof = await brokerLocalRead(request, { id: 'page-eof', name: 'read',
+            arguments: { path: 'paged.ts', maxBytes: 1024, offset: Buffer.byteLength(source),
+                expectedSourceHash: sourceHash } }, undefined, workspace);
+        assert.equal(JSON.parse(eof.output).text, '');
+        const foreign = await ExecutionWorkspace.create(project);
+        try {
+            await writeFile(join(foreign.root, 'paged.ts'), source);
+            assert.equal((await brokerLocalRead({ ...request, executionRoot: foreign.root }, {
+                id: 'page-foreign', name: 'read', arguments: { path: 'paged.ts',
+                    maxBytes: 1024, offset: 1024, expectedSourceHash: sourceHash }
+            }, undefined, foreign)).status, 'denied');
+        } finally { await foreign.dispose(); }
+        assert.equal((await brokerLocalRead({ ...request, grant: { ...grant, permissions:
+            { ...grant.permissions, 'workspace-read': false } } }, {
+            id: 'page-revoked', name: 'read', arguments: { path: 'paged.ts',
+                maxBytes: 1024, offset: 1024, expectedSourceHash: sourceHash }
+        }, undefined, workspace)).status, 'denied');
+        await writeFile(join(work, 'paged.ts'), source + 'changed');
+        assert.equal((await brokerLocalRead(request, { id: 'page-stale', name: 'read',
+            arguments: { path: 'paged.ts', maxBytes: 1024, offset: 1024,
+                expectedSourceHash: sourceHash } }, undefined, workspace)).status, 'denied');
+        await writeFile(join(work, 'sensitive.ts'), 'export const password = "hidden";\n');
+        assert.equal((await brokerLocalRead(request, { id: 'page-sensitive', name: 'read',
+            arguments: { path: 'sensitive.ts', maxBytes: 1024, offset: 0 } }, undefined, workspace)).status, 'denied');
+        await symlink(privateFile, join(work, 'escape'));
+        await symlink('/proc/self/fd/0', join(work, 'proc-fd'));
 
         for (const path of ['escape', 'proc-fd', 'src/../main.ts', '../private',
             '/etc/passwd', '.git/config', '.dope/state', '.env', 'token.key']) {

@@ -1,10 +1,12 @@
 /** Adapter-internal Local tool protocol. Provider-native envelopes must be translated before
  * this parser; these requests are untrusted data and confer no ExecutionGrant authority. */
 export type LocalToolRequest =
-    | { id: string; name: 'read'; arguments: { path: string; maxBytes: number } }
+    | { id: string; name: 'read'; arguments: { path: string; maxBytes: number;
+        offset?: number; expectedSourceHash?: string } }
     | { id: string; name: 'list'; arguments: { path: string; maxEntries: number } }
     | { id: string; name: 'edit'; arguments: { operation: 'create' | 'modify'; path: string; content: string } }
-    | { id: string; name: 'process'; arguments: { kind: 'test' | 'build'; commandId: string } };
+    | { id: string; name: 'process'; arguments: { kind: 'test' | 'build'; commandId: string } }
+    | { id: string; name: 'output'; arguments: { handle: string; offset: number; maxBytes: number } };
 
 export interface LocalToolResult {
     id: string;
@@ -65,9 +67,19 @@ function parseRequest(value: unknown): LocalToolRequest {
     const call = object(value, ['id', 'name', 'arguments']);
     const id = identifier(call.id);
     if (call.name === 'read') {
-        const args = object(call.arguments, ['path', 'maxBytes']);
+        const args = object(call.arguments, ['path', 'maxBytes', 'offset', 'expectedSourceHash'], ['path', 'maxBytes']);
+        const range = args.offset !== undefined || args.expectedSourceHash !== undefined;
+        if (args.offset !== undefined && (!Number.isSafeInteger(args.offset) || (args.offset as number) < 0))
+            throw new Error('Invalid Local read offset');
+        if (args.expectedSourceHash !== undefined &&
+            (typeof args.expectedSourceHash !== 'string' || !/^[a-f0-9]{64}$/u.test(args.expectedSourceHash)))
+            throw new Error('Invalid Local source identity');
+        if ((args.offset as number | undefined ?? 0) > 0 && args.expectedSourceHash === undefined)
+            throw new Error('Local read continuation requires source identity');
         return { id, name: 'read', arguments: { path: relativePath(args.path),
-            maxBytes: boundedInteger(args.maxBytes, LOCAL_TOOL_LIMITS.readBytes) } };
+            maxBytes: boundedInteger(args.maxBytes, range ? 4096 : LOCAL_TOOL_LIMITS.readBytes),
+            ...(range ? { offset: (args.offset as number | undefined) ?? 0 } : {}),
+            ...(args.expectedSourceHash === undefined ? {} : { expectedSourceHash: args.expectedSourceHash as string }) } };
     }
     if (call.name === 'list') {
         const args = object(call.arguments, ['path', 'maxEntries']);
@@ -87,6 +99,14 @@ function parseRequest(value: unknown): LocalToolRequest {
             throw new Error('Unsupported Local process kind');
         return { id, name: 'process', arguments: { kind: args.kind,
             commandId: identifier(args.commandId) } };
+    }
+    if (call.name === 'output') {
+        const args = object(call.arguments, ['handle', 'offset', 'maxBytes']);
+        if (typeof args.handle !== 'string' || !/^[a-f0-9]{32}$/u.test(args.handle) ||
+            !Number.isSafeInteger(args.offset) || (args.offset as number) < 0)
+            throw new Error('Invalid Local output handle');
+        return { id, name: 'output', arguments: { handle: args.handle,
+            offset: args.offset as number, maxBytes: boundedInteger(args.maxBytes, 4096) } };
     }
     throw new Error('Unsupported Local tool name');
 }
@@ -115,7 +135,7 @@ export function parseLocalToolRequests(json: string, usedIds: ReadonlySet<string
 /** Broker output boundary; never persist provider-native tool results as canonical AgentRun data. */
 export function parseLocalToolResult(value: unknown): LocalToolResult {
     const result = object(value, ['id', 'name', 'status', 'output', 'truncated']);
-    if (!['read', 'list', 'edit', 'process'].includes(result.name as string) ||
+    if (!['read', 'list', 'edit', 'process', 'output'].includes(result.name as string) ||
         !['completed', 'denied', 'failed', 'cancelled'].includes(result.status as string) ||
         typeof result.truncated !== 'boolean') throw new Error('Invalid Local tool result');
     return Object.freeze({ id: identifier(result.id), name: result.name as LocalToolResult['name'],

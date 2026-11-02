@@ -4,6 +4,7 @@ import { LOCAL_TOOL_LIMITS, parseLocalToolRequests, parseLocalToolResult } from 
 import type { LocalToolRequest, LocalToolResult } from './local-tool-contracts';
 import { launchLocalSandboxedTool } from './local-tool-sandbox';
 import { ExecutionWorkspace } from './execution-workspace';
+import { createHash } from 'node:crypto';
 
 const privatePart = (part: string): boolean => {
     const p = part.toLowerCase();
@@ -71,8 +72,8 @@ finally:
 
 /** Fixed code runs in P2's isolated /work mount. Path components are opened relative to
  * directory descriptors with O_NOFOLLOW, so a rename or symlink cannot redirect a read. */
-const READ_SCRIPT = `import os,sys,json,base64,stat
-name,path,limit=sys.argv[1:]
+const READ_SCRIPT = `import os,sys,json,base64,stat,hashlib,re
+name,path,limit,offset=sys.argv[1:]
 limit=int(limit)
 def private(part):
  p=part.lower()
@@ -91,8 +92,26 @@ try:
  if name=='read':
   fd=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=current); fds.append(fd)
   if not stat.S_ISREG(os.fstat(fd).st_mode): denied()
-  data=os.read(fd,limit+1)
-  print(json.dumps({'status':'completed','data':base64.b64encode(data[:limit]).decode('ascii'),'truncated':len(data)>limit}))
+  if offset=='legacy':
+   data=os.read(fd,limit+1)
+   print(json.dumps({'status':'completed','data':base64.b64encode(data[:limit]).decode('ascii'),'truncated':len(data)>limit}))
+  else:
+   before=os.fstat(fd)
+   if before.st_size>33554432: denied()
+   data=os.read(fd,before.st_size+1)
+   after=os.fstat(fd)
+   if (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns)!=(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns) or len(data)!=before.st_size: denied()
+   text=data.decode('utf-8')
+   if re.search(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\\b|\\b(?:access[_-]?token|api[_-]?key|password|secret|token|authorization)\\s*[:=]\\s*\\S+|\\bBearer\\s+\\S+|<think\\b|(?:^|[\\s"\\x27(])(?:/[A-Za-z0-9._~-]+/[^\\s"\\x27)]+|[A-Za-z]:\\\\Users\\\\[^\\s"\\x27)]+)',text,re.I): denied()
+   start=int(offset)
+   if start<0 or start>len(data): denied()
+   data[:start].decode('utf-8')
+   end=min(len(data),start+limit)
+   while end>start:
+    try: page=data[start:end].decode('utf-8'); break
+    except UnicodeDecodeError: end-=1
+   else: page=''
+   print(json.dumps({'status':'completed','data':base64.b64encode(data[start:end]).decode('ascii'),'truncated':end<len(data),'fileBytes':len(data),'endOffset':end,'digest':hashlib.sha256(data).hexdigest()}))
  else:
   if parts:
    current=os.open(parts[-1],os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=current); fds.append(current)
@@ -142,6 +161,7 @@ status=subprocess.run(command).returncode
 try:
  with open('/tmp/dope-test-report','rb') as report:
   os.write(1,report.read(65536))
+  if report.read(1): os.write(2,b'\\n[Dope test report capture truncated]\\n')
 except OSError: pass
 sys.exit(status)
 `;
@@ -191,9 +211,12 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
         if (signal?.aborted) return result(call, 'cancelled');
     } catch { return result(call, 'denied'); }
     const limit = call.name === 'read' ? call.arguments.maxBytes : call.arguments.maxEntries;
+    const ranged = call.name === 'read' ? call.arguments.offset !== undefined : false;
     try {
+        const candidateHash = ranged ? await workspace!.fingerprint() : undefined;
         const sandbox = await launchLocalSandboxedTool({ workspaceRoot: request.executionRoot },
-            ['/usr/bin/python3', '-c', READ_SCRIPT, call.name, call.arguments.path, String(limit)], 5000, signal);
+            ['/usr/bin/python3', '-c', READ_SCRIPT, call.name, call.arguments.path, String(limit),
+                call.name === 'read' && ranged ? String(call.arguments.offset) : 'legacy'], 5000, signal);
         if (signal?.aborted) return result(call, 'cancelled');
         if (sandbox.exitCode !== 0) return result(call, 'failed');
         const response: unknown = JSON.parse(sandbox.stdout);
@@ -207,7 +230,22 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
                 return result(call, 'failed');
             const bytes = Buffer.from(wire.data, 'base64');
             if (bytes.length > call.arguments.maxBytes) return result(call, 'failed');
-            output = bytes.toString('utf8');
+            if (ranged) {
+                if (!Number.isSafeInteger(wire.fileBytes) || !Number.isSafeInteger(wire.endOffset) ||
+                    typeof wire.digest !== 'string' || !/^[a-f0-9]{64}$/u.test(wire.digest) ||
+                    wire.endOffset !== call.arguments.offset! + bytes.length ||
+                    (wire.fileBytes as number) < (wire.endOffset as number)) return result(call, 'failed');
+                const sourceHash = createHash('sha256').update(JSON.stringify([
+                    workspace!.id, workspace!.projectRoot, workspace!.root, call.arguments.path,
+                    candidateHash, wire.digest])).digest('hex');
+                if (call.arguments.expectedSourceHash && call.arguments.expectedSourceHash !== sourceHash)
+                    return result(call, 'denied');
+                if (await workspace!.fingerprint() !== candidateHash) return result(call, 'denied');
+                output = JSON.stringify({ path: call.arguments.path, offset: call.arguments.offset,
+                    endOffset: wire.endOffset, nextOffset: wire.truncated ? wire.endOffset : null,
+                    fileBytes: wire.fileBytes, text: bytes.toString('utf8'),
+                    truncated: wire.truncated, sourceHash });
+            } else output = bytes.toString('utf8');
         } else {
             if (!Array.isArray(wire.entries) || wire.entries.length > call.arguments.maxEntries ||
                 wire.entries.some(entry => !entry || typeof entry.name !== 'string' ||
@@ -303,9 +341,13 @@ export async function brokerLocalProcess(request: AgentExecutionRequest,
         const combined = [sandbox.stdout, sandbox.stderr].filter(Boolean).join('\n');
         const bytes = Buffer.from(combined, 'utf8');
         const truncated = bytes.length > LOCAL_TOOL_LIMITS.resultBytes;
-        const output = (truncated ? bytes.subarray(0, LOCAL_TOOL_LIMITS.resultBytes - 4) : bytes).toString('utf8');
+        // Do not disclose an incomplete credential at the capture boundary: its suffix may
+        // be missing, so a whole-string redactor cannot recognize the retained prefix.
+        const output = truncated ? bytes.subarray(0, LOCAL_TOOL_LIMITS.resultBytes - 256).toString('utf8') +
+            '\n[capture boundary omitted]' : combined;
         return result(call, signal?.aborted || sandbox.cancelled ? 'cancelled' :
             sandbox.timedOut || sandbox.exitCode !== 0 ? 'failed' : 'completed', output,
-        truncated || sandbox.timedOut);
+        truncated || sandbox.stdoutTruncated || sandbox.stderrTruncated ||
+            sandbox.stderr.includes('[Dope test report capture truncated]') || sandbox.timedOut);
     } catch { return result(call, signal?.aborted ? 'cancelled' : 'denied'); }
 }
