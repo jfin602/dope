@@ -62,6 +62,9 @@ export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'histor
 export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
 export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: string; ownerId: string;
     revision: number; sourceHash?: string; changedIds: string[]; action: { type: string; id: string }; summary: string;
+    publication?: { mode: 'publish' | 'link'; path: string; sourceHash: string;
+        phaseCount: number; gateCount: number; criterionCount: number;
+        warnings: string[]; content?: string; compatible?: boolean; diagnostics?: string[] };
     preview?: { source: 'validated-roadmap' | 'validated-markdown-patch';
         steps: { type: string; id: string; title: string; affectedCount: number }[];
         entities: { id: string; action: 'create' | 'edit' | 'delete'; before?: ChatRoadmapPreviewEntity;

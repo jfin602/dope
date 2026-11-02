@@ -90,6 +90,13 @@ export function skillCommand(content: string): string | undefined {
     const match = /^\/([a-z0-9]+(?:-[a-z0-9]+)*)(?=\s|$)/.exec(content);
     return match?.[1];
 }
+/** Only a fresh, leading command can request deterministic Markdown publication. */
+export function roadmapPublicationIntent(content: string): { mode: 'publish' | 'link'; path: string } | undefined {
+    const match = /^\/roadmap (publish|link) the accepted roadmap to ([^\r\n]+?)\s*$/i.exec(content);
+    if (!match) return undefined;
+    const path = match[2].trim();
+    return path && path.length <= 512 ? { mode: match[1].toLowerCase() as 'publish' | 'link', path } : undefined;
+}
 export async function resolveChatSkill(content: string): Promise<ChatSkillSnapshot | undefined> {
     const name = skillCommand(content);
     if (!name) return undefined;

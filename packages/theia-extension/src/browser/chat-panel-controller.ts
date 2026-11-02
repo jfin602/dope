@@ -669,7 +669,7 @@ export class ChatPanelController {
             this.planningDecision = { id: proposal.id, status: approve && result ? 'accepted' : 'rejected',
                 changedIds: result?.changedIds ?? [] };
             this.planningProposal = undefined;
-            this.planningProposalError = proposal.preview ? undefined : approve && result ?
+            this.planningProposalError = proposal.preview || proposal.publication ? undefined : approve && result ?
                 `${isDraftPlanningAction(proposal.action.type) ? 'Accepted Roadmap draft' : 'Roadmap'} ` +
                 `updated at revision ${result.revision}: ${result.changedIds.join(', ')}` : 'Planning proposal rejected';
         } catch (error) {

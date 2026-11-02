@@ -3,7 +3,7 @@ import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, Chat
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
     ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
-import { changeChatSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill } from './chat-skills';
+import { changeChatSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
 import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
@@ -30,6 +30,8 @@ import { linkedRoadmapProposalPreview, roadmapProposalPreview } from './roadmap-
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { GateDocumentPatch } from '@dope/project-intelligence/lib/node/roadmap-gate-document';
+import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
+import { verifiedPublicationFile } from '@dope/project-intelligence/lib/node/roadmap-publication';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     const example = JSON.stringify({ type: 'roadmap-draft-proposal', projectId, draftRevision: revision,
@@ -97,6 +99,7 @@ export class ChatBackend implements ChatService {
     private readonly proposals = new Map<string, { id: string; messageId: string; leaseToken: string;
         handle?: string; request?: PlanningActionRequest; token?: string; changedIds: string[];
         document?: { root: string; preview: GateDocumentPatch };
+        publication?: { root: string; mode: 'publish' | 'link'; preview: RoadmapPublicationPreview | RoadmapExistingLinkPreview };
         undo?: { handle: string; ownerId: string; revision: number; token: string };
         roadmapOffer?: ChatRoadmapOffer;
         draft?: { handle: string; preview: GreenfieldEditPreview };
@@ -425,6 +428,12 @@ export class ChatBackend implements ChatService {
     }
     private clearProposal(chatId: string): void {
         const pending = this.proposals.get(chatId);
+        if (pending?.publication && this.roadmapStore) {
+            const { root, mode, preview } = pending.publication;
+            void (mode === 'publish' ? this.roadmapStore.applyRoadmapPublication(root,
+                preview as RoadmapPublicationPreview, false) : this.roadmapStore.applyExistingRoadmapLink(root,
+                    preview as RoadmapExistingLinkPreview, false)).catch(() => undefined);
+        }
         if (pending?.handle) this.planning?.detach(pending.handle);
         if (pending?.draft) this.greenfield?.clearEditPreview(pending.draft.handle);
         this.proposals.delete(chatId);
@@ -750,6 +759,43 @@ export class ChatBackend implements ChatService {
         }
     }
 
+    private async publicationProposal(root: string, chatId: string, messageId: string, leaseToken: string,
+        refs: ChatContextPreview['refs'], intent: { mode: 'publish' | 'link'; path: string }):
+        Promise<{ proposal?: ChatPlanningProposal; proposalError?: string }> {
+        try {
+            if (!this.roadmapStore) throw new Error('Roadmap owner unavailable');
+            const ref = refs.find(item => item.kind === 'roadmap');
+            const current = await this.roadmapStore.read<RoadmapGateIndex>(root);
+            if (!ref || current.schemaVersion !== 2 || current.projectRoot !== root ||
+                current.projectId !== ref.projectId || current.revision !== ref.ownerRevision ||
+                current.linkedDocument?.sourceHash !== ref.sourceHash)
+                throw new Error('Roadmap source or selection changed; start a fresh /roadmap turn');
+            const reviewed = intent.mode === 'publish' ?
+                await this.roadmapStore.previewRoadmapPublication(root, intent.path) :
+                await this.roadmapStore.previewExistingRoadmapLink(root, intent.path);
+            if (intent.mode === 'link' && !(reviewed as RoadmapExistingLinkPreview).compatible)
+                throw new Error(`Existing Markdown is incompatible: ${(reviewed as RoadmapExistingLinkPreview).diagnostics.join('; ')}`);
+            const id = randomUUID();
+            this.proposals.set(chatId, { id, messageId, leaseToken, changedIds: [],
+                publication: { root, mode: intent.mode, preview: reviewed } });
+            const publication = { mode: intent.mode, path: reviewed.path, sourceHash: reviewed.sourceHash,
+                phaseCount: reviewed.phaseCount, gateCount: reviewed.gateCount,
+                criterionCount: reviewed.criterionCount,
+                warnings: intent.mode === 'publish' ? (() => {
+                    const warnings = (reviewed as RoadmapPublicationPreview).warnings;
+                    return warnings.length <= 32 ? warnings : [...warnings.slice(0, 31),
+                        `${warnings.length - 31} additional coverage warnings`];
+                })() : [],
+                ...(intent.mode === 'publish' ? { content: (reviewed as RoadmapPublicationPreview).content.slice(0, 16000) } :
+                    { compatible: true, diagnostics: (reviewed as RoadmapExistingLinkPreview).diagnostics }) };
+            return { proposal: { id, chatId, messageId, ownerId: current.projectId,
+                revision: current.revision, sourceHash: reviewed.sourceHash, changedIds: [],
+                action: { type: `roadmap-${intent.mode}`, id: reviewed.path },
+                summary: `${intent.mode === 'publish' ? 'Publish New' : 'Link Existing'} · ${reviewed.path}`,
+                publication } };
+        } catch (error) { return { proposalError: `Roadmap publication unavailable: ${String(error)}` }; }
+    }
+
     private async proposal(root: string, chatId: string, messageId: string, leaseToken: string,
         output: string, refs: ChatContextPreview['refs'], draft?: { handle: string; revision: number; projectId: string },
         roadmapSkill = false, requestText = ''):
@@ -891,7 +937,31 @@ export class ChatBackend implements ChatService {
         try {
             tracePlanning('decision-requested', chatId, pending.messageId, approve ? 'approve' : 'reject');
             if (!approve) { await record('denied'); if (pending.draft) this.greenfield?.clearEditPreview(pending.draft.handle);
+                if (pending.publication && this.roadmapStore) {
+                    const { root: publicationRoot, mode, preview } = pending.publication;
+                    if (publicationRoot !== root) throw new Error('Roadmap owner changed');
+                    if (mode === 'publish') await this.roadmapStore.applyRoadmapPublication(root, preview as RoadmapPublicationPreview, false);
+                    else await this.roadmapStore.applyExistingRoadmapLink(root, preview as RoadmapExistingLinkPreview, false);
+                }
                 return undefined; }
+            if (pending.publication) {
+                if (!this.roadmapStore || pending.publication.root !== root) throw new Error('Roadmap owner changed');
+                const { mode, preview } = pending.publication;
+                const result = mode === 'publish' ?
+                    await this.roadmapStore.applyRoadmapPublication(root, preview as RoadmapPublicationPreview, true) :
+                    await this.roadmapStore.applyExistingRoadmapLink(root, preview as RoadmapExistingLinkPreview, true);
+                const persisted = await this.roadmapStore.read<RoadmapGateIndex>(root);
+                if (result.pendingPublication || persisted.pendingPublication ||
+                    persisted.revision !== result.revision ||
+                    persisted.linkedDocument?.path !== preview.path ||
+                    persisted.linkedDocument.sourceHash !== preview.sourceHash ||
+                    persisted.linkedDocument.syncState !== 'synced' ||
+                    !(await verifiedPublicationFile(root, preview.path, preview.sourceHash)))
+                    throw new Error('Publication is not confirmed; inspect Roadmap recovery state');
+                appliedRevision = result.revision;
+                await record('applied', result.revision);
+                return { revision: result.revision, changedIds: [] };
+            }
             if (pending.document) {
                 if (!this.roadmapStore || pending.document.root !== root) throw new Error('Linked Roadmap owner changed');
                 const result = await this.roadmapStore.publishGateDocumentPatch(root, pending.document.preview, true);
@@ -1016,6 +1086,7 @@ export class ChatBackend implements ChatService {
         if (skill && createHash('sha256').update(skill.body).digest('hex') !== skill.digest)
             throw new Error('Saved skill instructions changed; start a fresh turn');
         const roadmapSkill = isBoundRoadmapSkill(skill);
+        const publicationIntent = roadmapSkill && retryIndex < 0 ? roadmapPublicationIntent(content) : undefined;
         if (skill?.name === 'roadmap' && !roadmapSkill)
             throw new Error('Saved /roadmap identity changed; start a fresh turn');
         const retryElementRefs = retryIndex >= 0 ?
@@ -1054,7 +1125,7 @@ export class ChatBackend implements ChatService {
             !roadmapTurn || helpTurn || !draft &&
             selections.filter(item => item.kind === 'roadmap-checkpoint').length !== 1))
             throw new Error('Small-step planning requires a bound draft or one unlinked Roadmap checkpoint and a cap of two or three');
-        const planningPrompt = bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
+        const planningPrompt = publicationIntent ? { text: 'This protected turn requests a deterministic Roadmap Markdown review. Do not write files, call tools, or claim publication. Reply in one short sentence that a backend review will be prepared.' } : bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
             `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
             'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
         const requestHard: AIRoleHardConstraints = { ...chatHard,
@@ -1093,7 +1164,8 @@ export class ChatBackend implements ChatService {
                     'Reasoning Off is unavailable for this LM Studio Qwen model through the Pi tool endpoint; choose Auto or On' :
                     'Selected model does not support the saved reasoning control', 'unsupported-capability');
         if (!this.composer) throw new Error('Context composer unavailable');
-        const localRoadmap = roadmapTurn && connection.providerId === 'local';
+        if (publicationIntent && connection.providerId !== 'local') throw new Error('Roadmap publication Chat requires a selected local model');
+        const localRoadmap = roadmapTurn && connection.providerId === 'local' && !publicationIntent;
         const reasoningOn = connection.providerId === 'local' && !!model.capabilities.localReasoning &&
             (controls['reasoning.effort'] ?? model.capabilities.localReasoning.default) !== 'off';
         const planningOutput = reasoningOn ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
@@ -1196,7 +1268,7 @@ export class ChatBackend implements ChatService {
         const sourceRefs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> = [];
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
         let toolBytes = 0;
-        const noProjectTools = forbidsProjectTools(content);
+        const noProjectTools = !!publicationIntent || forbidsProjectTools(content);
         const projectTools = this.grounder && !noProjectTools ? { root,
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
@@ -1461,6 +1533,7 @@ export class ChatBackend implements ChatService {
                     if (abort.signal.aborted)
                         throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
                     await flushActivity();
+                    if (publicationIntent) output = 'Roadmap Markdown request received. Check the verified result below before any decision.';
                     const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                         outcome: 'complete', content: output,
                         activity: activity?.snapshot(event.finishReason === 'length' ? 'provider-truncated' : undefined),
@@ -1480,10 +1553,13 @@ export class ChatBackend implements ChatService {
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted && !localRoadmap) return preview;
                     const proposalRefs = [...preview.refs, ...sourceRefs];
-                    const result = helpTurn || bridge ? {} : await this.proposal(root, key, assistant.id,
-                        request.leaseToken, output, proposalRefs, draft, roadmapSkill, request.content);
-                    if (localRoadmap) {
-                        const kind = (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
+                    const result = helpTurn || bridge ? {} : publicationIntent ? await this.publicationProposal(root,
+                        key, assistant.id, request.leaseToken, proposalRefs, publicationIntent) :
+                        await this.proposal(root, key, assistant.id, request.leaseToken, output, proposalRefs,
+                            draft, roadmapSkill, request.content);
+                    if (localRoadmap || publicationIntent) {
+                        const kind: ChatPlanningActivity['kind'] = publicationIntent ? 'roadmap-publication' :
+                            (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
                             { schemaVersion: 1, kind, refs: proposalRefs,
                                 status: kind === 'no-action' || kind === 'roadmap-gate-focus' &&
@@ -1494,7 +1570,7 @@ export class ChatBackend implements ChatService {
                                     { verifiedGuidance: composed.verifiedGuidance } : {}),
                                 ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
                                 ...(result.proposal ? { proposalId: result.proposal.id,
-                                    ...(['roadmap-gate-proposal', 'roadmap-gate-undo'].includes(kind) ?
+                                    ...(['roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication'].includes(kind) ?
                                         { proposal: result.proposal } : {}) } : {}) });
                         tracePlanning('result-recorded', key, assistant.id,
                             kind === 'no-action' || kind === 'roadmap-gate-focus' &&

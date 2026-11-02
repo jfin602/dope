@@ -10,13 +10,14 @@ export function isDraftPlanningAction(type: string): boolean {
 /** A verified Roadmap decision is shown by its inline review card, not an activity row. */
 export function isInlineRoadmapProposal(message: ChatAssistantMessage): boolean {
     return message.planningActivity?.kind === 'roadmap-gate-proposal' ||
-        message.planningActivity?.kind === 'roadmap-gate-undo';
+        message.planningActivity?.kind === 'roadmap-gate-undo' ||
+        message.planningActivity?.kind === 'roadmap-publication';
 }
 
 /** Only the backend's persisted activity marker can select compact machine presentation. */
 export function planningActivityPresentation(message: ChatAssistantMessage): { label: string; status: string; alert: boolean } | undefined {
     const activity = message.planningActivity;
-    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action'].includes(activity.kind))
+    if (!activity || !['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action'].includes(activity.kind))
         return undefined;
     if (activity.kind === 'no-action' && activity.status === 'no-action') return undefined;
     const label = activity.verifiedGuidance && noActionEnvelope(message) ? 'Verified Dope guidance' :
@@ -27,6 +28,7 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
         activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence' ? 'Roadmap steps' :
         activity.kind === 'roadmap-gate-proposal' ? 'Roadmap change' :
         activity.kind === 'roadmap-gate-undo' ? 'Roadmap undo' :
+        activity.kind === 'roadmap-publication' ? 'Roadmap Markdown' :
         activity.kind === 'roadmap-gate-focus' ? 'Roadmap selection' :
         activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
         activity.kind === 'roadmap-proposal' ? 'Roadmap proposal' : 'Roadmap intent';
@@ -42,7 +44,8 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
         failed: 'Failed',
         cancelled: 'Cancelled',
     };
-    const gateDecision = activity.kind === 'roadmap-gate-proposal' || activity.kind === 'roadmap-gate-undo';
+    const gateDecision = activity.kind === 'roadmap-gate-proposal' || activity.kind === 'roadmap-gate-undo' ||
+        activity.kind === 'roadmap-publication';
     return { label, status: gateDecision && activity.status === 'denied' ? 'Rejected · no change' :
         gateDecision && activity.status === 'rejected' ?
             activity.proposalId ? 'Failed · no change' : 'Denied · no change' : statuses[activity.status],
@@ -173,6 +176,11 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
             activity.status === 'pending' ? 'Roadmap change ready for review.' :
             'Roadmap change was not applied.'),
         questions: [],
+    };
+    if (activity.kind === 'roadmap-publication') return {
+        summary: activity.status === 'applied' ? 'The reviewed Roadmap Markdown operation is confirmed.' :
+            activity.status === 'pending' ? 'Review the verified Markdown preview before approval.' :
+            'The Roadmap Markdown operation was not confirmed.', questions: [],
     };
     if (activity.kind === 'bridge-proposal' && activity.status === 'suggested') {
         try {

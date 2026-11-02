@@ -115,7 +115,7 @@ export interface ChatRoadmapAction {
 }
 export interface ChatPlanningActivity {
     schemaVersion: 1;
-    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'no-action' | 'error' | 'cancelled';
+    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-publication' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'no-action' | 'error' | 'cancelled';
     status: 'pending' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'superseded' | 'applied' | 'failed' | 'cancelled';
     refs: ChatContextRef[];
     proposalId?: string;
@@ -435,7 +435,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
     const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'diagnostic', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
-    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action',
+    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action',
         'error', 'cancelled'] as const, 'planning activity kind');
     const status = choice(v.status, ['pending', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'superseded', 'applied',
         'failed', 'cancelled'] as const, 'planning activity status');
@@ -444,7 +444,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         (status === 'suggested' && v.proposalId !== undefined) ||
         (kind === 'error') !== (status === 'failed') ||
         (kind === 'cancelled' ? status !== 'cancelled' :
-            status === 'cancelled' && kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo') ||
+            status === 'cancelled' && kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' && kind !== 'roadmap-publication') ||
         (['pending', 'denied', 'stale', 'superseded', 'applied'].includes(status) && v.proposalId === undefined) ||
         (status === 'cancelled' && kind !== 'cancelled' && v.proposalId === undefined) ||
         (['no-action', 'failed'].includes(status) && v.proposalId !== undefined) ||
@@ -455,11 +455,11 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         ['capabilityId', 'version', 'text'], ['capabilityId', 'version', 'text']);
     let proposal: import('./service').ChatPlanningProposal | undefined;
     if (v.proposal !== undefined) {
-        if (kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' ||
+        if (kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' && kind !== 'roadmap-publication' ||
             v.proposalId === undefined || JSON.stringify(v.proposal).length > 65536)
             throw new Error('Invalid saved Roadmap proposal');
         const p = record(v.proposal, ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'sourceHash',
-            'changedIds', 'action', 'summary', 'preview'],
+            'changedIds', 'action', 'summary', 'preview', 'publication'],
             ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'changedIds', 'action', 'summary']);
         const action = record(p.action, ['type', 'id'], ['type', 'id']);
         if (p.id !== v.proposalId || !Array.isArray(p.changedIds) || p.changedIds.length > 64 ||
@@ -521,13 +521,35 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
                 ...(q.additionalSourceChanges === undefined ? {} :
                     { additionalSourceChanges: count(q.additionalSourceChanges, 'additional source changes') }) };
         }
+        const publication = p.publication === undefined ? undefined : record(p.publication,
+            ['mode', 'path', 'sourceHash', 'phaseCount', 'gateCount', 'criterionCount', 'warnings', 'content', 'compatible', 'diagnostics'],
+            ['mode', 'path', 'sourceHash', 'phaseCount', 'gateCount', 'criterionCount', 'warnings']);
+        const publicationWarnings = publication?.warnings;
+        const publicationDiagnostics = publication?.diagnostics;
+        if (publication && (kind !== 'roadmap-publication' || !Array.isArray(publicationWarnings) ||
+            publicationWarnings.length > 32 || publication.content !== undefined &&
+            (typeof publication.content !== 'string' || publication.content.length > 32768) ||
+            publicationDiagnostics !== undefined && !Array.isArray(publicationDiagnostics)))
+            throw new Error('Invalid saved publication preview');
         proposal = { id: identifier(p.id), chatId: identifier(p.chatId), messageId: identifier(p.messageId),
             ownerId: string(p.ownerId, 'Roadmap owner'), revision: count(p.revision, 'Roadmap revision'),
             changedIds: p.changedIds.map(id => string(id, 'changed Roadmap ID')),
             action: { type: string(action.type, 'proposal action'), id: string(action.id, 'proposal target') },
             summary: string(p.summary, 'proposal summary'),
             ...(p.sourceHash === undefined ? {} : { sourceHash: string(p.sourceHash, 'source hash') }),
-            ...(savedPreview === undefined ? {} : { preview: savedPreview }) };
+            ...(savedPreview === undefined ? {} : { preview: savedPreview }),
+            ...(publication === undefined ? {} : { publication: {
+                mode: choice(publication.mode, ['publish', 'link'] as const, 'publication mode'),
+                path: string(publication.path, 'publication path'),
+                sourceHash: string(publication.sourceHash, 'publication hash'),
+                phaseCount: count(publication.phaseCount, 'phase count'),
+                gateCount: count(publication.gateCount, 'gate count'),
+                criterionCount: count(publication.criterionCount, 'criterion count'),
+                warnings: (publicationWarnings as unknown[]).map((item: unknown) => string(item, 'publication warning')),
+                ...(publication.content === undefined ? {} : { content: string(publication.content, 'publication content', false) }),
+                ...(publication.compatible === undefined ? {} : { compatible: publication.compatible === true }),
+                ...(publicationDiagnostics === undefined ? {} : { diagnostics: (publicationDiagnostics as unknown[]).map((item: unknown) => string(item, 'publication diagnostic')) })
+            } }) };
     }
     return { schemaVersion: 1, kind, status, refs: v.refs.map(parseChatContextRef),
         ...(v.proposalId === undefined ? {} : { proposalId: string(v.proposalId, 'proposal ID') }),

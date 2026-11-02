@@ -429,6 +429,35 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         review.className = 'dope-chat-plan-review';
         review.setAttribute('role', 'dialog');
         review.setAttribute('aria-label', 'Roadmap proposal review');
+        if (proposal.publication) {
+            const publication = proposal.publication;
+            const title = document.createElement('strong');
+            title.textContent = publication.mode === 'publish' ? 'Publish New Markdown' : 'Link Existing Markdown';
+            const facts = document.createElement('p');
+            facts.textContent = `${publication.path} · Roadmap revision ${proposal.revision} · SHA-256 ${publication.sourceHash}`;
+            const counts = document.createElement('p');
+            counts.textContent = `${publication.phaseCount} Phases · ${publication.gateCount} Gates · ${publication.criterionCount} Criteria`;
+            review.append(title, facts, counts);
+            for (const warning of [...publication.warnings, ...(publication.diagnostics ?? [])]) {
+                const row = document.createElement('p'); row.textContent = warning; review.append(row);
+            }
+            if (publication.content !== undefined) {
+                const details = document.createElement('details');
+                const label = document.createElement('summary');
+                label.textContent = 'Generated Markdown preview (first 16,000 characters)';
+                const body = document.createElement('pre'); body.textContent = publication.content;
+                details.append(label, body); review.append(details);
+            } else {
+                const compatible = document.createElement('p');
+                compatible.textContent = 'Existing file is compatible. Approval links it without rewriting its bytes.';
+                review.append(compatible);
+            }
+            const decisions = document.createElement('div'); decisions.className = 'dope-chat-plan-review-actions';
+            decisions.append(this.button('Approve', () => void state.decidePlanningProposal(true), state.pending),
+                this.button('Reject', () => void state.decidePlanningProposal(false), state.pending));
+            review.append(decisions);
+            return review;
+        }
         const heading = document.createElement('strong');
         const draftProposal = isDraftPlanningAction(proposal.action.type);
         heading.textContent = proposal.preview ? 'Proposed Roadmap Change' :
@@ -546,7 +575,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     /** Saved review data is display-only; only controller.planningProposal can expose decision buttons. */
     private savedRoadmapProposalCard(message: ChatAssistantMessage): HTMLElement | undefined {
         const activity = message.planningActivity;
-        if (!activity || !['roadmap-gate-proposal', 'roadmap-gate-undo'].includes(activity.kind))
+        if (!activity || !['roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication'].includes(activity.kind))
             return undefined;
         if (activity.status === 'pending' && this.controller.planningProposal?.messageId === message.id)
             return this.roadmapProposalReviewCard(this.controller.planningProposal);
@@ -573,7 +602,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             activity.status === 'rejected' ? '×' : '•';
         const action = document.createElement('strong');
         const step = proposal?.preview?.steps[0];
-        action.textContent = activity.kind === 'roadmap-gate-undo' ? 'Roadmap undo' : 'Proposed Roadmap Change';
+        action.textContent = activity.kind === 'roadmap-gate-undo' ? 'Roadmap undo' :
+            activity.kind === 'roadmap-publication' ?
+                `${proposal?.publication?.mode === 'link' ? 'Linked existing' : 'Published new'} Markdown · ${proposal?.publication?.path ?? 'Roadmap'}` :
+                'Proposed Roadmap Change';
         const result = document.createElement('span');
         result.textContent = `${status}${activity.appliedRevision === undefined ? '' : ` · revision ${activity.appliedRevision}`}`;
         heading.append(mark, action, result);
