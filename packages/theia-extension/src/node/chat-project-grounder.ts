@@ -22,6 +22,8 @@ const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'E
 export interface GroundingDiagnostic { kind: 'unavailable' | 'omitted' | 'truncated' | 'rejected'; source: string; message: string }
 export interface GroundingBlock { text: string; ref: ChatContextRef }
 export interface GroundingResult { blocks: GroundingBlock[]; diagnostics: GroundingDiagnostic[] }
+export interface FileRangeResult { path: string; offset: number; endOffset: number; nextOffset: number | null;
+    fileBytes: number; text: string; truncated: boolean; sourceHash: string }
 export type InvestigationQuery = { kind: 'paths' | 'text'; query: string } |
     { kind: 'read' | 'directory'; path: string } | { kind: 'architecture' | 'physical-map'; query: string };
 export interface InvestigationRequest { queries: InvestigationQuery[]; projectId?: string; signal?: AbortSignal }
@@ -137,6 +139,77 @@ export class ChatProjectGrounder {
             if (!missing(error)) throw error;
             return { blocks: [this.block(canonical, 'file', path, path, `Project file ${path}: absent`)], diagnostics: [] };
         }
+    }
+    /** A separate opt-in page preserves the legacy path-only read contract. */
+    async readFileRange(root: string, path: string, offset = 0, maxBytes = 4096,
+        expectedSourceHash?: string): Promise<FileRangeResult> {
+        safePath(path);
+        if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(maxBytes) ||
+            maxBytes < 1 || maxBytes > 4096 ||
+            (expectedSourceHash !== undefined && !/^[a-f0-9]{64}$/u.test(expectedSourceHash)) ||
+            (offset > 0 && !expectedSourceHash))
+            throw new Error('Invalid file range');
+        const canonical = await this.root(root);
+        const actual = await this.target(canonical, path);
+        const before = await stat(actual);
+        if (!before.isFile() || offset > before.size) throw new Error('Invalid file range');
+        const handle = await open(actual, constants.O_RDONLY | constants.O_NOFOLLOW);
+        try {
+            const opened = await handle.stat();
+            if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino)
+                throw new Error('Project file changed during read');
+            // Hash from the same descriptor as the page. Identity includes root and path, so
+            // identical bytes in another project cannot authorize a continuation there.
+            const hash = createHash('sha256');
+            const scratch = Buffer.alloc(64 * 1024);
+            for (let position = 0; position < opened.size;) {
+                const { bytesRead } = await handle.read(scratch, 0, Math.min(scratch.length, opened.size - position), position);
+                if (!bytesRead) throw new Error('Project file changed during read');
+                const part = scratch.subarray(0, bytesRead);
+                if (part.includes(0)) throw new Error('Binary project file unavailable');
+                hash.update(part); position += bytesRead;
+            }
+            const sourceHash = createHash('sha256').update(canonical).update('\0').update(path)
+                .update('\0').update(hash.digest()).digest('hex');
+            if (expectedSourceHash && expectedSourceHash !== sourceHash)
+                throw new Error('Stale file continuation');
+            if (offset && offset < opened.size) {
+                const prior = Buffer.alloc(1);
+                await handle.read(prior, 0, 1, offset);
+                if ((prior[0] & 0xc0) === 0x80) throw new Error('Offset splits UTF-8 character');
+            }
+            const data = Buffer.alloc(Math.min(maxBytes, opened.size - offset));
+            if (data.length) {
+                const { bytesRead } = await handle.read(data, 0, data.length, offset);
+                if (bytesRead !== data.length) throw new Error('Project file changed during read');
+            }
+            let length = data.length;
+            const decoder = new TextDecoder('utf-8', { fatal: true });
+            let text = '';
+            while (length >= 0) {
+                try { text = decoder.decode(data.subarray(0, length)); break; }
+                catch { length--; }
+            }
+            if (length < 0 || (data.length && length === 0)) throw new Error('Invalid UTF-8 project file');
+            // JSON escaping can expand the payload. Never return an envelope that will be clipped.
+            while (Buffer.byteLength(JSON.stringify({ path, offset, endOffset: offset + length,
+                nextOffset: offset + length < opened.size ? offset + length : null,
+                fileBytes: opened.size, text, truncated: offset + length < opened.size, sourceHash }), 'utf8') > 8000) {
+                length = Math.floor(length / 2);
+                while (length && (data[length] & 0xc0) === 0x80) length--;
+                if (!length) throw new Error('File page cannot fit output budget');
+                text = decoder.decode(data.subarray(0, length));
+            }
+            const after = await handle.stat();
+            const atPath = await stat(actual);
+            if (await realpath(actual) !== actual || atPath.dev !== opened.dev || atPath.ino !== opened.ino ||
+                after.dev !== opened.dev || after.ino !== opened.ino ||
+                after.size !== opened.size || after.mtimeMs !== opened.mtimeMs ||
+                after.ctimeMs !== opened.ctimeMs) throw new Error('Project file changed during read');
+            const endOffset = offset + length;
+            return { path, offset, endOffset, nextOffset: endOffset < opened.size ? endOffset : null,
+                fileBytes: opened.size, text, truncated: endOffset < opened.size, sourceHash };
+        } finally { await handle.close(); }
     }
     async listDirectory(root: string, path = ''): Promise<GroundingResult> {
         const canonical = await this.root(root);

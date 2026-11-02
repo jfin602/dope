@@ -1358,10 +1358,36 @@ export class ChatBackend implements ChatService {
                     Array.isArray(args)) throw new Error('Project discovery tool denied');
                 const field = name === 'read_file' || name === 'list_files' ? 'path' : 'query';
                 const record = args as Record<string, unknown>;
-                if (Object.keys(record).length !== 1 || typeof record[field] !== 'string')
+                const keys = Object.keys(record);
+                const rangeRead = name === 'read_file' && keys.some(key => key !== 'path');
+                if (typeof record[field] !== 'string' || (rangeRead ?
+                    keys.some(key => !['path', 'offset', 'maxBytes', 'expectedSourceHash'].includes(key)) :
+                    keys.length !== 1))
                     throw new Error('Project discovery arguments denied');
                 const toolName = name as typeof allowed[number];
                 try {
+                    if (rangeRead) {
+                        const remaining = 32 * 1024 - toolBytes;
+                        if (remaining < 8200) throw new Error('Project discovery output limit reached');
+                        const page = await this.grounder!.readFileRange(root, record.path as string,
+                            record.offset === undefined ? 0 : record.offset as number,
+                            record.maxBytes === undefined ? 4096 : record.maxBytes as number,
+                            record.expectedSourceHash as string | undefined);
+                        if (signal?.aborted || this.active(request.projectHandle) !== root)
+                            throw new Error('Project discovery cancelled');
+                        const payload = JSON.stringify(page);
+                        const payloadBytes = Buffer.byteLength(payload, 'utf8');
+                        if (payloadBytes > 8000 || payloadBytes > remaining) throw new Error('Project discovery output limit reached');
+                        toolBytes += payloadBytes;
+                        sourceRefs.push({ schemaVersion: 1, kind: 'file', id: page.path, label: page.path,
+                            origin: 'tool', projectId: createHash('sha256').update(root).digest('hex'),
+                            includedBytes: Buffer.byteLength(page.text, 'utf8'),
+                            estimatedTokens: Math.ceil(Buffer.byteLength(page.text, 'utf8') / 3) + 4,
+                            contentHash: createHash('sha256').update(page.text).digest('hex'),
+                            sourceHash: page.sourceHash });
+                        toolEvents.push({ name: toolName, status: 'completed', truncated: page.truncated });
+                        return payload;
+                    }
                     const result = name === 'read_file' ? await this.grounder!.readFile(root, record.path as string) :
                         name === 'list_files' ? await this.grounder!.listDirectory(root, record.path as string) :
                         name === 'search_paths' ? await this.grounder!.searchPaths(root, record.query as string) :
@@ -1382,8 +1408,11 @@ export class ChatBackend implements ChatService {
                         contentHash: sourceRefs.at(-1)!.contentHash, sourceHash: block.ref.sourceHash, truncated,
                         omitted: result.diagnostics.some(item => item.kind === 'omitted'), text: excerpt });
                     return payload;
-                } catch {
+                } catch (error) {
                     toolEvents.push({ name: toolName, status: 'denied', truncated: false });
+                    if (rangeRead && error instanceof Error &&
+                        ['Stale file continuation', 'Project file changed during read'].includes(error.message))
+                        throw new Error('Stale file continuation; reread from offset 0');
                     throw new Error('Project discovery denied or unavailable');
                 }
                 })(); } finally {

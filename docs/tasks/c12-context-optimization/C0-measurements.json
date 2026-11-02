@@ -366,5 +366,32 @@
       "raw provider-message check for unrelated Gate body exclusion",
       "provider cache usage and exact output cap"
     ]
+  },
+  "c2AComparison": {
+    "date": "2026-11-02",
+    "disposition": "IMPLEMENTED / LIVE QUALIFICATION PENDING",
+    "sourceHead": "2ab8f1a195dbe61cd8019a795727bbc8a6d22f22",
+    "packageVersion": "0.12.7",
+    "productChangesUncommitted": true,
+    "baselineScenario": "R1-B",
+    "baselineSourceHead": "bfe1aee27ef48e8871ef7ae77c7226b4998bf713",
+    "fixtureSha256": "da602862507cbe127c4389d7ce09f8e3505571fc7491cbe62d36c4c8302ffa7f",
+    "modelId": "qwen3.5-9b",
+    "loadedContextTokens": 16384,
+    "modelParallel": 2,
+    "deterministicFileRangeTestsPassed": 1,
+    "deterministicFileRangeTestsFailed": 0,
+    "adjacentChatTestsPassed": 15,
+    "piRuntimeTestsPassed": 16,
+    "liveStatus": "BLOCKED",
+    "liveReason": "Codex in-app browser debugger detached during the updated-source check; no C2-A Pi turn completed",
+    "toolCalls": null,
+    "requestedRanges": null,
+    "retrievedTail": null,
+    "providerInputTokens": null,
+    "providerOutputTokens": null,
+    "durationMs": null,
+    "answerCorrect": null,
+    "workFileRanges": "DEFERRED TO C2-B"
   }
 }

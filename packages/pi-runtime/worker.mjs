@@ -108,7 +108,8 @@ const WORK_TOOLS = {
   run_command: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() }
 };
 const CHAT_TOOLS = {
-  read_file: { path: Type.String() },
+  read_file: { path: Type.String(), offset: Type.Optional(Type.Integer()),
+    maxBytes: Type.Optional(Type.Integer()), expectedSourceHash: Type.Optional(Type.String()) },
   list_files: { path: Type.String() },
   search_paths: { query: Type.String() },
   search_text: { query: Type.String() },
@@ -119,7 +120,7 @@ function chatTools() {
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
-      name === 'read_file' ? 'Read one real project file using a relative path returned by list_files or search_paths. An absent result is not evidence of an empty project.' :
+      name === 'read_file' ? 'Read a project file by relative path. Optional offset (UTF-8 byte position), maxBytes and expectedSourceHash page through the file; use nextOffset and sourceHash from each reply. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: Type.Object(properties, { additionalProperties: false }),
