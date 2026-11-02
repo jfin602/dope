@@ -411,33 +411,53 @@ export async function dispatch(message) {
       sessionConsumed = true;
       workRequestId = message.id;
       let sequence = 0;
-      let reasoningDeltas = 0;
+      let pendingReasoning = '';
+      let reasoningChunks = 0;
       let reasoningOmitted = false;
       const emitWork = (kind, extra = {}) => {
         if (++sequence > 512) throw new Error('Pi Work event limit exceeded');
         message.emit?.({ type: 'work', sequence, kind, ...extra });
       };
+      const emitReasoning = text => {
+        if (!text || reasoningOmitted) return;
+        if (reasoningChunks < 160) {
+          reasoningChunks++;
+          emitWork('reasoning', { text });
+        } else {
+          reasoningOmitted = true;
+          emitWork('reasoning_omitted');
+        }
+      };
+      const flushReasoning = () => {
+        if (pendingReasoning) emitReasoning(pendingReasoning);
+        pendingReasoning = '';
+      };
       const unsubscribe = session.subscribe(event => {
-        // Forward only explicit SDK thinking deltas. Bounded observation must not
-        // stop a model turn or delay a tool reply when the provider is verbose.
+        // Providers may send one character per delta. Bound captured text in
+        // useful chunks, rather than exhausting the observation budget after
+        // a few words, and flush before later lifecycle or tool events.
         if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'thinking_delta' &&
             typeof event.assistantMessageEvent.delta === 'string' && event.assistantMessageEvent.delta) {
-          if (++reasoningDeltas <= 96) emitWork('reasoning',
-            { text: event.assistantMessageEvent.delta.slice(0, 2000),
-              truncated: event.assistantMessageEvent.delta.length > 2000 });
-          if (!reasoningOmitted && (reasoningDeltas === 97 || event.assistantMessageEvent.delta.length > 2000)) {
-            reasoningOmitted = true;
-            emitWork('reasoning_omitted');
+          if (!reasoningOmitted) {
+            pendingReasoning += event.assistantMessageEvent.delta;
+            while (pendingReasoning.length >= 512 && !reasoningOmitted) {
+              emitReasoning(pendingReasoning.slice(0, 512));
+              pendingReasoning = pendingReasoning.slice(512);
+            }
           }
         }
-        if (['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled'].includes(event.type))
+        if (['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled'].includes(event.type)) {
+          flushReasoning();
           emitWork(event.type, event.type === 'agent_settled' ? { aborted: event.aborted === true } : {});
-        if (event.type === 'tool_execution_start' || event.type === 'tool_execution_end')
+        }
+        if (event.type === 'tool_execution_start' || event.type === 'tool_execution_end') {
+          flushReasoning();
           emitWork(event.type, { toolName: event.toolName,
             ...(event.type === 'tool_execution_end' ? { isError: event.isError === true } : {}) });
+        }
       });
       try { await session.prompt(message.prompt, { expandPromptTemplates: false }); }
-      finally { unsubscribe(); workRequestId = undefined; }
+      finally { flushReasoning(); unsubscribe(); workRequestId = undefined; }
       if (compactionRejected) throw new Error('Pi Work context cannot be compacted safely; retry with a shorter task');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (!assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted')

@@ -573,6 +573,41 @@ test('Pi Work emits exposed thinking in order and keeps a non-reasoning final se
   }
 });
 
+test('Pi Work preserves reasoning delivered as many tiny provider deltas', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-small-deltas-'));
+  const events = [];
+  const reasoning = 'Inspect the candidate carefully. '.repeat(20);
+  try {
+    globalThis.fetch = async () => {
+      const chunks = [...reasoning].map((character, index) => `data: ${JSON.stringify({
+        id: `small-${index}`, object: 'chat.completion.chunk', created: 1, model: 'qwen3.5-9b',
+        choices: [{ index: 0, delta: { reasoning_content: character }, finish_reason: null }]
+      })}\n\n`);
+      chunks.push(`data: ${JSON.stringify({ id: 'small-final', object: 'chat.completion.chunk', created: 1,
+        model: 'qwen3.5-9b', choices: [{ index: 0, delta: { content: 'Finished.' }, finish_reason: null }] })}\n\n`);
+      chunks.push(`data: ${JSON.stringify({ id: 'small-stop', object: 'chat.completion.chunk', created: 1,
+        model: 'qwen3.5-9b', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })}\n\n`);
+      chunks.push('data: [DONE]\n\n');
+      return new Response(chunks.join(''), { status: 200,
+        headers: { 'content-type': 'text/event-stream' } });
+    };
+    const thinkingModel = { ...model, id: 'qwen3.5-9b', name: 'Qwen3.5 9B', reasoning: true,
+      compat: { thinkingFormat: 'qwen-chat-template' } };
+    await dispatch({ type: 'open', mode: 'work', cwd, model: thinkingModel });
+    const answer = await dispatch({ type: 'work', id: 78, prompt: 'Inspect candidate.', emit: event => events.push(event) });
+    assert.equal(answer.text, 'Finished.');
+    assert.equal(events.filter(event => event.kind === 'reasoning').map(event => event.text).join(''), reasoning);
+    assert.equal(events.some(event => event.kind === 'reasoning_omitted'), false);
+    assert.ok(events.filter(event => event.kind === 'reasoning').length < 10);
+    assert.ok(events.findIndex(event => event.kind === 'reasoning') < events.findIndex(event => event.kind === 'agent_end'));
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('a failed approved Work test reaches Pi as repair feedback on the next model turn', async () => {
   const originalFetch = globalThis.fetch;
   const originalWrite = process.stdout.write;

@@ -335,3 +335,44 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
         assert.doesNotMatch(JSON.stringify(observations), /"handle"\s*:/);
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });
+
+test('Pi Work omits issued output handles from saved reasoning and final messages', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'dope-pi-handle-'));
+    const project = join(parent, 'project');
+    let workspace: ExecutionWorkspace | undefined;
+    const observations: any[] = [];
+    let issuedHandle = '';
+    try {
+        await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
+        workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'sample-output.mjs'), "console.log('safe output');\n");
+        const grant = createDefaultExecutionGrant({ id: 'grant-handle', revision: 0,
+            taskId: 'task-handle', acceptedAt: new Date().toISOString() });
+        const host: any = { async start() {}, async runWork(_prompt: string,
+            onTool: (call: any) => Promise<any>, onEvent: (event: any) => void) {
+            const result = await onTool({ id: 1, name: 'run_command',
+                arguments: { kind: 'build', commandId: 'sample-output' } });
+            assert.equal(result.status, 'completed');
+            issuedHandle = JSON.parse(result.output).handle;
+            onEvent({ sequence: 1, kind: 'reasoning', text: `The handle is ${issuedHandle}.` });
+            return { modelId: 'model', text: `## Completed\n\nHandle ${issuedHandle}.\n\nResult: passed.` };
+        }, dispose() {} };
+        const adapter = new PiWorkExecutionAdapter({
+            async bind() { return { endpoint: 'http://127.0.0.1:9/v1', registryRevision: 1 }; },
+            async assertWorkSelection() {}
+        } as any, { create: () => host, release() {} } as any, () => workspace!,
+        () => [{ id: 'sample-output', kind: 'build', executable: 'node', argv: ['sample-output.mjs'] }]);
+        const handle = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            grant, taskId: 'task-handle', connectionId: 'local', registrationId: 'local',
+            modelId: 'model', prompt: 'Run one approved command.',
+            onEvent(event: unknown) { observations.push(event); } });
+        await handle.result;
+        assert.match(issuedHandle, /^[a-f0-9]{32}$/);
+        assert.doesNotMatch(JSON.stringify(observations), new RegExp(issuedHandle));
+        assert.ok(observations.some(event => event.kind === 'agent-message' &&
+            event.text.includes('## Completed\n\nHandle [output handle omitted].\n\nResult: passed.') &&
+            event.redacted === true), JSON.stringify(observations.filter(event => event.kind === 'agent-message')));
+        assert.ok(observations.some(event => event.kind === 'reasoning' &&
+            event.text.includes('[output handle omitted]')));
+    } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
+});

@@ -14,10 +14,12 @@ const expectedTools = ['edit_file', 'list_files', 'run_command', 'read_file', 'r
 const workToolNames = { read_file: 'read', list_files: 'list', edit_file: 'edit',
     run_command: 'process', read_command_output: 'output' } as const;
 const secret = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|api[_-]?key|password|secret|token|authorization)\s*[:=]\s*\S+|\bBearer\s+\S+|(?:^|[\s"'(])(?:\/[A-Za-z0-9._~-]+\/[^\s"')]+|[A-Za-z]:\\Users\\[^\s"')]+)/giu;
-const safe = (text: string, max = 4000) => text
+const safe = (text: string, max = 4000, preserveLineBreaks = false) => text
     .replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think>/gimu, '[reasoning omitted]')
     .replace(/^.*(?:\bdebug\b|\btraceback\b|\bchain of thought\b|<think\b).*$/gimu, '[diagnostic omitted]')
-    .replace(secret, '[redacted]').replace(/[\u0000-\u001f\u007f]/gu, ' ').slice(0, max);
+    .replace(secret, '[redacted]')
+    .replace(preserveLineBreaks ? /[\u0000-\u0009\u000b-\u001f\u007f]/gu : /[\u0000-\u001f\u007f]/gu, ' ')
+    .slice(0, max);
 const safeCommandOutput = (value: string) => value
     .replace(/<think(?:\s[^>]*)?>[\s\S]*?<\/think>/gimu, '[reasoning omitted]')
     .replace(/^.*(?:\bdebug\b|\bchain of thought\b).*$/gimu, '[diagnostic omitted]')
@@ -134,11 +136,17 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         const outputs = new Map<string, { text: string; status: 'completed' | 'failed';
             captureTruncated: boolean; identity: string; commandId: string; kind: 'test' | 'build';
             candidateHash: string; expiresAt: number }>();
+        const issuedOutputHandles = new Set<string>();
+        const omitOutputHandles = (value: string): string => {
+            let redacted = value;
+            for (const handle of issuedOutputHandles) redacted = redacted.split(handle).join('[output handle omitted]');
+            return redacted;
+        };
         let lastPiSequence = 0;
         let pendingReasoning = '';
         let reasoningGap = false;
         const emitReasoning = (value: string) => {
-            const cleaned = safe(value, value.length);
+            const cleaned = omitOutputHandles(safe(value, value.length));
             for (let index = 0; index < cleaned.length; index += 1800) {
                 const text = cleaned.slice(index, index + 1800);
                 if (text.trim()) request.onEvent({ kind: 'reasoning', text });
@@ -249,6 +257,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (call.name === 'process' && (response.status === 'completed' || response.status === 'failed')) {
                         const sanitized = safeCommandOutput(response.output);
                         const handle = randomBytes(16).toString('hex');
+                        issuedOutputHandles.add(handle);
                         const identity = createHash('sha256').update(JSON.stringify([
                             request.taskId, workspace.id, call.arguments.kind, call.arguments.commandId,
                             response.status, sanitized])).digest('hex');
@@ -387,11 +396,11 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 if (typeof answer.text !== 'string' || Buffer.byteLength(answer.text, 'utf8') > 262144 ||
                     answer.textTruncated !== undefined && typeof answer.textTruncated !== 'boolean')
                     throw new Error('Invalid Pi Work final answer');
-                const text = safe(answer.text, 12_000);
+                const text = omitOutputHandles(safe(answer.text, 12_000, true));
                 if (text.trim()) request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text,
                     truncated: answer.textTruncated === true || answer.text.length > 12_000,
                     redacted: text !== answer.text });
-            } finally { outputs.clear(); this.factory.release(host); this.active.delete(host); }
+            } finally { outputs.clear(); issuedOutputHandles.clear(); this.factory.release(host); this.active.delete(host); }
         })();
         result.catch(() => {});
         return { result, terminate: () => { cancelled = true; abort.abort(); host.dispose(); },

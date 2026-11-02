@@ -347,10 +347,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindSharedAgentRuntime(bind, (container, client) => ServiceConnectionProvider.createProxy<AgentRuntimeService & RpcServer<AgentRuntimeClient>>(
         container, agentRuntimeServicePath, client), (container, change) => {
             const widgets = container.get(WidgetManager);
-            for (const widget of [...widgets.getWidgets(CHAT_PANEL_ID),
-                ...(['left', 'right'] as const).flatMap(side => [widgets.tryGetWidget(chatLauncherIds[side]),
-                    widgets.tryGetWidget(workLauncherIds[side])])].filter(Boolean) as ChatPanelWidget[])
-                void widget.refreshWork();
+            if (change.kind !== 'transcript')
+                for (const widget of [...widgets.getWidgets(CHAT_PANEL_ID),
+                    ...(['left', 'right'] as const).flatMap(side => [widgets.tryGetWidget(chatLauncherIds[side]),
+                        widgets.tryGetWidget(workLauncherIds[side])])].filter(Boolean) as ChatPanelWidget[])
+                    void widget.refreshWork();
             for (const widget of widgets.getWidgets(AGENT_TRANSCRIPT_ID) as AgentTranscriptWidget[])
                 if ((change.kind === 'run' || change.kind === 'event' || change.kind === 'transcript') && widget.options.runId === change.id)
                     widget.scheduleRefresh();
