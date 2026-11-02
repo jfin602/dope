@@ -1010,6 +1010,9 @@ export class ChatBackend implements ChatService {
         })() : request.content?.trim() ?? '';
         const skill = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).skill :
             await resolveChatSkill(content);
+        // A saved skill snapshot describes the old attempt; it cannot authorize a new protected edit.
+        if (retryIndex >= 0 && (skill?.name === 'roadmap' || /^\/roadmap(?=\s|$)/.test(content)))
+            throw new Error('Start a fresh /roadmap turn to request a reviewed Roadmap change');
         if (skill && createHash('sha256').update(skill.body).digest('hex') !== skill.digest)
             throw new Error('Saved skill instructions changed; start a fresh turn');
         const roadmapSkill = isBoundRoadmapSkill(skill);

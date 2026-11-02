@@ -108,6 +108,14 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             ...((data.proposalChanges ?? []).filter(change => change.id === item.id).map(change =>
                 React.createElement(ProposedChange, { key: change.id, change, source: !!data.proposalSource,
                     sourceChanges: data.proposalSourceChanges }))),
+            ...((data.proposalChanges ?? []).filter(change => change.after?.kind === 'gate' &&
+                change.before?.parentId && change.before.parentId !== change.after.parentId &&
+                change.after.parentId === item.id).map(change =>
+                React.createElement('div', { key: `reparent:${change.id}`,
+                    className: 'dope-roadmap-gate-row dope-roadmap-proposal-new-gate',
+                    'data-proposal-gate-id': change.id },
+                React.createElement(ProposedChange, { change, source: !!data.proposalSource,
+                    sourceChanges: data.proposalSourceChanges })))),
             data.contextPick ? React.createElement('div', { className: 'dope-roadmap-context-gates' },
                 ...card.gates.map(gate => pick('gate', gate.id, `${gate.designation} · ${gate.title}`))) : null,
             ...card.gates.map(gate => React.createElement('details', { key: gate.id,
@@ -796,14 +804,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.chatProposal = { uri, chatId, proposal };
         const first = proposal.preview.entities[0];
         const value = first?.after ?? first?.before;
+        const reparentedGate = first?.after?.kind === 'gate' && first.before?.parentId &&
+            first.before.parentId !== first.after.parentId;
         const gateIndex = index as unknown as RoadmapGateIndex;
         const gate = value?.kind === 'criterion' ? gateIndex.gates.find(item => item.id === value.parentId) :
             value?.kind === 'gate' ? gateIndex.gates.find(item => item.id === value.id) : undefined;
-        const focusId = value?.kind === 'phase' ? value.id :
+        const focusId = reparentedGate ? first?.after?.parentId : value?.kind === 'phase' ? value.id :
             value?.kind === 'gate' ? (first.action === 'create' ? value.parentId : gate?.id ?? value.parentId) :
             gate?.id ?? value?.parentId;
-        const phaseId = value?.kind === 'criterion' ? gate?.parentPhaseId : gate?.parentPhaseId ?? value?.parentId;
-        if (gate && phaseId && first.action !== 'create') this.selectGate(gate.id, phaseId, index.projectId, index.revision);
+        const phaseId = reparentedGate ? first?.after?.parentId :
+            value?.kind === 'criterion' ? gate?.parentPhaseId : gate?.parentPhaseId ?? value?.parentId;
+        if (gate && phaseId && first.action !== 'create' && !reparentedGate)
+            this.selectGate(gate.id, phaseId, index.projectId, index.revision);
         else if (focusId && this.projection?.nodes.some(item => item.id === focusId)) this.select(focusId);
         else this.render();
         const phase = this.projection?.nodes.find(item => item.id === (phaseId ?? focusId));

@@ -66,12 +66,14 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
     let answer: unknown = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
         actions: [{ type: 'phase.create', id: 'new:1', title: 'Combat Systems',
             objective: 'Verify combat behavior' }] };
+    let failNext = false;
     const prompts: string[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
             streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } }] }] }),
     async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
         prompts.push(JSON.stringify(request.messages));
+        if (failNext) throw new Error('Fixture model failure');
         yield { type: 'complete' as const, actualModelId: 'q4', text: JSON.stringify(answer) }; } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
         composer, undefined, undefined, actions, undefined, undefined, store);
@@ -200,6 +202,21 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'cancelled');
         await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
             cancelled.proposal.id, true), /unavailable/);
+        assert.deepEqual(await store.read(root), saved);
+        failNext = true;
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add a Phase.',
+            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] }));
+        failNext = false;
+        recorded = await backend.get(projectHandle, chatId);
+        const failedAttempt = recorded?.messages.findLast(message => message.role === 'assistant' &&
+            message.execution.status === 'failed');
+        assert.ok(failedAttempt);
+        const callsBeforeRetry = prompts.length;
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Retry',
+            retryMessageId: failedAttempt.id }), /Start a fresh \/roadmap turn/);
+        assert.equal(prompts.length, callsBeforeRetry);
         assert.deepEqual(await store.read(root), saved);
         const phaseList = Array.from({ length: 70 }, (_, order) => ({ id: `phase-${order}`,
             projectId, title: `Phase ${order}`, objective: `Objective ${order}`, order, dependencies: [],
