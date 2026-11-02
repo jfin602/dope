@@ -254,7 +254,7 @@ test('sequence retains the failed AgentRun when provider startup rejects after r
     assert.deepEqual(persisted?.runIds, [runs[0].id]);
 }));
 
-test('sequence runs only current snapshot and retries capacity in one task/workspace without early promotion', async () => fixture(async f => {
+test('capacity failure after a candidate edit stops without automatic replay and retains partial bytes', async () => fixture(async f => {
     const { sequence, task, accepted } = await preparedSequence(f);
     assert.deepEqual(task.origin, { kind: 'phase-stack', promptId: `c8-lifecycle-test-P1-${sequence.stack.fingerprint.slice(0, 12)}` });
     assert.equal(task.phaseStack?.versionPolicy.version, sequence.basis.packageVersion);
@@ -269,34 +269,20 @@ test('sequence runs only current snapshot and retries capacity in one task/works
     const workspace = f.adapter.starts[0].executionRoot;
     await writeFile(join(workspace, 'partial.txt'), 'candidate');
     f.adapter.fail('model_at_capacity');
-    for (let i = 0; i < 100 && f.adapter.starts.length < 2; i++) await new Promise(resolve => setTimeout(resolve, 10));
-    assert.equal(f.adapter.starts.length, 2);
-    assert.equal(f.adapter.starts[1].executionRoot, workspace);
-    assert.ok(f.adapter.starts[1].prompt.includes('CAPACITY RETRY CONTINUATION'));
-    assert.ok(f.adapter.starts[1].prompt.endsWith(f.adapter.starts[0].prompt));
-    assert.equal(await readFile(join(workspace, 'partial.txt'), 'utf8'), 'candidate');
+    const done = await terminal(f.store, f.root, run.id);
+    assert.equal(f.adapter.starts.length, 1);
+    assert.equal(done.status, 'failed');
+    assert.equal(done.capacityRetries, undefined);
+    assert.equal(done.candidateDelta?.effects[0]?.path, 'partial.txt');
+    const retained = await new AgentStore().partialCandidateRoot(f.root, run.id);
+    assert.ok(retained);
+    assert.equal(await readFile(join(retained, 'partial.txt'), 'utf8'), 'candidate');
     await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
-    f.adapter.complete();
-    const held = await f.runtime.waitForRun(f.root, run.id);
-    assert.equal(held.capacityRetries, 1);
-    assert.equal((await sequenceTerminal(f.store, f.root, sequence.id)).blockedReason, 'candidate-review-pending');
-    await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
-    const done = await acceptSequenceCandidate(f, sequence.id, run.id);
-    const replay = await f.backend.decideCandidate(f.handle, run.id, 0,
-        done.candidateReview!.candidateFingerprint, 'accept', createDefaultExecutionGrant({
-            id: done.grantId, revision: done.grantRevision, taskId: done.taskId,
-            acceptedAt: new Date().toISOString() }));
-    assert.deepEqual(replay.appliedFiles, done.appliedFiles);
     const stopped = await sequenceTerminal(f.store, f.root, sequence.id);
-    assert.equal(done.status, 'completed');
-    assert.equal(done.capacityRetries, 1);
     assert.equal(stopped.status, 'blocked');
-    assert.equal(stopped.blockedReason, 'checkpoint-pending');
+    assert.equal(stopped.blockedReason, 'run-failed');
     assert.equal(stopped.currentEntryNumber, 1);
-    assert.deepEqual(stopped.checkpoints.map(checkpoint => checkpoint.entryNumber), []);
     assert.deepEqual(stopped.runIds, [run.id]);
-    assert.equal(await readFile(join(f.root, 'partial.txt'), 'utf8'), 'candidate');
-    assert.equal((await f.backend.reconcileSequence(f.handle, sequence.id)).blockedReason, 'checkpoint-pending');
 }));
 
 test('phase-stack review rejects a validated candidate without promotion or checkpoint', async () => fixture(async f => {
@@ -384,8 +370,8 @@ test('reconcile adopts only the exact completed Dope checkpoint after a commit/s
 
 test('capacity exhaustion is bounded and leaves authoritative bytes unchanged', async () => fixture(async f => {
     const { sequence, accepted } = await preparedSequence(f);
+    f.adapter.id = 'pi-local-work';
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
-    await writeFile(join(f.adapter.starts[0].executionRoot, 'partial.txt'), 'candidate');
     for (let attempt = 1; attempt <= 4; attempt++) {
         f.adapter.fail('Model at capacity; try again later');
         if (attempt < 4) for (let i = 0; i < 100 && f.adapter.starts.length <= attempt; i++)
@@ -401,8 +387,25 @@ test('capacity exhaustion is bounded and leaves authoritative bytes unchanged', 
     await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
 }));
 
+test('uncertain Pi command request prevents capacity retry even with unchanged candidate', async () => fixture(async f => {
+    const { sequence, accepted } = await preparedSequence(f);
+    f.adapter.id = 'pi-local-work';
+    const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
+    f.adapter.onEvent?.({ kind: 'work-observation', toolId: 'pi-1', toolName: 'run_command',
+        phase: 'requested', brokerInvoked: false });
+    f.adapter.onEvent?.({ kind: 'work-observation', toolId: 'pi-1', toolName: 'run_command',
+        phase: 'executing', stage: 'broker-execute', brokerInvoked: true });
+    f.adapter.fail('model_at_capacity');
+    const done = await terminal(f.store, f.root, run.id);
+    assert.equal(done.status, 'failed');
+    assert.equal(f.adapter.starts.length, 1);
+    assert.equal(done.capacityRetries, undefined);
+    await assert.rejects(readFile(join(f.root, 'partial.txt')), { code: 'ENOENT' });
+}));
+
 test('stop interrupts capacity wait and non-capacity failures never retry', async () => fixture(async f => {
     const { sequence, accepted } = await preparedSequence(f);
+    f.adapter.id = 'pi-local-work';
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
     f.adapter.fail('model_at_capacity');
     for (let i = 0; i < 100; i++) {

@@ -24,6 +24,7 @@ interface Active {
     finished: Promise<void>; releaseFinished(): void;
     tail: Promise<unknown>; sequence: number; observations: number;
     stopping: boolean; denied: boolean; interruptionFailed: boolean;
+    toolRequested?: boolean; initialCandidateFingerprint?: string;
     validationAbort?: AbortController;
     wakeWait?: () => void;
     commands: Map<string, { command: string; started: number }>;
@@ -293,6 +294,9 @@ export class AgentExecutionRuntime {
             return;
         }
         if (observation.kind === 'authority-denied') active.denied = true;
+        if (observation.kind === 'work-observation' && observation.phase === 'requested' ||
+            observation.kind === 'command-started' || observation.kind === 'file-changed')
+            active.toolRequested = true;
         const kind: AgentRunEvent['kind'] = observation.kind === 'file-changed' ? 'file' :
             observation.kind.startsWith('command-') ? 'process' : observation.kind === 'authority-denied' ?
                 'authority' : 'message';
@@ -511,6 +515,7 @@ export class AgentExecutionRuntime {
                 await assertDirtyBasis(root, acceptedDirty);
             } else if (!basis.clean) throw new Error('Phase 8B requires a clean project worktree');
             active.workspace = await ExecutionWorkspace.create(root, acceptedDirty);
+            active.initialCandidateFingerprint = await active.workspace.fingerprint();
             active.grant = grant;
             const now = new Date().toISOString();
             const pending: AgentRun = { version: AGENT_SCHEMA_VERSION, id: randomUUID(), taskId: task.id,
@@ -580,13 +585,25 @@ export class AgentExecutionRuntime {
         request?: AgentExecutionRequest): Promise<void> {
         let failed = false;
         let capacityExhausted = false;
+        let capacityFailure = false;
+        let compactionFailed = false;
         for (let retry = 0; ; ) {
             let error: unknown;
             try { await result; } catch (caught) { error = caught; }
             if (!error) break;
             failed = true;
-            if (!retryAdapter || !request || active.stopping || active.denied ||
-                active.interruptionFailed || !isModelCapacityFailure(error)) break;
+            capacityFailure = isModelCapacityFailure(error);
+            compactionFailed = /cannot be compacted safely|cannot be compacted/u.test(String(error));
+            if (!retryAdapter || retryAdapter.id !== 'pi-local-work' || !request ||
+                active.stopping || active.denied || active.interruptionFailed || active.toolRequested ||
+                !isModelCapacityFailure(error)) break;
+            // Pi reports a tool request before broker dispatch. A fresh Pi session is safe
+            // only when no tool was requested and the candidate/source are unchanged.
+            try {
+                if (!active.workspace || !active.initialCandidateFingerprint ||
+                    await active.workspace.fingerprint() !== active.initialCandidateFingerprint) break;
+                await active.workspace.assertActiveBasis(active.root, active.workspace.root);
+            } catch { break; }
             if (retry >= 3) { capacityExhausted = true; break; }
             retry++;
             active.handle = undefined;
@@ -630,6 +647,13 @@ export class AgentExecutionRuntime {
                 const { delta, fingerprint } = await active.workspace.freezeCandidate();
                 await this.serial(active, () => this.update(active, run => ({ ...run,
                     validationBasis: 'execution-workspace', candidateDelta: delta, candidateFingerprint: fingerprint })));
+                if ((failed || active.stopping || active.denied) && delta.effects.length) {
+                    try {
+                        await this.store.savePartialCandidate(active.root, active.run.id, active.workspace.root, delta);
+                    } catch {
+                        await this.event(active, 'message', 'Partial candidate bytes could not be retained; inspect recorded hashes');
+                    }
+                }
                 if (!failed && !active.stopping && !active.denied &&
                     (task?.completion.requireValidationPass || reviewRequired)) {
                     active.validationAbort = new AbortController();
@@ -733,6 +757,8 @@ export class AgentExecutionRuntime {
             validationMissing ? 'Required validation did not pass' :
             status === 'completed' ? 'Agent run completed' : active.stopping ? 'Agent run stopped' :
                 capacityExhausted ? 'Model capacity retries exhausted' :
+                compactionFailed ? 'Context could not be compacted; inspect candidate and tool evidence before another run' :
+                capacityFailure ? 'Model capacity stopped execution; inspect candidate and tool evidence before another run' :
                 'Agent execution failed');
     }
 

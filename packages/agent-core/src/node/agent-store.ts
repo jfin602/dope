@@ -120,9 +120,19 @@ export class AgentStore implements AgentTranscriptStorage {
 
     /** Keep the frozen changed bytes beneath the run; a later review decision can verify them. */
     async saveReviewCandidate(root: string, runId: string, candidateRoot: string, delta: CandidateDelta): Promise<void> {
+        return this.saveCandidateBytes(root, runId, candidateRoot, delta, 'review-candidate');
+    }
+
+    /** Evidence only: never eligible for review or promotion without a new run. */
+    async savePartialCandidate(root: string, runId: string, candidateRoot: string, delta: CandidateDelta): Promise<void> {
+        return this.saveCandidateBytes(root, runId, candidateRoot, delta, 'partial-candidate');
+    }
+
+    private async saveCandidateBytes(root: string, runId: string, candidateRoot: string,
+        delta: CandidateDelta, name: 'review-candidate' | 'partial-candidate'): Promise<void> {
         const dir = await this.runDir(root, runId, false);
         if (!dir) throw new Error('Agent run missing');
-        const target = join(dir, 'review-candidate');
+        const target = join(dir, name);
         if (await this.directory(target, false)) throw new Error('Review candidate already exists');
         await this.directory(target, true);
         let total = 0;
@@ -158,6 +168,13 @@ export class AgentStore implements AgentTranscriptStorage {
         const dir = await this.runDir(root, runId, false);
         if (!dir) return undefined;
         const path = join(dir, 'review-candidate');
+        return await this.directory(path, false) ? path : undefined;
+    }
+
+    async partialCandidateRoot(root: string, runId: string): Promise<string | undefined> {
+        const dir = await this.runDir(root, runId, false);
+        if (!dir) return undefined;
+        const path = join(dir, 'partial-candidate');
         return await this.directory(path, false) ? path : undefined;
     }
 
