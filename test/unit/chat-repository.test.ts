@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { cp, lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, link, lstat, mkdtemp, mkdir, open, readFile, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -261,6 +261,63 @@ test('a second panel waits for a short live Chat lock', async () => {
     const release = new Promise<void>((resolve, reject) => setTimeout(() => rm(lock).then(resolve, reject), 30));
     assert.equal((await repo.read(root)).chats.length, 1);
     await release;
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('an orphaned empty legacy lock recovers without changing existing conversations', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id();
+  try {
+    const before = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '', title: 'Kept' });
+    const lock = join(root, '.dope/chats/.mutation.lock');
+    await writeFile(lock, '');
+    const old = new Date(Date.now() - 60_000);
+    await utimes(lock, old, old);
+    const results = await Promise.all([repo.mutate(root, before.revision,
+      { type: 'rename-chat', chatId, title: 'Recovered' }),
+    new ChatRepository().mutate(root, before.revision,
+      { type: 'rename-chat', chatId, title: 'Competing' })].map(p => p.then(value => value, error => error)));
+    assert.equal(results.filter(value => !(value instanceof Error)).length, 1);
+    const after = await new ChatRepository().read(root);
+    assert.equal(after.chats.length, 1);
+    assert.equal(after.chats[0].id, chatId);
+    assert.equal(after.revision, before.revision + 1);
+    await assert.rejects(lstat(lock), { code: 'ENOENT' });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('an open empty legacy lock is not stolen, and a failed mutation releases its lock', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id();
+  try {
+    const state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lock = join(root, '.dope/chats/.mutation.lock');
+    const holder = await open(lock, 'wx');
+    try {
+      const old = new Date(Date.now() - 60_000);
+      await utimes(lock, old, old);
+      await assert.rejects(repo.mutate(root, state.revision,
+        { type: 'rename-chat', chatId, title: 'Blocked' }), /locked/);
+      assert.equal((await lstat(lock)).size, 0);
+    } finally { await holder.close(); }
+    await repo.mutate(root, state.revision, { type: 'rename-chat', chatId, title: 'Recovered' });
+    await assert.rejects(repo.mutate(root, state.revision,
+      { type: 'rename-chat', chatId, title: 'Stale' }), /Stale Chat revision/);
+    await repo.mutate(root, state.revision + 1, { type: 'rename-chat', chatId, title: 'Still works' });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('an interrupted empty-lock recovery marker is reclaimed on retry', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id();
+  try {
+    const state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lock = join(root, '.dope/chats/.mutation.lock');
+    await writeFile(lock, '');
+    const old = new Date(Date.now() - 60_000);
+    await utimes(lock, old, old);
+    await link(lock, `${lock}.recover`);
+    const updated = await repo.mutate(root, state.revision, { type: 'rename-chat', chatId, title: 'Recovered' });
+    assert.equal(updated.chats[0].title, 'Recovered');
+    await assert.rejects(lstat(lock), { code: 'ENOENT' });
+    await assert.rejects(lstat(`${lock}.recover`), { code: 'ENOENT' });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

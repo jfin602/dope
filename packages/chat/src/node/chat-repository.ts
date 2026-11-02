@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, readdir, realpath, rename, rm, rmdir, stat } from 'node:fs/promises';
+import { link, lstat, mkdir, open, readFile, readdir, realpath, rename, rm, rmdir, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MANUAL_CHAT_CONTEXT_SOURCES, assignedChatColor, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = { schemaVersion: 1 as const, modelPolicy: { type: 'foll
     allowedSources: [...MANUAL_CHAT_CONTEXT_SOURCES] } };
 const interrupted = 'Interrupted before completion';
 const leaseDuration = 60_000;
+const orphanGraceMs = 5_000;
 type Entry = { id: string; folderPath: string; file: string; revision: number };
 type Manifest = { schemaVersion: 1; revision: number; folders: ChatFolder[]; entries: Entry[] };
 type Lease = { schemaVersion: 1; chatId: string; ownerId: string; token: string; pid: number; expiresAt: number; root: string };
@@ -88,6 +89,42 @@ async function directory(path: string, create = false): Promise<boolean> {
         try { await parent.sync(); } finally { await parent.close(); }
         return directory(path);
     }
+}
+/** An old, empty lock has no PID. On Linux, refuse recovery while any process still holds its inode open. */
+async function openByProcess(info: import('node:fs').Stats): Promise<boolean> {
+    if (process.platform !== 'linux') return true;
+    const uid = process.getuid?.();
+    for (const pid of await readdir('/proc')) {
+        if (!/^\d+$/.test(pid)) continue;
+        const processPath = `/proc/${pid}`;
+        let owner: import('node:fs').Stats;
+        try { owner = await stat(processPath); }
+        catch (error) { if (absent(error)) continue; throw error; }
+        if (uid !== undefined && owner.uid !== uid) continue;
+        let command: string;
+        try { command = (await readFile(`${processPath}/comm`, 'utf8')).trim(); }
+        catch (error) { if (absent(error)) continue; throw error; }
+        // A lock opened by this JavaScript repository belongs to Node or the packaged Electron binary.
+        if (!/^(?:MainThread|node|dope|electron)$/i.test(command)) continue;
+        let descriptors: string[];
+        try { descriptors = await readdir(`${processPath}/fd`); }
+        catch (error) {
+            if (absent(error)) continue;
+            if (['EACCES', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) return true;
+            throw error;
+        }
+        for (const descriptor of descriptors) {
+            try {
+                const held = await stat(`${processPath}/fd/${descriptor}`);
+                if (held.dev === info.dev && held.ino === info.ino) return true;
+            } catch (error) {
+                if (absent(error)) continue;
+                if (['EACCES', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) return true;
+                throw error;
+            }
+        }
+    }
+    return false;
 }
 async function syncedJson(path: string, value: unknown): Promise<void> {
     const temporary = `${path}.${randomUUID()}.tmp`;
@@ -247,15 +284,27 @@ export class ChatRepository {
     private async acquire(base: string): Promise<import('node:fs/promises').FileHandle> {
         const path = join(base, '.mutation.lock');
         for (let attempt = 0; attempt < 100; attempt++) {
+            const temporary = `${path}.${randomUUID()}.tmp`;
             try {
-                const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
-                try { await handle.writeFile(`${process.pid}\n`); await handle.sync(); return handle; }
-                catch (error) { await handle.close(); await rm(path); throw error; }
+                const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+                try {
+                    await handle.writeFile(`${process.pid}\n`);
+                    await handle.sync();
+                    // Hard-link publication is atomic: a crash before this point leaves no lock.
+                    await link(temporary, path);
+                    await rm(temporary).catch(() => { /* An orphaned temporary file cannot hold the lock. */ });
+                    return handle;
+                } catch (error) { await handle.close(); await rm(temporary, { force: true }); throw error; }
             } catch (error) {
+                if (absent(error)) continue;
                 if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
                 if (!await regular(path)) { await new Promise(resolve => setTimeout(resolve, 10)); continue; }
                 const info = await lstat(path);
                 const owner = (await safeText(path)).trim();
+                if (info.size === 0 && !owner && Date.now() - info.mtimeMs >= orphanGraceMs) {
+                    await this.recoverEmptyLock(path, info);
+                    continue;
+                }
                 if (!/^[1-9]\d*$/.test(owner) || live(Number(owner))) {
                     await new Promise(resolve => setTimeout(resolve, 10));
                     continue;
@@ -267,15 +316,47 @@ export class ChatRepository {
         }
         throw new Error('Chat locked; retry');
     }
+    private async recoverEmptyLock(path: string, info: import('node:fs').Stats): Promise<void> {
+        if (await openByProcess(info)) return;
+        const marker = `${path}.recover`;
+        // A fixed hard-link marker allows only one process to retire this exact inode.
+        // The retiring process holds it open, so a second process cannot clear its marker.
+        let handle: import('node:fs/promises').FileHandle | undefined;
+        try {
+            handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+            if ((await handle.stat()).ino !== info.ino) return;
+            try { await link(path, marker); }
+            catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+                await handle.close();
+                handle = undefined;
+                let marked: import('node:fs').Stats;
+                try { marked = await lstat(marker); }
+                catch (missing) { if (absent(missing)) return; throw missing; }
+                if (Date.now() - marked.mtimeMs >= orphanGraceMs && !await openByProcess(marked) &&
+                    (await lstat(marker)).ino === marked.ino) await rm(marker).catch(error => { if (!absent(error)) throw error; });
+                return;
+            }
+            try {
+                let current: import('node:fs').Stats;
+                try { current = await lstat(path); }
+                catch (missing) { if (absent(missing)) return; throw missing; }
+                if (current.ino === info.ino && current.size === 0)
+                    await rm(path);
+            } finally { await rm(marker).catch(error => { if (!absent(error)) throw error; }); }
+        } finally { await handle?.close(); }
+    }
     private async locked<T>(root: string, work: (base: string) => Promise<T>): Promise<T> {
         const { base } = await this.paths(root, true);
         const handle = await this.acquire(base);
         try { return await work(base); }
         finally {
-            const info = await handle.stat(); await handle.close();
-            const path = join(base, '.mutation.lock');
-            try { if ((await lstat(path)).ino !== info.ino) throw new Error('Chat lock changed; inspect it'); await rm(path); }
-            catch (error) { if (!absent(error)) throw error; }
+            try {
+                const info = await handle.stat();
+                const path = join(base, '.mutation.lock');
+                try { if ((await lstat(path)).ino !== info.ino) throw new Error('Chat lock changed; inspect it'); await rm(path); }
+                catch (error) { if (!absent(error)) throw error; }
+            } finally { await handle.close(); }
         }
     }
     private async lease(base: string, chatId: string): Promise<Lease | undefined> {
