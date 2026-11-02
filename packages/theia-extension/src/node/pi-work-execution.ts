@@ -1,7 +1,7 @@
 import type { AgentExecutionAdapter, AgentExecutionHandle, AgentExecutionRequest } from '@dope/agent-core/lib/execution';
 import { createHash, randomBytes } from 'node:crypto';
 import { parseExecutionGrant, checkEffect } from '@dope/agent-core/lib/authority';
-import { parseLocalToolRequests } from '@dope/agent-core/lib/node/local-tool-contracts';
+import { parseLocalToolRequests, recoverableLocalReadError } from '@dope/agent-core/lib/node/local-tool-contracts';
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
 import { preflightLocalToolSandbox } from '@dope/agent-core/lib/node/local-tool-sandbox';
 import { ExecutionWorkspace } from '@dope/agent-core/lib/node/execution-workspace';
@@ -135,16 +135,28 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (call.name === 'output') {
                         const record = outputs.get(call.arguments.handle);
                         const currentGrant = parseExecutionGrant(request.grant);
-                        if (!record || Date.now() > record.expiresAt ||
-                            !checkEffect(currentGrant, { kind: 'workspace-process', scope: 'workspace', path: '.' }).allowed ||
-                            !checkEffect(currentGrant, { kind: record.kind === 'test' ? 'workspace-test' : 'workspace-build',
-                                scope: 'workspace', path: '.' }).allowed ||
-                            await workspace.fingerprint() !== record.candidateHash) {
+                        if (!checkEffect(currentGrant, { kind: 'workspace-process', scope: 'workspace', path: '.' }).allowed ||
+                            record && !checkEffect(currentGrant, { kind: record.kind === 'test' ? 'workspace-test' : 'workspace-build',
+                                scope: 'workspace', path: '.' }).allowed)
+                            throw new Error('Command output authority unavailable');
+                        if (!record || Date.now() > record.expiresAt) {
+                            outputs.delete(call.arguments.handle);
+                            request.onEvent({ kind: 'provider-event',
+                                summary: 'Pi Work read_command_output: OUTPUT_HANDLE_EXPIRED; broker not executed' });
+                            return { status: 'failed' as const,
+                                output: 'OUTPUT_HANDLE_EXPIRED: This retained output is unavailable. A new approved command is required.' };
+                        }
+                        if (await workspace.fingerprint() !== record.candidateHash) {
                             outputs.delete(call.arguments.handle);
                             throw new Error('Command output unavailable');
                         }
                         const page = bytePage(record.text, call.arguments.offset, call.arguments.maxBytes);
-                        if (!page) throw new Error('Invalid output offset');
+                        if (!page) {
+                            request.onEvent({ kind: 'provider-event',
+                                summary: 'Pi Work read_command_output: INVALID_OFFSET; broker not executed' });
+                            return { status: 'failed' as const,
+                                output: 'INVALID_OFFSET: Use a UTF-8 byte offset within the retained output.' };
+                        }
                         const outputBytes = Buffer.byteLength(record.text, 'utf8');
                         response = { status: 'completed' as const, truncated: false,
                             output: JSON.stringify({ status: record.status, outputIdentity: record.identity,
@@ -154,6 +166,15 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                                 captureTruncated: record.captureTruncated }) };
                     } else response = await broker.execute(call, abort.signal);
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
+                    if (call.name === 'read') {
+                        const page = response.status === 'completed' && call.arguments.offset !== undefined ?
+                            JSON.parse(response.output) as { offset: number; endOffset: number; truncated: boolean } : undefined;
+                        request.onEvent({ kind: 'provider-event', summary: page ?
+                            `Pi Work read_file broker completed: offset ${page.offset}; end ${page.endOffset}; truncated ${page.truncated}` :
+                            `Pi Work read_file broker ${response.status}${response.output.startsWith('INVALID_OFFSET:') ?
+                                ': INVALID_OFFSET' : response.status === 'denied' ? ': AUTHORITY_DENIED' : ''}; ${call.arguments.offset === undefined ? 'legacy' :
+                                `offset ${call.arguments.offset}`}; hash supplied ${Boolean(call.arguments.expectedSourceHash)}` });
+                    }
                     if (call.name === 'process' && (response.status === 'completed' || response.status === 'failed')) {
                         const sanitized = safeCommandOutput(response.output);
                         const handle = randomBytes(16).toString('hex');
@@ -190,8 +211,22 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     return { status: response.status, output: (call.name === 'read' &&
                         call.arguments.offset !== undefined || call.name === 'process' || call.name === 'output') ?
                         response.output : safe(response.output, 1024) };
-                  } catch {
+                  } catch (error) {
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
+                    const feedback = stage === 'request-parse' && raw.name === 'read_file' ?
+                        recoverableLocalReadError(error) : undefined;
+                    if (feedback) {
+                        const rawArgs = raw.arguments && typeof raw.arguments === 'object' && !Array.isArray(raw.arguments) ?
+                            raw.arguments as Record<string, unknown> : {};
+                        const offset = Number.isSafeInteger(rawArgs.offset) && (rawArgs.offset as number) >= 0 ?
+                            `offset ${rawArgs.offset}` : 'offset invalid-or-omitted';
+                        const pageSize = Number.isSafeInteger(rawArgs.maxBytes) && (rawArgs.maxBytes as number) >= 1 ?
+                            (rawArgs.maxBytes as number) <= 4096 ? 'page <=4096' : 'page >4096' :
+                            'page invalid-or-default';
+                        request.onEvent({ kind: 'provider-event',
+                            summary: `Pi Work read_file argument validation: ${feedback.split(':')[0]}; ${offset}; ${pageSize}; hash supplied ${rawArgs.expectedSourceHash !== undefined}; broker not executed` });
+                        return { status: 'failed' as const, output: feedback };
+                    }
                     denied = true;
                     request.onEvent({ kind: 'provider-event', summary: `Pi Work tool stopped at ${stage}` });
                     request.onEvent({ kind: 'authority-denied',

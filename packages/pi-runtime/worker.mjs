@@ -101,7 +101,7 @@ function isolatedExtension() {
     tools: new Map(), messageRenderers: new Map(), commands: new Map(), flags: new Map(), shortcuts: new Map() };
 }
 const WORK_TOOLS = {
-  read_file: { path: Type.String(), maxBytes: Type.Integer(), offset: Type.Optional(Type.Integer()),
+  read_file: { path: Type.String(), maxBytes: Type.Optional(Type.Integer()), offset: Type.Optional(Type.Integer()),
     expectedSourceHash: Type.Optional(Type.String()) },
   list_files: { path: Type.String(), maxEntries: Type.Integer() },
   edit_file: { operation: Type.Union([Type.Literal('create'), Type.Literal('modify')]),
@@ -122,7 +122,7 @@ function chatTools() {
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
-      name === 'read_file' ? 'Read a project file by relative path. Optional offset (UTF-8 byte position), maxBytes and expectedSourceHash page through the file; use nextOffset and sourceHash from each reply. A path-only read retains the legacy prefix behavior.' :
+      name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. For later pages pass nextOffset as offset and sourceHash as expectedSourceHash. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: Type.Object(properties, { additionalProperties: false }),
@@ -138,9 +138,9 @@ function chatTools() {
         const result = await answer;
         trace('tool-result-accepted', { toolId: id, status: result.status,
           outputBytes: Buffer.byteLength(result.output ?? '', 'utf8') });
-        if (result.status !== 'completed' || typeof result.output !== 'string' ||
-            Buffer.byteLength(result.output, 'utf8') > 12_000)
-          throw new Error('Dope Chat tool denied or exceeded output limit');
+        if (result.status !== 'completed') throw new Error('Dope Chat tool denied by project authority');
+        if (typeof result.output !== 'string' || Buffer.byteLength(result.output, 'utf8') > 12_000)
+          throw new Error('Dope Chat tool output limit exceeded');
         if (name !== 'run_command') {
           const key = hash(JSON.stringify([name, normalized(params)]));
           const evidence = hash(result.output);
@@ -164,7 +164,7 @@ function chatTools() {
 function workTools() {
   return Object.entries(WORK_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'read_file' ?
-      'Read an authorized candidate file. Supply offset and expectedSourceHash to page; use nextOffset and sourceHash from the reply.' :
+      'Read an authorized candidate file. For a first exact page use path and offset 0 (maxBytes defaults to 4096). The reply supplies sourceHash and nextOffset; later pages require expectedSourceHash equal to that sourceHash. Path-only reads retain the legacy sanitized prefix.' :
       name === 'list_files' ? 'List one directory in the authorized candidate workspace using a relative path and entry limit.' :
       name === 'edit_file' ? 'Create or modify one file in the authorized candidate workspace. Canonical project files are not edited.' :
       name === 'read_command_output' ? 'Read a retained page of a completed approved command result by handle and UTF-8 byte offset; does not rerun it.' :

@@ -21,6 +21,21 @@ export const LOCAL_TOOL_LIMITS = Object.freeze({
     listEntries: 100, editBytes: 65_536, resultBytes: 32_768
 });
 
+/** Only these parser failures are harmless input errors. Path and identity failures
+ * remain authority denials even when they occur before the broker is called. */
+export function recoverableLocalReadError(error: unknown): string | undefined {
+    if (!(error instanceof Error)) return undefined;
+    switch (error.message) {
+        case 'Invalid Local tool fields': return 'INVALID_ARGUMENTS: Use path, optional maxBytes, offset and expectedSourceHash.';
+        case 'Invalid Local read offset': return 'INVALID_OFFSET: Use a nonnegative UTF-8 byte offset.';
+        case 'Invalid Local source identity': return 'INVALID_SOURCE_IDENTITY: Use the 64-character sourceHash returned by the first page.';
+        case 'Local read continuation requires source identity':
+            return 'SOURCE_IDENTITY_REQUIRED: Start with offset 0 to obtain sourceHash, then retry the later range.';
+        case 'Invalid Local tool limit': return 'INVALID_PAGE_SIZE: Use 1–4096 bytes for a page.';
+        default: return undefined;
+    }
+}
+
 function object(value: unknown, fields: readonly string[], required = fields): Record<string, unknown> {
     if (value === null || typeof value !== 'object' || Array.isArray(value))
         throw new Error('Invalid Local tool object');
@@ -67,7 +82,7 @@ function parseRequest(value: unknown): LocalToolRequest {
     const call = object(value, ['id', 'name', 'arguments']);
     const id = identifier(call.id);
     if (call.name === 'read') {
-        const args = object(call.arguments, ['path', 'maxBytes', 'offset', 'expectedSourceHash'], ['path', 'maxBytes']);
+        const args = object(call.arguments, ['path', 'maxBytes', 'offset', 'expectedSourceHash'], ['path']);
         const range = args.offset !== undefined || args.expectedSourceHash !== undefined;
         if (args.offset !== undefined && (!Number.isSafeInteger(args.offset) || (args.offset as number) < 0))
             throw new Error('Invalid Local read offset');
@@ -77,7 +92,8 @@ function parseRequest(value: unknown): LocalToolRequest {
         if ((args.offset as number | undefined ?? 0) > 0 && args.expectedSourceHash === undefined)
             throw new Error('Local read continuation requires source identity');
         return { id, name: 'read', arguments: { path: relativePath(args.path),
-            maxBytes: boundedInteger(args.maxBytes, range ? 4096 : LOCAL_TOOL_LIMITS.readBytes),
+            maxBytes: boundedInteger(args.maxBytes ?? (range ? 4096 : 8192),
+                range ? 4096 : LOCAL_TOOL_LIMITS.readBytes),
             ...(range ? { offset: (args.offset as number | undefined) ?? 0 } : {}),
             ...(args.expectedSourceHash === undefined ? {} : { expectedSourceHash: args.expectedSourceHash as string }) } };
     }

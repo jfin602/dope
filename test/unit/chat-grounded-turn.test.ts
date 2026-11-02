@@ -156,6 +156,50 @@ test('local Pi discovery is project-bound, read-only and records safe source act
   } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('Chat ranged read errors are recoverable and saved without false file evidence', async () => {
+  const root = await fixture();
+  const content = `${'line of evidence\n'.repeat(650)}TAIL-NEBULA-9247\n`;
+  await writeFile(join(root, 'long.md'), content);
+  const repository = new ChatRepository();
+  const grounder = new ChatProjectGrounder(noMap as never);
+  const composer = new ChatContextComposer({} as never, {} as never, noMap as never, repository);
+  const replies: string[] = [];
+  const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+    models: [{ id: 'chat', label: 'Chat', usable: true, capabilities: { ...capabilities,
+      contextWindowTokens: 8192 } }] }] }),
+    async *generate(_selection: typeof target, request: { projectTools?: {
+      execute(name: string, args: unknown): Promise<string> } }) {
+      const read = (args: unknown) => request.projectTools!.execute('read_file', args);
+      replies.push(await read({ path: 'long.md', offset: 9000 }));
+      replies.push(await read({ path: 'long.md', offset: -1 }));
+      const first = JSON.parse(await read({ path: 'long.md', offset: 0 }));
+      assert.equal(first.offset, 0);
+      const later = JSON.parse(await read({ path: 'long.md', offset: 9000,
+        expectedSourceHash: first.sourceHash }));
+      assert.match(later.text, /line of evidence/);
+      assert.ok(later.endOffset > 8192);
+      await assert.rejects(read({ path: '.dope/state', offset: 0 }), /denied/);
+      yield { type: 'complete' as const, text: 'Read completed', actualModelId: 'chat',
+        finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+  const service = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer, undefined, grounder);
+  try {
+    const turn = await open(service, root);
+    await service.runTurn({ ...turn, selectedModel: target, content: 'Inspect long.md', context: [] });
+    assert.match(replies[0], /SOURCE_IDENTITY_REQUIRED/);
+    assert.match(replies[1], /INVALID_OFFSET/);
+    const saved = (await service.get(turn.projectHandle, turn.chatId))!.messages.at(-1);
+    assert.equal(saved?.role, 'assistant');
+    if (saved?.role !== 'assistant') return;
+    assert.deepEqual(saved.execution.toolEvents?.map(event => event.status),
+      ['failed', 'failed', 'completed', 'completed', 'denied']);
+    assert.deepEqual(saved.execution.toolEvents?.slice(0, 2).map(event => event.brokerExecuted), [false, false]);
+    assert.equal(saved.execution.toolEvents?.[0].code, 'SOURCE_IDENTITY_REQUIRED');
+    assert.equal(saved.execution.sourceRefs?.length, 2);
+    assert.ok(saved.execution.sourceRefs?.every(ref => ref.kind === 'file'));
+  } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('explicit no-tool Chat omits the project broker while read-only requests retain it', async () => {
   const root = await fixture();
   const repository = new ChatRepository();

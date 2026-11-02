@@ -79,6 +79,15 @@ test('broker reads only candidate files under the fixed grant and isolated Linux
             arguments: { path: 'paged.ts', maxBytes: 1024, offset: Buffer.byteLength(source),
                 expectedSourceHash: sourceHash } }, undefined, workspace);
         assert.equal(JSON.parse(eof.output).text, '');
+        const invalid = await brokerLocalRead(request, { id: 'page-invalid', name: 'read',
+            arguments: { path: 'paged.ts', maxBytes: 1024, offset: Buffer.byteLength(source) + 1,
+                expectedSourceHash: sourceHash } }, undefined, workspace);
+        assert.equal(invalid.status, 'failed');
+        assert.match(invalid.output, /^INVALID_OFFSET:/);
+        const staleInvalid = await brokerLocalRead(request, { id: 'page-stale-invalid', name: 'read',
+            arguments: { path: 'paged.ts', maxBytes: 1024, offset: Buffer.byteLength(source) + 1,
+                expectedSourceHash: '0'.repeat(64) } }, undefined, workspace);
+        assert.equal(staleInvalid.status, 'denied');
         const foreign = await ExecutionWorkspace.create(project);
         try {
             await writeFile(join(foreign.root, 'paged.ts'), source);

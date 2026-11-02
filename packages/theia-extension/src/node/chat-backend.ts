@@ -94,7 +94,7 @@ export class ChatBackend implements ChatService {
     private readonly commandModes = new Map<string, ChatCommandMode>();
     private readonly pendingCommands = new Map<string, { preview: ChatCommandPreview; root: string;
         leaseToken: string; turn: AbortController; digest: string; sourceBasis: string;
-        finish: (decision: 'allow' | 'deny') => void }>();
+        finish: (decision: 'allow' | 'deny' | 'expired') => void }>();
     private readonly pendingCancel = new Map<string, string>();
     private readonly proposals = new Map<string, { id: string; messageId: string; leaseToken: string;
         handle?: string; request?: PlanningActionRequest; token?: string; changedIds: string[];
@@ -390,29 +390,29 @@ export class ChatBackend implements ChatService {
         pending.finish(allowOnce ? 'allow' : 'deny');
     }
     private async requestCommand(root: string, request: ChatTurnRequest, command: string,
-        turn: AbortController, sourceBasis: string): Promise<boolean> {
+        turn: AbortController, sourceBasis: string): Promise<'granted' | 'denied' | 'expired'> {
         if (typeof command !== 'string' || !command.trim() || Buffer.byteLength(command, 'utf8') > 2048 ||
             /[\x00-\x08\x0b-\x1f\x7f]/u.test(command)) throw new Error('Command request denied');
-        if (this.commandModes.get(request.chatId) === 'allow') return true;
+        if (this.commandModes.get(request.chatId) === 'allow') return 'granted';
         if (this.commandModes.get(request.chatId) !== 'ask' || this.pendingCommands.has(request.chatId))
             throw new Error('Command request unavailable');
         const preview: ChatCommandPreview = { id: randomUUID(), command, project: root, cwd: root,
             sandbox: 'Project read-only; private temporary files; no network or private home',
             effect: 'Runs only inside the bounded Linux sandbox after approval', expiresAt: Date.now() + 60_000 };
         const digest = createHash('sha256').update(command).digest('hex');
-        return new Promise<boolean>(resolve => {
+        return new Promise<'granted' | 'denied' | 'expired'>(resolve => {
             let settled = false;
-            const finish = (decision: 'allow' | 'deny') => {
+            const finish = (decision: 'allow' | 'deny' | 'expired') => {
                 if (settled) return;
                 settled = true; clearTimeout(timer); turn.signal.removeEventListener('abort', onAbort);
                 if (this.pendingCommands.get(request.chatId)?.preview.id === preview.id)
                     this.pendingCommands.delete(request.chatId);
                 if (this.handle) this.client.notifyChatEvent({ projectHandle: this.handle,
                     kind: 'command-settled', chatId: request.chatId, id: preview.id });
-                resolve(decision === 'allow');
+                resolve(decision === 'allow' ? 'granted' : decision === 'expired' ? 'expired' : 'denied');
             };
             const onAbort = () => finish('deny');
-            const timer = setTimeout(() => finish('deny'), 60_000);
+            const timer = setTimeout(() => finish('expired'), 60_000);
             this.pendingCommands.set(request.chatId, { preview, root, leaseToken: request.leaseToken,
                 turn, digest, sourceBasis, finish });
             turn.signal.addEventListener('abort', onAbort, { once: true });
@@ -1301,37 +1301,49 @@ export class ChatBackend implements ChatService {
                 if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
                 if (name === 'run_command') {
                     const record = args as Record<string, unknown>;
+                    const commandMode = this.commandModes.get(key) === 'allow' ? 'allow' : 'ask';
+                    const commandDigest = typeof record?.command === 'string' ?
+                        createHash('sha256').update(record.command).digest('hex') : undefined;
+                    const commandMeta = { commandMode, ...(commandDigest ? { commandDigest } : {}),
+                        brokerExecuted: false, commandExecuted: false } as const;
                     if (forbidsCommandExecution(content)) {
-                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        toolEvents.push({ name, status: 'denied', truncated: false, ...commandMeta,
+                            code: 'COMMAND_DENIED', stage: 'authority', approval: 'denied' });
                         return 'Command denied: the developer prohibited command execution in this turn';
                     }
                     if (!record || typeof record !== 'object' || Array.isArray(record) ||
                         Object.keys(record).length !== 1 || typeof record.command !== 'string') {
-                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        toolEvents.push({ name, status: 'denied', truncated: false, ...commandMeta,
+                            code: 'COMMAND_INVALID', stage: 'argument-validation', approval: 'denied' });
                         return 'Command denied: invalid request';
                     }
                     if (toolBytes >= 32 * 1024) {
-                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        toolEvents.push({ name, status: 'denied', truncated: false, ...commandMeta,
+                            code: 'OUTPUT_BUDGET', stage: 'output-budget', approval: 'denied' });
                         return 'Command denied: Chat tool output limit reached';
                     }
                     // The repository canonicalizes context references before saving the user turn.
                     // Bind approval to those canonical bytes, not the composer's field order.
                     const basis = createHash('sha256').update(JSON.stringify(preview.refs.map(parseChatContextRef))).digest('hex');
-                    let approved: boolean;
+                    let approved: 'granted' | 'denied' | 'expired';
                     try { approved = await this.requestCommand(root, request, record.command, abort, basis); }
                     catch {
-                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        toolEvents.push({ name, status: 'denied', truncated: false, ...commandMeta,
+                            code: 'COMMAND_INVALID', stage: 'argument-validation', approval: 'denied' });
                         return 'Command denied: invalid or unavailable request; no execution occurred';
                     }
-                    if (!approved) {
-                        toolEvents.push({ name, status: 'denied', truncated: false });
+                    if (approved !== 'granted') {
+                        toolEvents.push({ name, status: 'denied', truncated: false, ...commandMeta,
+                            code: approved === 'expired' ? 'COMMAND_EXPIRED' : 'COMMAND_DENIED',
+                            stage: 'authority', approval: approved });
                         return 'Command denied or expired; no execution occurred';
                     }
                     if (signal?.aborted || abort.signal.aborted || this.disposed ||
                         this.active(request.projectHandle) !== root ||
                         this.turns.get(key)?.abort !== abort ||
                         this.leases.get(key)?.token !== request.leaseToken) {
-                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        toolEvents.push({ name, status: 'denied', truncated: false, ...commandMeta,
+                            code: 'AUTHORITY_DENIED', stage: 'authority', approval: 'granted' });
                         return 'Command denied: Chat turn or project is no longer active';
                     }
                     const currentChat = (await this.repository.read(root).catch(() => undefined))?.chats
@@ -1339,7 +1351,8 @@ export class ChatBackend implements ChatService {
                     const currentUser = currentChat?.messages.filter(item => item.role === 'user').at(-1);
                     if (!currentUser || createHash('sha256').update(JSON.stringify(currentUser.contextRefs)).digest('hex') !==
                         basis) {
-                        toolEvents.push({ name, status: 'denied', truncated: false });
+                        toolEvents.push({ name, status: 'denied', truncated: false, ...commandMeta,
+                            code: 'AUTHORITY_DENIED', stage: 'authority', approval: 'granted' });
                         return 'Command denied: Chat source basis changed';
                     }
                     const commandSignal = signal ? AbortSignal.any([signal, abort.signal]) : abort.signal;
@@ -1350,7 +1363,8 @@ export class ChatBackend implements ChatService {
                     const bounded = output.subarray(0, remaining).toString('utf8');
                     toolBytes += Buffer.byteLength(bounded);
                     toolEvents.push({ name, status: !result.executed ? 'denied' : result.succeeded ? 'completed' : 'failed',
-                        truncated });
+                        truncated, ...commandMeta, brokerExecuted: true, commandExecuted: result.executed,
+                        approval: 'granted', ...(!result.executed ? { code: 'AUTHORITY_DENIED', stage: 'broker' } : {}) });
                     return bounded;
                 }
                 const allowed = ['read_file', 'list_files', 'search_paths', 'search_text'] as const;
@@ -1362,11 +1376,41 @@ export class ChatBackend implements ChatService {
                 const rangeRead = name === 'read_file' && keys.some(key => key !== 'path');
                 if (typeof record[field] !== 'string' || (rangeRead ?
                     keys.some(key => !['path', 'offset', 'maxBytes', 'expectedSourceHash'].includes(key)) :
-                    keys.length !== 1))
+                    keys.length !== 1)) {
+                    if (name === 'read_file') {
+                        toolEvents.push({ name, status: 'failed', truncated: false, code: 'INVALID_ARGUMENTS',
+                            stage: 'argument-validation', brokerExecuted: false });
+                        return 'INVALID_ARGUMENTS: Use a relative path and optional offset, maxBytes and expectedSourceHash.';
+                    }
                     throw new Error('Project discovery arguments denied');
+                }
                 const toolName = name as typeof allowed[number];
+                const rangeMeta = { ...(record.offset === undefined ? { offset: 0 } :
+                    Number.isSafeInteger(record.offset) && (record.offset as number) >= 0 ?
+                        { offset: record.offset as number } : {}),
+                    ...(record.maxBytes === undefined ? { pageSize: 4096 } :
+                        Number.isSafeInteger(record.maxBytes) && (record.maxBytes as number) >= 0 ?
+                            { pageSize: record.maxBytes as number } : {}),
+                    sourceHashSupplied: record.expectedSourceHash !== undefined };
                 try {
                     if (rangeRead) {
+                        const invalid = !Number.isSafeInteger(record.offset ?? 0) || (record.offset as number ?? 0) < 0 ?
+                            ['INVALID_OFFSET', 'Use a nonnegative UTF-8 byte offset.'] :
+                            !Number.isSafeInteger(record.maxBytes ?? 4096) || (record.maxBytes as number ?? 4096) < 1 ||
+                            (record.maxBytes as number ?? 4096) > 4096 ?
+                            ['INVALID_PAGE_SIZE', 'Use a page size from 1 to 4096 bytes.'] :
+                            record.expectedSourceHash !== undefined &&
+                            (typeof record.expectedSourceHash !== 'string' ||
+                            !/^[a-f0-9]{64}$/u.test(record.expectedSourceHash)) ?
+                            ['INVALID_SOURCE_IDENTITY', 'Use the sourceHash returned by the first page.'] :
+                            (record.offset as number ?? 0) > 0 && !record.expectedSourceHash ?
+                            ['SOURCE_IDENTITY_REQUIRED', 'Start with offset 0 to obtain sourceHash, then retry the later range.'] : undefined;
+                        if (invalid) {
+                            toolEvents.push({ name: toolName, status: 'failed', truncated: false,
+                                code: invalid[0] as 'INVALID_OFFSET', stage: 'argument-validation',
+                                brokerExecuted: false, ...rangeMeta });
+                            return `${invalid[0]}: ${invalid[1]}`;
+                        }
                         const remaining = 32 * 1024 - toolBytes;
                         if (remaining < 8200) throw new Error('Project discovery output limit reached');
                         const page = await this.grounder!.readFileRange(root, record.path as string,
@@ -1385,7 +1429,8 @@ export class ChatBackend implements ChatService {
                             estimatedTokens: Math.ceil(Buffer.byteLength(page.text, 'utf8') / 3) + 4,
                             contentHash: createHash('sha256').update(page.text).digest('hex'),
                             sourceHash: page.sourceHash });
-                        toolEvents.push({ name: toolName, status: 'completed', truncated: page.truncated });
+                        toolEvents.push({ name: toolName, status: 'completed', truncated: page.truncated,
+                            stage: 'broker', brokerExecuted: true, ...rangeMeta, endOffset: page.endOffset });
                         return payload;
                     }
                     const result = name === 'read_file' ? await this.grounder!.readFile(root, record.path as string) :
@@ -1403,16 +1448,30 @@ export class ChatBackend implements ChatService {
                     sourceRefs.push({ ...block.ref, origin: 'tool', includedBytes: Buffer.byteLength(excerpt),
                         estimatedTokens: Math.ceil(Buffer.byteLength(excerpt) / 3) + 4,
                         contentHash: createHash('sha256').update(excerpt).digest('hex') });
-                    toolEvents.push({ name: toolName, status: 'completed', truncated });
+                    toolEvents.push({ name: toolName, status: 'completed', truncated,
+                        stage: 'broker', brokerExecuted: true });
                     const payload = JSON.stringify({ source: block.ref.id, kind: block.ref.kind,
                         contentHash: sourceRefs.at(-1)!.contentHash, sourceHash: block.ref.sourceHash, truncated,
                         omitted: result.diagnostics.some(item => item.kind === 'omitted'), text: excerpt });
                     return payload;
                 } catch (error) {
-                    toolEvents.push({ name: toolName, status: 'denied', truncated: false });
-                    if (rangeRead && error instanceof Error &&
-                        ['Stale file continuation', 'Project file changed during read'].includes(error.message))
-                        throw new Error('Stale file continuation; reread from offset 0');
+                    const message = error instanceof Error ? error.message : '';
+                    const code = message === 'Project discovery output limit reached' ||
+                        message === 'File page cannot fit output budget' ? 'OUTPUT_BUDGET' :
+                        message === 'Stale file continuation' || message === 'Project file changed during read' ?
+                        'STALE_SOURCE' : message === 'Invalid file range' ||
+                        message === 'Offset splits UTF-8 character' ? 'INVALID_OFFSET' : undefined;
+                    if (rangeRead && code) {
+                        toolEvents.push({ name: toolName, status: 'failed', truncated: false, code,
+                            stage: code === 'OUTPUT_BUDGET' ? 'output-budget' :
+                                code === 'STALE_SOURCE' ? 'source-identity' : 'argument-validation',
+                            brokerExecuted: code !== 'OUTPUT_BUDGET', ...rangeMeta });
+                        return code === 'STALE_SOURCE' ? 'STALE_SOURCE: Reread from offset 0 to obtain a fresh sourceHash.' :
+                            code === 'OUTPUT_BUDGET' ? 'OUTPUT_BUDGET: Use a smaller page or finish with available evidence.' :
+                            'INVALID_OFFSET: Use an offset within the file at a UTF-8 boundary.';
+                    }
+                    toolEvents.push({ name: toolName, status: 'denied', truncated: false,
+                        code: 'AUTHORITY_DENIED', stage: 'authority', brokerExecuted: true });
                     throw new Error('Project discovery denied or unavailable');
                 }
                 })(); } finally {

@@ -191,6 +191,59 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
     }
 });
 
+test('Pi Work read parser feedback permits a corrected candidate page in the same run', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-recovery-'));
+    const project = join(parent, 'project');
+    let workspace: ExecutionWorkspace | undefined;
+    const observed: any[] = [];
+    const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>) {
+        const malformed = await tool({ id: 1, name: 'read_file', arguments: { path: 'CANDIDATE.txt', offset: 9000 } });
+        observed.push(malformed);
+        observed.push(await tool({ id: 2, name: 'read_file', arguments: {
+            path: 'CANDIDATE.txt', offset: 0, maxBytes: 0 } }));
+        const first = await tool({ id: 3, name: 'read_file', arguments: { path: 'CANDIDATE.txt', offset: 0 } });
+        observed.push(first);
+        const page = JSON.parse(first.output);
+        observed.push(await tool({ id: 4, name: 'read_file', arguments: {
+            path: 'CANDIDATE.txt', offset: page.fileBytes + 1,
+            expectedSourceHash: page.sourceHash } }));
+        const later = await tool({ id: 5, name: 'read_file', arguments: {
+            path: 'CANDIDATE.txt', offset: Math.min(9000, page.fileBytes),
+            expectedSourceHash: page.sourceHash } });
+        observed.push(later);
+        return { modelId: 'fixture-model', text: 'Candidate read complete' };
+    }, dispose() {} };
+    const factory: any = { create() { return host; }, release() {} };
+    try {
+        await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
+        workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'CANDIDATE.txt'), `${'safe candidate line\n'.repeat(650)}TAIL-9247\n`);
+        const original = await readFile(join(workspace.root, 'CANDIDATE.txt'));
+        const grant = createDefaultExecutionGrant({ id: 'grant-recovery', revision: 0,
+            taskId: 'task-recovery', acceptedAt: new Date().toISOString() });
+        const events: any[] = [];
+        const adapter = new PiWorkExecutionAdapter({ async bind() { return { endpoint: 'http://127.0.0.1:9/v1' }; },
+            async assertWorkSelection() {} } as any, factory, () => workspace!, () => []);
+        const handle = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            grant, taskId: 'task-recovery', connectionId: 'local', registrationId: 'local',
+            modelId: 'fixture-model', prompt: 'Read candidate', onEvent: event => events.push(event) });
+        await handle.result;
+        assert.equal(observed[0].status, 'failed');
+        assert.match(observed[0].output, /SOURCE_IDENTITY_REQUIRED/);
+        assert.equal(observed[1].status, 'failed');
+        assert.match(observed[1].output, /INVALID_PAGE_SIZE/);
+        assert.equal(observed[2].status, 'completed');
+        assert.equal(observed[3].status, 'failed');
+        assert.match(observed[3].output, /INVALID_OFFSET/);
+        assert.equal(observed[4].status, 'completed');
+        assert.ok(JSON.parse(observed[4].output).endOffset > 8192);
+        assert.ok(events.some(event => /SOURCE_IDENTITY_REQUIRED; offset 9000;.*broker not executed/.test(event.summary)));
+        assert.equal(events.some(event => event.kind === 'authority-denied'), false);
+        assert.deepEqual(await readFile(join(workspace.root, 'CANDIDATE.txt')), original);
+        adapter.dispose();
+    } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
+});
+
 test('Pi Work retains sanitized command pages without rerunning the approved command', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-output-'));
     const project = join(parent, 'project');
@@ -230,8 +283,10 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
             const now = Date.now;
             Date.now = () => now() + 120_001;
             try {
-                await assert.rejects(onTool({ id: 3, name: 'read_command_output',
-                    arguments: { handle: initial.handle, offset: 0, maxBytes: 128 } }), /denied/);
+                const expired = await onTool({ id: 3, name: 'read_command_output',
+                    arguments: { handle: initial.handle, offset: 0, maxBytes: 128 } });
+                assert.equal(expired.status, 'failed');
+                assert.match(expired.output, /OUTPUT_HANDLE_EXPIRED/);
             } finally { Date.now = now; }
             revoked = true;
             await assert.rejects(onTool({ id: 4, name: 'read_command_output',

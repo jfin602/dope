@@ -104,8 +104,11 @@ try:
    text=data.decode('utf-8')
    if re.search(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\\b|\\b(?:access[_-]?token|api[_-]?key|password|secret|token|authorization)\\s*[:=]\\s*\\S+|\\bBearer\\s+\\S+|<think\\b|(?:^|[\\s"\\x27(])(?:/[A-Za-z0-9._~-]+/[^\\s"\\x27)]+|[A-Za-z]:\\\\Users\\\\[^\\s"\\x27)]+)',text,re.I): denied()
    start=int(offset)
-   if start<0 or start>len(data): denied()
-   data[:start].decode('utf-8')
+   if start<0 or start>len(data):
+    print(json.dumps({'status':'invalid-range','fileBytes':len(data),'digest':hashlib.sha256(data).hexdigest()})); sys.exit(0)
+   try: data[:start].decode('utf-8')
+   except UnicodeDecodeError:
+    print(json.dumps({'status':'invalid-range','fileBytes':len(data),'digest':hashlib.sha256(data).hexdigest()})); sys.exit(0)
    end=min(len(data),start+limit)
    while end>start:
     try: page=data[start:end].decode('utf-8'); break
@@ -223,6 +226,16 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
         if (!response || typeof response !== 'object') return result(call, 'failed');
         const wire = response as Record<string, unknown>;
         if (wire.status === 'denied') return result(call, 'denied');
+        if (wire.status === 'invalid-range' && call.name === 'read' && ranged) {
+            if (!Number.isSafeInteger(wire.fileBytes) || (wire.fileBytes as number) < 0 ||
+                typeof wire.digest !== 'string' || !/^[a-f0-9]{64}$/u.test(wire.digest)) return result(call, 'denied');
+            const sourceHash = createHash('sha256').update(JSON.stringify([
+                workspace!.id, workspace!.projectRoot, workspace!.root, call.arguments.path,
+                candidateHash, wire.digest])).digest('hex');
+            if (call.arguments.expectedSourceHash && call.arguments.expectedSourceHash !== sourceHash ||
+                await workspace!.fingerprint() !== candidateHash) return result(call, 'denied');
+            return result(call, 'failed', 'INVALID_OFFSET: Use a byte offset within the file at a UTF-8 boundary.');
+        }
         if (wire.status !== 'completed' || typeof wire.truncated !== 'boolean') return result(call, 'failed');
         let output: string;
         if (call.name === 'read') {

@@ -77,7 +77,11 @@ export interface ChatExecution {
     sourceRefs?: ChatContextRef[];
     toolEvents?: { name: 'read_file' | 'list_files' | 'search_paths' | 'search_text' | 'run_command' |
         'dope_read' | 'dope_list' | 'dope_search_paths' | 'dope_search_text' | 'dope_command';
-        status: 'completed' | 'failed' | 'denied'; truncated: boolean }[];
+        status: 'completed' | 'failed' | 'denied'; truncated: boolean;
+        code?: string; stage?: string; brokerExecuted?: boolean;
+        offset?: number; pageSize?: number; sourceHashSupplied?: boolean; endOffset?: number;
+        commandMode?: 'ask' | 'allow'; approval?: 'granted' | 'denied' | 'expired';
+        commandExecuted?: boolean; commandDigest?: string }[];
 }
 export interface ChatUserMessage {
     schemaVersion: 1;
@@ -194,6 +198,15 @@ function time(value: unknown): string {
 function count(value: unknown, label: string, positive = false): number {
     if (!Number.isSafeInteger(value) || (value as number) < (positive ? 1 : 0)) throw new Error(`Invalid ${label}`);
     return value as number;
+}
+function boolean(value: unknown, label: string): boolean {
+    if (typeof value !== 'boolean') throw new Error(`Invalid ${label}`);
+    return value;
+}
+function nonnegativeInteger(value: unknown, label: string): number { return count(value, label); }
+function sha256(value: unknown, label: string): string {
+    if (typeof value !== 'string' || !/^[a-f0-9]{64}$/u.test(value)) throw new Error(`Invalid ${label}`);
+    return value;
 }
 function choice<T extends string>(value: unknown, values: readonly T[], label: string): T {
     if (!values.includes(value as T)) throw new Error(`Invalid ${label}`);
@@ -361,12 +374,31 @@ function parseExecution(value: unknown): ChatExecution {
     if (v.toolEvents !== undefined) {
         if (!Array.isArray(v.toolEvents) || v.toolEvents.length > 20) throw new Error('Invalid Chat tool events');
         execution.toolEvents = v.toolEvents.map(item => {
-            const event = record(item, ['name', 'status', 'truncated'], ['name', 'status', 'truncated']);
+            const event = record(item, ['name', 'status', 'truncated', 'code', 'stage', 'brokerExecuted',
+                'offset', 'pageSize', 'sourceHashSupplied', 'endOffset', 'commandMode', 'approval',
+                'commandExecuted', 'commandDigest'], ['name', 'status', 'truncated']);
             if (typeof event.truncated !== 'boolean') throw new Error('Invalid Chat tool truncation');
             return { name: choice(event.name, ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command',
                 'dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command'] as const,
                 'Chat tool'), status: choice(event.status, ['completed', 'failed', 'denied'] as const, 'Chat tool status'),
-                truncated: event.truncated };
+                truncated: event.truncated,
+                ...(event.code === undefined ? {} : { code: choice(event.code, ['INVALID_ARGUMENTS',
+                    'INVALID_OFFSET', 'INVALID_PAGE_SIZE', 'SOURCE_IDENTITY_REQUIRED',
+                    'INVALID_SOURCE_IDENTITY', 'STALE_SOURCE', 'OUTPUT_BUDGET', 'AUTHORITY_DENIED',
+                    'COMMAND_INVALID', 'COMMAND_DENIED', 'COMMAND_EXPIRED'] as const, 'Chat tool code') }),
+                ...(event.stage === undefined ? {} : { stage: choice(event.stage,
+                    ['schema', 'argument-validation', 'source-identity', 'output-budget', 'broker', 'authority'] as const,
+                    'Chat tool stage') }),
+                ...(event.brokerExecuted === undefined ? {} : { brokerExecuted: boolean(event.brokerExecuted, 'broker execution') }),
+                ...(event.offset === undefined ? {} : { offset: nonnegativeInteger(event.offset, 'tool offset') }),
+                ...(event.pageSize === undefined ? {} : { pageSize: nonnegativeInteger(event.pageSize, 'tool page size') }),
+                ...(event.sourceHashSupplied === undefined ? {} : { sourceHashSupplied: boolean(event.sourceHashSupplied, 'source hash supplied') }),
+                ...(event.endOffset === undefined ? {} : { endOffset: nonnegativeInteger(event.endOffset, 'tool end offset') }),
+                ...(event.commandMode === undefined ? {} : { commandMode: choice(event.commandMode, ['ask', 'allow'] as const, 'command mode') }),
+                ...(event.approval === undefined ? {} : { approval: choice(event.approval,
+                    ['granted', 'denied', 'expired'] as const, 'command approval') }),
+                ...(event.commandExecuted === undefined ? {} : { commandExecuted: boolean(event.commandExecuted, 'command executed') }),
+                ...(event.commandDigest === undefined ? {} : { commandDigest: sha256(event.commandDigest, 'command digest') }) };
         });
     }
     if (execution.actualModel && execution.actualModel.connectionId !== execution.selectedModel.connectionId &&
