@@ -35,6 +35,14 @@
 - Do not render a separate Project activity block or a `Surfaced Reasoning` heading. Do not repeat the committed final answer inside the reasoning disclosure or Copy with Reasoning.
 - Keep user bubbles and assistant text aligned with the existing chat transcript. Reasoning uses the chat background and shares the assistant content edges, without a card border.
 
+## Inline Roadmap proposal cards (2026-11-01 owner refinement)
+
+- A newly validated reviewable Roadmap edit proposal is represented by **one card inside its originating assistant's committed final response**, after the explanatory answer text and immediately above that response's Copy/Info/timestamp footer. The normal Working/Finished activity disclosure remains outside the final answer. Do not append a separate assistant message, “Roadmap change” activity row, duplicate status line, or nested activity wrapper for the same proposal. The existing underlying activity/event, decision and audit data are retained.
+- The proposal card occupies **100% of the available assistant-content width**, respecting the normal Chat transcript padding; remove unnecessary nested max-width constraints and avoid horizontal clipping. At narrow dock widths, actions wrap, descriptions and diffs remain inspectable, and the overall transcript does not gain a horizontal scrollbar. Preserve keyboard focus, screen-reader status, reduced-motion, selection and drag/touch scrolling.
+- While pending and valid, the card presents an exact bounded change summary, expandable details/diagnostic diff, current source/revision status, and **Apply (Accept)**, **Reject** and **View in Roadmap** where supported. These are the existing reviewed backend actions, not new approval authority.
+- On a verified decision or invalidation, **the same card at the same transcript position** transitions into a compact, optionally expandable historical state: applied, developer-rejected, denied, stale, failed, cancelled or superseded as actually evidenced. Do not retain a live Apply action on a historical/expired review. Preserve proposal-to-originating-turn identity across multiple turns, rerenders and saved Chat reopening, without duplicating cards.
+- Keep the ordinary clean Copy/Copy Transcript behavior and the existing separate diagnostic Copy with Reasoning behavior. The card must not cause raw debug payloads or private approval tokens to enter ordinary copied text. See [Roadmap proposal lifecycle](../planning/p12/roadmap-proposal-lifecycle-and-publication.md) and [hybrid canvas preview](../planning/p12/chat-roadmap-hybrid-proposal-review.md) for the authoritative preview/approval and active-tab-only auto-preview rules.
+
 ## Response footer and copy
 
 - Directly below the final answer or `No final response`, use one row: Copy and Info controls on the left; the turn's date and time on the right, for example `10/31/2026, 2:54:10 PM`.
