@@ -762,5 +762,45 @@
     "qualification": { "extensionBuildPassed": true, "focusedTestsPassed": 45,
       "roadmapLocalTestsPassedSeparately": 21,
       "combinedRunTemporaryDirectoryCleanupRaceObserved": true }
+  },
+  "c3ANativeCompaction": {
+    "date": "2026-11-02",
+    "disposition": "DETERMINISTIC_LIFECYCLE_PASSED_LIVE_PENDING",
+    "entryAndFinalHead": "1ba567ef4ae95bbcf66bb2946ab2298cb585dd66",
+    "branch": "main",
+    "packageVersion": "0.12.7",
+    "sourceEditsUncommitted": true,
+    "method": "Pinned Pi 1.4.0 worker with controlled OpenAI-compatible synthetic responses; compaction timing and sizes observed from bounded worker diagnostics",
+    "contextWindowTokens": 4096,
+    "providerUsageTokens": null,
+    "liveModelCompactionObserved": false,
+    "chatFixture": {
+      "trigger": "threshold",
+      "tokensBeforeEstimate": 5696,
+      "tokensAfterEstimate": 617,
+      "estimatedDifferenceTokens": 5079,
+      "summaryUtf8Bytes": 91,
+      "durationMs": 45,
+      "summarizationRequests": 1,
+      "subsequentNormalRequests": 1
+    },
+    "workFixture": {
+      "trigger": "threshold",
+      "tokensBeforeEstimate": 3124,
+      "tokensAfterEstimate": 1125,
+      "estimatedDifferenceTokens": 1999,
+      "summaryUtf8Bytes": 189,
+      "durationMs": 3,
+      "approvedCommandExecutions": 1,
+      "fileReads": 15,
+      "compactionEvents": 1,
+      "continuedAfterCompaction": true
+    },
+    "qualification": {
+      "focusedTestsPassed": 41,
+      "finalWorkerAndHistoryRefinementPassed": 21,
+      "extensionBuildPassed": true,
+      "liveStatus": "PENDING"
+    }
   }
 }

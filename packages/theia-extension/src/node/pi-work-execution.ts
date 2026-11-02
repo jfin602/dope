@@ -87,6 +87,15 @@ export function piWorkObservation(event: PiWorkEvent):
             { kind: 'provider-event', summary: `Pi ${event.toolName} ended` };
         case 'reasoning': case 'reasoning_omitted':
             return { kind: 'provider-event', summary: 'Pi reasoning observation' };
+        case 'compaction_succeeded': {
+            const details = [`${event.reason} trigger`,
+                `estimated context ${event.tokensBeforeEstimate} → ${event.tokensAfterEstimate ?? 'unavailable'} tokens`,
+                `${event.summaryBytes} summary bytes`, `${event.durationMs} ms`];
+            if (event.summarizationTokensReported !== undefined)
+                details.push(`${event.summarizationTokensReported} provider reported summarization tokens`);
+            return { kind: 'provider-event', summary: `Context compacted (${details.join('; ')})` };
+        }
+        case 'compaction_failed': return { kind: 'warning', summary: `Context compaction failed (${event.reason})` };
     }
 }
 
@@ -387,8 +396,6 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (![value.originalSha256, value.compactedSha256].every(item => /^[a-f0-9]{64}$/.test(item)) ||
                         !Number.isSafeInteger(value.tokensBefore) || value.tokensBefore < 0)
                         throw new Error('Pi context identity invalid');
-                    request.onEvent({ kind: 'provider-event',
-                        summary: `Pi exact context compacted: original ${value.originalSha256}, compacted ${value.compactedSha256}, tokens before ${value.tokensBefore}` });
                 }
                 if (answer.usage?.tokenMeasurement === 'provider-reported')
                     request.onEvent({ kind: 'provider-event', summary:

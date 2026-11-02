@@ -38,6 +38,17 @@ function runtime(store: AgentStore, adapter: any): AgentExecutionRuntime {
         async () => ({ available: true }) as any);
 }
 
+test('compaction observations label estimates and never expose a private summary', () => {
+    const success = piWorkObservation({ type: 'work', sequence: 1, kind: 'compaction_succeeded',
+        reason: 'threshold', durationMs: 24, tokensBeforeEstimate: 3200,
+        tokensAfterEstimate: 900, summaryBytes: 180 });
+    assert.match(success.summary, /^Context compacted \(threshold trigger; estimated context 3200 → 900 tokens/);
+    assert.doesNotMatch(success.summary, /tokens saved|private summary/u);
+    assert.deepEqual(piWorkObservation({ type: 'work', sequence: 2,
+        kind: 'compaction_failed', reason: 'overflow' }),
+    { kind: 'warning', summary: 'Context compaction failed (overflow)' });
+});
+
 test('two fresh Pi-mapped Work candidates retain transcript and History identities through restart and review',
     { timeout: 120_000 }, async () => {
         for (const decision of ['reject', 'accept'] as const) {
@@ -57,9 +68,12 @@ test('two fresh Pi-mapped Work candidates retain transcript and History identiti
                         output: 'test failed safely', outputTruncated: false });
                     request.onEvent(piWorkObservation({ type: 'work', sequence: 3,
                         kind: 'tool_execution_end', toolName: 'run_command', isError: true }));
+                    request.onEvent(piWorkObservation({ type: 'work', sequence: 4,
+                        kind: 'compaction_succeeded', reason: 'threshold', durationMs: 24,
+                        tokensBeforeEstimate: 3200, tokensAfterEstimate: 900, summaryBytes: 180 }));
                     await writeFile(join(request.executionRoot, candidatePath), `${decision} candidate\n`);
                     request.onEvent({ kind: 'file-changed', summary: 'Candidate file changed', path: candidatePath });
-                    request.onEvent(piWorkObservation({ type: 'work', sequence: 4, kind: 'agent_end' }));
+                    request.onEvent(piWorkObservation({ type: 'work', sequence: 5, kind: 'agent_end' }));
                 });
                 return { result, async cancel() {} };
             }, dispose() {} };
@@ -96,12 +110,16 @@ test('two fresh Pi-mapped Work candidates retain transcript and History identiti
                 const events = (await store.readEvents(root, held.id, 0, 100)).events;
                 assert.ok(events.some(event => event.summary === 'Pi session started'));
                 assert.ok(events.some(event => event.summary === 'Pi run_command failed'));
+                assert.equal(events.filter(event => event.summary.startsWith('Context compacted')).length, 1);
+                assert.ok(events.some(event => event.summary.includes('estimated context 3200 → 900 tokens')));
                 assert.ok(events.every(event => event.runId === held.id));
                 await runRuntime.dispose(); runRuntime = undefined;
                 const freshStore = new AgentStore();
                 restarted = runtime(freshStore, adapter);
                 await restarted.reconcile(root);
                 assert.deepEqual((await freshStore.readTranscript(root, held.id, 0, 100)).entries, before.entries);
+                assert.ok((await freshStore.readEvents(root, held.id, 0, 100)).events.some(event =>
+                    event.summary.startsWith('Context compacted')));
                 const historyBefore = await readHistoryWorkGitMetadata({ projectRoot: root, projectId: 'fixture-project' },
                     new Date().toISOString(), freshStore);
                 const entryBefore = historyBefore.entries.find(entry => entry.owner.kind === 'agent-run' && entry.owner.runId === held.id);

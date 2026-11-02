@@ -48,7 +48,7 @@ test('versioned Chat round trips with explicit execution and context provenance'
   assert.deepEqual(moved.messages[1], chat.messages[1]);
 });
 
-test('Chat retains only validated exact Pi compaction identities', () => {
+test('Chat retains only validated Pi compaction identities', () => {
   const chat = sampleChat();
   const assistant = chat.messages[1] as ChatAssistantMessage;
   const compaction = { canonicalContextSha256: 'a'.repeat(64), originalSha256: 'b'.repeat(64),

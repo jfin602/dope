@@ -10,8 +10,12 @@ export interface PiRuntimeDiagnostics {
 
 export type PiWorkEvent = { type: 'work'; sequence: number;
     kind: 'agent_start' | 'turn_start' | 'turn_end' | 'agent_end' | 'agent_settled' |
-        'tool_execution_start' | 'tool_execution_end' | 'reasoning' | 'reasoning_omitted';
-    toolName?: string; isError?: boolean; aborted?: boolean; text?: string; truncated?: boolean };
+        'tool_execution_start' | 'tool_execution_end' | 'reasoning' | 'reasoning_omitted' |
+        'compaction_succeeded' | 'compaction_failed';
+    toolName?: string; isError?: boolean; aborted?: boolean; text?: string; truncated?: boolean;
+    reason?: 'threshold' | 'overflow' | 'manual'; durationMs?: number;
+    tokensBeforeEstimate?: number; tokensAfterEstimate?: number; summaryBytes?: number;
+    summarizationTokensReported?: number };
 export interface PiContextRecord { originalSha256: string; compactedSha256: string; tokensBefore: number }
 export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; totalTokens?: number;
     reasoningTokens?: number;
@@ -223,9 +227,11 @@ export class PiRuntimeHost {
                         const event = record.event;
                         if (!pending.onTool || !pending.onEvent || !Number.isSafeInteger(event.sequence) ||
                             event.sequence !== (pending.lastWorkSequence ?? 0) + 1 || event.sequence > 512 ||
-                            Object.keys(event).some(key => !['type', 'sequence', 'kind', 'toolName', 'isError', 'aborted', 'text', 'truncated'].includes(key)) ||
+                            Object.keys(event).some(key => !['type', 'sequence', 'kind', 'toolName', 'isError', 'aborted', 'text', 'truncated',
+                                'reason', 'durationMs', 'tokensBeforeEstimate', 'tokensAfterEstimate', 'summaryBytes', 'summarizationTokensReported'].includes(key)) ||
                             !['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled',
-                                'tool_execution_start', 'tool_execution_end', 'reasoning', 'reasoning_omitted'].includes(event.kind) ||
+                                'tool_execution_start', 'tool_execution_end', 'reasoning', 'reasoning_omitted',
+                                'compaction_succeeded', 'compaction_failed'].includes(event.kind) ||
                             (event.toolName !== undefined && (!['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']
                                 .includes(event.toolName) || !event.kind.startsWith('tool_execution_'))) ||
                             (event.kind.startsWith('tool_execution_') !== (event.toolName !== undefined)) ||
@@ -234,7 +240,20 @@ export class PiRuntimeHost {
                                 (event.truncated !== undefined && typeof event.truncated !== 'boolean') :
                                 event.text !== undefined || event.truncated !== undefined) ||
                             (event.isError !== undefined && (event.kind !== 'tool_execution_end' || typeof event.isError !== 'boolean')) ||
-                            (event.aborted !== undefined && (event.kind !== 'agent_settled' || typeof event.aborted !== 'boolean')))
+                            (event.aborted !== undefined && (event.kind !== 'agent_settled' || typeof event.aborted !== 'boolean')) ||
+                            (event.kind.startsWith('compaction_') ?
+                                !['threshold', 'overflow', 'manual'].includes(event.reason ?? '') ||
+                                ['durationMs', 'tokensBeforeEstimate', 'tokensAfterEstimate', 'summaryBytes',
+                                    'summarizationTokensReported'].some(key => {
+                                    const value = event[key as keyof PiWorkEvent];
+                                    return value !== undefined && (typeof value !== 'number' ||
+                                        !Number.isSafeInteger(value) || value < 0);
+                                }) || event.kind === 'compaction_succeeded' &&
+                                (event.durationMs === undefined || event.tokensBeforeEstimate === undefined ||
+                                    event.summaryBytes === undefined) :
+                                event.reason !== undefined || event.durationMs !== undefined ||
+                                event.tokensBeforeEstimate !== undefined || event.tokensAfterEstimate !== undefined ||
+                                event.summaryBytes !== undefined || event.summarizationTokensReported !== undefined))
                             throw new Error('Invalid Pi Work event');
                         pending.lastWorkSequence = event.sequence;
                     } else if ((record.event.type !== 'delta' &&

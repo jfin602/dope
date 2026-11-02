@@ -297,8 +297,12 @@ export class AgentExecutionRuntime {
             observation.kind.startsWith('command-') ? 'process' : observation.kind === 'authority-denied' ?
                 'authority' : 'message';
         const observedSummary = 'summary' in observation ? observation.summary : '';
-        const piSummary = /^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|(?:read_file|list_files|edit_file|run_command|dope_(?:read|list|edit|process)) (?:started|ended|failed)|Work tool stopped at (?:request-check|request-parse|workspace-check|model-check|candidate-check|broker-execute))$/u
-            .test(observedSummary) ? observedSummary : undefined;
+        const piSummary = (/^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|(?:read_file|list_files|edit_file|run_command|dope_(?:read|list|edit|process)) (?:started|ended|failed)|Work tool stopped at (?:request-check|request-parse|workspace-check|model-check|candidate-check|broker-execute))$/u
+            .test(observedSummary) ||
+            /^Context compacted \((?:threshold|overflow|manual) trigger; estimated context \d+ → (?:\d+|unavailable) tokens; \d+ summary bytes; \d+ ms(?:; \d+ provider reported summarization tokens)?\)$/u
+                .test(observedSummary) ||
+            /^Context compaction failed \((?:threshold|overflow|manual)\)$/u.test(observedSummary)) ?
+            observedSummary : undefined;
         const summary = piSummary ?? (observation.kind === 'agent-message' ? 'Agent message received' :
             observation.kind === 'command-started' ? 'Project command started' :
             observation.kind === 'command-completed' ? 'Project command completed' :

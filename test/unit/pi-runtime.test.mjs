@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { dispatch, compactExact, frameStreamEvent } from '../../packages/pi-runtime/worker.mjs';
+import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent } from '../../packages/pi-runtime/worker.mjs';
 import { resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { runChatInvestigationCommand } from '../../packages/theia-extension/lib/node/chat-command-broker.js';
 
@@ -53,45 +53,46 @@ test('bundled Pi constructs and disposes without tools or project extensions', a
   }
 });
 
-test('Pi compaction preserves exact repeated history and refuses overflow retry', () => {
-  const repeated = { role: 'toolResult', toolCallId: 'same', toolName: 'read_file',
-    content: [{ type: 'text', text: 'source-sha256=abc; accepted=no-write; candidate-diff=reviewed' }] };
-  const messages = Array.from({ length: 40 }, () => repeated);
-  const preparation = { previousSummary: undefined, messagesToSummarize: messages,
+test('Pi allows native threshold compaction but rejects effect-uncertain overflow replay', () => {
+  const preparation = { previousSummary: undefined,
+    messagesToSummarize: [{ role: 'toolResult', toolName: 'read_file',
+      content: [{ type: 'text', text: 'status: failed; source unavailable' }] }],
     turnPrefixMessages: [], tokensBefore: 3500, firstKeptEntryId: 'entry-41' };
-  const result = compactExact({ preparation, willRetry: false });
-  assert.ok(result.compaction);
-  const summary = JSON.parse(result.compaction.summary);
-  assert.equal(summary.format, 'dope-pi-exact-v1');
-  assert.equal(summary.entries.length, messages.length);
-  assert.deepEqual(summary.entries.slice(1), Array.from({ length: 39 }, () => ({ repeatOf: 0 })));
-  assert.equal(summary.entries[0].content[0].text,
-    'source-sha256=abc; accepted=no-write; candidate-diff=reviewed');
-  assert.equal(result.compaction.firstKeptEntryId, 'entry-41');
-  assert.deepEqual(compactExact({ preparation, willRetry: true }), { cancel: true });
-  assert.deepEqual(compactExact({ preparation: { ...preparation,
-    messagesToSummarize: [repeated] }, willRetry: false }), { cancel: true });
+  assert.equal(beforeNativeCompaction({ preparation, reason: 'threshold', willRetry: false }), undefined);
+  const result = nativeCompactionOutcome({ type: 'compaction_end', reason: 'threshold', aborted: false,
+    willRetry: false, result: { summary: 'Read failed; verify source again.', tokensBefore: 3500,
+      estimatedTokensAfter: 900, usage: { totalTokens: 500 } } });
+  assert.equal(result.success, true);
+  assert.equal(result.tokensBeforeEstimate, 3500);
+  assert.equal(result.tokensAfterEstimate, 900);
+  assert.equal(result.summarizationTokensReported, 500);
+  assert.equal(result.summaryBytes, Buffer.byteLength('Read failed; verify source again.'));
+  assert.deepEqual(beforeNativeCompaction({ preparation, reason: 'overflow', willRetry: true }), { cancel: true });
+  assert.deepEqual(nativeCompactionOutcome({ type: 'compaction_end', reason: 'overflow', aborted: true,
+    willRetry: false }), { success: false, reason: 'overflow' });
 });
 
-test('Pi exact compaction can trigger on synthetic near-limit Chat history', async () => {
+test('Pi native compaction summarizes unique older Chat history and keeps current constraints', async () => {
   const originalFetch = globalThis.fetch;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-compact-'));
   const bodies = [];
   try {
     globalThis.fetch = async (_url, options) => {
-      bodies.push(JSON.parse(options.body));
+      const body = JSON.parse(options.body);
+      bodies.push(body);
+      const summarizing = JSON.stringify(body.messages).includes('context summarization assistant');
       const chunks = [
-        'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"offline-fixture","choices":[{"index":0,"delta":{"role":"assistant","content":"constraint-A retained"},"finish_reason":null}]}\n\n',
+        `data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"offline-fixture","choices":[{"index":0,"delta":{"role":"assistant","content":${JSON.stringify(summarizing ? '## Goal\nRecall constraint-A.\n## Progress\nRead failed; command denied. Recheck Dope records.' : 'constraint-A retained')}},"finish_reason":null}]}\n\n`,
         'data: {"id":"fixture","object":"chat.completion.chunk","created":1,"model":"offline-fixture","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\n',
         'data: [DONE]\n\n'
       ];
       return new Response(chunks.join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
     };
     await dispatch({ type: 'open', cwd, model });
-    const messages = [{ role: 'system', content: 'Approved constraint-A; source-sha256=abc; no canonical writes.' }];
+    const messages = [{ role: 'system', content: 'Protected /roadmap proposal instruction; approved constraint-A; source-sha256=abc; no canonical writes.' }];
     for (let i = 0; i < 20; i++) {
-      messages.push({ role: 'user', content: 'repeat-'.repeat(70) });
-      messages.push({ role: 'assistant', content: 'answer-'.repeat(70) });
+      messages.push({ role: 'user', content: `observation-${i}: ${'distinct-'.repeat(65)}` });
+      messages.push({ role: 'assistant', content: `answer-${i}: ${'finding-'.repeat(65)}` });
     }
     messages.push({ role: 'user', content: 'Recall constraint-A.' });
     const answer = await dispatch({ type: 'turn', messages, maxOutputTokens: 128 });
@@ -99,9 +100,11 @@ test('Pi exact compaction can trigger on synthetic near-limit Chat history', asy
     assert.ok(answer.compaction);
     assert.match(answer.compaction.originalSha256, /^[a-f0-9]{64}$/);
     assert.match(answer.compaction.compactedSha256, /^[a-f0-9]{64}$/);
-    assert.equal(bodies.length, 1);
-    assert.match(JSON.stringify(bodies[0].messages), /constraint-A/);
-    assert.match(JSON.stringify(bodies[0].messages), /source-sha256=abc/);
+    assert.equal(bodies.length, 2);
+    assert.match(JSON.stringify(bodies[1].messages), /constraint-A/);
+    assert.match(JSON.stringify(bodies[1].messages), /Protected \/roadmap proposal instruction/);
+    assert.match(JSON.stringify(bodies[1].messages), /source-sha256=abc/);
+    assert.match(JSON.stringify(bodies[1].messages), /Read failed; command denied/);
     assert.equal(answer.usage.tokenMeasurement, 'unavailable');
   } finally {
     await dispatch({ type: 'close' });
@@ -539,6 +542,72 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
     assert.equal(seen.length, 1);
     assert.deepEqual(seen[0].arguments, { path: 'src/main.ts', maxBytes: 100 });
     await assert.rejects(access(marker), { code: 'ENOENT' });
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi Work compacts between distinct tool turns, then continues without replaying effects', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-compact-'));
+  const events = [];
+  const requests = [];
+  let reads = 0;
+  let commandExecutions = 0;
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          if (record.tool.name === 'read_file') reads++;
+          if (record.tool.name === 'run_command') commandExecutions++;
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: record.tool.name === 'read_file' && reads === 1 ? 'failed' : 'completed',
+              output: record.tool.name === 'run_command' ? 'command passed once' :
+                `read ${reads}: ${'distinct source line '.repeat(45)}` } }); });
+          return true;
+        }
+      } catch { /* ordinary output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      requests.push(body);
+      const summarizing = JSON.stringify(body.messages).includes('context summarization assistant');
+      const response = summarizing ? [
+        { index: 0, delta: { role: 'assistant', content: '## Goal\nInspect source.\n## Progress\nCommand completed once. First read failed; later reads completed. Exact source must be rechecked.' }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'stop' }
+      ] : reads < 15 ? [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0,
+          id: `tool-${reads}`, type: 'function', function: reads === 0 && commandExecutions === 0 ?
+            { name: 'run_command', arguments: '{"kind":"test","commandId":"approved-1"}' } :
+            { name: 'read_file', arguments: JSON.stringify({ path: `src/file-${reads}.ts` }) } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { index: 0, delta: { role: 'assistant', content: 'Inspection complete after compaction.' }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'stop' }
+      ];
+      return new Response(response.map((choice, i) => `data: ${JSON.stringify({ id: `compact-${requests.length}-${i}`,
+        object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [choice] })}\n\n`).join('') +
+        'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'work', cwd, model });
+    const answer = await dispatch({ type: 'work', id: 77, prompt: 'Inspect distinct authorized sources.',
+      emit: event => events.push({ ...event, reads }) });
+    assert.equal(answer.text, 'Inspection complete after compaction.');
+    assert.equal(commandExecutions, 1);
+    assert.equal(reads, 15);
+    assert.equal(events.filter(event => event.kind === 'compaction_succeeded').length, 1);
+    assert.equal(events.some(event => event.kind === 'compaction_failed'), false);
+    const compactedAt = events.find(event => event.kind === 'compaction_succeeded').reads;
+    assert.ok(compactedAt > 0 && compactedAt < reads);
+    assert.ok(requests.some(body => JSON.stringify(body.messages).includes('context summarization assistant')));
+    assert.ok(requests.some(body => JSON.stringify(body.messages).includes('First read failed; later reads completed')));
+    assert.match(answer.compaction.originalSha256, /^[a-f0-9]{64}$/);
   } finally {
     process.stdout.write = originalWrite;
     globalThis.fetch = originalFetch;
