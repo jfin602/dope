@@ -32,6 +32,20 @@ test('saved and live diagnostic activity retains full content in the existing vi
     assert.equal(chatActivityPresentation({ ...completed, activity: undefined }), undefined);
 });
 
+test('failed Chat response shows one error in its response slot before the footer', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const failed = { id: 'interrupted', content: '', execution: {
+        status: 'failed', failure: 'Interrupted before completion',
+    } } as ChatAssistantMessage;
+    assert.equal(chatResponseCopyText(failed), '');
+    assert.match(widget, /message\.execution\.status === 'failed' && message\.execution\.failure[\s\S]*?content\.append\(recovery\)/);
+    assert.ok(widget.indexOf('content.append(recovery)') < widget.indexOf('item.append(content)'));
+    assert.ok(widget.indexOf('item.append(content)') < widget.indexOf('item.append(footer, info)'));
+    assert.equal((widget.match(/content\.append\(recovery\)/g) ?? []).length, 1);
+    assert.doesNotMatch(widget, /item\.append\(recovery\)/);
+    assert.match(widget, /inlineTurnError \? '' : state\.error/);
+});
+
 test('committed final stream is absent from reasoning while cancellation keeps provisional text', () => {
     const events = [
         { sequence: 1, kind: 'thinking' as const, text: 'I will add the numbers.\n\n' },
@@ -86,14 +100,20 @@ test('only persisted trusted planning activity receives a compact label and hone
 });
 
 test('only verified Roadmap decision turns use the inline proposal card across saved statuses', () => {
-    const message = { id: 'origin', role: 'assistant', content: '{"type":"gate.move"}',
+    const summary = 'Move G1 under Phase Two.';
+    const message = { id: 'origin', role: 'assistant', content: JSON.stringify({
+        type: 'roadmap-gate-proposal', summary, actions: [{ type: 'gate.reparent' }],
+    }),
         execution: { status: 'complete' }, planningActivity: { schemaVersion: 1,
             kind: 'roadmap-gate-proposal', status: 'pending', refs: [], proposalId: 'proposal' } } as ChatAssistantMessage;
     for (const status of ['pending', 'applied', 'denied', 'stale', 'failed'] as const) {
         const restored = { ...message, planningActivity: { ...message.planningActivity!, status } };
         assert.equal(isInlineRoadmapProposal(restored), true);
-        assert.match(planningOutcome(restored)!.summary, /proposal|change/i);
+        assert.deepEqual(planningOutcome(restored), { summary, questions: [] });
+        assert.equal(chatResponseCopyText(restored), summary);
     }
+    assert.equal(planningOutcome({ ...message, content: '{"type":"roadmap-gate-proposal"}' })?.summary,
+        'Roadmap change ready for review.');
     assert.equal(isInlineRoadmapProposal({ ...message, planningActivity: undefined }), false);
     assert.equal(isInlineRoadmapProposal({ ...message,
         planningActivity: { ...message.planningActivity!, kind: 'no-action' } }), false);

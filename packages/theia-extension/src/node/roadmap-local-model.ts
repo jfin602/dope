@@ -199,7 +199,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
         }
         if (attempt + 1 < MAX_ATTEMPTS) {
             if (mode === 'gate' && !incompleteOwnerRevision)
-                retryInstruction = 'The previous response was not an accepted schema-2 Roadmap JSON envelope. Return exactly one JSON object with no prose or fences. For a question or no edit, use {"type":"no-action","message":"your concrete answer"}. For an edit, use the supported roadmap-gate-proposal envelope and action fields from the system instruction. Preserve the facts and never claim an unapproved write.';
+                retryInstruction = 'The previous response was not an accepted schema-2 Roadmap JSON envelope. Return exactly one JSON object with no prose or fences. For a question or no edit, use {"type":"no-action","message":"your concrete answer"}. For an edit, use the supported roadmap-gate-proposal envelope, a concise summary field, and action fields from the system instruction. Preserve the facts and never claim an unapproved write.';
             check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
         }
     }

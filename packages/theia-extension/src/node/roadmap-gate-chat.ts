@@ -25,10 +25,12 @@ export function ambiguousGateReferences(index: RoadmapGateIndex, request: string
 }
 
 export function validGateChatEnvelope(value: unknown): value is { type: 'roadmap-gate-proposal';
-    projectId: string; ownerRevision: number; actions: GatePlanningAction[] } {
-    if (!record(value) || Object.keys(value).sort().join(',') !== 'actions,ownerRevision,projectId,type' ||
+    projectId: string; ownerRevision: number; summary: string; actions: GatePlanningAction[] } {
+    if (!record(value) || Object.keys(value).sort().join(',') !== 'actions,ownerRevision,projectId,summary,type' ||
         value.type !== 'roadmap-gate-proposal' || typeof value.projectId !== 'string' ||
         !Number.isSafeInteger(value.ownerRevision) || (value.ownerRevision as number) < 1 ||
+        typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 200 ||
+        /[\x00-\x1f\x7f]/.test(value.summary) ||
         !Array.isArray(value.actions) || value.actions.length < 1 || value.actions.length > 3 ||
         Buffer.byteLength(JSON.stringify(value), 'utf8') > 16000) return false;
     return value.actions.every(action => record(action) && typeof action.type === 'string' &&

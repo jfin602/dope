@@ -2337,9 +2337,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         // Work and Chat selection keep their root status. Active Chat places it
         // with other notices in the scrollable response area below.
         this.node.insertBefore(this.status, this.content);
-        this.status.className = this.panel.mode === 'chat' && state.error ? 'dope-chat-error-bubble' : '';
+        const latestMessage = state.chat?.messages.at(-1);
+        const failedTurn = this.panel.mode === 'chat' && state.mode === 'chat' &&
+            latestMessage?.role === 'assistant' && latestMessage.execution.status === 'failed' && !state.running;
+        const inlineTurnError = failedTurn ? state.error : '';
+        this.status.className = this.panel.mode === 'chat' && state.error && !inlineTurnError ? 'dope-chat-error-bubble' : '';
         this.status.textContent = this.panel.mode === 'chat' ?
-            state.error || (state.loading ? 'Loading Chats…' : !state.workspace ?
+            (inlineTurnError ? '' : state.error) || (state.loading ? 'Loading Chats…' : !state.workspace ?
                 this.workspaceRootCount === undefined ? 'Checking the attached project…' :
                 this.workspaceRootCount === 0 ? 'Open a project folder to use Chats.' :
                 'Multiple project roots are open. Open one project folder to use Chats.' : '') :
@@ -2357,9 +2361,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 !!this.workReconnect || this.probingBackend));
             if (this.panel.workspace) this.status.append(' ', this.button('Back to Select Work', () => { void this.selectWork(); }));
         }
-        if (this.panel.mode === 'chat' && state.error.includes('Interactive role')) this.status.append(' ',
+        if (this.panel.mode === 'chat' && !inlineTurnError && state.error.includes('Interactive role')) this.status.append(' ',
             this.button('Open AI Center', () => { void this.aiCenter?.openRole('interactive'); }));
-        if (this.panel.mode === 'chat' && state.error.includes('Verify Local agent execution')) {
+        if (this.panel.mode === 'chat' && !inlineTurnError && state.error.includes('Verify Local agent execution')) {
             const failed = [...(state.chat?.messages ?? [])].reverse().find(message =>
                 message.role === 'assistant' && message.execution.status === 'failed');
             const model = failed?.role === 'assistant' ? failed.execution.selectedModel : state.turnModel;
@@ -2594,6 +2598,22 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 state.stream.content) {
                 content.replaceChildren(renderUntrustedMessageMarkdown(this.markdown, state.stream.content));
             }
+            if (message.role === 'assistant' && message.execution.status === 'failed' && message.execution.failure) {
+                const recovery = document.createElement('div');
+                recovery.className = 'dope-chat-error-bubble';
+                const description = document.createElement('span');
+                description.textContent = inlineTurnError && message.id === latestMessage?.id ?
+                    inlineTurnError : message.execution.failure;
+                recovery.append(description);
+                if (message.execution.failure.includes('Verify Local agent execution') ||
+                    description.textContent.includes('Verify Local agent execution')) {
+                    const target = message.execution.selectedModel;
+                    recovery.append(this.button('Open tool verification', () => {
+                        void this.aiCenter?.openLocalAgentVerification(this.id, target.connectionId, target.modelId);
+                    }));
+                }
+                content.append(recovery);
+            }
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
             time.textContent = new Date(message.createdAt).toLocaleString();
@@ -2626,7 +2646,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     usage.textContent = `Reasoning tokens: ${message.execution.tokenUsage.reasoningTokens} · Reasoning stream unavailable`;
                     item.append(usage);
                 }
-                if (message.execution.status === 'complete' && chatResponseCopyText(message) ||
+                if (message.execution.status === 'failed' && message.execution.failure ||
+                    message.execution.status === 'complete' && chatResponseCopyText(message) ||
                     active && state.stream?.content) content.classList.add('dope-chat-final-answer');
                 item.append(content);
                 const savedProposal = this.savedRoadmapProposalCard(message);
@@ -2743,20 +2764,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
                 footer.append(actions, time);
                 item.append(footer, info);
-            }
-            if (message.role === 'assistant' && message.execution.status === 'failed' &&
-                message.execution.failure && !state.error) {
-                const recovery = document.createElement('div');
-                recovery.className = 'dope-chat-error-bubble';
-                const description = document.createElement('span');
-                description.textContent = message.execution.failure;
-                const target = message.execution.selectedModel;
-                recovery.append(description);
-                if (message.execution.failure.includes('Verify Local agent execution'))
-                    recovery.append(this.button('Open tool verification', () => {
-                        void this.aiCenter?.openLocalAgentVerification(this.id, target.connectionId, target.modelId);
-                    }));
-                item.append(recovery);
             }
             transcript.append(item);
         }

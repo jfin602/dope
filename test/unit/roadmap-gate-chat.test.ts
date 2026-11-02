@@ -27,6 +27,7 @@ test('an indirect Gate name shared by two Gates needs an exact identity', () => 
 
 test('Chat only accepts bounded structural proposals and binds temporary IDs within a batch', () => {
     const envelope = { type: 'roadmap-gate-proposal', projectId: 'owner-1', ownerRevision: 2,
+        summary: 'Create Combat and its Defeat gate.',
         actions: [
             { type: 'phase.create', id: 'new:1', title: 'Combat', objective: 'Prove defeat' },
             { type: 'gate.create', id: 'new:2', parentPhaseId: 'new:1', designation: 'G1',
@@ -34,6 +35,9 @@ test('Chat only accepts bounded structural proposals and binds temporary IDs wit
                     { id: 'new:3', title: 'Zero health', expectedResult: 'Game ends' }] }
         ] };
     assert.equal(validGateChatEnvelope(envelope), true);
+    assert.equal(validGateChatEnvelope({ ...envelope, summary: '' }), false);
+    assert.equal(validGateChatEnvelope({ ...envelope, summary: 'x'.repeat(201) }), false);
+    assert.equal(validGateChatEnvelope({ ...envelope, summary: 'First line\nSecond line' }), false);
     const actions = bindGateChatActions(envelope.actions as never);
     assert.match(actions[0].id!, /^[0-9a-f]{8}-/);
     assert.equal((actions[1] as { parentPhaseId: string }).parentPhaseId, actions[0].id);
@@ -64,6 +68,7 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
     const composer = new ChatContextComposer({} as never, {} as never, index as never, repository, store);
     const actions = new ProjectPlanningActions(store);
     let answer: unknown = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
+        summary: 'Create the Combat Systems phase.',
         actions: [{ type: 'phase.create', id: 'new:1', title: 'Combat Systems',
             objective: 'Verify combat behavior' }] };
     let failNext = false;
@@ -137,6 +142,7 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.equal(saved.revision, 2);
         assert.equal(saved.phases[0].title, 'Combat Systems');
         answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
+            summary: 'Create a Stale Phase.',
             actions: [{ type: 'phase.create', id: 'new:2', title: 'Stale Phase', objective: 'Too old' }] };
         const invalid = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Stale Phase.',
@@ -149,6 +155,7 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'rejected');
         assert.deepEqual(await store.read(root), saved);
         answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
+            summary: 'Create a Superseded Phase.',
             actions: [{ type: 'phase.create', id: 'new:3', title: 'Superseded Phase', objective: 'Not applied' }] };
         const replaced = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Superseded Phase.',
@@ -170,6 +177,7 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
         await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
             replaced.proposal!.id, true), /unavailable/);
         answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
+            summary: 'Create a Failed Phase.',
             actions: [{ type: 'phase.create', id: 'new:4', title: 'Failed Phase', objective: 'Not written' }] };
         const failed = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Failed Phase.',
@@ -190,6 +198,7 @@ test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer a
             failed.proposal.id, true), /unavailable/);
         assert.deepEqual(await store.read(root), saved);
         answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
+            summary: 'Create a Cancelled Phase.',
             actions: [{ type: 'phase.create', id: 'new:5', title: 'Cancelled Phase', objective: 'Not written' }] };
         const cancelled = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Cancelled Phase.',

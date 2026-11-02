@@ -144,6 +144,20 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
         return reply;
 }
 
+/** The proposal's model-written summary is display text only; the saved activity owns its status. */
+function gateProposalSummary(message: ChatAssistantMessage): string | undefined {
+    if (message.planningActivity?.kind !== 'roadmap-gate-proposal' || !message.planningActivity.proposalId)
+        return undefined;
+    try {
+        const value: unknown = JSON.parse(message.content);
+        if (!value || typeof value !== 'object' || Array.isArray(value) ||
+            (value as Record<string, unknown>).type !== 'roadmap-gate-proposal') return undefined;
+        const summary = (value as Record<string, unknown>).summary;
+        return typeof summary === 'string' && !!summary.trim() && summary.length <= 200 &&
+            !/[\x00-\x1f\x7f]/.test(summary) ? summary.trim() : undefined;
+    } catch { return undefined; }
+}
+
 /** Explain only the backend-verified activity; raw model text is never an authority signal. */
 export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
     const activity = message.planningActivity;
@@ -154,6 +168,12 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         activity.status === 'pending' ? 'The plan is ready for review. The accepted draft and canonical Roadmap are unchanged.' :
         activity.status === 'applied' ? 'The reviewed plan was saved in the noncanonical draft.' :
         'The plan was not applied.', questions: [] };
+    if (activity.kind === 'roadmap-gate-proposal') return {
+        summary: gateProposalSummary(message) ?? (activity.status === 'applied' ? 'Roadmap change applied.' :
+            activity.status === 'pending' ? 'Roadmap change ready for review.' :
+            'Roadmap change was not applied.'),
+        questions: [],
+    };
     if (activity.kind === 'bridge-proposal' && activity.status === 'suggested') {
         try {
             const raw = JSON.parse(message.content) as { mapId: string; mapRevision: number;
@@ -179,8 +199,8 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                 const value = raw as Record<string, unknown>;
                 const action = value.action && typeof value.action === 'object' && !Array.isArray(value.action) ?
                     value.action as Record<string, unknown> : undefined;
-                if ((activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence' ||
-                    activity.kind === 'roadmap-gate-proposal') && Array.isArray(value.actions))
+                if ((activity.kind === 'roadmap-sequence' || activity.kind === 'roadmap-draft-sequence') &&
+                    Array.isArray(value.actions))
                     change = `review ${value.actions.length} Roadmap steps near ${target}`;
                 const objective = activity.kind === 'roadmap-intent' ? value.value : action?.objective;
                 const normalized = typeof objective === 'string' ? objective.replace(/\s+/g, ' ') : undefined;
@@ -215,9 +235,7 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         summary: `The approved proposal to ${change} was saved at revision ${revision}.`,
         questions: ['Does the saved result match your current objective?', 'Would you like to review the linked source or next checkpoint?'],
     };
-    if (activity.status === 'pending') return activity.kind === 'roadmap-gate-proposal' ? {
-        summary: `Review the proposed change to ${target} before applying it. Nothing was written.`, questions: []
-    } : {
+    if (activity.status === 'pending') return {
         summary: `A proposal to ${change} was previewed and is awaiting approval; ${activity.kind.startsWith('roadmap-draft') ? 'the accepted draft and canonical Roadmap are unchanged' : 'no write yet'}.`,
         questions: ['Does the proposed change match your intent?', 'Should you review the affected source before deciding?'],
     };
@@ -340,6 +358,7 @@ export function chatResponseCopyText(message: ChatAssistantMessage, streamingCon
     if (message.execution && message.execution.status !== 'complete') return '';
     if (message.planningActivity?.kind === 'no-action' && message.planningActivity.status === 'no-action')
         return planningOutcome(message)?.summary ?? (/^\s*\{/u.test(message.content) ? '' : message.content);
+    if (isInlineRoadmapProposal(message)) return planningOutcome(message)?.summary ?? '';
     const activity = planningActivityPresentation(message);
     if (activity) {
         const outcome = planningOutcome(message);
