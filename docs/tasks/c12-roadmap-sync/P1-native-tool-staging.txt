@@ -1,13 +1,15 @@
-TASK: c12-roadmap-sync / P1 — protected native Roadmap tool protocol and noncanonical stage owner
+TASK: Correction 12 / P1 — protected native Roadmap tool protocol and noncanonical stage owner
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 alone is manual Codex Chrome).
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
 - Target <=8 minutes per bounded cycle; hard cap 15 minutes. Stop NOT GREEN rather than race a safety boundary.
 - Use existing runner; runner owns successful implementation commits. NO self-commit, /activate, automatic next manual stack, version/model/provider/lockfile change or host-wide permissions.
 - Ponytail FULL only if installed/actually available to implementation agent, never injected into selected local Pi model.
 
 VERSIONING
-- Documented reference version 0.12.7. Inspect actual LOCAL package/version and runner expected version first; never silently rewrite pins to pass.
+- Required unchanged project version: `0.12.7`.
+- Verify actual LOCAL product manifest and runner expectations; preserve version.
 
 PREFLIGHT
 - Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, docs/planning/p12/native-roadmap-authoring-contract.md, docs/planning/p12/roadmap-revision-navigation-and-restore.md, this stack README/assessment/plan, and preceding Pn source/qualification.
