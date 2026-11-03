@@ -61,6 +61,27 @@ A completed text-response extractor may be compared for speed, but its output mu
 
 **Matched performance/quality gate:** Compare the old multi-batch tool route, the one-minute-anecdote response/extractor candidate, and the new typed one-pass route on repeated identical selected-local-model/fixture/prompts. Record first useful preview and complete review-ready latency, tokens/tool calls, retry/failure rate, validated Phase/Gate/Criterion counts, and explicit tower-defense MVP coverage (waypoints, spawn/health, targeting/projectile/cooldown, waves, kill currency and spending, persistent main-tower health, zero-health defeat). Do not ship a faster but incomplete plan. Preserve real Chrome, security and separately observed Electron evidence.
 
+### 3C. Latest compact model-facing Roadmap Markers v1 (2026-11-03 forward supersession)
+
+For **new/uninitialized Roadmap generation**, supersede section 3B's model-facing whole nested JSON format with exactly one completed **marker-language output**:
+
+```text
+RM1
+P|Foundation|Initialize the PixiJS scene and game loop
+G|Enemy Path|Move enemies over fixed waypoints
+C|Enemies traverse the defined waypoints in sequence
+P|Combat|Implement the first attack tower
+G|Projectiles|Target enemies and fire on a cooldown
+C|Projectiles damage targeted enemies on contact
+END
+```
+
+This is a structural example, **not** a complete tower-defense MVP. Normative lines are `RM1`, `P|title|objective`, `G|title|purpose`, `C|observable expected result`, and one final `END`. Each Gate belongs to the most recent Phase; each Criterion belongs to the most recent Gate. No prose or Markdown fences before/after; no extraneous kinds, delimiters, blank/malformed lines or privileged IDs/owner/revision/source/status fields. No `|` characters in payload fields for v1. Normalize line endings safely and validate character/length bounds, Phase/Gate/Criterion count, nonempty required content, uniqueness, exact nesting, complete stop/finish reason, byte budget and terminator. Fail closed with an actionable line/field diagnostic; **do not drop malformed text, invent missing nodes or accept an incomplete prefix**. Derive the internal Criterion `title` deterministically from the exact one-line observable result, preserving that complete result as `expectedResult`; maintain unique, safe, stable derived labels. No dependency notation in v1: Phase order is not a semantic dependency.
+
+The parser returns the **existing `UntrustedTypedRoadmapCandidate`** (or equivalent current typed candidate), not a canonical Roadmap or new owner. Existing backend `stageTypedRoadmapDraft`, typed action ceilings, source revision/lease checks, owner-generated IDs, explicit canvas subset Apply/Reject, linked Markdown and applied History remain unchanged. Distinguish the **actual F3 operation count** from F2's prior Phase+Gate+Criterion text-entry count, since Criteria are embedded in `gate.create`; honor each real native action/batch/byte/Gate-criterion cap. No automatic fallback to freeform `extractSavedRoadmap`, no second model pass, no hidden provider switch and no self-approval.
+
+The goal is **fewer model-output tokens without reducing requested functional coverage**. The observed F6 typed JSON run failed after reasoning-only output; underlying provider stop and token usage were not recorded, and a later 4,096-token attempt was interrupted by an OS crash. Do not claim a proven JSON-only cause or speed winner. Report actual finish reason, reasoning/final usage when provided and max-output constraints or truthful unavailable diagnostics; compare marker vs JSON using real model tokenizer if safely available, otherwise label byte/character comparisons as proxies. Keep current-turn /roadmap authorization and no-write protections. UI and model qualification run only in the subsequent [three-prompt manual marker correction](../../tasks/c12-map-markers/README.md); M1/M2 are implementation/focused-test tasks with **no browser or live Qwen**, and M3 uses **Codex Browser only** after confirming the host is stable and the prior owner's crash stop has been cleared. Preserve historical F6 NOT GREEN report, native Electron gaps and all prior F prompt bytes.
+
 ## 4. Proposal transaction and granular decisions
 
 Represent an entire proposal as a server-owned, versioned **change set**. Each operation has opaque stable operation ID, typed kind, affected entity/parent IDs, before/after values, declared dependencies, origin and source/revision fingerprints. Presentation gets bounded validated projections, not privileged approval tokens or model-derived display JSON. No second preview store.

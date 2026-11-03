@@ -1,0 +1,26 @@
+TASK: c12-map-markers / M1 — strict compact Roadmap Markers v1 parser into existing typed candidate.
+
+MODEL: GPT-6 Sol High. MANUAL T1 IMPLEMENTATION + FOCUSED TESTS ONLY. No browser, Chrome, Codex Browser, dev server, live Qwen, Electron or UI replay. Target <=8 minutes end-to-end, 10-minute soft / 15-minute hard stop; report partial work if needed. DO NOT automatically run M2. No runner, self-commit, version/model/provider changes.
+
+PREFLIGHT: Inspect ACTUAL local HEAD/status/dirty/untracked files, not just remote main; preserve F2–F6 implementation, F6 bounded output-token repair and previous failed/interrupted evidence. No reset, stash, clean, checkout-overwrite, force push or owner tower-defense project writes. Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c12-map-markers/README.md, ADR 0047, native Roadmap contract, F6 dated closeout and actual source/tests. Reconcile any existing uncommitted parser work before editing.
+
+PRIMARY CHANGE: In packages/theia-extension/src/node/roadmap-local-model.ts (or a small neighboring parser module), implement a **pure deterministic parseRoadmapMarkers** that converts exactly one completed marker response into the existing UntrustedTypedRoadmapCandidate / TypedRoadmapDraftV1 structure used by stageTypedRoadmapDraft. Do not add a new proposal/store/write path; do not change normal native granular tools or canvas/Chat.
+
+GRAMMAR (model-facing):
+RM1
+P|Phase title|Phase objective
+G|Gate title|Gate purpose
+C|Single observable expected-result sentence
+[repeat G/C and P groups as required]
+END
+
+STRICT RULES:
+- Exact version header RM1 and terminal END, only once each; no preamble, JSON, Markdown fences, commentary, trailing text, unknown record kinds, extra separators, empty/blank lines or mid-record newlines. Normalize CRLF/LF; accept one normal final newline, not partial output. v1 forbids literal | inside payload; reject rather than guess/escape.
+- P has exactly 2 nonempty payload fields; G exactly 2 under the current P; C exactly 1 under the current G. Every Phase has >=1 Gate, every Gate >=1 Criterion, and generation for the user's original test needs >=5 Phases (generic bounds remain 2–12 unless user/task scope separately requires 5). Enforce existing per-field char, Unicode safety, duplicate-title/duplicate-result, 32KB output-size and Phase/Gate/Criteria count limits, safe bounded line count and output finish reason; error should identify precise line/field. Never silently ignore malformed rows, fill missing objectives or extract from reasoning.
+- The sole C sentence becomes the full internal criterion.expectedResult. Derive a concise deterministic criterion.title *from that exact sentence* (bounded safe prefix plus stable disambiguation, without inventing extra requirements). Preserve stable ordering, distinct criteria, observable-result diagnostics and coverage-warning semantics. Do not infer semantic Phase dependencies from order; v1 has no dependency marker. Missing requested mechanics must remain a warning/incomplete quality issue, never fabricated verification or GREEN.
+- Separate **textual node count** from actual F3 stage operations: gate.create embeds its criteria. Reconcile the old parseTypedRoadmapDraft 48-entry guard so accepted candidates match actual 48-operation staging ceilings (Phases + Gates + explicit existing supported actions, not each Criterion), retaining 1–6 Criteria/Gate, true request size/batch limits and strict backend validation. No limit bypass.
+- Keep previous strict JSON parseTypedRoadmapDraft for internal compatibility/tests if needed; marker text is the NEW preferred model-facing representation. Parser result must be reusable by stageTypedRoadmapDraft with no new authority fields and no duplicate writer.
+
+FOCUSED TESTS: Add valid RM1 five-Phase/tower-defense samples, multiple Gates/Criteria, CRLF and final newline, exact derived title/expected-result, duplicate and length/safety failures, incorrect nesting/header/END, unknown/extra delimiter, empty field, malicious HTML, truncation/finishReason='length', output size/line ceilings, no invented dependency and real operation-vs-criterion count (e.g. >48 textual nodes but <=48 real stage operations). Verify JSON-candidate compatibility still passes. Use test/unit/roadmap-local-model.test.ts and a narrow stage converter case if necessary; compile only changed extension output when compiled lib is imported, run focused tests and git diff --check. No source writes to .dope/roadmap.json, ROADMAP.md or applied History, even on parse failure.
+
+EXIT: Source-qualified parser, exact candidate conversion and focused tests PASS; no live-model/GUI claims. Any malformed or uncertain case fails closed. Report actual HEAD/diff, tests/counts, remaining risks and Implementation/Verification/Progression; M2 is separately manually invoked. STOP.
