@@ -16,7 +16,7 @@ PREFLIGHT
 - Reuse existing RoadmapStore/Service, ProjectPlanningActions, Pi broker, saved ChatPanel, RoadmapCanvas/Inspector and source-aware Markdown writer. Preserve protected /roadmap, Ask/Allow, owner/project/source/revision/lease/decision checks, immutable history and evidence/qualification. No reset/stash/clean, source clobber, real owner workspace modification or parallel c12-undo/c12-roadmap-native-authoring execution. Use disposable fixtures.
 
 
-PREREQUISITE: P4 archive + P5 secure source-sync owner + P7 historical canvas all source-qualified. Inspect original c12-undo P3 existing code/evidence first; integrate, never duplicate writer.
+ENTRY: The committed P4 archive, P5 secure source-sync owner, and P7 historical canvas are available for source inspection. The owner has directed P8 implementation to proceed despite the P6/P7 recovery reports remaining NOT GREEN; those reports are open qualification evidence, not a preflight stop for this implementation turn. Do not relabel P6/P7 GREEN or assume a missing safety capability exists. Inspect original c12-undo P3 existing code/evidence first; integrate, never duplicate the writer. If an actual required source or safety capability is absent, stop with the precise blocker.
 
 OBJECTIVE
 From historical Rk compared to current Rm, explicit developer **Confirm Restore** creates Rm+1 with appropriately restored editable structure. Preserve Rk..Rm and later History, source and protected evidence; never destructively rewind the counter.
