@@ -1,3 +1,5 @@
+> **2026-11-02 RUNNER AUTHORING SUCCESSOR:** The owner selected the unified [c12-roadmap-sync](../c12-roadmap-sync/README.md) correction for implementation. Its assessment/plan, P1–P9 runner prompts and manual P10 Codex-Chrome closeout now cover this R1–R5 design **plus full ADR 0046 formal Undo/Redo and reviewed restore**. This README remains an earlier design-only index, not a second runnable stack. Do not run overlapping c12-undo prompts concurrently or rewrite their historical evidence. No product implementation/Green/version change is claimed by prompt authoring.
+
 # c12-roadmap-native-authoring — Native generation, granular canvas editing and automatic Markdown sync
 
 **Owner direction:** 2026-11-02 (America/Chicago). **Status:** DOCS/ARCHITECTURE APPROVED ONLY — NO IMPLEMENTATION PROMPTS AUTHORED, NO RUN, NO GREEN, NO PRODUCT VERSION CHANGE. **Reference:** [ADR 0047](../../decisions/0047-native-roadmap-authoring-and-automatic-sync.md) · [Detailed contract](../../planning/p12/native-roadmap-authoring-contract.md).
