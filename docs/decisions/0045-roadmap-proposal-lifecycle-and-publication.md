@@ -1,3 +1,5 @@
+> **2026-11-02 FORWARD SUPERSESSION — OWNER-APPROVED DESIGN, NOT IMPLEMENTED:** [ADR 0047](0047-native-roadmap-authoring-and-automatic-sync.md) and its [detailed contract](../planning/p12/native-roadmap-authoring-contract.md) **retain Unit A** (the one persistent inline saved Chat proposal card, truthful terminal states, active-tab-only optional Roadmap preview and solid accepted outlines) while **superseding Unit B's recurring Publish & Link Markdown form/approval workflow** for future normal operation. Initial file selection/confirmation happens once; successful canonical manual/AI changes enqueue safe automatic hash-checked synchronization with visible pending/conflict/recovery. Also extend whole-proposal approval to dependency-checked individual/Phase-group/selected/all-remaining transactions using the same backend. Preserve already authored/running code paths and evidence until safely migrated and qualified; this annotation does not execute or retroactively qualify them.
+
 # ADR 0045 — Persistent Roadmap proposal cards and explicit canonical publication
 
 **Date:** 2026-11-01 (America/Chicago)  
