@@ -24,17 +24,17 @@ This is the **one executable successor** to the design-only [c12-roadmap-native-
 | [P7](P7-undo-redo-historical-view.txt) | Runner | Permanent toolbar; read-only historical preview/compare |
 | [P8](P8-reviewed-restore.txt) | Runner | Approved new-head restore and linked-source/evidence safety |
 | [P9](P9-integration-regressions.txt) | Runner | Final-source cross-component tests, cleanup, explicit unresolved blockers |
-| [P10](P10-codex-browser-qual-loop.txt) | **MANUAL connected Codex Chrome** | Up to 3 targeted repair/requal cycles, final exact-source PASS/NOT GREEN |
+| [P10](P10-codex-browser-closeout.txt) | **MANUAL connected Codex Chrome** | Up to 3 targeted repair/requal cycles, final exact-source PASS/NOT GREEN |
 
 **Runner commands (only after owner elects Run):**
-\`\`\`bash
+```bash
 npm run codex:phase:validate -- c12-roadmap-sync
 npm run codex:phase -- c12-roadmap-sync
-\`\`\`
-Run P1–P9 via the runner, then **STOP before P10**. Do not use \`--closeout\` or manufacture a P10 PASS marker. P10 is manually executed using the connected Codex Google Chrome browser, with up to three narrowly scoped observed-defect repair/requal cycles. Runner owns its passing implementation commits; prompts do not self-commit. If validation rejects metadata or manual boundary, fix the new *unstarted* stack contract first, not the runner implementation to bypass safety.
+```
+Run P1–P9 via the runner, then **STOP before P10**. Do not use `--closeout` or manufacture a P10 PASS marker. P10 is manually executed using the connected Codex Google Chrome browser, with up to three narrowly scoped observed-defect repair/requal cycles. Runner owns its passing implementation commits; prompts do not self-commit. If validation rejects metadata or manual boundary, fix the new *unstarted* stack contract first, not the runner implementation to bypass safety.
 
 ## Universal safety, execution and reporting
-Read BOOT.md, AGENTS.md, docs/workflow.md, current local source, assessment and plan at every entry. Verify \`git status --short\`, \`git rev-parse HEAD\`, active branch/version, in-flight source, actual connected app state, existing documentation implementation, tests and qualification evidence. Never assume remote GitHub main equals the local owner's working tree. No reset/stash/clean, force push, touching owner's persistent tower-defense workspace, provider/model/lockfile/version change, unauthorized shell, startup auto-write, or bypass of /roadmap/Ask/Allow/approval/source hash/lease/project boundaries. Use disposable projects. Each runner Pn is a bounded focused step (target <=8 minutes, hard 15-minute stop per cycle); if mandatory work cannot safely fit, STOP NOT GREEN with exact smallest remaining repair, not partial fake PASS. Do not start Pn+1 after failure.
+Read BOOT.md, AGENTS.md, docs/workflow.md, current local source, assessment and plan at every entry. Verify `git status --short`, `git rev-parse HEAD`, active branch/version, in-flight source, actual connected app state, existing documentation implementation, tests and qualification evidence. Never assume remote GitHub main equals the local owner's working tree. No reset/stash/clean, force push, touching owner's persistent tower-defense workspace, provider/model/lockfile/version change, unauthorized shell, startup auto-write, or bypass of /roadmap/Ask/Allow/approval/source hash/lease/project boundaries. Use disposable projects. Each runner Pn is a bounded focused step (target <=8 minutes, hard 15-minute stop per cycle); if mandatory work cannot safely fit, STOP NOT GREEN with exact smallest remaining repair, not partial fake PASS. Do not start Pn+1 after failure.
 
 Every prompt reports exact HEAD/diff, files touched, real test counts and failures, source hash/fixture names, write/no-write proof, remaining risks and scoped disposition. Only actual effects enter Project History. Browser builds are not native GUI evidence; owner-native Electron is a separate observation/gap. No automatic Phase 12 Green, version bump, old evidence rewrite or full-product closeout by this correction.
 
