@@ -1,0 +1,35 @@
+TASK: Correction 12 / P7 — connected Codex Browser Roadmap orchestration closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- **Manual** connected Codex Browser closeout only after runner P1–P6 implementation checkpoints and source verification; do not invoke this through automatic runner implementation sequence or manufacture a P7 PASS marker.
+- Use one bounded real-model trial and only narrowly justified repair/retest with owner approval. Earlier OS crash/memory incidents require stable-host check and express authorization before any local Qwen qualification. Stop on instability, not repeated launches.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Verify exact local manifest, HEAD, changed source and served browser bundle. No version/provider/model switch, no self-commit or unsafe Git operations.
+
+PREFLIGHT / AUTHORITY
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047/0048/0049, docs/planning/p12/roadmap-phase-orchestration-contract.md, stack README/assessment/plan, P1–P6 reports and source/tests.
+- Check local HEAD/branch/status/diff, previous D2 files and current runtime process. Require observed source provenance and stable host; do not run against owner’s real tower-defense workspace; create disposable project. No reset/stash/clean/force push, no standalone Chrome in place of connected Codex Browser, no fake user approval, no changes to model or context to pass.
+- Reuse actual selected Qwen3.5-9B local model through Pi/LM Studio, with its actual configured context and reasoning support. Preserve /roadmap and Ask/Allow. Do not conceal an alternate model or external hosted inference.
+- Browser qualification cannot count as owner-native Electron GUI qualification. Do not upgrade Phase 12, Work or Gate/Phase GREEN from this correction.
+
+OBJECTIVE
+- Demonstrate the **one real greenfield controller path** with progressive in-canvas Phase/Gate building and checked owner review, rather than another complete-plan text/format-conversion pipeline.
+
+PROCEDURE
+1. Before live inference, inspect actual selected model, context, provider readiness, LM Studio resource stability, built source and focused P6 tests. Record precise origin/HEAD/version/bundle. If unstable/not connected, mark EVIDENCE GAP/HOLD and stop.
+2. In the connected Codex Browser Dope app, open a disposable TypeScript/PixiJS tower-defense project and submit **one** user request to generate the complete MVP Roadmap. Known rules: fixed waypoint path, enemies spawned with health, cooldown-based targeting/projectiles and damage, wave progression, kill-earned currency, purchases of towers or abilities, main tower health persists between waves, defeat at zero health. No premature optional features.
+3. Observe the single saved Chat turn and at least two **real validated** intermediate provisional canvas updates from the same proposal, before final response. Each shows correct nested Phase/Gate/observable Criterion relationships; capture server stage identity/sequence, actual counts and a screenshot or browser observation at each relevant time. Validate no fabricated text-to-RM1 or second full-plan conversion; inspect actual Pi call traces without exposing secrets. Record time to first Phase, time to review-ready outcome, model calls, per-Phase retry, finish reason and token usage where exposed. Show real reasoning stream only if provider supports it.
+4. Confirm >=5 ordered delivery Phases with Gates and observable Criteria covering all MVP rules. Compare the text scope and validated graph to detect omissions; note uncertainty rather than silently claim semantic completeness. A fast incomplete plan is NOT GREEN.
+5. During generation try canvas navigation: pan/zoom, keep current focused tab, move to Chat and back; no camera jump/focus theft, rendered updates do not stall generation. Test cancel or failure on a **separate controlled disposable** session if a second live trial is safe and owner-authorized; otherwise use P6 deterministic evidence and explicitly mark live negative unobserved.
+6. Before Apply, independently verify canonical schema-2 index, linked Markdown and applied History unchanged. Inspect single canonical proposal and select an actual Phase with children / individual Gate; exercise Reject and Apply Selected with dependencies, revision/source/lease protections and real owner action. Verify exactly selected valid subset commits, reject/no-op does not write, source sync creates/updates checked Markdown only after Apply, and reload preserves nested IDs/content.
+7. Validate stale/cross-project/source-edit negative using safe disposable fixture; no stale, expired or cancelled proposal can Apply, no model self-Apply, evidence/coverage/qualifications unchanged. Do not force collision overwrites.
+8. Inspect user experience: clear real-progress and failure status; no old generators/format prompts, fallback panels, duplicate Chat Apply controls or dead conversion state. Distinguish Chrome observation, native Electron unobserved and source regression scopes.
+
+EVIDENCE / EXIT
+- Produce exact-source report with tests, screenshots/browser observations, model/provider/session identity, staged/accepted/rejected objects, source/Markdown/History hashes, timing/calls/retries, safety negatives, missing evidence, attributable failures and final disposition.
+- GREEN for this **exact scoped browser correction** only when real complete structured generation, live intermediate canvas, protected owner Apply and persistence all pass. If model fails to create correct Gates, UI only shows final static graph, performance regressions remain material, host crashes or any authority bypass occurs, say NOT GREEN/HOLD (safety bypass STOP). Missing Electron proof is an independent EVIDENCE GAP and never implied PASS.
+- Do not execute a runner-driven continuation to another stack, bump version or declare Phase 12/Phase 13 qualified.
