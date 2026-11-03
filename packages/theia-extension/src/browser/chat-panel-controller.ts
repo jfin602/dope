@@ -100,6 +100,9 @@ export class ChatPanelController {
     planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
     roadmapGenerationStage?: Extract<import('@dope/chat/lib/service').ChatEvent, { kind: 'planning-progress' }>['stage'];
     roadmapGenerationProjectId?: string;
+    roadmapStage?: Extract<ChatEvent, { kind: 'roadmap-stage' }>['snapshot'];
+    roadmapStageError?: string;
+    private endedRoadmapTurnId?: string;
     activeRoadmapOfferId?: string;
     transientUser: { chatId: string; content: string; previousIds: Set<string> } | undefined;
     private connection?: ChatConnection;
@@ -132,6 +135,29 @@ export class ChatPanelController {
     get chat(): Chat | undefined { return this.snapshot?.chats.find(chat => chat.id === this.chatId); }
     get attached(): boolean { return !!this.handle; }
 
+    /** Fetch the authoritative latest stage at click time; cached events are only a View affordance. */
+    async readCurrentRoadmapStage(): Promise<NonNullable<typeof this.roadmapStage>> {
+        const lease = this.lease, shown = this.roadmapStage;
+        if (!this.running || !shown || !lease || !this.workspace ||
+            lease.workspace !== this.workspace || lease.chatId !== this.chatId ||
+            shown.chatId !== this.chatId || shown.expiresAt <= Date.now())
+            throw new Error('This Roadmap stage is no longer active. Start or select the current Chat turn.');
+        const latest = await lease.connection.readNativeRoadmapStage(lease.handle, lease.chatId,
+            shown.turnId, lease.token);
+        const current = this.roadmapStage;
+        if (!latest || !this.running || this.lease !== lease || !current ||
+            this.workspace !== lease.workspace || this.chatId !== lease.chatId ||
+            latest.chatId !== shown.chatId || latest.turnId !== shown.turnId ||
+            latest.proposalId !== shown.proposalId || latest.projectId !== shown.projectId ||
+            latest.ownerId !== shown.ownerId || latest.revision !== shown.revision ||
+            latest.sourceHash !== shown.sourceHash || current.proposalId !== latest.proposalId ||
+            current.turnId !== latest.turnId || latest.sequence < current.sequence ||
+            latest.expiresAt <= Date.now())
+            throw new Error('This Roadmap stage became stale, cancelled, or changed project. Refresh the Chat turn.');
+        this.roadmapStage = latest;
+        return latest;
+    }
+
     async attach(workspace: string | undefined): Promise<void> {
         if (this.disposed || workspace && workspace === this.workspace && this.handle) return;
         this.clearRestoreRetry();
@@ -149,6 +175,8 @@ export class ChatPanelController {
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
         this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapOffer = undefined; this.strategicDraftReview = undefined;
+        this.roadmapStage = undefined; this.roadmapStageError = undefined;
+        this.endedRoadmapTurnId = undefined;
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
 
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
@@ -247,7 +275,20 @@ export class ChatPanelController {
                 }
                 if (event.kind === 'roadmap-stage') {
                     if (this.workspace && event.chatId === this.chatId &&
-                        (this.running || event.snapshot === null)) this.onRoadmapStage?.(event, this.workspace);
+                        (this.running || event.snapshot === null)) {
+                        if (!event.snapshot && this.roadmapStage &&
+                            this.roadmapStage.turnId !== event.messageId) return;
+                        if (event.snapshot && this.endedRoadmapTurnId === event.messageId) return;
+                        if (!event.snapshot) this.endedRoadmapTurnId = event.messageId;
+                        if (!event.snapshot || !this.roadmapStage ||
+                            this.roadmapStage.turnId === event.messageId &&
+                            this.roadmapStage.proposalId === event.snapshot.proposalId &&
+                            event.snapshot.sequence > this.roadmapStage.sequence) {
+                            this.roadmapStage = event.snapshot;
+                            this.roadmapStageError = undefined;
+                        }
+                        this.onRoadmapStage?.(event, this.workspace);
+                    }
                     return;
                 }
                 this.eventRevision = Math.max(this.eventRevision, event.revision);
@@ -329,6 +370,8 @@ export class ChatPanelController {
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
         this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapOffer = undefined; this.strategicDraftReview = undefined;
+        this.roadmapStage = undefined; this.roadmapStageError = undefined;
+        this.endedRoadmapTurnId = undefined;
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
 
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
@@ -562,6 +605,8 @@ export class ChatPanelController {
         this.running = true; this.runStartedAt = new Date().toISOString();
         this.error = ''; this.stream = undefined; this.planningProgress = undefined;
         this.toolProgress = undefined;
+        this.roadmapStage = undefined; this.roadmapStageError = undefined;
+        this.endedRoadmapTurnId = undefined;
         this.planningProposal = undefined; this.planningProposalError = undefined;
         this.planningProposalErrorMessageId = undefined;
         this.roadmapOffer = undefined;
@@ -614,6 +659,7 @@ export class ChatPanelController {
         } finally {
             if (!this.disposed && generation === this.generation && chatId === this.chatId) {
                 this.running = false; this.runStartedAt = undefined;
+                this.roadmapStage = undefined; this.roadmapStageError = undefined;
                 this.stream = undefined; this.planningProgress = undefined;
                 this.pendingCommand = undefined;
                 this.roadmapGenerationStage = undefined; this.activeRoadmapOfferId = undefined; this.changed();

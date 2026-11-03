@@ -10,12 +10,34 @@ import { ChatOpenOwners, ChatPanelController } from '../../packages/theia-extens
 import { ChatPlanningSelection } from '../../packages/theia-extension/lib/browser/chat-planning-selection.js';
 import { RoadmapInspectorModel } from '../../packages/theia-extension/lib/browser/roadmap-inspector-model.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
-import type { ChatContextSelection } from '../../packages/chat/src/service.ts';
+import type { ChatContextSelection, ChatRoadmapStageSnapshot } from '../../packages/chat/src/service.ts';
 import type { ChatPlanningProposal } from '../../packages/chat/src/service.ts';
 import type { ChatClient } from '../../packages/chat/src/service.ts';
 import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/roadmap-store.ts';
 import type { RoadmapService } from '../../packages/theia-extension/src/roadmap-service.ts';
 import type { PlanningMapController } from '../../packages/theia-extension/src/browser/planning-map-controller.ts';
+
+test('manual live Roadmap View re-reads the current leased stage and refuses stale ownership', async () => {
+    const controller = new ChatPanelController(() => { throw new Error('no connection'); }, () => {});
+    const snapshot = { proposalId: 'proposal', chatId: 'chat', turnId: 'turn', projectId: 'project',
+        ownerId: 'project', revision: 0, sourceHash: null, sequence: 1,
+        expiresAt: Date.now() + 60_000, operationIds: ['one'], entityIds: ['phase'],
+        counts: { phases: 1, gates: 0, criteria: 0 }, incompletePhaseIds: ['phase'], complete: false,
+        preview: { source: 'validated-roadmap', steps: [], entities: [], totalChanged: 1,
+            additionalChanges: 0, parentTitles: {} } } as ChatRoadmapStageSnapshot;
+    let backend = { ...snapshot, sequence: 2 };
+    const connection = { readNativeRoadmapStage: async () => backend } as unknown as ChatConnection;
+    Object.assign(controller, { workspace: 'file:///project', chatId: 'chat', running: true,
+        roadmapStage: snapshot, lease: { workspace: 'file:///project', chatId: 'chat',
+            handle: 'handle', token: 'lease', connection } });
+    assert.equal((await controller.readCurrentRoadmapStage()).sequence, 2);
+    backend = { ...backend, projectId: 'foreign' };
+    await assert.rejects(controller.readCurrentRoadmapStage(), /stale|changed project/i);
+    backend = { ...backend, projectId: 'project' };
+    controller.running = false;
+    await assert.rejects(controller.readCurrentRoadmapStage(), /no longer active/i);
+    controller.dispose();
+});
 
 test('Roadmap preview control shows provisional revision-zero proposals only in the current leased Chat', () => {
     const controller = new ChatPanelController(() => { throw new Error('no connection'); },
@@ -98,6 +120,26 @@ test('one saved Chat follows current checkpoint, pins exact owner, restores and 
                 assert.equal(updates, before + 1);
                 client?.notifyChatEvent({ ...event, stage: 'validating' });
                 assert.equal(first.planningProgress?.stage, 'validating');
+                assert.equal(updates, before + 2);
+                const snapshot = { proposalId: 'proposal', chatId: request.chatId, turnId: 'turn-1',
+                    projectId: 'project', ownerId: 'project', revision: 1, sourceHash: null,
+                    sequence: 1, expiresAt: Date.now() + 60_000, operationIds: ['one'],
+                    entityIds: ['phase'], counts: { phases: 1, gates: 0, criteria: 0 },
+                    incompletePhaseIds: ['phase'], complete: false,
+                    preview: { source: 'validated-roadmap', steps: [], entities: [],
+                        totalChanged: 1, additionalChanges: 0, parentTitles: {} } } as ChatRoadmapStageSnapshot;
+                const staged = { projectHandle: request.projectHandle, kind: 'roadmap-stage' as const,
+                    chatId: request.chatId, messageId: 'turn-1', snapshot };
+                client?.notifyChatEvent(staged);
+                assert.equal(first.roadmapStage?.sequence, 1);
+                client?.notifyChatEvent({ ...staged, snapshot: { ...snapshot, sequence: 0 } });
+                assert.equal(first.roadmapStage?.sequence, 1);
+                client?.notifyChatEvent({ ...staged, messageId: 'old-turn', snapshot: null,
+                    reason: 'cancelled' });
+                assert.equal(first.roadmapStage?.sequence, 1);
+                client?.notifyChatEvent({ ...staged, snapshot: null, reason: 'cancelled' });
+                client?.notifyChatEvent({ ...staged, snapshot: { ...snapshot, sequence: 2 } });
+                assert.equal(first.roadmapStage, null);
                 assert.equal(updates, before + 2);
                 progressChecked = true;
             }

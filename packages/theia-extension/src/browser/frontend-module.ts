@@ -622,6 +622,19 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 const widget = context.container.get(WidgetManager).tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
                 if (widget) widget.receiveChatStage(workspace, event,
                     context.container.get(ApplicationShell).getCurrentWidget('main') === widget);
+            }, async (uri, readLatest) => {
+                const roots = await context.container.get(WorkspaceService).roots;
+                if (roots.length !== 1 || roots[0].resource.toString() !== uri)
+                    throw new Error('Project changed before Roadmap navigation');
+                await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
+                const latestRoots = await context.container.get(WorkspaceService).roots;
+                if (latestRoots.length !== 1 || latestRoots[0].resource.toString() !== uri)
+                    throw new Error('Project changed before Roadmap preview');
+                const widget = await context.container.get(WidgetManager)
+                    .getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                const snapshot = await readLatest();
+                await widget.presentLiveChatStage(uri, { projectHandle: '', kind: 'roadmap-stage',
+                    chatId: snapshot.chatId, messageId: snapshot.turnId, snapshot });
             });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();

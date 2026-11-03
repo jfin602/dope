@@ -258,6 +258,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private spacePanPressed = false;
     private cancelScrollAnimation?: () => void;
     private scrollAnimationUntil = 0;
+    private liveStageNotice?: HTMLElement;
 
     constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
         private readonly shell: ApplicationShell, owners: ChatOpenOwners, workOwners: WorkOpenOwners,
@@ -286,7 +287,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly roadmapPicker?: { available: (projectUri: string) => boolean;
             active?: () => boolean;
             begin: (projectUri: string) => Promise<ChatContextSelection[] | undefined> },
-        private readonly onRoadmapStage?: (event: Extract<ChatEvent, { kind: 'roadmap-stage' }>, workspace: string) => void) {
+        private readonly onRoadmapStage?: (event: Extract<ChatEvent, { kind: 'roadmap-stage' }>, workspace: string) => void,
+        private readonly viewLiveRoadmapStage?: (uri: string,
+            readLatest: () => Promise<NonNullable<ChatPanelController['roadmapStage']>>) => Promise<void>) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -301,7 +304,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (kind === 'activity' && this.updateLiveStreamActivity()) return;
             this.render(); this.syncStrategicRoadmap();
         }, owners, this.id,
-            () => { void this.shell.activateWidget(this.id); }, planningSelection, onRoadmapStage);
+            () => { void this.shell.activateWidget(this.id); }, planningSelection, (event, workspace) => {
+                onRoadmapStage?.(event, workspace);
+                this.updateLiveStageNotice();
+            });
         this.panel = new SharedPanelState(workOwners, this.id,
             () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
         this.panel.mode = this.module;
@@ -411,6 +417,43 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (this.autoPreviewedProposals.has(key)) return;
         this.autoPreviewedProposals.add(key);
         void this.viewCurrentRoadmapProposal(proposal, true);
+    }
+
+    /** Refresh only this transient control so stage batches do not rerender the composer or move focus. */
+    private updateLiveStageNotice(): void {
+        const host = this.liveStageNotice, state = this.controller;
+        if (!host?.isConnected) return;
+        let progress = host.querySelector<HTMLElement>('.dope-chat-planning-progress');
+        if (state.running && state.roadmapStage && state.workspace && this.viewLiveRoadmapStage) {
+            const stage = state.roadmapStage;
+            if (!progress) {
+                progress = document.createElement('div');
+                progress.className = 'dope-chat-planning-progress';
+                progress.append(document.createElement('span'), this.button('View in Roadmap', () => {
+                    void (async () => {
+                        try {
+                            await state.readCurrentRoadmapStage();
+                            const uri = state.workspace;
+                            if (!uri) throw new Error('Project changed before Roadmap navigation');
+                            await this.viewLiveRoadmapStage!(uri, () => state.readCurrentRoadmapStage());
+                        } catch (error) {
+                            state.roadmapStageError = `Roadmap preview unavailable: ${String(error)}`;
+                            this.updateLiveStageNotice();
+                        }
+                    })();
+                }));
+                host.prepend(progress);
+            }
+            const counts = progress.querySelector('span')!;
+            counts.textContent = `Proposed · Not applied · Stage ${stage.sequence} · ${stage.counts.phases} Phases, ` +
+                `${stage.counts.gates} Gates, ${stage.counts.criteria} Criteria · ` +
+                `${stage.complete ? 'Ready for review' : 'Incomplete'}`;
+        } else progress?.remove();
+        let error = host.querySelector<HTMLElement>('[role="alert"]');
+        if (state.roadmapStageError) {
+            if (!error) { error = document.createElement('p'); error.setAttribute('role', 'alert'); host.append(error); }
+            error.textContent = state.roadmapStageError;
+        } else error?.remove();
     }
 
     private async viewCurrentRoadmapProposal(proposal: ChatPlanningProposal, automatic = false): Promise<void> {
@@ -3362,6 +3405,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             progress.textContent = 'Validating local planning result…';
             responseNotices.append(progress);
         }
+        this.liveStageNotice = document.createElement('div');
+        this.liveStageNotice.className = 'dope-chat-live-roadmap-stage';
+        this.liveStageNotice.setAttribute('role', 'status');
+        this.liveStageNotice.setAttribute('aria-live', 'polite');
+        responseNotices.append(this.liveStageNotice);
         if (state.context.length) {
             const selectedContext = document.createElement('ul');
             selectedContext.className = 'dope-chat-selected-context';
@@ -3415,6 +3463,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             region.append(backdrop, overlay);
         }
         this.content.append(shell);
+        this.updateLiveStageNotice();
         resizeChatInput(input);
         scroll.scrollTop = this.scrollFollow.restore(scrollTop, scroll.scrollHeight, scroll.clientHeight);
         if (this.dragPointerId !== undefined && this.dragChatId === state.chatId) {

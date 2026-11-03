@@ -1015,6 +1015,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     /** Events are observations of the single backend stage owner; they never grant Apply. */
+    async presentLiveChatStage(uri: string, event: Extract<ChatEvent, { kind: 'roadmap-stage' }>): Promise<void> {
+        if (this.projectUri !== uri || !this.inspector.gateIndex) await this.refresh();
+        if (this.history) throw new Error('Return to Current before viewing a live Roadmap stage');
+        const snapshot = event.snapshot, index = this.inspector.gateIndex;
+        if (!snapshot || this.projectUri !== uri || !index ||
+            snapshot.projectId !== index.projectId || snapshot.revision !== index.revision ||
+            snapshot.sourceHash !== (index.linkedDocument?.sourceHash ?? null) ||
+            snapshot.expiresAt <= Date.now())
+            throw new Error('Roadmap project or source changed before preview');
+        this.receiveChatStage(uri, event, true);
+    }
+
     receiveChatStage(uri: string, event: Extract<ChatEvent, { kind: 'roadmap-stage' }>, _active: boolean): void {
         if (this.isDisposed || this.projectUri !== uri) return;
         if (!event.snapshot) {
