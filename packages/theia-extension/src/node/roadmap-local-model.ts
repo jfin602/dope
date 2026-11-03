@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import type { ConversationMessage, ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import type { StrategicDraftInput } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
@@ -102,6 +103,7 @@ export interface UntrustedTypedRoadmapCandidate {
 
 const TYPED_DRAFT_MAX_BYTES = 32768;
 const TYPED_DRAFT_MAX_OPERATIONS = 48;
+const TYPED_DRAFT_MAX_ENTITIES = 64;
 
 export function typedRoadmapDraftInstruction(requiredMechanics: readonly string[] = []): string {
     const requirements = requiredMechanics.length ?
@@ -111,7 +113,7 @@ export function typedRoadmapDraftInstruction(requiredMechanics: readonly string[
         '"gates":[{"title":"...","purpose":"...","criteria":[{"title":"...",' +
         '"expectedResult":"observable behavior"}]}]}]}. ' +
         'Order 2–12 deliverable Phases; every Phase needs 1–8 Gates and every Gate 1–6 testable Criteria. ' +
-        'At most 48 total Phase/Gate/Criterion entries. Optional phase dependsOn is an array of earlier ' +
+        'At most 48 staging operations (Phases, Gates and explicit dependencies). Optional phase dependsOn is an array of earlier ' +
         '1-based Phase positions. Include only the shown fields. Do not supply project IDs, revisions, ' +
         'source hashes, UUIDs, operation IDs, staging batches, approval tokens, status or proof of qualification.' +
         requirements;
@@ -143,7 +145,7 @@ export function parseTypedRoadmapDraft(text: string, finishReason: string | unde
     };
     const line = (item: unknown, max: number, path: string): string => {
         if (typeof item !== 'string' || !item.trim() || item.length > max ||
-            /[\p{Cc}\p{Cf}]/u.test(item) ||
+            /[\p{Cc}\p{Cf}]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(item) ||
             /<\/?[a-z][^>]*>|javascript:|!\[[^\]]*\]\(https?:/iu.test(item))
             return fail(`${path} must be safe nonempty text of at most ${max} characters`, text);
         return item.trim();
@@ -162,11 +164,13 @@ export function parseTypedRoadmapDraft(text: string, finishReason: string | unde
     if (root.type !== 'roadmap-draft' || root.schemaVersion !== 1)
         return fail('draft.type/schemaVersion must be roadmap-draft/1', text);
     let operationCount = 0;
+    let entityCount = 0;
     const phases = list(root.phases, 2, 12, 'draft.phases').map((entry, phaseIndex) => {
         const path = `draft.phases[${phaseIndex}]`;
         const phase = object(entry, path);
         exact(phase, ['title', 'objective', 'gates'], ['dependsOn'], path);
         operationCount++;
+        entityCount++;
         const title = line(phase.title, 120, `${path}.title`);
         const objective = line(phase.objective, 360, `${path}.objective`);
         let dependsOn: number[] | undefined;
@@ -176,19 +180,21 @@ export function parseTypedRoadmapDraft(text: string, finishReason: string | unde
             if (dependsOn.some(index => !Number.isSafeInteger(index) || index < 1 || index > phaseIndex) ||
                 new Set(dependsOn).size !== dependsOn.length)
                 fail(`${path}.dependsOn must name distinct earlier 1-based Phase positions`, text);
+            operationCount++;
         }
         const gates = list(phase.gates, 1, 8, `${path}.gates`).map((gateEntry, gateIndex) => {
             const gatePath = `${path}.gates[${gateIndex}]`;
             const gate = object(gateEntry, gatePath);
             exact(gate, ['title', 'purpose', 'criteria'], [], gatePath);
             operationCount++;
+            entityCount++;
             const gateTitle = line(gate.title, 120, `${gatePath}.title`);
             const purpose = line(gate.purpose, 280, `${gatePath}.purpose`);
             const criteria = list(gate.criteria, 1, 6, `${gatePath}.criteria`).map((criterionEntry, criterionIndex) => {
                 const criterionPath = `${gatePath}.criteria[${criterionIndex}]`;
                 const criterion = object(criterionEntry, criterionPath);
                 exact(criterion, ['title', 'expectedResult'], [], criterionPath);
-                operationCount++;
+                entityCount++;
                 const criterionTitle = line(criterion.title, 120, `${criterionPath}.title`);
                 const expectedResult = line(criterion.expectedResult, 300, `${criterionPath}.expectedResult`);
                 if (/^(?:done|works?|complete|green|passed|verified|test(?:ed)?|tbd)[.! ]*$/i.test(expectedResult))
@@ -203,7 +209,9 @@ export function parseTypedRoadmapDraft(text: string, finishReason: string | unde
     });
     unique(phases.map(item => item.title), 'draft.phases');
     if (operationCount > TYPED_DRAFT_MAX_OPERATIONS)
-        return fail(`Typed Roadmap draft has ${operationCount} entries; at most 48 are supported`, text);
+        return fail(`Typed Roadmap draft has ${operationCount} operations; at most 48 are supported`, text);
+    if (entityCount > TYPED_DRAFT_MAX_ENTITIES)
+        return fail(`Typed Roadmap draft has ${entityCount} entities; at most 64 are supported`, text);
     const gateEvidence = phases.flatMap(phase => phase.gates.flatMap(gate =>
         [gate.title, gate.purpose, ...gate.criteria.flatMap(criterion => [criterion.title, criterion.expectedResult])]))
         .join(' ').normalize('NFKC').toLocaleLowerCase();
@@ -212,6 +220,108 @@ export function parseTypedRoadmapDraft(text: string, finishReason: string | unde
         .map(item => `No Gate/Criterion text explicitly covers ${item.label}`);
     return { kind: 'untrusted-typed-roadmap-draft',
         draft: { type: 'roadmap-draft', schemaVersion: 1, phases }, coverageWarnings };
+}
+
+/** Parse one complete RM1 answer. The result has no authority beyond the existing typed candidate. */
+export function parseRoadmapMarkers(text: string, finishReason: string | undefined,
+    requiredMechanics: readonly RoadmapMechanicRequirement[] = [],
+    maxOutputBytes = TYPED_DRAFT_MAX_BYTES): UntrustedTypedRoadmapCandidate {
+    if (!finishReason || !['stop', 'eos', 'end_turn'].includes(finishReason))
+        return fail('RM1 output was truncated or has no completed finish reason', text, 'incomplete-answer');
+    if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes < 1 ||
+        Buffer.byteLength(text, 'utf8') > Math.min(maxOutputBytes, TYPED_DRAFT_MAX_BYTES))
+        return fail('RM1 output exceeds the reserved output byte limit', text, 'incomplete-answer');
+    const lines = text.replace(/\r\n/g, '\n').split('\n');
+    if (lines.at(-1) === '') lines.pop(); // exactly one ordinary final newline is permitted
+    if (lines.length > 700) return fail('RM1 line 701 exceeds the safe line limit', text);
+    if (lines[0] !== 'RM1') return fail('RM1 line 1 must be exactly RM1', text);
+    if (lines.length < 3 || lines.at(-1) !== 'END')
+        return fail(`RM1 line ${lines.length} must be exactly END`, text, 'incomplete-answer');
+    const field = (value: string, max: number, at: number, name: string): string => {
+        if (!value.trim() || value !== value.trim() || value.length > max ||
+            /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value) ||
+            /<\/?[a-z][^>]*>|javascript:|!\[[^\]]*\]\(https?:/iu.test(value))
+            return fail(`RM1 line ${at} ${name} must be safe nonempty text of at most ${max} characters`, text);
+        return value.trim();
+    };
+    const seen = (values: Set<string>, value: string, at: number, name: string) => {
+        const key = value.normalize('NFKC').toLocaleLowerCase();
+        if (values.has(key)) fail(`RM1 line ${at} ${name} is duplicate`, text);
+        values.add(key);
+    };
+    const phases: TypedRoadmapDraftV1['phases'] = [];
+    const phaseTitles = new Set<string>();
+    let phase: TypedRoadmapDraftV1['phases'][number] | undefined;
+    let gate: TypedRoadmapDraftV1['phases'][number]['gates'][number] | undefined;
+    let gateTitles = new Set<string>();
+    const results = new Set<string>();
+    let titles = new Set<string>();
+    let operations = 0;
+    let entities = 0;
+    for (let index = 1; index < lines.length - 1; index++) {
+        const at = index + 1;
+        const parts = lines[index].split('|');
+        const kind = parts[0];
+        const expected = kind === 'P' || kind === 'G' ? 3 : kind === 'C' ? 2 : 0;
+        if (!expected || parts.length !== expected)
+            return fail(`RM1 line ${at} has an unknown kind or incorrect field count`, text);
+        if (kind === 'P') {
+            if (phase && !phase.gates.length)
+                return fail(`RM1 line ${at} previous Phase needs a Gate`, text, 'incomplete-answer');
+            if (gate && !gate.criteria.length)
+                return fail(`RM1 line ${at} previous Gate needs a Criterion`, text, 'incomplete-answer');
+            const title = field(parts[1], 120, at, 'Phase title');
+            seen(phaseTitles, title, at, 'Phase title');
+            phase = { title, objective: field(parts[2], 360, at, 'Phase objective'), gates: [] };
+            phases.push(phase);
+            operations++;
+            entities++;
+            if (phases.length > 12) return fail(`RM1 line ${at} exceeds 12 Phases`, text);
+            gate = undefined;
+            gateTitles = new Set();
+        } else if (kind === 'G') {
+            if (!phase) return fail(`RM1 line ${at} Gate needs a preceding Phase`, text);
+            if (gate && !gate.criteria.length)
+                return fail(`RM1 line ${at} previous Gate needs a Criterion`, text, 'incomplete-answer');
+            const title = field(parts[1], 120, at, 'Gate title');
+            seen(gateTitles, title, at, 'Gate title');
+            gate = { title, purpose: field(parts[2], 280, at, 'Gate purpose'), criteria: [] };
+            phase.gates.push(gate);
+            operations++;
+            entities++;
+            if (phase.gates.length > 8) return fail(`RM1 line ${at} exceeds 8 Gates in Phase`, text);
+            titles = new Set();
+        } else {
+            if (!gate) return fail(`RM1 line ${at} Criterion needs a preceding Gate`, text);
+            const expectedResult = field(parts[1], 300, at, 'Criterion expectedResult');
+            if (/^(?:done|works?|complete|green|passed|verified|test(?:ed)?|tbd)[.! ]*$/i.test(expectedResult))
+                return fail(`RM1 line ${at} Criterion expectedResult must describe observable behavior`, text);
+            seen(results, expectedResult, at, 'Criterion expectedResult');
+            const digest = createHash('sha256').update(expectedResult).digest('hex').slice(0, 10);
+            let prefix = '';
+            for (const char of expectedResult) {
+                if (prefix.length + char.length > 106) break;
+                prefix += char;
+            }
+            const title = `${prefix.trimEnd()} [${digest}]`;
+            seen(titles, title, at, 'derived Criterion title');
+            gate.criteria.push({ title, expectedResult });
+            entities++;
+            if (gate.criteria.length > 6) return fail(`RM1 line ${at} exceeds 6 Criteria in Gate`, text);
+        }
+        if (operations > TYPED_DRAFT_MAX_OPERATIONS)
+            return fail(`RM1 line ${at} exceeds at most 48 staging operations`, text);
+        if (entities > TYPED_DRAFT_MAX_ENTITIES)
+            return fail(`RM1 line ${at} exceeds at most 64 entities`, text);
+    }
+    if (phase && !phase.gates.length)
+        return fail(`RM1 line ${lines.length} final Phase needs a Gate`, text, 'incomplete-answer');
+    if (gate && !gate.criteria.length)
+        return fail(`RM1 line ${lines.length} final Gate needs a Criterion`, text, 'incomplete-answer');
+    if (phases.length < 2) return fail(`RM1 line ${lines.length} needs 2–12 complete Phases`, text, 'incomplete-answer');
+    // Reuse strict JSON-candidate validation for operation/entity ceilings and coverage warnings.
+    return parseTypedRoadmapDraft(JSON.stringify({ type: 'roadmap-draft', schemaVersion: 1, phases }),
+        finishReason, requiredMechanics, TYPED_DRAFT_MAX_BYTES);
 }
 
 /** One normal model generation. No partial answer, retry, or prose gains proposal authority. */

@@ -1,11 +1,133 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { allowsPlainGateAnswer, generateTypedRoadmapDraft, localPlanningJson, parseStrategicDraft,
-    parseTypedRoadmapDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget, typedRoadmapDraftInstruction,
+    parseRoadmapMarkers, parseTypedRoadmapDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget, typedRoadmapDraftInstruction,
     verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
+const markerLines = () => [
+    'RM1',
+    'P|Path and enemies|Build a fixed waypoint path',
+    'G|Enemy motion|Spawn enemies with health and move them over waypoints',
+    'C|Enemies traverse every waypoint in order',
+    'C|Enemies with zero health disappear from the path',
+    'P|Tower combat|Build a basic tower',
+    'G|Projectile attack|Target enemies and fire on a cooldown',
+    'C|One tower targets an enemy and fires a projectile after its cooldown expires',
+    'P|Waves|Deliver waves',
+    'G|Wave advance|Start the next wave when the current wave ends',
+    'C|The next wave begins after all current enemies are defeated',
+    'P|Economy|Add earned and spent currency',
+    'G|Buy towers|Use kill currency to purchase defenses',
+    'C|A kill adds currency and buying a tower deducts the displayed cost',
+    'P|Main tower and defeat|Keep health between waves',
+    'G|Defeat|Persist health and end play at zero',
+    'C|Main tower health persists across waves and zero health ends the game',
+    'END'
+];
+
+test('RM1 parses one five-Phase candidate with exact result, stable title, warnings and no dependencies', () => {
+    const text = markerLines().join('\n');
+    const candidate = parseRoadmapMarkers(text, 'stop', [
+        { label: 'waypoints', terms: ['waypoint'] },
+        { label: 'multiplayer', terms: ['multiplayer'] }
+    ]);
+    assert.equal(candidate.kind, 'untrusted-typed-roadmap-draft');
+    assert.equal(candidate.draft.phases.length, 5);
+    assert.equal(candidate.draft.phases[0].gates[0].criteria.length, 2);
+    assert.equal(candidate.draft.phases[0].gates[0].criteria[0].expectedResult,
+        'Enemies traverse every waypoint in order');
+    assert.equal(candidate.draft.phases[0].gates[0].criteria[0].title,
+        'Enemies traverse every waypoint in order [69e4d45836]');
+    assert.deepEqual(candidate.draft.phases.map(phase => phase.title),
+        ['Path and enemies', 'Tower combat', 'Waves', 'Economy', 'Main tower and defeat']);
+    assert.ok(candidate.draft.phases.every(phase => !Object.hasOwn(phase, 'dependsOn')));
+    assert.deepEqual(candidate.coverageWarnings, ['No Gate/Criterion text explicitly covers multiplayer']);
+    assert.deepEqual(parseRoadmapMarkers(text.replaceAll('\n', '\r\n') + '\r\n', 'eos', [
+        { label: 'waypoints', terms: ['waypoint'] }, { label: 'multiplayer', terms: ['multiplayer'] }
+    ]), candidate);
+    assert.equal(parseTypedRoadmapDraft(JSON.stringify(candidate.draft), 'stop').draft.phases.length, 5);
+});
+
+test('RM1 fails closed on grammar, nesting, field, safety and completion errors', () => {
+    const valid = markerLines();
+    const replace = (at: number, value: string) => valid.map((line, index) => index === at ? value : line).join('\n');
+    const parse = (text: string, reason = 'stop') => parseRoadmapMarkers(text, reason);
+    assert.throws(() => parse(valid.join('\n'), 'length'), /truncated/);
+    assert.throws(() => parse(valid.join('\n'), ''), /finish reason/);
+    assert.throws(() => parse(valid.join('\n').slice(0, -3)), /line 17.*END/);
+    assert.throws(() => parse(valid.join('\n') + '\n\n'), /line 19.*END/);
+    assert.throws(() => parse('preface\n' + valid.join('\n')), /line 1/);
+    assert.throws(() => parse(valid.join('\n') + '\ncommentary'), /END/);
+    assert.throws(() => parse(replace(1, 'C|Enemies move')), /line 2.*preceding Gate/);
+    assert.throws(() => parse(replace(2, 'C|Enemies move')), /line 3.*preceding Gate/);
+    assert.throws(() => parse(replace(3, 'P|Early|Wrong nesting')), /previous Gate needs a Criterion/);
+    assert.throws(() => parse(replace(3, 'X|Unknown')), /line 4.*unknown kind/);
+    assert.throws(() => parse(replace(3, 'C|Enemies|move')), /line 4.*field count/);
+    assert.throws(() => parse(replace(3, 'C|')), /line 4.*expectedResult/);
+    assert.throws(() => parse(replace(3, 'C| Padded result')), /line 4.*expectedResult/);
+    assert.throws(() => parse(replace(3, 'C|<script>alert(1)</script>')), /line 4.*expectedResult/);
+    assert.throws(() => parse(replace(3, 'C|Passed')), /line 4.*observable behavior/);
+    assert.throws(() => parse(replace(1, 'P|Path and enemies|')), /line 2.*Phase objective/);
+    assert.throws(() => parse(replace(3, 'C|' + 'x'.repeat(301))), /line 4.*expectedResult/);
+    assert.throws(() => parse(replace(3, 'C|Bad\uD800 text')), /line 4.*expectedResult/);
+    assert.throws(() => parse(replace(4, valid[3])), /line 5.*duplicate/);
+    assert.throws(() => parse(replace(7, valid[3])), /line 8.*duplicate/);
+    assert.throws(() => parse(replace(4, 'G|Enemy motion|Repeated')), /line 5.*Gate title/);
+    assert.throws(() => parse(replace(5, 'P|Path and enemies|Repeated')), /line 6.*Phase title/);
+    assert.throws(() => parse(replace(1, 'P|Path and enemies|'.concat('x'.repeat(361)))), /line 2.*Phase objective/);
+    assert.throws(() => parseRoadmapMarkers(valid.join('\n'), 'stop', [], 20), /reserved output/);
+    assert.throws(() => parse(valid.join('\n') + 'x'.repeat(32768)), /reserved output/);
+    assert.throws(() => parseRoadmapMarkers('RM1\n' + 'C|x\n'.repeat(699) + 'END', 'stop'), /line 701.*line limit/);
+    const sharedPrefix = 'A visible event with a very long but identical leading description that fills the whole derived title prefix ';
+    const distinct = valid.map((line, at) => at === 3 ? `C|${sharedPrefix}one appears` :
+        at === 4 ? `C|${sharedPrefix}two appears` : line).join('\n');
+    const criteria = parse(distinct).draft.phases[0].gates[0].criteria;
+    assert.notEqual(criteria[0].title, criteria[1].title);
+    assert.ok(criteria.every(item => item.title.length <= 120));
+});
+
+test('RM1 and JSON count real operations while enforcing the 64-entity projection ceiling', () => {
+    const lines = ['RM1'];
+    for (let phase = 1; phase <= 5; phase++) {
+        lines.push(`P|Phase ${phase}|Deliver phase ${phase}`);
+        for (let gate = 1; gate <= 2; gate++) {
+            lines.push(`G|Gate ${gate}|Demonstrate gate ${gate}`);
+            for (let criterion = 1; criterion <= 4; criterion++)
+                lines.push(`C|Phase ${phase} gate ${gate} result ${criterion} is visible`);
+        }
+    }
+    lines.push('END');
+    const candidate = parseRoadmapMarkers(lines.join('\n'), 'stop');
+    assert.equal(candidate.draft.phases.length, 5);
+    assert.equal(candidate.draft.phases.reduce((count, phase) => count + phase.gates.length +
+        phase.gates.reduce((sum, gate) => sum + gate.criteria.length, 0), 0) + 5, 55);
+    assert.equal(parseTypedRoadmapDraft(JSON.stringify(candidate.draft), 'stop').draft.phases.length, 5);
+    const tooMany = lines.slice(0, -1);
+    for (let gate = 3; gate <= 4; gate++) {
+        tooMany.push(`G|Gate ${gate}|Expand the result`);
+        for (let criterion = 1; criterion <= 6; criterion++)
+            tooMany.push(`C|Additional gate ${gate} result ${criterion} appears`);
+    }
+    tooMany.push('END');
+    assert.throws(() => parseRoadmapMarkers(tooMany.join('\n'), 'stop'), /at most 64/);
+    const phases = Array.from({ length: 12 }, (_, at) => ({
+        title: `Phase ${at}`, objective: 'Deliver visible behavior',
+        ...(at ? { dependsOn: [at] } : {}),
+        gates: Array.from({ length: at < 2 ? 3 : 2 }, (_, gate) => ({
+            title: `Gate ${gate}`, purpose: 'Show visible behavior',
+            criteria: [{ title: 'Observable result', expectedResult: `Phase ${at} gate ${gate} is visible` }]
+        }))
+    }));
+    assert.throws(() => parseTypedRoadmapDraft(JSON.stringify({
+        type: 'roadmap-draft', schemaVersion: 1, phases
+    }), 'stop'), /49 operations; at most 48/);
+    assert.equal(parseTypedRoadmapDraft(JSON.stringify({
+        type: 'roadmap-draft', schemaVersion: 1,
+        phases: [{ ...phases[0], gates: phases[0].gates.slice(0, 2) }, ...phases.slice(1)]
+    }), 'stop').draft.phases.length, 12);
+});
 
 const towerDraft = () => ({ type: 'roadmap-draft', schemaVersion: 1, phases: [
     ['Path and enemies', 'Build a fixed waypoint path', 'Enemies traverse waypoints with health',

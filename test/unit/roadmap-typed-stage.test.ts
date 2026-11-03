@@ -9,7 +9,7 @@ import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
-import { parseTypedRoadmapDraft } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
+import { parseRoadmapMarkers, parseTypedRoadmapDraft } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 import { RoadmapNativeStageOwner } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
 import { stageTypedRoadmapDraft } from '../../packages/theia-extension/lib/node/roadmap-typed-stage.js';
 
@@ -21,6 +21,25 @@ const candidate = () => parseTypedRoadmapDraft(JSON.stringify({ type: 'roadmap-d
                 title: `${title} check ${number}.${criterion}`,
                 expectedResult: `A playable scenario shows ${title.toLowerCase()} result ${number}.${criterion}` })) })) }))
 }), 'stop');
+
+test('RM1 candidate uses the existing noncanonical stage converter without invented dependencies', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-marker-stage-'));
+    try {
+        const owner = new RoadmapNativeStageOwner(new RoadmapStore());
+        const context = { root, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const marker = ['RM1', 'P|Path|Build a route', 'G|Waypoints|Move enemies',
+            'C|Enemies visit every waypoint in order', 'P|Combat|Build one tower',
+            'G|Projectiles|Attack enemies', 'C|Projectiles damage enemies on contact', 'END'].join('\n');
+        const stage = await stageTypedRoadmapDraft(owner, context, parseRoadmapMarkers(marker, 'stop'));
+        const snapshot = await owner.snapshot(context);
+        assert.deepEqual(snapshot?.counts, { phases: 2, gates: 2, criteria: 2 });
+        assert.equal(stage.operations.length, 4);
+        assert.deepEqual(stage.operations.map(operation => operation.action.type),
+            ['phase.create', 'gate.create', 'phase.create', 'gate.create']);
+        await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
+        await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 test('typed five-Phase draft becomes one complete existing proposal with zero pre-Apply writes', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-typed-stage-'));
