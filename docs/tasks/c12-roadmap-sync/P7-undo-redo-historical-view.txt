@@ -1,0 +1,34 @@
+TASK: c12-roadmap-sync / P7 — formal permanent Undo/Redo toolbar and read-only historical Roadmap
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 manual connected Codex Chrome).
+- Focused target <=8 minutes per working cycle, hard cap 15; stop NOT GREEN on unsafe/unfinished boundaries.
+- Phase runner owns successful implementation checkpoint commits. Do NOT self-commit, /activate, automatically run other stacks, change version/lockfiles/model/provider, grant generic shell or Work permissions.
+- Ponytail FULL only for implementation agent if actually installed; never inject it into Dope's selected Pi model.
+
+VERSIONING
+- Documented reference 0.12.7; verify current LOCAL manifest, source and actual runner expectations. Preserve version unless separately approved.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, native Roadmap contract, historical restore contract, c12-roadmap-sync README/assessment/plan and all previous Pn exact-source evidence. Inspect LOCAL HEAD/status/diff, owner modifications and live components; do not treat GitHub main as identical to checkout.
+- Reuse existing RoadmapStore/Service, ProjectPlanningActions, Pi broker, saved ChatPanel, RoadmapCanvas/Inspector and source-aware Markdown writer. Preserve protected /roadmap, Ask/Allow, owner/project/source/revision/lease/decision checks, immutable history and evidence/qualification. No reset/stash/clean, source clobber, real owner workspace modification or parallel c12-undo/c12-roadmap-native-authoring execution. Use disposable fixtures.
+
+
+PREREQUISITE: P4 verified hash-backed revision archive, current P6 canvas. Reuse existing c12-undo P2 implementation if source-proven, do not run its old prompt.
+
+OBJECTIVE
+Always-visible icon-only Undo / Redo in existing Roadmap toolbar navigates preserved exact historical revisions WITHOUT changing current Roadmap or linked Markdown. It is not the code editor's undo and not immediate destructive rollback.
+
+IMPLEMENT
+1. Extend existing RoadmapCanvasWidget toolbar with paired accessible Undo/Redo icons, tooltip/aria names, keyboard/tab/focus and disabled bounds derived from **verified available snapshots**. Undo from current chooses nearest valid earlier revision; Redo goes forward to current; gaps/retention and earliest stored baseline are surfaced honestly.
+2. Use P4 read-only list/fetch RPC and bounded hash checks. Display selected historical Phase/Gate/Criterion/Correction structure/order/dependencies and as-of statuses; label **Historical preview · Rk (current Rm)**. Historical qualification/evidence display is only a historic fact, never present-day GREEN. Changing view cursor never writes source/index/history or calls model.
+3. During history mode disable pencil/Inspector/approval/qualification/source/context-picker actions from live current view. Prevent newly arriving Chat proposals from auto-replacing historical canvas/focus; retain current Chat proposal for manual View after returning current. Do not silently switch tabs, pan/zoom saved camera or steal keyboard focus.
+4. Bottom conditional strip: selected/current revision, Compare with Current (verified structural diff if available), **Confirm Restore** disabled with explicit "available after restore integration" until P8, and Return to Current/Cancel. Do not put duplicate permanent revision narration back on canvas. Reconcile misleading old "Undo last edit" affordance; do not leave an unsafe second undo path enabled in history.
+5. No Ctrl+Z/Y interception in normal code editors. Concurrent new head leaves historical cursor stable but changes current label and invalidates stale compare; project/reopen safely returns current without restoring stale approval.
+
+QUALIFY
+- At least four retained revisions across manual/Chat/link owners: Undo/Undo/Redo/Redo and edge disabled behavior; correct exact snapshot names/status. No changes to .dope/roadmap.json, linked Markdown, Project History or current revision when only browsing.
+- Gaps/bad hash/earliest baseline truth, project/tab switch, wrong owner, source revision advancing concurrently, keyboard, narrow, pan/zoom, reduced motion and Code Editor Ctrl+Z unaffected.
+- Historical mode disables approval/pencils; new Chat proposal doesn't auto-preview, explicit View works only after current; terminal saved card doesn't revive tokens.
+- Focused service/canvas/keyboard/a11y tests, typecheck and browser/Electron builds. Source hashes and observed tests recorded.
+EXIT: P7 scoped GREEN only for read-only formal revision navigation; confirmed restore is intentionally disabled until P8.
