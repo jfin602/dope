@@ -980,7 +980,7 @@ export class ChatBackend implements ChatService {
             selections.filter(item => item.kind === 'roadmap-checkpoint').length !== 1))
             throw new Error('Small-step planning requires a bound draft or one unlinked Roadmap checkpoint and a cap of two or three');
         const planningPrompt = publicationIntent ? { text: 'This protected turn requests a deterministic Roadmap Markdown review. Do not write files, call tools, or claim publication. Reply in one short sentence that a backend review will be prepared.' } :
-            roadmapSkill && !greenfieldSkill ? { text: `${initialNative ? 'The canonical Roadmap is uninitialized. Build the requested complete, project-specific Roadmap as typed Phase, Gate and observable Criterion operations. Cover every stated requirement; use meaningful objectives, scoped Gates, and only necessary dependencies. Do not invent deadlines or unsupported facts. ' : 'For accepted Roadmap changes, '}Use roadmap_read, roadmap_stage and roadmap_cancel. Stage typed operations in ordered batches of at most eight using current revision/source hash and expectedStage starting at 1. Use new: aliases across batches. Set done true only on the final batch. Use strategy phase-only only for an intentional phase-only draft; otherwise include complete Gates and observable Criteria. The server validates the stage for a preview. Do not emit mutation JSON in your final answer or claim an applied change. For read-only questions, answer without staging.` } :
+            roadmapSkill && !greenfieldSkill ? { text: `${initialNative ? 'The canonical Roadmap is uninitialized. Build the requested complete, project-specific Roadmap as typed Phase, Gate and observable Criterion operations. Cover every stated requirement; use meaningful objectives, scoped Gates, and only necessary dependencies. Do not invent deadlines or unsupported facts. ' : 'For accepted Roadmap changes, '}Use roadmap_read before roadmap_stage. Dope retains the trusted source and revision from that read; do not supply either field in stage calls. Stage typed operations in ordered batches of at most eight with expectedStage starting at 1. Use new: aliases across batches. Set done true only on the final batch. Use strategy phase-only only for an intentional phase-only draft; otherwise include complete Gates and observable Criteria. The server validates the stage for a preview. Do not emit mutation JSON in your final answer or claim an applied change. For read-only questions, answer without staging.` } :
             bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
             `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
             'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
@@ -1132,10 +1132,24 @@ export class ChatBackend implements ChatService {
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
         let toolBytes = 0;
         const noProjectTools = !!publicationIntent || forbidsProjectTools(content);
+        // This closure belongs to one authorized Chat execution. A later read may inspect
+        // staged operations, but cannot silently rebase its original source preconditions.
+        let stagingBasis: { root: string; projectId: string; ownerId: string; chatId: string;
+            turnId: string; lease: string; revision: number; sourceHash: string | null;
+            linkState: string | null; expiresAt: number } | undefined;
         const projectTools = this.grounder && !noProjectTools ? { root, roadmapTools: nativeRoadmap,
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
                 if (name.startsWith('roadmap_')) {
+                    if (!['roadmap_read', 'roadmap_stage', 'roadmap_cancel'].includes(name))
+                        throw new Error('ROADMAP_TOOL_UNKNOWN');
+                    const roadmapName = name as 'roadmap_read' | 'roadmap_stage' | 'roadmap_cancel';
+                    recordActivity('tool', `${roadmapName}: running`);
+                    let roadmapStatus: 'completed' | 'failed' | 'denied' = 'denied';
+                    let brokerExecuted = false;
+                    try {
+                    if (toolEvents.length >= 127) throw new Error('ROADMAP_TOOL_LIMIT');
+                    const output = await (async (): Promise<string> => {
                     if (!nativeRoadmap || !this.nativeStages || !this.roadmapStore || signal?.aborted ||
                         abort.signal.aborted || this.active(request.projectHandle) !== root ||
                         this.turns.get(key)?.abort !== abort ||
@@ -1147,6 +1161,29 @@ export class ChatBackend implements ChatService {
                         !selected.models.some(item => item.id === model.id && item.usable))
                         throw new Error('ROADMAP_MODEL_CHANGED');
                     const current = await this.roadmapStore.read<RoadmapGateIndex>(root);
+                    if (name === 'roadmap_stage') {
+                        if (!args || typeof args !== 'object' || Array.isArray(args) ||
+                            Object.keys(args).some(field => !['version', 'expectedStage', 'strategy', 'done', 'actions'].includes(field)))
+                            return JSON.stringify({ version: 1, acceptedOperationIds: [],
+                                error: 'ROADMAP_STAGE_ARGUMENTS: unexpected model-facing field' });
+                        if (!stagingBasis) return JSON.stringify({ version: 1, acceptedOperationIds: [],
+                            error: 'ROADMAP_STAGE_READ_REQUIRED: call roadmap_read before staging' });
+                        if (Date.now() >= stagingBasis.expiresAt)
+                            return JSON.stringify({ version: 1, acceptedOperationIds: [],
+                                error: 'ROADMAP_STAGE_BASIS_EXPIRED: start a fresh authorized turn' });
+                        if (stagingBasis.root !== root || stagingBasis.projectId !== current.projectId ||
+                            stagingBasis.ownerId !== current.projectId || stagingBasis.chatId !== key ||
+                            stagingBasis.turnId !== assistant!.id || stagingBasis.lease !== request.leaseToken)
+                            return JSON.stringify({ version: 1, acceptedOperationIds: [],
+                                error: 'ROADMAP_STAGE_BASIS_CHANGED: project, Chat or turn changed' });
+                        if (stagingBasis.revision !== current.revision)
+                            return JSON.stringify({ version: 1, acceptedOperationIds: [],
+                                error: 'ROADMAP_STAGE_STALE_REVISION: start a fresh authorized turn' });
+                        if (stagingBasis.sourceHash !== (current.linkedDocument?.sourceHash ?? null) ||
+                            stagingBasis.linkState !== (current.linkedDocument?.syncState ?? null))
+                            return JSON.stringify({ version: 1, acceptedOperationIds: [],
+                                error: 'ROADMAP_STAGE_STALE_SOURCE: linked Roadmap changed' });
+                    }
                     const selectedRef = composed.refs.find(ref => ref.kind === 'roadmap');
                     if (!selectedRef || selectedRef.projectId !== current.projectId ||
                         selectedRef.ownerRevision !== current.revision ||
@@ -1157,8 +1194,11 @@ export class ChatBackend implements ChatService {
                     let result: unknown;
                     try {
                         await this.repository.renew(root, key, request.leaseToken);
+                        brokerExecuted = true;
                         result = name === 'roadmap_read' ? await this.nativeStages.read(context, args) :
-                        name === 'roadmap_stage' ? await this.nativeStages.stage(context, args) :
+                        name === 'roadmap_stage' ? await this.nativeStages.stage(context, {
+                            ...(args as object), expectedRevision: stagingBasis!.revision,
+                            expectedSourceHash: stagingBasis!.sourceHash }) :
                         name === 'roadmap_cancel' ? await this.nativeStages.cancel(context, args) :
                         (() => { throw new Error('ROADMAP_TOOL_UNKNOWN'); })(); }
                     catch (error) {
@@ -1175,6 +1215,18 @@ export class ChatBackend implements ChatService {
                     }
                     if (signal?.aborted || abort.signal.aborted || this.active(request.projectHandle) !== root)
                         throw new Error('ROADMAP_TOOL_CANCELLED');
+                    if (name === 'roadmap_read' && !stagingBasis) {
+                        const read = result as { projectId: string; revision: number;
+                            stageBasis: { expectedRevision: number; expectedSourceHash: string | null };
+                            link: { syncState: string } | null };
+                        if (read.projectId !== current.projectId || read.revision !== current.revision ||
+                            read.stageBasis.expectedRevision !== read.revision)
+                            throw new Error('ROADMAP_STAGE_BASIS_CHANGED');
+                        stagingBasis = { root, projectId: read.projectId, ownerId: current.projectId,
+                            chatId: key, turnId: assistant!.id, lease: request.leaseToken,
+                            revision: read.revision, sourceHash: read.stageBasis.expectedSourceHash,
+                            linkState: read.link?.syncState ?? null, expiresAt: Date.now() + 30 * 60_000 };
+                    }
                     if (name === 'roadmap_stage') {
                         const snapshot = await this.nativeStages.snapshot(context);
                         if (!snapshot || this.turns.get(key)?.abort !== abort ||
@@ -1186,12 +1238,22 @@ export class ChatBackend implements ChatService {
                             kind: 'roadmap-stage', chatId: key, messageId: assistant!.id, snapshot }); }
                         catch { /* Transient observer delivery cannot control stage acceptance. */ }
                     } else if (name === 'roadmap_cancel' && (result as { cancelled?: boolean }).cancelled) {
+                        stagingBasis = undefined;
                         try { this.client.notifyChatEvent({ projectHandle: request.projectHandle,
                             kind: 'roadmap-stage', chatId: key, messageId: assistant!.id,
                             snapshot: null, reason: 'cancelled' }); }
                         catch { /* A disconnected observer cannot change cancellation. */ }
                     }
                     return JSON.stringify(result);
+                    })();
+                    roadmapStatus = typeof (JSON.parse(output) as { error?: unknown }).error === 'string' ?
+                        'failed' : 'completed';
+                    return output;
+                    } finally {
+                        recordActivity('tool', `${roadmapName}: ${roadmapStatus}`);
+                        toolEvents.push({ name: roadmapName, status: roadmapStatus, truncated: false,
+                            brokerExecuted, stage: brokerExecuted ? 'broker' : 'authority' });
+                    }
                 }
                 if (nativeRoadmap) throw new Error('ROADMAP_TOOL_DENIED');
                 const toolName = name as NonNullable<ChatAssistantMessage['execution']['toolEvents']>[number]['name'];

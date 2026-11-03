@@ -730,6 +730,25 @@ test('all Dope Chat copy controls use the shared accessible context menu', async
     assert.match(menu, /this\.anchor\.focus\(\)/);
 });
 
+test('saved Roadmap tool calls stay in Chat activity and transcript copy', () => {
+    const chatId = randomUUID(), messageId = randomUUID(), executionId = randomUUID();
+    const recorder = new ChatActivityRecorder(chatId, messageId, executionId);
+    recorder.add('tool', 'roadmap_read: running');
+    recorder.add('tool', 'roadmap_read: completed');
+    recorder.add('tool', 'roadmap_stage: running');
+    recorder.add('tool', 'roadmap_stage: failed');
+    const message = { role: 'assistant', id: messageId, content: 'The stage was rejected.',
+        execution: { id: executionId, status: 'complete', toolEvents: [
+            { name: 'roadmap_read', status: 'completed', truncated: false },
+            { name: 'roadmap_stage', status: 'failed', truncated: false }] },
+        activity: recorder.snapshot() } as import('../../packages/chat/lib/index.js').ChatAssistantMessage;
+    assert.deepEqual(chatActivityPresentation(message)?.parts, [
+        { kind: 'tool', name: 'roadmap_read', status: 'completed' },
+        { kind: 'tool', name: 'roadmap_stage', status: 'failed' }]);
+    assert.match(chatTranscriptCopyText({ messages: [message] }),
+        /Tool calls:\n1\. roadmap_read · completed\n2\. roadmap_stage · failed/);
+});
+
 test('touch drag follows vertical movement and leaves horizontal gestures to the browser', () => {
     const drag = new ChatTranscriptDrag();
     drag.start(200, 150, 100);

@@ -22,6 +22,8 @@ let activeRequest = false;
 let sessionConsumed = false;
 let chatRepeat = undefined;
 let chatLoopStopped = false;
+let chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
+let rejectedRoadmapStages = new Map();
 let compactionRecord;
 let compactionRejected = false;
 let compactionPending;
@@ -33,6 +35,27 @@ const trace = (stage, detail = {}) => {
   if (!continuationTrace || ++traceCount > 128) return;
   process.stderr.write(`[dope-pi-continuation] ${JSON.stringify({ at: new Date().toISOString(),
     stage, modelId: session?.model?.id, requestId: workRequestId, ...detail })}\n`);
+};
+const roadmapStageShape = params => {
+  const value = params && typeof params === 'object' && !Array.isArray(params) ? params : {};
+  const actionCount = Array.isArray(value.actions) ? value.actions.length : undefined;
+  const actions = Array.isArray(value.actions) ? value.actions.slice(0, 8) : [];
+  const alias = part => typeof part === 'string' && /^new:[a-z0-9-]{1,32}$/iu.test(part) ? part : undefined;
+  return { expectedStage: Number.isSafeInteger(value.expectedStage) ? value.expectedStage : typeof value.expectedStage,
+    done: typeof value.done === 'boolean' ? value.done : typeof value.done,
+    strategy: ['full', 'phase-only'].includes(value.strategy) ? value.strategy : typeof value.strategy,
+    actionCount, actionTypes: actions.map(action => typeof action?.type === 'string' &&
+      Object.hasOwn(ROADMAP_ACTION_FIELDS, action.type) ? action.type : 'unsupported'),
+    newAliases: actions.map(action => ({ id: alias(action?.id), parentPhaseId: alias(action?.parentPhaseId),
+      criterionIds: Array.isArray(action?.criteria) ? action.criteria.slice(0, 12).map(item => alias(item?.id)) : undefined })) };
+};
+const roadmapResultShape = output => {
+  try {
+    const value = JSON.parse(output);
+    return { errorCode: typeof value.error === 'string' ? value.error.split(/[\s:]/u, 1)[0] : undefined,
+      acceptedCount: Array.isArray(value.acceptedOperationIds) ? value.acceptedOperationIds.length : undefined,
+      nextStage: value.nextStage, complete: value.complete, proposalId: value.proposalId };
+  } catch { return { resultKind: 'invalid-json' }; }
 };
 if (continuationTrace) {
   const originalFetch = globalThis.fetch;
@@ -131,7 +154,7 @@ const roadmapField = {
   title: Type.String({ minLength: 1, maxLength: 2048 }),
   objective: Type.String({ minLength: 1, maxLength: 2048 }),
   purpose: Type.String({ minLength: 1, maxLength: 2048 }),
-  designation: Type.String({ minLength: 1, maxLength: 2048 }),
+  designation: Type.String({ pattern: '^G[1-9][0-9]*$', maxLength: 2048 }),
   expectedResult: Type.String({ minLength: 1, maxLength: 2048 }),
   order: Type.Integer({ minimum: 0, maximum: 4096 }),
   ids: Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { maxItems: 32 }),
@@ -141,7 +164,7 @@ const roadmapField = {
   criteria: Type.Array(Type.Object({ id: Type.String({ pattern: '^new:[a-zA-Z0-9-]{1,32}$' }),
     title: Type.String({ minLength: 1, maxLength: 2048 }),
     expectedResult: Type.String({ minLength: 1, maxLength: 2048 }) },
-    { additionalProperties: false }), { maxItems: 12 })
+    { additionalProperties: false }), { minItems: 1, maxItems: 12 })
 };
 export const ROADMAP_ACTION_FIELDS = {
   'phase.create': ['id', 'title', 'objective'], 'phase.edit': ['id', 'title', 'objective'],
@@ -164,8 +187,7 @@ export const roadmapActionSchema = Type.Union(Object.entries(ROADMAP_ACTION_FIEL
 const ROADMAP_TOOLS = {
   roadmap_read: { version: Type.Literal(1), ids: Type.Optional(Type.Array(Type.String())),
     offset: Type.Optional(Type.Integer()), limit: Type.Optional(Type.Integer()), stageOffset: Type.Optional(Type.Integer()) },
-  roadmap_stage: { version: Type.Literal(1), expectedRevision: Type.Integer(),
-    expectedSourceHash: Type.Union([Type.String(), Type.Null()]), expectedStage: Type.Integer(),
+  roadmap_stage: { version: Type.Literal(1), expectedStage: Type.Integer(),
     strategy: Type.Optional(Type.Union([Type.Literal('full'), Type.Literal('phase-only')])),
     done: Type.Optional(Type.Boolean()), actions: Type.Array(roadmapActionSchema, { minItems: 1, maxItems: 8 }) },
   roadmap_cancel: { version: Type.Literal(1) }
@@ -177,8 +199,8 @@ function chatTools() {
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
       name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. For later pages pass nextOffset as offset and sourceHash as expectedSourceHash. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
-      name === 'roadmap_read' ? 'Read current typed Roadmap entities. Use stageBasis.expectedRevision and stageBasis.expectedSourceHash exactly, including JSON null when unlinked.' :
-      name === 'roadmap_stage' ? 'Stage typed Roadmap actions in batches of 1-8 (48 total). Copy both fields from roadmap_read.stageBasis exactly, including JSON null; start expectedStage at 1 and increment per accepted batch. Use new: aliases for created IDs across batches. Set done true only on the final batch; full requires Gates and Criteria, phase-only is for an intentional Phase draft. This never applies canonical state.' :
+      name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Read before staging; Dope retains source and revision preconditions.' :
+      name === 'roadmap_stage' ? 'Stage typed Roadmap actions in batches of 1-8 (48 total) after roadmap_read. Dope supplies trusted source and revision preconditions; do not include them. Start expectedStage at 1 and increment per accepted batch. Use new: aliases for created IDs across batches. Gate designations are G1, G2, etc. within each Phase, and every created Gate needs an observable Criterion. Set done true only on the final batch; full requires Gates and Criteria, phase-only is for an intentional Phase draft. This never applies canonical state.' :
       name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: Type.Object(properties, { additionalProperties: false }),
@@ -190,13 +212,27 @@ function chatTools() {
       signal?.addEventListener('abort', onAbort, { once: true });
       process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params } })}\n`);
       trace('tool-request', { toolId: id, toolName: name });
+      if (name === 'roadmap_stage') trace('roadmap-stage-request', { toolId: id, ...roadmapStageShape(params) });
       try {
         const result = await answer;
         trace('tool-result-accepted', { toolId: id, status: result.status,
           outputBytes: Buffer.byteLength(result.output ?? '', 'utf8') });
+        if (name === 'roadmap_stage') trace('roadmap-stage-result', {
+          toolId: id, status: result.status, ...roadmapResultShape(result.output ?? '') });
         if (result.status !== 'completed') throw new Error('Dope Chat tool denied by project authority');
         if (typeof result.output !== 'string' || Buffer.byteLength(result.output, 'utf8') > 12_000)
           throw new Error('Dope Chat tool output limit exceeded');
+        if (name === 'roadmap_stage' && roadmapResultShape(result.output).errorCode === 'ROADMAP_STAGE_ARGUMENTS') {
+          const key = hash(JSON.stringify(normalized(params)));
+          const repeated = (rejectedRoadmapStages.get(key) ?? 0) + 1;
+          rejectedRoadmapStages.set(key, repeated);
+          if (repeated >= 2) {
+            chatLoopStopped = true;
+            chatLoopReason = 'Repeated invalid Roadmap stage arguments stopped this Chat turn';
+            void session?.abort();
+            throw new Error(chatLoopReason);
+          }
+        }
         if (name !== 'run_command') {
           const key = hash(JSON.stringify([name, normalized(params)]));
           const evidence = hash(result.output);
@@ -297,6 +333,8 @@ async function dispose() {
   sessionConsumed = false;
   chatRepeat = undefined;
   chatLoopStopped = false;
+  chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
+  rejectedRoadmapStages = new Map();
   compactionRecord = undefined;
   compactionRejected = false;
   compactionPending = undefined;
@@ -396,6 +434,8 @@ export async function dispatch(message) {
       sessionConsumed = true;
       chatRepeat = undefined;
       chatLoopStopped = false;
+      chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
+      rejectedRoadmapStages = new Map();
       const zeroUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
         totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
       const systems = message.messages.filter(item => item.role === 'system').map(item => item.content).join('\n\n');
@@ -440,11 +480,11 @@ export async function dispatch(message) {
         await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
         trace('session-prompt-returned', { toolCount });
       } catch (error) {
-        if (chatLoopStopped) throw new Error('Repeated unchanged project evidence stopped this Chat turn');
+        if (chatLoopStopped) throw new Error(chatLoopReason);
         throw error;
       } finally { unsubscribe(); workRequestId = undefined; }
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
-      if (chatLoopStopped) throw new Error('Repeated unchanged project evidence stopped this Chat turn');
+      if (chatLoopStopped) throw new Error(chatLoopReason);
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
           assistant.stopReason === 'toolUse' || assistant.content.some(item => item.type === 'toolCall'))

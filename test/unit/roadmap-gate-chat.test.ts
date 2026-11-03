@@ -60,7 +60,7 @@ test('linked source IDs are recognized across structural and multi-action refere
         designation: 'G2', title: 'New', purpose: 'New', criteria: [] }] as never, sections), false);
 });
 
-test('Pi worker serializes two Roadmap batches through ChatBackend without canonical writes', async () => {
+test('Pi worker serializes three Roadmap batches through ChatBackend without canonical writes', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-native-pi-backend-'));
     const store = new RoadmapStore(), repository = new ChatRepository(), chatId = randomUUID();
     const composer = new ChatContextComposer({} as never, {} as never,
@@ -73,6 +73,7 @@ test('Pi worker serializes two Roadmap batches through ChatBackend without canon
         input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: 4096, maxTokens: 512 };
     const calls: { name: string; arguments: unknown }[] = [];
+    const stageEvents: ChatEvent[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true,
         providerId: 'local', models: [model] }] }),
     async *generate(_selection: unknown, request: { projectTools?: { roadmapTools?: boolean;
@@ -82,10 +83,18 @@ test('Pi worker serializes two Roadmap batches through ChatBackend without canon
         let turn = 0, basis: { expectedRevision: number; expectedSourceHash: string | null } | undefined;
         let relayError: unknown;
         const actions = [
-            { type: 'phase.create', id: 'new:phase', title: 'Foundation', objective: 'Playable wave' },
-            { type: 'gate.create', id: 'new:gate', parentPhaseId: 'new:phase', designation: 'G1',
-                title: 'Wave check', purpose: 'Verify the wave', criteria: [
-                    { id: 'new:criterion', title: 'Wave finishes', expectedResult: 'Wave completes' }] }
+            [{ type: 'phase.create', id: 'new:alpha-phase', title: 'Phase Alpha',
+                objective: 'Establish the project foundation' }],
+            [{ type: 'phase.create', id: 'new:beta-phase', title: 'Phase Beta',
+                objective: 'Implement the first gameplay systems' },
+            { type: 'gate.create', id: 'new:alpha-gate', parentPhaseId: 'new:alpha-phase', designation: 'G1',
+                title: 'Foundation Operational', purpose: 'Verify the application foundation works', criteria: [
+                    { id: 'new:alpha-criterion', title: 'Application startup',
+                        expectedResult: 'The application starts and renders its initial scene successfully' }] }],
+            [{ type: 'gate.create', id: 'new:beta-gate', parentPhaseId: 'new:beta-phase', designation: 'G1',
+                title: 'Gameplay Foundation Verified', purpose: 'Verify the initial gameplay systems operate', criteria: [
+                    { id: 'new:beta-criterion', title: 'Gameplay initialization',
+                        expectedResult: 'The gameplay scene initializes without errors' }] }]
         ];
         try {
             process.stdout.write = function (chunk: unknown, ...args: unknown[]) {
@@ -111,10 +120,10 @@ test('Pi worker serializes two Roadmap batches through ChatBackend without canon
                 assert.equal(body.tools.find((item: { function: { name: string } }) =>
                     item.function.name === 'roadmap_stage').function.parameters.properties.actions.items.anyOf.length, 19);
                 const next = ++turn;
-                const name = next === 1 ? 'roadmap_read' : next <= 3 ? 'roadmap_stage' : undefined;
-                const params = next === 1 ? { version: 1 } : next <= 3 ?
-                    { version: 1, ...basis, expectedStage: next - 1, done: next === 3,
-                        actions: [actions[next - 2]] } : undefined;
+                const name = next === 1 ? 'roadmap_read' : next <= 4 ? 'roadmap_stage' : undefined;
+                const params = next === 1 ? { version: 1 } : next <= 4 ?
+                    { version: 1, expectedStage: next - 1, strategy: 'full', done: next === 4,
+                        actions: actions[next - 2] } : undefined;
                 const choices = name ? [
                     { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${next}`,
                         type: 'function', function: { name, arguments: JSON.stringify(params) } }] }, finish_reason: null },
@@ -139,7 +148,9 @@ test('Pi worker serializes two Roadmap batches through ChatBackend without canon
             await dispatchPi({ type: 'close' });
         }
     } };
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+    const backend = new ChatBackend(repository, { notifyChatEvent(event: ChatEvent) {
+        if (event.kind === 'roadmap-stage') stageEvents.push(event);
+    } }, models as never,
         composer, undefined, { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
         undefined, undefined, undefined, store);
     try {
@@ -153,8 +164,33 @@ test('Pi worker serializes two Roadmap batches through ChatBackend without canon
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: 'Create a complete development Roadmap for a playable 2D tower-defense game.', context: [] });
         assert.ok(turn.proposal, turn.proposalError);
-        assert.deepEqual(calls.map(item => item.name), ['roadmap_read', 'roadmap_stage', 'roadmap_stage']);
-        assert.equal(turn.proposal.operations?.length, 2);
+        assert.deepEqual(calls.map(item => item.name),
+            ['roadmap_read', 'roadmap_stage', 'roadmap_stage', 'roadmap_stage']);
+        const savedTurn = (await repository.read(root)).chats.find(chat => chat.id === chatId)!.messages
+            .find(message => message.role === 'assistant')!;
+        assert.equal(savedTurn.role, 'assistant');
+        assert.deepEqual(savedTurn.execution.toolEvents?.map(event => [event.name, event.status]), [
+            ['roadmap_read', 'completed'], ['roadmap_stage', 'completed'],
+            ['roadmap_stage', 'completed'], ['roadmap_stage', 'completed']]);
+        assert.deepEqual(savedTurn.activity?.events.filter(event => event.kind === 'tool').map(event => event.text), [
+            'roadmap_read: running', 'roadmap_read: completed',
+            'roadmap_stage: running', 'roadmap_stage: completed',
+            'roadmap_stage: running', 'roadmap_stage: completed',
+            'roadmap_stage: running', 'roadmap_stage: completed']);
+        assert.ok(calls.slice(1).every(item => !Object.hasOwn(item.arguments as object, 'expectedSourceHash') &&
+            !Object.hasOwn(item.arguments as object, 'expectedRevision')));
+        assert.equal(turn.proposal.operations?.length, 4);
+        const snapshots = stageEvents.map(event => event.kind === 'roadmap-stage' ? event.snapshot : null)
+            .filter((snapshot): snapshot is NonNullable<typeof snapshot> => !!snapshot);
+        assert.equal(snapshots.length, 3);
+        assert.deepEqual(snapshots.map(snapshot => snapshot.sequence), [1, 2, 3]);
+        assert.deepEqual(snapshots.map(snapshot => snapshot.counts), [
+            { phases: 1, gates: 0, criteria: 0 },
+            { phases: 2, gates: 1, criteria: 1 },
+            { phases: 2, gates: 2, criteria: 2 }
+        ]);
+        assert.equal(new Set(snapshots.map(snapshot => snapshot.proposalId)).size, 1);
+        assert.deepEqual(snapshots.map(snapshot => snapshot.complete), [false, false, true]);
         assert.equal(await store.gateIndexHash(root), null);
         assert.equal((await store.read(root)).revision, 0);
         await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
@@ -185,8 +221,14 @@ test('saved Chat retains a native staged Roadmap proposal and validated preview 
             assert.equal(read.revision, 1);
             assert.equal(read.link.sourceHash, sourceHash);
             assert.equal(read.link.syncState, 'synced');
-            const basis = { version: 1, expectedRevision: read.revision,
-                expectedSourceHash: read.link.sourceHash };
+            const basis = { version: 1 };
+            await writeFile(join(root, 'ROADMAP.md'), '# External edit before staging\n');
+            const changedSource = JSON.parse(await request.projectTools.execute('roadmap_stage', {
+                ...basis, expectedStage: 1, actions: [{ type: 'phase.create', id: 'new:stale',
+                    title: 'Stale', objective: 'Must not stage' }]
+            })) as { error: string };
+            assert.match(changedSource.error, /ROADMAP_SOURCE_CHANGED/);
+            await writeFile(join(root, 'ROADMAP.md'), markdown);
             const first = JSON.parse(await request.projectTools.execute('roadmap_stage', {
                 ...basis, expectedStage: 1, actions: Array.from({ length: 5 }, (_, at) => ({
                     type: 'phase.create', id: `new:p${at + 1}`, title: `Phase ${at + 1}`,
@@ -313,12 +355,22 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
     async *generate(_selection: unknown, request: { projectTools?: {
         roadmapTools?: boolean; execute(name: string, args: unknown): Promise<string> } }) {
         assert.equal(request.projectTools?.roadmapTools, true);
+        const beforeRead = JSON.parse(await request.projectTools!.execute('roadmap_stage', {
+            version: 1, expectedStage: 1, actions: [
+                { type: 'phase.create', id: 'new:premature', title: 'Premature', objective: 'Reject' }]
+        })) as { error: string };
+        assert.match(beforeRead.error, /ROADMAP_STAGE_READ_REQUIRED/);
         const read = JSON.parse(await request.projectTools!.execute('roadmap_read', { version: 1 })) as {
             projectId: string; revision: number; link: unknown };
         assert.equal(read.projectId, 'uninitialized');
         assert.equal(read.revision, 0);
         assert.equal(read.link, null);
-        const basis = { version: 1, expectedRevision: 0, expectedSourceHash: null };
+        const basis = { version: 1 };
+        const spoofed = JSON.parse(await request.projectTools!.execute('roadmap_stage', {
+            ...basis, expectedRevision: 0, expectedSourceHash: 'null', expectedStage: 1,
+            actions: [{ type: 'phase.create', id: 'new:spoofed', title: 'Spoofed', objective: 'Reject' }]
+        })) as { error: string };
+        assert.match(spoofed.error, /ROADMAP_STAGE_ARGUMENTS: unexpected model-facing field/);
         const first = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
             expectedStage: 1, actions: [
                 { type: 'phase.create', id: 'new:foundation', title: 'Playable loop',
@@ -329,6 +381,9 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
         assert.equal(snapshots[0].snapshot?.sequence, 1);
         assert.deepEqual(snapshots[0].snapshot?.counts, { phases: 1, gates: 0, criteria: 0 });
         assert.equal(snapshots[0].snapshot?.incompletePhaseIds.length, 1);
+        const reread = JSON.parse(await request.projectTools!.execute('roadmap_read', { version: 1 })) as {
+            stage: { nextStage: number; totalOperations: number } };
+        assert.deepEqual(reread.stage, { ...reread.stage, nextStage: 2, totalOperations: 1 });
         const duplicate = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
             expectedStage: 1, actions: [{ type: 'phase.create', id: 'new:repeat',
                 title: 'Repeat', objective: 'Must not advance' }] })) as { error: string };
@@ -392,6 +447,13 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
             content: 'Create a complete development Roadmap for a playable 2D tower-defense game built using TypeScript and PixiJS.',
             context: [] });
         assert.ok(turn.proposal, turn.proposalError);
+        const savedTurn = (await repository.read(root)).chats.find(chat => chat.id === chatId)!.messages
+            .find(message => message.role === 'assistant')!;
+        assert.equal(savedTurn.role, 'assistant');
+        assert.deepEqual(savedTurn.execution.toolEvents?.map(event => [event.name, event.status]), [
+            ['roadmap_stage', 'failed'], ['roadmap_read', 'completed'], ['roadmap_stage', 'failed'],
+            ['roadmap_stage', 'completed'], ['roadmap_read', 'completed'], ['roadmap_stage', 'failed'],
+            ['roadmap_stage', 'failed'], ['roadmap_stage', 'completed'], ['roadmap_stage', 'completed']]);
         assert.equal(await backend.readNativeRoadmapStage(projectHandle, chatId,
             snapshots[2].messageId, lease.token), undefined);
         assert.equal(turn.proposal.revision, 0);
@@ -427,8 +489,9 @@ test('native stage cancellation invalidates the live observer without a canonica
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [model] }] }),
     async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
-        await request.projectTools!.execute('roadmap_stage', { version: 1, expectedRevision: 0,
-            expectedSourceHash: null, expectedStage: 1, actions: [
+        await request.projectTools!.execute('roadmap_read', { version: 1 });
+        await request.projectTools!.execute('roadmap_stage', { version: 1,
+            expectedStage: 1, actions: [
                 { type: 'phase.create', id: 'new:p', title: 'Phase', objective: 'Ship' }] });
         assert.equal(events.length, 1);
         const result = JSON.parse(await request.projectTools!.execute('roadmap_cancel', { version: 1 })) as {
@@ -495,7 +558,6 @@ test('linked native Chat subset approval synchronizes Markdown while rejected op
                 revision: number; link: { sourceHash: string } };
             const numbers = ++generations === 1 ? [2, 3] : [4, 5];
             await request.projectTools!.execute('roadmap_stage', { version: 1,
-                expectedRevision: basis.revision, expectedSourceHash: basis.link.sourceHash,
                 expectedStage: 1, done: true, actions: numbers.map(number => ({
                     type: 'gate.create', id: `new:gate${number}`, parentPhaseId: 'phase-one',
                     designation: `G${number}`, title: `AI Gate ${number}`,

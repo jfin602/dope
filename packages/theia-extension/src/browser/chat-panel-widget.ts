@@ -2947,6 +2947,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (message.execution.status === 'failed' && message.execution.failure ||
                     message.execution.status === 'complete' && chatResponseCopyText(message) ||
                     active && state.stream?.content) content.classList.add('dope-chat-final-answer');
+                const liveCalls = diagnostic?.parts.filter(part => part.kind === 'tool') ?? [];
+                const toolCalls = active && liveCalls.length ? liveCalls :
+                    message.execution.toolEvents?.length ? message.execution.toolEvents : liveCalls;
+                if (toolCalls.length) {
+                    const calls = document.createElement('div');
+                    calls.className = 'dope-chat-tool-calls';
+                    calls.setAttribute('role', 'group');
+                    calls.setAttribute('aria-label', 'Tool calls');
+                    const heading = document.createElement('strong');
+                    heading.textContent = `Tool calls (${toolCalls.length})`;
+                    calls.append(heading);
+                    const list = document.createElement('ol');
+                    for (const call of toolCalls) {
+                        const entry = document.createElement('li');
+                        entry.textContent = `${call.name} · ${call.status}`;
+                        list.append(entry);
+                    }
+                    calls.append(list);
+                    item.append(calls);
+                }
                 item.append(content);
                 const savedProposal = this.savedRoadmapProposalCard(message);
                 if (savedProposal) content.append(savedProposal);

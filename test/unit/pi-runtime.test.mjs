@@ -32,6 +32,10 @@ test('Pi Roadmap schema agrees with native stage fields and relays two typed rev
     const kind = variant.properties.type.const;
     assert.deepEqual(variant.required.sort(), ['type', ...NATIVE_ROADMAP_ACTION_FIELDS[kind]].sort());
     assert.equal(variant.additionalProperties, false);
+    if (kind === 'gate.create') {
+      assert.equal(variant.properties.designation.pattern, '^G[1-9][0-9]*$');
+      assert.equal(variant.properties.criteria.minItems, 1);
+    }
   }
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-roadmap-'));
   const originalFetch = globalThis.fetch, originalWrite = process.stdout.write;
@@ -47,7 +51,9 @@ test('Pi Roadmap schema agrees with native stage fields and relays two typed rev
           seen.push(record.tool);
           queueMicrotask(async () => {
             try {
-              const result = await owner[record.tool.name.slice('roadmap_'.length)](context, record.tool.arguments);
+              const params = record.tool.name === 'roadmap_stage' ?
+                { ...record.tool.arguments, ...basis } : record.tool.arguments;
+              const result = await owner[record.tool.name.slice('roadmap_'.length)](context, params);
               if (record.tool.name === 'roadmap_read') basis = result.stageBasis;
               await dispatch({ type: 'tool-result', toolId: record.tool.id,
                 result: { status: 'completed', output: JSON.stringify(result) } });
@@ -71,10 +77,13 @@ test('Pi Roadmap schema agrees with native stage fields and relays two typed rev
       const body = JSON.parse(options.body);
       const schema = body.tools.find(item => item.function.name === 'roadmap_stage')?.function.parameters;
       assert.equal(schema.properties.actions.items.anyOf.length, 19);
+      assert.equal(schema.additionalProperties, false);
+      assert.equal(schema.properties.expectedRevision, undefined);
+      assert.equal(schema.properties.expectedSourceHash, undefined);
       const next = ++turn;
       const name = next === 1 ? 'roadmap_read' : next <= 3 ? 'roadmap_stage' : undefined;
       const params = next === 1 ? { version: 1 } : next <= 3 ?
-        { version: 1, ...basis, expectedStage: next - 1, done: next === 3,
+        { version: 1, expectedStage: next - 1, done: next === 3,
           actions: [actions[next - 2]] } : undefined;
       const choices = name ? [
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${next}`,
@@ -494,6 +503,59 @@ test('Pi bounds repeated unchanged read evidence without fabricating completion'
     assert.deepEqual(calls, ['read_file', 'read_file', 'read_file', 'read_file']);
     assert.match(seen[3], /identical project evidence was already returned twice/);
     assert.equal(requests, 4);
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi stops a repeated invalid Roadmap stage even when the model rereads between attempts', async () => {
+  const originalFetch = globalThis.fetch, originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-roadmap-repeat-'));
+  const seen = [];
+  let requests = 0;
+  const invalid = { version: 1, expectedStage: 2,
+    strategy: 'full', done: false, actions: [
+      { type: 'phase.create', id: 'new:beta', title: 'Beta', objective: 'Gameplay' }] };
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          seen.push(record.tool.name);
+          const output = record.tool.name === 'roadmap_read' ?
+            JSON.stringify({ version: 1, revision: 0, stageBasis: { expectedRevision: 0,
+              expectedSourceHash: null } }) :
+            JSON.stringify({ version: 1, acceptedOperationIds: [], error:
+              'ROADMAP_STAGE_ARGUMENTS: invalid stage manifest' });
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: 'completed', output } }); });
+          return true;
+        }
+      } catch { /* ordinary test output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async () => {
+      const next = ++requests;
+      const name = next === 2 ? 'roadmap_read' : 'roadmap_stage';
+      const params = name === 'roadmap_read' ? { version: 1 } : invalid;
+      const choices = [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `repeat-stage-${next}`,
+          type: 'function', function: { name, arguments: JSON.stringify(params) } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ];
+      return new Response(choices.map((choice, at) => `data: ${JSON.stringify({ id: `repeat-stage-${next}-${at}`,
+        object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [choice] })}\n\n`).join('') +
+        'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'chat-tools', roadmapTools: true, cwd, model });
+    await assert.rejects(dispatch({ type: 'turn', id: 74, maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Stage the Roadmap' }] }),
+    /Repeated invalid Roadmap stage arguments/);
+    assert.deepEqual(seen, ['roadmap_stage', 'roadmap_read', 'roadmap_stage']);
+    assert.equal(requests, 3);
   } finally {
     process.stdout.write = originalWrite;
     globalThis.fetch = originalFetch;

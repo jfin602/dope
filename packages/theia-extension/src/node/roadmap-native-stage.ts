@@ -129,9 +129,10 @@ export class RoadmapNativeStageOwner {
             throw new Error('ROADMAP_STAGE_ARGUMENTS: unexpected top-level field');
         if (!Number.isSafeInteger(args.expectedRevision) || (args.expectedRevision as number) < 0)
             throw new Error('ROADMAP_STAGE_ARGUMENTS: expectedRevision must be a nonnegative integer from roadmap_read.stageBasis');
-        if (args.expectedSourceHash !== null &&
-            (typeof args.expectedSourceHash !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedSourceHash)))
-            throw new Error('ROADMAP_STAGE_ARGUMENTS: expectedSourceHash must be the hash or JSON null from roadmap_read.stageBasis');
+        if (typeof args.expectedSourceHash === 'string' && !/^[a-f0-9]{64}$/.test(args.expectedSourceHash))
+            throw new Error('ROADMAP_STAGE_ARGUMENTS: expectedSourceHash was a non-hash string; when roadmap_read.stageBasis says null, send literal JSON null without quotes and retry the same expectedStage');
+        if (args.expectedSourceHash !== null && typeof args.expectedSourceHash !== 'string')
+            throw new Error('ROADMAP_STAGE_ARGUMENTS: expectedSourceHash must be present as a 64-character hash or literal JSON null from roadmap_read.stageBasis');
         if (!Number.isSafeInteger(args.expectedStage) || (args.expectedStage as number) < 1)
             throw new Error('ROADMAP_STAGE_ARGUMENTS: expectedStage must be a positive integer');
         if (!Array.isArray(args.actions) || !args.actions.length || args.actions.length > 8)

@@ -479,7 +479,7 @@ export interface ChatActivityDisplay {
 function activityTimeline(events: readonly import('@dope/chat').ChatActivityEvent[],
     message?: ChatAssistantMessage, omitProvisional = false): ChatActivityPart[] {
     const parts: ChatActivityPart[] = [];
-    const toolPattern = /^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command): (running|completed|failed|denied)(?: · (.+))?$/u;
+    const toolPattern = /^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command|roadmap_read|roadmap_stage|roadmap_cancel): (running|completed|failed|denied)(?: · (.+))?$/u;
     for (const event of events) {
         if (event.kind === 'thinking' || event.kind === 'provisional' && !omitProvisional) {
             const last = parts.at(-1);
@@ -544,7 +544,11 @@ export function chatTranscriptCopyText(chat: Pick<Chat, 'messages'>,
         const content = message.role === 'user' ? message.content : chatResponseCopyText(message,
             stream !== undefined && stream.messageId === message.id &&
             message.execution?.status !== 'complete' ? stream.content : undefined);
-        return content ? [`${message.role === 'user' ? 'You' : 'Assistant'}:\n${content}`] : [];
+        if (message.role === 'user') return content ? [`You:\n${content}`] : [];
+        const calls = message.execution?.toolEvents?.map(call => `${call.name} · ${call.status}`) ?? [];
+        return content || calls.length ? [`Assistant:\n${[
+            ...(calls.length ? [`Tool calls:\n${calls.map((call, index) => `${index + 1}. ${call}`).join('\n')}`] : []),
+            content].filter(Boolean).join('\n\n')}`] : [];
     });
     if (transientUser?.content) turns.push(`You:\n${transientUser.content}`);
     return turns.join('\n\n');

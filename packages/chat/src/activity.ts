@@ -19,7 +19,7 @@ const encoder = new TextEncoder();
 const kinds: readonly ChatActivityKind[] = ['thinking', 'provisional', 'answer', 'tool', 'truncated'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const sensitive = /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[A-Z0-9]{16})\b|\b(?:access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|authorization|password|secret|token)\s*[:=]\s*\S+|\bBearer\s+\S+/giu;
-const toolEvent = /^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command): (running|completed|failed|denied)(?: · (.+))?$/u;
+const toolEvent = /^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command|roadmap_read|roadmap_stage|roadmap_cancel): (running|completed|failed|denied)(?: · (.+))?$/u;
 
 /** Only bounded project-relative file paths may accompany diagnostic tool metadata. */
 export function safeChatToolPath(value: unknown): string | undefined {

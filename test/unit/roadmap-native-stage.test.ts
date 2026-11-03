@@ -94,6 +94,11 @@ test('revision-zero native staging stays provisional and selected approval creat
         const first = await owner.stage(context, { ...basis, expectedStage: 1, actions: [
             { type: 'phase.create', id: 'new:phase', title: 'Playable loop', objective: 'Deliver one playable wave' }
         ] }) as { acceptedOperationIds: string[]; createdEntityIds: Record<string, string> };
+        await assert.rejects(owner.stage(context, { ...basis, expectedSourceHash: 'null', expectedStage: 2,
+            actions: [{ type: 'phase.create', id: 'new:wrong', title: 'Wrong', objective: 'Must not stage' }] }),
+        /expectedSourceHash was a non-hash string.*literal JSON null.*same expectedStage/);
+        assert.equal((await owner.snapshot(context))?.sequence, 1);
+        assert.equal(await store.gateIndexHash(root), null);
         const second = await owner.stage(context, { ...basis, expectedStage: 2, done: true, actions: [
             { type: 'gate.create', id: 'new:gate-a', parentPhaseId: 'new:phase', designation: 'G1',
                 title: 'Enemies follow the path', purpose: 'Verify fixed waypoint movement', criteria: [
