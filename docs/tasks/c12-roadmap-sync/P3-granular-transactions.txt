@@ -1,0 +1,35 @@
+TASK: c12-roadmap-sync / P3 — dependency-safe individual, group, selected and bulk decisions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 alone is manual Codex Chrome).
+- Target <=8 minutes per bounded cycle; hard cap 15 minutes. Stop NOT GREEN rather than race a safety boundary.
+- Use existing runner; runner owns successful implementation commits. NO self-commit, /activate, automatic next manual stack, version/model/provider/lockfile change or host-wide permissions.
+- Ponytail FULL only if installed/actually available to implementation agent, never injected into selected local Pi model.
+
+VERSIONING
+- Documented reference version 0.12.7. Inspect actual LOCAL package/version and runner expected version first; never silently rewrite pins to pass.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, docs/planning/p12/native-roadmap-authoring-contract.md, docs/planning/p12/roadmap-revision-navigation-and-restore.md, this stack README/assessment/plan, and preceding Pn source/qualification.
+- Inspect LOCAL git HEAD/status/diff, active owner changes, RoadmapStore/Service, ProjectPlanningActions, Pi broker/ChatBackend, ChatPanel, RoadmapCanvas, Markdown source adapter, saved History and actual tests before editing. Remote main is not proof of local state.
+- Do not reset/stash/clean, force push, overwrite real project Roadmaps or Markdown, run unrelated stacks, bypass protected /roadmap current-turn invocation, Ask/Allow, exact owner/root/revision/source/lease/approval or grant agent generic shell/file writes. Use disposable fixtures. Preserve c12-undo and publication stack original prompts and failure evidence.
+
+
+PREREQUISITE: Source-qualified P1/P2 protocol and validated proposal projection present. Reuse existing decision authority.
+
+OBJECTIVE
+Apply/Reject individual operations or chosen subsets from one proposal without all-or-nothing forced acceptance. Every applied subset is a single atomic canonical revision and real-effect receipt.
+
+IMPLEMENT
+1. Add server-owned operation lifecycle Pending / Applied / Rejected / Stale / Conflict / Denied / Failed / Superseded, with precise before/after, stable identities and one proposal owner. Support Apply/Reject One; explicit Phase + descendants group, Phase only when valid; Apply/Reject Selected; Apply/Reject All Remaining. "Selected for acceptance" is not committed before Apply; already decided operations never resurrect in bulk commands.
+2. Validate closure for new parents/children/criteria, deletes/moves/reorders, dependencies and cycles. Reject proposed parent with accepted/pending child must not orphan or auto-reparent; disclose and require explicit cascade or choose a valid subset. Existing parent with new Gate is independently applicable if dependency-valid. Preview discloses all affected changes.
+3. Bind exact selected op IDs + expected project/root/chat/owner/source/revision/index hash + one-use approval to existing backend. Under owner lock recheck everything, atomically apply *only* valid selected subset. Create new monotonic revision and idempotent actual receipt; no write for reject-only, stale, denied, no-op or failed-zero-effect.
+4. After partial Apply advances head, keep pending siblings inspectable but invalidate former approval lease; revalidate against actual current index/source, grant new review only if still valid. Never silently rebase privileges or accept stale callbacks. Update the same Chat card and provisional canvas, not another store or transcript row.
+5. No model self-approval, Gate-set coverage/qualification/evidence/waiver edits, model source writes, duplicate History events, or provider execution privileges.
+
+QUALIFY
+- Apply parent + Gate A/B while rejecting Gate C; canonical index has exactly approved parent/A/B with correct Criteria and no C. One chosen Gate field modification only; later Apply remaining; Apply/Reject all remaining exclude earlier decisions.
+- Reject parent and descendants; parent-only valid/invalid distinctions; dependency reference between accepted/rejected; orphan, cycle, duplicate, unsupported operation fail with clear no-write reason.
+- Two simultaneous windows/chat/project, stale lease/hash, multiple-click/retry, cancelled turn, source conflict and crash injection yield zero unauthorized/duplicate writes. One atomic subset increments revision exactly once and one real-effect History receipt.
+- Existing manual editing and protected /roadmap/Ask/Allow and approved greenfield boundary intact; deterministically test all outcomes, sources and typecheck/build as needed.
+EXIT: P3 GREEN only with safe granular transaction semantics. P4 will add durable historical capture at every writer path.
