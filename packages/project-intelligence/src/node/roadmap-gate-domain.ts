@@ -177,7 +177,9 @@ export interface RoadmapGateLinkedDocument {
     projectRoot: string;
     path: string;
     sourceHash: string;
-    syncState: 'synced' | 'source-changed' | 'conflict' | 'pending-sync' | 'missing';
+    syncState: 'synced' | 'source-changed' | 'conflict' | 'pending-sync' | 'missing' | 'syncing' | 'failed' | 'recoverable';
+    /** Committed with the Roadmap revision; the side journal records only its file outcome. */
+    syncIntent?: { revision: number; indexDigest: string; path: string; expectedSourceHash: string };
     /** Hash of the reviewed publisher intent, for safe result replay after response loss. */
     publicationIntentHash?: string;
     sections: { sectionKey: string; kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string }[];
@@ -403,10 +405,11 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     if (raw.linkedDocument !== undefined) {
         const doc = raw.linkedDocument;
         assertion(record(doc) && keys(doc, ['projectId', 'projectRoot', 'path', 'sourceHash', 'syncState', 'sections'],
-            ['lastSynced', 'pending', 'publicationIntentHash']) &&
+            ['lastSynced', 'pending', 'publicationIntentHash', 'syncIntent']) &&
             doc.projectId === projectId && doc.projectRoot === projectRoot && path(doc.path) && /\.md$/i.test(doc.path) &&
             (doc.publicationIntentHash === undefined || hash(doc.publicationIntentHash)) &&
-            hash(doc.sourceHash) && member(doc.syncState, ['synced', 'source-changed', 'conflict', 'pending-sync', 'missing']) &&
+            hash(doc.sourceHash) && member(doc.syncState, ['synced', 'source-changed', 'conflict', 'pending-sync', 'missing',
+                'syncing', 'failed', 'recoverable']) &&
             Array.isArray(doc.sections) && doc.sections.length <= MAX_ENTITIES, 'linked document');
         const sections = (doc as unknown as RoadmapGateLinkedDocument).sections;
         const sectionKeys = new Set<string>();
@@ -414,13 +417,21 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
         for (const section of sections) {
             assertion(record(section) && keys(section, ['sectionKey', 'kind', 'id']) && identifier(section.sectionKey) &&
                 member(section.kind, ['phase', 'gate', 'criterion', 'correction']) && identifier(section.id) &&
-                (section.kind === 'criterion' ? (gates as RoadmapGate[]).flatMap(gate => gate.criteria) :
+                ((doc as RoadmapGateLinkedDocument).syncIntent !== undefined || (section.kind === 'criterion' ? (gates as RoadmapGate[]).flatMap(gate => gate.criteria) :
                     section.kind === 'phase' ? phases : section.kind === 'gate' ? gates : corrections)
-                    .some(e => (e as { id: string }).id === section.id) &&
+                    .some(e => (e as { id: string }).id === section.id)) &&
                 !sectionKeys.has(section.sectionKey) && !sectionIds.has(section.id), 'linked section');
             sectionKeys.add(section.sectionKey); sectionIds.add(section.id);
         }
         const linked = doc as RoadmapGateLinkedDocument;
+        if (linked.syncIntent !== undefined) {
+            const intent = linked.syncIntent;
+            assertion(record(intent) && keys(intent, ['revision', 'indexDigest', 'path', 'expectedSourceHash']) &&
+                intent.revision === raw.revision && hash(intent.indexDigest) &&
+                intent.path === linked.path && intent.expectedSourceHash === linked.sourceHash &&
+                member(linked.syncState, ['pending-sync', 'syncing', 'failed', 'conflict', 'recoverable']),
+            'linked automatic sync intent');
+        }
         if (linked.lastSynced !== undefined) {
             const basis = linked.lastSynced;
             assertion(record(basis) && keys(basis, ['sourceHash', 'fields']) && hash(basis.sourceHash) &&

@@ -12,7 +12,8 @@ export interface GateDocumentPatch { path: string; checkpointId: string; beforeH
     edit: GateDocumentEdit; revision: number; projectId: string }
 export interface GateDocumentDiff { kind: GateSectionKind; id: string; field: 'title' | 'detail';
     accepted: string; source: string; roadmap: string; conflict: boolean }
-export interface GateDocumentSyncPreview { state: 'unchanged' | 'source-changed' | 'conflict' | 'relink-needed';
+export interface GateDocumentSyncPreview { state: 'unchanged' | 'source-changed' | 'conflict' | 'relink-needed' |
+    'pending-sync' | 'syncing' | 'failed' | 'recoverable';
     projectId: string; revision: number; path: string; acceptedHash: string; sourceHash?: string;
     changes: GateDocumentDiff[]; diagnostics: string[] }
 export interface GateDocumentRelinkPreview { state: 'ready' | 'review'; projectId: string; revision: number;
@@ -37,7 +38,9 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
     diagnostics: string[]; missingMetadata: string[];
     structure: { phases: { id: string; order: number; dependencies: string[] }[];
         gates: { id: string; parentPhaseId: string; designation: string; order: number;
-            dependencies: string[]; criteria: string[] }[] } }> {
+            dependencies: string[]; criteria: string[] }[];
+        corrections: { id: string; parent: { kind: 'phase' | 'gate'; id: string };
+            criterionId?: string; order: number }[] } }> {
     const source = await checkedRoadmapDocumentFile(root, linked.path);
     const content = source.bytes.toString('utf8');
     if (!Buffer.from(content).equals(source.bytes)) throw new Error('Unsupported linked Roadmap encoding');
@@ -105,7 +108,9 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
             id: item.id, parentPhaseId: item.parentPhaseId, designation: item.designation,
             ...metadata(item.source.line - 1, parsed.gates.filter(gate => gate.parentPhaseId === item.parentPhaseId)
                 .findIndex(gate => gate.id === item.id)),
-            criteria: item.criteria.map(criterion => criterion.id) })) } };
+            criteria: item.criteria.map(criterion => criterion.id) })),
+            corrections: parsed.corrections.map((item, order) => ({ id: item.id, parent: item.parent,
+                ...(item.criterionId ? { criterionId: item.criterionId } : {}), order: item.order ?? order })) } };
 }
 
 export function structureDiagnostics(index: RoadmapGateIndex, mapped: Awaited<ReturnType<typeof readGateMappedDocument>>): string[] {
@@ -115,8 +120,11 @@ export function structureDiagnostics(index: RoadmapGateIndex, mapped: Awaited<Re
             index.phases.find(p => p.id === b.parentPhaseId)!.order || a.order - b.order).map(item => ({
             id: item.id, parentPhaseId: item.parentPhaseId, designation: item.designation,
             order: item.order, dependencies: item.dependencies,
-            criteria: [...item.criteria].sort((a, b) => a.order - b.order).map(c => c.id) })) };
-    return same(expected, mapped.structure) ? [] : ['Phase, Gate or Criterion topology differs from accepted Roadmap'];
+            criteria: [...item.criteria].sort((a, b) => a.order - b.order).map(c => c.id) })),
+        corrections: [...index.corrections].sort((a, b) => a.order - b.order).map(item => ({
+            id: item.id, parent: item.parent,
+            ...(item.criterionId ? { criterionId: item.criterionId } : {}), order: item.order })) };
+    return same(expected, mapped.structure) ? [] : ['Phase, Gate, Criterion or Correction topology differs from accepted Roadmap'];
 }
 
 export async function planGateDocumentPatch(root: string, index: RoadmapGateIndex, edit: GateDocumentEdit): Promise<GateDocumentPatch> {
@@ -203,6 +211,8 @@ export async function previewGateDocumentSync(root: string, index: RoadmapGateIn
         throw new Error('Roadmap has no linked Gate document for this project');
     const base: GateDocumentSyncPreview = { state: 'unchanged', projectId: index.projectId, revision: index.revision,
         path: linked.path, acceptedHash: linked.sourceHash, changes: [], diagnostics: [] };
+    if (linked.syncIntent) return { ...base, state: linked.syncState === 'synced' ? 'pending-sync' :
+        linked.syncState as GateDocumentSyncPreview['state'] };
     let mapped: Awaited<ReturnType<typeof readGateMappedDocument>>;
     try { mapped = await readGateMappedDocument(root, linked); }
     catch (error) {

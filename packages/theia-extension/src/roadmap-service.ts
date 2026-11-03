@@ -52,6 +52,7 @@ export interface RoadmapService {
     previewRoadmapPublication(projectUri: string, path: string): Promise<RoadmapPublicationPreview>;
     applyRoadmapPublication(projectUri: string, preview: RoadmapPublicationPreview, approved: boolean): Promise<RoadmapGateIndex>;
     recoverRoadmapPublication(projectUri: string): Promise<RoadmapGateIndex>;
+    recoverAutoSync(projectUri: string): Promise<RoadmapGateIndex>;
     previewExistingRoadmapLink(projectUri: string, path: string): Promise<RoadmapExistingLinkPreview>;
     applyExistingRoadmapLink(projectUri: string, preview: RoadmapExistingLinkPreview,
         approved: boolean): Promise<RoadmapGateIndex>;

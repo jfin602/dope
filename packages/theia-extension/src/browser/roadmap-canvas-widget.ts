@@ -1807,6 +1807,20 @@ export class RoadmapCanvasWidget extends BaseWidget {
         detail.textContent = `Linked source: ${linked.path} · accepted SHA-256 ${linked.sourceHash}. ` +
             'Canonical Roadmap acceptance and Markdown publication are separate approvals.';
         this.importEntry.append(detail);
+        if (linked.syncIntent) {
+            const outcome = document.createElement('p');
+            outcome.textContent = `Roadmap saved at revision ${linked.syncIntent.revision} · Markdown ${linked.syncState.replaceAll('-', ' ')}.`;
+            this.importEntry.append(outcome);
+            if (linked.syncState === 'failed' || linked.syncState === 'recoverable') {
+                const retry = document.createElement('button'); retry.type = 'button';
+                retry.textContent = 'Retry Markdown sync';
+                retry.onclick = () => void this.service.recoverAutoSync(uri).then(() => this.refresh()).catch(error => {
+                    if (this.projectUri === uri) { this.sourceError = `Markdown retry failed: ${String(error)}`;
+                        this.renderImportEntry(); }
+                });
+                this.importEntry.append(retry);
+            }
+        }
         if (this.openLinkedDocument) {
             const openSource = document.createElement('button'); openSource.type = 'button';
             openSource.textContent = 'Open linked Markdown';

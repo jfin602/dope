@@ -100,11 +100,14 @@ const line = (value: string, label: string): string => {
 const sorted = <T extends { order: number }>(items: T[]): T[] => [...items].sort((a, b) => a.order - b.order);
 
 /** Deterministic accepted-authority serialization, checked against the existing Gate parser. */
-export function serializeRoadmapPublication(index: RoadmapGateIndex, path: string): Omit<RoadmapPublicationPreview, 'approvalId'> {
-    if (!index.revision || index.linkedDocument || !index.phases.length || !index.gates.length ||
-        index.phases.some(p => p.draftAcceptance !== 'accepted') ||
-        index.gates.some(g => g.draftAcceptance !== 'accepted') || index.corrections.length)
-        throw new Error('Publish requires accepted Phase/Gate structure with no linked file or Corrections');
+export function serializeRoadmapPublication(index: RoadmapGateIndex, path: string,
+    linkedSync = false): Omit<RoadmapPublicationPreview, 'approvalId'> {
+    const eligible = (value: string): boolean => value === 'accepted' || linkedSync && value === 'published';
+    if (!index.revision || !linkedSync && index.linkedDocument || !index.phases.length || !index.gates.length ||
+        index.phases.some(p => !eligible(p.draftAcceptance)) ||
+        index.gates.some(g => !eligible(g.draftAcceptance)) ||
+        index.corrections.some(c => !eligible(c.draftAcceptance)))
+        throw new Error('Publish requires accepted Phase/Gate/Correction structure with no linked file');
     const lines: string[] = ['# Roadmap', ''];
     const warnings: string[] = [];
     for (const [phaseNumber, phase] of sorted(index.phases).entries()) {
@@ -128,6 +131,14 @@ export function serializeRoadmapPublication(index: RoadmapGateIndex, path: strin
             lines.push('');
         }
     }
+    for (const correction of sorted(index.corrections)) {
+        line(correction.id, 'Correction ID'); line(correction.title, 'Correction title');
+        line(correction.objective, 'Correction objective');
+        lines.push(`### Correction ${correction.id} [id: ${correction.id}] ` +
+            `[${correction.parent.kind}: ${correction.parent.id}]` +
+            `${correction.criterionId ? ` [criterion: ${correction.criterionId}]` : ''}: ${correction.title}`,
+            `Objective: ${correction.objective}`, `Order: ${correction.order}`, '');
+    }
     const content = `${lines.join('\n').trimEnd()}\n`;
     if (Buffer.byteLength(content) > 2 * 1024 * 1024) throw new Error('Roadmap publication exceeds file size limit');
     const sourceHash = publicationHash(content);
@@ -135,6 +146,7 @@ export function serializeRoadmapPublication(index: RoadmapGateIndex, path: strin
     if (parsed.diagnostics.length) throw new Error(`Generated Roadmap cannot be mapped: ${parsed.diagnostics.join('; ')}`);
     const phases = sorted(index.phases);
     const gates = phases.flatMap(p => sorted(index.gates.filter(g => g.parentPhaseId === p.id)));
+    const corrections = sorted(index.corrections);
     const sourceLines = content.split('\n');
     const metadataMatches = (sourceLine: number, order: number, dependencies: string[]): boolean =>
         sourceLines[sourceLine + 1] === `Order: ${order}` &&
@@ -145,18 +157,21 @@ export function serializeRoadmapPublication(index: RoadmapGateIndex, path: strin
             g.criteria.map(c => [c.id, c.title, c.expectedResult])])) !==
         JSON.stringify(gates.map(g => [g.id, g.parentPhaseId, g.designation, g.title, g.purpose,
             sorted(g.criteria).map(c => [c.id, c.title, c.expectedResult])])) ||
-        parsed.corrections.length ||
+        JSON.stringify(parsed.corrections.map(c => [c.id, c.parent, c.criterionId, c.title, c.objective, c.order])) !==
+        JSON.stringify(corrections.map(c => [c.id, c.parent, c.criterionId, c.title, c.objective, c.order])) ||
         parsed.phases.some((p, at) => !metadataMatches(p.source.line, phases[at].order, phases[at].dependencies)) ||
         parsed.gates.some((g, at) => !metadataMatches(g.source.line, gates[at].order, gates[at].dependencies)))
         throw new Error('Generated Roadmap failed Phase/Gate/Criterion round trip');
     const sections: RoadmapGateLinkedDocument['sections'] = [
         ...parsed.phases.map(p => ({ sectionKey: p.sectionKey, kind: 'phase' as const, id: p.id })),
         ...parsed.gates.flatMap(g => [{ sectionKey: g.sectionKey, kind: 'gate' as const, id: g.id },
-            ...g.criteria.map(c => ({ sectionKey: c.sectionKey, kind: 'criterion' as const, id: c.id }))])];
+            ...g.criteria.map(c => ({ sectionKey: c.sectionKey, kind: 'criterion' as const, id: c.id }))]),
+        ...parsed.corrections.map(c => ({ sectionKey: c.sectionKey, kind: 'correction' as const, id: c.id }))];
     const fields: GateMappedField[] = [
         ...parsed.phases.map(p => ({ kind: 'phase' as const, id: p.id, title: p.title, detail: p.objective })),
         ...parsed.gates.flatMap(g => [{ kind: 'gate' as const, id: g.id, title: g.title, detail: g.purpose },
-            ...g.criteria.map(c => ({ kind: 'criterion' as const, id: c.id, title: c.title, detail: c.expectedResult }))])];
+            ...g.criteria.map(c => ({ kind: 'criterion' as const, id: c.id, title: c.title, detail: c.expectedResult }))]),
+        ...parsed.corrections.map(c => ({ kind: 'correction' as const, id: c.id, title: c.title, detail: c.objective }))];
     return { projectId: index.projectId, projectRoot: index.projectRoot, revision: index.revision,
         path, content, sourceHash, phaseCount: phases.length, gateCount: gates.length,
         criterionCount: gates.reduce((n, g) => n + g.criteria.length, 0), warnings, sections, fields };

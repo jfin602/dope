@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { readGateMappedDocument } from '../../packages/project-intelligence/lib/node/roadmap-gate-document.js';
+import { prepareAutoSync, publishAutoSync, writeAutoSyncJournal } from
+    '../../packages/project-intelligence/lib/node/roadmap-auto-sync.js';
 
 const fixture = async (run: (root: string, store: RoadmapStore) => Promise<void>) => {
     const root = await mkdtemp(join(tmpdir(), 'dope-publish-'));
@@ -203,18 +205,44 @@ test('a parent swapped to a symlink after review blocks both link and publicatio
     await assert.rejects(readFile(join(root, 'original-planning', 'OTHER.md')), /ENOENT/);
 }));
 
-test('accepted Corrections fail closed before any Markdown write or link', async () => fixture(async (root, store) => {
-    const generated = await store.previewRoadmapPublication(root, 'PLAN.md');
-    await writeFile(join(root, 'PLAN.md'), generated.content);
+test('accepted Corrections retain objective, owner and criterion in published Markdown', async () => fixture(async (root, store) => {
     const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
     await store.mutateGateIndex(root, current.revision, current.projectId, {
-        type: 'correction.attach', id: 'correction-one', parent: { kind: 'gate', id: 'gate-1' },
+        type: 'correction.attach', id: 'correction-one', parent: { kind: 'gate', id: 'gate-1' }, criterionId: 'criterion-1',
         title: 'Repair finding', objective: 'Verify repaired result',
     });
-    await assert.rejects(store.previewRoadmapPublication(root, 'OTHER.md'), /Corrections/);
-    await assert.rejects(store.previewExistingRoadmapLink(root, 'PLAN.md'), /Corrections/);
-    assert.equal(await readFile(join(root, 'PLAN.md'), 'utf8'), generated.content);
-    await assert.rejects(readFile(join(root, 'OTHER.md')), /ENOENT/);
+    const preview = await store.previewRoadmapPublication(root, 'PLAN.md');
+    assert.match(preview.content, /\[criterion: criterion-1\]: Repair finding\nObjective: Verify repaired result/);
+    const result = await store.applyRoadmapPublication(root, preview, true);
+    assert.equal(await readFile(join(root, 'PLAN.md'), 'utf8'), preview.content);
+    assert.deepEqual(result.corrections.map(c => [c.id, c.parent, c.criterionId, c.title, c.objective]),
+        [['correction-one', { kind: 'gate', id: 'gate-1' }, 'criterion-1', 'Repair finding', 'Verify repaired result']]);
+    assert.equal(result.corrections[0].draftAcceptance, 'published');
+    const mapped = await readGateMappedDocument(root, result.linkedDocument!);
+    assert.deepEqual(mapped.diagnostics, []);
+    assert.deepEqual(mapped.fields, preview.fields);
+}));
+
+test('compatible Correction Markdown links without replacing unrelated prose', async () => fixture(async (root, store) => {
+    const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    await store.mutateGateIndex(root, current.revision, current.projectId, {
+        type: 'correction.attach', id: 'correction-one', parent: { kind: 'phase', id: 'phase-one' },
+        title: 'Repair finding', objective: 'Check the fix',
+    });
+    const generated = await store.previewRoadmapPublication(root, 'PLAN.md');
+    const original = `${generated.content}\nUnrelated author prose.\n`;
+    await writeFile(join(root, 'PLAN.md'), original);
+    await writeFile(join(root, 'PLAN.md'), original.replace('[phase: phase-one]', '[gate: gate-1]'));
+    const wrongOwner = await store.previewExistingRoadmapLink(root, 'PLAN.md');
+    assert.equal(wrongOwner.compatible, false);
+    assert.match(wrongOwner.diagnostics.join(' '), /topology differs/);
+    await writeFile(join(root, 'PLAN.md'), original);
+    const review = await store.previewExistingRoadmapLink(root, 'PLAN.md');
+    assert.equal(review.compatible, true, review.diagnostics.join('; '));
+    const linked = await store.applyExistingRoadmapLink(root, review, true);
+    assert.equal(await readFile(join(root, 'PLAN.md'), 'utf8'), original);
+    assert.equal(linked.corrections[0].draftAcceptance, 'published');
+    assert.deepEqual((await readGateMappedDocument(root, linked.linkedDocument!)).fields, review.fields);
 }));
 
 test('existing-link review rejects a changed Roadmap revision without touching the file', async () => fixture(async (root, store) => {
@@ -330,4 +358,124 @@ test('response loss after linked persistence is an idempotent confirmed result',
     const persisted = await new RoadmapStore().read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
     assert.equal(persisted.linkedDocument?.sourceHash, preview.sourceHash);
     assert.equal((await store.applyRoadmapPublication(root, preview, true)).revision, persisted.revision);
+}));
+
+test('linked structural edits synchronize through a durable revision intent and preserve author prose', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'ROADMAP.md');
+    await store.applyRoadmapPublication(root, first, true);
+    const file = join(root, 'ROADMAP.md');
+    await writeFile(file, `${first.content}\nAuthor note outside the Roadmap grammar.\n`);
+    // The edited source must first be deliberately linked as a basis; ordinary external edits conflict.
+    const changed = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    await store.mutateGateIndex(root, changed.revision, changed.projectId, [
+        { type: 'gate.edit', id: 'gate-1', title: 'Revised Gate', purpose: 'Verify the new result' },
+        { type: 'correction.attach', id: 'correction-new', parent: { kind: 'gate', id: 'gate-1' },
+            criterionId: 'criterion-1', title: 'Repair result', objective: 'Confirm the repair' },
+    ]);
+    const blocked = await store.recoverAutoSync(root);
+    assert.equal(blocked.linkedDocument?.syncState, 'conflict');
+    assert.match(await readFile(file, 'utf8'), /Author note outside/);
+    assert.equal(blocked.corrections[0].id, 'correction-new');
+}));
+
+test('automatic linked sync writes manual and structural changes and survives restart', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'ROADMAP.md');
+    await store.applyRoadmapPublication(root, first, true);
+    const file = join(root, 'ROADMAP.md');
+    const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    const applied = await store.mutateGateIndex(root, current.revision, current.projectId, [
+        { type: 'gate.edit', id: 'gate-1', title: 'Revised Gate', purpose: 'Verify the new result' },
+        { type: 'correction.attach', id: 'correction-new', parent: { kind: 'gate', id: 'gate-1' },
+            criterionId: 'criterion-1', title: 'Repair result', objective: 'Confirm the repair' },
+    ]);
+    assert.equal(applied.linkedDocument?.syncIntent?.revision, applied.revision);
+    const recovered = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(recovered.linkedDocument?.syncState, 'synced');
+    assert.match(await readFile(file, 'utf8'), /Revised Gate/);
+    assert.match(await readFile(file, 'utf8'), /Correction correction-new/);
+    assert.equal((await new RoadmapStore().read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root))
+        .linkedDocument?.syncState, 'synced');
+    const next = await store.mutateGateIndex(root, recovered.revision, recovered.projectId,
+        { type: 'criterion.edit', gateId: 'gate-1', id: 'criterion-1', title: 'Check revised',
+            expectedResult: 'Revised result is visible' });
+    assert.equal((await new RoadmapStore().recoverAutoSync(root)).revision, next.revision);
+    assert.match(await readFile(file, 'utf8'), /Check revised — Expected: Revised result is visible/);
+}));
+
+test('compatible existing prose survives structural reorder and field changes', async () => fixture(async (root, store) => {
+    const generated = await store.previewRoadmapPublication(root, 'PLAN.md');
+    const file = join(root, 'PLAN.md');
+    await writeFile(file, generated.content.replace('Dependencies: none\n- Criterion 1 [id: criterion-1]',
+        'Dependencies: none\nHuman note for the first Gate.\n- Criterion 1 [id: criterion-1]'));
+    const review = await store.previewExistingRoadmapLink(root, 'PLAN.md');
+    assert.equal(review.compatible, true, review.diagnostics.join('; '));
+    const linked = await store.applyExistingRoadmapLink(root, review, true);
+    const updated = await store.mutateGateIndex(root, linked.revision, linked.projectId, [
+        { type: 'gate.edit', id: 'gate-1', title: 'Changed Gate', purpose: 'New check' },
+        { type: 'gate.reorder', parentPhaseId: 'phase-one', ids: ['gate-2', 'gate-1'] },
+    ]);
+    const result = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(result.revision, updated.revision);
+    assert.equal(result.linkedDocument?.syncState, 'synced');
+    const content = await readFile(file, 'utf8');
+    assert.match(content, /Human note for the first Gate/);
+    assert.ok(content.indexOf('Gate G2') < content.indexOf('Gate G1'));
+    assert.equal((await readGateMappedDocument(root, result.linkedDocument!)).diagnostics.length, 0);
+}));
+
+test('restart recovers source written before acknowledgment without another revision', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'PLAN.md');
+    await store.applyRoadmapPublication(root, first, true);
+    const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    const applied = await store.mutateGateIndex(root, current.revision, current.projectId,
+        { type: 'gate.edit', id: 'gate-1', title: 'After interruption', purpose: 'Check' });
+    const prepared = await prepareAutoSync(root, applied);
+    const journal = { version: 1 as const, projectId: applied.projectId, intent: applied.linkedDocument!.syncIntent!,
+        status: 'syncing' as const, content: prepared.content, targetHash: prepared.targetHash,
+        sections: prepared.sections, fields: prepared.fields };
+    await writeAutoSyncJournal(root, journal);
+    await publishAutoSync(root, applied, journal);
+    const restarted = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(restarted.revision, applied.revision);
+    assert.equal(restarted.linkedDocument?.syncState, 'synced');
+    assert.match(await readFile(join(root, 'PLAN.md'), 'utf8'), /After interruption/);
+}));
+
+test('queued revisions coalesce at the latest canonical head and remove deleted mapped sections', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'PLAN.md');
+    await store.applyRoadmapPublication(root, first, true);
+    (store as unknown as { scheduleAutoSync: () => void }).scheduleAutoSync = () => {};
+    let current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    current = await store.mutateGateIndex(root, current.revision, current.projectId,
+        { type: 'gate.edit', id: 'gate-1', title: 'Queued first', purpose: 'Check first' });
+    current = await store.mutateGateIndex(root, current.revision, current.projectId,
+        { type: 'gate.delete', id: 'gate-2' });
+    assert.equal(current.linkedDocument?.syncIntent?.revision, current.revision);
+    assert.equal(await readFile(join(root, 'PLAN.md'), 'utf8'), first.content);
+    const settled = await new RoadmapStore().recoverAutoSync(root);
+    const content = await readFile(join(root, 'PLAN.md'), 'utf8');
+    assert.match(content, /Queued first/);
+    assert.doesNotMatch(content, /Gate G2/);
+    assert.equal(settled.linkedDocument?.syncState, 'synced');
+    assert.equal((await new RoadmapStore().recoverAutoSync(root)).revision, current.revision);
+}));
+
+test('deleted file and symlink replacement block automatic sync without rolling back the Roadmap', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'PLAN.md');
+    await store.applyRoadmapPublication(root, first, true);
+    const file = join(root, 'PLAN.md');
+    (store as unknown as { scheduleAutoSync: () => void }).scheduleAutoSync = () => {};
+    const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    const applied = await store.mutateGateIndex(root, current.revision, current.projectId,
+        { type: 'gate.edit', id: 'gate-1', title: 'Saved only', purpose: 'Check' });
+    await rm(file);
+    const missing = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(missing.revision, applied.revision);
+    assert.equal(missing.linkedDocument?.syncState, 'failed');
+    const outside = join(root, 'outside.txt');
+    await writeFile(outside, 'unrelated\n');
+    await symlink(outside, file);
+    const unsafe = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(unsafe.linkedDocument?.syncState, 'conflict');
+    assert.equal(await readFile(outside, 'utf8'), 'unrelated\n');
 }));

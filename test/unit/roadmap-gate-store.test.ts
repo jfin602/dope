@@ -168,7 +168,7 @@ test('typed Phase, Gate, criterion and correction mutations persist across store
     await act({ type: 'phase.delete', id: 'p1' });
 }));
 
-test('invalid parent, duplicate, stale, foreign, cyclic and source-owned mutations leave index bytes intact', async () => fixture(async (root, file) => {
+test('invalid mutations leave index bytes intact; linked edits commit with separate source outcome', async () => fixture(async (root, file) => {
     const markdown = '# Owner roadmap\n';
     await writeFile(join(root, 'ROADMAP.md'), markdown);
     const store = new RoadmapStore();
@@ -187,13 +187,14 @@ test('invalid parent, duplicate, stale, foreign, cyclic and source-owned mutatio
         criterionId: 'criterion-1' }, /cannot own a criterion/);
     await reject(0, 'owner-1', { type: 'phase.create', id: 'new', title: 'New', objective: 'New' }, /Stale/);
     await reject(1, 'foreign', { type: 'phase.create', id: 'new', title: 'New', objective: 'New' }, /identity changed/);
-    await reject(1, 'owner-1', { type: 'gate.edit', id: 'gate-1', title: 'New', purpose: 'New' }, /read-only/);
-    await reject(1, 'owner-1', { type: 'criterion.remove', gateId: 'gate-1', id: 'criterion-1' }, /read-only/);
-    await reject(1, 'owner-1', { type: 'phase.dependencies', id: 'phase-1', dependencies: ['phase-1'] }, /read-only/);
-    await reject(1, 'owner-1', { type: 'gate.create', id: 'new', parentPhaseId: 'phase-1', designation: 'G2',
-        title: 'New gate', purpose: 'Verify', criteria: [{ id: 'new-criterion', title: 'Observe', expectedResult: 'Observed' }] }, /read-only/);
+    await reject(1, 'owner-1', { type: 'phase.dependencies', id: 'phase-1', dependencies: ['phase-1'] }, /phase fields|cycle/);
     await writeFile(join(root, 'ROADMAP.md'), `${markdown}drift\n`);
-    await reject(1, 'owner-1', { type: 'phase.create', id: 'new', title: 'New', objective: 'New' }, /fingerprint changed/);
+    const applied = await store.mutateGateIndex(root, 1, 'owner-1',
+        { type: 'gate.edit', id: 'gate-1', title: 'New', purpose: 'New' });
+    assert.equal(applied.revision, 2);
+    assert.equal(applied.linkedDocument?.syncIntent?.expectedSourceHash, digest(markdown));
+    assert.equal((await store.recoverAutoSync(root)).linkedDocument?.syncState, 'conflict');
+    assert.equal(await readFile(join(root, 'ROADMAP.md'), 'utf8'), `${markdown}drift\n`);
 }));
 
 test('dependency cycle and foreign reference cannot write; changed criteria invalidate prior Green', async () => fixture(async (root, file) => {

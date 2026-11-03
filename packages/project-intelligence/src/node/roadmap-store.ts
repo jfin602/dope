@@ -20,6 +20,9 @@ import { checkedPublicationDestination, checkedPublicationPath, publicationHash,
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from './roadmap-publication';
 import { RoadmapRevisionArchive } from './roadmap-revision-archive';
 import type { RoadmapRevisionList, RoadmapRevisionRecord } from './roadmap-revision-archive';
+import { autoSyncIndexDigest, journalMatches, overlayAutoSync, prepareAutoSync, publishAutoSync, recoverAutoSyncBackup,
+    readAutoSyncJournal, withAutoSyncIntent, writeAutoSyncJournal } from './roadmap-auto-sync';
+import type { RoadmapAutoSyncJournal } from './roadmap-auto-sync';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
@@ -364,6 +367,7 @@ export class RoadmapStore {
     private readonly listeners = new Set<(change: RoadmapChange) => void>();
     private readonly publicationReviews = new Map<string, RoadmapPublicationPreview>();
     private readonly existingLinkReviews = new Map<string, RoadmapExistingLinkPreview>();
+    private readonly scheduledAutoSync = new Set<string>();
 
     onChange(listener: (change: RoadmapChange) => void): () => void {
         this.listeners.add(listener);
@@ -408,7 +412,14 @@ export class RoadmapStore {
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
                 'schemaVersion' in parsed && parsed.schemaVersion !== 2)
                 throw new Error(`Incompatible Roadmap index schema: ${file}. ${guidance}`);
-            try { return parseRoadmapIndex(parsed, root) as T; }
+            try {
+                const index = parseRoadmapIndex(parsed, root);
+                const journal = index.linkedDocument?.syncIntent ? await readAutoSyncJournal(root) : undefined;
+                if (index.linkedDocument?.syncIntent && (!journalMatches(index, journal) ||
+                    journal?.status === 'pending' || journal?.status === 'recoverable' || journal?.status === 'syncing'))
+                    this.scheduleAutoSync(root);
+                return overlayAutoSync(index, journal) as T;
+            }
             catch { throw new Error(`Corrupt or unsupported Roadmap index: ${file}. ${guidance}`); }
         } finally { await handle.close(); }
     }
@@ -545,6 +556,7 @@ export class RoadmapStore {
             }
             if (current.linkedDocument && JSON.stringify(candidate.linkedDocument) !== JSON.stringify(current.linkedDocument))
                 throw new Error('Linked Roadmap source requires separate reviewed synchronization');
+            if (current.linkedDocument) withAutoSyncIntent(candidate);
             parseRoadmapIndex(candidate, root);
             if (!current.linkedDocument && candidate.linkedDocument) {
                 if (candidate.linkedDocument.syncState !== 'synced')
@@ -558,6 +570,7 @@ export class RoadmapStore {
         });
         this.publish({ root, projectId: next.projectId, revision: next.revision,
             changedIds: [...next.phases, ...next.gates, ...next.corrections].map(item => item.id) });
+        if (next.linkedDocument?.syncIntent) this.scheduleAutoSync(root);
         return next;
     }
 
@@ -590,7 +603,8 @@ export class RoadmapStore {
             qualificationStatus: 'unknown', draftAcceptance: 'published' }));
         const corrections: RoadmapCorrection[] = parsed.corrections.map((correction, order) => ({
             id: correction.id, projectId, parent: correction.parent, title: correction.title,
-            objective: correction.objective, order, implementationStatus: 'unknown',
+            ...(correction.criterionId ? { criterionId: correction.criterionId } : {}),
+            objective: correction.objective, order: correction.order ?? order, implementationStatus: 'unknown',
             qualificationStatus: 'unknown', draftAcceptance: 'published' }));
         const sections = [
             ...parsed.phases.map(item => ({ sectionKey: item.sectionKey, kind: 'phase' as const, id: item.id })),
@@ -628,18 +642,8 @@ export class RoadmapStore {
             if (!current.revision || current.projectId !== expectedProjectId)
                 throw new Error('Roadmap identity changed; reattach');
             if (current.revision !== expectedRevision) throw new Error('Stale Roadmap revision');
-            if (current.linkedDocument) {
-                if (current.linkedDocument.syncState !== 'synced')
-                    throw new Error('Linked Roadmap source requires reviewed synchronization');
-                const source = await checkedRoadmapDocumentFile(root, current.linkedDocument.path);
-                if (createHash('sha256').update(source.bytes).digest('hex') !== current.linkedDocument.sourceHash)
-                    throw new Error('Linked Roadmap source fingerprint changed');
-            }
             const candidate = structuredClone(current);
-            const owned = (entityId: string): void => {
-                if (candidate.linkedDocument?.sections.some(section => section.id === entityId))
-                    throw new Error('Source-backed Roadmap definition is read-only; use reviewed document synchronization');
-            };
+            const owned = (_entityId: string): void => { /* The checked automatic writer owns linked definitions. */ };
             const unique = (entityId: string): void => {
                 if ([...candidate.phases, ...candidate.gates, ...candidate.corrections,
                     ...candidate.gates.flatMap(gate => gate.criteria.flatMap(criterion => [criterion, ...criterion.evidence]))]
@@ -995,13 +999,67 @@ export class RoadmapStore {
             }
             if (JSON.stringify(candidate) === JSON.stringify(current)) throw new Error('Roadmap mutation has no changes');
             candidate.revision = current.revision + 1;
+            if (candidate.linkedDocument) withAutoSyncIntent(candidate);
             parseRoadmapIndex(candidate, root);
             if (!previewOnly) await this.replace(root, candidate, expectedHash, nativeBasis?.operationIds);
             return candidate;
         });
         if (!previewOnly) this.publish({ root, projectId: next.projectId, revision: next.revision,
             changedIds: [...next.phases, ...next.gates, ...next.corrections].map(item => item.id) });
+        if (!previewOnly && next.linkedDocument?.syncIntent) this.scheduleAutoSync(root);
         return next;
+    }
+
+    private scheduleAutoSync(root: string): void {
+        if (this.scheduledAutoSync.has(root)) return;
+        this.scheduledAutoSync.add(root);
+        setTimeout(() => {
+            this.scheduledAutoSync.delete(root);
+            void this.recoverAutoSync(root).catch(error => {
+                if (/Roadmap locked/.test(String(error))) setTimeout(() => this.scheduleAutoSync(root), 100);
+            });
+        }, 20);
+    }
+
+    /** Safe to call after restart or retry. The index intent survives a crash before any side journal write. */
+    async recoverAutoSync(root: string): Promise<RoadmapGateIndex> {
+        const result = await this.locked(root, async () => {
+            const bytes = await this.canonicalBytes(root);
+            if (!bytes) throw new Error('Roadmap is not initialized');
+            const index = parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root);
+            const intent = index.linkedDocument?.syncIntent;
+            if (!intent) return index;
+            if (intent.indexDigest !== autoSyncIndexDigest(index) || intent.revision !== index.revision)
+                throw new Error('Roadmap sync intent differs from canonical index');
+            const existing = await readAutoSyncJournal(root);
+            let journal: RoadmapAutoSyncJournal = journalMatches(index, existing) ? existing! :
+                { version: 1, projectId: index.projectId, intent, status: 'pending' };
+            try {
+                await recoverAutoSyncBackup(root, index, journal.targetHash);
+                if (!journal.content || !journal.targetHash || !journal.sections || !journal.fields) {
+                    const prepared = await prepareAutoSync(root, index);
+                    journal = { ...journal, status: 'pending', content: prepared.content,
+                        targetHash: prepared.targetHash, sections: prepared.sections, fields: prepared.fields };
+                    await writeAutoSyncJournal(root, journal);
+                }
+                // Persist the expected post-write bytes before touching the source.
+                journal.status = 'syncing';
+                await writeAutoSyncJournal(root, journal);
+                await publishAutoSync(root, index, journal);
+                journal.status = 'synced';
+                delete journal.reason;
+                await writeAutoSyncJournal(root, journal);
+            } catch (error) {
+                const message = String(error);
+                journal.status = /changed externally|mapping differs|Unsafe|symlink|missing|collision|Stale linked/.test(message) ?
+                    'conflict' : 'failed';
+                journal.reason = message.slice(0, 1024);
+                await writeAutoSyncJournal(root, journal);
+            }
+            return overlayAutoSync(index, journal);
+        });
+        this.publish({ root, projectId: result.projectId, revision: result.revision, changedIds: [] });
+        return result;
     }
 
     private async inspectExistingRoadmapLink(root: string, current: RoadmapGateIndex,
@@ -1075,6 +1133,7 @@ export class RoadmapStore {
             const next: RoadmapGateIndex = { ...current, revision: current.revision + 1,
                 phases: current.phases.map(phase => ({ ...phase, draftAcceptance: 'published' })),
                 gates: current.gates.map(gate => ({ ...gate, draftAcceptance: 'published' })),
+                corrections: current.corrections.map(correction => ({ ...correction, draftAcceptance: 'published' })),
                 linkedDocument: linked };
             await this.replace(root, next, expectedHash);
             applied = true;
@@ -1082,7 +1141,7 @@ export class RoadmapStore {
         });
         this.existingLinkReviews.delete(preview.approvalId);
         if (applied) this.publish({ root, projectId: result.projectId, revision: result.revision,
-            changedIds: [...result.phases, ...result.gates].map(item => item.id) });
+            changedIds: [...result.phases, ...result.gates, ...result.corrections].map(item => item.id) });
         return result;
     }
 
@@ -1143,7 +1202,9 @@ export class RoadmapStore {
             throw new Error('Published document failed linked-source mapping; recovery remains pending');
         const next: RoadmapGateIndex = { ...basis, revision: current.revision + 1,
             phases: current.phases.map(phase => ({ ...phase, draftAcceptance: 'published' })),
-            gates: current.gates.map(gate => ({ ...gate, draftAcceptance: 'published' })), linkedDocument: linked };
+            gates: current.gates.map(gate => ({ ...gate, draftAcceptance: 'published' })),
+            corrections: current.corrections.map(correction => ({ ...correction, draftAcceptance: 'published' })),
+            linkedDocument: linked };
         await this.replace(root, next, expectedHash);
         await rm(temporary, { force: true });
         return next;
@@ -1183,7 +1244,7 @@ export class RoadmapStore {
         });
         this.publicationReviews.delete(preview.approvalId);
         if (settled) this.publish({ root, projectId: result.projectId, revision: result.revision,
-            changedIds: [...result.phases, ...result.gates].map(item => item.id) });
+            changedIds: [...result.phases, ...result.gates, ...result.corrections].map(item => item.id) });
         return result;
     }
 
@@ -1198,7 +1259,7 @@ export class RoadmapStore {
             return next;
         });
         if (settled) this.publish({ root, projectId: result.projectId, revision: result.revision,
-            changedIds: [...result.phases, ...result.gates].map(item => item.id) });
+            changedIds: [...result.phases, ...result.gates, ...result.corrections].map(item => item.id) });
         return result;
     }
 

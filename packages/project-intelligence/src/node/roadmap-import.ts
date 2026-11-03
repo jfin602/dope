@@ -40,7 +40,7 @@ export interface RoadmapGateSourcePreview {
         purpose: string; criteria: { id: string; sectionKey: string; title: string; expectedResult: string;
             source: RoadmapCitation }[]; source: RoadmapCitation }[];
     corrections: { id: string; sectionKey: string; parent: { kind: 'phase' | 'gate'; id: string };
-        title: string; objective: string; source: RoadmapCitation }[];
+        criterionId?: string; order?: number; title: string; objective: string; source: RoadmapCitation }[];
     diagnostics: string[];
 }
 export interface RoadmapCandidate {
@@ -130,11 +130,15 @@ export function parseGateSource(path: string, sha256: string, lines: string[], f
                 title: gate[4].trim(), purpose: purpose ?? '', criteria: [], source: citation(index) };
             gates.push(currentGate); continue;
         }
-        const correction = /^### Correction\s+(.+?)\s*\[id:\s*([a-z0-9][a-z0-9-]*)\]\s*\[(phase|gate):\s*([a-z0-9][a-z0-9-]*)\]\s*:\s*(.+)$/i.exec(line);
+        const correction = /^### Correction\s+(.+?)\s*\[id:\s*([a-z0-9][a-z0-9-]*)\]\s*\[(phase|gate):\s*([a-z0-9][a-z0-9-]*)\](?:\s*\[criterion:\s*([a-z0-9][a-z0-9-]*)\])?\s*:\s*(.+)$/i.exec(line);
         if (correction) {
             const id = correction[2].toLowerCase(); claim(id, index + 1);
+            const objective = /^Objective:\s*(.+)$/.exec(lines[index + 1] ?? '')?.[1];
+            const order = /^Order: (0|[1-9]\d*)$/.exec(lines[index + (objective ? 2 : 1)] ?? '')?.[1];
             corrections.push({ id, sectionKey: id, parent: { kind: correction[3].toLowerCase() as 'phase' | 'gate',
-                id: correction[4].toLowerCase() }, title: correction[5].trim(), objective: correction[5].trim(), source: citation(index) });
+                id: correction[4].toLowerCase() }, ...(correction[5] ? { criterionId: correction[5].toLowerCase() } : {}),
+                ...(order ? { order: Number(order) } : {}), title: correction[6].trim(),
+                objective: objective?.trim() ?? correction[6].trim(), source: citation(index) });
             continue;
         }
         if (/^### Gate\b/i.test(line)) diagnostics.push(`Ambiguous Gate heading at line ${index + 1}: explicit id and phase required`);
@@ -151,8 +155,13 @@ export function parseGateSource(path: string, sha256: string, lines: string[], f
         if (!phaseIds.has(gate.parentPhaseId)) diagnostics.push(`Gate ${gate.id} has no explicit matching Phase ID at line ${gate.source.line}`);
         if (!gate.criteria.length) diagnostics.push(`Gate ${gate.id} has no testable criteria at line ${gate.source.line}`);
     }
-    for (const correction of corrections) if (!(correction.parent.kind === 'phase' ? phaseIds : gateIds).has(correction.parent.id))
-        diagnostics.push(`Correction ${correction.id} has no matching owner at line ${correction.source.line}`);
+    for (const correction of corrections) {
+        if (!(correction.parent.kind === 'phase' ? phaseIds : gateIds).has(correction.parent.id))
+            diagnostics.push(`Correction ${correction.id} has no matching owner at line ${correction.source.line}`);
+        if (correction.criterionId && (correction.parent.kind !== 'gate' ||
+            !gates.find(gate => gate.id === correction.parent.id)?.criteria.some(item => item.id === correction.criterionId)))
+            diagnostics.push(`Correction ${correction.id} has no matching criterion at line ${correction.source.line}`);
+    }
     return { phases, gates, corrections, diagnostics };
 }
 async function checkedRoot(root: string): Promise<void> {

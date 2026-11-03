@@ -213,6 +213,8 @@ export default new ContainerModule(bind => {
                     await context.container.get(PlanningStore).root(uri), preview, approved),
                 recoverRoadmapPublication: async uri => store.recoverRoadmapPublication(
                     await context.container.get(PlanningStore).root(uri)),
+                recoverAutoSync: async uri => store.recoverAutoSync(
+                    await context.container.get(PlanningStore).root(uri)),
                 previewExistingRoadmapLink: async (uri, path) => store.previewExistingRoadmapLink(
                     await context.container.get(PlanningStore).root(uri), path),
                 applyExistingRoadmapLink: async (uri, preview, approved) => store.applyExistingRoadmapLink(
