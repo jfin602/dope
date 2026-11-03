@@ -16,8 +16,9 @@ import { ChatProjectGrounder, type GroundingResult } from './chat-project-ground
 import { runChatInvestigationCommand } from './chat-command-broker';
 import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
-import { LocalPlanningOutputFailure, allowsPlainGateAnswer, localPlanningJson, requestsRoadmapOwnerRevision,
-    roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
+import { LocalPlanningOutputFailure, allowsPlainGateAnswer, generateTypedRoadmapDraft, localPlanningJson,
+    requestsRoadmapOwnerRevision, roadmapLocalBudget, typedRoadmapDraftInstruction,
+    verifyRoadmapLocalInput, type UntrustedTypedRoadmapCandidate } from './roadmap-local-model';
 import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview,
     type StrategicDraftPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
@@ -31,6 +32,7 @@ import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadm
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import { verifiedPublicationFile } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import { RoadmapNativeStageOwner } from './roadmap-native-stage';
+import { stageTypedRoadmapDraft } from './roadmap-typed-stage';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -958,6 +960,8 @@ export class ChatBackend implements ChatService {
         const greenfieldSkill = roadmapSkill && await this.bindRoadmapSkill(root, selections, request.chatId);
         const initialNative = roadmapSkill && !greenfieldSkill &&
             (await this.roadmapStore?.read<RoadmapGateIndex>(root))?.revision === 0;
+        const typedRoadmap = !!initialNative &&
+            nativeRoadmapCreation(content.replace(/^\/roadmap\s+/i, '')) && !forbidsProjectTools(content);
         if (greenfieldSkill && publicationIntent) throw new Error('Accept a Roadmap before publishing it');
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}` : undefined;
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
@@ -980,6 +984,7 @@ export class ChatBackend implements ChatService {
             selections.filter(item => item.kind === 'roadmap-checkpoint').length !== 1))
             throw new Error('Small-step planning requires a bound draft or one unlinked Roadmap checkpoint and a cap of two or three');
         const planningPrompt = publicationIntent ? { text: 'This protected turn requests a deterministic Roadmap Markdown review. Do not write files, call tools, or claim publication. Reply in one short sentence that a backend review will be prepared.' } :
+            typedRoadmap ? { text: typedRoadmapDraftInstruction() } :
             roadmapSkill && !greenfieldSkill ? { text: `${initialNative ? 'The canonical Roadmap is uninitialized. Build the requested complete, project-specific Roadmap as typed Phase, Gate and observable Criterion operations. Cover every stated requirement; use meaningful objectives, scoped Gates, and only necessary dependencies. Do not invent deadlines or unsupported facts. ' : 'For accepted Roadmap changes, '}Use roadmap_read before roadmap_stage. Dope retains the trusted source and revision from that read; do not supply either field in stage calls. Stage typed operations in ordered batches of at most eight with expectedStage starting at 1. Use new: aliases across batches. Set done true only on the final batch. Use strategy phase-only only for an intentional phase-only draft; otherwise include complete Gates and observable Criteria. The server validates the stage for a preview. Do not emit mutation JSON in your final answer or claim an applied change. For read-only questions, answer without staging.` } :
             bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
             `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
@@ -1048,9 +1053,10 @@ export class ChatBackend implements ChatService {
             bridge ? 'bridge' :
                 helpTurn ? 'help' : draft ? 'draft' :
                     composed.refs.some(item => item.kind === 'roadmap') ? 'gate' : 'unlinked';
-        const nativeRoadmap = localRoadmap && roadmapSkill && localMode === 'gate' && !greenfieldSkill &&
+        const nativeRoadmap = !typedRoadmap && localRoadmap && roadmapSkill && localMode === 'gate' && !greenfieldSkill &&
             !!this.nativeStages && !!this.grounder;
-        if (roadmapSkill && !publicationIntent && !greenfieldSkill && localMode === 'gate' && !nativeRoadmap)
+        if (roadmapSkill && !publicationIntent && !greenfieldSkill && localMode === 'gate' &&
+            !nativeRoadmap && !(typedRoadmap && localRoadmap && this.nativeStages))
             throw new Error('Protected native Roadmap tools are unavailable; no proposal was staged');
         let eligibleObjective = true;
         if (localRoadmap && localMode !== 'gate' && !draft && !helpTurn && this.planning) {
@@ -1125,6 +1131,7 @@ export class ChatBackend implements ChatService {
         };
         const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
         let output = '';
+        let typedCandidate: UntrustedTypedRoadmapCandidate | undefined;
         let actual: ChatModelProvenance = { schemaVersion: 1, connectionId: connection.id,
             modelId: model.id, providerId: connection.providerId, modelLabel: model.label };
         let routingProvenance: RoutingProvenance | undefined;
@@ -1530,12 +1537,12 @@ export class ChatBackend implements ChatService {
                     preview = { refs: next.refs, diagnostics: next.diagnostics,
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
                     return { messages: withRetryInstruction(this.withDraft(next.messages, turnPrompt), retryInstruction), controls, signal: abort.signal,
-                        ...(resolvedConnection?.providerId === 'local' && projectTools ? { projectTools } : {}),
+                        ...(resolvedConnection?.providerId === 'local' && projectTools && !typedRoadmap ? { projectTools } : {}),
                         ...(planningOutput > 0 ?
                         { maxOutputTokens: nextBudget?.output ?? planningOutput } : {}) };
                 } }) : this.models!.generate(selectedModel!,
                 { messages: withRetryInstruction(this.withDraft(composed.messages, turnPrompt), retryInstruction), controls, signal: abort.signal,
-                    ...(connection.providerId === 'local' && projectTools ? { projectTools } : {}),
+                    ...(connection.providerId === 'local' && projectTools && !typedRoadmap ? { projectTools } : {}),
                     ...(planningOutput > 0 ?
                         { maxOutputTokens: budget?.output ?? planningOutput } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
@@ -1544,7 +1551,23 @@ export class ChatBackend implements ChatService {
             const events = publicationIntent ? (async function* (): AsyncGenerator<ConversationEvent> {
                 yield { type: 'complete', text: 'Roadmap Markdown request received.',
                     usage: { tokenMeasurement: 'unavailable' }, finishReason: 'deterministic-intent' };
-            })() : nativeRoadmap ? generate() : localRoadmap ? (async function* (backend: ChatBackend) {
+            })() : typedRoadmap && localRoadmap ? (async function* (backend: ChatBackend) {
+                if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
+                let modelComplete: Extract<ConversationEvent, { type: 'complete' }> | undefined;
+                const source = async function* () {
+                    for await (const event of generate()) {
+                        if (event.type === 'complete') modelComplete = event;
+                        if (event.type === 'activity') recordActivity(event.kind, event.text);
+                        yield event;
+                    }
+                };
+                typedCandidate = await generateTypedRoadmapDraft(source, abort.signal, budget!.maxOutputBytes);
+                if (!modelComplete) throw new Error('Typed Roadmap completion missing');
+                await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
+                const count = typedCandidate.draft.phases.reduce((sum, phase) => sum + phase.gates.length, 0);
+                yield { ...modelComplete, text: `Typed Roadmap draft generated: ${typedCandidate.draft.phases.length} Phases, ` +
+                    `${count} Gates. Awaiting checked proposal review.` };
+            })(this) : nativeRoadmap ? generate() : localRoadmap ? (async function* (backend: ChatBackend) {
                 const guardedGenerate = async function* (retryInstruction?: string) {
                     if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                     yield* generate(retryInstruction);
@@ -1632,7 +1655,24 @@ export class ChatBackend implements ChatService {
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted && !localRoadmap) return preview;
                     const proposalRefs = [...preview.refs, ...sourceRefs];
-                    const result = nativeRoadmap ? await (async () => {
+                    const result = nativeRoadmap || typedRoadmap && localRoadmap ? await (async () => {
+                        if (typedRoadmap && typedCandidate) {
+                            const index = await this.roadmapStore!.read<RoadmapGateIndex>(root);
+                            if (index.revision !== 0 || index.linkedDocument || index.phases.length || index.gates.length)
+                                return { proposalError: 'Typed Roadmap owner changed or is no longer empty' };
+                            try {
+                                await stageTypedRoadmapDraft(this.nativeStages!, { root,
+                                    projectId: index.projectId, chatId: key, turnId: assistant.id,
+                                    lease: request.leaseToken }, typedCandidate, () => {
+                                    if (abort.signal.aborted || this.turns.get(key)?.abort !== abort ||
+                                        this.leases.get(key)?.token !== request.leaseToken ||
+                                        this.active(request.projectHandle) !== root)
+                                        throw new Error('ROADMAP_TYPED_TURN_STALE');
+                                });
+                            } catch (error) {
+                                return { proposalError: `Typed Roadmap draft rejected: ${String(error)}` };
+                            }
+                        }
                         const stage = this.nativeStages?.get(key);
                         if (!stage) return {};
                         if (!stage.done) return { proposalError: 'Roadmap draft incomplete: final staged batch did not mark done' };
@@ -1669,14 +1709,14 @@ export class ChatBackend implements ChatService {
                     })() : helpTurn || bridge ? {} : publicationIntent ? await this.publicationProposal(root,
                         key, assistant.id, request.leaseToken, proposalRefs, publicationIntent) :
                         await this.proposal(root, key, assistant.id, request.leaseToken, output, proposalRefs, draft);
-                    if (nativeRoadmap && (result.proposal || result.proposalError)) {
+                    if ((nativeRoadmap || typedRoadmap && localRoadmap) && (result.proposal || result.proposalError)) {
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
                             { schemaVersion: 1, kind: 'roadmap-gate-proposal', refs: proposalRefs,
                                 status: result.proposal ? 'pending' : 'rejected',
                                 ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
                                 ...(result.proposal ? { proposalId: result.proposal.id, proposal: result.proposal } : {}) });
                     }
-                    if (localRoadmap && !nativeRoadmap || publicationIntent) {
+                    if (localRoadmap && !nativeRoadmap && !typedRoadmap || publicationIntent) {
                         const kind: ChatPlanningActivity['kind'] = publicationIntent ? 'roadmap-publication' :
                             (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
@@ -1702,12 +1742,12 @@ export class ChatBackend implements ChatService {
             }
             throw new Error('Model stream ended without completion');
         } catch (error) {
-            if (nativeRoadmap && assistant && this.nativeStages?.get(key)) try {
+            if ((nativeRoadmap || typedRoadmap) && assistant && this.nativeStages?.get(key)) try {
                 this.client.notifyChatEvent({ projectHandle: request.projectHandle, kind: 'roadmap-stage',
                     chatId: key, messageId: assistant.id, snapshot: null,
                     reason: abort.signal.aborted ? 'cancelled' : 'failed' });
             } catch { /* A disconnected observer cannot change turn outcome. */ }
-            if (nativeRoadmap) this.nativeStages?.forget(key);
+            if (nativeRoadmap || typedRoadmap) this.nativeStages?.forget(key);
             if (this.proposals.get(key)?.messageId === assistant?.id) this.clearProposal(key);
             if (assistant) {
                 if (localRoadmap && error instanceof LocalPlanningOutputFailure && error.rawText)

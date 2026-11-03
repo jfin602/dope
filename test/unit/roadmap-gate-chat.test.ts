@@ -162,7 +162,7 @@ test('Pi worker serializes three Roadmap batches through ChatBackend without can
         if (!lease.acquired) throw new Error('Chat lease unavailable');
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: 'Create a complete development Roadmap for a playable 2D tower-defense game.', context: [] });
+            content: '/roadmap Stage a complete development Roadmap for a playable 2D tower-defense game.', context: [] });
         assert.ok(turn.proposal, turn.proposalError);
         assert.deepEqual(calls.map(item => item.name),
             ['roadmap_read', 'roadmap_stage', 'roadmap_stage', 'roadmap_stage']);
@@ -444,7 +444,7 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
         activeLease = lease.token;
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: 'Create a complete development Roadmap for a playable 2D tower-defense game built using TypeScript and PixiJS.',
+            content: '/roadmap Stage a complete development Roadmap for a playable 2D tower-defense game built using TypeScript and PixiJS.',
             context: [] });
         assert.ok(turn.proposal, turn.proposalError);
         const savedTurn = (await repository.read(root)).chats.find(chat => chat.id === chatId)!.messages

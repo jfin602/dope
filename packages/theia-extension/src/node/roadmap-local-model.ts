@@ -82,6 +82,161 @@ export function parseStrategicDraft(text: string, finishReason: string | undefin
         throw new LocalPlanningOutputFailure('Strategic draft Phase/Gate/Criterion shape is invalid', text);
     return input;
 }
+
+/** Model-facing greenfield format. It deliberately contains no owner or approval fields. */
+export interface TypedRoadmapDraftV1 {
+    type: 'roadmap-draft';
+    schemaVersion: 1;
+    phases: Array<{ title: string; objective: string; dependsOn?: number[];
+        gates: Array<{ title: string; purpose: string;
+            criteria: Array<{ title: string; expectedResult: string }> }> }>;
+}
+
+export interface RoadmapMechanicRequirement { label: string; terms: readonly string[] }
+export interface UntrustedTypedRoadmapCandidate {
+    kind: 'untrusted-typed-roadmap-draft';
+    draft: TypedRoadmapDraftV1;
+    /** Text matching only; the trusted proposal owner must decide actual coverage. */
+    coverageWarnings: string[];
+}
+
+const TYPED_DRAFT_MAX_BYTES = 32768;
+const TYPED_DRAFT_MAX_OPERATIONS = 48;
+
+export function typedRoadmapDraftInstruction(requiredMechanics: readonly string[] = []): string {
+    const requirements = requiredMechanics.length ?
+        ` Give each required mechanic an observable Gate criterion: ${requiredMechanics.join('; ')}.` : '';
+    return 'For a new Roadmap, return exactly one completed compact JSON object, no prose or fences: ' +
+        '{"type":"roadmap-draft","schemaVersion":1,"phases":[{"title":"...","objective":"...",' +
+        '"gates":[{"title":"...","purpose":"...","criteria":[{"title":"...",' +
+        '"expectedResult":"observable behavior"}]}]}]}. ' +
+        'Order 2–12 deliverable Phases; every Phase needs 1–8 Gates and every Gate 1–6 testable Criteria. ' +
+        'At most 48 total Phase/Gate/Criterion entries. Optional phase dependsOn is an array of earlier ' +
+        '1-based Phase positions. Include only the shown fields. Do not supply project IDs, revisions, ' +
+        'source hashes, UUIDs, operation IDs, staging batches, approval tokens, status or proof of qualification.' +
+        requirements;
+}
+
+/** A complete answer is an untrusted candidate, never a canonical Roadmap mutation. */
+export function parseTypedRoadmapDraft(text: string, finishReason: string | undefined,
+    requiredMechanics: readonly RoadmapMechanicRequirement[] = [],
+    maxOutputBytes = TYPED_DRAFT_MAX_BYTES): UntrustedTypedRoadmapCandidate {
+    if (finishReason && !['stop', 'eos', 'end_turn'].includes(finishReason))
+        return fail('Typed Roadmap draft was truncated before completion', text, 'incomplete-answer');
+    if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes < 1 ||
+        Buffer.byteLength(text, 'utf8') > Math.min(maxOutputBytes, TYPED_DRAFT_MAX_BYTES))
+        return fail('Typed Roadmap draft exceeds the reserved output byte limit', text, 'incomplete-answer');
+    let value: unknown;
+    try { value = JSON.parse(text); } catch {
+        return fail('Typed Roadmap draft is incomplete or malformed JSON', text, 'incomplete-answer');
+    }
+    const object = (item: unknown, path: string): Record<string, unknown> => {
+        if (!item || typeof item !== 'object' || Array.isArray(item))
+            return fail(`${path} must be an object`, text);
+        return item as Record<string, unknown>;
+    };
+    const exact = (item: Record<string, unknown>, required: string[], optional: string[], path: string) => {
+        const missing = required.find(key => !Object.hasOwn(item, key));
+        if (missing) fail(`${path}.${missing} is required`, text, 'incomplete-answer');
+        const extra = Object.keys(item).find(key => !required.includes(key) && !optional.includes(key));
+        if (extra) fail(`${path}.${extra} is not allowed in a model draft`, text);
+    };
+    const line = (item: unknown, max: number, path: string): string => {
+        if (typeof item !== 'string' || !item.trim() || item.length > max ||
+            /[\p{Cc}\p{Cf}]/u.test(item) ||
+            /<\/?[a-z][^>]*>|javascript:|!\[[^\]]*\]\(https?:/iu.test(item))
+            return fail(`${path} must be safe nonempty text of at most ${max} characters`, text);
+        return item.trim();
+    };
+    const list = (item: unknown, min: number, max: number, path: string): unknown[] => {
+        if (!Array.isArray(item) || item.length < min || item.length > max)
+            return fail(`${path} needs ${min}–${max} entries`, text, 'incomplete-answer');
+        return item;
+    };
+    const unique = (values: string[], path: string) => {
+        if (new Set(values.map(item => item.normalize('NFKC').toLocaleLowerCase())).size !== values.length)
+            fail(`${path} has duplicate titles`, text);
+    };
+    const root = object(value, 'draft');
+    exact(root, ['type', 'schemaVersion', 'phases'], [], 'draft');
+    if (root.type !== 'roadmap-draft' || root.schemaVersion !== 1)
+        return fail('draft.type/schemaVersion must be roadmap-draft/1', text);
+    let operationCount = 0;
+    const phases = list(root.phases, 2, 12, 'draft.phases').map((entry, phaseIndex) => {
+        const path = `draft.phases[${phaseIndex}]`;
+        const phase = object(entry, path);
+        exact(phase, ['title', 'objective', 'gates'], ['dependsOn'], path);
+        operationCount++;
+        const title = line(phase.title, 120, `${path}.title`);
+        const objective = line(phase.objective, 360, `${path}.objective`);
+        let dependsOn: number[] | undefined;
+        if (phase.dependsOn !== undefined) {
+            if (phaseIndex === 0) fail(`${path}.dependsOn has no earlier Phase to reference`, text);
+            dependsOn = list(phase.dependsOn, 1, phaseIndex, `${path}.dependsOn`) as number[];
+            if (dependsOn.some(index => !Number.isSafeInteger(index) || index < 1 || index > phaseIndex) ||
+                new Set(dependsOn).size !== dependsOn.length)
+                fail(`${path}.dependsOn must name distinct earlier 1-based Phase positions`, text);
+        }
+        const gates = list(phase.gates, 1, 8, `${path}.gates`).map((gateEntry, gateIndex) => {
+            const gatePath = `${path}.gates[${gateIndex}]`;
+            const gate = object(gateEntry, gatePath);
+            exact(gate, ['title', 'purpose', 'criteria'], [], gatePath);
+            operationCount++;
+            const gateTitle = line(gate.title, 120, `${gatePath}.title`);
+            const purpose = line(gate.purpose, 280, `${gatePath}.purpose`);
+            const criteria = list(gate.criteria, 1, 6, `${gatePath}.criteria`).map((criterionEntry, criterionIndex) => {
+                const criterionPath = `${gatePath}.criteria[${criterionIndex}]`;
+                const criterion = object(criterionEntry, criterionPath);
+                exact(criterion, ['title', 'expectedResult'], [], criterionPath);
+                operationCount++;
+                const criterionTitle = line(criterion.title, 120, `${criterionPath}.title`);
+                const expectedResult = line(criterion.expectedResult, 300, `${criterionPath}.expectedResult`);
+                if (/^(?:done|works?|complete|green|passed|verified|test(?:ed)?|tbd)[.! ]*$/i.test(expectedResult))
+                    fail(`${criterionPath}.expectedResult must describe observable behavior`, text);
+                return { title: criterionTitle, expectedResult };
+            });
+            unique(criteria.map(item => item.title), `${gatePath}.criteria`);
+            return { title: gateTitle, purpose, criteria };
+        });
+        unique(gates.map(item => item.title), `${path}.gates`);
+        return { title, objective, ...(dependsOn ? { dependsOn } : {}), gates };
+    });
+    unique(phases.map(item => item.title), 'draft.phases');
+    if (operationCount > TYPED_DRAFT_MAX_OPERATIONS)
+        return fail(`Typed Roadmap draft has ${operationCount} entries; at most 48 are supported`, text);
+    const gateEvidence = phases.flatMap(phase => phase.gates.flatMap(gate =>
+        [gate.title, gate.purpose, ...gate.criteria.flatMap(criterion => [criterion.title, criterion.expectedResult])]))
+        .join(' ').normalize('NFKC').toLocaleLowerCase();
+    const coverageWarnings = requiredMechanics.filter(item => item.terms.length > 0 &&
+        !item.terms.some(term => gateEvidence.includes(term.normalize('NFKC').toLocaleLowerCase())))
+        .map(item => `No Gate/Criterion text explicitly covers ${item.label}`);
+    return { kind: 'untrusted-typed-roadmap-draft',
+        draft: { type: 'roadmap-draft', schemaVersion: 1, phases }, coverageWarnings };
+}
+
+/** One normal model generation. No partial answer, retry, or prose gains proposal authority. */
+export async function generateTypedRoadmapDraft<T extends { type: string; text: string; finishReason?: string }>(
+    generate: () => AsyncIterable<T>, signal: AbortSignal, maxOutputBytes: number,
+    requiredMechanics: readonly RoadmapMechanicRequirement[] = []): Promise<UntrustedTypedRoadmapCandidate> {
+    if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+    let complete: T | undefined;
+    let streamedBytes = 0;
+    for await (const event of generate()) {
+        if (signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+        if (event.type === 'delta') {
+            streamedBytes += Buffer.byteLength(event.text, 'utf8');
+            if (streamedBytes > Math.min(maxOutputBytes, TYPED_DRAFT_MAX_BYTES))
+                return fail('Typed Roadmap draft stream exceeds the reserved output byte limit', '', 'incomplete-answer');
+        } else if (event.type === 'complete') {
+            if (complete) return fail('Typed Roadmap draft stream completed more than once', '', 'invalid-json');
+            complete = event;
+        }
+        else if (event.type === 'activity' && (event as T & { kind?: string }).kind === 'tool')
+            return fail('Typed Roadmap draft generation attempted a tool call', '', 'invalid-json');
+    }
+    if (!complete) return fail('Typed Roadmap draft stream ended without completion', '', 'incomplete-answer');
+    return parseTypedRoadmapDraft(complete.text, complete.finishReason, requiredMechanics, maxOutputBytes);
+}
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
 export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number,
     limits: Pick<ConversationModelCapabilities, 'maxInputTokens' | 'maxOutputTokens'> = {}) {

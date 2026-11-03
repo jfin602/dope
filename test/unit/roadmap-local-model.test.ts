@@ -1,10 +1,119 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { allowsPlainGateAnswer, localPlanningJson, parseStrategicDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget,
+import { allowsPlainGateAnswer, generateTypedRoadmapDraft, localPlanningJson, parseStrategicDraft,
+    parseTypedRoadmapDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget, typedRoadmapDraftInstruction,
     verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
+
+const towerDraft = () => ({ type: 'roadmap-draft', schemaVersion: 1, phases: [
+    ['Path and enemies', 'Build a fixed waypoint path', 'Enemies traverse waypoints with health',
+        'Spawn enemies', 'Enemies spawn and move through each fixed waypoint until health reaches zero'],
+    ['Tower combat', 'Build a basic tower', 'Tower targets enemies and fires projectiles',
+        'Cooldown', 'One tower type fires a projectile at a target only after its cooldown expires'],
+    ['Waves', 'Deliver waves', 'Wave completion and next wave',
+        'Wave advance', 'After all enemies are defeated, the next wave begins'],
+    ['Economy', 'Add earned and spent currency', 'Kills earn currency and tower placement spends it',
+        'Spend currency', 'A kill adds currency; buying a tower or ability deducts the displayed cost'],
+    ['Main tower and defeat', 'Keep health between waves', 'Persistent main tower health and defeat',
+        'Zero health defeat', 'Main tower health persists across waves and zero health ends the game']
+].map(([title, objective, gateTitle, criterionTitle, expectedResult], index) => ({
+    title, objective, ...(index ? { dependsOn: [index] } : {}), gates: [
+        { title: gateTitle, purpose: objective, criteria: [{ title: criterionTitle, expectedResult }] },
+        { title: `${title} acceptance`, purpose: `Check ${objective.toLowerCase()}`,
+            criteria: [{ title: `${title} observable result`, expectedResult: `${objective} is visible in play` },
+                { title: `${title} regression`, expectedResult: index === 4 ?
+                    'Optional later features are separated from the MVP acceptance path' :
+                    `A fresh play session demonstrates ${objective.toLowerCase()}` }] }
+    ]
+})) });
+
+test('one compact typed five-Phase draft is complete and remains untrusted', async () => {
+    const draft = towerDraft();
+    const text = JSON.stringify(draft);
+    assert.ok(Buffer.byteLength(text) < roadmapLocalBudget(16384, 4096).maxOutputBytes);
+    let calls = 0;
+    const candidate = await generateTypedRoadmapDraft(async function* () {
+        calls++;
+        yield { type: 'delta', text };
+        yield { type: 'complete', text, finishReason: 'stop' };
+    }, new AbortController().signal, roadmapLocalBudget(16384, 4096).maxOutputBytes,
+    [{ label: 'waypoints', terms: ['waypoint'] }, { label: 'spending', terms: ['spends', 'deducts'] },
+        { label: 'defeat', terms: ['zero health'] }]);
+    assert.equal(calls, 1);
+    assert.equal(candidate.kind, 'untrusted-typed-roadmap-draft');
+    assert.equal(candidate.draft.phases.length, 5);
+    assert.equal(candidate.draft.phases.reduce((n, phase) => n + phase.gates.length, 0), 10);
+    assert.equal(candidate.draft.phases.reduce((n, phase) => n +
+        phase.gates.reduce((count, gate) => count + gate.criteria.length, 0), 0), 15);
+    assert.deepEqual(candidate.coverageWarnings, []);
+    assert.ok(!JSON.stringify(candidate).includes('projectId'));
+    assert.match(typedRoadmapDraftInstruction(['currency spending']), /currency spending/);
+    assert.doesNotMatch(typedRoadmapDraftInstruction(), /expectedStage/);
+});
+
+test('typed Roadmap rejects incomplete, oversized, foreign authority and invalid nested fields', () => {
+    const draft = towerDraft();
+    const parse = (value: unknown) => parseTypedRoadmapDraft(JSON.stringify(value), 'stop');
+    assert.throws(() => parseTypedRoadmapDraft(JSON.stringify(draft), 'length'), /truncated/);
+    assert.throws(() => parseTypedRoadmapDraft(JSON.stringify(draft).slice(0, -1), 'stop'), /malformed JSON/);
+    assert.throws(() => parseTypedRoadmapDraft(JSON.stringify(draft), 'stop', [], 100), /reserved output/);
+    for (const field of ['projectId', 'ownerRevision', 'sourceHash', 'operationId', 'uuid', 'expectedStage', 'approvalToken'])
+        assert.throws(() => parse({ ...draft, [field]: 'forged' }), new RegExp(field));
+    assert.throws(() => parse({ ...draft, phases: [{ ...draft.phases[0], gates: [] }, ...draft.phases.slice(1)] }), /gates needs/);
+    assert.throws(() => parse({ ...draft, phases: [{ ...draft.phases[0], gates: [
+        { ...draft.phases[0].gates[0], criteria: [] }] }, ...draft.phases.slice(1)] }), /criteria needs/);
+    assert.throws(() => parse({ ...draft, phases: [{ ...draft.phases[0], status: 'green' }, ...draft.phases.slice(1)] }), /status/);
+    assert.throws(() => parse({ ...draft, phases: [{ ...draft.phases[0], checkpoints: [] }, ...draft.phases.slice(1)] }), /checkpoints/);
+    assert.throws(() => parse({ ...draft, phases: [{ ...draft.phases[0], gates: [
+        { ...draft.phases[0].gates[0], criteria: [{ ...draft.phases[0].gates[0].criteria[0],
+            expectedResult: 'Passed' }] }] }, ...draft.phases.slice(1)] }), /observable behavior/);
+    assert.throws(() => parse({ ...draft, phases: draft.phases.map((phase, index) => ({ ...phase,
+        title: `${phase.title} ${index}`, gates: Array.from({ length: 8 }, (_, gateIndex) => ({
+            title: `Gate ${gateIndex}`, purpose: 'Check the deliverable', criteria: [
+                { title: 'Observable A', expectedResult: 'The player sees the expected result' },
+                { title: 'Observable B', expectedResult: 'The player sees a second result' }
+            ] })) })) }), /at most 48/);
+});
+
+test('typed Roadmap rejects duplicate titles and invalid phase dependencies with precise paths', () => {
+    const draft = towerDraft();
+    const parse = (value: unknown) => parseTypedRoadmapDraft(JSON.stringify(value), 'stop');
+    assert.throws(() => parse({ ...draft, phases: [draft.phases[0],
+        { ...draft.phases[1], title: draft.phases[0].title }, ...draft.phases.slice(2)] }), /duplicate titles/);
+    assert.throws(() => parse({ ...draft, phases: [draft.phases[0],
+        { ...draft.phases[1], dependsOn: [2] }, ...draft.phases.slice(2)] }), /dependsOn/);
+    assert.throws(() => parse({ ...draft, phases: [draft.phases[0],
+        { ...draft.phases[1], dependsOn: [1, 1] }, ...draft.phases.slice(2)] }), /dependsOn/);
+    assert.deepEqual(parseTypedRoadmapDraft(JSON.stringify(draft), 'stop',
+        [{ label: 'multiplayer', terms: ['multiplayer'] }]).coverageWarnings,
+    ['No Gate/Criterion text explicitly covers multiplayer']);
+});
+
+test('typed generation is one bounded call and cancellation or prose is non-applicable', async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    await assert.rejects(generateTypedRoadmapDraft(async function* () {
+        calls++;
+        controller.abort();
+        yield { type: 'complete', text: JSON.stringify(towerDraft()) };
+    }, controller.signal, 16384), /cancelled/);
+    assert.equal(calls, 1);
+    await assert.rejects(generateTypedRoadmapDraft(async function* () {
+        yield { type: 'delta', text: '{'.repeat(200) };
+    }, new AbortController().signal, 100), /reserved output/);
+    await assert.rejects(generateTypedRoadmapDraft(async function* () {
+        yield { type: 'complete', text: 'This is a read-only Chat answer.' };
+    }, new AbortController().signal, 16384), /malformed JSON/);
+    await assert.rejects(generateTypedRoadmapDraft(async function* () {
+        yield { type: 'delta', text: '{}' };
+    }, new AbortController().signal, 16384), /without completion/);
+    await assert.rejects(generateTypedRoadmapDraft(async function* () {
+        yield { type: 'activity', kind: 'tool', text: 'roadmap_stage' };
+        yield { type: 'complete', text: JSON.stringify(towerDraft()) };
+    }, new AbortController().signal, 16384), /attempted a tool call/);
+});
 
 test('strict Planning buffers JSON while forwarding genuine activity before validation', async () => {
     const seen: string[] = [];
