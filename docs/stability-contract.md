@@ -38,17 +38,19 @@ The retained Phase 1 — IDE Alive stability concerns are:
 
 Agent State, Agent Runtime, model/provider execution, tool authority, AI mutation, scoped delegation, production Project Mind, and production Planning are not Phase 1 qualification requirements.
 
-## States
+## Engineering qualification states (2026-11-03 forward policy)
 
-- Implementation complete — intended behavior exists and the validation tier assigned to that implementation prompt is Green.
-- Stability qualified — applicable integrated framework/model/tool/persistence/UI evidence required by the qualification gate is Green.
+The [ADR 0048](decisions/0048-engineering-qualification-ratings-and-progression.md) and [detailed engineering qualification contract](planning/p12/engineering-qualification-contract.md) distinguish three **independent** dimensions. This is a forward documentation decision; the existing runner's commit-prefix behavior remains unchanged until separately implemented and qualified.
 
-Evidence outcomes:
-- Green
-- Not Green
-- Evidence Gap
+- **Implementation status:** Not started, In progress, Partial, Implemented. A code commit or a passing focused test does not by itself mean qualified.
+- **Verification status:** Not assessed, Qualified, Scoped qualified, Evidence gap, Failed, Blocked, supported by per-requirement PASS / FAIL / NOT RUN / BLOCKED / EVIDENCE GAP / NOT APPLICABLE observations. An Evidence Gap is never a pass. Scoped qualified names exactly what was tested and excludes broader/native claims.
+- **Progression decision:** Continue, Conditional, Hold, Stop. It refers to the **next task's exact verified prerequisite**, not the aggregate previous-stage label; a conditional decision requires an explicit authorized scope, bounded nonblocking deferred evidence, responsible later gate and durable rationale.
 
-Evidence Gap is not a pass.
+An implementation is **complete for its declared implementation contract** when intended functional changes exist and the assigned source-level validation passes. **Stability qualified** (GREEN) means the exact, independently reviewed acceptance matrix for the declared scope passes, including applicable model, framework, source ownership, persistence and UI evidence. Broader product/phase GREEN is not implied by source-qualified implementation. A final NOT GREEN must distinguish missing functionality from observed failure or uncollected evidence.
+
+Classify each failing test as introduced regression, verified pre-existing, flaky/environmental, obsolete assertion or unattributed, and retain the actual baseline and source proof. Unrelated failures are recorded independently; unknown failures are never silently dismissed. Missing core dependencies, security or approval bypass, unsafe writes, data corruption, evidence fabrication and source identity mismatches are hard STOPs regardless of other passing tests or schedule pressure.
+
+Do not rewrite historical Green/Not Green/Evidence Gap records to reflect the new taxonomy. New decisions append a source-bound review. Engineering task ratings are **not** product Roadmap Gate statuses: Gate/Phase GREEN continues to require fresh evidence and explicit owner-approved completeness under ADR 0040.
 
 ## Canonical state truth
 
