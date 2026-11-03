@@ -25,6 +25,7 @@ import { selectDopeCapabilityHelp } from './dope-capability-help';
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
 import { roadmapGenerationCommand } from './roadmap-generation-command';
+import { RoadmapGenerationController } from './roadmap-generation-controller';
 import { roadmapProposalPreview } from './roadmap-proposal-presentation';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
@@ -86,6 +87,8 @@ export class ChatBackend implements ChatService {
     private attaching = 0;
     private readonly unlisten: () => void;
     private readonly turns = new Map<string, { token: string; abort: AbortController }>();
+    private readonly generationPreparing = new Set<string>();
+    private readonly generationControllers = new Map<string, { token: string; controller: RoadmapGenerationController }>();
     private readonly nativeStages?: RoadmapNativeStageOwner;
     private readonly roadmapPreparations = new Map<string, { token: string; abort: AbortController }>();
     /** Leases belong to this RPC connection, not to the reusable panel ID or backend PID. */
@@ -934,15 +937,93 @@ export class ChatBackend implements ChatService {
             ...(remaining ? { proposal } : {}) };
     }
 
+    /** Only the fresh top-level Chat command parser calls this entry. P3 supplies native phase staging. */
+    private async runGenerationCommand(root: string, request: ChatTurnRequest, scope: string): Promise<ChatTurnResult> {
+        if (!this.roadmapStore || !this.models || this.turns.has(request.chatId) ||
+            this.generationControllers.has(request.chatId) || this.generationPreparing.has(request.chatId) ||
+            this.leases.get(request.chatId)?.root !== root ||
+            this.leases.get(request.chatId)?.token !== request.leaseToken)
+            throw new Error('Roadmap generation is unavailable until the new controller is ready');
+        this.generationPreparing.add(request.chatId);
+        try { return await this.prepareGenerationCommand(root, request, scope); }
+        finally { this.generationPreparing.delete(request.chatId); }
+    }
+
+    private async prepareGenerationCommand(root: string, request: ChatTurnRequest, scope: string): Promise<ChatTurnResult> {
+        await this.repository.renew(root, request.chatId, request.leaseToken);
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === request.chatId);
+        if (!chat || request.planningSteps !== undefined || request.bridgeProposal)
+            throw new Error('Roadmap generation requires one current local Chat command');
+        const selection = request.selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ?
+            chat.settings.modelPolicy.model : undefined);
+        if (!selection) throw new Error('Select one exact local model for Roadmap generation');
+        const connection = (await this.models!.list()).connections.find(item => item.id === selection.connectionId);
+        const model = connection?.ready && connection.providerId === 'local' &&
+            connection.models.find(item => item.id === selection.modelId && item.usable);
+        if (!model || !model.capabilities.contextWindowTokens)
+            throw new Error('Selected local model is unavailable');
+        const index = await this.roadmapStore!.read<RoadmapGateIndex>(root);
+        if (index.schemaVersion !== 2 || index.projectRoot !== root || !index.projectId)
+            throw new Error('Current Roadmap owner is invalid');
+        const sourceHash = index.linkedDocument?.sourceHash ?? null;
+        const indexHash = await this.roadmapStore!.gateIndexHash(root);
+        const identity = { root, projectId: index.projectId, revision: index.revision, sourceHash, indexHash,
+            chatId: request.chatId, turnId: randomUUID(), ownerId: index.projectId,
+            model: { connectionId: selection.connectionId, modelId: selection.modelId,
+                providerId: 'local' as const, contextWindowTokens: model.capabilities.contextWindowTokens,
+                reasoningControls: { ...chat.settings.reasoningControls } },
+            origin: 'trusted-user-chat' as const };
+        const context = JSON.stringify({ projectId: index.projectId, revision: index.revision,
+            sourceHash, indexHash, phases: index.phases.slice(-12).map(phase => ({ id: phase.id,
+                title: phase.title.slice(0, 160) })), gateCount: index.gates.length });
+        const controller = new RoadmapGenerationController(identity, scope, context, {
+            current: async bound => {
+                if (this.disposed || this.root !== bound.root || this.handle !== request.projectHandle ||
+                    this.leases.get(bound.chatId)?.token !== request.leaseToken) return false;
+                try { await this.repository.renew(root, bound.chatId, request.leaseToken); } catch { return false; }
+                const selected = (await this.models!.list()).connections.find(item => item.id === bound.model.connectionId);
+                const actual = selected?.ready && selected.providerId === 'local' &&
+                    selected.models.find(item => item.id === bound.model.modelId && item.usable);
+                if (!actual || actual.capabilities.contextWindowTokens !== bound.model.contextWindowTokens) return false;
+                const currentChat = (await this.repository.read(root)).chats.find(item => item.id === bound.chatId);
+                if (!currentChat || JSON.stringify(currentChat.settings.reasoningControls ?? {}) !==
+                    JSON.stringify(bound.model.reasoningControls) ||
+                    currentChat.settings.modelPolicy.type === 'exact' &&
+                    (currentChat.settings.modelPolicy.model.connectionId !== bound.model.connectionId ||
+                        currentChat.settings.modelPolicy.model.modelId !== bound.model.modelId)) return false;
+                const next = await this.roadmapStore!.read<RoadmapGateIndex>(root);
+                return next.projectId === bound.projectId && next.projectRoot === bound.root &&
+                    next.revision === bound.revision && (next.linkedDocument?.sourceHash ?? null) === bound.sourceHash &&
+                    await this.roadmapStore!.gateIndexHash(root) === bound.indexHash;
+            },
+            call: async () => { throw new Error('Native phase operations are unavailable'); }
+        });
+        if (this.disposed || this.root !== root || this.leases.get(request.chatId)?.token !== request.leaseToken)
+            throw new Error('Roadmap generation command lost its Chat owner');
+        if (this.pendingCancel.get(request.chatId) === request.leaseToken) {
+            this.pendingCancel.delete(request.chatId);
+            controller.cancel();
+        }
+        this.generationControllers.set(request.chatId, { token: request.leaseToken, controller });
+        let result;
+        try { result = await controller.run(); }
+        finally { if (this.generationControllers.get(request.chatId)?.controller === controller)
+            this.generationControllers.delete(request.chatId); }
+        throw new Error(`Roadmap generation is unavailable until native phase staging is ready (${result.state}); ` +
+            'no model or Roadmap write was started');
+    }
+
     async runTurn(request: ChatTurnRequest): Promise<ChatTurnResult> {
         const root = this.active(request.projectHandle);
         const command = !request.retryMessageId ? roadmapGenerationCommand(request.content ?? '') : { kind: 'none' as const };
         if (command.kind === 'usage') throw new Error('Usage: /gen-roadmap <roadmap prompt>');
-        if (command.kind === 'ready') throw new Error('Roadmap generation is unavailable until the new controller is ready; no model or Roadmap write was started');
+        if (command.kind === 'ready') return this.runGenerationCommand(root, request, command.body);
         if (!request.retryMessageId && (/^\/roadmap\s+generate(?:\s|$)/u.test(request.content?.trim() ?? '') ||
             /^yes,?\s+create the roadmap[.!]?$/iu.test(request.content?.trim() ?? '')))
             throw new Error('Legacy Roadmap generation is unavailable; use /gen-roadmap <roadmap prompt> when the new controller is ready');
-        if (!this.models || this.turns.has(request.chatId)) throw new Error('Chat turn already active or runtime unavailable');
+        if (!this.models || this.turns.has(request.chatId) || this.generationControllers.has(request.chatId) ||
+            this.generationPreparing.has(request.chatId))
+            throw new Error('Chat turn already active or runtime unavailable');
         const snapshot = await this.repository.read(root);
         const chat = snapshot.chats.find(item => item.id === request.chatId);
         if (!chat) throw new Error('Chat not found');
@@ -1827,11 +1908,14 @@ export class ChatBackend implements ChatService {
     async cancelTurn(projectHandle: string, chatId: string, leaseToken: string): Promise<void> {
         const root = this.active(projectHandle);
         const turn = this.turns.get(chatId);
+        const generation = this.generationControllers.get(chatId);
         const preparation = this.roadmapPreparations.get(chatId);
         const proposal = this.proposals.get(chatId);
         if (turn && turn.token !== leaseToken) throw new Error('Chat turn is not owned by this panel');
+        if (generation && generation.token !== leaseToken) throw new Error('Roadmap generation is not owned by this panel');
         if (preparation && preparation.token !== leaseToken) throw new Error('Roadmap preparation is not owned by this panel');
-        if (turn) turn.abort.abort();
+        if (generation) generation.controller.cancel();
+        else if (turn) turn.abort.abort();
         else if (preparation) preparation.abort.abort();
         else if (proposal) {
             if (proposal.leaseToken !== leaseToken) throw new Error('Planning proposal is not owned by this panel');
@@ -1849,6 +1933,8 @@ export class ChatBackend implements ChatService {
         for (const review of this.strategicReviews.values()) this.greenfield?.rejectStrategicDraft(review.preview.token);
         this.strategicReviews.clear();
         for (const turn of this.turns.values()) turn.abort.abort();
+        for (const generation of this.generationControllers.values()) generation.controller.cancel();
+        this.generationControllers.clear();
         for (const pending of this.pendingCommands.values()) pending.finish('deny');
         this.commandModes.clear();
         for (const preparation of this.roadmapPreparations.values()) preparation.abort.abort();

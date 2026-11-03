@@ -8,6 +8,7 @@ import test from 'node:test';
 import { roadmapGenerationCommand } from '../../packages/theia-extension/lib/node/roadmap-generation-command.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
+import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import * as legacyParserModule from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 import * as legacyStageModule from '../../packages/theia-extension/lib/node/roadmap-typed-stage.js';
 
@@ -61,6 +62,45 @@ test('fresh generation command and empty body fail before inference or Roadmap w
         await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
         await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
             'old-offer', 'old-token', true), /retired/);
+        assert.equal(inference, 0);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('authorized command reaches the new controller but no inference or canonical write before P3', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-gen-controller-entry-'));
+    const repository = new ChatRepository(), store = new RoadmapStore();
+    let inference = 0;
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', usable: true,
+            capabilities: { contextWindowTokens: 8192 } }] }] }),
+    async *generate() { inference++; yield { type: 'complete', text: 'unexpected' }; } };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        undefined, undefined, undefined, undefined, undefined, undefined, store);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = randomUUID();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease unavailable');
+        const beforeChat = JSON.stringify(await repository.read(root));
+        const beforeRoadmap = JSON.stringify(await store.read(root));
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/gen-roadmap Build\nthree phases' }), /native phase staging is ready \(incomplete\)/);
+        assert.equal(inference, 0);
+        assert.equal(JSON.stringify(await repository.read(root)), beforeChat);
+        assert.equal(JSON.stringify(await store.read(root)), beforeRoadmap);
+        await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
+        await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: randomUUID(),
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/gen-roadmap Build phases' }), /unavailable until the new controller/);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId: randomUUID(), leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/gen-roadmap Build phases' }), /unavailable until the new controller/);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'hosted', modelId: 'q4' },
+            content: '/gen-roadmap Build phases' }), /Selected local model is unavailable/);
         assert.equal(inference, 0);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
