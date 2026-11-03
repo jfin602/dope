@@ -1,13 +1,15 @@
-TASK: c12-roadmap-sync / P9 — full-source integration, dead-form/parser cleanup and regression gate
+TASK: Correction 12 / P9 — full-source integration, dead-form/parser cleanup and regression gate
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 manual connected Codex Chrome).
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
 - Focused target <=8 minutes per working cycle, hard cap 15; stop NOT GREEN on unsafe/unfinished boundaries.
 - Phase runner owns successful implementation checkpoint commits. Do NOT self-commit, /activate, automatically run other stacks, change version/lockfiles/model/provider, grant generic shell or Work permissions.
 - Ponytail FULL only for implementation agent if actually installed; never inject it into Dope's selected Pi model.
 
 VERSIONING
-- Documented reference 0.12.7; verify current LOCAL manifest, source and actual runner expectations. Preserve version unless separately approved.
+- Required unchanged project version: `0.12.7`.
+- Verify current LOCAL manifest/source and runner expectations; preserve version.
 
 PREFLIGHT
 - Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, native Roadmap contract, historical restore contract, c12-roadmap-sync README/assessment/plan and all previous Pn exact-source evidence. Inspect LOCAL HEAD/status/diff, owner modifications and live components; do not treat GitHub main as identical to checkout.
