@@ -1,3 +1,5 @@
+> **2026-11-03 EXECUTION HOLD (OWNER'S FORWARD DESIGN PIVOT):** Do not automatically run this historical R4 recovery sequence. [ADR 0047](../../../decisions/0047-native-roadmap-authoring-and-automatic-sync.md) now targets **one high-level typed proposal for greenfield generation** and **canvas-only contextual review**, with native staging retained for edits and fallback. New manual prompts must be separately assessed/planned and explicitly invoked. Preserve previous R4 outcomes and this prompt text; no qualification, code change or version effect by this note.
+
 # c12-rmr-man / r4-r — focused manual R4 recovery
 
 **Owner direction:** 2026-11-03 (America/Chicago). **Status:** four manual recovery prompts AUTHORING ONLY; not implemented, run or qualified by this docs addition. Product version reference 0.12.7; check the actual local checkout before running. This subfolder is not an npm codex:phase runner stack.
