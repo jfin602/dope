@@ -136,7 +136,7 @@ export class ChatContextComposer {
                 `${roadmapSummary} The recorded linked Markdown source state is ${syncState ?? 'unlinked'}${pendingSync ? ' with pending sync' : ''}. Refresh Roadmap to check for later external changes. Nothing changed in this Chat turn.` :
             id === 'roadmap-objective' && this.roadmap &&
                 (await this.roadmap.read<RoadmapGateIndex>(root)).schemaVersion === 2 ?
-                'Select the Phase or Gate in Roadmap and ask the existing saved Chat to propose a title or objective change. Review its exact diff, then Accept or Reject. A linked Markdown field uses a separate source-aware preview and publication approval. Nothing changed in this help turn.' :
+                'Open Roadmap and use the pencil on a Phase objective or Gate purpose to edit it directly. Save checks the current owner and linked Markdown source; accepted changes sync to a linked file automatically. You can also use protected /roadmap in the saved Chat to stage a reviewed proposal. A checkpoint Objective is a legacy control. Nothing changed in this help turn.' :
             id === 'roadmap-objective' ?
                 `Open Roadmap and select the checkpoint. In its inspector, edit Objective, then use Preview and save and review any required approval. A linked Objective may be read-only when its source cannot be safely edited; review Roadmap Markdown and setup and Refresh Roadmap if blocked. Chat cannot apply an Objective change from this help request. Nothing changed.` :
             id === 'planning-map-link' ?

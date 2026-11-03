@@ -15,7 +15,7 @@ const history = source('history-widget.ts');
 const byId = (id: string) => DOPE_CAPABILITY_HELP.find(entry => entry.id === id)!;
 
 test('help labels and routes match current UI controls and command registrations', () => {
-    assert.equal(DOPE_CAPABILITY_HELP_VERSION, '0.11.8-m1');
+    assert.equal(DOPE_CAPABILITY_HELP_VERSION, '0.12.7-native-roadmap');
     assert.equal(new Set(DOPE_CAPABILITY_HELP.map(entry => entry.id)).size, DOPE_CAPABILITY_HELP.length);
     assert.match(roadmap, /icon\(this\.reload, 'Refresh Roadmap'/);
     assert.match(roadmap, /icon\(this\.sourceButton, 'Roadmap Markdown and setup'/);
@@ -24,7 +24,7 @@ test('help labels and routes match current UI controls and command registrations
     assert.match(roadmap, /sourceState === 'conflict'/);
     assert.match(roadmap, /sourceState === 'relink-needed'/);
     assert.match(roadmap, /linkedDocument\?\.pending/);
-    assert.match(chat, /state\.planningMode === 'pin' \? 'Follow selection' : 'Pin selection'/);
+    assert.match(chat, /pinned \? 'Follow planning selection' : 'Pin planning selection'/);
     assert.match(chat, /!state\.workspace \|\| !this\.planningSelection\?\.current\(state\.workspace\)/);
     assert.match(center, /AI_CENTER_COMMAND = 'dope\.aiCenter\.open'/);
     assert.match(center, /label: 'Open AI Center'/);
@@ -38,8 +38,9 @@ test('help labels and routes match current UI controls and command registrations
     }
     assert.match(byId('roadmap-change-file').uiPath, /Roadmap Markdown and setup > Change linked file/);
     assert.match(byId('roadmap-refresh').uiPath, /Refresh Roadmap/);
-    assert.match(byId('chat-follow').uiPath, /Follow active planning selection/);
-    assert.match(byId('chat-pin').uiPath, /Pin selected checkpoint \/ Planning Map/);
+    assert.match(byId('roadmap-objective').uiPath, /Phase card > Edit Phase objective/);
+    assert.match(byId('chat-follow').uiPath, /Follow planning selection/);
+    assert.match(byId('chat-pin').uiPath, /Pin planning selection/);
     assert.match(byId('ai-center').uiPath, /Open AI Center/);
 });
 

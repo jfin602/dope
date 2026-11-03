@@ -136,7 +136,7 @@ test('reviewed native subset applies one revision, preserves pending decisions a
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('complete tower-defense batches produce one saved exact projection without owner writes', async () => {
+test('tower-defense stage, selected Apply, first link and automatic sync preserve exact counts', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-native-complete-'));
     try {
         const store = new RoadmapStore();
@@ -150,7 +150,7 @@ test('complete tower-defense batches produce one saved exact projection without 
         const first = await owner.stage(context, { ...basis, expectedStage: 1,
             actions: Array.from({ length: 5 }, (_, at) => ({ type: 'phase.create', id: `new:p${at + 1}`,
                 title: `Phase ${at + 1}`, objective: `Defend lane ${at + 1}` })) }) as { proposalId: string; createdEntityIds: Record<string, string> };
-        const gates = [1, 1, 2, 3].map((phase, at) => ({ type: 'gate.create', id: `new:g${at + 1}`,
+        const gates = [1, 2, 3, 4, 5, 1].map((phase, at) => ({ type: 'gate.create', id: `new:g${at + 1}`,
             parentPhaseId: `new:p${phase}`, designation: `G${at + 1}`, title: `Gate ${at + 1}`,
             purpose: `Verify lane ${phase}`, criteria: [{ id: `new:c${at + 1}`,
                 title: `Observe wave ${at + 1}`, expectedResult: `Wave ${at + 1} stops` }] }));
@@ -158,19 +158,19 @@ test('complete tower-defense batches produce one saved exact projection without 
             actions: gates }) as { complete: boolean; proposalId: string; totalOperations: number };
         assert.equal(final.complete, true);
         assert.equal(final.proposalId, first.proposalId);
-        assert.equal(final.totalOperations, 9);
-        const readback = await owner.read(context, { version: 1, limit: 1, stageOffset: 8 }) as {
+        assert.equal(final.totalOperations, 11);
+        const readback = await owner.read(context, { version: 1, limit: 1, stageOffset: 10 }) as {
             stage: { proposalId: string; operations: { id: string }[]; nextOperationOffset: number | null } };
         assert.equal(readback.stage.proposalId, final.proposalId);
-        assert.equal(readback.stage.operations[0].id, owner.get('chat')!.operations[8].id);
+        assert.equal(readback.stage.operations[0].id, owner.get('chat')!.operations[10].id);
         assert.equal(readback.stage.nextOperationOffset, null);
         const { before, after, stage } = await owner.complete(context);
         assert.equal(after.phases.length, 5);
-        assert.equal(after.gates.length, 4);
-        assert.equal(after.gates.filter(gate => gate.criteria.length).length, 4);
+        assert.equal(after.gates.length, 6);
+        assert.equal(after.gates.filter(gate => gate.criteria.length).length, 6);
         assert.equal(after.gates[0].parentPhaseId, first.createdEntityIds['new:p1']);
-        assert.equal(after.gates[2].parentPhaseId, first.createdEntityIds['new:p2']);
-        assert.equal(after.gates[3].parentPhaseId, first.createdEntityIds['new:p3']);
+        assert.equal(after.gates[1].parentPhaseId, first.createdEntityIds['new:p2']);
+        assert.equal(after.gates[2].parentPhaseId, first.createdEntityIds['new:p3']);
         const changedIds = [...after.phases, ...after.gates, ...after.gates.flatMap(gate => gate.criteria)]
             .map(item => item.id);
         const preview = roadmapProposalPreview(before, after, stage.operations.map(item => item.action), changedIds);
@@ -178,11 +178,74 @@ test('complete tower-defense batches produce one saved exact projection without 
             refs: [], proposalId: stage.id, proposal: { id: stage.id, chatId: randomUUID(), messageId: randomUUID(),
                 ownerId: 'tower', revision: 1, changedIds, action: { type: 'native-stage-preview', id: 'tower' },
                 summary: JSON.stringify(preview), preview, previewOnly: true } });
-        assert.equal(saved.proposal?.preview?.totalChanged, 13);
+        assert.equal(saved.proposal?.preview?.totalChanged, 17);
         assert.equal(saved.proposal?.preview?.additionalChanges, 0);
-        assert.equal(saved.proposal?.preview?.steps.length, 9);
+        assert.equal(saved.proposal?.preview?.steps.length, 11);
         assert.deepEqual(saved.proposal?.preview?.entities.map(item => item.id), changedIds);
         assert.equal(createHash('sha256').update(await readFile(file)).digest('hex'), beforeHash);
+        const accepted = stage.operations.slice(0, 10).map(item => item.id);
+        const review = await owner.review(context, accepted, 'apply');
+        assert.equal(review.after?.phases.length, 5);
+        assert.equal(review.after?.gates.length, 5);
+        assert.equal(review.after?.gates.reduce((count, gate) => count + gate.criteria.length, 0), 5);
+        const applied = await owner.decide(context, review.token, accepted, 'apply');
+        assert.equal(applied.revision, 2);
+        assert.deepEqual(applied.statuses.map(item => item.status),
+            [...Array(10).fill('Applied'), 'Pending']);
+        const reopened = new RoadmapStore();
+        const current = await reopened.read(root);
+        assert.equal(current.revision, 2);
+        assert.equal(current.phases.length, 5);
+        assert.equal(current.gates.length, 5);
+        assert.equal(current.gates.reduce((count, gate) => count + gate.criteria.length, 0), 5);
+        assert.ok(current.gates.every(gate => gate.qualificationStatus !== 'green'));
+        const archive = await reopened.listRevisions(root, 'tower');
+        assert.deepEqual(archive.revisions.map(item => item.revision), [2, 1]);
+        assert.deepEqual(archive.revisions[0].receipt.operationIds, accepted);
+        assert.equal((await reopened.fetchRevision(root, 'tower', 2)).snapshot,
+            await readFile(file, 'utf8'));
+        const remaining = stage.operations.filter(item => item.status === 'Pending');
+        const projected = await reopened.mutateGateIndex(root, current.revision, current.projectId,
+            remaining.map(item => item.action), true);
+        const ghostIds = projected.gates.filter(gate => !current.gates.some(acceptedGate => acceptedGate.id === gate.id));
+        assert.equal(ghostIds.length, 1);
+        assert.equal(ghostIds[0].criteria.length, 1);
+        assert.equal((await reopened.read(root)).gates.length, 5);
+        const publication = await reopened.previewRoadmapPublication(root, 'ROADMAP.md');
+        assert.deepEqual([publication.phaseCount, publication.gateCount, publication.criterionCount], [5, 5, 5]);
+        const linked = await reopened.applyRoadmapPublication(root, publication, true);
+        assert.equal(linked.linkedDocument?.syncState, 'synced');
+        assert.equal(await readFile(join(root, 'ROADMAP.md'), 'utf8'), publication.content);
+        assert.equal(createHash('sha256').update(publication.content).digest('hex'),
+            linked.linkedDocument?.sourceHash);
+        assert.equal((await new RoadmapStore().read(root)).gates.length, 5);
+        const edited = await reopened.mutateGateIndex(root, linked.revision, 'tower', {
+            type: 'phase.edit', id: current.phases[0].id, title: 'Fortified Lane 1',
+            objective: current.phases[0].objective });
+        assert.equal(edited.linkedDocument?.syncState, 'pending-sync');
+        const synchronized = await new RoadmapStore().recoverAutoSync(root);
+        const source = await readFile(join(root, 'ROADMAP.md'), 'utf8');
+        assert.match(source, /Fortified Lane 1/);
+        assert.equal(synchronized.linkedDocument?.syncState, 'synced');
+        assert.equal(createHash('sha256').update(source).digest('hex'), synchronized.linkedDocument?.sourceHash);
+        assert.deepEqual((await reopened.listRevisions(root, 'tower')).revisions.map(item => item.revision),
+            [5, 4, 3, 2, 1]);
+        const comparison = await reopened.previewRestore(root, 'tower', linked.revision);
+        assert.match(comparison.linkedDiff!.before, /Fortified Lane 1/);
+        assert.match(comparison.linkedDiff!.after, /Phase 1/);
+        const restored = await reopened.applyRestore(root, comparison, true);
+        assert.equal(restored.revision, 6);
+        assert.equal(restored.linkedDocument?.syncState, 'synced');
+        const reopenedRestore = await new RoadmapStore().read(root);
+        const restoredSource = await readFile(join(root, 'ROADMAP.md'), 'utf8');
+        assert.equal(reopenedRestore.phases.length, 5);
+        assert.equal(reopenedRestore.gates.length, 5);
+        assert.equal(reopenedRestore.gates.reduce((count, gate) => count + gate.criteria.length, 0), 5);
+        assert.equal(reopenedRestore.phases[0].title, linked.phases[0].title);
+        assert.equal(createHash('sha256').update(restoredSource).digest('hex'),
+            reopenedRestore.linkedDocument?.sourceHash);
+        assert.deepEqual((await reopened.listRevisions(root, 'tower')).revisions.map(item => item.revision),
+            [6, 5, 4, 3, 2, 1]);
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 

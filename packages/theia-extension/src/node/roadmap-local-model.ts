@@ -1,7 +1,6 @@
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import type { ConversationMessage, ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
 import type { StrategicDraftInput } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import { validGateChatEnvelope } from './roadmap-gate-chat';
 
 const SYSTEM_RESERVE = 512;
 const SAFETY_RESERVE = 256;
@@ -152,8 +151,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
             const value: unknown = JSON.parse(complete.text);
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('object required');
             const raw = value as Record<string, unknown>;
-            if (mode === 'gate' && (validGateChatEnvelope(raw) ||
-                raw.type === 'roadmap-gate-undo' && Object.keys(raw).sort().join(',') === 'type' ||
+            if (mode === 'gate' && (
                 raw.type === 'roadmap-gate-focus' && Object.keys(raw).sort().join(',') === 'id,type' &&
                 typeof raw.id === 'string')) return complete;
             const proposal = (raw.type === 'roadmap-proposal' && mode === 'unlinked' &&
@@ -199,7 +197,7 @@ export async function localPlanningJson<T extends { type: string; text: string; 
         }
         if (attempt + 1 < MAX_ATTEMPTS) {
             if (mode === 'gate' && !incompleteOwnerRevision)
-                retryInstruction = 'The previous response was not an accepted schema-2 Roadmap JSON envelope. Return exactly one JSON object with no prose or fences. For a question or no edit, use {"type":"no-action","message":"your concrete answer"}. For an edit, use the supported roadmap-gate-proposal envelope, a concise summary field, and action fields from the system instruction. Preserve the facts and never claim an unapproved write.';
+                retryInstruction = 'The previous response was not an accepted read-only schema-2 Roadmap answer. Return exactly one JSON object with no prose or fences: {"type":"no-action","message":"your concrete answer"}. To change Roadmap, the developer must use protected /roadmap tools and review the staged proposal. Never claim an unapproved write.';
             check.onRetry?.(incompleteOwnerRevision ? 'missing-owner-revision' : 'invalid-envelope');
         }
     }

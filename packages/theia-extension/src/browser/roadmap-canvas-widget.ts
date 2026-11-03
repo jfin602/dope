@@ -61,7 +61,11 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
         if (!draft.trim()) { setError(`${label} is required`); return; }
         if (draft === value) { cancel(); return; }
         setBusy(true); setError(undefined);
-        try { await save(kind, id, field, draft); setEditing(false); }
+        try {
+            await save(kind, id, field, draft);
+            setEditing(false);
+            requestAnimationFrame(() => pencil.current?.focus());
+        }
         catch (failure) { setError(String(failure)); }
         finally { setBusy(false); }
     };
@@ -3225,7 +3229,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const section = document.createElement('section'); section.className = 'dope-roadmap-create';
         const heading = document.createElement('h4'); heading.textContent = state.mode === 'chat' ? 'Plan with an existing Chat' : 'Create a Roadmap manually';
         const note = document.createElement('p'); note.textContent =
-            'Build Phases, Gates and testable Criteria. Review each change, then accept the Roadmap structure. Markdown publication requires separate approval. No model is needed.';
+            'Build Phases, Gates and testable Criteria. Review each change, then accept the Roadmap structure. Choose and confirm a Markdown link once; later accepted edits sync automatically. No model is needed.';
         section.append(heading, note);
         const button = (label: string, action: () => void): HTMLButtonElement => {
             const element = document.createElement('button'); element.type = 'button'; element.textContent = label;

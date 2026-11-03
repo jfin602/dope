@@ -8,10 +8,10 @@ const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.
 const service = read('packages/theia-extension/src/roadmap-service.ts');
 const backend = read('packages/theia-extension/src/node/backend-module.ts');
 
-test('empty Roadmap exposes three clear actions without moving or creating Chat', () => {
+test('empty Roadmap exposes import and manual creation without moving or creating Chat', () => {
     assert.match(widget, /button\('Import Roadmap',/);
-    assert.match(widget, /button\('Plan with Chat',/);
     assert.match(widget, /button\('Create Manually',/);
+    assert.doesNotMatch(widget, /button\('Plan with Chat',/);
     assert.match(widget, /index\.revision !== 0\) return/);
     assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|shell\.addWidget/);
     assert.match(widget, /No Roadmap yet\. Import one, create manually, or plan with an existing Chat/);

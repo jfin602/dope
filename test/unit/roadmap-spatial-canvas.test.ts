@@ -156,12 +156,12 @@ test('Roadmap mounts React Flow with selection, pan, zoom and fit but no graph m
     assert.match(backend, /return await discoverRoadmapTaskStacks\(root\)/);
     assert.match(widget, /onNodeClick: .*this\.select\(node\.id\)/);
     assert.match(widget, /\.\.\.roadmapGestures\(this\.arranging\)/);
-    assert.match(widget, /draggable: this\.arranging/);
+    assert.match(widget, /draggable: !this\.history && this\.arranging/);
     assert.match(widget, /this\.intentionalCamera\(flow => flow\.zoomIn\(\)\)/);
     assert.match(widget, /this\.intentionalCamera\(flow => flow\.zoomOut\(\)\)/);
     assert.match(widget, /this\.intentionalCamera\(flow => flow\.fitView/);
     assert.match(widget, /onNodeDragStop:.*\{/);
-    assert.match(widget, /if \(!this\.arranging \|\| !this\.projection\?\.nodes\.some/);
+    assert.match(widget, /if \(this\.history \|\| !this\.arranging \|\| !this\.projection\?\.nodes\.some/);
     assert.doesNotMatch(widget, /onConnect:|fitView\(\).*refresh/);
     assert.doesNotMatch(widget, /openChatPanel|CHAT_PANEL_ID|ChatPanelWidget|shell\.addWidget/);
     assert.match(css, /\.dope-roadmap-stage-host \{ position: relative; flex: 1 1 auto; min-height: 0; min-width: 0/);

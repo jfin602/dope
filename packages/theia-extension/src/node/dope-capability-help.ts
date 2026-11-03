@@ -1,5 +1,5 @@
 /** Verified UI guidance for Chat grounding. This data grants no action or tool authority. */
-export const DOPE_CAPABILITY_HELP_VERSION = '0.11.8-m1' as const;
+export const DOPE_CAPABILITY_HELP_VERSION = '0.12.7-native-roadmap' as const;
 
 export type DopeHelpId = 'roadmap-change-file' | 'roadmap-refresh' | 'roadmap-status' |
     'roadmap-objective' | 'planning-map-link' | 'chat-follow' | 'chat-pin' | 'ai-center' | 'work' | 'history';
@@ -37,10 +37,10 @@ export const DOPE_CAPABILITY_HELP: readonly DopeHelpEntry[] = [
         recovery: 'Use Refresh Roadmap to check the source again.'
     },
     {
-        id: 'roadmap-objective', goal: 'Edit a checkpoint Objective in Roadmap',
-        uiPath: 'Roadmap > select checkpoint > Objective', requires: ['project'],
-        limitation: 'An Objective edit requires a supported editable source and an explicit preview or approval. Chat cannot apply it from a help request.',
-        recovery: 'If the Objective is read-only or the source is stale, review Roadmap Markdown and setup and Refresh Roadmap.'
+        id: 'roadmap-objective', goal: 'Find the current Roadmap objective editor',
+        uiPath: 'Roadmap > Phase card > Edit Phase objective', requires: ['project'],
+        limitation: 'Schema-2 Roadmaps use Phase objectives and Gate purposes; checkpoint Objective is a legacy control. A help request cannot apply an edit.',
+        recovery: 'Use the pencil on the current Phase or Gate. If the linked source changed, review Roadmap Markdown and setup and Refresh Roadmap.'
     },
     {
         id: 'planning-map-link', goal: 'Find the owner of a Planning Map link',
@@ -50,17 +50,17 @@ export const DOPE_CAPABILITY_HELP: readonly DopeHelpEntry[] = [
     },
     {
         id: 'chat-follow', goal: 'Follow the active planning selection in the saved Chat',
-        uiPath: 'Chat > context menu > Follow active planning selection',
+        uiPath: 'Chat > title bar > Follow planning selection',
         requires: ['project'],
         limitation: 'Following changes Chat context selection, not the Roadmap or permission to edit it.',
         recovery: 'Open one project and select a checkpoint or Planning Map, then check the Chat context label.'
     },
     {
         id: 'chat-pin', goal: 'Keep the selected checkpoint or Planning Map in Chat context',
-        uiPath: 'Chat > context menu > Pin selected checkpoint / Planning Map',
+        uiPath: 'Chat > title bar > Pin planning selection',
         requires: ['project', 'planning-selection'],
         limitation: 'Pin is unavailable without a current planning selection and does not grant Chat write authority.',
-        recovery: 'Select a current checkpoint or Planning Map, then reopen the Chat context menu; use Follow active planning selection if the pin is stale.'
+        recovery: 'Select a current checkpoint or Planning Map, then use Pin planning selection in the Chat title bar; use Follow planning selection if the pin is stale.'
     },
     {
         id: 'ai-center', goal: 'Inspect or configure AI connections and roles',

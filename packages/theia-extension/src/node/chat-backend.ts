@@ -25,11 +25,9 @@ import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
 import { extractSavedRoadmap, roadmapCreationIntent } from './chat-roadmap-extract';
 import { roadmapRequirementCoverage } from './chat-roadmap-requirements';
-import { ambiguousGateReferences, bindGateChatActions, touchesLinkedSource, validGateChatEnvelope } from './roadmap-gate-chat';
-import { linkedRoadmapProposalPreview, roadmapProposalPreview } from './roadmap-proposal-presentation';
+import { roadmapProposalPreview } from './roadmap-proposal-presentation';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
-import type { GateDocumentPatch } from '@dope/project-intelligence/lib/node/roadmap-gate-document';
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import { verifiedPublicationFile } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import { RoadmapNativeStageOwner } from './roadmap-native-stage';
@@ -105,7 +103,6 @@ export class ChatBackend implements ChatService {
     private readonly proposals = new Map<string, { id: string; messageId: string; leaseToken: string;
         handle?: string; request?: PlanningActionRequest; token?: string; changedIds: string[];
         nativeStageId?: string;
-        document?: { root: string; preview: GateDocumentPatch };
         publication?: { root: string; mode: 'publish' | 'link'; preview: RoadmapPublicationPreview | RoadmapExistingLinkPreview };
         undo?: { handle: string; ownerId: string; revision: number; token: string };
         roadmapOffer?: ChatRoadmapOffer;
@@ -663,13 +660,11 @@ export class ChatBackend implements ChatService {
         catch { /* A transient UI notice cannot fail a planning turn. */ }
     }
 
-    private async gateProposal(root: string, chatId: string, messageId: string, leaseToken: string,
-        output: string, refs: ChatContextPreview['refs'], roadmapSkill: boolean, requestText: string):
-        Promise<{ proposal?: ChatPlanningProposal; proposalError?: string;
-            roadmapFocus?: ChatTurnResult['roadmapFocus'] }> {
+    /** Schema-2 answer text may provide a read-only focus hint, never a mutation. */
+    private async gateProposal(root: string, output: string, refs: ChatContextPreview['refs']):
+        Promise<{ proposalError?: string; roadmapFocus?: ChatTurnResult['roadmapFocus'] }> {
         const ref = refs.find(item => item.kind === 'roadmap');
-        if (!ref || !this.planning || !this.roadmapStore) return { proposalError: 'Current Roadmap authority is unavailable' };
-        let handle: string | undefined;
+        if (!ref || !this.roadmapStore) return { proposalError: 'Current Roadmap authority is unavailable' };
         try {
             const value: unknown = JSON.parse(output);
             if (value && typeof value === 'object' && !Array.isArray(value) &&
@@ -689,99 +684,8 @@ export class ChatBackend implements ChatService {
                     throw new Error('Roadmap focus target is stale or missing');
                 return { roadmapFocus: { projectId: current.projectId, revision: current.revision, id } };
             }
-            if (roadmapSkill) throw new Error('Native Roadmap staging is required for reviewed changes; answer text cannot create a proposal');
-            if (value && typeof value === 'object' && !Array.isArray(value) &&
-                (value as { type?: string }).type === 'roadmap-gate-undo' &&
-                Object.keys(value).length === 1) {
-                if (!roadmapSkill) throw new Error('Use /roadmap to request a reviewed Roadmap change');
-                const undo = this.gateUndo.get(chatId);
-                if (!undo || undo.leaseToken !== leaseToken || undo.ownerId !== ref.projectId ||
-                    undo.revision !== ref.ownerRevision)
-                    throw new Error('No current Chat Roadmap change can be undone');
-                const preview = await this.planning.previewUndoEligible({ projectHandle: undo.handle,
-                    ownerId: undo.ownerId, expectedRevision: undo.revision, token: undo.token });
-                const changedIds = [...new Set([...preview.before.phases, ...preview.before.gates,
-                    ...preview.after.phases, ...preview.after.gates].map(item => item.id))].filter(id =>
-                    JSON.stringify([...preview.before.phases, ...preview.before.gates].find(item => item.id === id)) !==
-                    JSON.stringify([...preview.after.phases, ...preview.after.gates].find(item => item.id === id)));
-                const id = randomUUID();
-                this.proposals.set(chatId, { id, messageId, leaseToken, changedIds, undo });
-                const presentation = roadmapProposalPreview(preview.before, preview.after, [], changedIds);
-                return { proposal: { id, chatId, messageId, ownerId: undo.ownerId,
-                    revision: undo.revision, changedIds, action: { type: 'gate-undo', id: changedIds[0] ?? undo.ownerId },
-                    summary: JSON.stringify(presentation, null, 2), preview: presentation } };
-            }
-            if (!roadmapSkill) throw new Error('Use /roadmap to request a reviewed Roadmap change');
-            if (!validGateChatEnvelope(value) || value.projectId !== ref.projectId ||
-                value.ownerRevision !== ref.ownerRevision)
-                throw new Error('Stale or invalid Roadmap proposal');
-            const attached = await this.planning.attach(root);
-            handle = attached.projectHandle;
-            const before = attached.snapshot as unknown as RoadmapGateIndex;
-            if (before.schemaVersion !== 2 || before.projectId !== ref.projectId ||
-                before.revision !== ref.ownerRevision || before.linkedDocument?.sourceHash !== ref.sourceHash ||
-                ref.id !== 'roadmap' && !before.phases.some(item => item.id === ref.id) &&
-                !before.gates.some(item => item.id === ref.id) &&
-                !before.gates.some(item => item.criteria.some(criterion => criterion.id === ref.id)) &&
-                !before.corrections.some(item => item.id === ref.id))
-                throw new Error('Roadmap selection or source changed');
-            if (ref.id === 'roadmap' && value.actions.some(action =>
-                ['gate.edit', 'gate.delete', 'gate.reparent', 'gate.dependencies', 'criterion.add',
-                    'criterion.edit', 'criterion.remove', 'criterion.reorder'].includes(action.type))) {
-                const candidates = ambiguousGateReferences(before, requestText);
-                if (candidates.length > 1)
-                    throw new Error(`Ambiguous Gate target. Which Gate do you mean: ${candidates.join(' or ')}? No change was made.`);
-            }
-            const actions = bindGateChatActions(value.actions);
-            const mapped = before.linkedDocument?.sections.find(section =>
-                actions.length === 1 && 'id' in actions[0] && section.id === actions[0].id);
-            if (before.linkedDocument && touchesLinkedSource(actions,
-                before.linkedDocument.sections.map(section => section.id)) &&
-                (actions.length !== 1 || !mapped || !['phase.edit', 'gate.edit', 'criterion.edit'].includes(actions[0].type)))
-                throw new Error('Linked Roadmap structure needs reviewed Markdown synchronization');
-            if (mapped) {
-                const action = actions[0];
-                const kind = action.type === 'phase.edit' ? 'phase' : action.type === 'gate.edit' ? 'gate' :
-                    action.type === 'criterion.edit' ? 'criterion' : undefined;
-                if (!kind || mapped.kind !== kind || !before.linkedDocument ||
-                    before.linkedDocument.syncState !== 'synced')
-                    throw new Error('Linked Roadmap structure needs reviewed Markdown synchronization');
-                if (action.type !== 'phase.edit' && action.type !== 'gate.edit' &&
-                    action.type !== 'criterion.edit') throw new Error('Unsupported linked Roadmap edit');
-                const title = action.title;
-                const detail = action.type === 'phase.edit' ? action.objective :
-                    action.type === 'gate.edit' ? action.purpose : action.expectedResult;
-                if (!action.id) throw new Error('Linked Roadmap identity missing');
-                const preview = await this.roadmapStore.previewGateDocumentPatch(root,
-                    { kind, id: action.id, sourceHash: before.linkedDocument.sourceHash, title, detail });
-                this.planning.detach(handle); handle = undefined;
-                const id = randomUUID();
-                this.proposals.set(chatId, { id, messageId, leaseToken, changedIds: [action.id],
-                    document: { root, preview } });
-                return { proposal: { id, chatId, messageId, ownerId: before.projectId,
-                    revision: before.revision, sourceHash: before.linkedDocument.sourceHash, changedIds: [action.id],
-                    action: { type: action.type, id: action.id },
-                    summary: `Linked Markdown: ${preview.path}\nSource SHA-256: ${preview.beforeHash}\n` +
-                        preview.changedLines.map(line => `- ${line.before}\n+ ${line.after}`).join('\n'),
-                    preview: linkedRoadmapProposalPreview(before, kind, action.id, preview) } };
-            }
-            const request: PlanningActionRequest = { projectHandle: handle, ownerId: before.projectId,
-                expectedRevision: before.revision, actions,
-                ...(before.linkedDocument && ref.sourceHash ?
-                    { sourceHashes: Object.fromEntries(before.linkedDocument.sections.map(item => [item.id, ref.sourceHash!])) } : {}) };
-            const preview = await this.planning.preview(request);
-            const id = randomUUID();
-            const presentation = roadmapProposalPreview(before, preview.next as unknown as RoadmapGateIndex,
-                actions, preview.changedIds);
-            this.proposals.set(chatId, { id, messageId, leaseToken, handle, request,
-                token: preview.token, changedIds: preview.changedIds });
-            return { proposal: { id, chatId, messageId, ownerId: before.projectId, revision: before.revision,
-                sourceHash: before.linkedDocument?.sourceHash,
-                changedIds: preview.changedIds, action: { type: actions.length > 1 ? 'gate-sequence' : actions[0].type,
-                    id: 'id' in actions[0] ? actions[0].id ?? before.projectId : before.projectId },
-                summary: JSON.stringify(presentation, null, 2), preview: presentation } };
+            throw new Error('Use protected /roadmap tools to stage a reviewed Roadmap change');
         } catch (error) {
-            if (handle) this.planning.detach(handle);
             return { proposalError: `Roadmap proposal rejected: ${String(error)}` };
         }
     }
@@ -824,13 +728,12 @@ export class ChatBackend implements ChatService {
     }
 
     private async proposal(root: string, chatId: string, messageId: string, leaseToken: string,
-        output: string, refs: ChatContextPreview['refs'], draft?: { handle: string; revision: number; projectId: string },
-        roadmapSkill = false, requestText = ''):
+        output: string, refs: ChatContextPreview['refs'], draft?: { handle: string; revision: number; projectId: string }):
         Promise<{ proposal?: ChatPlanningProposal; proposalError?: string;
             roadmapFocus?: ChatTurnResult['roadmapFocus'] }> {
         if (!output.trimStart().startsWith('{')) return {};
         if (!draft && refs.some(ref => ref.kind === 'roadmap'))
-            return this.gateProposal(root, chatId, messageId, leaseToken, output, refs, roadmapSkill, requestText);
+            return this.gateProposal(root, output, refs);
         if (!draft && (!this.planning || !refs.some(ref => ref.kind === 'roadmap-checkpoint'))) return {};
         let handle: string | undefined;
         try {
@@ -989,13 +892,6 @@ export class ChatBackend implements ChatService {
                 appliedRevision = result.revision;
                 await record('applied', result.revision);
                 return { revision: result.revision, changedIds: [] };
-            }
-            if (pending.document) {
-                if (!this.roadmapStore || pending.document.root !== root) throw new Error('Linked Roadmap owner changed');
-                const result = await this.roadmapStore.publishGateDocumentPatch(root, pending.document.preview, true);
-                appliedRevision = result.revision;
-                await record('applied', result.revision);
-                return { revision: result.revision, changedIds: pending.changedIds };
             }
             if (pending.undo) {
                 if (!this.planning || this.gateUndo.get(chatId) !== pending.undo)
@@ -1835,8 +1731,7 @@ export class ChatBackend implements ChatService {
                         } catch (error) { return { proposalError: `Roadmap stage rejected: ${String(error)}` }; }
                     })() : helpTurn || bridge ? {} : publicationIntent ? await this.publicationProposal(root,
                         key, assistant.id, request.leaseToken, proposalRefs, publicationIntent) :
-                        await this.proposal(root, key, assistant.id, request.leaseToken, output, proposalRefs,
-                            draft, roadmapSkill, request.content);
+                        await this.proposal(root, key, assistant.id, request.leaseToken, output, proposalRefs, draft);
                     if (nativeRoadmap && (result.proposal || result.proposalError)) {
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
                             { schemaVersion: 1, kind: 'roadmap-gate-proposal', refs: proposalRefs,

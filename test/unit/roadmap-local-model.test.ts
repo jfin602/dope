@@ -133,7 +133,7 @@ test('schema-two question retry asks for a no-action JSON envelope after plain p
     }, new AbortController().signal, 4096, 'gate');
     assert.equal(result.text, answer);
     assert.equal(hints[0], undefined);
-    assert.match(hints[1]!, /For a question or no edit/);
+    assert.match(hints[1]!, /read-only schema-2 Roadmap answer/);
     assert.match(hints[1]!, /"type":"no-action"/);
 });
 
@@ -148,7 +148,7 @@ test('an explicitly read-only schema-two question can show bounded plain prose a
         new AbortController().signal, 4096, 'gate', true, { allowPlainNoAction: true }), /strict JSON/);
 });
 
-test('explicit read-only Gate requests accept prose while edit requests still require typed proposals', async () => {
+test('plain Gate questions stay read-only and text mutation envelopes cannot stage a proposal', async () => {
     const readRequest = 'Read ROADMAP.md using read_file once. What is the exact Gate G1 heading? Answer only; do not edit files.';
     const prose = 'The exact Gate G1 heading is: Release readiness.';
     assert.equal(allowsPlainGateAnswer(readRequest), true);
@@ -159,6 +159,12 @@ test('explicit read-only Gate requests accept prose while edit requests still re
         new AbortController().signal, 4096, 'gate', true,
         { allowPlainNoAction: allowsPlainGateAnswer(readRequest) });
     assert.deepEqual(JSON.parse(result.text), { type: 'no-action', message: prose });
+    const mutation = JSON.stringify({ type: 'roadmap-gate-proposal', projectId: 'owner', ownerRevision: 2,
+        actions: [{ type: 'phase.create', id: 'new:phase', title: 'Unreviewed', objective: 'No write' }] });
+    let attempts = 0;
+    await assert.rejects(localPlanningJson(async function* () { attempts++; yield complete(mutation); },
+        new AbortController().signal, 4096, 'gate'), /strict JSON/);
+    assert.equal(attempts, 2);
 });
 
 test('a copied no-action placeholder is retried once and never published as an answer', async () => {
