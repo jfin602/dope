@@ -1,0 +1,35 @@
+TASK: c12-roadmap-sync / P4 — formal durable Roadmap revision archive (Undo/Redo foundation)
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 alone is manual Codex Chrome).
+- Target <=8 minutes per bounded cycle; hard cap 15 minutes. Stop NOT GREEN rather than race a safety boundary.
+- Use existing runner; runner owns successful implementation commits. NO self-commit, /activate, automatic next manual stack, version/model/provider/lockfile change or host-wide permissions.
+- Ponytail FULL only if installed/actually available to implementation agent, never injected into selected local Pi model.
+
+VERSIONING
+- Documented reference version 0.12.7. Inspect actual LOCAL package/version and runner expected version first; never silently rewrite pins to pass.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, docs/planning/p12/native-roadmap-authoring-contract.md, docs/planning/p12/roadmap-revision-navigation-and-restore.md, this stack README/assessment/plan, and preceding Pn source/qualification.
+- Inspect LOCAL git HEAD/status/diff, active owner changes, RoadmapStore/Service, ProjectPlanningActions, Pi broker/ChatBackend, ChatPanel, RoadmapCanvas, Markdown source adapter, saved History and actual tests before editing. Remote main is not proof of local state.
+- Do not reset/stash/clean, force push, overwrite real project Roadmaps or Markdown, run unrelated stacks, bypass protected /roadmap current-turn invocation, Ask/Allow, exact owner/root/revision/source/lease/approval or grant agent generic shell/file writes. Use disposable fixtures. Preserve c12-undo and publication stack original prompts and failure evidence.
+
+
+PREREQUISITE: P1–P3 qualified or reusable source-equivalent implementation; inspect c12-undo P1 existing actual code and evidence. Do not run its old prompt in parallel.
+
+OBJECTIVE
+One authoritative, project-scoped immutable archive of verified current baseline and every future committed schema-2 Roadmap revision. This is the only data source for formal Undo/Redo and reviewed restore.
+
+IMPLEMENT
+1. Enumerate all actual RoadmapStore mutation paths, including manual, Chat-approved partial transactions, import/greenfield, source sync/relink/publish/recovery, qualification/evidence and future restore. Move archive hooks to the *common authoritative owner boundary*; not just Chat UI.
+2. Capture exact available current baseline Rn; older unrecorded R1..Rn-1 unavailable. Persist each committed revision with schema, project/root/owner, immutable snapshot or lossless equivalent, hash, predecessor, timestamp/provenance when known, source path/hash and actual transaction receipt. Ensure archive/index/crash ordering via durable intent/reconcile; reject conflicting duplicate revision hash.
+3. Expose bounded READ-ONLY revision list/fetch in existing RoadmapService; read never mutates index/file or starts Pi. Guard canonical root, symlinks, size/quota, integrity, gap/retention, project isolation and restarted server. Preserve missing-history truth.
+4. Keep old one-step ProjectPlanningActions.undoEligible distinguishable from formal archive; do not turn old token into historical rewind. Preserve evidence and status as-of metadata as historical facts, not current qualification grants.
+5. Integration test P3 subset as one revision with operation IDs, not per selected Gate; rejects/no-ops do not generate archive entries. Reconcile any existing c12-undo archive implementation rather than fork or overwrite.
+
+QUALIFY
+- Existing Rn baseline, 3+ different writer commits, exact snapshots match observed canonical bytes, stable IDs and source provenance through process restart; no fabricated earlier revisions.
+- Index/archive crash at each write boundary, journal retry, corrupted/gapped/truncated/oversize archive and retention quota: no phantom success, no current corruption, correct recoverable/blocked state.
+- Foreign project, symlink/root escape, source hash drift, concurrency/idempotency and no-write archive reads; evidence/qualification writer inclusion or exact blocker.
+- Focused RoadmapStore/Service/History tests, typecheck, relevant builds. STOP NOT GREEN if any applicable real writer bypasses archive.
+EXIT: Verified history only; P7 adds toolbar, P8 adds explicit restore. Do not auto-run original c12-undo prompts.
