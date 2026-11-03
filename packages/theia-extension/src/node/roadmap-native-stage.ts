@@ -315,6 +315,32 @@ export class RoadmapNativeStageOwner {
         return { before, after, stage };
     }
 
+    /** Controller-only finalization after all checked Phase batches have been staged. */
+    async finish(context: Context, revision: number, sourceHash: string | null): Promise<NativeStageSnapshot> {
+        const index = await this.current(context);
+        await this.checkedSource(index);
+        const stage = this.stages.get(context.chatId);
+        if (!stage || stage.done || stage.strategy !== 'full' || !stage.snapshot || !stage.operations.length)
+            throw new Error('ROADMAP_STAGE_INCOMPLETE');
+        this.assert(stage, context, index);
+        if (revision !== index.revision || sourceHash !== source(index))
+            throw new Error('ROADMAP_STAGE_STALE_SOURCE');
+        const operationCount = stage.operations.length;
+        const after = await this.store.mutateGateIndex(context.root, revision, stage.ownerId,
+            stage.operations.map(item => item.action), true);
+        if (!after.phases.length || after.phases.some(phase => !after.gates.some(gate =>
+            gate.parentPhaseId === phase.id)) || after.gates.some(gate => !gate.criteria.length))
+            throw new Error('ROADMAP_STAGE_FULL_INCOMPLETE_PHASE');
+        const current = await this.current(context);
+        await this.checkedSource(current);
+        this.assert(stage, context, current);
+        if (this.stages.get(context.chatId) !== stage || stage.done || stage.operations.length !== operationCount)
+            throw new Error('ROADMAP_STAGE_CHANGED');
+        stage.done = true;
+        stage.snapshot = { ...stage.snapshot, complete: true };
+        return structuredClone(stage.snapshot);
+    }
+
     /** Human edits revise a pending operation and revalidate the noncanonical graph. */
     async revise(context: Context, request: { proposalId: string; expectedGeneration: number;
         operationId: string; entityId: string; field: 'title' | 'objective' | 'purpose' | 'expectedResult';
