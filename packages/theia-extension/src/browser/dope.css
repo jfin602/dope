@@ -175,9 +175,16 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-proposal-change p { margin: 0; overflow-wrap: anywhere; }
 .dope-roadmap-proposal-change ul { margin: 2px 0; padding-left: 20px; }
 .dope-roadmap-proposal-ghost { opacity: .68; border-style: dashed; }
-.dope-roadmap-proposal-new-gate { border: 0; padding: 0; }
-.dope-roadmap-proposal-new-gate .dope-roadmap-proposal-change { margin: 0; }
-.dope-roadmap-proposal-phase { min-height: 0; border: 2px dashed var(--theia-editorWarning-foreground); }
+.dope-roadmap-proposal-new-gate { --gate-accent: var(--theia-editorWarning-foreground); border-style: dashed; }
+.dope-roadmap-proposal-phase { --phase-accent: var(--theia-editorWarning-foreground); min-height: 0; border-top-style: dashed; border-right-style: dashed; border-bottom-style: dashed; }
+.dope-roadmap-proposal-phase .dope-roadmap-phase-main { cursor: default; }
+.dope-roadmap-proposal-phase .dope-roadmap-authority,
+.dope-roadmap-proposal-new-gate .dope-roadmap-authority,
+.dope-roadmap-proposal-created .dope-roadmap-authority { color: var(--theia-editorWarning-foreground); font-weight: 700; }
+.dope-roadmap-proposal-objective { margin: 0 8px; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+.dope-roadmap-proposal-criterion { margin: 8px 0; padding: 8px 10px; border: 1px dashed var(--theia-widget-border); border-radius: 6px; }
+.dope-roadmap-proposal-criterion p, .dope-roadmap-proposal-created p { margin: 4px 0; }
+.dope-roadmap-proposal-created { padding-top: 8px; padding-bottom: 8px; border-style: dashed; }
 .dope-roadmap-inline-field { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; max-width: 100%; }
 .dope-roadmap-inline-title { font-weight: 700; overflow-wrap: anywhere; }
 .dope-roadmap-phase-card > .dope-roadmap-inline-field { display: flex; margin: 5px 0; padding: 0 8px; }
@@ -238,6 +245,7 @@ body.theia-light:not(.dope-dark) {
 @keyframes dope-roadmap-relationship-focus { from { stroke-opacity: .55; } to { stroke-opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .dope-roadmap-stage .react-flow__node, .dope-roadmap-node { transition: none; }
+  .dope-roadmap-proposal-new-gate .dope-roadmap-gate-chevron { transition: none; }
   .dope-roadmap-edge-related .react-flow__edge-path { animation: none; }
 }
 .dope-roadmap-stage-host > button[aria-controls="dope-roadmap-pool-panel"] { position: absolute; left: 8px; bottom: 8px; z-index: 3; min-height: 32px; padding: 5px 8px; color: var(--theia-button-secondaryForeground, var(--theia-foreground)); background: var(--theia-button-secondaryBackground, var(--theia-editorWidget-background)); border: 1px solid var(--theia-widget-border); border-radius: 4px; cursor: pointer; }

@@ -27,6 +27,7 @@ import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { roadmapHistoryTarget } from './roadmap-history-navigation';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
+import { ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode, type ProposalChange } from './roadmap-proposal-cards';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
     roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot, roadmapProposalCamera,
     type RoadmapViewportState } from './roadmap-viewport';
@@ -34,7 +35,6 @@ import './dope.css';
 
 type RoadmapReplacementState = { uri: string; projectId: string; revision: number; path: string;
     discovery: RoadmapCandidateDiscovery; preview?: RoadmapReplacementPreview; error?: string; busy: boolean; applying?: boolean };
-type ProposalChange = NonNullable<ChatPlanningProposal['preview']>['entities'][number];
 type InlineKind = 'phase' | 'gate' | 'criterion' | 'correction';
 type InlineFieldName = 'title' | 'objective' | 'purpose' | 'expectedResult';
 type InlineSave = (kind: InlineKind, id: string, field: InlineFieldName, value: string) => Promise<void>;
@@ -98,47 +98,6 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
                         event.preventDefault();
                         setDraft(value); setError(undefined); setEditing(true);
                     } }, React.createElement('span', { className: codicon('edit'), 'aria-hidden': true }))));
-}
-
-function ProposedChange({ change, source, sourceChanges }: { change: ProposalChange; source: boolean;
-    sourceChanges?: { before: string; after: string }[] }): React.ReactElement {
-    const before = change.before, after = change.after, value = after ?? before;
-    const field = (label: string, oldValue: unknown, newValue: unknown) =>
-        JSON.stringify(oldValue) === JSON.stringify(newValue) ? null : React.createElement('p', { key: label },
-            `${label}: ${oldValue ?? 'none'} → ${newValue ?? 'none'}`);
-    return React.createElement('div', { className: `dope-roadmap-proposal-change dope-roadmap-proposal-${change.action}`,
-        'data-proposal-entity': change.id },
-        React.createElement('small', null, `Proposed · Not applied${source ? ' · Linked Markdown source-owned' : ''}`),
-        React.createElement('strong', null, `${change.action === 'delete' ? 'Remove ' : ''}${value?.kind ?? 'element'} · ${value?.title ?? change.id}`),
-        change.action === 'edit' ? field('Title', before?.title, after?.title) : null,
-        field(value?.kind === 'gate' ? 'Purpose' : value?.kind === 'criterion' ? 'Expected result' : 'Objective',
-            before?.detail, after?.detail),
-        field('Parent', before?.parentId, after?.parentId),
-        field('Order', before?.order, after?.order),
-        field('Dependencies', before?.dependencies?.join(', '), after?.dependencies?.join(', ')),
-        ...(sourceChanges ?? []).map((line, index) => React.createElement('p', { key: `source-${index}` },
-            `${line.before} → ${line.after}`)),
-        after?.criteria?.length ? React.createElement('ul', null, ...after.criteria.map(criterion =>
-            React.createElement('li', { key: criterion.id }, `${criterion.title} — ${criterion.expectedResult}`))) : null);
-}
-
-function ProposedPhaseNode({ data }: { data: { change: ProposalChange; children: ProposalChange[]; source: boolean;
-    sourceChanges?: { before: string; after: string }[] } }): React.ReactElement {
-    const gates = data.children.filter(child => child.after?.kind === 'gate');
-    const nested = new Set(gates.flatMap(gate => data.children.filter(child =>
-        child.after?.parentId === gate.id).map(child => child.id)));
-    return React.createElement('section', { className: 'dope-roadmap-node dope-roadmap-phase-card dope-roadmap-proposal-phase' },
-        React.createElement(ProposedChange, { change: data.change, source: data.source,
-            sourceChanges: data.sourceChanges }),
-        ...gates.map(gate => React.createElement('details', { key: gate.id, open: true,
-            className: 'dope-roadmap-gate-row dope-roadmap-proposal-new-gate',
-            'data-proposal-gate-id': gate.id },
-        React.createElement('summary', null, `${gate.after?.title ?? gate.id} · Proposed Gate`),
-        React.createElement(ProposedChange, { change: gate, source: data.source }),
-        ...data.children.filter(child => child.after?.parentId === gate.id).map(child =>
-            React.createElement(ProposedChange, { key: child.id, change: child, source: data.source })))),
-        ...data.children.filter(child => child.after?.kind !== 'gate' && !nested.has(child.id)).map(child =>
-            React.createElement(ProposedChange, { key: child.id, change: child, source: data.source })));
 }
 
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
@@ -236,8 +195,11 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                 React.createElement('div', { className: 'dope-roadmap-gate-foldout' },
                     ...((data.proposalChanges ?? []).filter(change => change.id === gate.id ||
                         change.before?.parentId === gate.id || change.after?.parentId === gate.id).map(change =>
-                        React.createElement(ProposedChange, { key: change.id, change, source: !!data.proposalSource,
-                            sourceChanges: data.proposalSourceChanges }))),
+                        change.action === 'create' && change.after?.kind === 'criterion' ?
+                            React.createElement(ProposedCriterionRow, { key: change.id, criterion: change.after,
+                                source: !!data.proposalSource }) :
+                            React.createElement(ProposedChange, { key: change.id, change, source: !!data.proposalSource,
+                                sourceChanges: data.proposalSourceChanges }))),
                     React.createElement(InlineRoadmapField, { kind: 'gate', id: gate.id, field: 'purpose',
                         value: gate.purpose, label: 'Gate purpose', multiline: true, save: data.editField }),
                     React.createElement('strong', null, 'Criteria'),
@@ -276,10 +238,9 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                         `Open ${gate.designation} details`)))),
             ...((data.proposalChanges ?? []).filter(change => change.action === 'create' &&
                 change.after?.kind === 'gate' && change.after.parentId === item.id).map(change =>
-                React.createElement('div', { key: change.id, className: 'dope-roadmap-gate-row dope-roadmap-proposal-new-gate',
-                    'data-proposal-gate-id': change.id },
-                    React.createElement(ProposedChange, { change, source: !!data.proposalSource,
-                        sourceChanges: data.proposalSourceChanges })))),
+                React.createElement(ProposedGateCard, { key: change.id, change,
+                    children: (data.proposalChanges ?? []).filter(child => child.after?.parentId === change.id),
+                    source: !!data.proposalSource }))),
             ...card.corrections.filter(correction => correction.parent.kind === 'phase').map(correction =>
                 React.createElement('div', { key: correction.id, className: 'dope-roadmap-correction-row' },
                     `Phase correction · ${correction.qualificationStatus}`,
