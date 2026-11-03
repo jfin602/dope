@@ -1,0 +1,38 @@
+TASK: Correction 12 / P6 — consolidate single generator and remove dead architecture
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Soft target <=8 minutes; hard stop 15 minutes per bounded runner step. Report NOT GREEN/STOP with facts if safety or scope cannot be achieved.
+- Existing runner owns commits and verified checkpoint. Do NOT self-commit, bump version, run overlapping stacks or start live local-model/browser qualification.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Check local manifest and existing runner before editing; fail safely on mismatch.
+
+PREFLIGHT / AUTHORITY
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047/0048/0049, docs/planning/p12/roadmap-phase-orchestration-contract.md, c12-rm-orch README/assessment/plan, prior Pn outcome, actual source/tests.
+- Verify actual local HEAD/branch/status/diff and reconcile reported dirty D2 files. Remote documentation is not proof of local status. No reset/stash/clean, force push, overwriting owner's tower-defense project or unsafe automatic migration.
+- Reuse existing schema-2 RoadmapStore/Service, protected Pi broker/Ask-Allow, /roadmap skill, one noncanonical proposal/stage authority, granular owner approval, checked linked Markdown sync, History and evidence/qualification. Never add a second writer, generic model filesystem channel, provider switch or self-Apply.
+- Use disposable fixtures and focused tests, report exact counts, source hashes and truthful scope. A matching commit alone is not GREEN.
+
+PREREQUISITE
+- P1–P5 exist and are verified for their exact source scope. If P1 left unreachable legacy imports, P6 must remove them, not convert them into compatibility wrappers.
+
+OBJECTIVE
+- Source-level closure: one generation route, no lingering old grammars/orchestrators/fallbacks/unused code; full protected proposal/canvas/Markdown behavior still works.
+
+IMPLEMENT
+1. Trace every greenfield entry, provider dispatch, Chat response path, stage producer, preview listener and status card. Create a reachable-call-graph inventory from actual source. Verify all greenfield requests use the single controller; old full-plan prose parser, typed monolith, RM1 grammar, two-pass D2 conversion, model-managed native generation and legacy fallback selectors are absent from executable product paths, not just hidden.
+2. Delete remaining dead generator source, prompt builders, TypeScript exports, flags, UI branches, integration adapters, exclusive test assertions and obsolete references. Retain archived Chat output readability and unrelated import/Markdown parsers and common staged proposal/approval owner. No transitional compatibility shims. Check for duplicate authority, proposal writers or source synchronization paths.
+3. Confirm new tests cover any security/safety behavior removed from old tests: scope/status, Phase/Gate identity, event backpressure, cancel/stale/drift, Ask/Allow, current-turn protected /roadmap, source hash, lease, granular owner Apply/Reject, historical restore, linked Markdown conflict and no-write before Apply.
+4. Run focused tests and relevant workspace builds. Run broader tests as time allows, attribute existing failures against reproducible baseline when possible; never relabel unknown failures pre-existing or silently delete meaningful tests. Run `git diff --check` and targeted reference search.
+5. Verify trace instrumentation gives the data needed to assess performance in P7 without introducing extra model calls or synchronous UI waits. Provide exact cleanup manifest and remaining native/browser evidence gaps.
+
+QUALIFY
+- Code/tests prove all public greenfield routes converge to exactly one controller, and no old route remains invocable under flags, direct methods, replayed events or restart.
+- Stage shows real nested gates but cannot mutate canonical/Markdown/History; a verified owner Apply can still selectively commit with safe revalidation; UI and async event safety verified on exact source.
+- Report files deleted, files retained and why, test/build counts, remaining issues, HEAD/diff and explicit source-scoped disposition. If any unreachable but preserved old-generation code remains, do **not** call clean replacement complete.
+
+EXIT
+- Implemented/scope source-qualified only. P7 must independently observe the actual local model and UI; no auto-qualified or self-committed closeout.
