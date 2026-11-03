@@ -1,0 +1,34 @@
+TASK: c12-roadmap-sync / P6 — direct pencil editing and granular review in the existing Roadmap canvas
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 manual connected Codex Chrome).
+- Focused target <=8 minutes per working cycle, hard cap 15; stop NOT GREEN on unsafe/unfinished boundaries.
+- Phase runner owns successful implementation checkpoint commits. Do NOT self-commit, /activate, automatically run other stacks, change version/lockfiles/model/provider, grant generic shell or Work permissions.
+- Ponytail FULL only for implementation agent if actually installed; never inject it into Dope's selected Pi model.
+
+VERSIONING
+- Documented reference 0.12.7; verify current LOCAL manifest, source and actual runner expectations. Preserve version unless separately approved.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, native Roadmap contract, historical restore contract, c12-roadmap-sync README/assessment/plan and all previous Pn exact-source evidence. Inspect LOCAL HEAD/status/diff, owner modifications and live components; do not treat GitHub main as identical to checkout.
+- Reuse existing RoadmapStore/Service, ProjectPlanningActions, Pi broker, saved ChatPanel, RoadmapCanvas/Inspector and source-aware Markdown writer. Preserve protected /roadmap, Ask/Allow, owner/project/source/revision/lease/decision checks, immutable history and evidence/qualification. No reset/stash/clean, source clobber, real owner workspace modification or parallel c12-undo/c12-roadmap-native-authoring execution. Use disposable fixtures.
+
+
+PREREQUISITE: Verified P1–P5 contract and source implementation. Backend granularity and first-link/sync owner must exist before deleting old UI.
+
+OBJECTIVE
+Replace the large "Linked Markdown · Approval required" editing panel with small field-level pencil controls and one-time Markdown choice. Display/decide native AI proposals inside the actual horizontal Roadmap editor, not a parallel frontend form.
+
+IMPLEMENT
+1. Add unobtrusive accessible pencil icons beside editable Phase title/objective/description, Gate title/purpose, Criterion testable requirement/expected observation, Correction text and other *actually supported* editable fields. Click enters a focused inline text input/textarea; Enter/check confirms one-line; Escape cancels; multiline has explicit Save/Cancel; no unexpected keyboard submit. Show validation next to field and preserve unsaved draft on stale revision/source conflict.
+2. Reuse P3 typed owner transaction for manual saves; never allow plain editor to modify Gate qualification, evidence, waivers, owner/source metadata or Gate-set coverage. Changing relevant requirement must trigger proper stale/coverage re-evaluation. Relations and reordering may use compact contextual controls but must reach the same service.
+3. Render server-validated provisional Phase/Gate/Criterion/Correction entities, changed fields, removals, reorders and dependencies in existing RoadmapCanvasWidget. Apply/Reject one; Phase group with explicit child scope; selected subset; all remaining, with counts and dependency diagnostics. Chat inline card and canvas actions refer to *same proposal ID/operation IDs/decision owner*, not independent stores. Selection is not a write; Apply dispatches authoritative backend.
+4. Preserve one saved inline Chat proposal card and truthful applied/rejected/stale outcomes, active-tab-only automatic preview, manual View in Roadmap, Chat focus isolation, pan/zoom/camera, narrow widths, touch, keyboard and reduced motion. Historical mode disables current editing and proposal decisions. Proposed Gates never inflate accepted counts or GREEN.
+5. Retire the giant multi-step Roadmap Markdown editor/Undo-last-draft/Preview form and redundant status narration **after** first-link picker, safe import/relink, conflict repair, cancel and sync indicator remain operable. Do not remove meaningful recovery controls or source diagnostics. One initial path/confirm and compact ongoing "Saved / Markdown synced/pending/conflict".
+
+QUALIFY
+- Manual inline save/cancel/validation on Phase/Gate/Criterion/Correction; keyboard focus, narrow and screen reader; stale save keeps typed draft. Confirm one source revision and expected Markdown intent only after actual save.
+- Same proposal: accept one Gate, reject another, apply selected sibling set, Phase group, reject remaining; inspect exact changed counts, dependency warning, applied-only History. UI selection doesn't write.
+- Roadmap active/background/closed Chat preview isolation; historical edit disabled; no focus theft; no giant form, but initial linking/conflict action still reachable.
+- DOM/component tests, typecheck/browser/Electron builds as appropriate; real Codex Chrome final qualification belongs P10. STOP on source mismatch or lost recovery ability.
+EXIT: P6 scoped GREEN requires actual direct canvas usability and safe form replacement; do not claim P10 browser proof from unit tests.
