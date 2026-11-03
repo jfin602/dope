@@ -1,0 +1,35 @@
+TASK: c12-roadmap-sync / P5 — one-time Markdown destination and checked automatic synchronization
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 alone is manual Codex Chrome).
+- Target <=8 minutes per bounded cycle; hard cap 15 minutes. Stop NOT GREEN rather than race a safety boundary.
+- Use existing runner; runner owns successful implementation commits. NO self-commit, /activate, automatic next manual stack, version/model/provider/lockfile change or host-wide permissions.
+- Ponytail FULL only if installed/actually available to implementation agent, never injected into selected local Pi model.
+
+VERSIONING
+- Documented reference version 0.12.7. Inspect actual LOCAL package/version and runner expected version first; never silently rewrite pins to pass.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, docs/planning/p12/native-roadmap-authoring-contract.md, docs/planning/p12/roadmap-revision-navigation-and-restore.md, this stack README/assessment/plan, and preceding Pn source/qualification.
+- Inspect LOCAL git HEAD/status/diff, active owner changes, RoadmapStore/Service, ProjectPlanningActions, Pi broker/ChatBackend, ChatPanel, RoadmapCanvas, Markdown source adapter, saved History and actual tests before editing. Remote main is not proof of local state.
+- Do not reset/stash/clean, force push, overwrite real project Roadmaps or Markdown, run unrelated stacks, bypass protected /roadmap current-turn invocation, Ask/Allow, exact owner/root/revision/source/lease/approval or grant agent generic shell/file writes. Use disposable fixtures. Preserve c12-undo and publication stack original prompts and failure evidence.
+
+
+PREREQUISITE: Source-qualified P1–P4 and actual source-aware Markdown owner. Reuse validated prior publish logic; don't call schema-1 writer.
+
+OBJECTIVE
+During first creation/link only, user selects project-local Markdown path and confirms; later successful canonical commits automatically synchronize linked .md through one source-protected owner without recurring manual publication forms.
+
+IMPLEMENT
+1. Extend current schema-2 RoadmapService / linked source adapter with a concise first-link path/confirm API. Default may be ROADMAP.md if unused; allow safe custom in-project .md. An existing file must invoke deliberate import/link/review or require different path; never overwrite or auto-publish at startup. Existing accepted unlinked Roadmap gets an explicit first-link route, no retroactive surprise write. No need to show large form.
+2. Canonical structured index owns authored plan; Markdown is deterministic synchronized projection, with round-trip parser stable Phase/Gate/Criterion IDs and mapping. Preserve unrelated source prose/sections and external user changes. No model arbitrary Markdown bytes, direct shell writer or broad source rewrite. Respect linked field ownership and importer/relink behavior.
+3. After every authoritative committed revision (manual, AI subset, reviewed restore, relevant other owner), durably queue exact revision-bound sync intent. Coalesce obsolete pending intents safely but never lose committed unsynced head. Under owner lock check path/root/no-symlink, expected source hash/absence, current index revision, mapping/prose and exact generated content. Safe exclusive create/temp+rename/fsync as appropriate; verify file bytes, reparse mappings and hash before reporting Synced.
+4. If file write fails after canonical commit, show **Roadmap saved · Markdown pending/conflict/failed** with retry/review; do not pretend index rolled back. Persist interruption intent and actual file/index outcome; restart reconcile/idempotent retries, no duplicate new file/History. On external edits, collision, unsupported grammar or symlink change stop without clobber and route explicit reconciliation.
+5. Keep initial confirmation as the only ordinary Markdown prompt. Provide a small status/repair control for exceptional conflicts; no repeated Apply Markdown gate after every manual edit/accepted proposal. Background sync must not stall model streaming/file edits/animations.
+
+QUALIFY
+- First file selection path, creation and link, save/reopen/restart; project-local custom path and forbidden traversal/symlink/existing path negative.
+- Accepted selected subset, pencil route fixture, import/sync and validated restore scenario enqueue exact new Markdown content; stable parser mapping/IDs and unrelated prose survive; reject/no-op stages produce no files.
+- Crash before intent, between index/file, after file before verification, duplicate retry, external changed source, current revision advances while queued, filesystem denied; truthful status, zero unsafe overwrite and exact recovery receipts.
+- Focused source adapter/owner/queue/Service tests and relevant builds, with actual file hashes/no-write proof.
+EXIT: P5 GREEN only with verified checked automatic sync and honest failure. P6 removes the old form when UI parity is established.
