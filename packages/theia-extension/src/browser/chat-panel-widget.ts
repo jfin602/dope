@@ -2887,6 +2887,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
                 content.append(recovery);
             }
+            if (message.role === 'assistant' && message.lockedRoadmapPlan) {
+                const inspection = document.createElement('details');
+                inspection.className = 'dope-chat-locked-roadmap-plan';
+                const heading = document.createElement('summary');
+                heading.textContent = 'Natural Roadmap plan · saved for inspection';
+                const note = document.createElement('p');
+                note.textContent = 'Planning text only. No Roadmap changes were applied from this snapshot.';
+                const plan = document.createElement('pre');
+                plan.textContent = message.lockedRoadmapPlan.text;
+                inspection.append(heading, note, plan);
+                content.append(inspection);
+            }
             const time = document.createElement('time');
             time.dateTime = message.createdAt;
             time.textContent = new Date(message.createdAt).toLocaleString();

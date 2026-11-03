@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
-import { cp, link, lstat, mkdtemp, mkdir, open, readFile, rm, symlink, utimes, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { cp, link, lstat, mkdtemp, mkdir, open, readFile, readdir, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { assignedChatColor, compareChatsByInteraction } from '../../packages/chat/lib/index.js';
+import { assignedChatColor, compareChatsByInteraction, parseChatMessage } from '../../packages/chat/lib/index.js';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
 import { TypeScriptAnalyzer } from '../../packages/code-analysis-typescript/lib/index.js';
 import { SoftwareMapIndex } from '../../packages/code-analysis/lib/node/software-map-index.js';
@@ -16,6 +16,94 @@ const id = () => randomUUID();
 const model = { connectionId: 'local', modelId: 'model' };
 const provenance = { schemaVersion: 1 as const, ...model, providerId: 'test', modelLabel: 'Test' };
 const emptyAnalysis = { projects: [], nodes: [], relationships: [], evidence: [], status: { completeness: 'complete' as const, errors: [] } };
+
+test('natural Roadmap lock is write-once, source-bound, hash-checked and survives interruption', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id(), userMessageId = id(),
+    assistantMessageId = id(), executionId = id();
+  const text = 'Phase 1 — Path\nGate — Movement\n- Enemies move along every waypoint.\n' +
+    'Phase 2 — Combat\nGate — Attack\n- A tower fires a projectile after its cooldown.\n' +
+    'Phase 3 — Waves\nGate — Advance\n- The next wave begins after all enemies leave.\n' +
+    'Phase 4 — Economy\nGate — Purchase\n- Currency decreases by the tower cost.\n' +
+    'Phase 5 — Defeat\nGate — Health\n- Main-tower health persists and zero ends play.';
+  const owner = { projectId: 'fixture-project', revision: 0, sourceHash: null };
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'panel');
+    if (!lease.acquired) throw new Error('claim failed');
+    state = await repo.mutate(root, state.revision, { type: 'append-user', chatId, message: {
+      schemaVersion: 1, id: userMessageId, role: 'user', createdAt: new Date().toISOString(),
+      content: 'Create a Roadmap', contextRefs: [] } }, lease.token);
+    state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId, message: {
+      schemaVersion: 1, id: assistantMessageId, role: 'assistant', content: '', createdAt: new Date().toISOString(),
+      execution: { schemaVersion: 1, id: executionId, status: 'pending', selectedModel: model,
+        startedAt: new Date().toISOString() } } }, lease.token);
+    state = await repo.mutate(root, state.revision, { type: 'start-assistant', chatId,
+      messageId: assistantMessageId, actualModel: provenance }, lease.token);
+    const binding = { chatId, userMessageId, assistantMessageId, executionId, turnId: assistantMessageId,
+      leaseToken: lease.token, text, finishReason: 'stop', owner };
+    await assert.rejects(repo.lockRoadmapPlan(root, state.revision, { ...binding,
+      finishReason: 'length' }, async () => owner), /Completed natural/);
+    await assert.rejects(repo.lockRoadmapPlan(root, state.revision, { ...binding,
+      owner: { ...owner, projectId: 'foreign' } }, async () => owner), /owner or source changed/);
+    await assert.rejects(repo.lockRoadmapPlan(root, state.revision, { ...binding,
+      owner: { ...owner, revision: 1, sourceHash: 'a'.repeat(64) } }, async () => owner), /owner or source changed/);
+    await assert.rejects(repo.lockRoadmapPlan(root, state.revision, { ...binding,
+      assistantMessageId: id() }, async () => owner), /Current active/);
+    await assert.rejects(repo.lockRoadmapPlan(root, state.revision, { ...binding,
+      chatId: id() }, async () => owner), /lease/);
+    await assert.rejects(repo.lockRoadmapPlan(root, state.revision, { ...binding,
+      leaseToken: 'foreign' }, async () => owner), /lease/);
+    const plan = await repo.lockRoadmapPlan(root, state.revision, binding, async () => owner);
+    assert.equal(plan.sha256, createHash('sha256').update(text).digest('hex'));
+    assert.equal(plan.status, 'planning-only');
+    assert.equal(JSON.stringify(plan).includes(lease.token), false);
+    state = await new ChatRepository().read(root);
+    assert.equal(state.chats[0].messages.length, 2);
+    assert.equal(state.chats[0].messages[1].role, 'assistant');
+    assert.equal((state.chats[0].messages[1] as { lockedRoadmapPlan?: { text: string } }).lockedRoadmapPlan?.text, text);
+    await assert.rejects(repo.lockRoadmapPlan(root, state.revision, binding, async () => owner), /Current active/);
+    await repo.release(root, chatId, lease.token);
+    state = await new ChatRepository().read(root);
+    const recovered = state.chats[0].messages[1];
+    assert.equal(recovered.role, 'assistant');
+    if (recovered.role !== 'assistant') throw new Error('assistant missing');
+    assert.equal(recovered.execution.status, 'failed');
+    assert.equal(recovered.lockedRoadmapPlan?.text, text);
+    assert.equal(recovered.content, '');
+    assert.equal(recovered.planningActivity, undefined);
+    await assert.rejects(lstat(join(root, '.dope/roadmap.json')), { code: 'ENOENT' });
+    await assert.rejects(lstat(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
+    const secondLease = await repo.claim(root, chatId, 'second-panel');
+    if (!secondLease.acquired) throw new Error('second claim failed');
+    const cancelledUser = id(), cancelledAssistant = id(), cancelledExecution = id();
+    state = await repo.mutate(root, state.revision, { type: 'append-user', chatId, message: {
+      schemaVersion: 1, id: cancelledUser, role: 'user', createdAt: new Date().toISOString(),
+      content: 'Create another Roadmap', contextRefs: [] } }, secondLease.token);
+    state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId, message: {
+      schemaVersion: 1, id: cancelledAssistant, role: 'assistant', content: '', createdAt: new Date().toISOString(),
+      execution: { schemaVersion: 1, id: cancelledExecution, status: 'pending', selectedModel: model,
+        startedAt: new Date().toISOString() } } }, secondLease.token);
+    state = await repo.mutate(root, state.revision, { type: 'start-assistant', chatId,
+      messageId: cancelledAssistant, actualModel: provenance }, secondLease.token);
+    state = await repo.mutate(root, state.revision, { type: 'finish-assistant', chatId,
+      messageId: cancelledAssistant, outcome: 'cancelled', content: '' }, secondLease.token);
+    await assert.rejects(repo.lockRoadmapPlan(root, state.revision, { ...binding,
+      userMessageId: cancelledUser, assistantMessageId: cancelledAssistant,
+      executionId: cancelledExecution, turnId: cancelledAssistant, leaseToken: secondLease.token },
+    async () => owner), /Current active/);
+    await repo.release(root, chatId, secondLease.token);
+    assert.throws(() => parseChatMessage({ ...recovered, lockedRoadmapPlan: {
+      ...plan, assistantMessageId: id() } }), /identity mismatch/);
+    const files = await readdir(join(root, '.dope/chats/folders'));
+    const file = files.find(name => name.endsWith('.json'));
+    if (!file) throw new Error('Chat file missing');
+    const path = join(root, '.dope/chats/folders', file);
+    const stored = JSON.parse(await readFile(path, 'utf8'));
+    stored.messages[1].lockedRoadmapPlan.text += ' tampered';
+    await writeFile(path, JSON.stringify(stored));
+    await assert.rejects(new ChatRepository().read(root), /content hash mismatch/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 test('simultaneous claims across repository instances have exactly one writer', async () => {
   const root = await folder(), chatId = id();

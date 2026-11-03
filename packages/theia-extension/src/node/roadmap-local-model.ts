@@ -10,6 +10,57 @@ const MAX_PLANNING_OUTPUT_TOKENS = 4096;
 const MAX_PLANNING_JSON_BYTES = 32768;
 const EMPTY_NO_ACTION_MESSAGES = new Set(['source-backed answer', 'brief source-backed reason', 'brief reason']);
 
+/** Pass 1 asks for readable planning prose; it grants no Roadmap authority. */
+export const naturalRoadmapPlanInstruction = `Write a complete, readable implementation Roadmap for the user's request. Use ordered Phase 1, Phase 2, ... headings. Under each Phase describe its objective, named Gates, and bullet acceptance checks that someone can observe or test. Keep each Gate and its checks under its owning Phase. Cover every requirement in the request; for a tower-defense game include waypoints, enemy motion and health, tower targeting, projectiles and cooldowns, waves, earned and spent currency, persistent main-tower health, and loss at zero health. Do not write RM1, JSON, operation IDs, source hashes, approvals, tool calls, or implementation code. Finish the full plan in the final answer.`;
+
+export interface NaturalRoadmapPlanCheck { complete: boolean; phaseCount: number; gateCount: number;
+    acceptanceCount: number; coverageWarnings: string[] }
+const NATURAL_MECHANICS: ReadonlyArray<{ label: string; pattern: RegExp }> = [
+    { label: 'waypoints', pattern: /\bwaypoints?\b/i },
+    { label: 'enemy movement and health', pattern: /\benem(?:y|ies)\b[\s\S]*?\b(?:mov(?:e|es|ing|ement)|travel|travers(?:e|es|al))\b[\s\S]*?\bhealth\b|\benem(?:y|ies)\b[\s\S]*?\bhealth\b[\s\S]*?\b(?:mov(?:e|es|ing|ement)|travel|travers(?:e|es|al))\b/i },
+    { label: 'tower targeting', pattern: /\btower\b[\s\S]*?\btarget(?:s|ing)?\b|\btarget(?:s|ing)?\b[\s\S]*?\btower\b/i },
+    { label: 'projectiles', pattern: /\bprojectiles?\b/i },
+    { label: 'cooldowns', pattern: /\bcooldowns?\b/i },
+    { label: 'waves', pattern: /\bwaves?\b/i },
+    { label: 'currency earned and spent', pattern: /\b(?:currency|money|coins?)\b[\s\S]*?\b(?:earn|gain|reward)\b[\s\S]*?\b(?:spend|cost|buy|purchase)\b|\b(?:earn|gain|reward)\b[\s\S]*?\b(?:currency|money|coins?)\b[\s\S]*?\b(?:spend|cost|buy|purchase)\b/i },
+    { label: 'persistent main-tower health', pattern: /\bmain[ -]?tower\b[\s\S]*?\bhealth\b[\s\S]*?\b(?:persist\w*|carr\w*|remain\w*|retain\w*)\b|\bhealth\b[\s\S]*?\b(?:persist\w*|carr\w*|remain\w*|retain\w*)\b[\s\S]*?\bmain[ -]?tower\b/i },
+    { label: 'loss at zero health', pattern: /\b(?:zero|0)\b[\s\S]*?\b(?:health|defeat|lose|loss|game over)\b|\b(?:health|defeat|lose|loss|game over)\b[\s\S]*?\b(?:zero|0)\b/i }
+];
+/** Only a completed final answer can become a lock; activity/reasoning is excluded by the caller. */
+export function checkNaturalRoadmapPlan(text: string, finishReason: string | undefined,
+    originalRequest: string, outputTokenLimit = 4096): NaturalRoadmapPlanCheck {
+    if (!finishReason || !['stop', 'eos', 'end_turn'].includes(finishReason))
+        throw new LocalPlanningOutputFailure('Natural Roadmap plan did not complete', '', 'incomplete-answer');
+    if (!Number.isSafeInteger(outputTokenLimit) || outputTokenLimit < 256 || outputTokenLimit > 8192)
+        throw new Error('Invalid natural Roadmap output limit');
+    const bytes = Buffer.byteLength(text, 'utf8');
+    if (bytes < 200 || bytes > Math.min(32768, outputTokenLimit * 8) ||
+        /[\0-\x08\x0b\x0c\x0e-\x1f\u007f]|<\/?(?:script|iframe|object)\b|\[\[.*?\]\]|\b(?:api[_-]?key|bearer\s+\S+|"(?:arguments|tool_calls)"\s*:)|\bsk-[A-Za-z0-9]{12,}/iu.test(text))
+        throw new LocalPlanningOutputFailure('Natural Roadmap plan is empty, oversized, or unsafe', '', 'incomplete-answer');
+    const lines = text.split(/\r?\n/u);
+    let phaseCount = 0, gateCount = 0, acceptanceCount = 0;
+    for (const line of lines) {
+        const phase = /^\s*(?:#{1,4}\s*)?(?:\*\*)?Phase\s+(\d+)\s*(?:[:.\-–—]|\*\*)\s*\S/iu.exec(line);
+        if (phase) {
+            if (Number(phase[1]) !== phaseCount + 1) throw new LocalPlanningOutputFailure('Natural Roadmap Phases are not ordered', '', 'incomplete-answer');
+            phaseCount++; continue;
+        }
+        if (/^\s*(?:#{1,5}\s*)?(?:[-*]\s*)?(?:\*\*)?Gate\s*(?:\d+\s*)?(?:[:.\-–—]|\*\*)\s*\S/iu.test(line)) {
+            if (!phaseCount) throw new LocalPlanningOutputFailure('Gate appears before a Phase', '', 'incomplete-answer');
+            gateCount++; continue;
+        }
+        if (/^\s*[-*]\s+(?:(?:Acceptance|Check|Criterion)\s*[:.\-–—]\s*)?\S/iu.test(line) && gateCount)
+            acceptanceCount++;
+    }
+    const towerDefense = /\btower[ -]?defen[sc]e\b|\bmain[ -]?tower\b/iu.test(originalRequest);
+    const warnings = towerDefense ? NATURAL_MECHANICS.filter(item => !item.pattern.test(text)).map(item =>
+        `Natural plan does not clearly cover ${item.label}`) : [];
+    if (towerDefense && phaseCount < 5) warnings.unshift('Tower-defense plan needs at least five Phases');
+    return { complete: phaseCount >= (towerDefense ? 5 : 2) && phaseCount <= 12 &&
+        gateCount >= phaseCount && acceptanceCount >= gateCount && warnings.length === 0,
+        phaseCount, gateCount, acceptanceCount, coverageWarnings: warnings };
+}
+
 export class LocalPlanningOutputFailure extends ModelRuntimeFailure {
     constructor(message: string, readonly rawText: string,
         kind: 'invalid-json' | 'incomplete-answer' = 'invalid-json') { super(message, kind); }

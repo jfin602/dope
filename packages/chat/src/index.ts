@@ -105,6 +105,24 @@ export interface ChatAssistantMessage {
     activity?: ChatExecutionActivity; // Isolated diagnostics; never prompt context or search content.
     planningActivity?: ChatPlanningActivity; // Backend-verified projection; content remains the exact model output.
     roadmapAction?: ChatRoadmapAction;
+    lockedRoadmapPlan?: ChatLockedRoadmapPlan; // Inert evidence, never an approval or proposal.
+}
+export interface ChatLockedRoadmapPlan {
+    schemaVersion: 1;
+    status: 'planning-only';
+    text: string;
+    sha256: string;
+    projectRoot: string;
+    projectId: string;
+    chatId: string;
+    userMessageId: string;
+    assistantMessageId: string;
+    executionId: string;
+    turnId: string;
+    leaseDigest: string;
+    ownerRevision: number;
+    sourceHash: string | null;
+    createdAt: string;
 }
 /** Durable, backend-verified outcome. An approval token is deliberately never saved here. */
 export interface ChatRoadmapAction {
@@ -425,12 +443,12 @@ function parseExecution(value: unknown): ChatExecution {
     return execution;
 }
 export function parseChatMessage(value: unknown): ChatMessage {
-    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'execution', 'activity', 'planningActivity', 'roadmapAction'],
+    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'execution', 'activity', 'planningActivity', 'roadmapAction', 'lockedRoadmapPlan'],
         ['schemaVersion', 'id', 'role', 'createdAt', 'content']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported message schema');
     const base = { schemaVersion: 1 as const, id: identifier(v.id), createdAt: time(v.createdAt), content: string(v.content, 'message content', false) };
     if (v.role === 'user') {
-        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || !base.content.trim()) throw new Error('Invalid user message');
+        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || v.lockedRoadmapPlan !== undefined || !base.content.trim()) throw new Error('Invalid user message');
         const skill = v.skill === undefined ? undefined : (() => {
             const s = record(v.skill, ['id', 'name', 'title', 'description', 'body', 'version', 'digest'],
                 ['id', 'name', 'body', 'version', 'digest']);
@@ -451,6 +469,9 @@ export function parseChatMessage(value: unknown): ChatMessage {
             (v.activity as ChatExecutionActivity).chatId, base.id, execution.id);
         const planningActivity = v.planningActivity === undefined ? undefined : parsePlanningActivity(v.planningActivity);
         const roadmapAction = v.roadmapAction === undefined ? undefined : parseChatRoadmapAction(v.roadmapAction);
+        const lockedRoadmapPlan = v.lockedRoadmapPlan === undefined ? undefined : parseChatLockedRoadmapPlan(v.lockedRoadmapPlan);
+        if (lockedRoadmapPlan && (lockedRoadmapPlan.assistantMessageId !== base.id || lockedRoadmapPlan.executionId !== execution.id))
+            throw new Error('Locked Roadmap plan message identity mismatch');
         if (planningActivity && !['complete', 'failed', 'cancelled'].includes(execution.status))
             throw new Error('Planning activity requires a completed execution');
         if (planningActivity && (planningActivity.kind === 'error' ? execution.status !== 'failed' :
@@ -458,9 +479,31 @@ export function parseChatMessage(value: unknown): ChatMessage {
             throw new Error('Planning activity differs from execution outcome');
         return { ...base, role: 'assistant', execution, ...(activity ? { activity } : {}),
             ...(planningActivity ? { planningActivity } : {}),
-            ...(roadmapAction ? { roadmapAction } : {}) };
+            ...(roadmapAction ? { roadmapAction } : {}),
+            ...(lockedRoadmapPlan ? { lockedRoadmapPlan } : {}) };
     }
     throw new Error('Invalid Chat role');
+}
+export function parseChatLockedRoadmapPlan(value: unknown): ChatLockedRoadmapPlan {
+    const v = record(value, ['schemaVersion', 'status', 'text', 'sha256', 'projectRoot', 'projectId',
+        'chatId', 'userMessageId', 'assistantMessageId', 'executionId', 'turnId', 'leaseDigest', 'ownerRevision', 'sourceHash', 'createdAt'],
+    ['schemaVersion', 'status', 'text', 'sha256', 'projectRoot', 'projectId', 'chatId', 'userMessageId',
+        'assistantMessageId', 'executionId', 'turnId', 'leaseDigest', 'ownerRevision', 'sourceHash', 'createdAt']);
+    if (v.schemaVersion !== 1 || v.status !== 'planning-only' || typeof v.text !== 'string' ||
+        new TextEncoder().encode(v.text).length < 200 || new TextEncoder().encode(v.text).length > 32768 ||
+        /[\0-\x08\x0b\x0c\x0e-\x1f\u007f]|\b(?:api[_-]?key|bearer\s+\S+|"(?:arguments|tool_calls)"\s*:)|\bsk-[A-Za-z0-9]{12,}/iu.test(v.text))
+        throw new Error('Invalid locked Roadmap plan');
+    const sourceHash = v.sourceHash === null ? null : sha256(v.sourceHash, 'plan source hash');
+    const ownerRevision = count(v.ownerRevision, 'plan owner revision');
+    if (ownerRevision > 0 && !sourceHash) throw new Error('Locked plan requires source hash');
+    const projectRoot = string(v.projectRoot, 'plan project root');
+    if (!projectRoot.startsWith('/') || projectRoot.includes('\0')) throw new Error('Invalid plan project root');
+    return { schemaVersion: 1, status: 'planning-only', text: v.text,
+        sha256: sha256(v.sha256, 'plan hash'), projectRoot, projectId: string(v.projectId, 'plan project ID'),
+        chatId: identifier(v.chatId), userMessageId: identifier(v.userMessageId),
+        assistantMessageId: identifier(v.assistantMessageId), executionId: identifier(v.executionId),
+        turnId: identifier(v.turnId), leaseDigest: sha256(v.leaseDigest, 'plan lease digest'),
+        ownerRevision, sourceHash, createdAt: time(v.createdAt) };
 }
 export function parseChatRoadmapAction(value: unknown): ChatRoadmapAction {
     const v = record(value, ['schemaVersion', 'offerId', 'sourceMessageId', 'sourceContentHash', 'projectId', 'chatId', 'ownerRevision', 'status', 'stage', 'draftRevision', 'diagnostic'],

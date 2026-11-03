@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { MANUAL_CHAT_CONTEXT_SOURCES, assignedChatColor, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
     parseChatCollection, parseChatColor, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
 import type { Chat, ChatCollection, ChatFolder, ChatPlanningActivity, ChatRoadmapAction } from '../index';
+import type { ChatLockedRoadmapPlan } from '../index';
 import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
 import { parseExecutionActivity, type ChatActivityEvent, type ChatExecutionActivity } from '../activity';
 
@@ -216,6 +217,13 @@ export class ChatRepository {
                     catch { throw new Error(`Corrupt or unsupported Chat file: ${file}`); }
                     if (chat.id !== entry.id || chat.folderPath !== entry.folderPath || chat.revision !== entry.revision)
                         throw new Error(`Chat manifest/file mismatch: ${file}`);
+                    for (const [at, message] of chat.messages.entries()) if (message.role === 'assistant' && message.lockedRoadmapPlan) {
+                        const plan = message.lockedRoadmapPlan;
+                        if (plan.projectRoot !== root || plan.chatId !== chat.id ||
+                            chat.messages[at - 1]?.id !== plan.userMessageId ||
+                            createHash('sha256').update(plan.text, 'utf8').digest('hex') !== plan.sha256)
+                            throw new Error('Locked Roadmap plan identity or content hash mismatch');
+                    }
                     chats.push(chat);
                 }
                 return parseChatCollection({ schemaVersion: 1, revision: manifest.revision, folders: manifest.folders, chats });
@@ -586,7 +594,8 @@ export class ChatRepository {
                 }); break;
                 case 'begin-assistant': {
                     const message = parseChatMessage(operation.message);
-                    if (message.role !== 'assistant' || message.execution.status !== 'pending') throw new Error('Expected pending assistant');
+                    if (message.role !== 'assistant' || message.execution.status !== 'pending' || message.lockedRoadmapPlan)
+                        throw new Error('Expected pending assistant without locked plan');
                     update(c => ({ ...c, lastInteractedAt: now, messages: [...c.messages, message] })); break;
                 }
                 case 'start-assistant': update(c => {
@@ -658,6 +667,58 @@ export class ChatRepository {
             this.emit(root, { revision: next.revision, kind: 'changed',
                 ...('chatId' in operation ? { chatId: operation.chatId } : {}) });
             return next;
+        });
+    }
+    /** The first model pass is durable only after this checked, write-once Chat mutation. */
+    async lockRoadmapPlan(root: string, expectedRevision: number, binding: {
+        chatId: string; userMessageId: string; assistantMessageId: string; executionId: string;
+        turnId: string; leaseToken: string; text: string; finishReason: string;
+        owner: { projectId: string; revision: number; sourceHash: string | null };
+    }, currentOwner: () => Promise<{ projectId: string; revision: number; sourceHash: string | null }>): Promise<ChatLockedRoadmapPlan> {
+        revision(expectedRevision);
+        return this.locked(root, async base => {
+            const current = await this.recover(root, base);
+            if (current.revision !== expectedRevision) throw new Error(`Stale Chat revision; current ${current.revision}`);
+            const lease = await this.lease(base, uuid(binding.chatId));
+            if (!lease || !this.active(lease) || lease.token !== binding.leaseToken)
+                throw new Error('Chat ownership lease required');
+            const chatAt = current.chats.findIndex(chat => chat.id === binding.chatId);
+            const chat = current.chats[chatAt];
+            const at = chat?.messages.findIndex(message => message.id === binding.assistantMessageId) ?? -1;
+            const message = chat?.messages[at];
+            if (!message || message.role !== 'assistant' || message.execution.status !== 'streaming' ||
+                message.execution.id !== binding.executionId || message.lockedRoadmapPlan ||
+                at !== chat.messages.length - 1 || at < 1 || chat.messages[at - 1].role !== 'user' ||
+                chat.messages[at - 1].id !== binding.userMessageId || binding.turnId !== message.id)
+                throw new Error('Current active Roadmap Chat turn required');
+            const owner = await currentOwner();
+            if (owner.projectId !== binding.owner.projectId || owner.revision !== binding.owner.revision ||
+                owner.sourceHash !== binding.owner.sourceHash)
+                throw new Error('Roadmap owner or source changed before plan lock');
+            if (!['stop', 'eos', 'end_turn'].includes(binding.finishReason) ||
+                !/^\s*(?:#{1,4}\s*)?Phase\s+1\s*[:.\-–—]/imu.test(binding.text) ||
+                !/^\s*(?:#{1,5}\s*)?(?:[-*]\s*)?Gate\s*(?:\d+\s*)?[:.\-–—]/imu.test(binding.text) ||
+                !/^\s*[-*]\s+\S/mu.test(binding.text))
+                throw new Error('Completed natural Roadmap final answer required');
+            const now = new Date().toISOString();
+            const plan: ChatLockedRoadmapPlan = {
+                schemaVersion: 1, status: 'planning-only', text: binding.text,
+                sha256: createHash('sha256').update(binding.text, 'utf8').digest('hex'),
+                projectRoot: root, projectId: owner.projectId, chatId: chat.id,
+                userMessageId: binding.userMessageId, assistantMessageId: message.id,
+                executionId: message.execution.id, turnId: binding.turnId,
+                leaseDigest: createHash('sha256').update(`roadmap-plan-lease:${binding.leaseToken}`).digest('hex'),
+                ownerRevision: owner.revision, sourceHash: owner.sourceHash, createdAt: now
+            };
+            const messages = [...chat.messages];
+            messages[at] = parseChatMessage({ ...message, lockedRoadmapPlan: plan });
+            const chats = [...current.chats];
+            chats[chatAt] = parseChat({ ...chat, revision: chat.revision + 1, updatedAt: now,
+                lastInteractedAt: now, messages });
+            const next = parseChatCollection({ ...current, revision: current.revision + 1, chats });
+            await this.write(root, next);
+            this.emit(root, { revision: next.revision, kind: 'changed', chatId: chat.id });
+            return plan;
         });
     }
     /** Backend-only activity update after strict local validation or an independently confirmed decision. */

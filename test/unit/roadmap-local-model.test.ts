@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { allowsPlainGateAnswer, generateTypedRoadmapDraft, localPlanningJson, parseStrategicDraft,
+    checkNaturalRoadmapPlan, naturalRoadmapPlanInstruction,
     parseRoadmapMarkers, parseTypedRoadmapDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget,
     roadmapMarkerCompletionDiagnostic, typedRoadmapDraftInstruction,
     verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
@@ -27,6 +28,48 @@ const markerLines = () => [
     'C|Main tower health persists across waves and zero health ends the game',
     'END'
 ];
+
+const naturalPlan = `Phase 1 — Path and enemies
+Objective: Build a waypoint path and enemies with health.
+Gate — Enemy motion
+- Enemies move across every waypoint and zero-health enemies disappear.
+Phase 2 — Tower combat
+Objective: Build towers that target enemies and launch projectiles on cooldowns.
+Gate — Tower attack
+- A tower targets an enemy and fires one projectile only after its cooldown.
+Phase 3 — Waves
+Objective: Spawn repeated waves.
+Gate — Wave advance
+- The next wave begins only after current enemies are defeated.
+Phase 4 — Economy
+Objective: Earn currency from kills and spend it on defenses.
+Gate — Purchase
+- Currency increases on a kill and decreases by a tower's purchase cost.
+Phase 5 — Main tower and defeat
+Objective: Keep main-tower health persistent across waves.
+Gate — Defeat
+- Main-tower health carries into the next wave; at zero health the player loses.`;
+
+test('natural plan asks for prose and recognizes a completed five-Phase outline without RM1', () => {
+    assert.doesNotMatch(naturalRoadmapPlanInstruction, /RM1 P\/G\/C|JSON object/);
+    const result = checkNaturalRoadmapPlan(naturalPlan, 'stop', 'Create a tower-defense game with a main tower');
+    assert.equal(result.complete, true);
+    assert.deepEqual([result.phaseCount, result.gateCount, result.acceptanceCount], [5, 5, 5]);
+    assert.deepEqual(result.coverageWarnings, []);
+});
+
+test('natural plan rejects nonfinal, unsafe, oversized text and flags missing mechanics', () => {
+    const request = 'Create a tower-defense game with a main tower';
+    assert.throws(() => checkNaturalRoadmapPlan(naturalPlan, 'length', request), /did not complete/);
+    assert.throws(() => checkNaturalRoadmapPlan('thinking', 'stop', request), /empty, oversized/);
+    assert.throws(() => checkNaturalRoadmapPlan(naturalPlan + '<script>', 'stop', request), /unsafe/);
+    assert.throws(() => checkNaturalRoadmapPlan(naturalPlan + '\nBearer secret-token-value', 'stop', request), /unsafe/);
+    assert.throws(() => checkNaturalRoadmapPlan(naturalPlan.repeat(100), 'stop', request), /oversized/);
+    assert.equal(checkNaturalRoadmapPlan(naturalPlan.replaceAll('projectile', 'shot'),
+        'stop', request).complete, false);
+    assert.throws(() => checkNaturalRoadmapPlan(naturalPlan.replace('Phase 5 — Main tower and defeat',
+        'Phase 6 — Main tower and defeat'), 'stop', request), /not ordered/);
+});
 
 test('RM1 parses one five-Phase candidate with exact result, stable title, warnings and no dependencies', () => {
     const text = markerLines().join('\n');
