@@ -7,10 +7,24 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapNativeStageOwner } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
-import { ProposedPhaseNode, ProposedChange, ProposedGateCard } from
+import { ProposedPhaseNode, ProposedChange, ProposedGateCard, proposedFieldEditorNext, proposedFieldKeyAction } from
     '../../packages/theia-extension/lib/browser/roadmap-proposal-cards.js';
 import { roadmapProposalPreview } from '../../packages/theia-extension/lib/node/roadmap-proposal-presentation.js';
 import { gateFixture } from './roadmap-gate-document-fixture.ts';
+
+test('proposed field edit state preserves failed input and discards it on cancel', () => {
+    const initial = { editing: false, draft: 'Original' };
+    const open = proposedFieldEditorNext(initial, { type: 'open', value: 'Original' });
+    const typed = proposedFieldEditorNext(open, { type: 'change', value: 'Correction in progress' });
+    const failed = proposedFieldEditorNext(typed, { type: 'failure', error: 'invalid text' });
+    assert.deepEqual(failed, { editing: true, draft: 'Correction in progress', error: 'invalid text' });
+    const cancelled = proposedFieldEditorNext(failed, { type: 'cancel', value: 'Original' });
+    assert.deepEqual(cancelled, initial);
+    assert.equal(proposedFieldKeyAction('Escape', false), 'cancel');
+    assert.equal(proposedFieldKeyAction('Escape', true), 'cancel');
+    assert.equal(proposedFieldKeyAction('Enter', false), 'save');
+    assert.equal(proposedFieldKeyAction('Enter', true), undefined);
+});
 
 test('native stage snapshots render a provisional Phase, then nested Gate and Criterion without diff metadata or writes', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-proposal-cards-'));
@@ -25,7 +39,8 @@ test('native stage snapshots render a provisional Phase, then nested Gate and Cr
         const render = (snapshot: typeof first) => {
             const phase = snapshot.preview.entities.find(item => item.after?.kind === 'phase')!;
             return renderToStaticMarkup(React.createElement(ProposedPhaseNode, { data: { change: phase,
-                children: snapshot.preview.entities.filter(item => item.id !== phase.id), source: false } }));
+                children: snapshot.preview.entities.filter(item => item.id !== phase.id), source: false,
+                save: async () => undefined } }));
         };
         const firstHtml = render(first);
         assert.match(firstHtml, /PHASE 1/);
@@ -35,6 +50,9 @@ test('native stage snapshots render a provisional Phase, then nested Gate and Cr
         assert.match(firstHtml, /Proposed · Not applied/);
         assert.match(firstHtml, /Select proposed Phase/);
         assert.match(firstHtml, /data-proposal-subtree="true"/);
+        assert.match(firstHtml, /Select only proposed Phase/);
+        assert.match(firstHtml, /Edit proposed Phase title/);
+        assert.match(firstHtml, /Edit proposed Phase objective/);
         assert.doesNotMatch(firstHtml, /none →|Order:|Dependencies:|Planned|GREEN/);
         assert.equal(await store.gateIndexHash(root), null);
 
@@ -50,6 +68,10 @@ test('native stage snapshots render a provisional Phase, then nested Gate and Cr
         assert.match(secondHtml, /App launches/);
         assert.match(secondHtml, /Select proposed Gate/);
         assert.match(secondHtml, /Select proposed Criterion/);
+        assert.match(secondHtml, /Edit proposed Gate title/);
+        assert.match(secondHtml, /Edit proposed Gate purpose/);
+        assert.match(secondHtml, /Edit proposed Criterion title/);
+        assert.match(secondHtml, /Edit proposed Criterion expected result/);
         assert.equal((secondHtml.match(/data-proposal-entity="[^"]+"/g) ?? []).length, 3);
         assert.doesNotMatch(secondHtml, /none →|Order:|Dependencies:|Planned|GREEN/);
         await owner.cancel(context, { version: 1 });

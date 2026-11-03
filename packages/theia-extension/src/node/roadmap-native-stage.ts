@@ -10,7 +10,8 @@ export type NativeOperationStatus = 'Pending' | 'Applied' | 'Rejected' | 'Stale'
 type Operation = { id: string; action: GatePlanningAction; batch: number; status: NativeOperationStatus };
 export type NativeRoadmapStage = { id: string; context: Context; revision: number;
     sourceHash: string | null; ownerId: string; createdAt: number; expires: number;
-    operations: Operation[]; entityIds: Map<string, string>;
+    operations: Operation[]; entityIds: Map<string, string>; generation: number;
+    editing?: boolean; deciding?: boolean;
     snapshot?: NativeStageSnapshot;
     done: boolean; strategy: 'full' | 'phase-only'; review?: { token: string; ids: string[];
         decision: 'apply' | 'reject'; revision: number; indexHash: string | null } };
@@ -239,7 +240,7 @@ export class RoadmapNativeStageOwner {
         const stage: NativeRoadmapStage = prior ?? { id: randomUUID(), context, revision: index.revision,
             ownerId: index.revision === 0 ? randomUUID() : index.projectId,
             sourceHash: source(index), createdAt, expires: createdAt + 10 * 60_000,
-            operations: [], entityIds: new Map(),
+            operations: [], entityIds: new Map(), generation: 0,
             done: false, strategy: args.strategy === 'phase-only' ? 'phase-only' : 'full' };
         if (stage.strategy === 'phase-only' && accepted.some(item => !item.action.type.startsWith('phase.')))
             throw new Error('ROADMAP_STAGE_PHASE_ONLY_HAS_NON_PHASE');
@@ -314,6 +315,78 @@ export class RoadmapNativeStageOwner {
         return { before, after, stage };
     }
 
+    /** Human edits revise a pending operation and revalidate the noncanonical graph. */
+    async revise(context: Context, request: { proposalId: string; expectedGeneration: number;
+        operationId: string; entityId: string; field: 'title' | 'objective' | 'purpose' | 'expectedResult';
+        value: string }): Promise<{ snapshot: NativeStageSnapshot; rollback: () => void }> {
+        const before = await this.current(context);
+        await this.checkedSource(before);
+        const stage = this.stages.get(context.chatId);
+        if (!stage || !stage.done || stage.id !== request.proposalId) throw new Error('ROADMAP_EDIT_PROPOSAL_CHANGED');
+        this.assert(stage, context, before);
+        if (stage.editing || stage.deciding) throw new Error('ROADMAP_EDIT_BUSY');
+        if (stage.generation !== request.expectedGeneration) throw new Error('ROADMAP_EDIT_GENERATION_CHANGED');
+        if (!text(request.value)) throw new Error(`ROADMAP_EDIT_${request.field}: invalid text`);
+        const operation = stage.operations.find(item => item.id === request.operationId && item.status === 'Pending');
+        if (!operation) throw new Error('ROADMAP_EDIT_OPERATION_NOT_PENDING');
+        const action = operation.action;
+        let replacement: GatePlanningAction;
+        if (((action.type === 'phase.create' || action.type === 'phase.edit') && action.id === request.entityId &&
+            (request.field === 'title' || request.field === 'objective')) ||
+            ((action.type === 'gate.create' || action.type === 'gate.edit') && action.id === request.entityId &&
+            (request.field === 'title' || request.field === 'purpose')) ||
+            ((action.type === 'criterion.add' || action.type === 'criterion.edit') && action.id === request.entityId &&
+            (request.field === 'title' || request.field === 'expectedResult'))) {
+            replacement = { ...action, [request.field]: request.value } as GatePlanningAction;
+        } else if (action.type === 'gate.create' &&
+            (request.field === 'title' || request.field === 'expectedResult') &&
+            action.criteria.some(item => item.id === request.entityId)) {
+            replacement = { ...action, criteria: action.criteria.map(item => item.id === request.entityId ?
+                { ...item, [request.field]: request.value } : item) };
+        } else throw new Error('ROADMAP_EDIT_FIELD_NOT_OWNED_BY_OPERATION');
+        stage.editing = true;
+        const generation = stage.generation;
+        const previous = { action: operation.action, snapshot: stage.snapshot, review: stage.review };
+        try {
+            const pending = stage.operations.filter(item => item.status === 'Pending');
+            const actions = pending.map(item => item === operation ? replacement : item.action);
+            const after = await this.store.mutateGateIndex(context.root, before.revision, stage.ownerId, actions, true);
+            const entities = (graph: RoadmapGateIndex) => [...graph.phases, ...graph.gates,
+                ...graph.corrections, ...graph.gates.flatMap(gate => gate.criteria)];
+            if (entities(after).length > 64) throw new Error('ROADMAP_EDIT_PROJECTION_LIMIT');
+            const old = new Map(entities(before).map(item => [item.id, item]));
+            const next = new Map(entities(after).map(item => [item.id, item]));
+            const changedIds = [...new Set([...old.keys(), ...next.keys()])].filter(entityId =>
+                JSON.stringify(old.get(entityId)) !== JSON.stringify(next.get(entityId)));
+            const snapshot: NativeStageSnapshot = { ...stage.snapshot!,
+                sequence: stage.snapshot!.sequence + 1, entityIds: changedIds,
+                counts: { phases: after.phases.length, gates: after.gates.length,
+                    criteria: after.gates.reduce((count, gate) => count + gate.criteria.length, 0) },
+                incompletePhaseIds: after.phases.filter(phase => !after.gates.some(gate =>
+                    gate.parentPhaseId === phase.id)).map(phase => phase.id),
+                preview: roadmapProposalPreview(before, after, actions, changedIds) };
+            if (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > 60_000)
+                throw new Error('ROADMAP_EDIT_PROJECTION_LIMIT');
+            const current = await this.current(context);
+            await this.checkedSource(current);
+            this.assert(stage, context, current);
+            if (this.stages.get(context.chatId) !== stage || stage.generation !== generation ||
+                operation.status !== 'Pending' || stage.deciding) throw new Error('ROADMAP_EDIT_PROPOSAL_CHANGED');
+            operation.action = replacement;
+            stage.snapshot = snapshot;
+            stage.generation++;
+            stage.review = undefined;
+            return { snapshot: structuredClone(snapshot), rollback: () => {
+                if (this.stages.get(context.chatId) !== stage || stage.generation !== generation + 1 ||
+                    stage.deciding || stage.editing) return;
+                operation.action = previous.action;
+                stage.snapshot = previous.snapshot;
+                stage.review = previous.review;
+                stage.generation = generation;
+            } };
+        } finally { stage.editing = false; }
+    }
+
     /** Review binds the exact subset to one fresh canonical basis; selection alone has no effect. */
     async review(context: Context, ids: readonly string[], decision: 'apply' | 'reject'):
         Promise<{ token: string; before: RoadmapGateIndex; after?: RoadmapGateIndex; indexHash: string | null }> {
@@ -322,6 +395,8 @@ export class RoadmapNativeStageOwner {
         const stage = this.stages.get(context.chatId);
         if (!stage || !stage.done) throw new Error('ROADMAP_REVIEW_MISSING');
         this.assert(stage, context, before);
+        if (stage.editing || stage.deciding) throw new Error('ROADMAP_REVIEW_BUSY');
+        const generation = stage.generation;
         if (!ids.length || ids.length > 48 || new Set(ids).size !== ids.length ||
             ids.some(opId => !stage.operations.some(item => item.id === opId && item.status === 'Pending')))
             throw new Error('ROADMAP_REVIEW_SELECTION_CHANGED');
@@ -344,6 +419,8 @@ export class RoadmapNativeStageOwner {
                 operations.map(item => item.action), true);
         }
         const indexHash = await this.store.gateIndexHash(context.root);
+        if (stage.generation !== generation || stage.editing || stage.deciding)
+            throw new Error('ROADMAP_REVIEW_GENERATION_CHANGED');
         if (!indexHash && before.revision !== 0) throw new Error('ROADMAP_REVIEW_INDEX_MISSING');
         const token = randomUUID();
         stage.review = { token, ids: [...ids], decision, revision: before.revision, indexHash };
@@ -356,32 +433,36 @@ export class RoadmapNativeStageOwner {
         const review = stage?.review;
         if (!stage || !review || review.token !== token || review.decision !== decision ||
             JSON.stringify(review.ids) !== JSON.stringify(ids)) throw new Error('ROADMAP_APPROVAL_UNAVAILABLE');
-        stage.review = undefined; // one use, including failed and duplicate clicks
-        const before = await this.current(context);
-        await this.checkedSource(before);
-        this.assert(stage, context, before);
-        if (review.revision !== before.revision || review.indexHash !== await this.store.gateIndexHash(context.root))
-            throw new Error('ROADMAP_APPROVAL_STALE_INDEX');
-        const selected = new Set(ids);
-        const operations = stage.operations.filter(item => selected.has(item.id) && item.status === 'Pending');
-        if (operations.length !== ids.length) throw new Error('ROADMAP_APPROVAL_SELECTION_CHANGED');
-        let revision: number | undefined;
-        let changedIds: string[] = [];
-        if (decision === 'apply') {
-            const after = await this.store.mutateGateIndex(context.root, before.revision, stage.ownerId,
-                operations.map(item => item.action), false, { indexHash: review.indexHash, operationIds: [...ids] });
-            revision = after.revision;
-            const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
-                ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
-            const old = new Map(entities(before).map(item => [item.id, item]));
-            const next = new Map(entities(after).map(item => [item.id, item]));
-            changedIds = [...new Set([...old.keys(), ...next.keys()])].filter(entityId =>
-                JSON.stringify(old.get(entityId)) !== JSON.stringify(next.get(entityId)));
-            stage.revision = revision;
-            stage.sourceHash = source(after);
-        }
-        for (const item of operations) item.status = decision === 'apply' ? 'Applied' : 'Rejected';
-        return { revision, changedIds, statuses: stage.operations.map(item => ({ id: item.id, status: item.status })) };
+        if (stage.editing || stage.deciding) throw new Error('ROADMAP_APPROVAL_BUSY');
+        stage.deciding = true;
+        try {
+            stage.review = undefined; // one use, including failed and duplicate clicks
+            const before = await this.current(context);
+            await this.checkedSource(before);
+            this.assert(stage, context, before);
+            if (review.revision !== before.revision || review.indexHash !== await this.store.gateIndexHash(context.root))
+                throw new Error('ROADMAP_APPROVAL_STALE_INDEX');
+            const selected = new Set(ids);
+            const operations = stage.operations.filter(item => selected.has(item.id) && item.status === 'Pending');
+            if (operations.length !== ids.length) throw new Error('ROADMAP_APPROVAL_SELECTION_CHANGED');
+            let revision: number | undefined;
+            let changedIds: string[] = [];
+            if (decision === 'apply') {
+                const after = await this.store.mutateGateIndex(context.root, before.revision, stage.ownerId,
+                    operations.map(item => item.action), false, { indexHash: review.indexHash, operationIds: [...ids] });
+                revision = after.revision;
+                const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
+                    ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
+                const old = new Map(entities(before).map(item => [item.id, item]));
+                const next = new Map(entities(after).map(item => [item.id, item]));
+                changedIds = [...new Set([...old.keys(), ...next.keys()])].filter(entityId =>
+                    JSON.stringify(old.get(entityId)) !== JSON.stringify(next.get(entityId)));
+                stage.revision = revision;
+                stage.sourceHash = source(after);
+            }
+            for (const item of operations) item.status = decision === 'apply' ? 'Applied' : 'Rejected';
+            return { revision, changedIds, statuses: stage.operations.map(item => ({ id: item.id, status: item.status })) };
+        } finally { stage.deciding = false; }
     }
     async cancel(context: Context, args: unknown): Promise<unknown> {
         if (!object(args) || args.version !== 1 || Object.keys(args).join(',') !== 'version') throw new Error('ROADMAP_CANCEL_ARGUMENTS');

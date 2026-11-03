@@ -745,6 +745,23 @@ export class ChatPanelController {
         } catch (error) { this.planningProposalError = `Roadmap subset is unavailable: ${String(error)}`;
         } finally { this.pending = false; this.changed(); }
     }
+    async reviseNativeRoadmap(operationId: string, entityId: string,
+        field: 'title' | 'objective' | 'purpose' | 'expectedResult', value: string): Promise<ChatPlanningProposal> {
+        const lease = this.lease, proposal = this.planningProposal;
+        if (!lease || !proposal?.operations || proposal.generation === undefined || this.pending || this.running ||
+            proposal.chatId !== lease.chatId) throw new Error('Current Roadmap proposal is unavailable');
+        this.pending = true; this.changed();
+        try {
+            const updated = await lease.connection.reviseNativeRoadmap(lease.handle, lease.chatId,
+                lease.token, proposal.id, proposal.generation, operationId, entityId, field, value);
+            if (lease !== this.lease || proposal !== this.planningProposal)
+                throw new Error('Roadmap proposal changed while saving');
+            this.planningProposal = updated;
+            this.nativeRoadmapReview = undefined;
+            this.planningProposalError = undefined;
+            return updated;
+        } finally { this.pending = false; this.changed(); }
+    }
     async decideNativeRoadmap(): Promise<void> {
         const lease = this.lease, review = this.nativeRoadmapReview;
         if (!lease || !review || this.pending || this.running) return;

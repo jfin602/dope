@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +9,124 @@ import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadm
 import { RoadmapNativeStageOwner } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
 import { roadmapProposalPreview } from '../../packages/theia-extension/lib/node/roadmap-proposal-presentation.js';
 import { parsePlanningActivity } from '../../packages/chat/lib/index.js';
+import { gateFixture, sourceBytes } from './roadmap-gate-document-fixture.ts';
+
+test('pending proposal fields revise under one generation and invalidate reviewed approval without canonical writes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-revise-'));
+    try {
+        const store = new RoadmapStore(), owner = new RoadmapNativeStageOwner(store);
+        const context = { root, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const basis = { version: 1, expectedRevision: 0, expectedSourceHash: null };
+        const phases = await owner.stage(context, { ...basis, expectedStage: 1, actions: [
+            { type: 'phase.create', id: 'new:p1', title: 'First', objective: 'Build first' },
+            { type: 'phase.create', id: 'new:p2', title: 'Second', objective: 'Build second' }] }) as
+            { acceptedOperationIds: string[]; createdEntityIds: Record<string, string> };
+        const gates = await owner.stage(context, { ...basis, expectedStage: 2, done: true, actions: [
+            { type: 'gate.create', id: 'new:g1', parentPhaseId: 'new:p1', designation: 'G1',
+                title: 'First gate', purpose: 'Check first', criteria: [
+                    { id: 'new:c1', title: 'First criterion', expectedResult: 'First visible result' }] },
+            { type: 'gate.create', id: 'new:g2', parentPhaseId: 'new:p2', designation: 'G2',
+                title: 'Second gate', purpose: 'Check second', criteria: [
+                    { id: 'new:c2', title: 'Second criterion', expectedResult: 'Second visible result' }] }] }) as
+            { acceptedOperationIds: string[]; createdEntityIds: Record<string, string> };
+        const stage = owner.get('chat')!, proposalId = stage.id;
+        const update = (operationId: string, entityId: string,
+            field: 'title' | 'objective' | 'purpose' | 'expectedResult', value: string) =>
+            owner.revise(context, { proposalId, expectedGeneration: stage.generation,
+                operationId, entityId, field, value });
+        const oldReview = await owner.review(context,
+            [phases.acceptedOperationIds[0], gates.acceptedOperationIds[0]], 'apply');
+        const p1 = phases.createdEntityIds['new:p1'], p2 = phases.createdEntityIds['new:p2'];
+        const g1 = gates.createdEntityIds['new:g1'], g2 = gates.createdEntityIds['new:g2'];
+        const c1 = gates.createdEntityIds['new:c1'];
+        await update(phases.acceptedOperationIds[0], p1, 'title', 'Revised first');
+        await assert.rejects(owner.decide(context, oldReview.token,
+            [phases.acceptedOperationIds[0], gates.acceptedOperationIds[0]], 'apply'), /ROADMAP_APPROVAL_UNAVAILABLE/);
+        await update(phases.acceptedOperationIds[0], p1, 'objective', 'Revised first objective');
+        await update(gates.acceptedOperationIds[0], g1, 'title', 'Revised first gate');
+        await update(gates.acceptedOperationIds[0], g1, 'purpose', 'Revised first purpose');
+        await update(gates.acceptedOperationIds[0], c1, 'title', 'Revised first criterion');
+        const revised = await update(gates.acceptedOperationIds[0], c1, 'expectedResult', 'Revised observation');
+        assert.equal(stage.generation, 6);
+        assert.equal(revised.snapshot.proposalId, proposalId);
+        assert.deepEqual(revised.snapshot.operationIds, [...phases.acceptedOperationIds, ...gates.acceptedOperationIds]);
+        assert.equal(revised.snapshot.preview.entities.find(item => item.id === p1)?.after?.title, 'Revised first');
+        assert.equal(revised.snapshot.preview.entities.find(item => item.id === g1)?.after?.detail, 'Revised first purpose');
+        assert.equal(revised.snapshot.preview.entities.find(item => item.id === c1)?.after?.detail, 'Revised observation');
+        assert.equal(revised.snapshot.preview.entities.find(item => item.id === p2)?.after?.title, 'Second');
+        assert.equal(revised.snapshot.preview.entities.find(item => item.id === g2)?.after?.title, 'Second gate');
+        const unchanged = JSON.stringify(revised.snapshot);
+        await assert.rejects(owner.revise(context, { proposalId, expectedGeneration: 5,
+            operationId: phases.acceptedOperationIds[0], entityId: p1, field: 'title', value: 'Stale' }),
+        /GENERATION_CHANGED/);
+        await assert.rejects(update(gates.acceptedOperationIds[0], c1, 'purpose', 'Wrong field'), /FIELD_NOT_OWNED/);
+        await assert.rejects(update(gates.acceptedOperationIds[0], c1, 'title', '<script>unsafe</script>'), /invalid text/);
+        await assert.rejects(owner.revise({ ...context, lease: 'wrong' }, { proposalId,
+            expectedGeneration: 6, operationId: phases.acceptedOperationIds[0], entityId: p1,
+            field: 'title', value: 'Wrong lease' }), /ROADMAP_STAGE_STALE/);
+        await assert.rejects(owner.revise({ ...context, chatId: 'other' }, { proposalId,
+            expectedGeneration: 6, operationId: phases.acceptedOperationIds[0], entityId: p1,
+            field: 'title', value: 'Wrong Chat' }), /PROPOSAL_CHANGED/);
+        assert.equal(JSON.stringify(await owner.snapshot(context)), unchanged);
+        assert.equal(await store.gateIndexHash(root), null);
+        assert.equal(existsSync(join(root, '.dope', 'roadmap-revisions')), false);
+        const duplicate = { proposalId, expectedGeneration: 6, operationId: phases.acceptedOperationIds[1],
+            entityId: p2, field: 'title' as const };
+        const simultaneous = await Promise.allSettled([
+            owner.revise(context, { ...duplicate, value: 'Second revision A' }),
+            owner.revise(context, { ...duplicate, value: 'Second revision B' })]);
+        assert.deepEqual(simultaneous.map(item => item.status).sort(), ['fulfilled', 'rejected']);
+        assert.equal(stage.generation, 7);
+        const review = await owner.review(context, [phases.acceptedOperationIds[0], gates.acceptedOperationIds[0]], 'apply');
+        const applied = await owner.decide(context, review.token,
+            [phases.acceptedOperationIds[0], gates.acceptedOperationIds[0]], 'apply');
+        assert.equal(applied.revision, 1);
+        const canonical = await store.read(root);
+        assert.equal(canonical.phases.find(item => item.id === p1)?.title, 'Revised first');
+        assert.equal(canonical.gates.find(item => item.id === g1)?.criteria[0].expectedResult, 'Revised observation');
+        await assert.rejects(update(phases.acceptedOperationIds[0], p1, 'title', 'After apply'), /NOT_PENDING/);
+        await owner.cancel(context, { version: 1 });
+        await assert.rejects(update(phases.acceptedOperationIds[1], p2, 'title', 'After cancel'),
+            /PROPOSAL_CHANGED|OWNER_CHANGED/);
+        assert.equal((await store.read(root)).revision, 1);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('pending edit refuses changed linked source, project, turn and expired stage', async () => {
+    await gateFixture(async (root, file, store) => {
+        const owner = new RoadmapNativeStageOwner(store), index = await store.read(root);
+        const context = { root, projectId: index.projectId, chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const staged = await owner.stage(context, { version: 1, expectedRevision: index.revision,
+            expectedSourceHash: index.linkedDocument!.sourceHash, expectedStage: 1, done: true,
+            actions: [{ type: 'gate.edit', id: index.gates[0].id, title: 'Proposed Gate',
+                purpose: 'Proposed purpose' }] }) as { acceptedOperationIds: string[] };
+        const request = { proposalId: owner.get('chat')!.id, expectedGeneration: 0,
+            operationId: staged.acceptedOperationIds[0], entityId: index.gates[0].id,
+            field: 'title' as const, value: 'Revised proposed Gate' };
+        const bytes = await sourceBytes(file), hash = await store.gateIndexHash(root);
+        await assert.rejects(owner.revise({ ...context, projectId: 'foreign' }, request), /OWNER_CHANGED/);
+        await assert.rejects(owner.revise({ ...context, turnId: 'foreign' }, request), /STAGE_STALE/);
+        const revised = await owner.revise(context, request);
+        assert.equal(revised.snapshot.preview.entities.find(item => item.id === index.gates[0].id)?.after?.title,
+            'Revised proposed Gate');
+        assert.deepEqual(await sourceBytes(file), bytes);
+        assert.equal(await store.gateIndexHash(root), hash);
+        request.expectedGeneration = 1;
+        await writeFile(file, '# changed outside Dope\n');
+        await assert.rejects(owner.revise(context, request), /SOURCE_CHANGED/);
+        await writeFile(file, bytes);
+        owner.get('chat')!.expires = Date.now() - 1;
+        await assert.rejects(owner.revise(context, request), /STAGE_STALE/);
+        assert.equal(owner.get('chat')!.generation, 1);
+        assert.equal(await store.gateIndexHash(root), hash);
+        assert.deepEqual(await sourceBytes(file), bytes);
+        owner.get('chat')!.expires = Date.now() + 60_000;
+        await store.mutateGateIndex(root, index.revision, index.projectId,
+            { type: 'phase.edit', id: index.phases[0].id, title: 'Independent Phase',
+                objective: index.phases[0].objective });
+        await assert.rejects(owner.revise(context, request), /ROADMAP_SOURCE_NOT_SYNCED|ROADMAP_STAGE_STALE/);
+    });
+});
 
 test('native read, multi-batch stage and cancel never write the canonical index', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-native-'));

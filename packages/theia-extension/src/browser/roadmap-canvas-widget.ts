@@ -27,7 +27,8 @@ import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { roadmapHistoryTarget } from './roadmap-history-navigation';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
-import { ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode, type ProposalChange } from './roadmap-proposal-cards';
+import { ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode,
+    type ProposalChange, type ProposedFieldSave } from './roadmap-proposal-cards';
 import { proposalEntityOperations } from './roadmap-proposal-selection';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
     roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot, roadmapProposalCamera,
@@ -44,6 +45,9 @@ type StructuralCreateAction = Extract<RoadmapGateMutation, { type: 'phase.create
 type NativeProposalBridge = (uri: string, chatId: string, proposalId: string, ids: string[],
     decision: 'apply' | 'reject', confirm: boolean) => Promise<{ summary?: string;
         preview?: ChatPlanningProposal['preview']; proposal?: ChatPlanningProposal; error?: string }>;
+type NativeProposalEditBridge = (uri: string, chatId: string, proposalId: string, operationId: string,
+    entityId: string, field: 'title' | 'objective' | 'purpose' | 'expectedResult', value: string) =>
+    Promise<ChatPlanningProposal>;
 
 function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: { kind: InlineKind; id: string;
     field: InlineFieldName; value: string; label: string; multiline?: boolean; save?: InlineSave }): React.ReactElement {
@@ -107,6 +111,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
     phaseObjective?: string; correctionObjectives?: Record<string, string>; editField?: InlineSave;
     beginCreate?: (kind: 'gate' | 'criterion' | 'correction', parentId: string) => void;
     proposalChanges?: ProposalChange[]; proposalSource?: boolean;
+    proposalSave?: ProposedFieldSave;
     proposalSourceChanges?: { before: string; after: string }[];
     selectedGateId?: string; select: (id: string) => void; selectGate: (gateId: string, phaseId: string) => void;
     contextPick?: { selected: readonly string[]; toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) => void };
@@ -158,6 +163,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement('div', { className: 'dope-roadmap-phase-children nowheel' },
             ...((data.proposalChanges ?? []).filter(change => change.id === item.id).map(change =>
                 React.createElement(ProposedChange, { key: change.id, change, source: !!data.proposalSource,
+                    save: data.proposalSave,
                     sourceChanges: data.proposalSourceChanges }))),
             ...((data.proposalChanges ?? []).filter(change => change.after?.kind === 'gate' &&
                 change.before?.parentId && change.before.parentId !== change.after.parentId &&
@@ -166,6 +172,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     className: 'dope-roadmap-gate-row dope-roadmap-proposal-new-gate',
                     'data-proposal-gate-id': change.id },
                 React.createElement(ProposedChange, { change, source: !!data.proposalSource,
+                    save: data.proposalSave,
                     sourceChanges: data.proposalSourceChanges })))),
             data.contextPick ? React.createElement('div', { className: 'dope-roadmap-context-gates' },
                 ...card.gates.map(gate => pick('gate', gate.id, `${gate.designation} · ${gate.title}`))) : null,
@@ -198,8 +205,10 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                         change.before?.parentId === gate.id || change.after?.parentId === gate.id).map(change =>
                         change.action === 'create' && change.after?.kind === 'criterion' ?
                             React.createElement(ProposedCriterionRow, { key: change.id, criterion: change.after,
+                                save: data.proposalSave,
                                 source: !!data.proposalSource }) :
                             React.createElement(ProposedChange, { key: change.id, change, source: !!data.proposalSource,
+                                save: data.proposalSave,
                                 sourceChanges: data.proposalSourceChanges }))),
                     React.createElement(InlineRoadmapField, { kind: 'gate', id: gate.id, field: 'purpose',
                         value: gate.purpose, label: 'Gate purpose', multiline: true, save: data.editField }),
@@ -239,7 +248,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                         `Open ${gate.designation} details`)))),
             ...((data.proposalChanges ?? []).filter(change => change.action === 'create' &&
                 change.after?.kind === 'gate' && change.after.parentId === item.id).map(change =>
-                React.createElement(ProposedGateCard, { key: change.id, change,
+                React.createElement(ProposedGateCard, { key: change.id, change, save: data.proposalSave,
                     children: (data.proposalChanges ?? []).filter(child => child.after?.parentId === change.id),
                     source: !!data.proposalSource }))),
             ...card.corrections.filter(correction => correction.parent.kind === 'phase').map(correction =>
@@ -630,7 +639,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         private readonly storage?: Pick<StorageService, 'getData' | 'setData'>,
         private readonly openWork: () => Promise<void> = async () => {},
         private readonly openLinkedDocument?: (workspace: string, path: string) => Promise<void>,
-        private readonly nativeProposalBridge?: NativeProposalBridge) {
+        private readonly nativeProposalBridge?: NativeProposalBridge,
+        private readonly nativeProposalEditBridge?: NativeProposalEditBridge) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -2016,6 +2026,24 @@ export class RoadmapCanvasWidget extends BaseWidget {
             `${projection.diagnostics.length} unresolved Roadmap reference(s). Inspect affected cards.` : '');
     }
 
+    private readonly saveProposedField: ProposedFieldSave = async (entityId, field, value) => {
+        const shown = this.chatProposal, proposal = shown?.proposal;
+        if (this.history || !shown || !proposal?.operations || !this.nativeProposalEditBridge || this.mutating)
+            throw new Error('Current Roadmap proposal cannot be edited');
+        const ids = proposalEntityOperations(proposal, entityId);
+        if (ids.length !== 1) throw new Error('Proposed field has no unique pending operation');
+        this.mutating = true;
+        try {
+            const updated = await this.nativeProposalEditBridge(shown.uri, shown.chatId, proposal.id,
+                ids[0], entityId, field, value);
+            if (this.chatProposal !== shown) throw new Error('Roadmap proposal changed during edit');
+            this.chatProposal = { ...shown, proposal: updated };
+            this.proposalSelection.clear();
+            this.proposalReview = undefined;
+            this.proposalError = undefined;
+        } finally { this.mutating = false; this.render(); }
+    };
+
     private async reviewProposal(ids: string[], decision: 'apply' | 'reject', confirm = false): Promise<void> {
         const shown = this.chatProposal;
         if (this.history || !shown || !this.nativeProposalBridge || !ids.length || this.mutating) return;
@@ -2054,52 +2082,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
             control.onclick = () => void this.reviewProposal(ids, decision);
             return control;
         };
-        const fallback = document.createElement('details');
-        fallback.className = 'dope-roadmap-native-fallback';
-        const fallbackLabel = document.createElement('summary');
-        fallbackLabel.textContent = 'Detailed operation review';
-        fallback.append(fallbackLabel);
-        for (const operation of operations) {
-            const row = document.createElement('div'); row.className = 'dope-roadmap-native-operation';
-            const selection = document.createElement('input'); selection.type = 'checkbox';
-            selection.checked = this.proposalSelection.has(operation.id);
-            selection.setAttribute('aria-label', `Select ${operation.type} ${operation.targetId}`);
-            selection.onchange = () => {
-                if (selection.checked) this.proposalSelection.add(operation.id);
-                else this.proposalSelection.delete(operation.id);
-                this.renderProposalBar();
-                this.updateProposalSelectionControls();
-                [...this.proposalBar.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
-                    .find(input => input.getAttribute('aria-label') === `Select ${operation.type} ${operation.targetId}`)?.focus();
-            };
-            const label = document.createElement('span'); label.textContent = `${operation.type} · ${operation.targetId}`;
-            row.append(selection, label, button('Apply one', [operation.id], 'apply'),
-                button('Reject one', [operation.id], 'reject'));
-            if (operation.type === 'phase.create') {
-                const descendants = new Set([operation.targetId]);
-                const scope = [operation.id];
-                let changed = true;
-                while (changed) {
-                    changed = false;
-                    for (const child of operations) {
-                        if (scope.includes(child.id)) continue;
-                        const entity = proposal.preview?.entities.find(item => item.id === child.targetId)?.after;
-                        if (entity?.parentId && descendants.has(entity.parentId)) {
-                            descendants.add(child.targetId); scope.push(child.id); changed = true;
-                        }
-                    }
-                }
-                row.append(button(`Apply Phase + ${scope.length - 1} children`, scope, 'apply'),
-                    button(`Reject Phase + ${scope.length - 1} children`, scope, 'reject'));
-            }
-            fallback.append(row);
-        }
         const all = operations.map(item => item.id);
         const actions = document.createElement('div'); actions.className = 'dope-roadmap-native-actions';
         actions.append(button(`Apply selected (${selected.length})`, selected, 'apply'),
             button(`Reject selected (${selected.length})`, selected, 'reject'),
             button('Apply all remaining', all, 'apply'), button('Reject all remaining', all, 'reject'));
-        this.proposalBar.append(actions, fallback);
+        this.proposalBar.append(actions);
         if (this.proposalReview) {
             const review = this.proposalReview;
             const exact = document.createElement('details'); exact.open = true;
@@ -2142,6 +2130,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             control.hidden = !ids.length;
             control.disabled = !ids.length || this.mutating;
             control.setAttribute('aria-pressed', String(!!ids.length && ids.every(id => this.proposalSelection.has(id))));
+        }
+        for (const control of this.stage.querySelectorAll<HTMLButtonElement>('button[data-proposal-edit-entity]')) {
+            const ids = proposal ? proposalEntityOperations(proposal, control.dataset.proposalEditEntity ?? '') : [];
+            const editable = ids.length === 1 && proposal?.operations?.some(item => item.id === ids[0] &&
+                ['phase.create', 'phase.edit', 'gate.create', 'gate.edit',
+                    'criterion.add', 'criterion.edit'].includes(item.type));
+            control.hidden = !editable;
+            control.disabled = !editable || this.mutating;
         }
     }
 
@@ -2303,6 +2299,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                         toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) =>
                             this.toggleContextElement(kind, id) } : undefined,
                     proposalChanges: changes.filter(change => proposalPhase(change) === item.id),
+                    proposalSave: proposal?.operations && !this.history ? this.saveProposedField : undefined,
                     proposalAutoExpand: !!proposal,
                     proposalSource: proposal?.preview?.source === 'validated-markdown-patch',
                     proposalSourceChanges: proposal?.preview?.sourceChanges,
@@ -2324,7 +2321,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 position: { x: farthest + 560, y: 64 },
                 data: { change, children: changes.filter(child => child.id !== change.id &&
                     proposalPhase(child) === change.id), source: proposal?.preview?.source === 'validated-markdown-patch',
-                    sourceChanges: proposal?.preview?.sourceChanges },
+                    sourceChanges: proposal?.preview?.sourceChanges,
+                    save: proposal?.operations && !this.history ? this.saveProposedField : undefined },
                 draggable: false, selectable: false, className: 'dope-roadmap-proposal-phase-node' });
         }
         const displayed = new Map(nodes.map(node => [node.id, node.position]));

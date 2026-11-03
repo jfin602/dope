@@ -18,7 +18,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
@@ -258,7 +258,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private spacePanPressed = false;
     private cancelScrollAnimation?: () => void;
     private scrollAnimationUntil = 0;
-    private liveStageNotice?: HTMLElement;
 
     constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
         private readonly shell: ApplicationShell, owners: ChatOpenOwners, workOwners: WorkOpenOwners,
@@ -419,41 +418,47 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         void this.viewCurrentRoadmapProposal(proposal, true);
     }
 
-    /** Refresh only this transient control so stage batches do not rerender the composer or move focus. */
+    /** Refresh the current assistant card in place so batches never rerender the composer or move focus. */
     private updateLiveStageNotice(): void {
-        const host = this.liveStageNotice, state = this.controller;
-        if (!host?.isConnected) return;
-        let progress = host.querySelector<HTMLElement>('.dope-chat-planning-progress');
-        if (state.running && state.roadmapStage && state.workspace && this.viewLiveRoadmapStage) {
-            const stage = state.roadmapStage;
-            if (!progress) {
-                progress = document.createElement('div');
-                progress.className = 'dope-chat-planning-progress';
-                progress.append(document.createElement('span'), this.button('View in Roadmap', () => {
-                    void (async () => {
-                        try {
-                            await state.readCurrentRoadmapStage();
-                            const uri = state.workspace;
-                            if (!uri) throw new Error('Project changed before Roadmap navigation');
-                            await this.viewLiveRoadmapStage!(uri, () => state.readCurrentRoadmapStage());
-                        } catch (error) {
-                            state.roadmapStageError = `Roadmap preview unavailable: ${String(error)}`;
-                            this.updateLiveStageNotice();
-                        }
-                    })();
-                }));
-                host.prepend(progress);
-            }
-            const counts = progress.querySelector('span')!;
-            counts.textContent = `Proposed · Not applied · Stage ${stage.sequence} · ${stage.counts.phases} Phases, ` +
-                `${stage.counts.gates} Gates, ${stage.counts.criteria} Criteria · ` +
-                `${stage.complete ? 'Ready for review' : 'Incomplete'}`;
-        } else progress?.remove();
-        let error = host.querySelector<HTMLElement>('[role="alert"]');
-        if (state.roadmapStageError) {
-            if (!error) { error = document.createElement('p'); error.setAttribute('role', 'alert'); host.append(error); }
-            error.textContent = state.roadmapStageError;
-        } else error?.remove();
+        const state = this.controller, stage = state.running ? state.roadmapStage : undefined;
+        const transcript = this.content.querySelector<HTMLElement>('.dope-chat-transcript');
+        if (!transcript) return;
+        const old = transcript.querySelector<HTMLElement>('.dope-chat-native-live');
+        if (!stage || !state.workspace) { old?.remove(); return; }
+        const item = [...transcript.querySelectorAll<HTMLElement>('.dope-chat-message-assistant')]
+            .find(row => row.dataset.messageId === stage.turnId);
+        const content = item?.querySelector<HTMLElement>('.dope-chat-message-content');
+        if (!content) return;
+        let card = old;
+        if (!card || !content.contains(card)) {
+            old?.remove();
+            card = this.nativeRoadmapSummaryCard('Generating', stage.counts, [], undefined,
+                this.viewLiveRoadmapStage ? { run: () => { void (async () => {
+                    try {
+                        await state.readCurrentRoadmapStage();
+                        const uri = state.workspace;
+                        if (!uri) throw new Error('Project changed before Roadmap navigation');
+                        await this.viewLiveRoadmapStage!(uri, () => state.readCurrentRoadmapStage());
+                    } catch (error) {
+                        state.roadmapStageError = `Roadmap preview unavailable: ${String(error)}`;
+                        this.updateLiveStageNotice();
+                    }
+                })(); } } : undefined);
+            card.classList.add('dope-chat-native-live');
+            card.setAttribute('role', 'status');
+            card.setAttribute('aria-live', 'polite');
+            content.append(card);
+        }
+        card.querySelector('strong')!.textContent = 'Roadmap · Generating';
+        card.querySelector('p')!.textContent = `${stage.counts.phases} Phases · ${stage.counts.gates} Gates · ` +
+            `${stage.counts.criteria} Criteria · ${stage.complete ? 'Final validation pending' : 'Incomplete'}`;
+        let note = card.querySelector<HTMLElement>('[role="alert"]');
+        const warning = state.roadmapStageError || (stage.incompletePhaseIds.length ?
+            `${stage.incompletePhaseIds.length} Phase(s) still need Gates` : undefined);
+        if (warning) {
+            if (!note) { note = document.createElement('p'); note.setAttribute('role', 'alert'); card.append(note); }
+            note.textContent = warning;
+        } else note?.remove();
     }
 
     private async viewCurrentRoadmapProposal(proposal: ChatPlanningProposal, automatic = false): Promise<void> {
@@ -477,6 +482,39 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.planningProposalErrorMessageId = proposal.messageId;
             this.render();
         }
+    }
+    private nativeRoadmapSummaryCard(status: string, counts?: { phases: number; gates: number; criteria: number },
+        warnings: readonly string[] = [], diagnostic?: string,
+        view?: { run: () => void; disabled?: boolean }): HTMLElement {
+        const card = document.createElement('section');
+        card.className = 'dope-chat-plan-review dope-chat-native-summary';
+        card.dataset.status = status.toLowerCase().split(' ')[0];
+        card.setAttribute('aria-label', `Roadmap proposal: ${status}`);
+        const heading = document.createElement('strong'); heading.textContent = `Roadmap · ${status}`;
+        const totals = document.createElement('p');
+        totals.textContent = counts ? `${counts.phases} Phases · ${counts.gates} Gates · ${counts.criteria} Criteria` :
+            'Roadmap counts unavailable';
+        card.append(heading, totals);
+        for (const warning of warnings.slice(0, 3)) {
+            const line = document.createElement('p'); line.className = 'dope-chat-native-warning';
+            line.textContent = warning; card.append(line);
+        }
+        if (warnings.length > 3) {
+            const more = document.createElement('p'); more.textContent = `${warnings.length - 3} additional warnings`;
+            card.append(more);
+        }
+        if (view) {
+            const action = this.button('View in Roadmap', view.run, !!view.disabled);
+            action.className = 'dope-chat-native-view';
+            card.append(action);
+        }
+        if (diagnostic) {
+            const details = document.createElement('details');
+            const label = document.createElement('summary'); label.textContent = 'Details';
+            const note = document.createElement('p'); note.textContent = diagnostic.slice(0, 2048);
+            details.append(label, note); card.append(details);
+        }
+        return card;
     }
     private roadmapProposalReviewCard(proposal: ChatPlanningProposal): HTMLElement {
         const state = this.controller;
@@ -513,6 +551,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             review.append(decisions);
             return review;
         }
+        if (proposal.operations) return this.nativeRoadmapSummaryCard(proposal.preview &&
+            proposal.operations.some(item => item.status === 'Pending') ? 'Ready' : 'Stale', proposal.counts,
+            proposal.warnings, proposal.summary, this.viewRoadmapProposal ? {
+                run: () => void this.viewCurrentRoadmapProposal(proposal),
+                disabled: !state.canViewPlanningProposal(proposal.id) } : undefined);
         const heading = document.createElement('strong');
         const draftProposal = isDraftPlanningAction(proposal.action.type);
         heading.textContent = proposal.preview ? 'Proposed Roadmap Change' :
@@ -611,79 +654,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             'Validation summary' : proposal.preview ? 'Full diagnostic diff' : 'Review before and after';
         const diffText = document.createElement('pre'); diffText.textContent = proposal.summary;
         diff.append(diffLabel, diffText);
-        if (proposal.operations) {
-            const pending = proposal.operations.filter(item => item.status === 'Pending');
-            const selected = new Set<string>();
-            const list = document.createElement('div');
-            list.className = 'dope-chat-roadmap-operations';
-            for (const operation of proposal.operations) {
-                const row = document.createElement('label');
-                const box = document.createElement('input'); box.type = 'checkbox';
-                box.disabled = operation.status !== 'Pending' || state.pending;
-                box.addEventListener('change', () => {
-                    if (box.checked) selected.add(operation.id); else selected.delete(operation.id);
-                });
-                const label = document.createElement('span');
-                label.textContent = `${operation.type} · ${operation.targetId} · ${operation.status}`;
-                row.append(box, label); list.append(row);
-            }
-            review.append(list);
-            const actions = document.createElement('div');
-            actions.className = 'dope-chat-plan-review-actions';
-            if (proposal.preview && this.viewRoadmapProposal)
-                actions.append(this.button('View in Roadmap', () => void this.viewCurrentRoadmapProposal(proposal),
-                    !state.canViewPlanningProposal(proposal.id)));
-            const reviewSubset = (ids: string[], decision: 'apply' | 'reject') =>
-                void state.reviewNativeRoadmap(ids, decision);
-            actions.append(
-                this.button('Apply Selected', () => reviewSubset([...selected], 'apply'), state.pending),
-                this.button('Reject Selected', () => reviewSubset([...selected], 'reject'), state.pending),
-                this.button('Apply All Remaining', () => reviewSubset(pending.map(item => item.id), 'apply'), state.pending),
-                this.button('Reject All Remaining', () => reviewSubset(pending.map(item => item.id), 'reject'), state.pending));
-            for (const operation of pending) {
-                const one = document.createElement('div');
-                one.className = 'dope-chat-plan-review-actions';
-                one.append(this.button(`Apply ${operation.type}`, () => reviewSubset([operation.id], 'apply'), state.pending),
-                    this.button(`Reject ${operation.type}`, () => reviewSubset([operation.id], 'reject'), state.pending));
-                if (operation.type === 'phase.create') {
-                    const descendants = new Set([operation.targetId]);
-                    const ids = [operation.id];
-                    for (const child of pending) {
-                        if (child.id === operation.id) continue;
-                        const entity = proposal.preview?.entities.find(item => item.id === child.targetId)?.after;
-                        if (entity?.parentId && descendants.has(entity.parentId)) {
-                            ids.push(child.id); descendants.add(child.targetId);
-                        }
-                    }
-                    one.append(this.button('Apply Phase + descendants', () => reviewSubset(ids, 'apply'), state.pending),
-                        this.button('Reject Phase + descendants', () => reviewSubset(ids, 'reject'), state.pending));
-                }
-                review.append(one);
-            }
-            if (state.nativeRoadmapReview?.proposalId === proposal.id) {
-                const confirmation = document.createElement('p');
-                confirmation.textContent = state.nativeRoadmapReview.summary;
-                const exact = state.nativeRoadmapReview.preview;
-                if (exact) {
-                    const details = document.createElement('details'); details.open = true;
-                    const caption = document.createElement('summary');
-                    caption.textContent = 'Exact selected changes before Apply';
-                    details.append(caption);
-                    for (const entity of exact.entities) {
-                        const row = document.createElement('pre');
-                        row.textContent = `${entity.action} ${entity.id}\nBefore: ${JSON.stringify(entity.before ?? null)}\nAfter: ${JSON.stringify(entity.after ?? null)}`;
-                        details.append(row);
-                    }
-                    actions.append(details);
-                }
-                actions.append(confirmation,
-                    this.button('Confirm reviewed decision', () => void state.decideNativeRoadmap(), state.pending),
-                    this.button('Cancel review', () => { state.nativeRoadmapReview = undefined; this.render(); }, state.pending));
-            }
-            review.prepend(heading, affected);
-            review.append(diff, actions);
-            return review;
-        }
         const decisions = document.createElement('div');
         decisions.className = 'dope-chat-plan-review-actions';
         if (proposal.preview && proposal.revision >= 0 && this.viewRoadmapProposal) {
@@ -712,6 +682,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (activity.status === 'pending' && this.controller.planningProposal?.messageId === message.id)
             return this.roadmapProposalReviewCard(this.controller.planningProposal);
         const proposal = activity.proposal;
+        if (proposal?.operations) {
+            const status = nativeRoadmapCardStatus(activity.status, false);
+            return this.nativeRoadmapSummaryCard(status, proposal.counts, proposal.warnings,
+                activity.diagnostic ?? proposal.summary);
+        }
         const status = activity.status === 'applied' ? 'Applied' :
             activity.status === 'denied' ? 'Rejected · no change' :
             activity.status === 'rejected' && activity.proposalId ? 'Failed · no change' :
@@ -2951,11 +2926,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const toolCalls = active && liveCalls.length ? liveCalls :
                     message.execution.toolEvents?.length ? message.execution.toolEvents : liveCalls;
                 if (toolCalls.length) {
-                    const calls = document.createElement('div');
+                    const calls = document.createElement(isInlineRoadmapProposal(message) ? 'details' : 'div');
                     calls.className = 'dope-chat-tool-calls';
-                    calls.setAttribute('role', 'group');
+                    if (!isInlineRoadmapProposal(message)) calls.setAttribute('role', 'group');
                     calls.setAttribute('aria-label', 'Tool calls');
-                    const heading = document.createElement('strong');
+                    const heading = document.createElement(isInlineRoadmapProposal(message) ? 'summary' : 'strong');
                     heading.textContent = `Tool calls (${toolCalls.length})`;
                     calls.append(heading);
                     const list = document.createElement('ol');
@@ -3418,18 +3393,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const responseNotices = document.createElement('div');
         responseNotices.className = 'dope-chat-response-notices';
         responseNotices.setAttribute('aria-label', 'Chat notices and reviews');
-        if (state.running && state.planningProgress?.stage === 'validating') {
+        if (state.running && state.planningProgress?.stage === 'validating' && !state.roadmapStage) {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';
             progress.setAttribute('role', 'status');
             progress.textContent = 'Validating local planning result…';
             responseNotices.append(progress);
         }
-        this.liveStageNotice = document.createElement('div');
-        this.liveStageNotice.className = 'dope-chat-live-roadmap-stage';
-        this.liveStageNotice.setAttribute('role', 'status');
-        this.liveStageNotice.setAttribute('aria-live', 'polite');
-        responseNotices.append(this.liveStageNotice);
         if (state.context.length) {
             const selectedContext = document.createElement('ul');
             selectedContext.className = 'dope-chat-selected-context';

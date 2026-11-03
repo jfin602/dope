@@ -522,6 +522,16 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 if (!review || review.proposalId !== proposalId)
                     return { error: chat.controller.planningProposalError ?? 'Roadmap subset review failed' };
                 return { summary: review.summary, preview: review.preview };
+            }, async (uri, chatId, proposalId, operationId, entityId, field, value) => {
+                const widgets = context.container.get(WidgetManager);
+                const matches = [...widgets.getWidgets(CHAT_PANEL_ID),
+                    ...(['left', 'right'] as const).map(side => widgets.tryGetWidget(chatLauncherIds[side]))]
+                    .filter(Boolean) as ChatPanelWidget[];
+                const chat = matches.find(widget => widget.moduleKind === 'chat' &&
+                    widget.controller.workspace === uri && widget.controller.chatId === chatId &&
+                    widget.controller.planningProposal?.id === proposalId);
+                if (!chat) throw new Error('Original Chat proposal is unavailable; return to Chat');
+                return chat.controller.reviseNativeRoadmap(operationId, entityId, field, value);
             }) })).inSingletonScope();
     // Saved pre-overlay workbench layouts may restore this sidebar. It shares the model but cannot edit.
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
@@ -588,8 +598,6 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 const roots = await context.container.get(WorkspaceService).roots;
                 if (!isCurrent() || roots.length !== 1 || roots[0].resource.toString() !== projectUri)
                     throw new Error('Project or Chat changed before Roadmap preview');
-                if (activate) await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
-                if (!isCurrent()) throw new Error('Chat proposal changed before Roadmap preview');
                 const widgets = context.container.get(WidgetManager);
                 const widget = activate ? await widgets.getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID) :
                     widgets.tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
@@ -599,6 +607,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     await widget.clearChatProposal(projectUri, chatId, proposal.id);
                     throw new Error('Chat proposal changed before Roadmap preview');
                 }
+                if (activate) await context.container.get(CommandRegistry).executeCommand('dope.roadmap.open');
             }, async (projectUri, chatId, proposalId, accepted, changedIds) => {
                 const widget = await context.container.get(WidgetManager).getWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
                 await widget?.clearChatProposal(projectUri, chatId, proposalId, accepted, changedIds);

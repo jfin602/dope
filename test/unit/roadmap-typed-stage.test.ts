@@ -107,9 +107,11 @@ test('protected current-turn Chat uses one tool-free typed answer and persists t
         streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } };
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true,
         providerId: 'local', models: [model] }] }),
-        async *generate(_selection: unknown, request: { projectTools?: unknown; messages: { content: string }[] }) {
+        async *generate(_selection: unknown, request: { projectTools?: unknown; maxOutputTokens?: number;
+            messages: { content: string }[] }) {
             calls++;
             assert.equal(request.projectTools, undefined);
+            assert.equal(request.maxOutputTokens, 4096);
             assert.match(JSON.stringify(request.messages), /roadmap-draft/);
             yield { type: 'complete' as const, actualModelId: 'q4', finishReason: 'stop',
                 text: JSON.stringify(candidate().draft) };

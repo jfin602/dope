@@ -2,9 +2,28 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
+
+test('native Roadmap card states keep saved terminal and inactive pending proposals inert', async () => {
+    assert.deepEqual(['pending', 'applied', 'denied', 'failed', 'cancelled', 'stale', 'superseded', 'rejected']
+        .map(status => nativeRoadmapCardStatus(status as Parameters<typeof nativeRoadmapCardStatus>[0], false)),
+    ['Stale', 'Applied', 'Rejected', 'Failed', 'Cancelled', 'Stale', 'Stale', 'Failed']);
+    assert.equal(nativeRoadmapCardStatus('pending', true), 'Ready');
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const frontend = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
+    const canvas = await readFile(new URL('../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts', import.meta.url), 'utf8');
+    assert.match(widget, /if \(proposal\.operations\) return this\.nativeRoadmapSummaryCard/);
+    assert.match(widget, /if \(savedProposal\) content\.append\(savedProposal\)/);
+    assert.match(widget, /card\.classList\.add\('dope-chat-native-live'\);[\s\S]*?content\.append\(card\)/);
+    assert.doesNotMatch(widget, /responseNotices\.append\(this\.liveStageNotice\)/);
+    assert.doesNotMatch(widget, /Apply All Remaining|Reject All Remaining|Apply Phase \+ descendants/);
+    assert.match(widget, /document\.createElement\(isInlineRoadmapProposal\(message\) \? 'details' : 'div'\)/);
+    assert.match(frontend, /await widget\.presentChatProposal\(projectUri, chatId, proposal\);[\s\S]*?if \(activate\) await context\.container\.get\(CommandRegistry\)\.executeCommand\('dope\.roadmap\.open'\)/);
+    assert.match(canvas, /index\.linkedDocument\?\.sourceHash !== proposal\.sourceHash/);
+    assert.match(canvas, /private async reviewProposal\(ids: string\[\], decision: 'apply' \| 'reject'/);
+});
 
 test('saved and live diagnostic activity retains full content in the existing viewer', () => {
     const events = Array.from({ length: 12 }, (_, index) => ({ sequence: index + 1,

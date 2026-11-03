@@ -506,14 +506,24 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         if (kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' && kind !== 'roadmap-publication' ||
             v.proposalId === undefined || JSON.stringify(v.proposal).length > 65536)
             throw new Error('Invalid saved Roadmap proposal');
-        const p = record(v.proposal, ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'sourceHash',
-            'changedIds', 'action', 'summary', 'preview', 'publication', 'previewOnly', 'operations'],
+        const p = record(v.proposal, ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'generation', 'sourceHash',
+            'changedIds', 'counts', 'warnings', 'action', 'summary', 'preview', 'publication', 'previewOnly', 'operations'],
             ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'changedIds', 'action', 'summary']);
         const action = record(p.action, ['type', 'id'], ['type', 'id']);
         if (p.previewOnly !== undefined && p.previewOnly !== true) throw new Error('Invalid preview-only flag');
         if (p.id !== v.proposalId || !Array.isArray(p.changedIds) || p.changedIds.length > 64 ||
             p.changedIds.some(id => typeof id !== 'string'))
             throw new Error('Invalid saved Roadmap proposal');
+        if (p.operations !== undefined && (kind !== 'roadmap-gate-proposal' || p.publication !== undefined))
+            throw new Error('Invalid native Roadmap proposal');
+        const counts = p.counts === undefined ? undefined : record(p.counts,
+            ['phases', 'gates', 'criteria'], ['phases', 'gates', 'criteria']);
+        if (counts && Object.values(counts).some(value => !Number.isSafeInteger(value) ||
+            (value as number) < 0 || (value as number) > 64))
+            throw new Error('Invalid saved Roadmap counts');
+        if (p.warnings !== undefined && (!Array.isArray(p.warnings) || p.warnings.length > 16 ||
+            p.warnings.some(item => typeof item !== 'string' || item.length > 512)))
+            throw new Error('Invalid saved Roadmap warnings');
         if (p.operations !== undefined && (!Array.isArray(p.operations) || p.operations.length > 48 ||
             p.operations.some((item: unknown) => {
                 try { const op = record(item, ['id', 'type', 'targetId', 'status'],
@@ -591,6 +601,11 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             throw new Error('Invalid saved publication preview');
         proposal = { id: identifier(p.id), chatId: identifier(p.chatId), messageId: identifier(p.messageId),
             ownerId: string(p.ownerId, 'Roadmap owner'), revision: count(p.revision, 'Roadmap revision'),
+            ...(p.generation === undefined ? {} : { generation: count(p.generation, 'Roadmap proposal generation') }),
+            ...(counts === undefined ? {} : { counts: { phases: count(counts.phases, 'phase count'),
+                gates: count(counts.gates, 'gate count'), criteria: count(counts.criteria, 'criterion count') } }),
+            ...(p.warnings === undefined ? {} : { warnings: (p.warnings as unknown[]).map(item =>
+                string(item, 'Roadmap warning')) }),
             changedIds: p.changedIds.map(id => string(id, 'changed Roadmap ID')),
             action: { type: string(action.type, 'proposal action'), id: string(action.id, 'proposal target') },
             summary: string(p.summary, 'proposal summary'),

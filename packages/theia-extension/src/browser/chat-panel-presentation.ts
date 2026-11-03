@@ -1,4 +1,15 @@
-import { safeChatToolPath, type Chat, type ChatAssistantMessage } from '@dope/chat';
+import { safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatPlanningActivity } from '@dope/chat';
+
+/** Presentation only. A saved pending activity without its live lease is inert. */
+export function nativeRoadmapCardStatus(status: ChatPlanningActivity['status'], active: boolean):
+    'Ready' | 'Applied' | 'Rejected' | 'Failed' | 'Cancelled' | 'Stale' {
+    if (status === 'pending') return active ? 'Ready' : 'Stale';
+    if (status === 'applied') return 'Applied';
+    if (status === 'denied') return 'Rejected';
+    if (status === 'cancelled') return 'Cancelled';
+    if (status === 'stale' || status === 'superseded') return 'Stale';
+    return 'Failed';
+}
 
 export function isDraftPlanningAction(type: string): boolean {
     return ['create-phase', 'create-checkpoint', 'edit-phase', 'edit-checkpoint', 'reorder-phase',

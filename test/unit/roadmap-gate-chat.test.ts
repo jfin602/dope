@@ -180,6 +180,7 @@ test('Pi worker serializes three Roadmap batches through ChatBackend without can
         assert.ok(calls.slice(1).every(item => !Object.hasOwn(item.arguments as object, 'expectedSourceHash') &&
             !Object.hasOwn(item.arguments as object, 'expectedRevision')));
         assert.equal(turn.proposal.operations?.length, 4);
+        assert.deepEqual(turn.proposal.counts, { phases: 2, gates: 2, criteria: 2 });
         const snapshots = stageEvents.map(event => event.kind === 'roadmap-stage' ? event.snapshot : null)
             .filter((snapshot): snapshot is NonNullable<typeof snapshot> => !!snapshot);
         assert.equal(snapshots.length, 3);
@@ -464,6 +465,51 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
         assert.equal(await store.gateIndexHash(root), null);
         assert.equal((await store.read(root)).revision, 0);
         const ids = turn.proposal.operations!.map(item => item.id);
+        const phaseId = turn.proposal.preview!.entities.find(item => item.after?.kind === 'phase')!.id;
+        const criterionId = turn.proposal.preview!.entities.find(item => item.after?.kind === 'criterion')!.id;
+        const priorReview = await backend.reviewNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, ids, 'apply');
+        const revisedPhase = await backend.reviseNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, 0, ids[0], phaseId, 'title', 'Revised Phase Alpha');
+        assert.equal(revisedPhase.generation, 1);
+        assert.deepEqual(revisedPhase.counts, { phases: 2, gates: 2, criteria: 2 });
+        assert.equal(revisedPhase.id, turn.proposal.id);
+        assert.equal(revisedPhase.preview?.entities.find(item => item.id === phaseId)?.after?.title,
+            'Revised Phase Alpha');
+        await assert.rejects(backend.reviseNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, 1, ids[0], phaseId, 'title', '<script>unsafe</script>'), /invalid text/);
+        assert.equal((await repository.read(root)).chats.find(chat => chat.id === chatId)!.messages
+            .find(message => message.id === turn.proposal!.messageId)?.planningActivity?.proposal?.generation, 1);
+        await assert.rejects(backend.decideNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, ids, 'apply', priorReview.token), /ROADMAP_APPROVAL_UNAVAILABLE/);
+        await assert.rejects(backend.reviseNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, 0, ids[0], phaseId, 'title', 'Duplicate Save'), /generation changed/i);
+        await assert.rejects(backend.reviseNativeRoadmap(projectHandle, chatId, 'wrong-lease',
+            turn.proposal.id, 1, ids[0], phaseId, 'title', 'Wrong lease'), /unavailable/i);
+        await assert.rejects(backend.reviseNativeRoadmap(projectHandle, 'foreign-chat', lease.token,
+            turn.proposal.id, 1, ids[0], phaseId, 'title', 'Wrong Chat'), /unavailable/i);
+        const revisedCriterion = await backend.reviseNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, 1, ids[2], criterionId, 'expectedResult', 'Revised visible launch');
+        assert.equal(revisedCriterion.generation, 2);
+        assert.equal(revisedCriterion.preview?.entities.find(item => item.id === criterionId)?.after?.detail,
+            'Revised visible launch');
+        const recordActivity = repository.recordPlanningActivity;
+        repository.recordPlanningActivity = async () => { throw new Error('injected activity failure'); };
+        try {
+            await assert.rejects(backend.reviseNativeRoadmap(projectHandle, chatId, lease.token,
+                turn.proposal.id, 2, ids[0], phaseId, 'objective', 'Unsaved objective'),
+            /injected activity failure/);
+        } finally { repository.recordPlanningActivity = recordActivity; }
+        const afterFailure = await backend.reviseNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, 2, ids[0], phaseId, 'objective', 'Saved objective');
+        assert.equal(afterFailure.generation, 3);
+        const savedProposal = (await repository.read(root)).chats.find(chat => chat.id === chatId)!.messages
+            .find(message => message.id === turn.proposal!.messageId);
+        assert.equal(savedProposal?.role, 'assistant');
+        assert.equal(savedProposal?.planningActivity?.proposal?.generation, 3);
+        assert.deepEqual(savedProposal?.planningActivity?.proposal?.counts,
+            { phases: 2, gates: 2, criteria: 2 });
+        assert.equal(await store.gateIndexHash(root), null);
         const review = await backend.reviewNativeRoadmap(projectHandle, chatId, lease.token,
             turn.proposal.id, ids, 'apply');
         const applied = await backend.decideNativeRoadmap(projectHandle, chatId, lease.token,
@@ -473,6 +519,7 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
         assert.equal(saved.revision, 1);
         assert.equal(saved.phases.length, 2);
         assert.equal(saved.gates.length, 2);
+        assert.equal((saved.phases[0] as { title: string }).title, 'Revised Phase Alpha');
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -587,6 +634,7 @@ test('linked native Chat subset approval synchronizes Markdown while rejected op
             const result = await backend.decideNativeRoadmap(projectHandle, chatId, lease.token,
                 turn.proposal.id, [first], 'apply', review.token);
             assert.ok(result.revision && result.revision > linked.revision);
+            assert.deepEqual(result.proposal?.counts, { phases: 1, gates: 3, criteria: 3 });
             const settled = await new RoadmapStore().recoverAutoSync(root);
             assert.equal(settled.linkedDocument?.syncState, 'synced');
             assert.match(await readFile(file, 'utf8'), /AI Gate 2/);
@@ -596,6 +644,9 @@ test('linked native Chat subset approval synchronizes Markdown while rejected op
                 turn.proposal.id, [second], 'reject');
             await backend.decideNativeRoadmap(projectHandle, chatId, lease.token,
                 turn.proposal.id, [second], 'reject', reject.token);
+            const finalActivity = (await repository.read(root)).chats.find(chat => chat.id === chatId)!.messages
+                .find(message => message.id === turn.proposal!.messageId)?.planningActivity;
+            assert.deepEqual(finalActivity?.proposal?.counts, { phases: 1, gates: 2, criteria: 2 });
             assert.deepEqual(await readFile(file), acceptedBytes);
             const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
             const staleTurn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,

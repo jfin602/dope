@@ -108,6 +108,7 @@ export class ChatBackend implements ChatService {
         roadmapOffer?: ChatRoadmapOffer;
         draft?: { handle: string; preview: GreenfieldEditPreview };
         }>();
+    private readonly nativeProposalEdits = new Set<string>();
     private readonly gateUndo = new Map<string, { handle: string; ownerId: string; revision: number;
         token: string; leaseToken: string }>();
     private readonly strategicReviews = new Map<string, { root: string; leaseToken: string; messageId: string; offerId: string;
@@ -811,7 +812,7 @@ export class ChatBackend implements ChatService {
         const root = this.active(projectHandle);
         const pending = this.proposals.get(chatId);
         const stage = this.nativeStages?.get(chatId);
-        if (!pending?.nativeStageId || pending.id !== proposalId || pending.leaseToken !== leaseToken ||
+        if (this.nativeProposalEdits.has(chatId) || !pending?.nativeStageId || pending.id !== proposalId || pending.leaseToken !== leaseToken ||
             !stage || stage.id !== pending.nativeStageId || stage.context.root !== root ||
             !Array.isArray(operationIds) || !['apply', 'reject'].includes(decision))
             throw new Error('Native Roadmap proposal unavailable');
@@ -838,13 +839,51 @@ export class ChatBackend implements ChatService {
                 `${changedIds.length} actual entity changes.`, ...(changed ? { preview: changed } : {}) };
     }
 
+    async reviseNativeRoadmap(projectHandle: string, chatId: string, leaseToken: string,
+        proposalId: string, expectedGeneration: number, operationId: string, entityId: string,
+        field: 'title' | 'objective' | 'purpose' | 'expectedResult', value: string): Promise<ChatPlanningProposal> {
+        const root = this.active(projectHandle);
+        const pending = this.proposals.get(chatId);
+        const stage = this.nativeStages?.get(chatId);
+        if (this.nativeProposalEdits.has(chatId) || !pending?.nativeStageId || pending.id !== proposalId ||
+            pending.leaseToken !== leaseToken || !stage || stage.id !== proposalId ||
+            stage.context.root !== root) throw new Error('Native Roadmap proposal unavailable');
+        this.nativeProposalEdits.add(chatId);
+        try {
+            await this.repository.renew(root, chatId, leaseToken);
+            const message = (await this.repository.read(root)).chats.find(chat => chat.id === chatId)
+                ?.messages.find(item => item.id === pending.messageId);
+            if (message?.role !== 'assistant' || message.execution.status !== 'complete' ||
+                message.planningActivity?.status !== 'pending' ||
+                message.planningActivity.proposalId !== proposalId || !message.planningActivity.proposal ||
+                message.planningActivity.proposal.generation !== expectedGeneration)
+                throw new Error('Native Roadmap activity or generation changed');
+            const revised = await this.nativeStages!.revise(stage.context, { proposalId, expectedGeneration,
+                operationId, entityId, field, value });
+            try {
+                if (this.proposals.get(chatId) !== pending || this.nativeStages?.get(chatId) !== stage)
+                    throw new Error('Native Roadmap proposal changed during edit');
+                const snapshot = revised.snapshot;
+                const proposal: ChatPlanningProposal = { ...message.planningActivity.proposal,
+                    generation: stage.generation, changedIds: snapshot.entityIds, counts: snapshot.counts,
+                    preview: snapshot.preview,
+                    summary: `Revised staged Roadmap: ${snapshot.counts.phases} Phases, ` +
+                        `${snapshot.counts.gates} Gates, ${snapshot.counts.criteria} Criteria. ` +
+                        `Validated preview; no Roadmap change applied.` };
+                await this.repository.recordPlanningActivity(root, chatId, pending.messageId, leaseToken,
+                    { ...message.planningActivity, proposal }, { proposalId, status: 'pending' });
+                return proposal;
+            } catch (error) { revised.rollback(); throw error; }
+        } finally { this.nativeProposalEdits.delete(chatId); }
+    }
+
     async decideNativeRoadmap(projectHandle: string, chatId: string, leaseToken: string,
         proposalId: string, operationIds: string[], decision: 'apply' | 'reject', token: string):
         Promise<{ revision?: number; changedIds: string[]; proposal?: ChatPlanningProposal }> {
         const root = this.active(projectHandle);
         const pending = this.proposals.get(chatId);
         const stage = this.nativeStages?.get(chatId);
-        if (!pending?.nativeStageId || pending.id !== proposalId || pending.leaseToken !== leaseToken ||
+        if (this.nativeProposalEdits.has(chatId) || !pending?.nativeStageId || pending.id !== proposalId || pending.leaseToken !== leaseToken ||
             !stage || stage.id !== pending.nativeStageId || stage.context.root !== root ||
             typeof token !== 'string') throw new Error('Native Roadmap proposal unavailable');
         await this.repository.renew(root, chatId, leaseToken);
@@ -857,6 +896,7 @@ export class ChatBackend implements ChatService {
         const outcome = await this.nativeStages!.decide(stage.context, token, operationIds, decision);
         const remaining = outcome.statuses.some(item => item.status === 'Pending');
         let pendingPreview: ChatPlanningProposal['preview'];
+        let pendingCounts = message.planningActivity.proposal.counts;
         let pendingSummary = message.planningActivity.proposal.summary;
         if (remaining) {
             const current = await this.roadmapStore!.read<RoadmapGateIndex>(root);
@@ -871,15 +911,19 @@ export class ChatBackend implements ChatService {
                 const changed = [...new Set([...old.keys(), ...next.keys()])].filter(id =>
                     JSON.stringify(old.get(id)) !== JSON.stringify(next.get(id)));
                 pendingPreview = roadmapProposalPreview(current, projected, actions, changed);
+                pendingCounts = typedRoadmapCounts(projected);
                 pendingSummary = `${actions.length} pending operation(s) revalidated at Roadmap revision ${current.revision}.`;
             } catch (error) {
+                pendingCounts = undefined;
                 pendingSummary = `Pending operations need a new valid subset: ${String(error)}`;
             }
         }
+        const committed = await this.roadmapStore!.read<RoadmapGateIndex>(root);
         const proposal: ChatPlanningProposal = { ...message.planningActivity.proposal,
-            ownerId: (await this.roadmapStore!.read<RoadmapGateIndex>(root)).projectId,
+            ownerId: committed.projectId,
             revision: outcome.revision ?? message.planningActivity.proposal.revision,
-            summary: pendingSummary, ...(remaining ? { preview: pendingPreview } : {}),
+            summary: pendingSummary, counts: remaining ? pendingCounts : typedRoadmapCounts(committed),
+            ...(remaining ? { preview: pendingPreview } : {}),
             operations: message.planningActivity.proposal.operations?.map(item => ({ ...item,
                 status: outcome.statuses.find(status => status.id === item.id)?.status ?? item.status })) };
         const appliedRevision = !remaining && outcome.statuses.some(item => item.status === 'Applied') ?
@@ -1029,7 +1073,8 @@ export class ChatBackend implements ChatService {
         const localRoadmap = roadmapTurn && connection.providerId === 'local' && !publicationIntent;
         const reasoningOn = connection.providerId === 'local' && !!model.capabilities.localReasoning &&
             (controls['reasoning.effort'] ?? model.capabilities.localReasoning.default) !== 'off';
-        const planningOutput = reasoningOn ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
+        const planningOutput = typedRoadmap ? Math.max(4096, chat.settings.context.reservedOutputTokens) :
+            reasoningOn ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
             chat.settings.context.reservedOutputTokens;
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
             planningOutput, model.capabilities) : undefined;
@@ -1690,6 +1735,11 @@ export class ChatBackend implements ChatService {
                                 stage.operations.map(item => item.action), changedIds);
                             const proposal: ChatPlanningProposal = { id: stage.id, chatId: key,
                                 messageId: assistant.id, ownerId: before.projectId, revision: before.revision,
+                                generation: stage.generation,
+                                counts: typedRoadmapCounts(after),
+                                ...(typedCandidate?.coverageWarnings.length ?
+                                    { warnings: typedCandidate.coverageWarnings.slice(0, 16)
+                                        .map(warning => warning.slice(0, 512)) } : {}),
                                 sourceHash: before.linkedDocument?.sourceHash, changedIds,
                                 action: { type: 'native-stage-preview', id: before.projectId },
                                 operations: stage.operations.map(item => ({ id: item.id, type: item.action.type,
