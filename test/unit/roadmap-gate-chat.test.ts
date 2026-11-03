@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
-import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/node/project-planning-actions.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
@@ -59,245 +58,136 @@ test('linked source IDs are recognized across structural and multi-action refere
         designation: 'G2', title: 'New', purpose: 'New', criteria: [] }] as never, sections), false);
 });
 
-test('saved Chat reviews a schema-two Phase proposal before the Roadmap writer applies it', async () => {
+test('saved Chat retains a native staged Roadmap proposal and validated preview after reload', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-gate-chat-'));
     const store = new RoadmapStore(), repository = new ChatRepository();
-    const projectId = randomUUID();
+    const projectId = randomUUID(), chatId = randomUUID();
+    const markdown = '# Tower defense Roadmap\n';
+    const sourceHash = createHash('sha256').update(markdown).digest('hex');
     const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
         inputsCurrent: async () => false };
     const composer = new ChatContextComposer({} as never, {} as never, index as never, repository, store);
-    const actions = new ProjectPlanningActions(store);
-    let answer: unknown = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
-        summary: 'Create the Combat Systems phase.',
-        actions: [{ type: 'phase.create', id: 'new:1', title: 'Combat Systems',
-            objective: 'Verify combat behavior' }] };
-    let failNext = false;
     const prompts: string[] = [];
+    const model = { id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
+        streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } };
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
-        models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
-            streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } }] }] }),
-    async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
+        models: [model] }] }),
+    async *generate(_selection: unknown, request: { messages: { content: string }[];
+        projectTools?: { roadmapTools?: boolean; execute(name: string, args: unknown): Promise<string> } }) {
         prompts.push(JSON.stringify(request.messages));
-        if (failNext) throw new Error('Fixture model failure');
-        yield { type: 'complete' as const, actualModelId: 'q4', text: JSON.stringify(answer) }; } };
+        if (request.projectTools?.roadmapTools && prompts.length === 2) {
+            const read = JSON.parse(await request.projectTools.execute('roadmap_read', { version: 1 })) as {
+                projectId: string; revision: number; link: { sourceHash: string; syncState: string } };
+            assert.equal(read.projectId, projectId);
+            assert.equal(read.revision, 1);
+            assert.equal(read.link.sourceHash, sourceHash);
+            assert.equal(read.link.syncState, 'synced');
+            const basis = { version: 1, expectedRevision: read.revision,
+                expectedSourceHash: read.link.sourceHash };
+            const first = JSON.parse(await request.projectTools.execute('roadmap_stage', {
+                ...basis, expectedStage: 1, actions: Array.from({ length: 5 }, (_, at) => ({
+                    type: 'phase.create', id: `new:p${at + 1}`, title: `Phase ${at + 1}`,
+                    objective: `Defend lane ${at + 1}` })) })) as { proposalId: string;
+                        acceptedOperationIds: string[]; createdEntityIds: Record<string, string> };
+            assert.equal(first.acceptedOperationIds.length, 5);
+            const second = JSON.parse(await request.projectTools.execute('roadmap_stage', {
+                ...basis, expectedStage: 2, done: true,
+                actions: [1, 1, 2, 3].map((phase, at) => ({ type: 'gate.create',
+                    id: `new:g${at + 1}`, parentPhaseId: `new:p${phase}`,
+                    designation: `G${at + 1}`, title: `Gate ${at + 1}`,
+                    purpose: `Verify lane ${phase}`, criteria: [{ id: `new:c${at + 1}`,
+                        title: `Observe wave ${at + 1}`, expectedResult: `Wave ${at + 1} stops` }] }))
+            })) as { proposalId: string; acceptedOperationIds: string[]; complete: boolean };
+            assert.equal(second.complete, true);
+            assert.equal(second.proposalId, first.proposalId);
+            assert.equal(second.acceptedOperationIds.length, 4);
+            const staged = JSON.parse(await request.projectTools.execute('roadmap_read',
+                { version: 1, stageOffset: 8 })) as { stage: { proposalId: string;
+                    operations: { id: string; action: { parentPhaseId?: string } }[] } };
+            assert.equal(staged.stage.proposalId, first.proposalId);
+            assert.equal(staged.stage.operations.length, 1);
+            assert.equal(staged.stage.operations[0].action.parentPhaseId,
+                first.createdEntityIds['new:p3']);
+        }
+        // A response envelope alone must never become a protected Roadmap proposal.
+        yield { type: 'complete' as const, actualModelId: 'q4',
+            text: request.projectTools?.roadmapTools ?
+                JSON.stringify({ type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
+                    summary: 'Untrusted response text', actions: [] }) :
+                JSON.stringify({ type: 'no-action', message: 'No change was staged.' }) };
+    } };
+    const grounder = { ground: async () => ({ blocks: [], diagnostics: [] }) };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
-        composer, undefined, undefined, actions, undefined, undefined, store);
+        composer, undefined, grounder as never, undefined, undefined, undefined, store);
     try {
+        await writeFile(join(root, 'ROADMAP.md'), markdown);
         await store.saveGateIndex(root, 0, 'uninitialized', { schemaVersion: 2, projectId,
-            projectRoot: root, revision: 1, phases: [], gates: [], corrections: [] });
-        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = randomUUID();
+            projectRoot: root, revision: 1, phases: [], gates: [], corrections: [],
+            linkedDocument: { projectId, projectRoot: root, path: 'ROADMAP.md', sourceHash,
+                syncState: 'synced', sections: [], lastSynced: { sourceHash, fields: [] } } });
+        const canonical = await readFile(join(root, '.dope', 'roadmap.json'));
+        const source = await readFile(join(root, 'ROADMAP.md'));
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href);
         await backend.mutate({ projectHandle, expectedRevision: 0,
             operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Roadmap authoring' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         assert.equal(lease.acquired, true);
         if (!lease.acquired) throw new Error('Chat lease unavailable');
-        const before = await readFile(join(root, '.dope', 'roadmap.json'));
-        const unskilled = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+        const context = [{ kind: 'roadmap' as const, id: 'roadmap', projectId,
+            ownerRevision: 1, sourceHash }];
+        const ordinary = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: 'Add a Phase called Combat Systems.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 1 }] });
-        assert.equal(unskilled.proposal, undefined);
-        assert.equal(unskilled.proposalError, undefined);
-        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
-        assert.doesNotMatch(prompts[0], /Supported action types and fields/);
+            content: '/roadmap Describe a Phase proposal without staging it.', context });
+        assert.equal(ordinary.proposal, undefined);
+        assert.equal(ordinary.proposalError, undefined);
+        assert.equal(prompts.length, 1);
+        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), canonical);
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/roadmap Add a Phase called Combat Systems.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 1 }] });
-        assert.match(prompts[1], /Supported action types and fields/);
-        assert.equal((prompts[1].match(/Dope skill \/roadmap/g) ?? []).length, 1);
+            content: '/roadmap Build a five Phase tower-defense plan.', context });
         assert.ok(turn.proposal);
+        assert.equal(turn.proposal.ownerId, projectId);
+        assert.equal(turn.proposal.revision, 1);
+        assert.equal(turn.proposal.sourceHash, sourceHash);
+        assert.equal(turn.proposal.chatId, chatId);
+        assert.equal(turn.proposal.previewOnly, true);
         assert.equal(turn.proposal.preview?.source, 'validated-roadmap');
-        assert.equal(turn.proposal.preview?.entities[0]?.after?.title, 'Combat Systems');
-        assert.equal(turn.proposal.preview?.entities[0]?.action, 'create');
-        assert.equal(turn.proposal.preview?.steps[0]?.type, 'phase.create');
-        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
-        let recorded = await backend.get(projectHandle, chatId);
-        let activity = recorded?.messages.find(message => message.role === 'assistant' &&
-            message.planningActivity?.proposalId === turn.proposal?.id);
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'pending');
-        assert.deepEqual(activity?.role === 'assistant' && activity.planningActivity?.proposal?.preview?.steps,
-            turn.proposal.preview?.steps);
-        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, turn.proposal.id, false);
-        recorded = await backend.get(projectHandle, chatId);
-        activity = recorded?.messages.find(message => message.role === 'assistant' &&
-            message.planningActivity?.proposalId === turn.proposal?.id);
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'denied');
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
-            turn.proposal.id, true), /unavailable/);
-        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
-        const retry = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/roadmap', context: [] });
-        assert.ok(retry.proposal);
-        assert.ok(retry.refs.some(ref => ref.kind === 'roadmap'));
-        assert.match(prompts[2], /Add a Phase called Combat Systems/);
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, 'wrong-lease',
-            retry.proposal.id, true), /unavailable/);
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, randomUUID(), lease.token,
-            retry.proposal.id, true), /unavailable/);
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
-            randomUUID(), true), /unavailable/);
-        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), before);
-        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, retry.proposal.id, true);
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
-            retry.proposal.id, true), /unavailable/);
-        recorded = await backend.get(projectHandle, chatId);
-        activity = recorded?.messages.find(message => message.role === 'assistant' &&
-            message.planningActivity?.proposalId === retry.proposal?.id);
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'applied');
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.appliedRevision, 2);
-        const saved = await store.read(root);
-        assert.equal(saved.revision, 2);
-        assert.equal(saved.phases[0].title, 'Combat Systems');
-        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 1,
-            summary: 'Create a Stale Phase.',
-            actions: [{ type: 'phase.create', id: 'new:2', title: 'Stale Phase', objective: 'Too old' }] };
-        const invalid = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Stale Phase.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
-        assert.equal(invalid.proposal, undefined);
-        assert.ok(invalid.proposalError);
-        recorded = await backend.get(projectHandle, chatId);
-        activity = recorded?.messages.find(message => message.role === 'assistant' &&
-            message.planningActivity?.diagnostic === invalid.proposalError);
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'rejected');
-        assert.deepEqual(await store.read(root), saved);
-        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
-            summary: 'Create a Superseded Phase.',
-            actions: [{ type: 'phase.create', id: 'new:3', title: 'Superseded Phase', objective: 'Not applied' }] };
-        const replaced = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Superseded Phase.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
-        assert.ok(replaced.proposal);
-        answer = { type: 'no-action', message: 'Combat Systems is the first Phase.' };
-        const beforeQuestion = await readFile(join(root, '.dope', 'roadmap.json'));
-        const question = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: 'Which Phase comes first?',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
-        assert.equal(question.proposalError, undefined);
-        assert.equal(question.proposal, undefined);
-        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), beforeQuestion);
-        recorded = await backend.get(projectHandle, chatId);
-        activity = recorded?.messages.find(message => message.role === 'assistant' &&
-            message.planningActivity?.proposalId === replaced.proposal?.id);
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'superseded');
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
-            replaced.proposal!.id, true), /unavailable/);
-        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
-            summary: 'Create a Failed Phase.',
-            actions: [{ type: 'phase.create', id: 'new:4', title: 'Failed Phase', objective: 'Not written' }] };
-        const failed = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Failed Phase.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
-        assert.ok(failed.proposal);
-        const originalApply = actions.apply;
-        actions.apply = async () => { throw new Error('Fixture writer unavailable'); };
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
-            failed.proposal.id, true), /Fixture writer unavailable/);
-        actions.apply = originalApply;
-        recorded = await backend.get(projectHandle, chatId);
-        activity = recorded?.messages.find(message => message.role === 'assistant' &&
-            message.planningActivity?.proposalId === failed.proposal?.id);
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'rejected');
-        assert.match(activity?.role === 'assistant' ? activity.planningActivity?.diagnostic ?? '' : '',
-            /Fixture writer unavailable/);
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
-            failed.proposal.id, true), /unavailable/);
-        assert.deepEqual(await store.read(root), saved);
-        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
-            summary: 'Create a Cancelled Phase.',
-            actions: [{ type: 'phase.create', id: 'new:5', title: 'Cancelled Phase', objective: 'Not written' }] };
-        const cancelled = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add Cancelled Phase.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
-        assert.ok(cancelled.proposal);
-        await backend.cancelTurn(projectHandle, chatId, lease.token);
-        recorded = await backend.get(projectHandle, chatId);
-        activity = recorded?.messages.find(message => message.role === 'assistant' &&
-            message.planningActivity?.proposalId === cancelled.proposal?.id);
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'cancelled');
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
-            cancelled.proposal.id, true), /unavailable/);
-        assert.deepEqual(await store.read(root), saved);
-        failNext = true;
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/roadmap Add a Phase.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] }));
-        failNext = false;
-        recorded = await backend.get(projectHandle, chatId);
-        const failedAttempt = recorded?.messages.findLast(message => message.role === 'assistant' &&
-            message.execution.status === 'failed');
-        assert.ok(failedAttempt);
-        const callsBeforeRetry = prompts.length;
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Retry',
-            retryMessageId: failedAttempt.id }), /Start a fresh \/roadmap turn/);
-        assert.equal(prompts.length, callsBeforeRetry);
-        assert.deepEqual(await store.read(root), saved);
-        const phaseList = Array.from({ length: 70 }, (_, order) => ({ id: `phase-${order}`,
-            projectId, title: `Phase ${order}`, objective: `Objective ${order}`, order, dependencies: [],
-            implementationStatus: 'unknown' as const, qualificationStatus: 'unknown' as const,
-            gateSetCoverage: { status: 'unreviewed' as const } }));
-        const gateList = Array.from({ length: 52 }, (_, order) => ({ id: `gate-${order}`,
-            projectId, parentPhaseId: 'phase-69', designation: `G${order}`, title: `Gate ${order}`,
-            purpose: `Purpose ${order}`, order, dependencies: [], draftAcceptance: 'accepted',
-            criteria: Array.from({ length: 16 }, (_, number) => ({ id: `criterion-${order}-${number}`,
-                projectId, title: `Criterion ${number}`, expectedResult: `Expected ${number}`,
-                order: number, evidence: [] })) }));
-        const large = { schemaVersion: 2 as const, projectId, projectRoot: root, revision: 2,
-            phases: phaseList, gates: gateList, corrections: [] };
-        const largeComposer = new ChatContextComposer({} as never, {} as never, index as never,
-            repository, { read: async () => large } as never);
-        const savedChat = await backend.get(projectHandle, chatId);
-        assert.ok(savedChat);
-        const selectedContext = [{ kind: 'roadmap' as const, id: 'gate-50', projectId, ownerRevision: 2 }];
-        const readOnly = await largeComposer.compose(root, savedChat, 'What does this criterion require?',
-            selectedContext, { conversationalText: true, streaming: true, contextWindowTokens: 16384 });
-        assert.doesNotMatch(JSON.stringify(readOnly.messages), /Supported action types and fields/);
-        assert.match(JSON.stringify(readOnly.messages), /criterion-50-15/);
-        assert.doesNotMatch(JSON.stringify(readOnly.messages), /gate-0/);
-        const skilled = await largeComposer.compose(root, savedChat, '/roadmap Edit gate-50',
-            [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }],
-            { conversationalText: true, streaming: true, contextWindowTokens: 16384 },
-            undefined, false, false, undefined, true, true);
-        assert.match(JSON.stringify(skilled.messages), /Supported action types and fields/);
-        assert.match(JSON.stringify(skilled.messages), /criterion-50-15/);
-        assert.match(JSON.stringify(skilled.messages), /phase-69/);
-        assert.match(JSON.stringify(skilled.messages), /siblingGates/);
-        assert.ok(skilled.messages.some(message => message.content.includes('"designation":"G50"')));
-        assert.match(JSON.stringify(skilled.messages), /Every Gate designation must match G/);
-        const explicitGate = await largeComposer.compose(root, savedChat,
-            '/roadmap Edit gate-50 but keep its title unchanged',
-            [{ kind: 'roadmap', id: 'phase-69', projectId, ownerRevision: 2 }],
-            { conversationalText: true, streaming: true, contextWindowTokens: 16384 },
-            undefined, false, false, undefined, true, true);
-        assert.ok(explicitGate.messages.some(message => message.content.includes('"target":{"id":"gate-50"')));
-        assert.ok(explicitGate.messages.some(message => message.content.includes('"title":"Gate 50"')));
-        assert.ok(skilled.diagnostics.some(item => item.message.includes('first 64')));
-        assert.ok(skilled.usedTokens <= skilled.budgetTokens);
-        answer = { type: 'roadmap-gate-proposal', projectId, ownerRevision: 2,
-            summary: 'Create a Lease Bound Phase.',
-            actions: [{ type: 'phase.create', id: 'new:6', title: 'Lease Bound Phase',
-                objective: 'Must remain uncommitted' }] };
-        const leaseBound = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/roadmap Add Lease Bound Phase.',
-            context: [{ kind: 'roadmap', id: 'roadmap', projectId, ownerRevision: 2 }] });
-        assert.ok(leaseBound.proposal);
-        const beforeRelease = await readFile(join(root, '.dope', 'roadmap.json'));
-        await backend.release(projectHandle, chatId, lease.token);
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, lease.token,
-            leaseBound.proposal.id, true), /unavailable/);
-        const nextLease = await backend.claim({ projectHandle, chatId, ownerId: 'next-panel' });
-        assert.ok(nextLease.acquired);
-        await assert.rejects(backend.decidePlanningProposal(projectHandle, chatId, nextLease.token,
-            leaseBound.proposal.id, true), /unavailable/);
-        recorded = await backend.get(projectHandle, chatId);
-        activity = recorded?.messages.find(message => message.role === 'assistant' &&
-            message.planningActivity?.proposalId === leaseBound.proposal?.id);
-        assert.equal(activity?.role === 'assistant' && activity.planningActivity?.status, 'stale');
-        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), beforeRelease);
+        assert.equal(turn.proposal.preview?.totalChanged, 13);
+        assert.equal(turn.proposal.preview?.additionalChanges, 0);
+        assert.equal(turn.proposal.preview?.steps.length, 9);
+        assert.equal(turn.proposal.preview?.entities.length, 13);
+        assert.equal(turn.proposal.preview?.entities.filter(item => item.after?.kind === 'gate').length, 4);
+        assert.equal(turn.proposal.preview?.entities.filter(item => item.after?.kind === 'criterion').length, 4);
+        assert.equal(new Set(turn.proposal.preview?.entities.filter(item => item.after?.kind === 'gate')
+            .map(item => item.after?.parentId)).size, 3);
+        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), canonical);
+        assert.deepEqual(await readFile(join(root, 'ROADMAP.md')), source);
+        assert.equal(prompts.length, 2, 'no second model pass parses the response');
+        backend.dispose();
+        const reloaded = new ChatBackend(new ChatRepository(), { notifyChatEvent() {} });
+        try {
+            const reopened = await reloaded.attach(pathToFileURL(root).href);
+            const saved = await reloaded.get(reopened.projectHandle, chatId);
+            const assistant = saved?.messages.find(message => message.role === 'assistant' &&
+                message.planningActivity?.proposalId === turn.proposal?.id);
+            assert.ok(assistant && assistant.role === 'assistant');
+            assert.equal(assistant.planningActivity?.status, 'pending');
+            assert.equal(assistant.planningActivity?.kind, 'roadmap-gate-proposal');
+            assert.equal(assistant.planningActivity?.proposalId, turn.proposal.id);
+            assert.equal(assistant.planningActivity?.proposal?.id, turn.proposal.id);
+            assert.equal(assistant.planningActivity?.proposal?.messageId, assistant.id);
+            assert.equal(assistant.planningActivity?.proposal?.chatId, chatId);
+            assert.equal(assistant.planningActivity?.proposal?.ownerId, projectId);
+            assert.equal(assistant.planningActivity?.proposal?.revision, 1);
+            assert.equal(assistant.planningActivity?.proposal?.sourceHash, sourceHash);
+            assert.equal(assistant.planningActivity?.proposal?.previewOnly, true);
+            assert.deepEqual(assistant.planningActivity?.proposal?.changedIds, turn.proposal.changedIds);
+            assert.deepEqual(assistant.planningActivity?.proposal?.preview,
+                JSON.parse(JSON.stringify(turn.proposal.preview)));
+            assert.ok(assistant.planningActivity?.refs.some(ref => ref.kind === 'roadmap' &&
+                ref.projectId === projectId && ref.ownerRevision === 1 && ref.sourceHash === sourceHash));
+            assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), canonical);
+            assert.deepEqual(await readFile(join(root, 'ROADMAP.md')), source);
+        } finally { reloaded.dispose(); }
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
