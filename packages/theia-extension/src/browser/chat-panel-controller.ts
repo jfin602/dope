@@ -1,6 +1,6 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
 import type { Chat, ChatCollection, ChatFolderPath, ChatActivityEvent } from '@dope/chat';
-import type { ChatClient, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
+import type { ChatClient, ChatEvent, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
     ChatPlanningProposal, ChatRoadmapOffer, ChatStrategicDraftReview, ChatTurnResult,
     ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
@@ -123,7 +123,8 @@ export class ChatPanelController {
 
     constructor(private readonly connect: () => ChatConnection, private readonly changed: (kind?: 'activity') => void,
         private readonly owners = new ChatOpenOwners(), private readonly panelId: string = crypto.randomUUID(),
-        private readonly focus = () => {}, private readonly planning?: ChatPlanningSelection) {
+        private readonly focus = () => {}, private readonly planning?: ChatPlanningSelection,
+        private readonly onRoadmapStage?: (event: Extract<ChatEvent, { kind: 'roadmap-stage' }>, workspace: string) => void) {
         this.planningListener = planning?.onChange(() => {
             ++this.planningGeneration; this.lastContext = undefined; this.changed();
         });
@@ -244,7 +245,11 @@ export class ChatPanelController {
                     // finish a release RPC. Recheck through the normal atomic claim.
                     void this.select(chatId, true);
                 }
-                if (event.kind === 'roadmap-stage') return; // R3 owns canvas presentation.
+                if (event.kind === 'roadmap-stage') {
+                    if (this.workspace && event.chatId === this.chatId &&
+                        (this.running || event.snapshot === null)) this.onRoadmapStage?.(event, this.workspace);
+                    return;
+                }
                 this.eventRevision = Math.max(this.eventRevision, event.revision);
                 if (!this.pending && !this.running && this.handle && event.revision > (this.snapshot?.revision ?? -1)) void this.refresh();
             } });

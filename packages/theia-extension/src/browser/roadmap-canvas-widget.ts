@@ -20,7 +20,7 @@ import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
-import type { ChatStrategicDraftReview, ChatEvent, ChatPlanningProposal, ChatContextSelection } from '@dope/chat/lib/service';
+import type { ChatStrategicDraftReview, ChatEvent, ChatPlanningProposal, ChatContextSelection, ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
@@ -124,15 +124,26 @@ function ProposedChange({ change, source, sourceChanges }: { change: ProposalCha
 
 function ProposedPhaseNode({ data }: { data: { change: ProposalChange; children: ProposalChange[]; source: boolean;
     sourceChanges?: { before: string; after: string }[] } }): React.ReactElement {
+    const gates = data.children.filter(child => child.after?.kind === 'gate');
+    const nested = new Set(gates.flatMap(gate => data.children.filter(child =>
+        child.after?.parentId === gate.id).map(child => child.id)));
     return React.createElement('section', { className: 'dope-roadmap-node dope-roadmap-phase-card dope-roadmap-proposal-phase' },
         React.createElement(ProposedChange, { change: data.change, source: data.source,
             sourceChanges: data.sourceChanges }),
-        ...data.children.map(child => React.createElement(ProposedChange, { key: child.id, change: child,
-            source: data.source })));
+        ...gates.map(gate => React.createElement('details', { key: gate.id, open: true,
+            className: 'dope-roadmap-gate-row dope-roadmap-proposal-new-gate',
+            'data-proposal-gate-id': gate.id },
+        React.createElement('summary', null, `${gate.after?.title ?? gate.id} · Proposed Gate`),
+        React.createElement(ProposedChange, { change: gate, source: data.source }),
+        ...data.children.filter(child => child.after?.parentId === gate.id).map(child =>
+            React.createElement(ProposedChange, { key: child.id, change: child, source: data.source })))),
+        ...data.children.filter(child => child.after?.kind !== 'gate' && !nested.has(child.id)).map(child =>
+            React.createElement(ProposedChange, { key: child.id, change: child, source: data.source })));
 }
 
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
     historical?: boolean;
+    proposalAutoExpand?: boolean;
     phaseObjective?: string; correctionObjectives?: Record<string, string>; editField?: InlineSave;
     beginCreate?: (kind: 'gate' | 'criterion' | 'correction', parentId: string) => void;
     proposalChanges?: ProposalChange[]; proposalSource?: boolean;
@@ -199,7 +210,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             data.contextPick ? React.createElement('div', { className: 'dope-roadmap-context-gates' },
                 ...card.gates.map(gate => pick('gate', gate.id, `${gate.designation} · ${gate.title}`))) : null,
             ...card.gates.map(gate => React.createElement('details', { key: gate.id,
-                open: data.proposalChanges?.some(change => change.id === gate.id ||
+                open: data.proposalAutoExpand && data.proposalChanges?.some(change => change.id === gate.id ||
                     change.before?.parentId === gate.id || change.after?.parentId === gate.id) || undefined,
                 className: `dope-roadmap-gate-row dope-roadmap-gate-${gate.status} nodrag nopan${data.proposalChanges?.some(change => change.id === gate.id && change.action === 'delete') ? ' dope-roadmap-proposal-ghost' : ''}`, 'data-gate-id': gate.id,
                 'aria-current': data.selectedGateId === gate.id ? 'true' : undefined,
@@ -332,6 +343,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
         resolve: (value: ChatContextSelection[] | undefined) => void };
     private readonly strategicBar = document.createElement('section');
     private readonly proposalBar = document.createElement('section');
+    private readonly stageNotice = document.createElement('p');
+    private liveStage?: { uri: string; snapshot: ChatRoadmapStageSnapshot };
+    private pendingStage?: { uri: string; snapshot: ChatRoadmapStageSnapshot };
+    private readonly endedStages = new Map<string, string>();
+    private stageFrame = 0;
     private readonly proposalSelection = new Set<string>();
     private proposalReview?: { ids: string[]; decision: 'apply' | 'reject'; summary: string;
         preview?: ChatPlanningProposal['preview'] };
@@ -846,6 +862,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.proposalBar.className = 'dope-roadmap-native-review';
         this.proposalBar.setAttribute('aria-label', 'Review proposed Roadmap operations');
         this.proposalBar.hidden = true;
+        this.stageNotice.className = 'dope-roadmap-live-stage';
+        this.stageNotice.setAttribute('role', 'status');
+        this.stageNotice.setAttribute('aria-live', 'polite');
+        this.stageNotice.hidden = true;
         this.contextBar.className = 'dope-roadmap-context-bar';
         this.contextBar.setAttribute('aria-label', 'Select Roadmap elements for Chat');
         this.contextBar.hidden = true;
@@ -860,7 +880,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.structuralPanel.hidden = true;
         this.stage.append(this.contextBar, this.path, this.status, this.strategicBar, this.importEntry, this.inspection, this.phaseFocus, this.poolButton, this.pools);
         this.stage.append(this.structuralPanel);
-        this.stage.append(this.proposalBar, this.historyStrip);
+        this.stage.append(this.stageNotice, this.proposalBar, this.historyStrip);
         this.node.append(this.toolbar, this.stage);
         this.stageResize.observe(this.stage);
         this.setSourceOpen(false);
@@ -992,6 +1012,49 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.selectedId = undefined;
         this.render();
         void this.refresh();
+    }
+
+    /** Events are observations of the single backend stage owner; they never grant Apply. */
+    receiveChatStage(uri: string, event: Extract<ChatEvent, { kind: 'roadmap-stage' }>, _active: boolean): void {
+        if (this.isDisposed || this.projectUri !== uri) return;
+        if (!event.snapshot) {
+            const latest = this.pendingStage?.snapshot ?? this.liveStage?.snapshot;
+            if (latest?.chatId !== event.chatId || latest.turnId !== event.messageId) return;
+            this.endedStages.set(event.chatId, event.messageId);
+            this.liveStage = undefined; this.pendingStage = undefined;
+            if (this.stageFrame) cancelAnimationFrame(this.stageFrame);
+            this.stageFrame = 0;
+            this.stageNotice.textContent = `Proposed · Not applied · ${event.reason === 'cancelled' ? 'Cancelled' :
+                event.reason === 'stale' ? 'Stale' : 'Failed'}`;
+            this.stageNotice.hidden = !!this.history;
+            this.render();
+            return;
+        }
+        const snapshot = event.snapshot;
+        const index = this.inspector.gateIndex;
+        if (!index || snapshot.chatId !== event.chatId || snapshot.turnId !== event.messageId ||
+            this.endedStages.get(event.chatId) === event.messageId ||
+            snapshot.projectId !== index.projectId || snapshot.revision !== index.revision ||
+            snapshot.sourceHash !== (index.linkedDocument?.sourceHash ?? null) ||
+            snapshot.expiresAt <= Date.now() || this.chatProposal ||
+            this.liveStage && (this.liveStage.snapshot.chatId !== snapshot.chatId ||
+                this.liveStage.snapshot.turnId !== snapshot.turnId ||
+                this.liveStage.snapshot.proposalId !== snapshot.proposalId ||
+                snapshot.sequence <= this.liveStage.snapshot.sequence) ||
+            this.pendingStage && snapshot.sequence <= this.pendingStage.snapshot.sequence) return;
+        this.pendingStage = { uri, snapshot };
+        if (!this.stageFrame) this.stageFrame = requestAnimationFrame(() => {
+            this.stageFrame = 0;
+            const pending = this.pendingStage;
+            this.pendingStage = undefined;
+            if (!pending || this.projectUri !== pending.uri || this.isDisposed) return;
+            const current = this.inspector.gateIndex;
+            if (!current || current.projectId !== pending.snapshot.projectId ||
+                current.revision !== pending.snapshot.revision ||
+                (current.linkedDocument?.sourceHash ?? null) !== pending.snapshot.sourceHash) return;
+            this.liveStage = pending;
+            this.render();
+        });
     }
 
     private async compareHistory(): Promise<void> {
@@ -1143,6 +1206,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const roots = await this.workspaces.roots;
             if (this.isDisposed || request !== this.request) return;
             if (roots.length !== 1 || roots[0].resource.scheme !== 'file') {
+                this.liveStage = undefined; this.pendingStage = undefined; this.stageNotice.hidden = true;
+                this.endedStages.clear();
                 this.history = undefined; this.revisionList = undefined; ++this.historySerial;
                 this.historyBusy = false; this.renderHistoryControls();
                 this.flushPresentation();
@@ -1175,7 +1240,16 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.pendingChatProposalCamera = undefined;
                 this.chatProposalCameraObserver.disconnect();
             }
+            if (this.liveStage && (this.liveStage.uri !== projectUri ||
+                this.liveStage.snapshot.projectId !== index.projectId ||
+                this.liveStage.snapshot.revision !== index.revision ||
+                this.liveStage.snapshot.sourceHash !== (index.linkedDocument?.sourceHash ?? null))) {
+                this.liveStage = undefined; this.pendingStage = undefined;
+                this.stageNotice.hidden = true;
+            }
             if (switched) {
+                this.liveStage = undefined; this.pendingStage = undefined; this.stageNotice.hidden = true;
+                this.endedStages.clear();
                 this.history = undefined; this.revisionList = undefined; ++this.historySerial;
                 this.historyBusy = false;
                 if (this.strategic && (this.strategic.uri !== projectUri || this.strategic.projectId !== index.projectId))
@@ -1354,6 +1428,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             index.linkedDocument?.sourceHash !== proposal.sourceHash ||
             this.inspector.index.revision !== index.revision)
             throw new Error('Roadmap revision or linked source changed. Refresh the Chat selection.');
+        this.liveStage = undefined; this.pendingStage = undefined;
+        this.stageNotice.hidden = true;
         this.chatProposal = { uri, chatId, proposal };
         this.proposalSelection.clear();
         this.proposalReview = undefined;
@@ -1926,6 +2002,15 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.renderHistoryControls();
         this.renderContextPicker();
         this.renderProposalBar();
+        const live = this.history ? undefined : this.liveStage;
+        if (live) {
+            const { sequence, counts, incompletePhaseIds, complete } = live.snapshot;
+            this.stageNotice.textContent = `Proposed · Not applied · ${complete ? 'Ready for review' :
+                incompletePhaseIds.length ? 'Incomplete' : 'Generating'} · Stage ${sequence} · ` +
+                `${counts.phases} provisional Phases, ${counts.gates} provisional Gates, ` +
+                `${counts.criteria} provisional Criteria`;
+            this.stageNotice.hidden = false;
+        } else if (this.history || this.chatProposal) this.stageNotice.hidden = true;
         this.renderStrategicBar();
         this.renderDraftInspection();
         this.renderPhaseFocus();
@@ -2173,7 +2258,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             relations.set(edge.to, [...(relations.get(edge.to) ?? []),
                 `${edge.label} ${titles.get(edge.from) ?? edge.from}`]);
         const proposal = this.history ? undefined : this.chatProposal?.proposal;
-        const changes = proposal?.preview?.entities ?? [];
+        const changes = proposal?.preview?.entities ?? (this.history ? undefined : this.liveStage?.snapshot.preview.entities) ?? [];
         const gateIndex = this.history?.index ?? this.inspector.gateIndex;
         const proposalPhase = (change: ProposalChange): string | undefined => {
             const value = change.after ?? change.before;
@@ -2202,6 +2287,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                         toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) =>
                             this.toggleContextElement(kind, id) } : undefined,
                     proposalChanges: changes.filter(change => proposalPhase(change) === item.id),
+                    proposalAutoExpand: !!proposal,
                     proposalSource: proposal?.preview?.source === 'validated-markdown-patch',
                     proposalSourceChanges: proposal?.preview?.sourceChanges,
                     detail: this.detail, historical: !!this.history,

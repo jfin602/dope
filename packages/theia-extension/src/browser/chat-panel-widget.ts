@@ -285,7 +285,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             accepted: boolean, changedIds: string[]) => Promise<void>,
         private readonly roadmapPicker?: { available: (projectUri: string) => boolean;
             active?: () => boolean;
-            begin: (projectUri: string) => Promise<ChatContextSelection[] | undefined> }) {
+            begin: (projectUri: string) => Promise<ChatContextSelection[] | undefined> },
+        private readonly onRoadmapStage?: (event: Extract<ChatEvent, { kind: 'roadmap-stage' }>, workspace: string) => void) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -300,7 +301,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (kind === 'activity' && this.updateLiveStreamActivity()) return;
             this.render(); this.syncStrategicRoadmap();
         }, owners, this.id,
-            () => { void this.shell.activateWidget(this.id); }, planningSelection);
+            () => { void this.shell.activateWidget(this.id); }, planningSelection, onRoadmapStage);
         this.panel = new SharedPanelState(workOwners, this.id,
             () => { this.panel.setMode('work'); void this.shell.activateWidget(this.id); }, () => this.render());
         this.panel.mode = this.module;

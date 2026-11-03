@@ -10,6 +10,7 @@
 .dope-roadmap-context-pick[aria-pressed="true"] { border-color: var(--theia-focusBorder); background: color-mix(in srgb, var(--theia-focusBorder) 24%, var(--theia-editorWidget-background)); font-weight: 700; }
 .dope-roadmap-context-gates { display: flex; flex-wrap: wrap; gap: 6px; }
 .dope-roadmap-stage-host > [hidden] { display: none !important; }
+.dope-roadmap-live-stage { position: absolute; top: 8px; left: 8px; z-index: 4; max-width: min(90%, 36rem); margin: 0; padding: 6px 10px; border: 1px solid var(--theia-focusBorder); border-radius: 6px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); color: var(--theia-editor-foreground); font-size: 12px; pointer-events: none; }
 .dope-roadmap-historical > .dope-roadmap-inspection,
 .dope-roadmap-historical > .dope-roadmap-import,
 .dope-roadmap-historical > .dope-roadmap-phase-focus,

@@ -618,6 +618,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                         throw new Error('Open Chat and the same project Roadmap side by side first');
                     return widget.beginContextPicker(projectUri);
                 }
+            }, (event, workspace) => {
+                const widget = context.container.get(WidgetManager).tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
+                if (widget) widget.receiveChatStage(workspace, event,
+                    context.container.get(ApplicationShell).getCurrentWidget('main') === widget);
             });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
