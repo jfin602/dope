@@ -1,0 +1,39 @@
+TASK: Correction 12 / P4 — stream validated provisional Roadmap construction
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Soft target <=8 minutes; hard stop 15 minutes per bounded runner step. Report NOT GREEN/STOP with facts if safety or scope cannot be achieved.
+- Existing runner owns commits and verified checkpoint. Do NOT self-commit, bump version, run overlapping stacks or start live local-model/browser qualification.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Check local manifest and existing runner before editing; fail safely on mismatch.
+
+PREFLIGHT / AUTHORITY
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047/0048/0049, docs/planning/p12/roadmap-phase-orchestration-contract.md, c12-rm-orch README/assessment/plan, prior Pn outcome, actual source/tests.
+- Verify actual local HEAD/branch/status/diff and reconcile reported dirty D2 files. Remote documentation is not proof of local status. No reset/stash/clean, force push, overwriting owner's tower-defense project or unsafe automatic migration.
+- Reuse existing schema-2 RoadmapStore/Service, protected Pi broker/Ask-Allow, /roadmap skill, one noncanonical proposal/stage authority, granular owner approval, checked linked Markdown sync, History and evidence/qualification. Never add a second writer, generic model filesystem channel, provider switch or self-Apply.
+- Use disposable fixtures and focused tests, report exact counts, source hashes and truthful scope. A matching commit alone is not GREEN.
+
+PREREQUISITE
+- P2 controller events and P3 real validated native Phase/Gate stage snapshots must exist. STOP if producer cannot identify one proposal and monotonic stage sequence.
+
+OBJECTIVE
+- Let the user watch Phases, Gates and Criteria appear inside the existing center Roadmap canvas **as validated native operations complete**, without slowing Pi inference or model tool execution.
+
+IMPLEMENT
+1. Trace backend stage owner projection and existing Chat/canvas event bridge. Publish minimal authoritative `generationId / proposalId / seq / status / counts / projectionRevision` after each successful validated Phase/Gate stage (or bounded batch), bound to exact project/Chat/turn/revision/source owner. No browser parsing of model prose or second proposal store.
+2. Consume stage events through existing canvas provisional overlay and proposal owner. Update nested Phase/Gate/Criteria in place; show Generating/Incomplete/Ready/Failed/Cancelled/Stale, actual stage counts and no accepted/planned/qualified inflation. Only completed, validated objects appear; incomplete children are visibly not review-ready.
+3. Preserve active-tab-only automatic preview, manual View in Roadmap, one-time initial optional locate, canvas pan/zoom/user camera, keyboard selection/focus, historical revision browsing and project/tab isolation. Do not auto-switch tabs, repeatedly fit viewport, or steal focus. Respect reduced-motion.
+4. UI render notifications can be asynchronous/coalesced/dropped, but stage data, proposal sequence and audit owner remain durable/authoritative. Inference and broker stages never await animation or UI paint; re-open reconstructs current validated projection by owner readback, not replay of missing render events.
+5. Preserve separately streamed provider reasoning text if available, including paragraph rendering policy; without reasoning tokens show truthful controller activity instead of fabricated thought or speculative percentages. Chat keeps compact progress/ready status and View button, no duplicate Apply/Reject interface.
+
+QUALIFY
+- Deterministic multi-stage producer emits 3 Phase updates with nested Gate/Criteria and a complete final; canvas shows all identities without full-answer wait. Measure absence of synchronous UI dependency with slow/unmounted consumer.
+- Background/closed tab, project switch, history mode, pan/zoom after first locate, duplicate/out-of-order events, cancellation and stale stage all handled without ghosts/approval leaks.
+- Assert server projection is sole source, no extra inference calls, no canonical/Markdown/History writes from visualization.
+- Focused bridge/canvas component tests, typecheck and realistic event snapshots; no fake connected-Chrome qualification.
+
+EXIT
+- Live provisional UI source-qualified only. Actual Pi model/browser visual proof reserved for manual P7. Unsafe ghost/camera/status leak => STOP.
