@@ -229,12 +229,6 @@ export class ChatPanelController {
                     this.changed(); return;
                 }
                 if (event.kind === 'planning-progress') {
-                    if ((this.pending || this.running) && event.chatId === this.chatId &&
-                        (this.roadmapOffer?.id === event.messageId || this.activeRoadmapOfferId === event.messageId)) {
-                        this.roadmapGenerationStage = event.stage;
-                        this.changed();
-                        return;
-                    }
                     if (!this.running || event.chatId !== this.chatId ||
                         event.stage !== 'waiting' && event.stage !== 'plan-locked' &&
                         event.stage !== 'converting' && event.stage !== 'validating' ||
@@ -592,15 +586,10 @@ export class ChatPanelController {
             this.changed(); return false;
         }
         const content = this.draft;
-        const offerReply = !retryMessageId && /^yes,?\s+create the roadmap[.!]?$/i.test(content.trim());
         const keepReview = !!this.strategicDraftReview && !retryMessageId &&
             (/^roadmap[.!?]?$/i.test(content.trim()) ||
                 !/\b(?:roadmap|phase|checkpoint|tower|enemy|health|currency|money|abilit(?:y|ies))\b/i.test(content));
-        this.activeRoadmapOfferId = offerReply ? this.roadmapOffer?.id : undefined;
-        if (this.activeRoadmapOfferId) {
-            this.roadmapGenerationProjectId = this.roadmapOffer?.projectId;
-            this.roadmapGenerationStage = 'checking-owner';
-        }
+        this.activeRoadmapOfferId = undefined;
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
         this.running = true; this.runStartedAt = new Date().toISOString();
@@ -618,8 +607,8 @@ export class ChatPanelController {
         this.turnModel = undefined;
         this.changed();
         try {
-            const context = offerReply ? [] : await this.turnContext();
-            const bridgeProposal = offerReply ? undefined : bridgeBranchIds ?
+            const context = await this.turnContext();
+            const bridgeProposal = bridgeBranchIds ?
                 this.planning?.bridge(this.workspace!, bridgeBranchIds) : undefined;
             if (generation !== this.generation || chatId !== this.chatId || lease !== this.lease)
                 throw new Error('Chat changed while resolving planning selection');
@@ -671,28 +660,6 @@ export class ChatPanelController {
                     this.changed();
                 }
             }
-        }
-    }
-    async decideRoadmapOffer(approve: boolean, selectedModel?: ChatModelSelection): Promise<void> {
-        const lease = this.lease, offer = this.roadmapOffer;
-        if (!lease || !offer || this.pending || this.running || offer.chatId !== lease.chatId) return;
-        const generation = this.generation;
-        this.pending = true; this.changed();
-        try {
-            if (approve) { this.activeRoadmapOfferId = offer.id; this.roadmapGenerationProjectId = offer.projectId;
-                this.roadmapGenerationStage = 'checking-owner'; this.changed(); }
-            const outcome = await lease.connection.decideRoadmapOffer(lease.handle, lease.chatId,
-                lease.token, offer.id, offer.token, approve, selectedModel);
-            if (generation !== this.generation || lease !== this.lease) return;
-            if (outcome !== 'declined') this.strategicDraftReview = outcome;
-        } catch (error) {
-            if (generation !== this.generation || lease !== this.lease) return;
-            this.error = `Roadmap offer was not accepted: ${String(error)}. Ask Chat for a revised phase plan before another offer.`;
-        } finally {
-            if (generation !== this.generation || lease !== this.lease) return;
-            this.roadmapOffer = undefined; this.roadmapGenerationStage = undefined;
-            this.pending = false; this.changed(); await this.refresh(true);
-            this.activeRoadmapOfferId = undefined;
         }
     }
     async decideStrategicDraft(approve: boolean): Promise<void> {
@@ -788,6 +755,10 @@ export class ChatPanelController {
     setDraft(value: string): void {
         if (this.autoRoadmapPrefix && !/^\/roadmap(?=\s|$)/.test(value)) this.autoRoadmapPrefix = false;
         this.draft = value;
+    }
+    prefillRoadmapGeneration(): void {
+        this.setDraft('/gen-roadmap ');
+        this.changed();
     }
     addRoadmapElements(selections: ChatContextSelection[]): void {
         if (!selections.length || selections.some(item => item.kind !== 'roadmap' || !item.elementKind ||

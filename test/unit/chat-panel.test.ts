@@ -56,15 +56,17 @@ test('Chat delegates connection repair to AI Center and listens for live registr
     assert.doesNotMatch(widget, /setSessionCredential|\.upsert\(|\.activate\(|SecretInputDialog|setupModels|private async reconnect/);
 });
 
-test('strategic generation follows the saved Chat and puts visual review in Roadmap', async () => {
+test('retired strategic generation has only an inert historical card and command prefill', async () => {
     const controller = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-controller.ts', import.meta.url), 'utf8');
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
-    assert.match(controller, /event\.chatId === this\.chatId[\s\S]*this\.roadmapGenerationStage = event\.stage/);
-    assert.match(controller, /this\.roadmapGenerationStage = undefined; this\.roadmapGenerationProjectId = undefined/);
+    assert.doesNotMatch(controller, /this\.roadmapGenerationStage = event\.stage/);
+    assert.doesNotMatch(controller, /async decideRoadmapOffer\(/);
+    assert.match(controller, /prefillRoadmapGeneration\(\)/);
     assert.match(controller, /lease\.connection\.cancelTurn\(lease\.handle, lease\.chatId, lease\.token\)/);
     assert.match(widget, /Extracting saved plan/);
     assert.doesNotMatch(widget, /Waiting for the selected model/);
-    assert.match(widget, /Cancel generation/);
+    assert.match(widget, /Write generation command/);
+    assert.doesNotMatch(widget, /state\.decideRoadmapOffer/);
     assert.match(widget, /roadmapActionCard\(message\)/);
     assert.doesNotMatch(widget, /roadmapOpenTarget/);
     assert.match(widget, /role', 'status'/);

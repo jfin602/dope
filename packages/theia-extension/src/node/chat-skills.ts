@@ -12,8 +12,8 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     body: 'Explain the requested topic clearly. Use the current conversation for context. Do not claim to have changed files.',
     enabled: true, provenance: 'builtin', version: 1 },
 { id: 'builtin:roadmap', name: 'roadmap', title: 'Roadmap',
-    description: 'Discuss Roadmap work, create a reviewed draft, or propose a reviewed change.',
-    body: 'For a new Roadmap, follow the Roadmap Markers v1 instruction supplied for this turn: one RM1 answer with P, G and C records ending in END. Dope derives internal titles and IDs and stages a proposal for developer review. For changes to an existing Roadmap, use the authorized native Roadmap tools and current verified project state. For read-only questions, answer without staging. Ask one precise question when required facts are missing. Never claim an unapproved change, invent evidence or Green status, write Markdown, or run Work.',
+    description: 'Discuss Roadmap work or propose a reviewed change.',
+    body: 'Use authorized native Roadmap tools and current verified project state for changes to an existing Roadmap. For read-only questions, answer without staging. Ask one precise question when required facts are missing. Never claim an unapproved change, invent evidence or Green status, write Markdown, or run Work.',
     enabled: true, provenance: 'builtin', version: 2 }];
 let serial = Promise.resolve();
 

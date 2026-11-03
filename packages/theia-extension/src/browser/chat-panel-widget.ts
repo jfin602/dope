@@ -793,12 +793,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.roadmapGenerationStage ? 'generating' : action.status;
         if (status === 'offered' && liveOffer) {
             heading.textContent = 'Create Roadmap Draft';
-            note.textContent = 'Generate a provisional strategic Roadmap from this discussion. Review it in the Roadmap editor before accepting.';
-            const generate = this.button('Generate Draft Roadmap', () => void state.decideRoadmapOffer(true, this.selectedModel()),
+            note.textContent = 'Insert /gen-roadmap into Chat, add a prompt, and submit it yourself. Generation is currently unavailable.';
+            const generate = this.button('Write generation command', () => state.prefillRoadmapGeneration(),
                 state.pending || state.running);
             generate.className = 'dope-chat-roadmap-offer-primary';
-            actions.append(generate, this.button('Not now', () => void state.decideRoadmapOffer(false),
-                state.pending || state.running));
+            actions.append(generate);
         } else if (status === 'generating') {
             heading.textContent = 'Preparing Roadmap Draft';
             const stage = state.roadmapGenerationStage ?? action.stage;
