@@ -106,6 +106,9 @@ test('interrupted approved patch settles from exact after-hash and rejects unkno
         syncState: 'pending-sync', pending: { basisRevision: first.revision, beforeHash: patch.beforeHash,
             afterHash: patch.afterHash, edit: { kind: 'criterion', id: 'criterion-one', detail: 'one is reviewed' },
             outcome: 'document-written' } } };
+    const { RoadmapRevisionArchive } = await import('../../packages/project-intelligence/lib/node/roadmap-revision-archive.js');
+    const archive = new RoadmapRevisionArchive();
+    await archive.prepare(root, await readFile(indexFile), Buffer.from(JSON.stringify(marker)));
     await writeFile(indexFile, JSON.stringify(marker));
     await writeFile(file, patch.after);
     const settled = await new RoadmapStore().recoverGateDocumentPatch(root, true);
@@ -116,6 +119,7 @@ test('interrupted approved patch settles from exact after-hash and rejects unkno
         syncState: 'pending-sync', pending: { basisRevision: settled.revision, beforeHash: patch.afterHash,
             afterHash: 'f'.repeat(64), edit: { kind: 'criterion', id: 'criterion-one', detail: 'unknown' },
             outcome: 'prepared' } } };
+    await archive.prepare(root, await readFile(indexFile), Buffer.from(JSON.stringify(second)));
     await writeFile(indexFile, JSON.stringify(second));
     const external = patch.after + 'External task prose.\r\n';
     await writeFile(file, external);

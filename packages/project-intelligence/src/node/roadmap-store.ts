@@ -18,6 +18,8 @@ import type { Criterion, GateEvidence, RoadmapCorrection, RoadmapGate, RoadmapGa
 import { checkedPublicationDestination, checkedPublicationPath, publicationHash, serializeRoadmapPublication,
     verifiedPublicationFile } from './roadmap-publication';
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from './roadmap-publication';
+import { RoadmapRevisionArchive } from './roadmap-revision-archive';
+import type { RoadmapRevisionList, RoadmapRevisionRecord } from './roadmap-revision-archive';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
@@ -358,6 +360,7 @@ export function parseRetiredCheckpointIndex(value: unknown, root: string): Roadm
 }
 
 export class RoadmapStore {
+    private readonly archive = new RoadmapRevisionArchive();
     private readonly listeners = new Set<(change: RoadmapChange) => void>();
     private readonly publicationReviews = new Map<string, RoadmapPublicationPreview>();
     private readonly existingLinkReviews = new Map<string, RoadmapExistingLinkPreview>();
@@ -410,7 +413,33 @@ export class RoadmapStore {
         } finally { await handle.close(); }
     }
 
-    private async replace(root: string, next: RoadmapGateIndex | RoadmapIndex, expectedHash?: string | null): Promise<void> {
+    private async canonicalBytes(root: string): Promise<Buffer | undefined> {
+        const { file } = await this.paths(root);
+        if (!(await this.regular(file))) return undefined;
+        const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+        try { const bytes = await handle.readFile(); if (bytes.length > MAX_BYTES) throw new Error('Roadmap index size limit exceeded');
+            parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root); return bytes; }
+        finally { await handle.close(); }
+    }
+
+    /** Explicit one-time capture; callers may activate history without changing the current index. */
+    async initializeRevisionArchive(root: string, expectedProjectId: string): Promise<void> {
+        await this.locked(root, async () => {
+            const bytes = await this.canonicalBytes(root);
+            if (!bytes || JSON.parse(bytes.toString('utf8')).projectId !== expectedProjectId)
+                throw new Error('Foreign or uninitialized Roadmap archive');
+            await this.archive.initialize(root, bytes);
+        });
+    }
+    async listRevisions(root: string, expectedProjectId: string, before?: number, limit?: number): Promise<RoadmapRevisionList> {
+        return this.archive.list(root, await this.canonicalBytes(root), expectedProjectId, before, limit);
+    }
+    async fetchRevision(root: string, expectedProjectId: string, revision: number): Promise<RoadmapRevisionRecord> {
+        return this.archive.fetch(root, await this.canonicalBytes(root), expectedProjectId, revision);
+    }
+
+    private async replace(root: string, next: RoadmapGateIndex | RoadmapIndex, expectedHash?: string | null,
+        operationIds?: string[]): Promise<void> {
         const { directory, file } = await this.paths(root);
         if (next.schemaVersion !== 2 || expectedHash === undefined)
             throw new Error('Checkpoint Roadmap writes are retired; review and reimport into schema 2');
@@ -424,6 +453,10 @@ export class RoadmapStore {
             try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
             const currentHash = await this.indexHash(file);
             if (currentHash !== expectedHash) throw new Error('Roadmap index changed before publication; review and retry');
+            const currentBytes = await this.canonicalBytes(root);
+            if ((currentBytes ? createHash('sha256').update(currentBytes).digest('hex') : null) !== expectedHash)
+                throw new Error('Roadmap index changed before archive preparation; review and retry');
+            await this.archive.prepare(root, currentBytes, bytes, operationIds);
             await rename(temporary, file);
             replaced = true;
             const parent = await open(directory, 'r');
@@ -579,7 +612,7 @@ export class RoadmapStore {
     /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
         operation: RoadmapGateMutation | RoadmapGateMutation[], previewOnly = false,
-        nativeBasis?: { indexHash: string }): Promise<RoadmapGateIndex> {
+        nativeBasis?: { indexHash: string; operationIds?: string[] }): Promise<RoadmapGateIndex> {
         const operations = Array.isArray(operation) ? operation : [operation];
         if (!revision(expectedRevision) || !id(expectedProjectId) || !operations.length ||
             operations.length > (previewOnly || nativeBasis ? 48 : 3) ||
@@ -963,7 +996,7 @@ export class RoadmapStore {
             if (JSON.stringify(candidate) === JSON.stringify(current)) throw new Error('Roadmap mutation has no changes');
             candidate.revision = current.revision + 1;
             parseRoadmapIndex(candidate, root);
-            if (!previewOnly) await this.replace(root, candidate, expectedHash);
+            if (!previewOnly) await this.replace(root, candidate, expectedHash, nativeBasis?.operationIds);
             return candidate;
         });
         if (!previewOnly) this.publish({ root, projectId: next.projectId, revision: next.revision,

@@ -294,7 +294,7 @@ export class RoadmapNativeStageOwner {
         let changedIds: string[] = [];
         if (decision === 'apply') {
             const after = await this.store.mutateGateIndex(context.root, before.revision, before.projectId,
-                operations.map(item => item.action), false, { indexHash: review.indexHash });
+                operations.map(item => item.action), false, { indexHash: review.indexHash, operationIds: [...ids] });
             revision = after.revision;
             const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
                 ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];

@@ -52,7 +52,7 @@ test('RoadmapStore reads, saves and restarts a schema-2 Phase/Gate/Correction in
     await store.saveGateIndex(root, 1, 'owner-1', next);
     assert.deepEqual(await new RoadmapStore().read(root), next);
     assert.equal(digest(await readFile(join(root, 'ROADMAP.md'))), sourceHash);
-    assert.equal((await readdir(join(root, '.dope'))).join(','), 'roadmap.json');
+    assert.equal((await readdir(join(root, '.dope'))).join(','), 'roadmap-revisions,roadmap.json');
 }));
 
 test('malformed schema 2 and schema 1 reject without changing index bytes', async () => fixture(async (root, file) => {

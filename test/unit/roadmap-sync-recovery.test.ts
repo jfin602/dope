@@ -3,7 +3,7 @@ import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
-import { gateFixture, sha, source } from './roadmap-gate-document-fixture.ts';
+import { gateFixture, injectArchivedMarker, sha, source } from './roadmap-gate-document-fixture.ts';
 
 test('restarted pending patch settles only exact approved document bytes', async () => gateFixture(async (root, file, store) => {
     const first = await store.read(root);
@@ -13,7 +13,7 @@ test('restarted pending patch settles only exact approved document bytes', async
         syncState: 'pending-sync', pending: { basisRevision: first.revision, beforeHash: patch.beforeHash,
             afterHash: patch.afterHash, edit: { kind: 'criterion', id: 'criterion-one', detail: 'one is reviewed' },
             outcome: 'document-written' } } };
-    await writeFile(join(root, '.dope/roadmap.json'), JSON.stringify(marker));
+    await injectArchivedMarker(root, marker);
     await writeFile(file, patch.after);
     const settled = await new RoadmapStore().recoverGateDocumentPatch(root, true);
     assert.equal(settled.gates[0].criteria[0].expectedResult, 'one is reviewed');
@@ -29,7 +29,7 @@ test('unknown post-crash source is retained as conflict with byte hash intact', 
         syncState: 'pending-sync', pending: { basisRevision: first.revision, beforeHash: patch.beforeHash,
             afterHash: patch.afterHash, edit: { kind: 'gate', id: 'gate-one', detail: 'Prove approved' },
             outcome: 'prepared' } } };
-    await writeFile(join(root, '.dope/roadmap.json'), JSON.stringify(marker));
+    await injectArchivedMarker(root, marker);
     const external = patch.after + 'Independent source edit.\r\n';
     await writeFile(file, external);
     const conflict = await new RoadmapStore().recoverGateDocumentPatch(root, true);
@@ -45,7 +45,7 @@ test('verified pending backup restores a source moved by interrupted publication
         syncState: 'pending-sync', pending: { basisRevision: first.revision, beforeHash: patch.beforeHash,
             afterHash: patch.afterHash, edit: { kind: 'gate', id: 'gate-one', detail: 'Prove approved' },
             outcome: 'prepared' } } };
-    await writeFile(join(root, '.dope/roadmap.json'), JSON.stringify(marker));
+    await injectArchivedMarker(root, marker);
     await writeFile(`${file}.dope-pending-backup`, source);
     await rm(file);
     const recovered = await new RoadmapStore().recoverGateDocumentPatch(root, true);

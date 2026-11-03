@@ -165,6 +165,12 @@ export default new ContainerModule(bind => {
                     greenfield.bindChat(root, handle, chatId);
                 },
                 read: async (uri) => context.container.get(RoadmapStore).read(await context.container.get(PlanningStore).root(uri)),
+                initializeRevisionArchive: async (uri, projectId) => store.initializeRevisionArchive(
+                    await context.container.get(PlanningStore).root(uri), projectId),
+                listRevisions: async (uri, projectId, before, limit) => store.listRevisions(
+                    await context.container.get(PlanningStore).root(uri), projectId, before, limit),
+                fetchRevision: async (uri, projectId, revision) => store.fetchRevision(
+                    await context.container.get(PlanningStore).root(uri), projectId, revision),
                 readProjection: async (uri, presentation = {}) => {
                     const root = await context.container.get(PlanningStore).root(uri);
                     const owners = await new RoadmapOwnerLinks().list(root);

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { previewRoadmapImport } from '../../packages/project-intelligence/lib/node/roadmap-import.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import { RoadmapRevisionArchive } from '../../packages/project-intelligence/lib/node/roadmap-revision-archive.js';
 
 export const source = '# Roadmap\r\nIntro stays.\r\n## Phase 1 [id: phase-one]: First\r\nObjective: Deliver first\r\n### Gate G1 [id: gate-one] [phase: phase-one]: Check first\r\nObjective: Prove first\r\n- Criterion C1 [id: criterion-one]: Result one — Expected: one is visible\r\nUnmapped prose stays.\r\n- [ ] Build task, not a Gate\r\n';
 export const sha = (value: Buffer | string): string => createHash('sha256').update(value).digest('hex');
@@ -19,3 +20,9 @@ export async function gateFixture(run: (root: string, file: string, store: Roadm
     } finally { await rm(root, { recursive: true, force: true }); }
 }
 export async function sourceBytes(file: string): Promise<Buffer> { return readFile(file); }
+export async function injectArchivedMarker(root: string, marker: unknown): Promise<void> {
+    const path = join(root, '.dope', 'roadmap.json');
+    const bytes = Buffer.from(JSON.stringify(marker));
+    await new RoadmapRevisionArchive().prepare(root, await readFile(path), bytes);
+    await writeFile(path, bytes);
+}

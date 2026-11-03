@@ -1,5 +1,6 @@
 import type { RoadmapIndex, RoadmapChange, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
+import type { RoadmapRevisionList, RoadmapRevisionRecord } from '@dope/project-intelligence/lib/node/roadmap-revision-archive';
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import type { GateDocumentEdit, GateDocumentPatch, GateDocumentSyncPreview, GateDocumentRelinkPreview } from
     '@dope/project-intelligence/lib/node/roadmap-gate-document';
@@ -34,6 +35,9 @@ export interface RoadmapService {
     bindDraftChat(projectUri: string, handle: string, chatId: string): Promise<void>;
     /** @deprecated P17 removes this schema-1 typed compile seam. The store only reads schema 2. */
     read(projectUri: string): Promise<RoadmapIndex>;
+    initializeRevisionArchive(projectUri: string, expectedProjectId: string): Promise<void>;
+    listRevisions(projectUri: string, expectedProjectId: string, before?: number, limit?: number): Promise<RoadmapRevisionList>;
+    fetchRevision(projectUri: string, expectedProjectId: string, revision: number): Promise<RoadmapRevisionRecord>;
     /** Canonical schema-2 view; selection is scoped to the saved project identity. */
     readProjection(projectUri: string, presentation?: RoadmapPresentation): Promise<RoadmapProjection>;
     owners(projectUri: string): Promise<RoadmapOwnerRecord[]>;

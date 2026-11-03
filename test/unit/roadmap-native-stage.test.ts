@@ -118,12 +118,17 @@ test('reviewed native subset applies one revision, preserves pending decisions a
         const applied = await owner.decide(context, review.token, [phase, a, b], 'apply');
         assert.equal(applied.revision, 2);
         assert.equal((await store.read(root)).revision, 2);
+        const archive = await new RoadmapStore().listRevisions(root, 'owner');
+        assert.deepEqual(archive.revisions.map(item => item.revision), [2, 1]);
+        assert.deepEqual(archive.revisions[0].receipt.operationIds, [phase, a, b]);
+        assert.equal((await store.fetchRevision(root, 'owner', 2)).snapshot, (await readFile(file, 'utf8')));
         await assert.rejects(owner.decide(context, review.token, [phase, a, b], 'apply'), /APPROVAL_UNAVAILABLE/);
         const rejectReview = await owner.review(context, [c], 'reject');
         const acceptedBytes = await readFile(file);
         const rejected = await owner.decide(context, rejectReview.token, [c], 'reject');
         assert.equal(rejected.revision, undefined);
         assert.deepEqual(await readFile(file), acceptedBytes);
+        assert.equal((await store.listRevisions(root, 'owner')).revisions.length, 2);
         assert.deepEqual(rejected.statuses.map(item => item.status), ['Applied', 'Applied', 'Applied', 'Rejected']);
         const index = await store.read(root);
         assert.equal(index.gates.length, 2);
