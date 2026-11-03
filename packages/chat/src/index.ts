@@ -505,17 +505,18 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             v.proposalId === undefined || JSON.stringify(v.proposal).length > 65536)
             throw new Error('Invalid saved Roadmap proposal');
         const p = record(v.proposal, ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'sourceHash',
-            'changedIds', 'action', 'summary', 'preview', 'publication'],
+            'changedIds', 'action', 'summary', 'preview', 'publication', 'previewOnly'],
             ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'changedIds', 'action', 'summary']);
         const action = record(p.action, ['type', 'id'], ['type', 'id']);
+        if (p.previewOnly !== undefined && p.previewOnly !== true) throw new Error('Invalid preview-only flag');
         if (p.id !== v.proposalId || !Array.isArray(p.changedIds) || p.changedIds.length > 64 ||
             p.changedIds.some(id => typeof id !== 'string'))
             throw new Error('Invalid saved Roadmap proposal');
         const parseEntity = (value: unknown): import('./service').ChatRoadmapPreviewEntity => {
             const e = record(value, ['kind', 'id', 'title', 'detail', 'designation', 'parentId', 'order',
                 'dependencies', 'criteria', 'additionalCriteria'], ['kind', 'id']);
-            if (e.dependencies !== undefined && (!Array.isArray(e.dependencies) || e.dependencies.length > 12) ||
-                e.criteria !== undefined && (!Array.isArray(e.criteria) || e.criteria.length > 8))
+            if (e.dependencies !== undefined && (!Array.isArray(e.dependencies) || e.dependencies.length > 32) ||
+                e.criteria !== undefined && (!Array.isArray(e.criteria) || e.criteria.length > 12))
                 throw new Error('Invalid saved Roadmap entity');
             return { kind: choice(e.kind, ['phase', 'gate', 'criterion', 'correction'] as const, 'Roadmap entity'),
                 id: string(e.id, 'Roadmap entity ID'),
@@ -537,8 +538,8 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             const q = record(p.preview, ['source', 'steps', 'entities', 'totalChanged', 'additionalChanges',
                 'parentTitles', 'sourceChanges', 'additionalSourceChanges'],
                 ['source', 'steps', 'entities', 'totalChanged', 'additionalChanges', 'parentTitles']);
-            if (!Array.isArray(q.steps) || q.steps.length > 3 || !Array.isArray(q.entities) ||
-                q.entities.length > 12 || !q.parentTitles || typeof q.parentTitles !== 'object' ||
+            if (!Array.isArray(q.steps) || q.steps.length > 48 || !Array.isArray(q.entities) ||
+                q.entities.length > 64 || !q.parentTitles || typeof q.parentTitles !== 'object' ||
                 Array.isArray(q.parentTitles) || q.sourceChanges !== undefined &&
                 (!Array.isArray(q.sourceChanges) || q.sourceChanges.length > 8))
                 throw new Error('Invalid saved Roadmap preview');
@@ -582,6 +583,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             changedIds: p.changedIds.map(id => string(id, 'changed Roadmap ID')),
             action: { type: string(action.type, 'proposal action'), id: string(action.id, 'proposal target') },
             summary: string(p.summary, 'proposal summary'),
+            ...(p.previewOnly === undefined ? {} : { previewOnly: true as const }),
             ...(p.sourceHash === undefined ? {} : { sourceHash: string(p.sourceHash, 'source hash') }),
             ...(savedPreview === undefined ? {} : { preview: savedPreview }),
             ...(publication === undefined ? {} : { publication: {

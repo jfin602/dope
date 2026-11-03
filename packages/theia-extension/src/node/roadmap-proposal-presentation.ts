@@ -16,13 +16,13 @@ const parents = (before: RoadmapGateIndex, after: RoadmapGateIndex, entities: En
 function find(index: RoadmapGateIndex, id: string): ChatRoadmapPreviewEntity | undefined {
     const phase = index.phases.find(item => item.id === id);
     if (phase) return { kind: 'phase', id, title: limit(phase.title), detail: limit(phase.objective),
-        order: phase.order, dependencies: phase.dependencies.slice(0, 12) };
+        order: phase.order, dependencies: phase.dependencies.slice(0, 32) };
     const gate = index.gates.find(item => item.id === id);
     if (gate) return { kind: 'gate', id, title: limit(gate.title), detail: limit(gate.purpose),
         designation: limit(gate.designation), parentId: gate.parentPhaseId, order: gate.order,
-        dependencies: gate.dependencies.slice(0, 12), criteria: gate.criteria.slice(0, 8).map(item => ({
+        dependencies: gate.dependencies.slice(0, 32), criteria: gate.criteria.map(item => ({
             id: item.id, title: limit(item.title)!, expectedResult: limit(item.expectedResult)! })),
-        additionalCriteria: Math.max(0, gate.criteria.length - 8) };
+        additionalCriteria: 0 };
     for (const parent of index.gates) {
         const criterion = parent.criteria.find(item => item.id === id);
         if (criterion) return { kind: 'criterion', id, title: limit(criterion.title),
@@ -37,7 +37,7 @@ function find(index: RoadmapGateIndex, id: string): ChatRoadmapPreviewEntity | u
 /** Only validated owner snapshots enter this projection. No approval token or model envelope crosses to the UI. */
 export function roadmapProposalPreview(before: RoadmapGateIndex, after: RoadmapGateIndex,
     actions: readonly GatePlanningAction[], changedIds: readonly string[]): Preview {
-    const entities = changedIds.slice(0, 12).map(id => {
+    const entities = changedIds.slice(0, 64).map(id => {
         const previous = find(before, id), next = find(after, id);
         const action = !previous ? 'create' : !next ? 'delete' : 'edit';
         return { id, action, before: previous, after: next } as Entity;

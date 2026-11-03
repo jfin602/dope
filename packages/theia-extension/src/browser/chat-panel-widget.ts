@@ -556,8 +556,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const diff = document.createElement('details');
         diff.open = !proposal.preview && (proposal.action.type.includes('.') ||
             ['gate-sequence', 'gate-undo'].includes(proposal.action.type));
-        const diffLabel = document.createElement('summary'); diffLabel.textContent = proposal.preview ?
-            'Full diagnostic diff' : 'Review before and after';
+        const diffLabel = document.createElement('summary'); diffLabel.textContent = proposal.previewOnly ?
+            'Validation summary' : proposal.preview ? 'Full diagnostic diff' : 'Review before and after';
         const diffText = document.createElement('pre'); diffText.textContent = proposal.summary;
         diff.append(diffLabel, diffText);
         const decisions = document.createElement('div');
@@ -567,7 +567,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 !state.canViewPlanningProposal(proposal.id));
             decisions.append(view);
         }
-        decisions.append(
+        if (proposal.previewOnly) {
+            const pending = document.createElement('p');
+            pending.textContent = 'Validated preview only · Review decisions are not available yet.';
+            decisions.append(pending);
+        } else decisions.append(
             this.button(draftProposal ? 'Accept into draft' : 'Apply proposal',
                 () => void state.decidePlanningProposal(true), state.pending),
             this.button('Reject proposal', () => void state.decidePlanningProposal(false), state.pending));
@@ -590,7 +594,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             activity.status === 'rejected' ? 'Denied · no change' :
             activity.status === 'stale' ? 'Stale' :
             activity.status === 'superseded' ? 'Superseded' :
-            activity.status === 'pending' ? 'Pending · review unavailable' :
+            activity.status === 'pending' ? proposal?.previewOnly ? 'Validated preview · no change' :
+                'Pending · review unavailable' :
             activity.status === 'cancelled' ? 'Cancelled' : 'Failed';
         const card = document.createElement('section');
         card.className = 'dope-chat-plan-review dope-chat-proposal-history';

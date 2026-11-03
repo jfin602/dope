@@ -7,7 +7,8 @@ import { checkedRoadmapDocumentFile } from '@dope/project-intelligence/lib/node/
 type Context = { root: string; projectId: string; chatId: string; turnId: string; lease: string };
 type Operation = { id: string; action: GatePlanningAction; batch: number };
 export type NativeRoadmapStage = { id: string; context: Context; revision: number;
-    sourceHash: string | null; expires: number; operations: Operation[]; entityIds: Map<string, string> };
+    sourceHash: string | null; expires: number; operations: Operation[]; entityIds: Map<string, string>;
+    done: boolean; strategy: 'full' | 'phase-only' };
 const shape: Record<string, readonly string[]> = {
     'phase.create': ['id', 'title', 'objective'], 'phase.edit': ['id', 'title', 'objective'],
     'phase.delete': ['id'], 'phase.reorder': ['ids'], 'phase.dependencies': ['id', 'dependencies'],
@@ -55,14 +56,16 @@ export class RoadmapNativeStageOwner {
             throw new Error('ROADMAP_STAGE_STALE');
     }
     async read(context: Context, args: unknown): Promise<unknown> {
-        if (!object(args) || args.version !== 1 || Object.keys(args).some(k => !['version', 'ids', 'offset', 'limit'].includes(k)))
+        if (!object(args) || args.version !== 1 || Object.keys(args).some(k => !['version', 'ids', 'offset', 'limit', 'stageOffset'].includes(k)))
             throw new Error('ROADMAP_READ_ARGUMENTS');
         const ids = args.ids === undefined ? undefined : Array.isArray(args.ids) && args.ids.length <= 20 &&
             args.ids.every(id) ? new Set(args.ids as string[]) : undefined;
         if (args.ids !== undefined && !ids) throw new Error('ROADMAP_READ_IDS');
         const offset = args.offset ?? 0, limit = args.limit ?? 20;
+        const stageOffset = args.stageOffset ?? 0;
         if (!Number.isSafeInteger(offset) || (offset as number) < 0 || !Number.isSafeInteger(limit) ||
-            (limit as number) < 1 || (limit as number) > 20) throw new Error('ROADMAP_READ_PAGE');
+            (limit as number) < 1 || (limit as number) > 20 || !Number.isSafeInteger(stageOffset) ||
+            (stageOffset as number) < 0 || (stageOffset as number) > 48) throw new Error('ROADMAP_READ_PAGE');
         const index = await this.current(context);
         let syncState = index.linkedDocument?.syncState;
         if (syncState === 'synced') try { await this.checkedSource(index); }
@@ -83,14 +86,22 @@ export class RoadmapNativeStageOwner {
                 implementationStatus: item.implementationStatus, qualificationStatus: item.qualificationStatus } }))
         ].filter(entry => !ids || ids.has(entry.value.id));
         const page = entities.slice(offset as number, (offset as number) + (limit as number));
+        const stage = this.stages.get(context.chatId);
+        if (stage) this.assert(stage, context, index);
         return { version: 1, projectId: index.projectId, revision: index.revision,
             link: index.linkedDocument ? { path: index.linkedDocument.path,
                 sourceHash: index.linkedDocument.sourceHash, syncState } : null,
-            entries: page, nextOffset: (offset as number) + page.length < entities.length ? (offset as number) + page.length : null };
+            entries: page, nextOffset: (offset as number) + page.length < entities.length ? (offset as number) + page.length : null,
+            stage: stage ? { proposalId: stage.id, totalOperations: stage.operations.length,
+                nextStage: (stage.operations.at(-1)?.batch ?? 0) + 1, done: stage.done,
+                strategy: stage.strategy, operations: stage.operations.slice(stageOffset as number,
+                    (stageOffset as number) + 8).map(item => ({ id: item.id, batch: item.batch,
+                    action: item.action })), nextOperationOffset: (stageOffset as number) + 8 < stage.operations.length ?
+                        (stageOffset as number) + 8 : null } : null };
     }
     async stage(context: Context, args: unknown): Promise<unknown> {
         if (!object(args) || args.version !== 1 || Object.keys(args).some(k =>
-            !['version', 'expectedRevision', 'expectedSourceHash', 'actions'].includes(k)) ||
+            !['version', 'expectedRevision', 'expectedSourceHash', 'expectedStage', 'done', 'strategy', 'actions'].includes(k)) ||
             !Array.isArray(args.actions) || !args.actions.length || args.actions.length > 8 ||
             Buffer.byteLength(JSON.stringify(args), 'utf8') > 16_000)
             throw new Error('ROADMAP_STAGE_ARGUMENTS');
@@ -100,6 +111,14 @@ export class RoadmapNativeStageOwner {
             throw new Error('ROADMAP_STAGE_STALE_SOURCE');
         const prior = this.stages.get(context.chatId);
         if (prior) this.assert(prior, context, index);
+        const priorAliases = new Map(prior?.entityIds ?? []);
+        if (prior?.done) throw new Error('ROADMAP_STAGE_ALREADY_DONE');
+        const expectedStage = (prior?.operations.at(-1)?.batch ?? 0) + 1;
+        if (args.expectedStage !== expectedStage) throw new Error(`ROADMAP_STAGE_EXPECTED_${expectedStage}`);
+        if (args.done !== undefined && typeof args.done !== 'boolean' ||
+            args.strategy !== undefined && args.strategy !== 'full' && args.strategy !== 'phase-only' ||
+            prior && args.strategy !== undefined && args.strategy !== prior.strategy)
+            throw new Error('ROADMAP_STAGE_MANIFEST');
         if ((prior?.operations.length ?? 0) + args.actions.length > 48) throw new Error('ROADMAP_STAGE_LIMIT');
         const kinds = new Map<string, string>([
             ...index.phases.map(item => [item.id, 'phase']), ...index.gates.map(item => [item.id, 'gate']),
@@ -133,10 +152,10 @@ export class RoadmapNativeStageOwner {
                 kinds.set(durable, raw.type.split('.')[0] === 'criterion' ? 'criterion' : raw.type.split('.')[0]); }
             if (raw.type === 'gate.create') {
                 if (!Array.isArray(raw.criteria) || raw.criteria.length > 12) throw new Error(`ROADMAP_STAGE_ACTION_${at}: criteria limit`);
-                for (const criterion of raw.criteria) {
+                for (const [criterionAt, criterion] of raw.criteria.entries()) {
                     if (!object(criterion) || Object.keys(criterion).sort().join(',') !== 'expectedResult,id,title' ||
                         !newId(criterion.id) || aliases.has(criterion.id) || !text(criterion.title) || !text(criterion.expectedResult))
-                        throw new Error(`ROADMAP_STAGE_ACTION_${at}: invalid criterion`);
+                        throw new Error(`ROADMAP_STAGE_ACTION_${at}.criteria[${criterionAt}]: invalid id, title or expectedResult`);
                     const durable = randomUUID(); aliases.set(criterion.id, durable); created[criterion.id] = durable; kinds.set(durable, 'criterion');
                 }
             }
@@ -169,15 +188,53 @@ export class RoadmapNativeStageOwner {
                 if (field === 'order' && (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > 4096))
                     throw new Error(`ROADMAP_STAGE_ACTION_${at}: invalid order`);
             }
-            accepted.push({ id: randomUUID(), action, batch: prior?.operations.length ?
-                Math.max(...prior.operations.map(item => item.batch)) + 1 : 1 });
+            accepted.push({ id: randomUUID(), action, batch: expectedStage });
         }
         const stage: NativeRoadmapStage = prior ?? { id: randomUUID(), context, revision: index.revision,
-            sourceHash: source(index), expires: Date.now() + 10 * 60_000, operations: [], entityIds: new Map() };
+            sourceHash: source(index), expires: Date.now() + 10 * 60_000, operations: [], entityIds: new Map(),
+            done: false, strategy: args.strategy === 'phase-only' ? 'phase-only' : 'full' };
+        if (stage.strategy === 'phase-only' && accepted.some(item => !item.action.type.startsWith('phase.')))
+            throw new Error('ROADMAP_STAGE_PHASE_ONLY_HAS_NON_PHASE');
         stage.operations.push(...accepted); stage.entityIds = aliases;
         this.stages.set(context.chatId, stage);
+        if (args.done === true) {
+            try { await this.complete(context); }
+            catch (error) {
+                stage.operations.splice(stage.operations.length - accepted.length);
+                stage.entityIds = priorAliases;
+                throw error;
+            }
+            stage.done = true;
+        }
         return { version: 1, proposalId: stage.id, acceptedOperationIds: accepted.map(item => item.id),
-            createdEntityIds: created, totalOperations: stage.operations.length, complete: false };
+            createdEntityIds: created, totalOperations: stage.operations.length, nextStage: expectedStage + 1,
+            complete: stage.done, strategy: stage.strategy };
+    }
+    async complete(context: Context): Promise<{ before: RoadmapGateIndex; after: RoadmapGateIndex; stage: NativeRoadmapStage }> {
+        const before = await this.current(context);
+        await this.checkedSource(before);
+        const stage = this.stages.get(context.chatId);
+        if (!stage) throw new Error('ROADMAP_STAGE_MISSING');
+        this.assert(stage, context, before);
+        if (!stage.operations.length) throw new Error('ROADMAP_STAGE_EMPTY');
+        const actions = stage.operations.map(item => item.action);
+        let after: RoadmapGateIndex;
+        try { after = await this.store.mutateGateIndex(context.root, before.revision, before.projectId, actions, true); }
+        catch (error) {
+            // Find the first failing operation against the same unchanged owner. Never report a vague aggregate error.
+            for (let at = 0; at < actions.length; at++) {
+                try { await this.store.mutateGateIndex(context.root, before.revision, before.projectId,
+                    actions.slice(0, at + 1), true); }
+                catch (cause) { throw new Error(`ROADMAP_STAGE_OPERATION_${stage.operations[at].id}: ${String(cause)}`); }
+            }
+            throw error;
+        }
+        if (stage.strategy === 'full' && after.phases.length && !after.gates.length)
+            throw new Error('ROADMAP_STAGE_FULL_MISSING_GATE: choose phase-only strategy for an intentional phase-only draft');
+        if (after.phases.length + after.gates.length + after.corrections.length +
+            after.gates.reduce((sum, gate) => sum + gate.criteria.length, 0) > 64)
+            throw new Error('ROADMAP_STAGE_PROJECTION_LIMIT: reduce the draft to 64 entities');
+        return { before, after, stage };
     }
     async cancel(context: Context, args: unknown): Promise<unknown> {
         if (!object(args) || args.version !== 1 || Object.keys(args).join(',') !== 'version') throw new Error('ROADMAP_CANCEL_ARGUMENTS');

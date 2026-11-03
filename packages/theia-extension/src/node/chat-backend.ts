@@ -687,6 +687,7 @@ export class ChatBackend implements ChatService {
                     throw new Error('Roadmap focus target is stale or missing');
                 return { roadmapFocus: { projectId: current.projectId, revision: current.revision, id } };
             }
+            if (roadmapSkill) throw new Error('Native Roadmap staging is required for reviewed changes; answer text cannot create a proposal');
             if (value && typeof value === 'object' && !Array.isArray(value) &&
                 (value as { type?: string }).type === 'roadmap-gate-undo' &&
                 Object.keys(value).length === 1) {
@@ -1145,7 +1146,7 @@ export class ChatBackend implements ChatService {
             selections.filter(item => item.kind === 'roadmap-checkpoint').length !== 1))
             throw new Error('Small-step planning requires a bound draft or one unlinked Roadmap checkpoint and a cap of two or three');
         const planningPrompt = publicationIntent ? { text: 'This protected turn requests a deterministic Roadmap Markdown review. Do not write files, call tools, or claim publication. Reply in one short sentence that a backend review will be prepared.' } :
-            roadmapSkill && !greenfieldSkill ? { text: 'For accepted Roadmap changes, use only roadmap_read, roadmap_stage and roadmap_cancel. Stage typed operations in bounded batches using current revision and source hash. No staged operation is applied; tell the user that review is required. For a read-only question, answer without staging. Never emit mutation JSON in your final answer.' } :
+            roadmapSkill && !greenfieldSkill ? { text: 'For accepted Roadmap changes, use roadmap_read, roadmap_stage and roadmap_cancel. Stage typed operations in ordered batches of at most eight using current revision/source hash and expectedStage starting at 1. Use new: aliases across batches. Set done true only on the final batch. Use strategy phase-only only for an intentional phase-only draft; otherwise include complete Gates and observable Criteria. The server validates the stage for a preview. Do not emit mutation JSON in your final answer or claim an applied change. For read-only questions, answer without staging.' } :
             bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
             `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
             'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
@@ -1325,8 +1326,8 @@ export class ChatBackend implements ChatService {
                         name === 'roadmap_cancel' ? await this.nativeStages.cancel(context, args) :
                         (() => { throw new Error('ROADMAP_TOOL_UNKNOWN'); })(); }
                     catch (error) { return JSON.stringify({ version: 1, acceptedOperationIds: [],
-                        error: error instanceof Error && /^ROADMAP_[A-Z_0-9]+(?:: [a-zA-Z0-9_, ]+)?$/.test(error.message) ?
-                            error.message : 'ROADMAP_TOOL_FAILED' }); }
+                        error: error instanceof Error && error.message.startsWith('ROADMAP_') ?
+                            error.message.slice(0, 500) : 'ROADMAP_TOOL_FAILED' }); }
                     if (signal?.aborted || abort.signal.aborted || this.active(request.projectHandle) !== root)
                         throw new Error('ROADMAP_TOOL_CANCELLED');
                     return JSON.stringify(result);
@@ -1708,10 +1709,45 @@ export class ChatBackend implements ChatService {
                         void this.automaticTitle(root, key, preceding, assistant.id, output, actual);
                     if (abort.signal.aborted && !localRoadmap) return preview;
                     const proposalRefs = [...preview.refs, ...sourceRefs];
-                    const result = helpTurn || bridge || nativeRoadmap ? {} : publicationIntent ? await this.publicationProposal(root,
+                    const result = nativeRoadmap ? await (async () => {
+                        const stage = this.nativeStages?.get(key);
+                        if (!stage) return {};
+                        if (!stage.done) return { proposalError: 'Roadmap draft incomplete: final staged batch did not mark done' };
+                        try {
+                            const context = { root, projectId: stage.context.projectId, chatId: key,
+                                turnId: assistant.id, lease: request.leaseToken };
+                            const { before, after } = await this.nativeStages!.complete(context);
+                            const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
+                                ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
+                            const prior = new Map(entities(before).map(item => [item.id, item]));
+                            const next = new Map(entities(after).map(item => [item.id, item]));
+                            const changedIds = [...new Set([...prior.keys(), ...next.keys()])].filter(id =>
+                                JSON.stringify(prior.get(id)) !== JSON.stringify(next.get(id)));
+                            const presentation = roadmapProposalPreview(before, after,
+                                stage.operations.map(item => item.action), changedIds);
+                            const proposal: ChatPlanningProposal = { id: stage.id, chatId: key,
+                                messageId: assistant.id, ownerId: before.projectId, revision: before.revision,
+                                sourceHash: before.linkedDocument?.sourceHash, changedIds,
+                                action: { type: 'native-stage-preview', id: before.projectId },
+                                summary: `${stage.strategy === 'phase-only' ? 'Phase-only' : 'Full'} staged draft: ` +
+                                    `${stage.operations.length} operations, ${changedIds.length} changed entities. ` +
+                                    'Validated preview; no Roadmap change applied.',
+                                preview: presentation, previewOnly: true };
+                            if (Buffer.byteLength(JSON.stringify(proposal), 'utf8') > 60_000)
+                                return { proposalError: 'Roadmap preview exceeds the saved proposal limit; reduce the draft' };
+                            return { proposal };
+                        } catch (error) { return { proposalError: `Roadmap stage rejected: ${String(error)}` }; }
+                    })() : helpTurn || bridge ? {} : publicationIntent ? await this.publicationProposal(root,
                         key, assistant.id, request.leaseToken, proposalRefs, publicationIntent) :
                         await this.proposal(root, key, assistant.id, request.leaseToken, output, proposalRefs,
                             draft, roadmapSkill, request.content);
+                    if (nativeRoadmap && (result.proposal || result.proposalError)) {
+                        await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
+                            { schemaVersion: 1, kind: 'roadmap-gate-proposal', refs: proposalRefs,
+                                status: result.proposal ? 'pending' : 'rejected',
+                                ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
+                                ...(result.proposal ? { proposalId: result.proposal.id, proposal: result.proposal } : {}) });
+                    }
                     if (localRoadmap && !nativeRoadmap || publicationIntent) {
                         const kind: ChatPlanningActivity['kind'] = publicationIntent ? 'roadmap-publication' :
                             (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;

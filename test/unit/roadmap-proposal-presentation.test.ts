@@ -41,8 +41,8 @@ test('validated snapshots project bounded Phase, Gate, Criterion, relationship a
         assert.equal(created.entities[0].after?.criteria?.[0]?.expectedResult,
             before.gates[0].criteria[0].expectedResult);
         const many = roadmapProposalPreview(before, after, actions, Array.from({ length: 20 }, (_, i) => `id-${i}`));
-        assert.equal(many.entities.length, 12);
-        assert.equal(many.additionalChanges, 8);
+        assert.equal(many.entities.length, 20);
+        assert.equal(many.additionalChanges, 0);
     });
 });
 

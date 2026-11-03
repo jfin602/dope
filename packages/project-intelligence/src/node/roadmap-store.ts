@@ -575,7 +575,8 @@ export class RoadmapStore {
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
         operation: RoadmapGateMutation | RoadmapGateMutation[], previewOnly = false): Promise<RoadmapGateIndex> {
         const operations = Array.isArray(operation) ? operation : [operation];
-        if (!revision(expectedRevision) || !id(expectedProjectId) || !operations.length || operations.length > 3 ||
+        if (!revision(expectedRevision) || !id(expectedProjectId) || !operations.length ||
+            operations.length > (previewOnly ? 48 : 3) ||
             operations.some(item => !item || typeof item !== 'object'))
             throw new Error('Invalid Roadmap mutation authority');
         const next = await this.locked(root, async () => {

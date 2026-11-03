@@ -124,9 +124,11 @@ const CHAT_TOOLS = {
 };
 const ROADMAP_TOOLS = {
   roadmap_read: { version: Type.Literal(1), ids: Type.Optional(Type.Array(Type.String())),
-    offset: Type.Optional(Type.Integer()), limit: Type.Optional(Type.Integer()) },
+    offset: Type.Optional(Type.Integer()), limit: Type.Optional(Type.Integer()), stageOffset: Type.Optional(Type.Integer()) },
   roadmap_stage: { version: Type.Literal(1), expectedRevision: Type.Integer(),
-    expectedSourceHash: Type.Union([Type.String(), Type.Null()]), actions: Type.Array(Type.Any()) },
+    expectedSourceHash: Type.Union([Type.String(), Type.Null()]), expectedStage: Type.Integer(),
+    strategy: Type.Optional(Type.Union([Type.Literal('full'), Type.Literal('phase-only')])),
+    done: Type.Optional(Type.Boolean()), actions: Type.Array(Type.Any()) },
   roadmap_cancel: { version: Type.Literal(1) }
 };
 function chatTools() {
@@ -137,7 +139,7 @@ function chatTools() {
       name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. For later pages pass nextOffset as offset and sourceHash as expectedSourceHash. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
       name === 'roadmap_read' ? 'Read bounded current typed Roadmap entities and revision. Version must be 1.' :
-      name === 'roadmap_stage' ? 'Stage typed Roadmap actions for human review. Never applied. Use current revision and source hash from roadmap_read; use new: aliases for new entities.' :
+      name === 'roadmap_stage' ? 'Stage ordered typed Roadmap actions in batches of at most 8. Start expectedStage at 1, increment it per accepted batch, and set done true only on the final batch. Use strategy phase-only for an intentional phase-only draft; otherwise include complete Gates and Criteria. Never applied. Use current revision and source hash from roadmap_read; use new: aliases for new entities.' :
       name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: Type.Object(properties, { additionalProperties: false }),
