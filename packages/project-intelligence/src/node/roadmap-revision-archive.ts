@@ -24,7 +24,7 @@ export interface RoadmapRevisionRecord {
     provenance: 'baseline' | 'owner-write';
     source?: { path: string; hash: string };
     receipt: { kind: 'baseline' | 'committed-owner-write'; beforeHash?: string; afterHash: string;
-        operationIds?: string[] };
+        operationIds?: string[]; restoredFromRevision?: number; previousHeadRevision?: number };
     /** Exact canonical JSON bytes, including trailing newline. Historical status and evidence are as-of facts. */
     snapshot: string;
 }
@@ -96,7 +96,14 @@ export class RoadmapRevisionArchive {
                     !/^[a-f0-9]{64}$/.test(value.predecessor.hash)) ||
                 value.receipt.operationIds !== undefined && (!Array.isArray(value.receipt.operationIds) ||
                     value.receipt.operationIds.length > 48 ||
-                    value.receipt.operationIds.some(id => typeof id !== 'string' || id.length > 256)))
+                    value.receipt.operationIds.some(id => typeof id !== 'string' || id.length > 256)) ||
+                (value.receipt.restoredFromRevision !== undefined || value.receipt.previousHeadRevision !== undefined) &&
+                    (!Number.isSafeInteger(value.receipt.restoredFromRevision) ||
+                        value.receipt.restoredFromRevision! < 1 ||
+                        value.receipt.restoredFromRevision! >= revision - 1 ||
+                        value.receipt.previousHeadRevision !== revision - 1 ||
+                        !value.receipt.operationIds?.includes(`restore-from:${value.receipt.restoredFromRevision}`) ||
+                        !value.receipt.operationIds.includes(`restore-previous:${value.receipt.previousHeadRevision}`)))
                 throw new Error('Corrupt Roadmap revision record');
             let parsed: RoadmapGateIndex;
             try { parsed = parseRoadmapIndex(JSON.parse(value.snapshot), root); }
@@ -133,6 +140,13 @@ export class RoadmapRevisionArchive {
     private record(root: string, bytes: Buffer, provenance: RoadmapRevisionRecord['provenance'],
         predecessor?: RoadmapRevisionRecord, operationIds?: string[]): RoadmapRevisionRecord {
         const index = parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root);
+        const restoredFrom = operationIds?.find(item => /^restore-from:\d+$/.test(item));
+        const previousHead = operationIds?.find(item => /^restore-previous:\d+$/.test(item));
+        const restoredFromRevision = restoredFrom ? Number(restoredFrom.slice(13)) : undefined;
+        const previousHeadRevision = previousHead ? Number(previousHead.slice(17)) : undefined;
+        if (restoredFromRevision !== undefined && (previousHeadRevision !== predecessor?.revision ||
+            restoredFromRevision < 1 || restoredFromRevision >= previousHeadRevision!))
+            throw new Error('Invalid Roadmap restore receipt');
         return { archiveVersion: 1, projectRoot: root, projectId: index.projectId, schemaVersion: 2,
             revision: index.revision, hash: digest(bytes), ...(predecessor ?
                 { predecessor: { revision: predecessor.revision, hash: predecessor.hash } } : {}),
@@ -140,7 +154,9 @@ export class RoadmapRevisionArchive {
             ...(index.linkedDocument ? { source: { path: index.linkedDocument.path, hash: index.linkedDocument.sourceHash } } : {}),
             receipt: { kind: provenance === 'baseline' ? 'baseline' : 'committed-owner-write',
                 ...(predecessor ? { beforeHash: predecessor.hash } : {}), afterHash: digest(bytes),
-                ...(operationIds ? { operationIds } : {}) }, snapshot: bytes.toString('utf8') };
+                ...(operationIds ? { operationIds } : {}),
+                ...(restoredFromRevision !== undefined ? { restoredFromRevision, previousHeadRevision } : {}) },
+            snapshot: bytes.toString('utf8') };
     }
     /** Called under the Roadmap owner lock before index rename. An entry beyond the head is an intent, not a committed revision. */
     async prepare(root: string, current: Buffer | undefined, next: Buffer, operationIds?: string[]): Promise<void> {

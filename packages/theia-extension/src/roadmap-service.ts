@@ -1,4 +1,4 @@
-import type { RoadmapIndex, RoadmapChange, RoadmapReplacementPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { RoadmapIndex, RoadmapChange, RoadmapReplacementPreview, RoadmapRestorePreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { RoadmapRevisionList, RoadmapRevisionRecord } from '@dope/project-intelligence/lib/node/roadmap-revision-archive';
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
@@ -39,6 +39,8 @@ export interface RoadmapService {
     initializeRevisionArchive(projectUri: string, expectedProjectId: string): Promise<void>;
     listRevisions(projectUri: string, expectedProjectId: string, before?: number, limit?: number): Promise<RoadmapRevisionList>;
     fetchRevision(projectUri: string, expectedProjectId: string, revision: number): Promise<RoadmapRevisionRecord>;
+    previewRestore(projectUri: string, expectedProjectId: string, revision: number): Promise<RoadmapRestorePreview>;
+    applyRestore(projectUri: string, preview: RoadmapRestorePreview, approved: boolean): Promise<RoadmapGateIndex>;
     /** Canonical schema-2 view; selection is scoped to the saved project identity. */
     readProjection(projectUri: string, presentation?: RoadmapPresentation): Promise<RoadmapProjection>;
     owners(projectUri: string): Promise<RoadmapOwnerRecord[]>;

@@ -17,7 +17,7 @@ export type HistoryOwnerRef =
     | { kind: 'editor'; projectRelativePath: string };
 export type HistoryNavigableOwnerRef = Exclude<HistoryOwnerRef, { kind: 'git-dirty' }>;
 
-export type HistorySource = 'chat' | 'planning' | 'project-mind' | 'agent' | 'git' | 'workbench';
+export type HistorySource = 'chat' | 'planning' | 'project-mind' | 'roadmap' | 'agent' | 'git' | 'workbench';
 export type HistoryAvailability = 'available' | 'missing' | 'stale' | 'unavailable';
 
 /** These facts are independent: a passed validation does not imply promotion. */

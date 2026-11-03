@@ -4,11 +4,12 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { ChatRepository } from '@dope/chat/lib/node/chat-repository';
 import { parsePlanningCollection } from '@dope/visual-planning/lib/node/planning-store';
 import { parseProjectMind } from '@dope/project-intelligence';
+import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { HistoryEntry, HistoryProject, HistorySource } from '@dope/contracts/lib/history';
 
 export interface HistoryOwnerMetadata {
     entries: HistoryEntry[];
-    diagnostics: { source: 'chat' | 'planning' | 'project-mind'; message: string }[];
+    diagnostics: { source: 'chat' | 'planning' | 'project-mind' | 'roadmap'; message: string }[];
     truncated: boolean;
 }
 
@@ -55,9 +56,10 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
     const { projectRoot: root } = project;
     try { await canonicalRoot(root); }
     catch { return { ...result, diagnostics: [{ source: 'chat', message: 'Invalid project root' },
-        { source: 'planning', message: 'Invalid project root' }, { source: 'project-mind', message: 'Invalid project root' }] }; }
+        { source: 'planning', message: 'Invalid project root' }, { source: 'project-mind', message: 'Invalid project root' },
+        { source: 'roadmap', message: 'Invalid project root' }] }; }
     const diagnostic = (source: HistorySource, error: unknown): void => {
-        if (source === 'chat' || source === 'planning' || source === 'project-mind')
+        if (source === 'chat' || source === 'planning' || source === 'project-mind' || source === 'roadmap')
             result.diagnostics.push({ source, message: error instanceof Error ? error.message : String(error) });
     };
     try {
@@ -118,5 +120,25 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
             }
         }
     } catch (error) { diagnostic('project-mind', error); }
+    try {
+        const store = new RoadmapStore();
+        const index = await store.read(root);
+        if (index.revision) {
+            const revisions = await store.listRevisions(root, index.projectId, undefined, MAX_ITEMS);
+            for (const record of revisions.revisions) {
+                const from = record.receipt.restoredFromRevision;
+                if (from === undefined || record.receipt.previousHeadRevision !== record.revision - 1 ||
+                    !record.receipt.operationIds?.some(item => /^restore-approval:/.test(item))) continue;
+                result.entries.push({ ...project, kind: 'event', source: 'roadmap',
+                    sourceId: `restore:${index.projectId}:${record.revision}`,
+                    owner: { kind: 'editor', projectRelativePath: '.dope/roadmap.json' },
+                    title: `Roadmap restored from R${from} as R${record.revision}`,
+                    status: { kind: 'owner', label: 'Reviewed restore' }, availability: 'available',
+                    ownerRevision: record.revision, ownerProjectId: index.projectId,
+                    occurredAt: record.capturedAt, observedAt: null });
+            }
+            result.truncated ||= !!revisions.nextBefore;
+        }
+    } catch (error) { diagnostic('roadmap', error); }
     return result;
 }

@@ -26,6 +26,9 @@
 .dope-roadmap-history-strip button { min-height: 30px; }
 .dope-roadmap-history-strip button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-roadmap-history-strip p { flex-basis: 100%; margin: 2px 0; overflow-wrap: anywhere; }
+.dope-roadmap-history-strip details,
+.dope-roadmap-history-strip label { flex-basis: 100%; min-width: 0; }
+.dope-roadmap-history-strip pre { max-height: 14rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dope-roadmap-stage-host.dope-map-stage > p[role="status"] { position: absolute; left: auto; right: 8px; bottom: 8px; z-index: 2; max-width: min(42%, 28rem); max-height: min(30%, 9rem); overflow: auto; margin: 0; padding: 4px 8px; color: var(--theia-descriptionForeground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 4px; font-size: 11px; overflow-wrap: anywhere; }
 .dope-roadmap-stage-host > p[role="status"]:empty { display: none; }
 .dope-roadmap-import { position: absolute; top: 8px; left: 8px; z-index: 4; box-sizing: border-box; width: min(52rem, calc(100% - 16px)); max-height: calc(100% - 16px); overflow: auto; margin: 0; padding: 12px; color: var(--theia-editor-foreground); background: var(--theia-editorWidget-background, var(--theia-editor-background)); border: 1px solid var(--theia-widget-border); border-radius: 5px; box-shadow: 0 4px 16px var(--theia-widget-shadow, transparent); }

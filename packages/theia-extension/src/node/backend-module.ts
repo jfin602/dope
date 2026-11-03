@@ -176,6 +176,10 @@ export default new ContainerModule(bind => {
                     await context.container.get(PlanningStore).root(uri), projectId, before, limit),
                 fetchRevision: async (uri, projectId, revision) => store.fetchRevision(
                     await context.container.get(PlanningStore).root(uri), projectId, revision),
+                previewRestore: async (uri, projectId, revision) => store.previewRestore(
+                    await context.container.get(PlanningStore).root(uri), projectId, revision),
+                applyRestore: async (uri, preview, approved) => store.applyRestore(
+                    await context.container.get(PlanningStore).root(uri), preview, approved),
                 readProjection: async (uri, presentation = {}) => {
                     const root = await context.container.get(PlanningStore).root(uri);
                     const owners = await new RoadmapOwnerLinks().list(root);

@@ -16,7 +16,7 @@ function boundedHistoryRead<T>(work: Promise<T>, stage: string): Promise<T> {
         work.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
     });
 }
-const sourceNames = { chat: 'Chat', planning: 'Planning', 'project-mind': 'Project Mind',
+const sourceNames = { chat: 'Chat', planning: 'Planning', 'project-mind': 'Project Mind', roadmap: 'Roadmap',
     agent: 'Work', git: 'Git', workbench: 'Workbench' } as const;
 export function historyTimeLabel(entry: HistoryEntry): string {
     if (entry.kind === 'snapshot') return `Current snapshot · observed ${entry.observedAt}`;

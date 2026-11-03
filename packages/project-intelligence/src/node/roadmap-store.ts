@@ -24,6 +24,7 @@ import { autoSyncIndexDigest, journalMatches, overlayAutoSync, prepareAutoSync, 
     readAutoSyncJournal, verifyAutoSync, withAutoSyncIntent, writeAutoSyncJournal } from './roadmap-auto-sync';
 import type { RoadmapAutoSyncJournal } from './roadmap-auto-sync';
 import type { RoadmapAutoSyncReconciliationPreview } from './roadmap-auto-sync';
+import { describeEditableChanges, editableStructure, restoreEditableStructure } from './roadmap-restore';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
@@ -152,6 +153,21 @@ export interface RoadmapReplacementPreview {
     diagnostics: { path: string; line?: number; checkpointId?: string; message: string; severity: 'blocking' | 'warning' }[];
 }
 export interface RoadmapChange { root: string; projectId: string; revision: number; changedIds: string[] }
+export interface RoadmapRestorePreview {
+    approvalId: string;
+    expiresAt: number;
+    projectRoot: string;
+    projectId: string;
+    fromRevision: number;
+    previousHeadRevision: number;
+    historyHash: string;
+    headHash: string;
+    structureHash: string;
+    changes: string[];
+    resultingStructure: ReturnType<typeof editableStructure>;
+    linkedDiff?: { path: string; beforeHash: string; afterHash: string; before: string; after: string };
+    warnings: string[];
+}
 export type RoadmapMutation =
     | { type: 'create'; id: string; kind: RoadmapCheckpoint['kind']; title: string; objective: string; order: number; dependencies?: string[]; links?: RoadmapLink[] }
     | { type: 'update'; id: string; title: string; objective: string; order: number; dependencies: string[]; links: RoadmapLink[] };
@@ -372,6 +388,7 @@ export class RoadmapStore {
     private readonly publicationReviews = new Map<string, RoadmapPublicationPreview>();
     private readonly existingLinkReviews = new Map<string, RoadmapExistingLinkPreview>();
     private readonly reconciliationReviews = new Map<string, RoadmapAutoSyncReconciliationPreview>();
+    private readonly restoreReviews = new Map<string, RoadmapRestorePreview>();
 
     onChange(listener: (change: RoadmapChange) => void): () => void {
         this.listeners.add(listener);
@@ -451,6 +468,100 @@ export class RoadmapStore {
     }
     async fetchRevision(root: string, expectedProjectId: string, revision: number): Promise<RoadmapRevisionRecord> {
         return this.archive.fetch(root, await this.canonicalBytes(root), expectedProjectId, revision);
+    }
+
+    /** Exact retained revision compared to the current owner and checked linked source. */
+    async previewRestore(root: string, expectedProjectId: string, fromRevision: number): Promise<RoadmapRestorePreview> {
+        const bytes = await this.canonicalBytes(root);
+        if (!bytes) throw new Error('Roadmap is not initialized');
+        const canonical = parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root);
+        const current = overlayAutoSync(canonical, await readAutoSyncJournal(root));
+        if (current.projectId !== expectedProjectId || fromRevision >= current.revision)
+            throw new Error('Foreign or current Roadmap revision');
+        const record = await this.archive.fetch(root, bytes, expectedProjectId, fromRevision);
+        const historical = parseRoadmapIndex(JSON.parse(record.snapshot), root);
+        if (current.pendingPublication || current.linkedDocument &&
+            (current.linkedDocument.syncState !== 'synced' || current.linkedDocument.syncIntent || current.linkedDocument.pending))
+            throw new Error('Pending Roadmap source operation requires recovery before restore');
+        const result = restoreEditableStructure(current, historical);
+        if (!result.linkedDocument) parseRoadmapIndex(result, root);
+        const beforeStructure = editableStructure(current), resultingStructure = editableStructure(result);
+        if (JSON.stringify(beforeStructure) === JSON.stringify(resultingStructure))
+            throw new Error('Historical editable structure already matches current Roadmap');
+        const changes = describeEditableChanges(current, result);
+        let linkedDiff: RoadmapRestorePreview['linkedDiff'];
+        if (result.linkedDocument) {
+            withAutoSyncIntent(result);
+            if (!result.linkedDocument.syncIntent)
+                throw new Error('Linked structural restore has no checked sync intent');
+            parseRoadmapIndex(result, root);
+            const patch = await prepareAutoSync(root, result);
+            linkedDiff = { path: result.linkedDocument.path, beforeHash: result.linkedDocument.sourceHash,
+                afterHash: patch.targetHash, before: patch.before, after: patch.content };
+        }
+        const preview: RoadmapRestorePreview = { approvalId: randomUUID(), expiresAt: Date.now() + 5 * 60_000,
+            projectRoot: root, projectId: expectedProjectId, fromRevision,
+            previousHeadRevision: current.revision, historyHash: record.hash,
+            headHash: createHash('sha256').update(bytes).digest('hex'),
+            structureHash: createHash('sha256').update(JSON.stringify(resultingStructure)).digest('hex'),
+            changes, resultingStructure, ...(linkedDiff ? { linkedDiff } : {}),
+            warnings: ['Historical qualification, evidence, waivers, coverage and source ownership are not restored.',
+                'Changed requirements require fresh qualification and Gate-set review.'] };
+        this.restoreReviews.set(preview.approvalId, structuredClone(preview));
+        if (this.restoreReviews.size > 32) this.restoreReviews.delete(this.restoreReviews.keys().next().value!);
+        return preview;
+    }
+
+    /** One-use developer approval. A repeated acknowledgement returns the exact committed head. */
+    async applyRestore(root: string, preview: RoadmapRestorePreview, approved: boolean): Promise<RoadmapGateIndex> {
+        if (!approved) { this.restoreReviews.delete(preview.approvalId); return this.read<RoadmapGateIndex>(root); }
+        const issued = this.restoreReviews.get(preview.approvalId);
+        this.restoreReviews.delete(preview.approvalId);
+        const result = await this.locked(root, async () => {
+            const bytes = await this.canonicalBytes(root);
+            if (!bytes) throw new Error('Roadmap is not initialized');
+            const canonical = parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root);
+            const current = overlayAutoSync(canonical, await readAutoSyncJournal(root));
+            const receipt = await this.archive.fetch(root, bytes, current.projectId, current.revision);
+            if (receipt.receipt.operationIds?.includes(`restore-approval:${preview.approvalId}`) &&
+                receipt.receipt.operationIds.includes(`restore-from:${preview.fromRevision}`))
+                return { next: current, wrote: false };
+            if (!issued || JSON.stringify(issued) !== JSON.stringify(preview) || preview.expiresAt < Date.now() ||
+                preview.projectRoot !== root || preview.projectId !== current.projectId ||
+                preview.previousHeadRevision !== current.revision || preview.headHash !== receipt.hash)
+                throw new Error('Stale or unissued Roadmap restore approval');
+            if (current.pendingPublication || current.linkedDocument &&
+                (current.linkedDocument.syncState !== 'synced' || current.linkedDocument.syncIntent || current.linkedDocument.pending))
+                throw new Error('Pending Roadmap source operation requires recovery before restore');
+            const historical = await this.archive.fetch(root, bytes, current.projectId, preview.fromRevision);
+            if (historical.hash !== preview.historyHash) throw new Error('Historical Roadmap revision changed');
+            const next = restoreEditableStructure(current, parseRoadmapIndex(JSON.parse(historical.snapshot), root));
+            const structure = editableStructure(next);
+            if (JSON.stringify(structure) !== JSON.stringify(preview.resultingStructure) ||
+                createHash('sha256').update(JSON.stringify(structure)).digest('hex') !== preview.structureHash)
+                throw new Error('Reviewed Roadmap restore result changed');
+            if (next.linkedDocument) {
+                withAutoSyncIntent(next);
+                parseRoadmapIndex(next, root);
+                const prepared = await prepareAutoSync(root, next);
+                if (!preview.linkedDiff || next.linkedDocument.path !== preview.linkedDiff.path ||
+                    next.linkedDocument.sourceHash !== preview.linkedDiff.beforeHash ||
+                    prepared.targetHash !== preview.linkedDiff.afterHash ||
+                    prepared.before !== preview.linkedDiff.before || prepared.content !== preview.linkedDiff.after)
+                    throw new Error('Linked Roadmap source changed after restore review');
+            } else { parseRoadmapIndex(next, root);
+                if (preview.linkedDiff) throw new Error('Linked Roadmap ownership changed'); }
+            await this.replace(root, next, receipt.hash,
+                [`restore-from:${preview.fromRevision}`, `restore-previous:${current.revision}`,
+                    `restore-approval:${preview.approvalId}`]);
+            return { next, wrote: true };
+        });
+        if (result.wrote) {
+            this.publish({ root, projectId: result.next.projectId, revision: result.next.revision,
+                changedIds: result.next.phases.map(item => item.id).concat(result.next.gates.map(item => item.id)) });
+            if (result.next.linkedDocument?.syncIntent) return this.recoverAutoSync(root);
+        }
+        return result.next;
     }
 
     private async replace(root: string, next: RoadmapGateIndex | RoadmapIndex, expectedHash?: string | null,

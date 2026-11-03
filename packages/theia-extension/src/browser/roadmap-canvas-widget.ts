@@ -15,7 +15,7 @@ import type { RoadmapService } from '../roadmap-service';
 import type { RoadmapRevisionRecord, RoadmapRevisionList } from '@dope/project-intelligence/lib/node/roadmap-revision-archive';
 import type { PhaseFocusEvidence } from '../node/phase-focus-evidence';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
-import type { RoadmapIndex, RoadmapLink, RoadmapReplacementPreview, RoadmapGateMutation } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { RoadmapIndex, RoadmapLink, RoadmapReplacementPreview, RoadmapGateMutation, RoadmapRestorePreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapCandidateDiscovery, RoadmapImportPreview } from '@dope/project-intelligence/lib/node/roadmap-import';
 import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from '@dope/project-intelligence/lib/node/roadmap-document-sync';
@@ -387,7 +387,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private history?: { uri: string; projectId: string; record: RoadmapRevisionRecord; index: RoadmapGateIndex };
     private historyBusy = false;
     private historyError?: string;
-    private historyCompare?: { head: number; lines: string[] };
+    private historyCompare?: RoadmapRestorePreview;
+    private historyCompareReviewed = false;
     private historySerial = 0;
     private readonly details = document.createElement('button');
     private readonly mind = document.createElement('button');
@@ -820,6 +821,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.arrangeButton.setAttribute('aria-pressed', 'false');
             this.path.classList.remove('dope-roadmap-arranging');
             this.historyCompare = undefined;
+            this.historyCompareReviewed = false;
             this.historyError = undefined;
             this.pendingChatProposalCamera = undefined;
             this.chatProposalCameraObserver.disconnect();
@@ -842,6 +844,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.historyBusy = false;
         this.history = undefined;
         this.historyCompare = undefined;
+        this.historyCompareReviewed = false;
         this.historyError = undefined;
         const current = this.inspector.index;
         if (current) this.projection = this.projectIndex(current);
@@ -854,29 +857,39 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const history = this.history, uri = this.projectUri, current = this.inspector.gateIndex;
         if (!history || !uri || !current || !this.revisionList || this.historyBusy) return;
         const serial = ++this.historySerial;
-        this.historyBusy = true; this.historyCompare = undefined; this.renderHistoryControls();
+        this.historyBusy = true; this.historyCompare = undefined; this.historyCompareReviewed = false;
+        this.historyError = undefined; this.renderHistoryControls();
         try {
-            const fresh = await this.service.read(uri) as unknown as RoadmapGateIndex;
-            const page = await this.service.listRevisions(uri, history.projectId, undefined, 1);
-            if (fresh.projectId !== history.projectId || fresh.revision !== current.revision ||
-                page.headRevision !== fresh.revision || page.revisions[0]?.revision !== fresh.revision)
-                throw new Error('Current Roadmap advanced; refresh the comparison');
-            const describe = (index: RoadmapGateIndex): Map<string, string> => new Map([
-                ...index.phases.map(item => [`Phase ${item.id}`, JSON.stringify([item.title, item.objective, item.order,
-                    item.dependencies, item.qualificationSource]) ] as const),
-                ...index.gates.map(item => [`Gate ${item.id}`, JSON.stringify([item.title, item.purpose,
-                    item.parentPhaseId, item.order, item.dependencies, item.qualificationSource,
-                    item.criteria.map(criterion => [criterion.id, criterion.title, criterion.expectedResult])])] as const),
-                ...index.corrections.map(item => [`Correction ${item.id}`, JSON.stringify([item.title, item.objective,
-                    item.parent, item.order])] as const),
-            ]);
-            const old = describe(history.index), now = describe(fresh);
-            const lines = [...new Set([...old.keys(), ...now.keys()])].sort().filter(key => old.get(key) !== now.get(key))
-                .map(key => `${key}: ${old.has(key) ? now.has(key) ? 'changed' : 'removed from current' : 'added to current'}`);
+            const preview = await this.service.previewRestore(uri, history.projectId, history.record.revision);
+            if (preview.previousHeadRevision !== current.revision) throw new Error('Current Roadmap advanced; refresh comparison');
             if (serial !== this.historySerial || this.history !== history || this.projectUri !== uri) return;
-            this.historyCompare = { head: fresh.revision, lines };
+            this.historyCompare = preview;
         } catch (error) {
             if (serial === this.historySerial && this.history === history) this.historyError = `Compare unavailable: ${String(error)}`;
+        } finally {
+            if (serial === this.historySerial) { this.historyBusy = false; this.renderHistoryControls(); }
+        }
+    }
+
+    private async confirmHistoryRestore(): Promise<void> {
+        const review = this.historyCompare, history = this.history, uri = this.projectUri;
+        if (!review || !history || !uri || this.historyBusy || !this.historyCompareReviewed ||
+            review.expiresAt <= Date.now()) return;
+        const serial = ++this.historySerial;
+        this.historyBusy = true; this.renderHistoryControls();
+        try {
+            const result = await this.service.applyRestore(uri, review, true);
+            if (serial !== this.historySerial || this.projectUri !== uri) return;
+            this.returnToCurrent();
+            this.status.textContent = result.linkedDocument?.syncState === 'synced' ?
+                `Restored as R${result.revision}; linked Markdown verified` :
+                `Restored as R${result.revision}; linked Markdown ${result.linkedDocument?.syncState ?? 'unlinked'}`;
+        } catch (error) {
+            if (serial === this.historySerial) {
+                this.historyError = `Restore needs a new comparison: ${String(error)}`;
+                this.historyCompare = undefined;
+                this.historyCompareReviewed = false;
+            }
         } finally {
             if (serial === this.historySerial) { this.historyBusy = false; this.renderHistoryControls(); }
         }
@@ -911,18 +924,42 @@ export class RoadmapCanvasWidget extends BaseWidget {
         compare.disabled = this.historyBusy || !valid;
         compare.onclick = () => void this.compareHistory();
         const restore = document.createElement('button'); restore.type = 'button'; restore.textContent = 'Confirm Restore';
-        restore.disabled = true; restore.title = 'Available after restore integration';
-        restore.setAttribute('aria-describedby', 'dope-roadmap-restore-unavailable');
-        const note = document.createElement('span'); note.id = 'dope-roadmap-restore-unavailable';
-        note.textContent = 'Confirm Restore available after restore integration.';
+        restore.disabled = this.historyBusy || !valid || !this.historyCompare || !this.historyCompareReviewed ||
+            this.historyCompare.previousHeadRevision !== current?.revision || this.historyCompare.expiresAt <= Date.now();
+        restore.title = restore.disabled ? 'Compare with Current before confirming restore' :
+            `Restore R${history.record.revision} editable structure as a new revision`;
+        restore.onclick = () => void this.confirmHistoryRestore();
         const back = document.createElement('button'); back.type = 'button'; back.textContent = 'Return to Current';
         back.onclick = () => this.returnToCurrent();
-        this.historyStrip.append(heading, fact, compare, restore, note, back);
+        this.historyStrip.append(heading, fact, compare, restore, back);
         const compared = this.historyCompare;
-        if (compared && compared.head === current?.revision) {
+        if (compared && compared.previousHeadRevision === current?.revision) {
             const diff = document.createElement('p');
-            diff.textContent = compared.lines.length ? compared.lines.join('; ') : 'No structural differences.';
+            diff.textContent = compared.changes.join('; ');
             this.historyStrip.append(diff);
+            const warning = document.createElement('p');
+            warning.textContent = compared.warnings.join(' ');
+            this.historyStrip.append(warning);
+            const structure = document.createElement('details');
+            const structureLabel = document.createElement('summary'); structureLabel.textContent = 'Resulting editable structure';
+            const structureText = document.createElement('pre');
+            structureText.textContent = JSON.stringify(compared.resultingStructure, null, 2);
+            structure.append(structureLabel, structureText); this.historyStrip.append(structure);
+            if (compared.linkedDiff) {
+                const linked = document.createElement('details');
+                const label = document.createElement('summary');
+                label.textContent = `Linked Markdown checked diff · ${compared.linkedDiff.path} · ${compared.linkedDiff.beforeHash} → ${compared.linkedDiff.afterHash}`;
+                const before = document.createElement('pre'); before.textContent = `Before:\n${compared.linkedDiff.before}`;
+                const after = document.createElement('pre'); after.textContent = `After:\n${compared.linkedDiff.after}`;
+                linked.append(label, before, after); this.historyStrip.append(linked);
+            }
+            const inspected = document.createElement('label');
+            const box = document.createElement('input'); box.type = 'checkbox';
+            box.checked = this.historyCompareReviewed;
+            box.onchange = () => { this.historyCompareReviewed = box.checked; this.renderHistoryControls(); };
+            inspected.append(box, document.createTextNode(compared.linkedDiff ?
+                ' I reviewed the structure and linked Markdown comparison' : ' I reviewed the structure comparison'));
+            this.historyStrip.append(inspected);
         }
         if (this.historyError) {
             const error = document.createElement('p'); error.setAttribute('role', 'alert'); error.textContent = this.historyError;
