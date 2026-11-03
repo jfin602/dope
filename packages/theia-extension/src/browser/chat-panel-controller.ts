@@ -244,6 +244,7 @@ export class ChatPanelController {
                     // finish a release RPC. Recheck through the normal atomic claim.
                     void this.select(chatId, true);
                 }
+                if (event.kind === 'roadmap-stage') return; // R3 owns canvas presentation.
                 this.eventRevision = Math.max(this.eventRevision, event.revision);
                 if (!this.pending && !this.running && this.handle && event.revision > (this.snapshot?.revision ?? -1)) void this.refresh();
             } });

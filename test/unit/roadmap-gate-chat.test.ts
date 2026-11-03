@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
+import type { ChatEvent } from '../../packages/chat/lib/service.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
@@ -300,6 +301,8 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
     const root = await mkdtemp(join(tmpdir(), 'dope-native-greenfield-chat-'));
     const store = new RoadmapStore(), repository = new ChatRepository();
     const chatId = randomUUID();
+    const snapshots: Extract<ChatEvent, { kind: 'roadmap-stage' }>[] = [];
+    let attachedHandle = '', activeLease = '', finalStarted = false;
     const composer = new ChatContextComposer({} as never, {} as never,
         { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
             inputsCurrent: async () => false } as never, repository, store);
@@ -319,13 +322,32 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
         const first = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
             expectedStage: 1, actions: [
                 { type: 'phase.create', id: 'new:foundation', title: 'Playable loop',
-                    objective: 'Complete one wave with a working path and tower' },
-                { type: 'phase.create', id: 'new:progression', title: 'Progression',
-                    objective: 'Persist health and resolve defeat between waves' }
+                    objective: 'Complete one wave with a working path and tower' }
             ] })) as { acceptedOperationIds: string[] };
-        assert.equal(first.acceptedOperationIds.length, 2);
+        assert.equal(first.acceptedOperationIds.length, 1);
+        assert.equal(snapshots.length, 1);
+        assert.equal(snapshots[0].snapshot?.sequence, 1);
+        assert.deepEqual(snapshots[0].snapshot?.counts, { phases: 1, gates: 0, criteria: 0 });
+        assert.equal(snapshots[0].snapshot?.incompletePhaseIds.length, 1);
+        const duplicate = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
+            expectedStage: 1, actions: [{ type: 'phase.create', id: 'new:repeat',
+                title: 'Repeat', objective: 'Must not advance' }] })) as { error: string };
+        assert.match(duplicate.error, /ROADMAP_STAGE_EXPECTED_2/);
+        const invalid = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
+            expectedStage: 2, actions: [{ type: 'gate.create', id: 'new:orphan',
+                parentPhaseId: 'new:missing', designation: 'G1', title: 'Orphan',
+                purpose: 'Reject', criteria: [] }] })) as { error: string };
+        assert.match(invalid.error, /unknown parentPhaseId/);
+        assert.equal(snapshots.length, 1);
         const second = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
-            expectedStage: 2, done: true, actions: [
+            expectedStage: 2, actions: [{ type: 'phase.create', id: 'new:progression',
+                title: 'Progression', objective: 'Persist health and resolve defeat between waves' }] })) as {
+                    acceptedOperationIds: string[] };
+        assert.equal(second.acceptedOperationIds.length, 1);
+        assert.equal(snapshots.length, 2);
+        assert.deepEqual(snapshots[1].snapshot?.counts, { phases: 2, gates: 0, criteria: 0 });
+        const third = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
+            expectedStage: 3, done: true, actions: [
                 { type: 'gate.create', id: 'new:path', parentPhaseId: 'new:foundation', designation: 'G1',
                     title: 'Enemy path', purpose: 'Verify fixed waypoint traversal', criteria: [
                         { id: 'new:waypoints', title: 'Ordered waypoints',
@@ -335,24 +357,43 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
                         { id: 'new:defeat', title: 'Defeat at zero',
                             expectedResult: 'Main tower health carries forward and zero ends the game' }] }
             ] })) as { complete: boolean };
-        assert.equal(second.complete, true);
+        assert.equal(third.complete, true);
+        assert.equal(snapshots.length, 3);
+        assert.equal(snapshots[2].snapshot?.sequence, 3);
+        assert.deepEqual(snapshots[2].snapshot?.counts, { phases: 2, gates: 2, criteria: 2 });
+        assert.deepEqual(snapshots[2].snapshot?.incompletePhaseIds, []);
+        assert.equal(snapshots[0].snapshot?.proposalId, snapshots[2].snapshot?.proposalId);
+        assert.equal((await backend.readNativeRoadmapStage(attachedHandle, chatId,
+            snapshots[2].messageId, activeLease))?.sequence, 3);
+        assert.equal(await backend.readNativeRoadmapStage(attachedHandle, chatId,
+            'foreign-turn', activeLease), undefined);
+        assert.equal(await backend.readNativeRoadmapStage(attachedHandle, chatId,
+            snapshots[2].messageId, 'foreign-lease'), undefined);
+        assert.equal(snapshots.every(event => !JSON.stringify(event).includes(activeLease)), true);
+        finalStarted = true;
         yield { type: 'complete' as const, actualModelId: 'q4', text: 'I staged a proposed Roadmap for review.' };
     } };
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+    const backend = new ChatBackend(repository, { notifyChatEvent(event) {
+        if (event.kind === 'roadmap-stage') { assert.equal(finalStarted, false); snapshots.push(event); }
+    } }, models as never,
         composer, undefined, { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
         undefined, undefined, undefined, store);
     try {
         const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+        attachedHandle = projectHandle;
         await backend.mutate({ projectHandle, expectedRevision: 0,
             operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'New project' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         assert.equal(lease.acquired, true);
         if (!lease.acquired) throw new Error('Chat lease unavailable');
+        activeLease = lease.token;
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: 'Create a complete development Roadmap for a playable 2D tower-defense game built using TypeScript and PixiJS.',
             context: [] });
         assert.ok(turn.proposal, turn.proposalError);
+        assert.equal(await backend.readNativeRoadmapStage(projectHandle, chatId,
+            snapshots[2].messageId, lease.token), undefined);
         assert.equal(turn.proposal.revision, 0);
         assert.equal(turn.proposal.ownerId, 'uninitialized');
         assert.equal(turn.proposal.operations?.length, 4);
@@ -370,6 +411,52 @@ test('one greenfield Chat request stages a native Roadmap proposal without canon
         assert.equal(saved.revision, 1);
         assert.equal(saved.phases.length, 2);
         assert.equal(saved.gates.length, 2);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('native stage cancellation invalidates the live observer without a canonical write', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-native-cancel-event-'));
+    const store = new RoadmapStore(), repository = new ChatRepository();
+    const chatId = randomUUID();
+    const events: Extract<ChatEvent, { kind: 'roadmap-stage' }>[] = [];
+    const composer = new ChatContextComposer({} as never, {} as never,
+        { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+            inputsCurrent: async () => false } as never, repository, store);
+    const model = { id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
+        streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } };
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [model] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        await request.projectTools!.execute('roadmap_stage', { version: 1, expectedRevision: 0,
+            expectedSourceHash: null, expectedStage: 1, actions: [
+                { type: 'phase.create', id: 'new:p', title: 'Phase', objective: 'Ship' }] });
+        assert.equal(events.length, 1);
+        const result = JSON.parse(await request.projectTools!.execute('roadmap_cancel', { version: 1 })) as {
+            cancelled: boolean };
+        assert.equal(result.cancelled, true);
+        assert.equal(events.length, 2);
+        assert.equal(events[1].snapshot, null);
+        assert.equal(events[1].reason, 'cancelled');
+        yield { type: 'complete' as const, actualModelId: 'q4', text: 'Cancelled the draft.' };
+    } };
+    const backend = new ChatBackend(repository, { notifyChatEvent(event) {
+        if (event.kind === 'roadmap-stage') events.push(event);
+    } }, models as never, composer, undefined,
+    { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
+    undefined, undefined, undefined, store);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Cancel' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Chat lease unavailable');
+        const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: 'Create a Roadmap for a tower-defense game.', context: [] });
+        assert.equal(turn.proposal, undefined);
+        assert.equal((await store.read(root)).revision, 0);
+        assert.equal(await store.gateIndexHash(root), null);
+        await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 

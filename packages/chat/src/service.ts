@@ -102,6 +102,8 @@ export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;
         stage: 'waiting' | 'validating' | 'checking-owner' | 'generating-draft' | 'validating-draft' | 'preparing-draft' | 'draft-ready' | 'cancelled' | 'failed' }
+    | { projectHandle: string; kind: 'roadmap-stage'; chatId: ChatId; messageId: string;
+        snapshot: ChatRoadmapStageSnapshot | null; reason?: 'cancelled' | 'failed' | 'stale' }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
     | { projectHandle: string; revision: number; kind: 'assistant-delta'; chatId: ChatId;
         messageId: string; executionId: string; sequence: number; delta: string }
@@ -113,6 +115,15 @@ export type ChatEvent =
         name: NonNullable<ChatExecution['toolEvents']>[number]['name'];
         status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean; detail?: string; target?: string };
 export interface ChatClient { notifyChatEvent(event: ChatEvent): void }
+/** Observation only: this contains no approval lease or canonical write authority. */
+export interface ChatRoadmapStageSnapshot {
+    proposalId: string; chatId: ChatId; turnId: string; projectId: string; ownerId: string;
+    revision: number; sourceHash: string | null; sequence: number; expiresAt: number;
+    operationIds: string[]; entityIds: string[];
+    counts: { phases: number; gates: number; criteria: number };
+    incompletePhaseIds: string[]; complete: boolean;
+    preview: NonNullable<ChatPlanningProposal['preview']>;
+}
 
 /** Transport-neutral service. The backend owns persistence, revisions and lease enforcement. */
 export interface ChatService {
@@ -122,6 +133,8 @@ export interface ChatService {
     read(projectHandle: string): Promise<ChatCollection>;
     list(projectHandle: string): Promise<Chat[]>;
     get(projectHandle: string, chatId: ChatId): Promise<Chat | undefined>;
+    readNativeRoadmapStage(projectHandle: string, chatId: ChatId, turnId: string,
+        leaseToken: string): Promise<ChatRoadmapStageSnapshot | undefined>;
     mutate(request: ChatMutation): Promise<ChatCollection>;
     search(request: ChatSearchRequest): Promise<ChatSearchHit[]>;
     previewContext(request: { projectHandle: string; chatId: ChatId; selectedModel: ChatModelSelection;

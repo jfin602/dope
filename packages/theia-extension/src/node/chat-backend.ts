@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
     ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
     ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
+import type { ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import { changeChatSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
 import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
@@ -360,6 +361,19 @@ export class ChatBackend implements ChatService {
     }
     renew(projectHandle: string, chatId: string, token: string) {
         return this.repository.renew(this.active(projectHandle), chatId, token);
+    }
+    async readNativeRoadmapStage(projectHandle: string, chatId: string, turnId: string,
+        leaseToken: string): Promise<ChatRoadmapStageSnapshot | undefined> {
+        const root = this.active(projectHandle);
+        if (!this.nativeStages || this.leases.get(chatId)?.root !== root ||
+            this.leases.get(chatId)?.token !== leaseToken ||
+            this.turns.get(chatId)?.token !== leaseToken || this.turns.get(chatId)?.abort.signal.aborted)
+            return undefined;
+        const stage = this.nativeStages.get(chatId);
+        if (!stage || stage.context.root !== root || stage.context.turnId !== turnId ||
+            stage.context.lease !== leaseToken) return undefined;
+        await this.repository.renew(root, chatId, leaseToken);
+        return this.nativeStages.snapshot(stage.context);
     }
     async release(projectHandle: string, chatId: string, token: string) {
         const root = this.active(projectHandle);
@@ -1141,15 +1155,42 @@ export class ChatBackend implements ChatService {
                     const context = { root, projectId: current.projectId, chatId: key,
                         turnId: assistant!.id, lease: request.leaseToken };
                     let result: unknown;
-                    try { result = name === 'roadmap_read' ? await this.nativeStages.read(context, args) :
+                    try {
+                        await this.repository.renew(root, key, request.leaseToken);
+                        result = name === 'roadmap_read' ? await this.nativeStages.read(context, args) :
                         name === 'roadmap_stage' ? await this.nativeStages.stage(context, args) :
                         name === 'roadmap_cancel' ? await this.nativeStages.cancel(context, args) :
                         (() => { throw new Error('ROADMAP_TOOL_UNKNOWN'); })(); }
-                    catch (error) { return JSON.stringify({ version: 1, acceptedOperationIds: [],
-                        error: error instanceof Error && error.message.startsWith('ROADMAP_') ?
-                            error.message.slice(0, 500) : 'ROADMAP_TOOL_FAILED' }); }
+                    catch (error) {
+                        const code = error instanceof Error && error.message === 'Chat lease lost' ?
+                            'ROADMAP_STAGE_LEASE_LOST' : error instanceof Error && error.message.startsWith('ROADMAP_') ?
+                            error.message.slice(0, 500) : 'ROADMAP_TOOL_FAILED';
+                        if (/^ROADMAP_(?:STAGE_STALE|STAGE_LEASE_LOST|STAGE_STALE_SOURCE|OWNER_CHANGED|SOURCE_CHANGED|SOURCE_NOT_SYNCED)/u.test(code) &&
+                            this.nativeStages.get(key)) try {
+                            this.client.notifyChatEvent({ projectHandle: request.projectHandle,
+                                kind: 'roadmap-stage', chatId: key, messageId: assistant!.id,
+                                snapshot: null, reason: 'stale' });
+                        } catch { /* A disconnected observer cannot change source validation. */ }
+                        return JSON.stringify({ version: 1, acceptedOperationIds: [], error: code });
+                    }
                     if (signal?.aborted || abort.signal.aborted || this.active(request.projectHandle) !== root)
                         throw new Error('ROADMAP_TOOL_CANCELLED');
+                    if (name === 'roadmap_stage') {
+                        const snapshot = await this.nativeStages.snapshot(context);
+                        if (!snapshot || this.turns.get(key)?.abort !== abort ||
+                            this.leases.get(key)?.token !== request.leaseToken ||
+                            signal?.aborted || abort.signal.aborted ||
+                            this.active(request.projectHandle) !== root)
+                            throw new Error('ROADMAP_STAGE_STALE');
+                        try { this.client.notifyChatEvent({ projectHandle: request.projectHandle,
+                            kind: 'roadmap-stage', chatId: key, messageId: assistant!.id, snapshot }); }
+                        catch { /* Transient observer delivery cannot control stage acceptance. */ }
+                    } else if (name === 'roadmap_cancel' && (result as { cancelled?: boolean }).cancelled) {
+                        try { this.client.notifyChatEvent({ projectHandle: request.projectHandle,
+                            kind: 'roadmap-stage', chatId: key, messageId: assistant!.id,
+                            snapshot: null, reason: 'cancelled' }); }
+                        catch { /* A disconnected observer cannot change cancellation. */ }
+                    }
                     return JSON.stringify(result);
                 }
                 if (nativeRoadmap) throw new Error('ROADMAP_TOOL_DENIED');
@@ -1599,6 +1640,11 @@ export class ChatBackend implements ChatService {
             }
             throw new Error('Model stream ended without completion');
         } catch (error) {
+            if (nativeRoadmap && assistant && this.nativeStages?.get(key)) try {
+                this.client.notifyChatEvent({ projectHandle: request.projectHandle, kind: 'roadmap-stage',
+                    chatId: key, messageId: assistant.id, snapshot: null,
+                    reason: abort.signal.aborted ? 'cancelled' : 'failed' });
+            } catch { /* A disconnected observer cannot change turn outcome. */ }
             if (nativeRoadmap) this.nativeStages?.forget(key);
             if (this.proposals.get(key)?.messageId === assistant?.id) this.clearProposal(key);
             if (assistant) {

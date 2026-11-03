@@ -35,6 +35,12 @@ test('native read, multi-batch stage and cancel never write the canonical index'
                 { type: 'phase.create', id: 'new:p2', title: 'Second', objective: 'Ship second' },
             ] }) as { acceptedOperationIds: string[]; createdEntityIds: Record<string, string> };
         assert.equal(first.acceptedOperationIds.length, 2);
+        const firstSnapshot = await owner.snapshot(context);
+        assert.equal(firstSnapshot?.sequence, 1);
+        assert.deepEqual(firstSnapshot?.counts, { phases: 2, gates: 0, criteria: 0 });
+        assert.equal(firstSnapshot?.incompletePhaseIds.length, 2);
+        assert.equal(firstSnapshot?.complete, false);
+        owner.get('chat')!.expires = Date.now() + 1000;
         const second = await owner.stage(context, { version: 1, expectedRevision: 1, expectedSourceHash: sourceHash, expectedStage: 2,
             actions: [
                 { type: 'gate.create', id: 'new:g1', parentPhaseId: 'new:p1', designation: 'G1',
@@ -46,15 +52,28 @@ test('native read, multi-batch stage and cancel never write the canonical index'
             ] }) as { acceptedOperationIds: string[]; createdEntityIds: Record<string, string>; totalOperations: number };
         assert.equal(second.acceptedOperationIds.length, 2);
         assert.equal(second.totalOperations, 4);
+        const secondSnapshot = await owner.snapshot(context);
+        assert.equal(secondSnapshot?.sequence, 2);
+        assert.ok(secondSnapshot!.expiresAt > Date.now() + 9 * 60_000);
+        assert.ok(secondSnapshot!.expiresAt <= owner.get('chat')!.createdAt + 30 * 60_000);
+        assert.deepEqual(secondSnapshot?.counts, { phases: 2, gates: 2, criteria: 2 });
+        assert.equal(secondSnapshot?.proposalId, firstSnapshot?.proposalId);
+        assert.equal(secondSnapshot?.operationIds[0], firstSnapshot?.operationIds[0]);
+        assert.equal(secondSnapshot?.preview.entities.filter(item => item.after?.kind === 'gate').length, 2);
         assert.equal(owner.get('chat')?.operations[2].action.type, 'gate.create');
         assert.equal((owner.get('chat')?.operations[2].action as { parentPhaseId: string }).parentPhaseId,
             first.createdEntityIds['new:p1']);
         assert.equal(owner.get('chat')?.operations[0].batch, 1);
         assert.equal(owner.get('chat')?.operations[2].batch, 2);
+        await writeFile(join(root, 'ROADMAP.md'), '# Externally changed Roadmap\n');
+        await assert.rejects(owner.snapshot(context), /ROADMAP_SOURCE_CHANGED/);
+        await writeFile(join(root, 'ROADMAP.md'), markdown);
+        assert.equal((await owner.snapshot(context))?.sequence, 2);
         const cancelled = await owner.cancel(context, { version: 1 }) as { cancelled: boolean; cancelledOperationIds: string[] };
         assert.equal(cancelled.cancelled, true);
         assert.equal(cancelled.cancelledOperationIds.length, 4);
         assert.equal(owner.get('chat'), undefined);
+        assert.equal(await owner.snapshot(context), undefined);
         assert.equal(createHash('sha256').update(await readFile(file)).digest('hex'), before);
         assert.equal(createHash('sha256').update(await readFile(join(root, 'ROADMAP.md'))).digest('hex'), sourceHash);
     } finally { await rm(root, { recursive: true, force: true }); }
@@ -172,10 +191,14 @@ test('native stage rejects wrong identity, stale basis, invalid actions and over
         assert.equal(owner.get('chat'), undefined);
         await owner.stage(context, { ...basis,
             actions: [{ type: 'phase.create', id: 'new:p', title: 'Title', objective: 'Objective' }] });
+        assert.equal((await owner.snapshot(context))?.sequence, 1);
+        await assert.rejects(owner.snapshot({ ...context, projectId: 'forged' }), /OWNER_CHANGED|STAGE_STALE/);
+        await assert.rejects(owner.snapshot({ ...context, lease: 'forged' }), /STAGE_STALE/);
         await assert.rejects(owner.stage({ ...context, lease: 'forged' }, { ...basis,
             actions: [{ type: 'phase.create', id: 'new:q', title: 'Title', objective: 'Objective' }] }), /STAGE_STALE/);
         await assert.rejects(owner.cancel({ ...context, turnId: 'other' }, { version: 1 }), /STAGE_STALE/);
         owner.get('chat')!.expires = Date.now() - 1;
+        await assert.rejects(owner.snapshot(context), /STAGE_STALE/);
         await assert.rejects(owner.cancel(context, { version: 1 }), /STAGE_STALE/);
     } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -360,6 +383,7 @@ test('partial, duplicate and phase-only stages remain honest and noncanonical', 
             { type: 'gate.create', id: 'new:g1', parentPhaseId: 'new:absent', designation: 'G1',
                 title: 'Missing parent', purpose: 'Observe lane', criteria: [
                     { id: 'new:c1', title: 'Wave stops', expectedResult: 'Stopped' }] }] }), /unknown parentPhaseId/);
+        assert.equal((await owner.snapshot(context))?.sequence, 1);
         await assert.rejects(owner.stage(context, { ...basis, expectedStage: 2, actions: [
             { type: 'gate.create', id: 'new:g1', parentPhaseId: 'new:p1', designation: 'G1',
                 title: 'Task bullet', purpose: 'Unspecified', criteria: [
@@ -367,6 +391,7 @@ test('partial, duplicate and phase-only stages remain honest and noncanonical', 
         await assert.rejects(owner.stage(context, { ...basis, expectedStage: 2, done: true, actions: [
             { type: 'phase.create', id: 'new:p2', title: 'Other', objective: 'Defend lane' }] }), /FULL_MISSING_GATE/);
         assert.equal(owner.get('chat')?.done, false);
+        assert.equal((await owner.snapshot(context))?.sequence, 1);
         const cancelled = await owner.cancel(context, { version: 1 }) as { cancelled: boolean };
         assert.equal(cancelled.cancelled, true);
         await owner.stage(context, { ...basis, expectedStage: 1, done: true, strategy: 'phase-only', actions: [

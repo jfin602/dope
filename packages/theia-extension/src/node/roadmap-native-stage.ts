@@ -3,14 +3,22 @@ import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadm
 import type { GatePlanningAction } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { checkedRoadmapDocumentFile } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
+import { roadmapProposalPreview } from './roadmap-proposal-presentation';
 
 type Context = { root: string; projectId: string; chatId: string; turnId: string; lease: string };
 export type NativeOperationStatus = 'Pending' | 'Applied' | 'Rejected' | 'Stale' | 'Conflict' | 'Denied' | 'Failed' | 'Superseded';
 type Operation = { id: string; action: GatePlanningAction; batch: number; status: NativeOperationStatus };
 export type NativeRoadmapStage = { id: string; context: Context; revision: number;
-    sourceHash: string | null; ownerId: string; expires: number; operations: Operation[]; entityIds: Map<string, string>;
+    sourceHash: string | null; ownerId: string; createdAt: number; expires: number;
+    operations: Operation[]; entityIds: Map<string, string>;
+    snapshot?: NativeStageSnapshot;
     done: boolean; strategy: 'full' | 'phase-only'; review?: { token: string; ids: string[];
         decision: 'apply' | 'reject'; revision: number; indexHash: string | null } };
+export type NativeStageSnapshot = { proposalId: string; chatId: string; turnId: string; projectId: string;
+    ownerId: string; revision: number; sourceHash: string | null; sequence: number; expiresAt: number;
+    operationIds: string[]; entityIds: string[]; counts: { phases: number; gates: number; criteria: number };
+    incompletePhaseIds: string[]; complete: boolean;
+    preview: ReturnType<typeof roadmapProposalPreview> };
 export const NATIVE_ROADMAP_ACTION_FIELDS: Record<string, readonly string[]> = {
     'phase.create': ['id', 'title', 'objective'], 'phase.edit': ['id', 'title', 'objective'],
     'phase.delete': ['id'], 'phase.reorder': ['ids'], 'phase.dependencies': ['id', 'dependencies'],
@@ -141,7 +149,6 @@ export class RoadmapNativeStageOwner {
         }
         this.staleRetries.delete(context.chatId);
         if (prior) this.assert(prior, context, index);
-        const priorAliases = new Map(prior?.entityIds ?? []);
         if (prior?.done) throw new Error('ROADMAP_STAGE_ALREADY_DONE');
         const expectedStage = (prior?.operations.at(-1)?.batch ?? 0) + 1;
         if (args.expectedStage !== expectedStage) throw new Error(`ROADMAP_STAGE_EXPECTED_${expectedStage}`);
@@ -227,23 +234,51 @@ export class RoadmapNativeStageOwner {
             }
             accepted.push({ id: randomUUID(), action, batch: expectedStage, status: 'Pending' });
         }
+        const createdAt = Date.now();
         const stage: NativeRoadmapStage = prior ?? { id: randomUUID(), context, revision: index.revision,
             ownerId: index.revision === 0 ? randomUUID() : index.projectId,
-            sourceHash: source(index), expires: Date.now() + 10 * 60_000, operations: [], entityIds: new Map(),
+            sourceHash: source(index), createdAt, expires: createdAt + 10 * 60_000,
+            operations: [], entityIds: new Map(),
             done: false, strategy: args.strategy === 'phase-only' ? 'phase-only' : 'full' };
         if (stage.strategy === 'phase-only' && accepted.some(item => !item.action.type.startsWith('phase.')))
             throw new Error('ROADMAP_STAGE_PHASE_ONLY_HAS_NON_PHASE');
-        stage.operations.push(...accepted); stage.entityIds = aliases;
-        this.stages.set(context.chatId, stage);
+        // Validate the whole partial graph before changing the in-memory owner. A Phase may
+        // lack a future Gate here; complete() alone enforces the final full-plan contract.
+        const operations = [...stage.operations, ...accepted];
+        const after = await this.store.mutateGateIndex(context.root, index.revision, stage.ownerId,
+            operations.map(item => item.action), true);
+        const entities = (graph: RoadmapGateIndex) => [...graph.phases, ...graph.gates,
+            ...graph.corrections, ...graph.gates.flatMap(gate => gate.criteria)];
+        const beforeEntities = new Map(entities(index).map(item => [item.id, item]));
+        const afterEntities = new Map(entities(after).map(item => [item.id, item]));
+        const changedIds = [...new Set([...beforeEntities.keys(), ...afterEntities.keys()])].filter(entityId =>
+            JSON.stringify(beforeEntities.get(entityId)) !== JSON.stringify(afterEntities.get(entityId)));
+        if (entities(after).length > 64) throw new Error('ROADMAP_STAGE_PROJECTION_LIMIT: reduce the draft to 64 entities');
+        const preview = roadmapProposalPreview(index, after, operations.map(item => item.action), changedIds);
+        // A same-owner accepted batch may refresh the preview lease, but never beyond 30
+        // minutes from its first batch. Reads and rejected batches do not prolong it.
+        const expires = Math.min(stage.createdAt + 30 * 60_000, Date.now() + 10 * 60_000);
+        const snapshot: NativeStageSnapshot = { proposalId: stage.id, chatId: context.chatId,
+            turnId: context.turnId, projectId: context.projectId, ownerId: stage.ownerId,
+            revision: stage.revision, sourceHash: stage.sourceHash, sequence: expectedStage,
+            expiresAt: expires, operationIds: operations.map(item => item.id),
+            entityIds: changedIds, counts: { phases: after.phases.length, gates: after.gates.length,
+                criteria: after.gates.reduce((sum, gate) => sum + gate.criteria.length, 0) },
+            incompletePhaseIds: after.phases.filter(phase => !after.gates.some(gate =>
+                gate.parentPhaseId === phase.id)).map(phase => phase.id), complete: args.done === true,
+            preview };
+        if (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > 60_000)
+            throw new Error('ROADMAP_STAGE_PROJECTION_LIMIT: preview exceeds 60KB');
         if (args.done === true) {
-            try { await this.complete(context); }
-            catch (error) {
-                stage.operations.splice(stage.operations.length - accepted.length);
-                stage.entityIds = priorAliases;
-                throw error;
-            }
-            stage.done = true;
+            // Full completion checks run before accepting the final batch.
+            if (stage.strategy === 'full' && after.phases.length && !after.gates.length)
+                throw new Error('ROADMAP_STAGE_FULL_MISSING_GATE: choose phase-only strategy for an intentional phase-only draft');
+            if (stage.strategy === 'full' && stage.revision === 0 && snapshot.incompletePhaseIds.length)
+                throw new Error('ROADMAP_STAGE_FULL_INCOMPLETE_PHASE: each proposed Phase needs a Gate');
         }
+        stage.operations.push(...accepted); stage.entityIds = aliases;
+        stage.expires = expires; stage.snapshot = snapshot; stage.done = args.done === true;
+        this.stages.set(context.chatId, stage);
         return { version: 1, proposalId: stage.id, acceptedOperationIds: accepted.map(item => item.id),
             createdEntityIds: created, totalOperations: stage.operations.length, nextStage: expectedStage + 1,
             complete: stage.done, strategy: stage.strategy };
@@ -359,4 +394,12 @@ export class RoadmapNativeStageOwner {
     }
     forget(chatId: string): void { this.stages.delete(chatId); }
     get(chatId: string): NativeRoadmapStage | undefined { return this.stages.get(chatId); }
+    async snapshot(context: Context): Promise<NativeStageSnapshot | undefined> {
+        const index = await this.current(context);
+        await this.checkedSource(index);
+        const stage = this.stages.get(context.chatId);
+        if (!stage) return undefined;
+        this.assert(stage, context, index);
+        return stage.snapshot ? structuredClone(stage.snapshot) : undefined;
+    }
 }
