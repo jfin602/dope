@@ -17,7 +17,7 @@ import type { RoadmapIndex } from '../../packages/project-intelligence/src/node/
 import type { RoadmapService } from '../../packages/theia-extension/src/roadmap-service.ts';
 import type { PlanningMapController } from '../../packages/theia-extension/src/browser/planning-map-controller.ts';
 
-test('Roadmap preview control requires the current leased Chat and validated accepted-index proposal', () => {
+test('Roadmap preview control shows provisional revision-zero proposals only in the current leased Chat', () => {
     const controller = new ChatPanelController(() => { throw new Error('no connection'); },
         () => {}, new ChatOpenOwners(), 'preview');
     const proposal: ChatPlanningProposal = { id: 'proposal', chatId: 'chat', messageId: 'message',
@@ -35,6 +35,13 @@ test('Roadmap preview control requires the current leased Chat and validated acc
     assert.equal(controller.canViewPlanningProposal('proposal'), false);
     controller.workspace = 'file:///project';
     controller.planningProposal = { ...proposal, revision: 0 };
+    assert.equal(controller.canViewPlanningProposal('proposal'), true);
+    // A revision-zero preview is a review affordance, not a canonical acceptance.
+    controller.planningProposal = undefined;
+    assert.equal(controller.canViewPlanningProposal('proposal'), false);
+    controller.planningProposal = { ...proposal, revision: 0 };
+    assert.equal(controller.canViewPlanningProposal('proposal'), true);
+    controller.planningProposal = { ...proposal, revision: 0, id: 'replacement' };
     assert.equal(controller.canViewPlanningProposal('proposal'), false);
     controller.planningProposal = { ...proposal, preview: undefined };
     assert.equal(controller.canViewPlanningProposal('proposal'), false);

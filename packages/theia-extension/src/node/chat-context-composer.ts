@@ -230,7 +230,7 @@ export class ChatContextComposer {
         roadmapSkill: boolean): Promise<{ label: string; text: string; omitted?: string }> {
         if (!this.roadmap) throw new Error('Roadmap context unavailable');
         const index = await this.roadmap.read<RoadmapGateIndex>(root);
-        if (index.schemaVersion !== 2 || !index.revision || index.projectRoot !== root ||
+        if (index.schemaVersion !== 2 || index.projectRoot !== root ||
             index.projectId !== source.projectId || index.revision !== source.ownerRevision ||
             index.linkedDocument?.sourceHash !== source.sourceHash)
             throw new Error('Stale or foreign Roadmap context; select it again');

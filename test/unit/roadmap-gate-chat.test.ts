@@ -194,6 +194,83 @@ test('saved Chat retains a native staged Roadmap proposal and validated preview 
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('one greenfield Chat request stages a native Roadmap proposal without canonical initialization', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-native-greenfield-chat-'));
+    const store = new RoadmapStore(), repository = new ChatRepository();
+    const chatId = randomUUID();
+    const composer = new ChatContextComposer({} as never, {} as never,
+        { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+            inputsCurrent: async () => false } as never, repository, store);
+    const model = { id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
+        streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } };
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [model] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: {
+        roadmapTools?: boolean; execute(name: string, args: unknown): Promise<string> } }) {
+        assert.equal(request.projectTools?.roadmapTools, true);
+        const read = JSON.parse(await request.projectTools!.execute('roadmap_read', { version: 1 })) as {
+            projectId: string; revision: number; link: unknown };
+        assert.equal(read.projectId, 'uninitialized');
+        assert.equal(read.revision, 0);
+        assert.equal(read.link, null);
+        const basis = { version: 1, expectedRevision: 0, expectedSourceHash: null };
+        const first = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
+            expectedStage: 1, actions: [
+                { type: 'phase.create', id: 'new:foundation', title: 'Playable loop',
+                    objective: 'Complete one wave with a working path and tower' },
+                { type: 'phase.create', id: 'new:progression', title: 'Progression',
+                    objective: 'Persist health and resolve defeat between waves' }
+            ] })) as { acceptedOperationIds: string[] };
+        assert.equal(first.acceptedOperationIds.length, 2);
+        const second = JSON.parse(await request.projectTools!.execute('roadmap_stage', { ...basis,
+            expectedStage: 2, done: true, actions: [
+                { type: 'gate.create', id: 'new:path', parentPhaseId: 'new:foundation', designation: 'G1',
+                    title: 'Enemy path', purpose: 'Verify fixed waypoint traversal', criteria: [
+                        { id: 'new:waypoints', title: 'Ordered waypoints',
+                            expectedResult: 'Enemy visits waypoints in order' }] },
+                { type: 'gate.create', id: 'new:health', parentPhaseId: 'new:progression', designation: 'G1',
+                    title: 'Health persists', purpose: 'Verify loss state', criteria: [
+                        { id: 'new:defeat', title: 'Defeat at zero',
+                            expectedResult: 'Main tower health carries forward and zero ends the game' }] }
+            ] })) as { complete: boolean };
+        assert.equal(second.complete, true);
+        yield { type: 'complete' as const, actualModelId: 'q4', text: 'I staged a proposed Roadmap for review.' };
+    } };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        composer, undefined, { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
+        undefined, undefined, undefined, store);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'New project' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        assert.equal(lease.acquired, true);
+        if (!lease.acquired) throw new Error('Chat lease unavailable');
+        const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: 'Create a complete development Roadmap for a playable 2D tower-defense game built using TypeScript and PixiJS.',
+            context: [] });
+        assert.ok(turn.proposal, turn.proposalError);
+        assert.equal(turn.proposal.revision, 0);
+        assert.equal(turn.proposal.ownerId, 'uninitialized');
+        assert.equal(turn.proposal.operations?.length, 4);
+        assert.equal(turn.proposal.preview?.entities.filter(item => item.after?.kind === 'phase').length, 2);
+        assert.equal(turn.proposal.preview?.entities.filter(item => item.after?.kind === 'gate').length, 2);
+        assert.equal(await store.gateIndexHash(root), null);
+        assert.equal((await store.read(root)).revision, 0);
+        const ids = turn.proposal.operations!.map(item => item.id);
+        const review = await backend.reviewNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, ids, 'apply');
+        const applied = await backend.decideNativeRoadmap(projectHandle, chatId, lease.token,
+            turn.proposal.id, ids, 'apply', review.token);
+        assert.equal(applied.revision, 1);
+        const saved = await store.read(root) as { revision: number; phases: unknown[]; gates: unknown[] };
+        assert.equal(saved.revision, 1);
+        assert.equal(saved.phases.length, 2);
+        assert.equal(saved.gates.length, 2);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('linked native Chat subset approval synchronizes Markdown while rejected operations stay inert', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-linked-ai-sync-'));
     const store = new RoadmapStore(), repository = new ChatRepository();

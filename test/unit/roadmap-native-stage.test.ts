@@ -58,6 +58,81 @@ test('native read, multi-batch stage and cancel never write the canonical index'
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('revision-zero native staging stays provisional and selected approval creates one owned revision', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-native-zero-'));
+    try {
+        const store = new RoadmapStore();
+        const owner = new RoadmapNativeStageOwner(store);
+        const context = { root, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const basis = { version: 1, expectedRevision: 0, expectedSourceHash: null };
+        const initial = await owner.read(context, { version: 1 }) as { revision: number; projectId: string };
+        assert.equal(initial.revision, 0);
+        assert.equal(initial.projectId, 'uninitialized');
+        const first = await owner.stage(context, { ...basis, expectedStage: 1, actions: [
+            { type: 'phase.create', id: 'new:phase', title: 'Playable loop', objective: 'Deliver one playable wave' }
+        ] }) as { acceptedOperationIds: string[]; createdEntityIds: Record<string, string> };
+        const second = await owner.stage(context, { ...basis, expectedStage: 2, done: true, actions: [
+            { type: 'gate.create', id: 'new:gate-a', parentPhaseId: 'new:phase', designation: 'G1',
+                title: 'Enemies follow the path', purpose: 'Verify fixed waypoint movement', criteria: [
+                    { id: 'new:criterion-a', title: 'Waypoint traversal',
+                        expectedResult: 'An enemy reaches each waypoint in sequence' }] },
+            { type: 'gate.create', id: 'new:gate-b', parentPhaseId: 'new:phase', designation: 'G2',
+                title: 'Towers attack enemies', purpose: 'Verify combat', criteria: [
+                    { id: 'new:criterion-b', title: 'Damage is applied',
+                        expectedResult: 'A tower hit reduces enemy health' }] }
+        ] }) as { acceptedOperationIds: string[] };
+        assert.equal(await store.gateIndexHash(root), null);
+        assert.equal((await store.read(root)).revision, 0);
+        const [phase] = first.acceptedOperationIds;
+        const [gateA, gateB] = second.acceptedOperationIds;
+        await assert.rejects(owner.review(context, [gateA], 'apply'), /Missing Roadmap Phase/);
+        const review = await owner.review(context, [phase, gateA], 'apply');
+        assert.equal(review.indexHash, null);
+        assert.equal(review.after?.projectId, owner.get('chat')?.ownerId);
+        assert.equal(await store.gateIndexHash(root), null);
+        const applied = await owner.decide(context, review.token, [phase, gateA], 'apply');
+        assert.equal(applied.revision, 1);
+        const saved = await store.read(root);
+        assert.equal(saved.revision, 1);
+        assert.equal(saved.projectId, owner.get('chat')?.ownerId);
+        assert.equal((saved as { gates: unknown[] }).gates.length, 1);
+        assert.equal((saved as { phases: { id: string }[] }).phases[0].id, first.createdEntityIds['new:phase']);
+        const archived = await store.listRevisions(root, saved.projectId);
+        assert.deepEqual(archived.revisions.map(item => item.revision), [1]);
+        await assert.rejects(owner.decide(context, review.token, [phase, gateA], 'apply'), /APPROVAL_UNAVAILABLE/);
+        const rest = await owner.review(context, [gateB], 'apply');
+        const final = await owner.decide(context, rest.token, [gateB], 'apply');
+        assert.equal(final.revision, 2);
+        assert.equal((await store.read(root) as { gates: unknown[] }).gates.length, 2);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('revision-zero rejection and competing initialization never apply a staged proposal', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-native-zero-stale-'));
+    try {
+        const store = new RoadmapStore();
+        const owner = new RoadmapNativeStageOwner(store);
+        const context = { root, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const actions = [{ type: 'phase.create', id: 'new:p', title: 'Phase', objective: 'Objective' },
+            { type: 'gate.create', id: 'new:g', parentPhaseId: 'new:p', designation: 'G1',
+                title: 'Gate', purpose: 'Purpose', criteria: [{ id: 'new:c', title: 'Check',
+                    expectedResult: 'Observable result' }] }];
+        const stage = await owner.stage(context, { version: 1, expectedRevision: 0,
+            expectedSourceHash: null, expectedStage: 1, done: true, actions }) as { acceptedOperationIds: string[] };
+        const rejected = await owner.review(context, stage.acceptedOperationIds, 'reject');
+        await owner.decide(context, rejected.token, stage.acceptedOperationIds, 'reject');
+        assert.equal(await store.gateIndexHash(root), null);
+        owner.forget('chat');
+        const pending = await owner.stage(context, { version: 1, expectedRevision: 0,
+            expectedSourceHash: null, expectedStage: 1, done: true, actions }) as { acceptedOperationIds: string[] };
+        await store.saveGateIndex(root, 0, 'uninitialized', { schemaVersion: 2, projectId: 'other',
+            projectRoot: root, revision: 1, phases: [], gates: [], corrections: [] });
+        await assert.rejects(owner.review(context, pending.acceptedOperationIds, 'apply'), /OWNER_CHANGED|STAGE_STALE/);
+        assert.equal((await store.read(root)).projectId, 'other');
+        assert.equal((await store.read(root)).revision, 1);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('native stage rejects wrong identity, stale basis, invalid actions and oversized batches', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-native-negative-'));
     try {

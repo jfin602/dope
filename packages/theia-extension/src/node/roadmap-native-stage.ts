@@ -8,9 +8,9 @@ type Context = { root: string; projectId: string; chatId: string; turnId: string
 export type NativeOperationStatus = 'Pending' | 'Applied' | 'Rejected' | 'Stale' | 'Conflict' | 'Denied' | 'Failed' | 'Superseded';
 type Operation = { id: string; action: GatePlanningAction; batch: number; status: NativeOperationStatus };
 export type NativeRoadmapStage = { id: string; context: Context; revision: number;
-    sourceHash: string | null; expires: number; operations: Operation[]; entityIds: Map<string, string>;
+    sourceHash: string | null; ownerId: string; expires: number; operations: Operation[]; entityIds: Map<string, string>;
     done: boolean; strategy: 'full' | 'phase-only'; review?: { token: string; ids: string[];
-        decision: 'apply' | 'reject'; revision: number; indexHash: string } };
+        decision: 'apply' | 'reject'; revision: number; indexHash: string | null } };
 const shape: Record<string, readonly string[]> = {
     'phase.create': ['id', 'title', 'objective'], 'phase.edit': ['id', 'title', 'objective'],
     'phase.delete': ['id'], 'phase.reorder': ['ids'], 'phase.dependencies': ['id', 'dependencies'],
@@ -39,7 +39,10 @@ export class RoadmapNativeStageOwner {
     constructor(private readonly store: RoadmapStore) {}
     private async current(context: Context): Promise<RoadmapGateIndex> {
         const index = await this.store.read<RoadmapGateIndex>(context.root);
-        if (index.projectRoot !== context.root || index.projectId !== context.projectId || index.revision < 1)
+        const stage = this.stages.get(context.chatId);
+        if (index.projectRoot !== context.root ||
+            index.projectId !== context.projectId && !(context.projectId === 'uninitialized' &&
+                stage?.context.projectId === 'uninitialized' && index.projectId === stage.ownerId))
             throw new Error('ROADMAP_OWNER_CHANGED');
         return index;
     }
@@ -201,6 +204,7 @@ export class RoadmapNativeStageOwner {
             accepted.push({ id: randomUUID(), action, batch: expectedStage, status: 'Pending' });
         }
         const stage: NativeRoadmapStage = prior ?? { id: randomUUID(), context, revision: index.revision,
+            ownerId: index.revision === 0 ? randomUUID() : index.projectId,
             sourceHash: source(index), expires: Date.now() + 10 * 60_000, operations: [], entityIds: new Map(),
             done: false, strategy: args.strategy === 'phase-only' ? 'phase-only' : 'full' };
         if (stage.strategy === 'phase-only' && accepted.some(item => !item.action.type.startsWith('phase.')))
@@ -229,11 +233,11 @@ export class RoadmapNativeStageOwner {
         if (!stage.operations.length) throw new Error('ROADMAP_STAGE_EMPTY');
         const actions = stage.operations.map(item => item.action);
         let after: RoadmapGateIndex;
-        try { after = await this.store.mutateGateIndex(context.root, before.revision, before.projectId, actions, true); }
+        try { after = await this.store.mutateGateIndex(context.root, before.revision, stage.ownerId, actions, true); }
         catch (error) {
             // Find the first failing operation against the same unchanged owner. Never report a vague aggregate error.
             for (let at = 0; at < actions.length; at++) {
-                try { await this.store.mutateGateIndex(context.root, before.revision, before.projectId,
+                try { await this.store.mutateGateIndex(context.root, before.revision, stage.ownerId,
                     actions.slice(0, at + 1), true); }
                 catch (cause) { throw new Error(`ROADMAP_STAGE_OPERATION_${stage.operations[at].id}: ${String(cause)}`); }
             }
@@ -241,6 +245,9 @@ export class RoadmapNativeStageOwner {
         }
         if (stage.strategy === 'full' && after.phases.length && !after.gates.length)
             throw new Error('ROADMAP_STAGE_FULL_MISSING_GATE: choose phase-only strategy for an intentional phase-only draft');
+        if (stage.strategy === 'full' && stage.revision === 0 && after.phases.some(phase =>
+            !after.gates.some(gate => gate.parentPhaseId === phase.id)))
+            throw new Error('ROADMAP_STAGE_FULL_INCOMPLETE_PHASE: each proposed Phase needs a Gate');
         if (after.phases.length + after.gates.length + after.corrections.length +
             after.gates.reduce((sum, gate) => sum + gate.criteria.length, 0) > 64)
             throw new Error('ROADMAP_STAGE_PROJECTION_LIMIT: reduce the draft to 64 entities');
@@ -249,7 +256,7 @@ export class RoadmapNativeStageOwner {
 
     /** Review binds the exact subset to one fresh canonical basis; selection alone has no effect. */
     async review(context: Context, ids: readonly string[], decision: 'apply' | 'reject'):
-        Promise<{ token: string; before: RoadmapGateIndex; after?: RoadmapGateIndex; indexHash: string }> {
+        Promise<{ token: string; before: RoadmapGateIndex; after?: RoadmapGateIndex; indexHash: string | null }> {
         const before = await this.current(context);
         await this.checkedSource(before);
         const stage = this.stages.get(context.chatId);
@@ -273,11 +280,11 @@ export class RoadmapNativeStageOwner {
         let after: RoadmapGateIndex | undefined;
         if (decision === 'apply') {
             // The domain validator checks parents, dependency closure, cycles, ordering and no-op.
-            after = await this.store.mutateGateIndex(context.root, before.revision, before.projectId,
+            after = await this.store.mutateGateIndex(context.root, before.revision, stage.ownerId,
                 operations.map(item => item.action), true);
         }
         const indexHash = await this.store.gateIndexHash(context.root);
-        if (!indexHash) throw new Error('ROADMAP_REVIEW_INDEX_MISSING');
+        if (!indexHash && before.revision !== 0) throw new Error('ROADMAP_REVIEW_INDEX_MISSING');
         const token = randomUUID();
         stage.review = { token, ids: [...ids], decision, revision: before.revision, indexHash };
         return { token, before, after, indexHash };
@@ -301,7 +308,7 @@ export class RoadmapNativeStageOwner {
         let revision: number | undefined;
         let changedIds: string[] = [];
         if (decision === 'apply') {
-            const after = await this.store.mutateGateIndex(context.root, before.revision, before.projectId,
+            const after = await this.store.mutateGateIndex(context.root, before.revision, stage.ownerId,
                 operations.map(item => item.action), false, { indexHash: review.indexHash, operationIds: [...ids] });
             revision = after.revision;
             const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,

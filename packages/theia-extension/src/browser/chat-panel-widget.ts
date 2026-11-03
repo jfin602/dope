@@ -642,7 +642,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         const decisions = document.createElement('div');
         decisions.className = 'dope-chat-plan-review-actions';
-        if (proposal.preview && proposal.revision > 0 && this.viewRoadmapProposal) {
+        if (proposal.preview && proposal.revision >= 0 && this.viewRoadmapProposal) {
             const view = this.button('View in Roadmap', () => void this.viewCurrentRoadmapProposal(proposal),
                 !state.canViewPlanningProposal(proposal.id));
             decisions.append(view);

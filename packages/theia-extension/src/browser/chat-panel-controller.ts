@@ -712,7 +712,7 @@ export class ChatPanelController {
     canViewPlanningProposal(id: string): boolean {
         return !!this.lease && this.lease.workspace === this.workspace && this.lease.chatId === this.chatId &&
             this.planningProposal?.id === id && this.planningProposal.chatId === this.chatId &&
-            !!this.planningProposal.preview && this.planningProposal.revision > 0 &&
+            !!this.planningProposal.preview && this.planningProposal.revision >= 0 &&
             !this.pending && !this.running && !this.disposed;
     }
     setDraft(value: string): void {

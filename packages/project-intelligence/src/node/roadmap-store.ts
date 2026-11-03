@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { link as hardLink, lstat, mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { previewRoadmapImport } from './roadmap-import';
+import { discoverRoadmapCandidates, previewRoadmapImport } from './roadmap-import';
 import { checkedRoadmapDocumentFile, planRoadmapDocumentPatch, publishRoadmapDocumentPatch } from './roadmap-document-patch';
 import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPendingRecovery } from './roadmap-document-sync';
 import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
@@ -741,7 +741,7 @@ export class RoadmapStore {
     /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
         operation: RoadmapGateMutation | RoadmapGateMutation[], previewOnly = false,
-        nativeBasis?: { indexHash: string; operationIds?: string[] }): Promise<RoadmapGateIndex> {
+        nativeBasis?: { indexHash: string | null; operationIds?: string[] }): Promise<RoadmapGateIndex> {
         const operations = Array.isArray(operation) ? operation : [operation];
         if (!revision(expectedRevision) || !id(expectedProjectId) || !operations.length ||
             operations.length > (previewOnly || nativeBasis ? 48 : 3) ||
@@ -750,14 +750,24 @@ export class RoadmapStore {
         const next = await this.locked(root, async () => {
             const { file } = await this.paths(root);
             const expectedHash = await this.indexHash(file);
-            if (nativeBasis && (typeof nativeBasis.indexHash !== 'string' ||
+            if (nativeBasis && (nativeBasis.indexHash !== null && typeof nativeBasis.indexHash !== 'string' ||
                 nativeBasis.indexHash !== expectedHash)) throw new Error('Stale native Roadmap index hash');
             const current = await this.read<RoadmapGateIndex>(root);
             if (current.pendingPublication) throw new Error('Pending Roadmap publication requires recovery');
-            if (!current.revision || current.projectId !== expectedProjectId)
+            const initial = current.revision === 0 && current.projectId === 'uninitialized' &&
+                expectedHash === null && (previewOnly || nativeBasis !== undefined) &&
+                expectedProjectId !== 'uninitialized' && current.phases.length === 0 &&
+                current.gates.length === 0 && current.corrections.length === 0 && !current.linkedDocument;
+            if (initial) {
+                const discovered = await discoverRoadmapCandidates(root);
+                if (discovered.candidates.length || discovered.diagnostics.length)
+                    throw new Error('Existing or unsafe Roadmap Markdown requires reviewed import before native creation');
+            }
+            if (!initial && (!current.revision || current.projectId !== expectedProjectId))
                 throw new Error('Roadmap identity changed; reattach');
             if (current.revision !== expectedRevision) throw new Error('Stale Roadmap revision');
             const candidate = structuredClone(current);
+            if (initial) candidate.projectId = expectedProjectId;
             const owned = (_entityId: string): void => { /* The checked automatic writer owns linked definitions. */ };
             const unique = (entityId: string): void => {
                 if ([...candidate.phases, ...candidate.gates, ...candidate.corrections,

@@ -38,6 +38,8 @@ type ProposalChange = NonNullable<ChatPlanningProposal['preview']>['entities'][n
 type InlineKind = 'phase' | 'gate' | 'criterion' | 'correction';
 type InlineFieldName = 'title' | 'objective' | 'purpose' | 'expectedResult';
 type InlineSave = (kind: InlineKind, id: string, field: InlineFieldName, value: string) => Promise<void>;
+type StructuralCreateAction = Extract<RoadmapGateMutation, { type: 'phase.create' | 'gate.create' |
+    'criterion.add' | 'correction.attach' }>;
 type NativeProposalBridge = (uri: string, chatId: string, proposalId: string, ids: string[],
     decision: 'apply' | 'reject', confirm: boolean) => Promise<{ summary?: string;
         preview?: ChatPlanningProposal['preview']; proposal?: ChatPlanningProposal; error?: string }>;
@@ -132,6 +134,7 @@ function ProposedPhaseNode({ data }: { data: { change: ProposalChange; children:
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
     historical?: boolean;
     phaseObjective?: string; correctionObjectives?: Record<string, string>; editField?: InlineSave;
+    beginCreate?: (kind: 'gate' | 'criterion' | 'correction', parentId: string) => void;
     proposalChanges?: ProposalChange[]; proposalSource?: boolean;
     proposalSourceChanges?: { before: string; after: string }[];
     selectedGateId?: string; select: (id: string) => void; selectGate: (gateId: string, phaseId: string) => void;
@@ -171,6 +174,11 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement('span', { className: 'dope-roadmap-phase-divider', 'aria-hidden': true }),
         React.createElement('span', { className: 'dope-roadmap-phase-count' },
             card.required ? `${card.qualified} of ${card.required} gates qualified` : 'No accepted gates · Unplanned'),
+        data.beginCreate && React.createElement('div', { className: 'dope-roadmap-inline-actions nodrag nopan' },
+            React.createElement('button', { type: 'button', 'aria-label': `Add Gate to ${item.title}`,
+                onClick: event => { event.stopPropagation(); data.beginCreate?.('gate', item.id); } }, '+ Gate'),
+            React.createElement('button', { type: 'button', 'aria-label': `Add Correction to ${item.title}`,
+                onClick: event => { event.stopPropagation(); data.beginCreate?.('correction', item.id); } }, '+ Correction')),
         React.createElement('span', { className: 'dope-roadmap-phase-track', role: 'progressbar',
             'aria-label': 'Required accepted Gates qualified', 'aria-valuemin': 0,
             'aria-valuemax': card.required || 1, 'aria-valuenow': card.qualified,
@@ -222,6 +230,13 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     React.createElement(InlineRoadmapField, { kind: 'gate', id: gate.id, field: 'purpose',
                         value: gate.purpose, label: 'Gate purpose', multiline: true, save: data.editField }),
                     React.createElement('strong', null, 'Criteria'),
+                    data.beginCreate && React.createElement('div', { className: 'dope-roadmap-inline-actions nodrag nopan' },
+                        React.createElement('button', { type: 'button',
+                            'aria-label': `Add Criterion to ${gate.designation} ${gate.title}`,
+                            onClick: event => { event.stopPropagation(); data.beginCreate?.('criterion', gate.id); } }, '+ Criterion'),
+                        React.createElement('button', { type: 'button',
+                            'aria-label': `Add Correction to ${gate.designation} ${gate.title}`,
+                            onClick: event => { event.stopPropagation(); data.beginCreate?.('correction', gate.id); } }, '+ Correction')),
                     gate.criteria.length ? gate.criteria.map(criterion => React.createElement('details', { key: criterion.id },
                         React.createElement('summary', null, criterion.title),
                         React.createElement(InlineRoadmapField, { kind: 'criterion', id: criterion.id, field: 'title',
@@ -309,6 +324,8 @@ export const ROADMAP_CANVAS_ID = 'dope-roadmap-canvas';
 export class RoadmapCanvasWidget extends BaseWidget {
     private readonly status = document.createElement('p');
     private readonly contextBar = document.createElement('section');
+    private readonly structuralPanel = document.createElement('section');
+    private readonly addPhase = document.createElement('button');
     private contextPicker?: { uri: string; projectId: string; revision: number; sourceHash?: string;
         draftHandle?: string; draftRevision?: number;
         selected: Map<string, { kind: NonNullable<ChatContextSelection['elementKind']>; id: string; label: string }>;
@@ -457,6 +474,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private proposedDraft?: GreenfieldDraft;
     private reviewedPlan?: { uri: string; projectId: string; handle: string; plan: ImplementationPlanDraft };
     private createStarting = false;
+    private structuralReview?: { handle: string; request: PlanningActionRequest; token: string;
+        uri: string; revision: number };
+    private structuralSerial = 0;
     private projectUri?: string;
     private projection?: TaskRoadmapProjection;
     private selectedId?: string;
@@ -514,6 +534,117 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }
     };
 
+    private async clearStructuralReview(): Promise<void> {
+        const review = this.structuralReview;
+        this.structuralReview = undefined;
+        if (review) await this.service.detach(review.handle).catch(() => undefined);
+    }
+
+    private beginStructuralCreate(kind: 'phase' | 'gate' | 'criterion' | 'correction', parentId?: string): void {
+        const index = this.inspector.gateIndex;
+        if (!index?.revision || this.history || this.mutating || this.contextPicker || this.chatProposal) return;
+        if (kind === 'gate' && !index.phases.some(phase => phase.id === parentId)) return;
+        if ((kind === 'criterion' || kind === 'correction') && !parentId) return;
+        const panel = this.structuralPanel, serial = ++this.structuralSerial;
+        void this.clearStructuralReview();
+        panel.replaceChildren(); panel.hidden = false;
+        const title = document.createElement('h3'); title.textContent = `Add ${kind}`;
+        const form = document.createElement('form');
+        const fields = new Map<string, HTMLInputElement>();
+        const addField = (name: string, label: string, maxLength: number): void => {
+            const wrapper = document.createElement('label'); wrapper.textContent = label;
+            const input = document.createElement('input'); input.type = 'text'; input.required = true;
+            input.maxLength = maxLength; input.setAttribute('aria-label', label); wrapper.append(input);
+            form.append(wrapper); fields.set(name, input);
+        };
+        addField('title', kind === 'criterion' ? 'Observable requirement' : `${kind} title`, 200);
+        addField('detail', kind === 'gate' ? 'Testable Gate purpose' : kind === 'criterion' ?
+            'Expected observation' : 'Objective', 4096);
+        if (kind === 'gate') {
+            addField('criterion', 'First observable criterion', 200);
+            addField('expected', 'First expected observation', 4096);
+        }
+        const preview = document.createElement('button'); preview.type = 'submit'; preview.textContent = 'Review addition';
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel';
+        cancel.onclick = () => { ++this.structuralSerial; void this.clearStructuralReview();
+            panel.hidden = true; panel.replaceChildren(); };
+        const message = document.createElement('p'); message.setAttribute('role', 'status');
+        form.append(preview, cancel); panel.append(title, form, message);
+        panel.onkeydown = event => { if (event.key === 'Escape') { event.stopPropagation(); cancel.click(); } };
+        fields.get('title')?.focus();
+        form.onsubmit = event => {
+            event.preventDefault();
+            const titleValue = fields.get('title')!.value.trim();
+            const detail = fields.get('detail')!.value.trim();
+            const id = crypto.randomUUID();
+            const action: StructuralCreateAction = kind === 'phase' ?
+                { type: 'phase.create', id, title: titleValue, objective: detail } : kind === 'gate' ?
+                { type: 'gate.create', id, parentPhaseId: parentId!, designation: `G${Math.max(0,
+                    ...index.gates.filter(gate => gate.parentPhaseId === parentId).map(gate =>
+                        Number(gate.designation.slice(1)) || 0)) + 1}`, title: titleValue, purpose: detail,
+                    criteria: [{ id: crypto.randomUUID(), title: fields.get('criterion')!.value.trim(),
+                        expectedResult: fields.get('expected')!.value.trim() }] } : kind === 'criterion' ?
+                { type: 'criterion.add', gateId: parentId!, id, title: titleValue, expectedResult: detail } :
+                { type: 'correction.attach', id, parent: {
+                    kind: index.phases.some(phase => phase.id === parentId) ? 'phase' : 'gate', id: parentId! },
+                    title: titleValue, objective: detail };
+            void this.previewStructuralCreate(index, action, kind, titleValue, detail, form, message, serial);
+        };
+    }
+
+    private async previewStructuralCreate(index: RoadmapGateIndex, action: StructuralCreateAction,
+        kind: string, title: string, detail: string, form: HTMLFormElement, message: HTMLParagraphElement,
+        serial: number): Promise<void> {
+        const uri = this.projectUri;
+        if (!uri || this.mutating) return;
+        this.mutating = true; message.textContent = 'Validating with the Roadmap owner…';
+        let handle: string | undefined;
+        try {
+            await this.clearStructuralReview();
+            const attached = await this.service.attach(uri); handle = attached.projectHandle;
+            if (this.projectUri !== uri || this.inspector.gateIndex?.revision !== index.revision ||
+                attached.snapshot.projectId !== index.projectId || attached.snapshot.revision !== index.revision)
+                throw new Error('Roadmap changed. Refresh and review the addition again.');
+            const parentId = 'parentPhaseId' in action ? action.parentPhaseId :
+                'gateId' in action ? action.gateId : 'parent' in action ? action.parent.id : undefined;
+            const request: PlanningActionRequest = { projectHandle: handle, ownerId: index.projectId,
+                expectedRevision: index.revision, actions: [action],
+                ...(parentId && index.linkedDocument?.sections.some(section => section.id === parentId) ?
+                    { sourceHashes: { [parentId]: index.linkedDocument.sourceHash } } : {}) };
+            const checked = await this.service.preview(request);
+            if (serial !== this.structuralSerial || this.structuralPanel.hidden || !checked.changedIds.length || this.projectUri !== uri ||
+                this.inspector.gateIndex?.revision !== index.revision) throw new Error('Roadmap changed during review.');
+            this.structuralReview = { handle, request, token: checked.token, uri, revision: index.revision };
+            handle = undefined;
+            form.hidden = true;
+            message.textContent = `Review ${kind}: ${title} — ${detail}. ${checked.changedIds.length} affected element(s). ` +
+                'This will create one canonical Roadmap revision and synchronize linked Markdown if present.';
+            const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = 'Apply addition';
+            const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel';
+            apply.onclick = () => { void this.applyStructuralCreate(message, apply); };
+            cancel.onclick = () => { ++this.structuralSerial; void this.clearStructuralReview(); this.structuralPanel.hidden = true;
+                this.structuralPanel.replaceChildren(); };
+            this.structuralPanel.append(apply, cancel); apply.focus();
+        } catch (error) { if (serial === this.structuralSerial)
+            message.textContent = `Addition was not applied: ${String(error)}`; }
+        finally { if (handle) await this.service.detach(handle).catch(() => undefined); this.mutating = false; }
+    }
+
+    private async applyStructuralCreate(message: HTMLParagraphElement, apply: HTMLButtonElement): Promise<void> {
+        const review = this.structuralReview;
+        if (!review || this.mutating) return;
+        this.mutating = true; apply.disabled = true;
+        try {
+            if (this.projectUri !== review.uri || this.inspector.gateIndex?.revision !== review.revision || this.history)
+                throw new Error('Roadmap changed; review a fresh addition.');
+            await this.service.apply(review.request, review.token, true);
+            await this.clearStructuralReview();
+            this.structuralPanel.hidden = true; this.structuralPanel.replaceChildren();
+            await this.refresh();
+        } catch (error) { message.textContent = `Addition was not applied: ${String(error)}`; apply.disabled = false; }
+        finally { this.mutating = false; }
+    }
+
     constructor(private readonly service: RoadmapService, private readonly workspaces: WorkspaceService,
         private readonly inspector: RoadmapInspectorModel,
         private readonly openMind: (id?: string, workspace?: string) => Promise<boolean> = async () => false,
@@ -536,6 +667,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             button.append(glyph);
         };
         this.reload.type = 'button';
+        icon(this.addPhase, 'Add Phase on the Roadmap canvas', 'add');
+        this.addPhase.onclick = () => this.beginStructuralCreate('phase');
         icon(this.reload, 'Refresh Roadmap', 'refresh');
         this.reload.onclick = () => { void this.refresh(); };
         icon(this.undoRevision, 'Undo: view previous Roadmap revision', 'discard');
@@ -598,7 +731,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.poolButton.append(' Ideas / Issues');
         this.poolButton.setAttribute('aria-controls', 'dope-roadmap-pool-panel');
         this.poolButton.onclick = () => this.setPoolOpen(!this.poolOpen);
-        this.toolbar.append(this.sourceButton, this.details, this.mind, this.undoRevision, this.redoRevision,
+        this.toolbar.append(this.sourceButton, this.addPhase, this.details, this.mind, this.undoRevision, this.redoRevision,
             this.zoomIn, this.zoomOut, this.fitButton, this.arrangeButton,
             this.expandButton, this.collapseButton, this.focusButton, this.nextPromptsButton, this.phaseButton, this.detailLabel, this.reload);
         this.status.setAttribute('role', 'status');
@@ -722,7 +855,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.contextBar.onkeydown = event => {
             if (event.key === 'Escape') { event.preventDefault(); this.cancelContextPicker(); }
         };
+        this.structuralPanel.className = 'dope-roadmap-structural-create';
+        this.structuralPanel.setAttribute('aria-label', 'Create Roadmap element');
+        this.structuralPanel.hidden = true;
         this.stage.append(this.contextBar, this.path, this.status, this.strategicBar, this.importEntry, this.inspection, this.phaseFocus, this.poolButton, this.pools);
+        this.stage.append(this.structuralPanel);
         this.stage.append(this.proposalBar, this.historyStrip);
         this.node.append(this.toolbar, this.stage);
         this.stageResize.observe(this.stage);
@@ -1084,6 +1221,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.owners = owners;
             this.taskStacks = tasks;
             this.projectUri = projectUri;
+            if (switched || this.structuralReview &&
+                (this.structuralReview.uri !== projectUri || this.structuralReview.revision !== index.revision)) {
+                ++this.structuralSerial;
+                void this.clearStructuralReview();
+                this.structuralPanel.hidden = true; this.structuralPanel.replaceChildren();
+            }
             const reviewed = plans[0];
             if (!reviewed || this.reviewedPlan?.uri !== projectUri || this.reviewedPlan.handle !== reviewed.handle ||
                 this.reviewedPlan.plan.revision !== reviewed.plan.revision || index.revision !== 0)
@@ -1197,7 +1340,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     /** Inspect an existing Chat proposal; the Chat backend remains the only approval authority. */
     async presentChatProposal(uri: string, chatId: string, proposal: ChatPlanningProposal): Promise<void> {
         if (this.history) throw new Error('Return to Current before viewing a Chat Roadmap proposal');
-        if (!proposal.preview || proposal.revision <= 0 || proposal.chatId !== chatId)
+        if (!proposal.preview || proposal.revision < 0 || proposal.chatId !== chatId)
             throw new Error('Current validated Roadmap proposal is unavailable');
         const roots = await this.workspaces.roots;
         if (roots.length !== 1 || roots[0].resource.toString() !== uri)
@@ -1766,6 +1909,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private render(): void {
         const projection = this.projection;
         if (!projection) return;
+        if (this.history && !this.structuralPanel.hidden) {
+            ++this.structuralSerial;
+            void this.clearStructuralReview();
+            this.structuralPanel.hidden = true; this.structuralPanel.replaceChildren();
+        }
+        this.addPhase.disabled = !this.inspector.gateIndex?.revision || !!this.history || this.mutating;
         const nodes = roadmapCanvasOrder(projection);
         if (this.selectedId && !nodes.some(node => node.id === this.selectedId)) {
             this.selectedId = undefined;
@@ -2046,6 +2195,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
                     correctionObjectives: Object.fromEntries((gateIndex?.corrections ?? []).map(correction =>
                         [correction.id, correction.objective])),
                     editField: !this.history && gateIndex && !item.draftState ? this.saveInlineField : undefined,
+                    beginCreate: !this.history && gateIndex?.revision && !item.draftState && !this.mutating ?
+                        (kind: 'gate' | 'criterion' | 'correction', parentId: string) =>
+                            this.beginStructuralCreate(kind, parentId) : undefined,
                     contextPick: !this.history && this.contextPicker ? { selected: [...this.contextPicker.selected.keys()],
                         toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) =>
                             this.toggleContextElement(kind, id) } : undefined,
