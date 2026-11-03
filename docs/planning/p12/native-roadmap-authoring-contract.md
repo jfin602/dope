@@ -1,0 +1,93 @@
+# Native Roadmap authoring, canvas editing and automatic sync — detailed forward contract
+
+**Date:** 2026-11-02 (America/Chicago). **Status:** OWNER-APPROVED DESIGN / DOCS ONLY, NOT IMPLEMENTED OR QUALIFIED. **Decision:** [ADR 0047](../../decisions/0047-native-roadmap-authoring-and-automatic-sync.md). **Delivery scope:** [c12-roadmap-native-authoring](../../tasks/c12-roadmap-native-authoring/README.md). Verify the actual *local* checkout, evidence, running version and dirty files before any implementation.
+
+## 1. User-observed failure and target
+
+The tower-defense screenshot has substantial multi-phase content in Chat but only Unplanned Phase cards on the Roadmap, with unresolved objectives, missing accepted Gates and an "Incomplete Gate or Phase definition" error. Do not assert a root cause without source/runtime investigation. Fix the architectural class of failure: authored structured entities must travel from validated staged generation through preview and explicitly approved canonical commit to canvas and Markdown, without parsing saved natural-language assistant responses.
+
+The normal user journey:
+1. The developer requests a strategic Roadmap in existing Chat. AI uses native schema-2 Roadmap tools to stage a reviewable draft; ordinary answer text summarizes the actual staged entities and coverage gaps.
+2. A compact saved Chat proposal card and, if the Roadmap center tab is already active, a provisional in-canvas preview show the *same authoritative* proposal. A manual View in Roadmap command is always available for valid pending proposals. Auto-preview does not open/switch tabs or steal Chat focus.
+3. The developer accepts/rejects each affected element, groups, a selected subset or all remaining changes. A commit happens only when they intentionally Apply; errors and pending operations remain inspectable. The canonical canvas never confuses provisional with committed items.
+4. At initial file linking the developer picks a project-local .md destination and confirms once. Later validated canonical writes trigger checked, asynchronous source synchronization automatically. A small save/sync status reports actual outcome, not an editing form.
+5. To change any editable Roadmap field manually, the developer clicks a pencil beside the field on the existing canvas, edits inline, confirms or cancels. History and Markdown follow the successful authoritative commit automatically.
+
+## 2. Domain and authority invariants
+
+- **Exactly one canonical structured index:** schema-2 project-scoped RoadmapStore with existing RoadmapService/ProjectPlanningActions owners. Stable immutable IDs; explicit Phase → Gate → Criterion parentage, correction ownership, order and directed acyclic semantic dependencies. Do not infer dependencies from left-to-right arrows or identify Gates from arbitrary checklist bullets.
+- **Planning presence != qualification:** zero accepted Gates => Unplanned/dim; one or more accepted Gates => Planned appearance only. Full Phase GREEN requires separately approved Gate-set coverage, all required qualifying Gates on current source/evidence, no unresolved blockers and independently recorded waiver exceptions where applicable.
+- **Qualification/evidence/waiver/coverage are guarded:** plain Roadmap authoring tools and pencil editors cannot change them. Changing relevant titles, purposes, criteria, source references or Gate-set scope triggers appropriate freshness/coverage revalidation through qualified owner paths, not automatic GREEN/WAIVED.
+- **No second editor/authority:** the canvas, inspector, Chat card, /roadmap skill, Pi tool broker, and Markdown adapter are clients of existing owner services. Never give model a direct path, arbitrary Markdown bytes, generic shell permission, unaudited RoadmapStore write or auto-approval.
+- **Historical truth:** preserve saved Chat decisions, applied-only Project History, immutable evidence, Phase 11/12 and past NOT GREEN reports. No legacy schema-1 writer, checkpoint import shim or fake backfilled revision snapshots.
+
+## 3. Native brokered Roadmap tool protocol
+
+Use the actual existing Pi broker infrastructure and generic discoverable tool conventions; names below are conceptual, not prescribed implementation symbols:
+
+| Capability | Contract |
+| --- | --- |
+| read | Return bounded, project-scoped current Phase/Gate/Criterion/Correction state, revision and source/link status; support targeted IDs and pagination |
+| stage | Submit a versioned typed list of creates/field edits/deletes/moves/reorders/relation changes; place in one noncanonical staged proposal bound to project/chat/owner/revision and source fingerprint |
+| preview / validate | Return actual validated operation IDs, before/after affected entities, dependency/coverage warnings and a bounded exact canvas projection; no write |
+| decide / apply | Accept/reject selected operations using an explicit developer decision; verify lease/approval identity, project/root/revision/source under owner lock and commit an entire valid subset atomically |
+| cancel | Discard noncanonical staged intent without canonical write; record truthful cancelled/rejected decision state |
+
+Generation may stage bounded batches to fit small local-model context/time. Preserve a staging manifest, stable operation identities, order/parent links, completeness markers, per-batch validation and limits. Show only validated incremental provisional content; interrupted generation remains incomplete and cannot masquerade as a fully generated plan. If a supported task is missing fields, identify exact Phase/Gate/Criterion and missing requirements. Let AI correct and re-preview rather than inventing blank objectives or silently dropping Gates. Do not require a second model pass to parse its first reply; do not silently parse natural language after a native-tool failure. Explicit read-only discussion is not a mutation request.
+
+AI changes to an already accepted index must continue to require verified current-turn /roadmap skill/tool authority. Existing explicit, approved greenfield generation entry can retain its independent authorization path, but still cannot write canonical data without developer approval. Manual field edits, imports, source sync and reviewed restore are not gated on the AI skill. Current model/tool permission settings (Ask/Allow) still apply.
+
+## 4. Proposal transaction and granular decisions
+
+Represent an entire proposal as a server-owned, versioned **change set**. Each operation has opaque stable operation ID, typed kind, affected entity/parent IDs, before/after values, declared dependencies, origin and source/revision fingerprints. Presentation gets bounded validated projections, not privileged approval tokens or model-derived display JSON. No second preview store.
+
+Provide all interaction levels:
+- **Individual:** Apply or Reject exactly one independently valid operation, including a single field/criterion change.
+- **Group:** clearly labeled "Apply Phase + N proposed Gates" / "Reject Phase + descendants" for a Phase subtree, plus a distinct "Phase only" choice when valid. Never imply that approving a Phase alone automatically approves Gates.
+- **Selection:** mark multiple operations then **Apply Selected** or **Reject Selected**; user can inspect the precise set and dependency/side-effect count before commit.
+- **Bulk:** **Apply All Remaining** or **Reject All Remaining** operates only on the currently pending valid scope, never resurrecting already rejected items or silently reapplying already committed ones.
+
+"Accept" as a draft selection preference must not be confused with an actual committed Apply. A single Apply action may commit immediately; queued selections are not writes until Apply Selected. Backend, not canvas or Chat, computes a valid closed dependency subset. Rejecting the proposed parent cannot strand accepted child operations. Do not automatically reparent descendants or silently change acceptance; block with explanation or ask explicit cascade/reselection. Rejecting a Gate with child criteria requires the same treatment. Proposed deletes/moves must disclose affected descendants/dependencies. If parent exists canonically, a proposed new child may be applied independently when ownership remains valid.
+
+Each successful apply subset is one atomic canonical transaction with a new monotonic revision, exact changed-op/entity receipt, idempotency key and verified actual effects. All-or-nothing at **the selected transaction** level; never force all proposal operations to apply together. A rejected/no-op/failed-zero-effect action does not write canonical state or generate an applied History entry. Pending siblings persist in the original Chat proposal, but after a partial apply its approval identity is no longer reusable: revalidate/rebase *against actual new revision and source* and issue a new backend decision lease, or truthfully mark affected operations stale/conflicted. Never silently copy stale approval rights. Concurrent tabs/windows, project switches, different Chat ownership and late callbacks fail closed.
+
+A proposal card in the **originating assistant final response** remains the sole compact Chat projection; accepted/rejected/denied/stale/failed/superseded operation outcomes are inspectable but inert after decision, and no additional Roadmap activity transcript entry is fabricated. Canvas control decisions refer to the same authoritative proposal/operation IDs. When active, the canvas can show field diffs, provisional new objects, proposed removal ghosts and before/after positions; no provisional item changes current Gate counts or status. When Roadmap is inactive/closed, don't open it automatically. Historical revision browsing suppresses all current mutation and automatic preview actions until user returns to current.
+
+## 5. Direct canvas editing
+
+Preserve the approved horizontal Phase containers with nested Gates and Criteria, independent Corrections, pan/zoom/expand, palette, semantic status, and accessible inspector overlay. Replace the full-width Linked Markdown editing/approval form only when new routes provide parity.
+
+Supported editable fields show a small accessible **pencil icon** beside their actual rendered text: Phase title/objective/description; Gate title/purpose; Criterion observable requirement/expected result; Correction editable description; other permitted editable fields as supported by source. Clicking changes only that rendered field into a focused inline input/textarea. Enter/check confirms single-line text, Escape/cancel discards; multiline editors have explicit confirmation and no accidental shortcut submission. Keep undo of local typing before save distinct from Roadmap historical revision navigation. Validation errors appear next to the field; on stale save retain the developer's draft and offer refresh/review instead of dropping text. Keyboard, screen reader, focus, narrow width, touch and reduced-motion must remain usable.
+
+Relations, gate reorder/dependencies and operations with material side-effects may use compact in-canvas contextual controls with inspectable preview rather than pretending all graph changes fit a text input. Editing a provisional AI field changes the *staged operation*, not current canonical state, and requires a renewed backend preview before Apply. Manual edits require explicit direct-user save/confirm but not a separate Markdown publication confirmation or AI approval card.
+
+## 6. Markdown initial linking, background sync and source protection
+
+Only **initial creation/linking** asks for a target (suggest safe project-local ROADMAP.md) and **Confirm & Save**; check collision/absence, canonical project root, safe .md path, symlinks, stable identity/mappings, exact source preconditions and developer permission. An existing file is never silently overwritten: select an unused path or use the reviewed import/link path. Existing accepted unlinked drafts may use the same one-time link flow; don't write automatically on opening. Initial linking may require a recoverable durable index/document handshake; it must never falsely claim published/synced if half-finished.
+
+Subsequent **manual successful edits and approved AI transactions** enqueue a deterministic source sync for the committed Roadmap revision. Prefer coalesced durable intents/serialized writer to avoid redundant writes without skipping revisions in History. Source synchronization must not slow Pi generation or every keystroke; changes only enqueue after confirm/Apply, not during typing or provisional staging. Single canonical source owner carries expected hash/path/revision, section mapping, exact byte diff and safe write/retry journal. Preserve unrelated human Markdown prose, stable section IDs and externally edited text; detect external modifications before writing, parse/reconcile through approved source adapter when safe, otherwise pause in **Conflict** without clobbering. No model-authored raw Markdown, no generic whole-file rewrite outside mapped sections, no source traversal and no automatic publication from merely viewing a Roadmap.
+
+Track separately: **Roadmap saved (revision N)**, **Markdown syncing**, **Markdown synced (revision N/hash verified)**, **Pending/unsynced**, **Conflict**, **Failed/retry available**. Canonical changes can succeed while file sync is pending/conflicted; UI must report the difference and provide recovery without reinstating a giant editing form. An interrupted write may have uncertain filesystem effects: verify bytes, digest, mapping and journal on restart; recover idempotently where provable, otherwise block and require review. Avoid false "synced" status, phantom duplicate files or duplicate applied History entries. Source-owned edits and import/refresh/relink remain constrained by the existing source's authority and must not race a pending automatic sync.
+
+## 7. Revision archive, Undo and History
+
+Adopt [ADR 0046](../../decisions/0046-roadmap-revision-navigation-and-restore.md) rather than a second proposal Undo implementation. Each manual edit, approved individual operation or selected/bulk apply yields one verified canonical revision with receipt and archived snapshot. The archive includes source sync state, provenance and actual operation set; delayed sync completion cannot pretend to be an earlier atomic source write. A single bulk apply is one undoable *historical transition*, while individual applies are distinct transitions.
+
+Toolbar Undo/Redo navigate exact saved revisions **read-only**. To reverse an accepted set, compare the prior snapshot with current and **Confirm Restore**, producing a new monotonic head; never decrement history counter, drop intervening records, delete evidence or resurrect older GREEN. Linked full-structure restore requires the existing independently reviewed safe source diff/owner path; if unsupported, block rather than bypass automatic sync guards. Explicit reverting one of several subsequent edits requires a fresh reviewed inverse change, not blind restoration that erases unrelated newer work. Applied-only Project History records actual transactions; rejected/preview-only decisions remain Chat audit outcomes, not fake applied entries.
+
+## 8. Migration, supersession and rollout
+
+Replace the current response-to-Roadmap authoritative parse path, not general Chat ability to read and discuss saved responses. Preserve old activity/audit/evidence while adding new typed capability. Do not rewrite historic P*.txt prompts, artificially mark past Green, remove imported owner files, rename qualification records, or silently loosen schema. Retire large editing form after feature-complete, safe canvas editing and initial-link/sync controls exist. Existing Unit A inline Chat cards, active-tab-only preview and accepted-card border semantics are retained. Existing Unit B recurring Publish & Link form is superseded *forward*, not considered already removed or newly qualified.
+
+Deliver five separately reviewed stages: R1 native staged generation; R2 granular subset commit; R3 direct canvas editing/provisional controls; R4 first link + background sync + history integration; R5 independent real connected Chrome and owner-observed Electron/actual source qualification. The exact local state may require dependency repair or an explicitly documented sequencing change, never a fictional PASS.
+
+## 9. Qualification matrix
+
+- Real selected local model: greenfield tower-defense prompt produces a coherent multi-phase graph with real nested Gates and testable Criteria. The exact canonical, preview, canvas, linked Markdown and reloaded object IDs/counts agree; incomplete staged output is visibly incomplete, never silently dropped.
+- Per-operation, per-parent subtree, selected valid subset and all-remaining decisions. Reject one of three Gates; apply parent and two siblings; reject entire parent with descendants; mixed move/delete/dependency operations; orphan/cycle/duplicate/conflicting edits blocked with exact explanation. Reject/preview/no-op leave canonical bytes unchanged.
+- Partial apply increments revision once per applied subset; remaining items revalidate, stale lease cannot be reused, concurrent second window/source change/project switch fail closed; retry is idempotent with no duplicate History.
+- Inline edit Phase/Gate/Criterion/Correction fields using mouse/keyboard; multiline cancel, validation, focus/narrow/touch/reduced-motion, stale draft retention; AI edits of provisional text do not touch canonical.
+- Initial save destination, existing file collision, symlink/outside-root denial, unlink/relink/import, stable mapping and round-trip parse, unrelated Markdown prose preservation, external edit conflict, background pending/synced truth, network/filesystem failure, interrupted file/index write, crash/restart/idempotent recovery, source-owned patch interactions.
+- Multi-step revision archive and immutable history; grouped apply one transition; reviewed rollback creates new head; newer unrelated edits protected; qualification/waiver/evidence/coverage never auto-GREEN or erased.
+- Same Chat card/canvas backend projection, active-tab-only automatic preview, historical suppression, manual View in Roadmap, failed/cancelled/terminal states inert, no duplicate status row, no model-driven publication/permissions bypass.
+- Exact-source focused tests, typecheck, browser and Electron builds, real connected Codex Google Chrome full UI workflows, screenshot/hash/source proof, and separately operated native Electron evidence or explicit owner-disposition gap. Report NOT GREEN wherever a mandatory proof is absent.
