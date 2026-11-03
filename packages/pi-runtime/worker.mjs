@@ -122,13 +122,52 @@ const CHAT_TOOLS = {
   search_text: { query: Type.String() },
   run_command: { command: Type.String() }
 };
+// Keep this compact: Pi sees the legal discriminator and required fields, while
+// the stage owner remains the authority for identity, source and content checks.
+const roadmapField = {
+  id: Type.String({ minLength: 1, maxLength: 128 }), gateId: Type.String({ minLength: 1, maxLength: 128 }),
+  parentPhaseId: Type.String({ minLength: 1, maxLength: 128 }),
+  criterionId: Type.String({ minLength: 1, maxLength: 128 }),
+  title: Type.String({ minLength: 1, maxLength: 2048 }),
+  objective: Type.String({ minLength: 1, maxLength: 2048 }),
+  purpose: Type.String({ minLength: 1, maxLength: 2048 }),
+  designation: Type.String({ minLength: 1, maxLength: 2048 }),
+  expectedResult: Type.String({ minLength: 1, maxLength: 2048 }),
+  order: Type.Integer({ minimum: 0, maximum: 4096 }),
+  ids: Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { maxItems: 32 }),
+  dependencies: Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { maxItems: 32 }),
+  parent: Type.Object({ kind: Type.Union([Type.Literal('phase'), Type.Literal('gate')]),
+    id: Type.String({ minLength: 1, maxLength: 128 }) }, { additionalProperties: false }),
+  criteria: Type.Array(Type.Object({ id: Type.String({ pattern: '^new:[a-zA-Z0-9-]{1,32}$' }),
+    title: Type.String({ minLength: 1, maxLength: 2048 }),
+    expectedResult: Type.String({ minLength: 1, maxLength: 2048 }) },
+    { additionalProperties: false }), { maxItems: 12 })
+};
+export const ROADMAP_ACTION_FIELDS = {
+  'phase.create': ['id', 'title', 'objective'], 'phase.edit': ['id', 'title', 'objective'],
+  'phase.delete': ['id'], 'phase.reorder': ['ids'], 'phase.dependencies': ['id', 'dependencies'],
+  'gate.create': ['id', 'parentPhaseId', 'designation', 'title', 'purpose', 'criteria'],
+  'gate.edit': ['id', 'title', 'purpose'], 'gate.delete': ['id'],
+  'gate.reparent': ['id', 'parentPhaseId', 'order'], 'gate.reorder': ['parentPhaseId', 'ids'],
+  'gate.dependencies': ['id', 'dependencies'], 'criterion.add': ['gateId', 'id', 'title', 'expectedResult'],
+  'criterion.edit': ['gateId', 'id', 'title', 'expectedResult'], 'criterion.remove': ['gateId', 'id'],
+  'criterion.reorder': ['gateId', 'ids'], 'correction.attach': ['id', 'parent', 'title', 'objective'],
+  'correction.edit': ['id', 'title', 'objective'], 'correction.reparent': ['id', 'parent'],
+  'correction.delete': ['id']
+};
+export const roadmapActionSchema = Type.Union(Object.entries(ROADMAP_ACTION_FIELDS).map(([kind, fields]) =>
+  Type.Object({ type: Type.Literal(kind), ...Object.fromEntries(fields.map(field =>
+    [field, ['phase.create', 'gate.create', 'criterion.add', 'correction.attach'].includes(kind) && field === 'id' ?
+      Type.String({ pattern: '^new:[a-zA-Z0-9-]{1,32}$' }) : roadmapField[field]])),
+  ...(['correction.attach', 'correction.reparent'].includes(kind) ?
+    { criterionId: Type.Optional(roadmapField.criterionId) } : {}) }, { additionalProperties: false })));
 const ROADMAP_TOOLS = {
   roadmap_read: { version: Type.Literal(1), ids: Type.Optional(Type.Array(Type.String())),
     offset: Type.Optional(Type.Integer()), limit: Type.Optional(Type.Integer()), stageOffset: Type.Optional(Type.Integer()) },
   roadmap_stage: { version: Type.Literal(1), expectedRevision: Type.Integer(),
     expectedSourceHash: Type.Union([Type.String(), Type.Null()]), expectedStage: Type.Integer(),
     strategy: Type.Optional(Type.Union([Type.Literal('full'), Type.Literal('phase-only')])),
-    done: Type.Optional(Type.Boolean()), actions: Type.Array(Type.Any()) },
+    done: Type.Optional(Type.Boolean()), actions: Type.Array(roadmapActionSchema, { minItems: 1, maxItems: 8 }) },
   roadmap_cancel: { version: Type.Literal(1) }
 };
 function chatTools() {
@@ -138,8 +177,8 @@ function chatTools() {
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
       name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. For later pages pass nextOffset as offset and sourceHash as expectedSourceHash. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
-      name === 'roadmap_read' ? 'Read bounded current typed Roadmap entities and revision. Version must be 1.' :
-      name === 'roadmap_stage' ? 'Stage ordered typed Roadmap actions in batches of at most 8. Start expectedStage at 1, increment it per accepted batch, and set done true only on the final batch. Use strategy phase-only for an intentional phase-only draft; otherwise include complete Gates and Criteria. Never applied. Use current revision and source hash from roadmap_read; use new: aliases for new entities.' :
+      name === 'roadmap_read' ? 'Read current typed Roadmap entities. Use stageBasis.expectedRevision and stageBasis.expectedSourceHash exactly, including JSON null when unlinked.' :
+      name === 'roadmap_stage' ? 'Stage typed Roadmap actions in batches of 1-8 (48 total). Copy both fields from roadmap_read.stageBasis exactly, including JSON null; start expectedStage at 1 and increment per accepted batch. Use new: aliases for created IDs across batches. Set done true only on the final batch; full requires Gates and Criteria, phase-only is for an intentional Phase draft. This never applies canonical state.' :
       name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: Type.Object(properties, { additionalProperties: false }),

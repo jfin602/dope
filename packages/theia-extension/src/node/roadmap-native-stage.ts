@@ -11,7 +11,7 @@ export type NativeRoadmapStage = { id: string; context: Context; revision: numbe
     sourceHash: string | null; ownerId: string; expires: number; operations: Operation[]; entityIds: Map<string, string>;
     done: boolean; strategy: 'full' | 'phase-only'; review?: { token: string; ids: string[];
         decision: 'apply' | 'reject'; revision: number; indexHash: string | null } };
-const shape: Record<string, readonly string[]> = {
+export const NATIVE_ROADMAP_ACTION_FIELDS: Record<string, readonly string[]> = {
     'phase.create': ['id', 'title', 'objective'], 'phase.edit': ['id', 'title', 'objective'],
     'phase.delete': ['id'], 'phase.reorder': ['ids'], 'phase.dependencies': ['id', 'dependencies'],
     'gate.create': ['id', 'parentPhaseId', 'designation', 'title', 'purpose', 'criteria'],
@@ -36,6 +36,7 @@ const source = (index: RoadmapGateIndex): string | null => index.linkedDocument?
 /** Noncanonical in-memory owner. P2 may validate/project these operations; P3 alone may apply them. */
 export class RoadmapNativeStageOwner {
     private readonly stages = new Map<string, NativeRoadmapStage>();
+    private readonly staleRetries = new Map<string, string>();
     constructor(private readonly store: RoadmapStore) {}
     private async current(context: Context): Promise<RoadmapGateIndex> {
         const index = await this.store.read<RoadmapGateIndex>(context.root);
@@ -102,6 +103,7 @@ export class RoadmapNativeStageOwner {
         const stage = this.stages.get(context.chatId);
         if (stage) this.assert(stage, context, index);
         return { version: 1, projectId: index.projectId, revision: index.revision,
+            stageBasis: { expectedRevision: index.revision, expectedSourceHash: source(index) },
             link: index.linkedDocument ? { path: index.linkedDocument.path,
                 sourceHash: index.linkedDocument.sourceHash, syncState } : null,
             entries: page, nextOffset: (offset as number) + page.length < entities.length ? (offset as number) + page.length : null,
@@ -113,25 +115,42 @@ export class RoadmapNativeStageOwner {
                         (stageOffset as number) + 8 : null } : null };
     }
     async stage(context: Context, args: unknown): Promise<unknown> {
-        if (!object(args) || args.version !== 1 || Object.keys(args).some(k =>
-            !['version', 'expectedRevision', 'expectedSourceHash', 'expectedStage', 'done', 'strategy', 'actions'].includes(k)) ||
-            !Array.isArray(args.actions) || !args.actions.length || args.actions.length > 8 ||
-            Buffer.byteLength(JSON.stringify(args), 'utf8') > 16_000)
-            throw new Error('ROADMAP_STAGE_ARGUMENTS');
+        if (!object(args) || args.version !== 1) throw new Error('ROADMAP_STAGE_ARGUMENTS: version must be 1');
+        const allowed = ['version', 'expectedRevision', 'expectedSourceHash', 'expectedStage', 'done', 'strategy', 'actions'];
+        if (Object.keys(args).some(k => !allowed.includes(k)))
+            throw new Error('ROADMAP_STAGE_ARGUMENTS: unexpected top-level field');
+        if (!Number.isSafeInteger(args.expectedRevision) || (args.expectedRevision as number) < 0)
+            throw new Error('ROADMAP_STAGE_ARGUMENTS: expectedRevision must be a nonnegative integer from roadmap_read.stageBasis');
+        if (args.expectedSourceHash !== null &&
+            (typeof args.expectedSourceHash !== 'string' || !/^[a-f0-9]{64}$/.test(args.expectedSourceHash)))
+            throw new Error('ROADMAP_STAGE_ARGUMENTS: expectedSourceHash must be the hash or JSON null from roadmap_read.stageBasis');
+        if (!Number.isSafeInteger(args.expectedStage) || (args.expectedStage as number) < 1)
+            throw new Error('ROADMAP_STAGE_ARGUMENTS: expectedStage must be a positive integer');
+        if (!Array.isArray(args.actions) || !args.actions.length || args.actions.length > 8)
+            throw new Error('ROADMAP_STAGE_ARGUMENTS: actions must contain 1-8 operations');
+        if (Buffer.byteLength(JSON.stringify(args), 'utf8') > 16_000)
+            throw new Error('ROADMAP_STAGE_ARGUMENTS: request exceeds 16KB');
         const index = await this.current(context);
         await this.checkedSource(index);
-        if (args.expectedRevision !== index.revision || args.expectedSourceHash !== source(index))
-            throw new Error('ROADMAP_STAGE_STALE_SOURCE');
         const prior = this.stages.get(context.chatId);
+        if (args.expectedRevision !== index.revision || args.expectedSourceHash !== source(index)) {
+            if (prior || this.staleRetries.get(context.chatId) === context.turnId)
+                throw new Error('ROADMAP_STAGE_STALE_SOURCE: stop; staged owner or source changed');
+            this.staleRetries.set(context.chatId, context.turnId);
+            throw new Error('ROADMAP_STAGE_STALE_SOURCE: read current Roadmap once and retry with stageBasis');
+        }
+        this.staleRetries.delete(context.chatId);
         if (prior) this.assert(prior, context, index);
         const priorAliases = new Map(prior?.entityIds ?? []);
         if (prior?.done) throw new Error('ROADMAP_STAGE_ALREADY_DONE');
         const expectedStage = (prior?.operations.at(-1)?.batch ?? 0) + 1;
         if (args.expectedStage !== expectedStage) throw new Error(`ROADMAP_STAGE_EXPECTED_${expectedStage}`);
-        if (args.done !== undefined && typeof args.done !== 'boolean' ||
-            args.strategy !== undefined && args.strategy !== 'full' && args.strategy !== 'phase-only' ||
-            prior && args.strategy !== undefined && args.strategy !== prior.strategy)
-            throw new Error('ROADMAP_STAGE_MANIFEST');
+        if (args.done !== undefined && typeof args.done !== 'boolean')
+            throw new Error('ROADMAP_STAGE_MANIFEST: done must be boolean');
+        if (args.strategy !== undefined && args.strategy !== 'full' && args.strategy !== 'phase-only')
+            throw new Error('ROADMAP_STAGE_MANIFEST: strategy must be full or phase-only');
+        if (prior && args.strategy !== undefined && args.strategy !== prior.strategy)
+            throw new Error('ROADMAP_STAGE_MANIFEST: strategy cannot change within a stage');
         if ((prior?.operations.length ?? 0) + args.actions.length > 48) throw new Error('ROADMAP_STAGE_LIMIT');
         const kinds = new Map<string, string>([
             ...index.phases.map(item => [item.id, 'phase']), ...index.gates.map(item => [item.id, 'gate']),
@@ -149,26 +168,31 @@ export class RoadmapNativeStageOwner {
         const accepted: Operation[] = [];
         const created: Record<string, string> = {};
         for (const [at, raw] of args.actions.entries()) {
-            if (!object(raw) || typeof raw.type !== 'string' || !shape[raw.type])
-                throw new Error(`ROADMAP_STAGE_ACTION_${at}: unsupported kind`);
+            if (!object(raw) || typeof raw.type !== 'string' || !Object.hasOwn(NATIVE_ROADMAP_ACTION_FIELDS, raw.type))
+                throw new Error(`ROADMAP_STAGE_ACTION_${at}: unsupported type; use a kind in roadmap_stage schema`);
             const actionType = raw.type;
-            const required = shape[actionType];
+            const required = NATIVE_ROADMAP_ACTION_FIELDS[actionType];
             const optional = raw.type === 'correction.attach' || raw.type === 'correction.reparent' ? ['criterionId'] : [];
             const missing = required.filter(field => !(field in raw));
             if (missing.length) throw new Error(`ROADMAP_STAGE_ACTION_${at}: missing ${missing.join(', ')}`);
             if (Object.keys(raw).some(field => field !== 'type' && !required.includes(field) && !optional.includes(field)))
-                throw new Error(`ROADMAP_STAGE_ACTION_${at}: unexpected field`);
+                throw new Error(`ROADMAP_STAGE_ACTION_${at}: unexpected field for ${actionType}`);
             const create = ['phase.create', 'gate.create', 'criterion.add', 'correction.attach'].includes(raw.type);
             if (create && (!newId(raw.id) || aliases.has(raw.id)))
                 throw new Error(`ROADMAP_STAGE_ACTION_${at}: distinct new: ID required`);
             if (create) { const durable = randomUUID(); aliases.set(raw.id as string, durable); created[raw.id as string] = durable;
                 kinds.set(durable, raw.type.split('.')[0] === 'criterion' ? 'criterion' : raw.type.split('.')[0]); }
             if (raw.type === 'gate.create') {
-                if (!Array.isArray(raw.criteria) || raw.criteria.length > 12) throw new Error(`ROADMAP_STAGE_ACTION_${at}: criteria limit`);
+                if (!Array.isArray(raw.criteria) || raw.criteria.length > 12)
+                    throw new Error(`ROADMAP_STAGE_ACTION_${at}: criteria must be an array of at most 12`);
                 for (const [criterionAt, criterion] of raw.criteria.entries()) {
-                    if (!object(criterion) || Object.keys(criterion).sort().join(',') !== 'expectedResult,id,title' ||
-                        !newId(criterion.id) || aliases.has(criterion.id) || !text(criterion.title) || !text(criterion.expectedResult))
-                        throw new Error(`ROADMAP_STAGE_ACTION_${at}.criteria[${criterionAt}]: invalid id, title or expectedResult`);
+                    const path = `ROADMAP_STAGE_ACTION_${at}.criteria[${criterionAt}]`;
+                    if (!object(criterion) || Object.keys(criterion).sort().join(',') !== 'expectedResult,id,title')
+                        throw new Error(`${path}: requires only id, title, expectedResult`);
+                    if (!newId(criterion.id) || aliases.has(criterion.id))
+                        throw new Error(`${path}.id: distinct new: ID required`);
+                    if (!text(criterion.title)) throw new Error(`${path}.title: invalid text`);
+                    if (!text(criterion.expectedResult)) throw new Error(`${path}.expectedResult: invalid text`);
                     const durable = randomUUID(); aliases.set(criterion.id, durable); created[criterion.id] = durable; kinds.set(durable, 'criterion');
                 }
             }

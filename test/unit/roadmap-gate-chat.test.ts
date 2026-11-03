@@ -10,6 +10,7 @@ import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadm
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ambiguousGateReferences, bindGateChatActions, touchesLinkedSource, validGateChatEnvelope } from '../../packages/theia-extension/lib/node/roadmap-gate-chat.js';
+import { dispatch as dispatchPi } from '../../packages/pi-runtime/worker.mjs';
 
 test('an indirect Gate name shared by two Gates needs an exact identity', () => {
     const index = { gates: [
@@ -56,6 +57,107 @@ test('linked source IDs are recognized across structural and multi-action refere
         designation: 'G2', title: 'New', purpose: 'New', criteria: [] }] as never, sections), true);
     assert.equal(touchesLinkedSource([{ type: 'gate.create', id: 'new:1', parentPhaseId: 'other-phase',
         designation: 'G2', title: 'New', purpose: 'New', criteria: [] }] as never, sections), false);
+});
+
+test('Pi worker serializes two Roadmap batches through ChatBackend without canonical writes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-native-pi-backend-'));
+    const store = new RoadmapStore(), repository = new ChatRepository(), chatId = randomUUID();
+    const composer = new ChatContextComposer({} as never, {} as never,
+        { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+            inputsCurrent: async () => false } as never, repository, store);
+    const model = { id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
+        streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } };
+    const piModel = { id: 'offline-fixture', name: 'Offline Fixture', api: 'openai-completions',
+        provider: 'dope-local', baseUrl: 'http://127.0.0.1:9/v1', reasoning: false,
+        input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 4096, maxTokens: 512 };
+    const calls: { name: string; arguments: unknown }[] = [];
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true,
+        providerId: 'local', models: [model] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { roadmapTools?: boolean;
+        execute(name: string, args: unknown): Promise<string> } }) {
+        assert.equal(request.projectTools?.roadmapTools, true);
+        const originalFetch = globalThis.fetch, originalWrite = process.stdout.write;
+        let turn = 0, basis: { expectedRevision: number; expectedSourceHash: string | null } | undefined;
+        let relayError: unknown;
+        const actions = [
+            { type: 'phase.create', id: 'new:phase', title: 'Foundation', objective: 'Playable wave' },
+            { type: 'gate.create', id: 'new:gate', parentPhaseId: 'new:phase', designation: 'G1',
+                title: 'Wave check', purpose: 'Verify the wave', criteria: [
+                    { id: 'new:criterion', title: 'Wave finishes', expectedResult: 'Wave completes' }] }
+        ];
+        try {
+            process.stdout.write = function (chunk: unknown, ...args: unknown[]) {
+                try {
+                    const record = JSON.parse(String(chunk));
+                    if (record.tool) {
+                        calls.push(record.tool);
+                        queueMicrotask(() => { void (async () => {
+                            try {
+                                const output = await request.projectTools!.execute(record.tool.name, record.tool.arguments);
+                                if (record.tool.name === 'roadmap_read') basis = JSON.parse(output).stageBasis;
+                                await dispatchPi({ type: 'tool-result', toolId: record.tool.id,
+                                    result: { status: 'completed', output } });
+                            } catch (error) { relayError = error; }
+                        })(); });
+                        return true;
+                    }
+                } catch { /* ordinary test output */ }
+                return originalWrite.call(this, chunk as never, ...args as never[]);
+            } as typeof process.stdout.write;
+            globalThis.fetch = async (_url, options) => {
+                const body = JSON.parse(String(options?.body));
+                assert.equal(body.tools.find((item: { function: { name: string } }) =>
+                    item.function.name === 'roadmap_stage').function.parameters.properties.actions.items.anyOf.length, 19);
+                const next = ++turn;
+                const name = next === 1 ? 'roadmap_read' : next <= 3 ? 'roadmap_stage' : undefined;
+                const params = next === 1 ? { version: 1 } : next <= 3 ?
+                    { version: 1, ...basis, expectedStage: next - 1, done: next === 3,
+                        actions: [actions[next - 2]] } : undefined;
+                const choices = name ? [
+                    { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${next}`,
+                        type: 'function', function: { name, arguments: JSON.stringify(params) } }] }, finish_reason: null },
+                    { index: 0, delta: {}, finish_reason: 'tool_calls' }
+                ] : [
+                    { index: 0, delta: { role: 'assistant', content: 'Staged for review.' }, finish_reason: null },
+                    { index: 0, delta: {}, finish_reason: 'stop' }
+                ];
+                return new Response(choices.map((choice, at) => `data: ${JSON.stringify({ id: `stage-${next}-${at}`,
+                    object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [choice] })}\n\n`).join('') +
+                    'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+            };
+            await dispatchPi({ type: 'open', mode: 'chat-tools', roadmapTools: true, cwd: root, model: piModel });
+            const result = await dispatchPi({ type: 'turn', id: 79, maxOutputTokens: 512,
+                messages: [{ role: 'user', content: 'Stage a complete Roadmap.' }] });
+            assert.equal(relayError, undefined);
+            assert.deepEqual(basis, { expectedRevision: 0, expectedSourceHash: null });
+            yield { type: 'complete' as const, actualModelId: 'q4', text: result.text };
+        } finally {
+            process.stdout.write = originalWrite;
+            globalThis.fetch = originalFetch;
+            await dispatchPi({ type: 'close' });
+        }
+    } };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        composer, undefined, { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
+        undefined, undefined, undefined, store);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'New project' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        assert.equal(lease.acquired, true);
+        if (!lease.acquired) throw new Error('Chat lease unavailable');
+        const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: 'Create a complete development Roadmap for a playable 2D tower-defense game.', context: [] });
+        assert.ok(turn.proposal, turn.proposalError);
+        assert.deepEqual(calls.map(item => item.name), ['roadmap_read', 'roadmap_stage', 'roadmap_stage']);
+        assert.equal(turn.proposal.operations?.length, 2);
+        assert.equal(await store.gateIndexHash(root), null);
+        assert.equal((await store.read(root)).revision, 0);
+        await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
 test('saved Chat retains a native staged Roadmap proposal and validated preview after reload', async () => {

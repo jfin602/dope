@@ -24,8 +24,10 @@ test('native read, multi-batch stage and cancel never write the canonical index'
         const before = createHash('sha256').update(await readFile(file)).digest('hex');
         const owner = new RoadmapNativeStageOwner(store);
         const context = { root, projectId: 'owner', chatId: 'chat', turnId: 'turn', lease: 'lease' };
-        const read = await owner.read(context, { version: 1, limit: 2 }) as { revision: number; entries: unknown[] };
+        const read = await owner.read(context, { version: 1, limit: 2 }) as { revision: number; entries: unknown[];
+            stageBasis: { expectedRevision: number; expectedSourceHash: string | null } };
         assert.equal(read.revision, 1);
+        assert.deepEqual(read.stageBasis, { expectedRevision: 1, expectedSourceHash: sourceHash });
         assert.deepEqual(read.entries, []);
         const first = await owner.stage(context, { version: 1, expectedRevision: 1, expectedSourceHash: sourceHash, expectedStage: 1,
             actions: [
@@ -65,9 +67,11 @@ test('revision-zero native staging stays provisional and selected approval creat
         const owner = new RoadmapNativeStageOwner(store);
         const context = { root, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
         const basis = { version: 1, expectedRevision: 0, expectedSourceHash: null };
-        const initial = await owner.read(context, { version: 1 }) as { revision: number; projectId: string };
+        const initial = await owner.read(context, { version: 1 }) as { revision: number; projectId: string;
+            stageBasis: { expectedRevision: number; expectedSourceHash: string | null } };
         assert.equal(initial.revision, 0);
         assert.equal(initial.projectId, 'uninitialized');
+        assert.deepEqual(initial.stageBasis, { expectedRevision: 0, expectedSourceHash: null });
         const first = await owner.stage(context, { ...basis, expectedStage: 1, actions: [
             { type: 'phase.create', id: 'new:phase', title: 'Playable loop', objective: 'Deliver one playable wave' }
         ] }) as { acceptedOperationIds: string[]; createdEntityIds: Record<string, string> };
@@ -145,9 +149,21 @@ test('native stage rejects wrong identity, stale basis, invalid actions and over
         await assert.rejects(owner.stage({ ...context, projectId: 'forged' }, { ...basis,
             actions: [{ type: 'phase.create', id: 'new:p', title: 'Title', objective: 'Objective' }] }), /OWNER_CHANGED/);
         await assert.rejects(owner.stage(context, { ...basis, expectedRevision: 0,
-            actions: [{ type: 'phase.create', id: 'new:p', title: 'Title', objective: 'Objective' }] }), /STALE_SOURCE/);
+            actions: [{ type: 'phase.create', id: 'new:p', title: 'Title', objective: 'Objective' }] }),
+        /STALE_SOURCE: read current Roadmap once/);
+        await assert.rejects(owner.stage(context, { ...basis, expectedRevision: 0,
+            actions: [{ type: 'phase.create', id: 'new:p', title: 'Title', objective: 'Objective' }] }),
+        /STALE_SOURCE: stop/);
+        await assert.rejects(owner.stage(context, { ...basis, expectedSourceHash: undefined,
+            actions: [{ type: 'phase.create', id: 'new:p', title: 'Title', objective: 'Objective' }] }),
+        /expectedSourceHash/);
+        await assert.rejects(owner.stage(context, { ...basis, expectedSourceHash: 'changed',
+            actions: [{ type: 'phase.create', id: 'new:p', title: 'Title', objective: 'Objective' }] }),
+        /expectedSourceHash/);
         await assert.rejects(owner.stage(context, { ...basis,
-            actions: [{ type: 'phase.source', id: 'new:p', source: {} }] }), /unsupported kind/);
+            actions: [{ type: 'phase.create', id: 'new:p', title: 'Title' }] }), /missing objective/);
+        await assert.rejects(owner.stage(context, { ...basis,
+            actions: [{ type: 'phase.source', id: 'new:p', source: {} }] }), /unsupported type/);
         await assert.rejects(owner.stage(context, { ...basis,
             actions: [{ type: 'phase.create', id: 'new:p', title: '<script>alert(1)</script>', objective: 'Objective' }] }), /invalid title/);
         await assert.rejects(owner.stage(context, { ...basis,

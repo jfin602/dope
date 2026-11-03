@@ -3,9 +3,12 @@ import { test } from 'node:test';
 import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent } from '../../packages/pi-runtime/worker.mjs';
+import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent,
+  ROADMAP_ACTION_FIELDS, roadmapActionSchema } from '../../packages/pi-runtime/worker.mjs';
 import { resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { runChatInvestigationCommand } from '../../packages/theia-extension/lib/node/chat-command-broker.js';
+import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import { RoadmapNativeStageOwner, NATIVE_ROADMAP_ACTION_FIELDS } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
 
 test('Pi worker resolves from the bundled browser backend and extension development layouts', () => {
   const root = resolve(import.meta.dirname, '../..');
@@ -21,6 +24,88 @@ const model = {
   input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   contextWindow: 4096, maxTokens: 512
 };
+
+test('Pi Roadmap schema agrees with native stage fields and relays two typed revision-zero batches', async () => {
+  assert.deepEqual(ROADMAP_ACTION_FIELDS, NATIVE_ROADMAP_ACTION_FIELDS);
+  assert.equal(roadmapActionSchema.anyOf.length, Object.keys(NATIVE_ROADMAP_ACTION_FIELDS).length);
+  for (const variant of roadmapActionSchema.anyOf) {
+    const kind = variant.properties.type.const;
+    assert.deepEqual(variant.required.sort(), ['type', ...NATIVE_ROADMAP_ACTION_FIELDS[kind]].sort());
+    assert.equal(variant.additionalProperties, false);
+  }
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-roadmap-'));
+  const originalFetch = globalThis.fetch, originalWrite = process.stdout.write;
+  const owner = new RoadmapNativeStageOwner(new RoadmapStore());
+  const context = { root: cwd, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+  const seen = [];
+  let turn = 0, basis;
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          seen.push(record.tool);
+          queueMicrotask(async () => {
+            try {
+              const result = await owner[record.tool.name.slice('roadmap_'.length)](context, record.tool.arguments);
+              if (record.tool.name === 'roadmap_read') basis = result.stageBasis;
+              await dispatch({ type: 'tool-result', toolId: record.tool.id,
+                result: { status: 'completed', output: JSON.stringify(result) } });
+            } catch (error) {
+              await dispatch({ type: 'tool-result', toolId: record.tool.id,
+                result: { status: 'completed', output: JSON.stringify({ error: String(error) }) } });
+            }
+          });
+          return true;
+        }
+      } catch { /* ordinary test output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    const actions = [
+      { type: 'phase.create', id: 'new:phase', title: 'Foundation', objective: 'Playable wave' },
+      { type: 'gate.create', id: 'new:gate', parentPhaseId: 'new:phase', designation: 'G1',
+        title: 'Wave check', purpose: 'Verify the wave', criteria: [
+          { id: 'new:criterion', title: 'Wave finishes', expectedResult: 'Wave completes' }] }
+    ];
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(options.body);
+      const schema = body.tools.find(item => item.function.name === 'roadmap_stage')?.function.parameters;
+      assert.equal(schema.properties.actions.items.anyOf.length, 19);
+      const next = ++turn;
+      const name = next === 1 ? 'roadmap_read' : next <= 3 ? 'roadmap_stage' : undefined;
+      const params = next === 1 ? { version: 1 } : next <= 3 ?
+        { version: 1, ...basis, expectedStage: next - 1, done: next === 3,
+          actions: [actions[next - 2]] } : undefined;
+      const choices = name ? [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${next}`,
+          type: 'function', function: { name, arguments: JSON.stringify(params) } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { index: 0, delta: { role: 'assistant', content: 'Staged for review.' }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'stop' }
+      ];
+      return new Response(choices.map((choice, i) => `data: ${JSON.stringify({ id: `roadmap-${next}-${i}`,
+        object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [choice] })}\n\n`).join('') +
+        'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    const opened = await dispatch({ type: 'open', mode: 'chat-tools', roadmapTools: true, cwd, model });
+    assert.deepEqual(opened.tools.sort(), ['roadmap_cancel', 'roadmap_read', 'roadmap_stage']);
+    const result = await dispatch({ type: 'turn', id: 71, maxOutputTokens: 512,
+      messages: [{ role: 'user', content: 'Stage a Roadmap.' }] });
+    assert.equal(result.text, 'Staged for review.');
+    assert.deepEqual(basis, { expectedRevision: 0, expectedSourceHash: null });
+    assert.deepEqual(seen.map(item => item.name), ['roadmap_read', 'roadmap_stage', 'roadmap_stage']);
+    assert.equal(owner.get('chat')?.operations.length, 2);
+    assert.equal(owner.get('chat')?.done, true);
+    await assert.rejects(access(join(cwd, '.dope/roadmap.json')), { code: 'ENOENT' });
+    await assert.rejects(access(join(cwd, 'ROADMAP.md')), { code: 'ENOENT' });
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
 
 test('Pi transport splits large Unicode reasoning deltas without changing content or order', () => {
   const input = `begin-${'😀x'.repeat(6_000)}-end`;
