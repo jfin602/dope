@@ -1,3 +1,5 @@
+> **GENERATION-SPECIFIC SUPERSESSION (2026-11-03):** Use [ADR 0049](../../decisions/0049-roadmap-phase-orchestration.md) and the [phase-orchestration contract](roadmap-phase-orchestration-contract.md) for **new greenfield generation**. Earlier full-Roadmap output, RM1, two-pass conversion and default model-controlled multi-batch design in this document are historical. Preserve all unrelated authoritative StageOwner, granular owner approval, canvas editing, source/lease, Markdown sync, History, permission and Gate evidence rules. No legacy generator fallback. No code changed by this note.
+
 # Native Roadmap authoring, canvas editing and automatic sync — detailed forward contract
 
 **Date:** 2026-11-02 (America/Chicago). **Status:** OWNER-APPROVED DESIGN / DOCS ONLY, NOT IMPLEMENTED OR QUALIFIED. **Decision:** [ADR 0047](../../decisions/0047-native-roadmap-authoring-and-automatic-sync.md). **Delivery scope:** [c12-roadmap-native-authoring](../../tasks/c12-roadmap-native-authoring/README.md). Verify the actual *local* checkout, evidence, running version and dirty files before any implementation.
