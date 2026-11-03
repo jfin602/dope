@@ -1795,7 +1795,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const uri = this.projectUri;
         if (!index || !linked || !uri) return;
         const sync = this.gateSyncPreview;
-        const state = sync?.state ?? linked.syncState;
+        const state = sync?.state === 'unchanged' && linked.syncState === 'synced' ?
+            'synced' : sync?.state ?? linked.syncState;
         const notice = this.sourceError ? 'source check failed' : this.syncChecking ? 'checking source' :
             state.replaceAll('-', ' ');
         this.sourceLabel.textContent = `Markdown · ${notice}`;
@@ -1804,8 +1805,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             (state !== 'unchanged' && state !== 'synced'));
         this.sourceSummary.textContent = `Linked Markdown · ${linked.path} · ${notice}`;
         const detail = document.createElement('p');
-        detail.textContent = `Linked source: ${linked.path} · accepted SHA-256 ${linked.sourceHash}. ` +
-            'Canonical Roadmap acceptance and Markdown publication are separate approvals.';
+        detail.textContent = `Roadmap saved at revision ${index.revision} · Linked source: ${linked.path} · accepted SHA-256 ${linked.sourceHash}. ` +
+            'Saved Roadmap changes synchronize automatically; external Markdown conflicts require review.';
         this.importEntry.append(detail);
         if (linked.syncIntent) {
             const outcome = document.createElement('p');

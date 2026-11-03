@@ -110,7 +110,12 @@ export default new ContainerModule(bind => {
             const draftHandles = new Set<string>();
             const observer = new RoadmapLinkedObserver(root => store.read(root),
                 (root, projectId) => client.notifyLinkedDocumentChanged(root, projectId));
-            const off = store.onChange(change => client.notifyRoadmapChanged(change));
+            const off = store.onChange(change => {
+                client.notifyRoadmapChanged(change);
+                // Sync settles without a new canonical revision. Refresh the linked
+                // status even when no source-file change can wake the observer.
+                if (!change.changedIds.length) client.notifyLinkedDocumentChanged(change.root, change.projectId);
+            });
             const offDraft = greenfield.onChange(change => client.notifyDraftChanged(change));
             const offAgent = context.container.get(AgentStore).onChange((root, change) => {
                 if (change.kind === 'sequence' || change.kind === 'run' || change.kind === 'task')
