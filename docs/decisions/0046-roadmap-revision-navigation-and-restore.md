@@ -1,3 +1,5 @@
+> **2026-11-02 FORWARD INTEGRATION — DESIGN ONLY:** [ADR 0047](0047-native-roadmap-authoring-and-automatic-sync.md) makes each successful individual/selected/bulk Roadmap Apply an exact atomic revision whose actual operations and source-sync status are recorded through this document's **single append-only archive**. Proposal Undo is *not* a second rollback service: toolbar Undo/Redo remains read-only history navigation; any reverse requires an explicit compared/approved restore to a new head with evidence/qualification and linked-source protection. Partial Apply revalidates remaining operations and cannot reuse old leases. Existing c12-undo prompts and historical status are unchanged; no new Green is implied.
+
 # ADR 0046 — Roadmap revision navigation and reviewed restoration
 
 **Decision:** 2026-11-01 (America/Chicago), owner-approved design. **Status:** APPROVED FOR DOCUMENTATION AND PROMPT AUTHORING ONLY — NOT IMPLEMENTED, RUN OR QUALIFIED. **Product baseline:** `0.12.7` unchanged; inspect the real local checkout before execution.
