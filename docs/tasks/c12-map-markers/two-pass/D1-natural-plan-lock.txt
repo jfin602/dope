@@ -1,0 +1,27 @@
+TASK: c12-map-markers/two-pass — D1: Natural Roadmap generation contract + durable immutable plan lock.
+
+MODEL: GPT-6 Sol High. MODE: one MANUAL T2 implementation prompt, focused deterministic source/security tests only. NO Codex Browser, Chrome, Electron, app server, live Qwen/LM Studio inference, product UI test or runner. Target <=8 min including checks, 10-minute soft / 15-minute hard stop. No self-commit, manifest/version/model/provider changes, automatic D2 execution or owner game workspace writes.
+
+PREFLIGHT: Check ACTUAL LOCAL git HEAD/branch/status/dirty/untracked files (remote main is only a doc reference); preserve M1–M3/M3-R1/R2, F3–F6 and current output-budget/skill-routing fixes. Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c12-map-markers/two-pass/{README.md,prompt-assessment.md,implementation-plan.md}, native Roadmap contract, ADR 0047 and M3-R2 NOT GREEN. No reset/stash/clean/force push, no speculative code deletion. Check no other agent is currently writing.
+
+ONE RESPONSIBILITY
+Build pass 1's bounded **natural-language Roadmap** completion and a durable, write-once **Chat-owned locked plan**. The user still sends one /roadmap request; D2 will integrate the second automatic inference later. D1 must not prematurely replace the production greenfield path or create a second assistant message/proposal owner.
+
+PLAN GENERATION
+- Add a compact natural-planning instruction/helper (e.g. roadmap-local-model.ts or tiny nearby module). The model may write conventional 'Phase 1 — ...', 'Gate — ...' and observable acceptance bullets as readable prose; do NOT demand RM1/JSON/operation IDs/action kinds, perfect delimiters or tool calls. Cover the user's original requirements and retain Phase/Gate/criterion ownership distinctly, including main-tower-health persistence, loss at zero and currency spending.
+- Require a completed **final answer**, not thinking/reasoning activity, with sensible output byte/token/length bound, stop/completion truth and at least a recognizable ordered Phase/Gate/acceptance outline; for full tower-defense brief, all five Phases and named mechanics should be present or accurately flagged incomplete. Avoid a second planning inference or speculative semantic guarantees.
+- Generate no untrusted project hash, approval state or tool authority. This is an inspectable planning artifact only, not a roadmap transaction.
+
+DURABLE LOCK — CURRENT CHAT AUTHORITY
+- Inspect strict `packages/chat/src/{index,service}.ts` schema and `packages/chat/src/node/chat-repository.ts` mutations. Implement a minimal **optional versioned locked-plan artifact** attached to the EXISTING pending/streaming assistant message (or an equivalently Chat-owned durable execution record, not a parallel RoadmapStore).
+- Store exact bounded completed final-plan text and SHA-256, owner project/root identity, Chat/user/assistant/execution IDs, protected turn/lease binding, current owner revision and linked-source fingerprint, created timestamp, and inert planning status. The source fingerprint may be nullable on revision zero. Verify the content hash on read. Do not store raw reasoning, model tool args, credentials or tokens in the plan.
+- Persist the lock **atomically before** any possible second pass, under the existing serialized mutation/lease and strict parser. Require current active project/Chat/turn/execution, matching owner/source/revision, write-once semantics, and prevent editing/replaying it as a new approval token. Extend parseChatMessage/ChatRepository validation without breaking old saved Chat records. An interrupted execution must retain the locked text and mark the execution failed/cancelled truthfully; never silently delete or auto-resume generation after restart.
+- Keep one user and one assistant message, one execution ID. Do not call `finish-assistant` after pass 1; no canonical Roadmap/Markdown/applied History effect. Allow the locked final plan to be inspected in the originating assistant answer even if later conversion fails, but historical/reloaded plan content is inert.
+- D2 owns running the second model call, RM1 conversion, and building the staged proposal; D1 adds no second Chat panel or separate planner service.
+
+FOCUSED PROOFS
+- Tests in `test/unit/chat-repository.test.ts`, a Chat schema test if needed, and `test/unit/roadmap-local-model.test.ts`. Validate one natural plan with five recognizable Phases, Gates and acceptance checks; missing/too-short/truncated/oversized/unsafe final text fail closed or flag incomplete with no approval.
+- Verify durable write-once round-trip and SHA identity across reload/restart, old Chat read compatibility, crash/interruption preservation, cancellation/lost lease/foreign project/Chat/assistant/revision/source denial, tamper and duplicate write denial, and zero Roadmap/Markdown/History effects.
+- Build only changed `@dope/chat` and `@dope/theia-extension` outputs in dependency order as required by compiled-lib tests. One focused test invocation per affected seam, `git diff --check`. Do not run `npm run build:browser`, `npm test` or `npm run check` by habit.
+
+EXIT: Implemented / source-verified only if the immutable plan survives a completed pass and crash/reload with no canonical write and the model-facing natural-plan contract is bounded. Otherwise PARTIAL / HOLD with exact missing authority/persistence seam. Report HEAD/diff, changed files, test counts, actual evidence and no Qwen/GUI claims. **STOP; owner starts D2 manually.**
