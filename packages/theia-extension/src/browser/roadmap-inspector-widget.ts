@@ -165,35 +165,8 @@ export class RoadmapInspectorWidget extends BaseWidget {
         prepare.id = 'dope-roadmap-prepare-work'; prepare.disabled = true;
         prepare.setAttribute('aria-label', `Prepare Work for Gate ${gate.designation}: unavailable`);
         this.content.append(prepare, this.element('p', this.model.prepareWorkBlockedReason));
-        if (this.editable && index?.linkedDocument) {
-            this.content.append(this.element('p', `This Gate is linked to ${index.linkedDocument.path}. Edit the Markdown source, then review its changes in Roadmap.`));
-        } else if (this.editable && this.model.gateDraft) {
-            const form = this.element('form');
-            form.onsubmit = event => { event.preventDefault(); void this.model.saveGate(); };
-            form.append(this.element('h3', 'Edit Gate definition'));
-            const title = this.element('input'); title.id = 'dope-roadmap-gate-title';
-            title.value = this.model.gateDraft.title; title.maxLength = 200;
-            title.setAttribute('aria-label', 'Gate title');
-            title.oninput = () => this.model.changeGate('title', title.value);
-            const purpose = this.element('textarea'); purpose.id = 'dope-roadmap-gate-purpose';
-            purpose.value = this.model.gateDraft.purpose; purpose.maxLength = 8192;
-            purpose.setAttribute('aria-label', 'Gate objective');
-            purpose.oninput = () => this.model.changeGate('purpose', purpose.value);
-            const save = this.element('button', 'Preview Gate edit'); save.type = 'submit';
-            save.disabled = !this.model.dirty || this.model.busy;
-            form.append(title, purpose, save);
-            if (this.model.requiresApproval) {
-                form.append(this.element('p', `${this.model.previewSummary ?? 'Review this Gate change.'} Approve explicitly.`));
-                const approve = this.button('Approve Gate edit', () => void this.model.approve());
-                approve.id = 'dope-roadmap-gate-approve'; approve.disabled = this.model.busy;
-                form.append(approve);
-            }
-            if (this.model.dirty || this.model.requiresApproval) {
-                const discard = this.button('Discard Gate edit', () => this.model.discardEdit());
-                discard.disabled = this.model.busy; form.append(discard);
-            }
-            this.content.append(form);
-        }
+        if (this.editable) this.content.append(this.element('p',
+            'Use the pencils beside Gate and Criterion fields on the canvas to edit their definitions.'));
         const feedback = this.element('p', this.model.error ?? (this.model.busy ? 'Checking Roadmap revision…' : ''));
         feedback.setAttribute('role', this.model.error ? 'alert' : 'status');
         this.content.append(feedback);

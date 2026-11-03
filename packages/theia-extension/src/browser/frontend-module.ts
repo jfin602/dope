@@ -498,6 +498,30 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 await context.container.get(CommandRegistry).executeCommand('dope.work.openPromptStack');
             }, async (workspace, path) => {
                 await open(context.container.get(OpenerService), new URI(workspace).resolve(path));
+            }, async (uri, chatId, proposalId, ids, decision, confirm) => {
+                const widgets = context.container.get(WidgetManager);
+                const matches = [...widgets.getWidgets(CHAT_PANEL_ID),
+                    ...(['left', 'right'] as const).map(side => widgets.tryGetWidget(chatLauncherIds[side]))]
+                    .filter(Boolean) as ChatPanelWidget[];
+                const chat = matches.find(widget => widget.moduleKind === 'chat' &&
+                    widget.controller.workspace === uri && widget.controller.chatId === chatId &&
+                    widget.controller.planningProposal?.id === proposalId);
+                if (!chat) throw new Error('Original Chat proposal is unavailable; return to Chat');
+                if (confirm) {
+                    const review = chat.controller.nativeRoadmapReview;
+                    if (!review || review.proposalId !== proposalId || review.decision !== decision ||
+                        JSON.stringify(review.ids) !== JSON.stringify(ids))
+                        throw new Error('Roadmap review changed; review the subset again');
+                    await chat.controller.decideNativeRoadmap();
+                    return { proposal: chat.controller.planningProposal,
+                        ...(chat.controller.planningProposalError?.startsWith('Roadmap decision was not applied:') ?
+                            { error: chat.controller.planningProposalError } : {}) };
+                }
+                await chat.controller.reviewNativeRoadmap(ids, decision);
+                const review = chat.controller.nativeRoadmapReview;
+                if (!review || review.proposalId !== proposalId)
+                    return { error: chat.controller.planningProposalError ?? 'Roadmap subset review failed' };
+                return { summary: review.summary, preview: review.preview };
             }) })).inSingletonScope();
     // Saved pre-overlay workbench layouts may restore this sidebar. It shares the model but cannot edit.
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
