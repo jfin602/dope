@@ -1,3 +1,5 @@
+> **2026-11-02 OWNER FORWARD INTEROPERABILITY / DOCS ONLY:** [ADR 0047](../../decisions/0047-native-roadmap-authoring-and-automatic-sync.md) extends native Roadmap review to individual, parent-group, selected and bulk atomic commits. Each actual subset commit creates one retained revision/receipt; this stack's toolbar remains a **read-only historical cursor** and its reviewed restoration remains the sole revision-safe reversal creating a new head. Do not add a competing proposal Undo writer or silently reverse later unrelated edits; source sync pending/conflict and evidence guards apply. Keep existing authored P1–P4 source and qualification unchanged, and inspect actual owner HEAD before a later Run.
+
 # c12-undo — Roadmap revision navigation and restore
 
 **Owner decision:** 2026-11-01 (America/Chicago). **Status:** ASSESSED / PLANNED / AUTHORED ONLY — NOT RUN / IMPLEMENTED / QUALIFIED by this stack. **Product baseline:** `0.12.7` as recorded in governing design; inspect actual local manifest before executing. This is a **new independent correction** and does not authorize automatic product work.
