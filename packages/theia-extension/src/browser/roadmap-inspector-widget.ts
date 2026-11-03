@@ -213,11 +213,6 @@ export class RoadmapInspectorWidget extends BaseWidget {
             discard.id = 'dope-roadmap-discard'; discard.disabled = this.model.busy;
             form.append(discard);
         }
-        if (this.model.undo) {
-            const undo = this.button('Undo last edit', () => void this.model.undoEdit());
-            undo.id = 'dope-roadmap-undo'; undo.disabled = this.model.busy;
-            form.append(undo);
-        }
         this.content.append(form);
     }
     override dispose(): void { this.off(); super.dispose(); }

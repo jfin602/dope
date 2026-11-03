@@ -12,6 +12,7 @@ import type { GateDocumentSyncPreview, GateDocumentRelinkPreview } from '@dope/p
 import { projectRoadmapTasks, selectPhaseFocus, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
 import type { RoadmapTaskStack } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { RoadmapService } from '../roadmap-service';
+import type { RoadmapRevisionRecord, RoadmapRevisionList } from '@dope/project-intelligence/lib/node/roadmap-revision-archive';
 import type { PhaseFocusEvidence } from '../node/phase-focus-evidence';
 import type { RoadmapOwnerRecord } from '@dope/project-intelligence/lib/node/roadmap-owner-links';
 import type { RoadmapIndex, RoadmapLink, RoadmapReplacementPreview, RoadmapGateMutation } from '@dope/project-intelligence/lib/node/roadmap-store';
@@ -23,6 +24,7 @@ import type { ChatStrategicDraftReview, ChatEvent, ChatPlanningProposal, ChatCon
 import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
+import { roadmapHistoryTarget } from './roadmap-history-navigation';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
@@ -48,6 +50,7 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
     const [busy, setBusy] = React.useState(false);
     const input = React.useRef<HTMLInputElement & HTMLTextAreaElement>(null);
     React.useEffect(() => { if (editing) input.current?.focus(); }, [editing]);
+    React.useEffect(() => { if (!save) setEditing(false); }, [save]);
     const cancel = () => { setDraft(value); setError(undefined); setEditing(false); };
     const confirm = async () => {
         if (!save || busy) return;
@@ -61,7 +64,7 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
     const stop = (event: React.SyntheticEvent) => event.stopPropagation();
     return React.createElement('div', { className: 'dope-roadmap-inline-field nodrag nopan nowheel', onClick: stop,
         onDoubleClick: stop, 'data-inline-field': `${kind}:${id}:${field}` },
-        editing ? React.createElement(React.Fragment, null,
+        editing && save ? React.createElement(React.Fragment, null,
             React.createElement('label', null, label, multiline ?
                 React.createElement('textarea', { ref: input, value: draft, rows: 3, disabled: busy,
                     onChange: event => setDraft(event.target.value), onKeyDown: event => {
@@ -119,6 +122,7 @@ function ProposedPhaseNode({ data }: { data: { change: ProposalChange; children:
 }
 
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
+    historical?: boolean;
     phaseObjective?: string; correctionObjectives?: Record<string, string>; editField?: InlineSave;
     proposalChanges?: ProposalChange[]; proposalSource?: boolean;
     proposalSourceChanges?: { before: string; after: string }[];
@@ -142,14 +146,15 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             'data-phase-id': item.id },
         React.createElement('button', { type: 'button', className: 'dope-roadmap-phase-main',
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
-            'aria-label': `Phase ${card.number}: ${item.title}; ${item.statusLabel}`,
+            'aria-label': `${data.historical ? 'Historical snapshot · ' : ''}Phase ${card.number}: ${item.title}; ${item.statusLabel}`,
             onFocus: event => data.reveal(item.id, event.currentTarget as HTMLButtonElement),
             onClick: event => { event.stopPropagation(); data.select(item.id); } },
             React.createElement('small', { className: 'dope-roadmap-authority' },
-                item.draftState === 'proposed' ? 'Proposed · review required' :
+                data.historical ? 'Historical snapshot · as-of facts' : item.draftState === 'proposed' ? 'Proposed · review required' :
                     item.draftState === 'accepted' ? 'Accepted draft · not yet canonical' : 'Canonical Roadmap'),
             React.createElement('small', { className: 'dope-roadmap-phase-label' }, `PHASE ${card.number}`),
-            React.createElement('span', { className: 'dope-roadmap-status' }, item.statusLabel)),
+            React.createElement('span', { className: 'dope-roadmap-status' },
+                `${data.historical ? 'As-of ' : ''}${item.statusLabel}`)),
         React.createElement(InlineRoadmapField, { kind: 'phase', id: item.id, field: 'title', value: item.title,
             label: 'Phase title', save: data.editField }),
         React.createElement(InlineRoadmapField, { kind: 'phase', id: item.id, field: 'objective',
@@ -198,7 +203,8 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                         React.createElement(InlineRoadmapField, { kind: 'gate', id: gate.id, field: 'title',
                             value: gate.title, label: 'Gate title', save: data.editField })),
                     React.createElement('span', { className: 'dope-roadmap-gate-qualifier' },
-                        gate.proposed ? 'Proposed / Not accepted' : gate.status.replaceAll('-', ' ')),
+                        gate.proposed ? 'Proposed / Not accepted' :
+                            `${data.historical ? 'as-of ' : ''}${gate.status.replaceAll('-', ' ')}`),
                     React.createElement('span', { className: 'dope-roadmap-gate-chevron', 'aria-hidden': true }, '⌄')),
                 React.createElement('div', { className: 'dope-roadmap-gate-foldout' },
                     ...((data.proposalChanges ?? []).filter(change => change.id === gate.id ||
@@ -370,6 +376,15 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private poolQuery = '';
     private mutating = false;
     private readonly reload = document.createElement('button');
+    private readonly undoRevision = document.createElement('button');
+    private readonly redoRevision = document.createElement('button');
+    private readonly historyStrip = document.createElement('section');
+    private revisionList?: { uri: string; projectId: string; head: number; entries: RoadmapRevisionList['revisions']; earliest?: number };
+    private history?: { uri: string; projectId: string; record: RoadmapRevisionRecord; index: RoadmapGateIndex };
+    private historyBusy = false;
+    private historyError?: string;
+    private historyCompare?: { head: number; lines: string[] };
+    private historySerial = 0;
     private readonly details = document.createElement('button');
     private readonly mind = document.createElement('button');
     private readonly zoomIn = document.createElement('button');
@@ -443,7 +458,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private readonly saveInlineField: InlineSave = async (kind, id, field, value) => {
         const uri = this.projectUri, index = this.inspector.gateIndex;
-        if (!uri || !index || !index.revision || this.mutating) throw new Error('Roadmap editor is unavailable');
+        if (!uri || !index || !index.revision || this.mutating || this.history) throw new Error('Roadmap editor is unavailable');
         if (!value.trim() || value.length > 4096) throw new Error('Enter 1–4096 characters');
         const phase = index.phases.find(item => item.id === id);
         const gate = index.gates.find(item => item.id === id);
@@ -514,6 +529,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.reload.type = 'button';
         icon(this.reload, 'Refresh Roadmap', 'refresh');
         this.reload.onclick = () => { void this.refresh(); };
+        icon(this.undoRevision, 'Undo: view previous Roadmap revision', 'discard');
+        icon(this.redoRevision, 'Redo: view next Roadmap revision', 'redo');
+        this.undoRevision.onclick = () => void this.navigateHistory(-1);
+        this.redoRevision.onclick = () => void this.navigateHistory(1);
+        this.undoRevision.disabled = this.redoRevision.disabled = true;
         this.details.type = 'button';
         icon(this.details, 'Show Roadmap details on canvas', 'info');
         this.details.onclick = () => this.openDetails();
@@ -569,7 +589,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.poolButton.append(' Ideas / Issues');
         this.poolButton.setAttribute('aria-controls', 'dope-roadmap-pool-panel');
         this.poolButton.onclick = () => this.setPoolOpen(!this.poolOpen);
-        this.toolbar.append(this.sourceButton, this.details, this.mind, this.zoomIn, this.zoomOut, this.fitButton, this.arrangeButton,
+        this.toolbar.append(this.sourceButton, this.details, this.mind, this.undoRevision, this.redoRevision,
+            this.zoomIn, this.zoomOut, this.fitButton, this.arrangeButton,
             this.expandButton, this.collapseButton, this.focusButton, this.nextPromptsButton, this.phaseButton, this.detailLabel, this.reload);
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
@@ -686,11 +707,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.contextBar.className = 'dope-roadmap-context-bar';
         this.contextBar.setAttribute('aria-label', 'Select Roadmap elements for Chat');
         this.contextBar.hidden = true;
+        this.historyStrip.className = 'dope-roadmap-history-strip';
+        this.historyStrip.setAttribute('aria-label', 'Roadmap historical preview');
+        this.historyStrip.hidden = true;
         this.contextBar.onkeydown = event => {
             if (event.key === 'Escape') { event.preventDefault(); this.cancelContextPicker(); }
         };
         this.stage.append(this.contextBar, this.path, this.status, this.strategicBar, this.importEntry, this.inspection, this.phaseFocus, this.poolButton, this.pools);
-        this.stage.append(this.proposalBar);
+        this.stage.append(this.proposalBar, this.historyStrip);
         this.node.append(this.toolbar, this.stage);
         this.stageResize.observe(this.stage);
         this.setSourceOpen(false);
@@ -703,6 +727,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.phaseFeedback.textContent = inspector.error ? `Prompt source unavailable: ${inspector.error}` : '';
             this.phaseFeedback.setAttribute('role', inspector.error ? 'alert' : 'status');
             if (!this.projectUri || inspector.projectUri !== this.projectUri || !inspector.index) return;
+            if (this.history) { this.renderHistoryControls(); return; }
             const nextSelection = inspector.selectedPrompt?.id ?? inspector.selectedId;
             const graphChanged = this.selectedId !== nextSelection || this.projection?.revision !== inspector.index.revision;
             this.selectedId = nextSelection;
@@ -717,6 +742,188 @@ export class RoadmapCanvasWidget extends BaseWidget {
             }
         });
         void this.refresh();
+    }
+
+    private async loadRevisionList(uri: string, index: RoadmapIndex, request: number): Promise<void> {
+        if ((index as unknown as RoadmapGateIndex).schemaVersion !== 2 || index.revision < 1) {
+            this.revisionList = undefined; this.renderHistoryControls(); return;
+        }
+        try {
+            const entries: RoadmapRevisionList['revisions'] = [];
+            let before: number | undefined;
+            let earliest: number | undefined;
+            do {
+                const page = await this.service.listRevisions(uri, index.projectId, before, 50);
+                if (page.headRevision !== index.revision || page.revisions.some(item => item.projectId !== index.projectId))
+                    throw new Error('Roadmap head changed while reading revisions');
+                entries.push(...page.revisions);
+                earliest = page.earliestAvailable;
+                before = page.nextBefore;
+                if (entries.length > 256) throw new Error('Roadmap revision list exceeds the supported bound');
+            } while (before !== undefined);
+            if (!entries.length || entries[0].revision !== index.revision ||
+                entries[entries.length - 1].revision !== earliest)
+                throw new Error('Roadmap revision archive is incomplete');
+            if (this.isDisposed || request !== this.request || this.projectUri !== uri ||
+                this.inspector.index?.revision !== index.revision) return;
+            this.revisionList = { uri, projectId: index.projectId, head: index.revision, entries, earliest };
+            this.historyError = undefined;
+        } catch (error) {
+            if (this.isDisposed || request !== this.request || this.projectUri !== uri ||
+                this.inspector.index?.revision !== index.revision) return;
+            this.revisionList = undefined;
+            this.historyError = `Revision history unavailable: ${String(error)}. Refresh to retry.`;
+        }
+        this.renderHistoryControls();
+    }
+
+    private async navigateHistory(direction: -1 | 1): Promise<void> {
+        const list = this.revisionList, uri = this.projectUri, current = this.inspector.gateIndex;
+        if (!list || !uri || !current || this.historyBusy || this.inspector.dirty || this.inspector.requiresApproval ||
+            list.uri !== uri || list.projectId !== current.projectId || list.head !== current.revision) return;
+        const cursor = this.history?.record.revision ?? current.revision;
+        const revision = roadmapHistoryTarget(list.entries.map(item => item.revision), list.head,
+            list.earliest ?? list.head, cursor, direction);
+        const target = list.entries.find(item => item.revision === revision);
+        if (!target) return;
+        if (direction > 0 && target.revision === current.revision) { this.returnToCurrent(); return; }
+        const serial = ++this.historySerial;
+        this.historyBusy = true; this.renderHistoryControls();
+        try {
+            const record = await this.service.fetchRevision(uri, current.projectId, target.revision);
+            if (record.hash !== target.hash || record.projectId !== current.projectId ||
+                record.revision !== target.revision || record.snapshot.length > 4 * 1024 * 1024)
+                throw new Error('Revision identity or hash changed');
+            const bytes = new TextEncoder().encode(record.snapshot);
+            if (bytes.length > 4 * 1024 * 1024 ||
+                [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+                    .map(byte => byte.toString(16).padStart(2, '0')).join('') !== record.hash)
+                throw new Error('Revision snapshot hash failed verification');
+            const snapshot = JSON.parse(record.snapshot) as RoadmapGateIndex;
+            if (snapshot.schemaVersion !== 2 || snapshot.projectId !== current.projectId ||
+                snapshot.revision !== record.revision || snapshot.projectRoot !== current.projectRoot)
+                throw new Error('Revision snapshot owner mismatch');
+            const live = await this.service.read(uri);
+            if (live.projectId !== current.projectId || live.revision !== current.revision) {
+                void this.refresh();
+                throw new Error('Current Roadmap advanced; retry from the refreshed head');
+            }
+            if (this.isDisposed || serial !== this.historySerial || this.projectUri !== uri ||
+                this.inspector.gateIndex?.projectId !== current.projectId) return;
+            if (this.contextPicker) this.cancelContextPicker();
+            this.history = { uri, projectId: current.projectId, record, index: snapshot };
+            this.arranging = false;
+            this.arrangeButton.setAttribute('aria-pressed', 'false');
+            this.path.classList.remove('dope-roadmap-arranging');
+            this.historyCompare = undefined;
+            this.historyError = undefined;
+            this.pendingChatProposalCamera = undefined;
+            this.chatProposalCameraObserver.disconnect();
+            this.proposalReview = undefined;
+            this.projection = this.projectIndex(snapshot as unknown as RoadmapIndex, [], []);
+            this.selectedId = undefined;
+            this.render();
+        } catch (error) {
+            if (serial === this.historySerial && this.projectUri === uri) {
+                this.historyError = `Historical revision could not be verified: ${String(error)}. Refresh to retry.`;
+                this.revisionList = undefined;
+            }
+        } finally {
+            if (serial === this.historySerial) { this.historyBusy = false; this.renderHistoryControls(); }
+        }
+    }
+
+    private returnToCurrent(): void {
+        ++this.historySerial;
+        this.historyBusy = false;
+        this.history = undefined;
+        this.historyCompare = undefined;
+        this.historyError = undefined;
+        const current = this.inspector.index;
+        if (current) this.projection = this.projectIndex(current);
+        this.selectedId = undefined;
+        this.render();
+        void this.refresh();
+    }
+
+    private async compareHistory(): Promise<void> {
+        const history = this.history, uri = this.projectUri, current = this.inspector.gateIndex;
+        if (!history || !uri || !current || !this.revisionList || this.historyBusy) return;
+        const serial = ++this.historySerial;
+        this.historyBusy = true; this.historyCompare = undefined; this.renderHistoryControls();
+        try {
+            const fresh = await this.service.read(uri) as unknown as RoadmapGateIndex;
+            const page = await this.service.listRevisions(uri, history.projectId, undefined, 1);
+            if (fresh.projectId !== history.projectId || fresh.revision !== current.revision ||
+                page.headRevision !== fresh.revision || page.revisions[0]?.revision !== fresh.revision)
+                throw new Error('Current Roadmap advanced; refresh the comparison');
+            const describe = (index: RoadmapGateIndex): Map<string, string> => new Map([
+                ...index.phases.map(item => [`Phase ${item.id}`, JSON.stringify([item.title, item.objective, item.order,
+                    item.dependencies, item.qualificationSource]) ] as const),
+                ...index.gates.map(item => [`Gate ${item.id}`, JSON.stringify([item.title, item.purpose,
+                    item.parentPhaseId, item.order, item.dependencies, item.qualificationSource,
+                    item.criteria.map(criterion => [criterion.id, criterion.title, criterion.expectedResult])])] as const),
+                ...index.corrections.map(item => [`Correction ${item.id}`, JSON.stringify([item.title, item.objective,
+                    item.parent, item.order])] as const),
+            ]);
+            const old = describe(history.index), now = describe(fresh);
+            const lines = [...new Set([...old.keys(), ...now.keys()])].sort().filter(key => old.get(key) !== now.get(key))
+                .map(key => `${key}: ${old.has(key) ? now.has(key) ? 'changed' : 'removed from current' : 'added to current'}`);
+            if (serial !== this.historySerial || this.history !== history || this.projectUri !== uri) return;
+            this.historyCompare = { head: fresh.revision, lines };
+        } catch (error) {
+            if (serial === this.historySerial && this.history === history) this.historyError = `Compare unavailable: ${String(error)}`;
+        } finally {
+            if (serial === this.historySerial) { this.historyBusy = false; this.renderHistoryControls(); }
+        }
+    }
+
+    private renderHistoryControls(): void {
+        const current = this.inspector.gateIndex, list = this.revisionList, history = this.history;
+        const valid = !!current && !!list && list.uri === this.projectUri &&
+            list.projectId === current.projectId && list.head === current.revision;
+        const cursor = history?.record.revision ?? current?.revision ?? 0;
+        const revisions = list?.entries.map(item => item.revision) ?? [];
+        this.undoRevision.disabled = this.historyBusy || !valid ||
+            roadmapHistoryTarget(revisions, list!.head, list!.earliest ?? list!.head, cursor, -1) === undefined ||
+            !!this.inspector.dirty || !!this.inspector.requiresApproval;
+        this.redoRevision.disabled = this.historyBusy || !history || !valid ||
+            roadmapHistoryTarget(revisions, list!.head, list!.earliest ?? list!.head, cursor, 1) === undefined;
+        this.undoRevision.title = valid ? `Undo: view previous Roadmap revision${list!.earliest ? ` (earliest stored R${list!.earliest})` : ''}` :
+            'Undo unavailable until verified Roadmap revisions load';
+        this.redoRevision.title = valid ? 'Redo: view next Roadmap revision' : 'Redo unavailable until verified Roadmap revisions load';
+        this.historyStrip.replaceChildren();
+        this.historyStrip.hidden = !history;
+        this.stage.classList.toggle('dope-roadmap-historical', !!history);
+        this.sourceButton.disabled = this.details.disabled = this.phaseButton.disabled = !!history;
+        this.arrangeButton.disabled = !!history;
+        if (!history) { if (this.historyError) this.status.textContent = this.historyError; return; }
+        const heading = document.createElement('strong');
+        heading.textContent = `Historical preview · R${history.record.revision} (current R${current?.revision ?? '?'})`;
+        const fact = document.createElement('span');
+        fact.textContent = ` Earliest stored R${list?.earliest ?? history.record.revision}. ` +
+            'As-of statuses and evidence only; historical qualification is not current GREEN.';
+        const compare = document.createElement('button'); compare.type = 'button'; compare.textContent = 'Compare with Current';
+        compare.disabled = this.historyBusy || !valid;
+        compare.onclick = () => void this.compareHistory();
+        const restore = document.createElement('button'); restore.type = 'button'; restore.textContent = 'Confirm Restore';
+        restore.disabled = true; restore.title = 'Available after restore integration';
+        restore.setAttribute('aria-describedby', 'dope-roadmap-restore-unavailable');
+        const note = document.createElement('span'); note.id = 'dope-roadmap-restore-unavailable';
+        note.textContent = 'Confirm Restore available after restore integration.';
+        const back = document.createElement('button'); back.type = 'button'; back.textContent = 'Return to Current';
+        back.onclick = () => this.returnToCurrent();
+        this.historyStrip.append(heading, fact, compare, restore, note, back);
+        const compared = this.historyCompare;
+        if (compared && compared.head === current?.revision) {
+            const diff = document.createElement('p');
+            diff.textContent = compared.lines.length ? compared.lines.join('; ') : 'No structural differences.';
+            this.historyStrip.append(diff);
+        }
+        if (this.historyError) {
+            const error = document.createElement('p'); error.setAttribute('role', 'alert'); error.textContent = this.historyError;
+            this.historyStrip.append(error);
+        }
     }
 
     async refresh(): Promise<void> {
@@ -754,6 +961,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const roots = await this.workspaces.roots;
             if (this.isDisposed || request !== this.request) return;
             if (roots.length !== 1 || roots[0].resource.scheme !== 'file') {
+                this.history = undefined; this.revisionList = undefined; ++this.historySerial;
+                this.historyBusy = false; this.renderHistoryControls();
                 this.flushPresentation();
                 this.projectUri = undefined;
                 this.projectId = undefined;
@@ -785,6 +994,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.chatProposalCameraObserver.disconnect();
             }
             if (switched) {
+                this.history = undefined; this.revisionList = undefined; ++this.historySerial;
+                this.historyBusy = false;
                 if (this.strategic && (this.strategic.uri !== projectUri || this.strategic.projectId !== index.projectId))
                     this.strategic = undefined;
                 this.selectedEdgeId = undefined;
@@ -869,12 +1080,15 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (index.revision === 0) this.status.textContent = 'No Roadmap yet. Import one, create manually, or plan with an existing Chat.';
             if (priorProjectUri === projectUri && selectedTaskId &&
                 this.projectIndex(index, tasks, owners).nodes.some(node => node.id === selectedTaskId)) this.selectedId = selectedTaskId;
-            this.projection = this.projectIndex(index, tasks, owners);
+            if (this.history?.uri === projectUri && this.history.projectId === index.projectId)
+                this.projection = this.projectIndex(this.history.index as unknown as RoadmapIndex, [], []);
+            else this.projection = this.projectIndex(index, tasks, owners);
             if (switched && this.selectedId) {
                 const restoredTask = this.projection.nodes.find(node => node.id === this.selectedId && node.taskSource);
                 if (restoredTask) this.inspector.selectTask(restoredTask);
             }
             this.render();
+            void this.loadRevisionList(projectUri, index, request);
             if (this.phaseOpen) void this.refreshPhaseEvidence();
             if (switched && this.viewport && this.flow) void this.flow.setViewport(this.viewport);
             this.queueInitialCamera();
@@ -888,8 +1102,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
                         const recovered = await this.service.read(projectUri);
                         if (this.isDisposed || request !== this.request || this.projectUri !== projectUri) return;
                         this.inspector.setSnapshot(projectUri, recovered);
-                        this.projection = this.projectIndex(recovered, tasks, owners);
+                        this.projection = this.history?.uri === projectUri && this.history.projectId === recovered.projectId ?
+                            this.projectIndex(this.history.index as unknown as RoadmapIndex, [], []) : this.projectIndex(recovered, tasks, owners);
                         this.render();
+                        void this.loadRevisionList(projectUri, recovered, request);
                     }
                     if (gateSchema) { this.gateSyncPreview = sync as GateDocumentSyncPreview; this.syncPreview = undefined; }
                     else { this.syncPreview = sync as RoadmapSyncPreview; this.gateSyncPreview = undefined; }
@@ -935,6 +1151,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     /** Inspect an existing Chat proposal; the Chat backend remains the only approval authority. */
     async presentChatProposal(uri: string, chatId: string, proposal: ChatPlanningProposal): Promise<void> {
+        if (this.history) throw new Error('Return to Current before viewing a Chat Roadmap proposal');
         if (!proposal.preview || proposal.revision <= 0 || proposal.chatId !== chatId)
             throw new Error('Current validated Roadmap proposal is unavailable');
         const roots = await this.workspaces.roots;
@@ -975,6 +1192,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private queueChatProposalCamera(): void {
+        if (this.history) return;
         if (!this.pendingChatProposalCamera || this.chatProposalCameraQueued) return;
         this.chatProposalCameraQueued = true;
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -984,6 +1202,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private focusChatProposalCamera(): void {
+        if (this.history) return;
         const proposal = this.chatProposal?.proposal, flow = this.flow;
         if (!proposal || proposal.id !== this.pendingChatProposalCamera || !flow || !this.isVisible ||
             !this.stage.clientWidth || !this.stage.clientHeight) return;
@@ -1031,7 +1250,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     canPickContext(uri: string): boolean {
         const index = this.inspector.gateIndex;
-        return this.isVisible && !this.isDisposed && this.projectUri === uri &&
+        return !this.history && this.isVisible && !this.isDisposed && this.projectUri === uri &&
             !!index && index.schemaVersion === 2 && index.projectRoot === decodeURIComponent(new URL(uri).pathname) &&
             (index.revision > 0 || this.createState?.mode === 'chat' && !!this.createState.draft.phases.length &&
                 this.createState.projectId === index.projectId && !this.proposedDraft && !this.strategic?.review) &&
@@ -1249,6 +1468,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private setSourceOpen(open: boolean): void {
+        if (open && this.history) return;
         this.sourceOpen = open;
         this.importEntry.hidden = !open;
         this.sourceButton.setAttribute('aria-expanded', String(open));
@@ -1283,6 +1503,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     /** Presentation only: the editor stays mounted and the model retains drafts and pending previews. */
     openDetails(): void {
+        if (this.history) return;
         this.setInspectionOpen(true, true);
     }
 
@@ -1339,6 +1560,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private openPhaseFocus(): void {
+        if (this.history) return;
         if (this.inspector.gateIndex) return;
         const selected = this.projection?.nodes.find(node => node.id === this.selectedId);
         if (selected?.kind !== 'phase' || selected.draftState || !this.inspector.index) {
@@ -1507,6 +1729,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const visible = roadmapVisibleGraph(projection, this.detail, this.selectedId,
             this.expanded, this.collapsed, 96, this.promptWindow);
         this.renderFlow(visible);
+        this.renderHistoryControls();
         this.renderContextPicker();
         this.renderProposalBar();
         this.renderStrategicBar();
@@ -1529,7 +1752,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private async reviewProposal(ids: string[], decision: 'apply' | 'reject', confirm = false): Promise<void> {
         const shown = this.chatProposal;
-        if (!shown || !this.nativeProposalBridge || !ids.length || this.mutating) return;
+        if (this.history || !shown || !this.nativeProposalBridge || !ids.length || this.mutating) return;
         this.mutating = true;
         this.proposalError = undefined;
         try {
@@ -1550,7 +1773,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private renderProposalBar(): void {
-        const shown = this.chatProposal, proposal = shown?.proposal;
+        const shown = this.history ? undefined : this.chatProposal, proposal = shown?.proposal;
         const operations = proposal?.operations?.filter(operation => operation.status === 'Pending') ?? [];
         this.proposalBar.replaceChildren();
         this.proposalBar.hidden = !operations.length;
@@ -1628,7 +1851,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private renderStrategicBar(): void {
-        const state = this.strategic;
+        const state = this.history ? undefined : this.strategic;
         this.strategicBar.replaceChildren();
         this.strategicBar.hidden = !state;
         if (!state) return;
@@ -1674,6 +1897,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private renderDraftInspection(): void {
+        if (this.history) { this.inspectionEditor.node.hidden = true; this.draftInspection.hidden = true; return; }
         const draft = this.strategic?.review?.draft ?? this.createState?.draft;
         const selected = draft?.phases.find(phase => phase.id === this.selectedId ||
             phase.checkpoints.some(item => item.id === this.selectedId));
@@ -1754,9 +1978,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         for (const edge of visible ? roadmapCanvasConnectors(visible) : [])
             relations.set(edge.to, [...(relations.get(edge.to) ?? []),
                 `${edge.label} ${titles.get(edge.from) ?? edge.from}`]);
-        const proposal = this.chatProposal?.proposal;
+        const proposal = this.history ? undefined : this.chatProposal?.proposal;
         const changes = proposal?.preview?.entities ?? [];
-        const gateIndex = this.inspector.gateIndex;
+        const gateIndex = this.history?.index ?? this.inspector.gateIndex;
         const proposalPhase = (change: ProposalChange): string | undefined => {
             const value = change.after ?? change.before;
             if (value?.kind === 'phase') return value.id;
@@ -1776,14 +2000,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
                     phaseObjective: gateIndex?.phases.find(phase => phase.id === item.id)?.objective,
                     correctionObjectives: Object.fromEntries((gateIndex?.corrections ?? []).map(correction =>
                         [correction.id, correction.objective])),
-                    editField: gateIndex && !item.draftState ? this.saveInlineField : undefined,
-                    contextPick: this.contextPicker ? { selected: [...this.contextPicker.selected.keys()],
+                    editField: !this.history && gateIndex && !item.draftState ? this.saveInlineField : undefined,
+                    contextPick: !this.history && this.contextPicker ? { selected: [...this.contextPicker.selected.keys()],
                         toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) =>
                             this.toggleContextElement(kind, id) } : undefined,
                     proposalChanges: changes.filter(change => proposalPhase(change) === item.id),
                     proposalSource: proposal?.preview?.source === 'validated-markdown-patch',
                     proposalSourceChanges: proposal?.preview?.sourceChanges,
-                    detail: this.detail,
+                    detail: this.detail, historical: !!this.history,
                     relation: (relations.get(item.id) ?? []).join(', '),
                     omitted: visible?.omittedByStack.get(item.id) ?? 0,
                     select: (id: string) => this.select(id),
@@ -1791,7 +2015,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                         projection!.projectId, projection!.revision),
                     activate: (id: string) => this.activateCheckpoint(id),
                     reveal: (id: string, element: HTMLButtonElement) => this.revealFocusedCard(id, position, element) },
-                selected: item.id === this.selectedId, draggable: this.arranging, selectable: true,
+                selected: item.id === this.selectedId, draggable: !this.history && this.arranging, selectable: true,
                 className: `${item.id === this.selectedId ? 'dope-roadmap-selected ' : ''}${item.draftState ? `dope-roadmap-draft-${item.draftState}` : ''}`,
             };
         });
@@ -1836,7 +2060,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.renderFlow();
             },
             onNodesChange: (changes: NodeChange[]) => {
-                if (!this.arranging || !this.projection) return;
+                if (this.history || !this.arranging || !this.projection) return;
                 let changed = false;
                 for (const change of changes) if (change.type === 'position' && change.position &&
                     this.projection.nodes.some(item => item.id === change.id)) {
@@ -1846,7 +2070,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 if (changed) this.renderFlow();
             },
             onNodeDragStop: (_event: MouseEvent | TouchEvent, node: Node) => {
-                if (!this.arranging || !this.projection?.nodes.some(item => item.id === node.id)) return;
+                if (this.history || !this.arranging || !this.projection?.nodes.some(item => item.id === node.id)) return;
                 this.placements.set(node.id, { x: node.position.x, y: node.position.y });
                 this.schedulePresentation();
                 this.renderFlow();
@@ -1932,6 +2156,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private recordUserCamera(camera = this.flow?.getViewport()): void {
         if (!camera || !this.projectId || !this.projectUri) return;
+        if (this.history) { this.displayedViewport = { ...camera }; return; }
         this.initialCameraPending = false;
         this.automaticCamera = undefined;
         this.displayedViewport = { ...camera };
@@ -3261,6 +3486,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private select(id: string, focus = false): void {
         const node = this.projection?.nodes.find(candidate => candidate.id === id);
         if (!node) return;
+        if (this.history) { this.selectedId = id; this.render(); return; }
         if (id !== this.selectedId && (this.inspector.dirty || this.inspector.requiresApproval)) {
             this.status.textContent = 'A Roadmap edit or approval is pending. Save or review it before selecting another checkpoint.';
             this.setInspectionOpen(true);
@@ -3293,6 +3519,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private selectGate(id: string, phaseId: string, projectId: string, revision: number): void {
+        if (this.history) { this.selectedId = id; this.render(); return; }
         const index = this.inspector.gateIndex;
         const gate = roadmapSelectableGate(index, projectId, revision, phaseId, id);
         if (!gate || !this.projection?.nodes.some(node => node.id === phaseId) ||
@@ -3321,6 +3548,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     }
 
     private activateCheckpoint(id: string): void {
+        if (this.history) { this.select(id); return; }
         const node = this.projection?.nodes.find(candidate => candidate.id === id);
         if (!node) return;
         this.select(id);
