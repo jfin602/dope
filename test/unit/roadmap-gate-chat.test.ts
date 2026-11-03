@@ -515,7 +515,7 @@ test('native stage cancellation invalidates the live observer without a canonica
         if (!lease.acquired) throw new Error('Chat lease unavailable');
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: 'Create a Roadmap for a tower-defense game.', context: [] });
+            content: '/roadmap Stage a Roadmap for a tower-defense game.', context: [] });
         assert.equal(turn.proposal, undefined);
         assert.equal((await store.read(root)).revision, 0);
         assert.equal(await store.gateIndexHash(root), null);

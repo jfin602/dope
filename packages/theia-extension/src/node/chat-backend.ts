@@ -32,7 +32,7 @@ import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadm
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import { verifiedPublicationFile } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import { RoadmapNativeStageOwner } from './roadmap-native-stage';
-import { stageTypedRoadmapDraft } from './roadmap-typed-stage';
+import { stageTypedRoadmapDraft, typedRoadmapCounts } from './roadmap-typed-stage';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -1697,8 +1697,11 @@ export class ChatBackend implements ChatService {
                                         'gateId' in item.action ? item.action.gateId : before.projectId,
                                     status: item.status })),
                                 summary: `${stage.strategy === 'phase-only' ? 'Phase-only' : 'Full'} staged draft: ` +
-                                    `${stage.operations.length} operations, ${changedIds.length} changed entities. ` +
-                                    'Validated preview; no Roadmap change applied.',
+                                    `${typedRoadmapCounts(after).phases} Phases, ${typedRoadmapCounts(after).gates} Gates, ` +
+                                    `${typedRoadmapCounts(after).criteria} Criteria; ${stage.operations.length} operations, ` +
+                                    `${changedIds.length} changed entities. Validated preview; no Roadmap change applied.` +
+                                    (typedCandidate?.coverageWarnings.length ?
+                                        ` Coverage warnings: ${typedCandidate.coverageWarnings.join('; ')}` : ''),
                                 preview: presentation };
                             if (Buffer.byteLength(JSON.stringify(proposal), 'utf8') > 60_000)
                                 return { proposalError: 'Roadmap preview exceeds the saved proposal limit; reduce the draft' };

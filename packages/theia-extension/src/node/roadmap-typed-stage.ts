@@ -1,5 +1,5 @@
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
-import type { UntrustedTypedRoadmapCandidate } from './roadmap-local-model';
+import { parseTypedRoadmapDraft, type UntrustedTypedRoadmapCandidate } from './roadmap-local-model';
 import { RoadmapNativeStageOwner, type NativeRoadmapStage } from './roadmap-native-stage';
 
 type Context = { root: string; projectId: string; chatId: string; turnId: string; lease: string };
@@ -11,12 +11,13 @@ export async function stageTypedRoadmapDraft(owner: RoadmapNativeStageOwner, con
     assertActive();
     if (candidate.kind !== 'untrusted-typed-roadmap-draft' || candidate.draft.type !== 'roadmap-draft' ||
         candidate.draft.schemaVersion !== 1) throw new Error('ROADMAP_TYPED_CANDIDATE_INVALID');
+    const draft = parseTypedRoadmapDraft(JSON.stringify(candidate.draft), 'stop').draft;
     const read = await owner.read(context, { version: 1 }) as { revision: number; projectId: string;
         link: unknown; stage: unknown; stageBasis: Basis };
     if (read.revision !== 0 || read.projectId !== context.projectId || read.link || read.stage)
         throw new Error('ROADMAP_TYPED_OWNER_NOT_EMPTY: start a fresh protected Roadmap turn');
     const actions: Record<string, unknown>[] = [];
-    for (const [phaseAt, phase] of candidate.draft.phases.entries()) {
+    for (const [phaseAt, phase] of draft.phases.entries()) {
         const phaseAlias = `new:p${phaseAt + 1}`;
         actions.push({ type: 'phase.create', id: phaseAlias, title: phase.title, objective: phase.objective });
         if (phase.dependsOn?.length) actions.push({ type: 'phase.dependencies', id: phaseAlias,
@@ -51,9 +52,9 @@ export async function stageTypedRoadmapDraft(owner: RoadmapNativeStageOwner, con
         }
         assertActive();
         const { stage, after } = await owner.complete(context);
-        const expectedPhases = candidate.draft.phases.length;
-        const expectedGates = candidate.draft.phases.reduce((count, phase) => count + phase.gates.length, 0);
-        const expectedCriteria = candidate.draft.phases.reduce((count, phase) => count +
+        const expectedPhases = draft.phases.length;
+        const expectedGates = draft.phases.reduce((count, phase) => count + phase.gates.length, 0);
+        const expectedCriteria = draft.phases.reduce((count, phase) => count +
             phase.gates.reduce((gateCount, gate) => gateCount + gate.criteria.length, 0), 0);
         if (after.phases.length !== expectedPhases || after.gates.length !== expectedGates ||
             after.gates.reduce((count, gate) => count + gate.criteria.length, 0) !== expectedCriteria)

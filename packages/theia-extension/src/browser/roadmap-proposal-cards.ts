@@ -7,6 +7,14 @@ type SourceChange = { before: string; after: string };
 const proposed = (source: boolean): string =>
     `Proposed · Not applied${source ? ' · Linked Markdown source-owned' : ''}`;
 
+function selectControl(id: string, label: string, subtree = false): React.ReactElement {
+    return React.createElement('button', { type: 'button',
+        className: 'dope-roadmap-proposal-select nodrag nopan',
+        'data-proposal-select': id, 'data-proposal-subtree': subtree ? 'true' : undefined,
+        'aria-pressed': false, 'aria-label': label,
+        onClick: (event: React.MouseEvent) => event.stopPropagation() }, subtree ? 'Select with children' : 'Select');
+}
+
 /** Existing entities keep their precise diff; creation has no previous value to compare. */
 export function ProposedChange({ change, source, sourceChanges }: { change: ProposalChange; source: boolean;
     sourceChanges?: SourceChange[] }): React.ReactElement {
@@ -14,6 +22,7 @@ export function ProposedChange({ change, source, sourceChanges }: { change: Prop
     if (change.action === 'create' && after) return React.createElement('div', {
         className: 'dope-roadmap-correction-row dope-roadmap-proposal-created',
         'data-proposal-entity': change.id },
+        selectControl(change.id, `Select proposed ${after.kind} ${after.title ?? ''}`),
         React.createElement('small', { className: 'dope-roadmap-authority' }, proposed(source)),
         React.createElement('strong', null, after.title ?? after.id),
         after.detail && React.createElement('p', null, after.detail));
@@ -22,6 +31,7 @@ export function ProposedChange({ change, source, sourceChanges }: { change: Prop
             `${label}: ${oldValue ?? 'none'} → ${newValue ?? 'none'}`);
     return React.createElement('div', { className: `dope-roadmap-proposal-change dope-roadmap-proposal-${change.action}`,
         'data-proposal-entity': change.id },
+        selectControl(change.id, `Select proposed ${value?.kind ?? 'change'} ${value?.title ?? ''}`),
         React.createElement('small', null, proposed(source)),
         React.createElement('strong', null, `${change.action === 'delete' ? 'Remove ' : ''}${value?.kind ?? 'element'} · ${value?.title ?? change.id}`),
         change.action === 'edit' ? field('Title', before?.title, after?.title) : null,
@@ -42,6 +52,7 @@ export function ProposedCriterionRow({ criterion, source }: { criterion: ChatRoa
     return React.createElement('details', { className: 'dope-roadmap-proposal-criterion',
         'data-proposal-entity': criterion.id },
         React.createElement('summary', null, criterion.title ?? criterion.id),
+        selectControl(criterion.id, `Select proposed Criterion ${criterion.title ?? ''}`),
         React.createElement('small', null, proposed(source)),
         criterion.detail && React.createElement('p', null, criterion.detail));
 }
@@ -65,6 +76,7 @@ export function ProposedGateCard({ change, children, source }: { change: Proposa
             React.createElement('span', { className: 'dope-roadmap-gate-qualifier' }, 'Proposed · Not applied'),
             React.createElement('span', { className: 'dope-roadmap-gate-chevron', 'aria-hidden': true }, '⌄')),
         React.createElement('div', { className: 'dope-roadmap-gate-foldout', 'data-proposal-entity': gate.id },
+            selectControl(gate.id, `Select proposed Gate ${gate.title ?? ''}`),
             React.createElement('small', { className: 'dope-roadmap-authority' }, proposed(source)),
             gate.detail && React.createElement('p', null, gate.detail),
             React.createElement('strong', null, 'Criteria'),
@@ -87,6 +99,7 @@ export function ProposedPhaseNode({ data }: { data: { change: ProposalChange; ch
         'data-phase-id': phase.id, 'data-proposal-entity': phase.id,
         'aria-label': `Proposed Phase${label ? ` ${label}` : ''}: ${phase.title ?? phase.id}; ${gates.length ? 'Gates not accepted' : 'Awaiting Gates'}` },
         React.createElement('div', { className: 'dope-roadmap-phase-main' },
+            selectControl(phase.id, `Select proposed Phase ${phase.title ?? ''} and its children`, true),
             React.createElement('small', { className: 'dope-roadmap-authority' }, proposed(data.source)),
             React.createElement('small', { className: 'dope-roadmap-phase-label' }, label ? `PHASE ${label}` : 'PHASE'),
             React.createElement('strong', null, phase.title ?? phase.id),

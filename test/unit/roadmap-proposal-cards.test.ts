@@ -33,6 +33,8 @@ test('native stage snapshots render a provisional Phase, then nested Gate and Cr
         assert.match(firstHtml, /Initial setup/);
         assert.match(firstHtml, /Awaiting Gates/);
         assert.match(firstHtml, /Proposed · Not applied/);
+        assert.match(firstHtml, /Select proposed Phase/);
+        assert.match(firstHtml, /data-proposal-subtree="true"/);
         assert.doesNotMatch(firstHtml, /none →|Order:|Dependencies:|Planned|GREEN/);
         assert.equal(await store.gateIndexHash(root), null);
 
@@ -46,6 +48,8 @@ test('native stage snapshots render a provisional Phase, then nested Gate and Cr
         assert.match(secondHtml, /Verify setup/);
         assert.match(secondHtml, /Check launch/);
         assert.match(secondHtml, /App launches/);
+        assert.match(secondHtml, /Select proposed Gate/);
+        assert.match(secondHtml, /Select proposed Criterion/);
         assert.equal((secondHtml.match(/data-proposal-entity="[^"]+"/g) ?? []).length, 3);
         assert.doesNotMatch(secondHtml, /none →|Order:|Dependencies:|Planned|GREEN/);
         await owner.cancel(context, { version: 1 });
