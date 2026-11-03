@@ -3,7 +3,7 @@
 **Decision:** ADR 0047 + ADR 0046. **Product reference:** 0.12.7 (verify actual local version). **Status:** PLAN + PROMPTS ONLY; no product code executed by authoring. The runner owns implementation checkpoint commits; final manual browser P10 does not run automatically.
 
 ## Prerequisite and operating contract
-On owner's local checkout read BOOT.md, AGENTS.md, docs/workflow.md, this stack and ADR 0040/0045/0046/0047, c12-undo contract, actual current source/evidence. Inspect \`git status --short\`, head, dirty work and active runner state. Protect changes and use disposable project fixtures. If overlapping c12-undo components are already implemented/qualified, **reuse them** and prove integration; never run duplicate stacks. If prerequisite is absent, implement the missing scoped seam in its own Pn; STOP on a mandatory unsafe gap rather than declare a future step already complete.
+On owner's local checkout read BOOT.md, AGENTS.md, docs/workflow.md, this stack and ADR 0040/0045/0046/0047, c12-undo contract, actual current source/evidence. Inspect `git status --short`, head, dirty work and active runner state. Protect changes and use disposable project fixtures. If overlapping c12-undo components are already implemented/qualified, **reuse them** and prove integration; never run duplicate stacks. If prerequisite is absent, implement the missing scoped seam in its own Pn; STOP on a mandatory unsafe gap rather than declare a future step already complete.
 
 ### P1 — Native Pi broker Roadmap tools (runner)
 Inventory actual RoadmapStore/Service, ProjectPlanningActions, Pi broker permissions and Chat/greenfield routes. Add versioned bounded project-scoped read/stage/cancel of noncanonical structured Phase/Gate/Criterion/Correction operations with stable IDs, leases and source fingerprints. Model cannot access apply/approve or write arbitrary Markdown. Focus tests, no canonical write on stage.
@@ -36,9 +36,9 @@ Cross-owner tests for create/edit/selective decisions/history/Markdown/reload, r
 Use the real connected Codex Google Chrome browser on exact final source and disposable tower-defense project. Verify actual full tree from native Pi tools, selective Apply/Reject, direct pencils, first link and automatic sync, formal Undo/Redo and reviewed restore, qualifications/evidence, full security/race/recovery negatives, narrow/keyboard/a11y and reload. Up to **three** targeted observed-defect repair + re-test cycles; fresh source and browser build after each change; one final closeout with PASS/FAIL/NOT RUN/GAP and truthful Green/Not Green. Owner-native Electron evidence is separately obtained or reported as GAP. No fabricated successful browser action.
 
 ## Runner handling
-1. Later owner invocation: \`npm run codex:phase:validate -- c12-roadmap-sync\`.
-2. Then \`npm run codex:phase -- c12-roadmap-sync\` runs only P1–P9. Runner owns successful checkpoint commits. STOP on NOT GREEN.
-3. Manually execute P10 in connected Codex Chrome; **do not** use \`--closeout\` to force an automatic PASS.
+1. Later owner invocation: `npm run codex:phase:validate -- c12-roadmap-sync`.
+2. Then `npm run codex:phase -- c12-roadmap-sync` runs only P1–P9. Runner owns successful checkpoint commits. STOP on NOT GREEN.
+3. Manually execute P10 in connected Codex Chrome; **do not** use `--closeout` to force an automatic PASS.
 4. Preserve all previous source-bound reports, tests, owners, current /roadmap and Undo contracts. No automatic product-version bump, Phase 12 closure, Work grant or old correction replay.
 
 ## Exit criteria
