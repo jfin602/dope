@@ -1,0 +1,35 @@
+TASK: c12-roadmap-sync / P2 — complete typed draft generation and single authoritative preview
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 alone is manual Codex Chrome).
+- Target <=8 minutes per bounded cycle; hard cap 15 minutes. Stop NOT GREEN rather than race a safety boundary.
+- Use existing runner; runner owns successful implementation commits. NO self-commit, /activate, automatic next manual stack, version/model/provider/lockfile change or host-wide permissions.
+- Ponytail FULL only if installed/actually available to implementation agent, never injected into selected local Pi model.
+
+VERSIONING
+- Documented reference version 0.12.7. Inspect actual LOCAL package/version and runner expected version first; never silently rewrite pins to pass.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, docs/planning/p12/native-roadmap-authoring-contract.md, docs/planning/p12/roadmap-revision-navigation-and-restore.md, this stack README/assessment/plan, and preceding Pn source/qualification.
+- Inspect LOCAL git HEAD/status/diff, active owner changes, RoadmapStore/Service, ProjectPlanningActions, Pi broker/ChatBackend, ChatPanel, RoadmapCanvas, Markdown source adapter, saved History and actual tests before editing. Remote main is not proof of local state.
+- Do not reset/stash/clean, force push, overwrite real project Roadmaps or Markdown, run unrelated stacks, bypass protected /roadmap current-turn invocation, Ask/Allow, exact owner/root/revision/source/lease/approval or grant agent generic shell/file writes. Use disposable fixtures. Preserve c12-undo and publication stack original prompts and failure evidence.
+
+
+PREREQUISITE: P1 must be genuinely implemented/qualified in current local source. STOP if no safe stage owner.
+
+OBJECTIVE
+A provider's staged structured entities, not its final natural-language response, drive the preview on Chat and Roadmap. Preserve all Gates and Criteria and label incomplete drafts honestly.
+
+IMPLEMENT
+1. Implement a versioned staging manifest for incremental local-model batches: expected stage, explicit done/completeness marker, ordered stable operation IDs and cross-batch references, limits, cancellation/timeout/retry and a bounded deterministic readback. Do not require one huge model JSON or a second model pass to parse its response.
+2. Validate Phase objectives, Gate title/purpose/parent, ordered observable Criteria/expected results, Correction ownership, duplicate IDs, explicit dependencies, cycle and source mapping; give precise path/operation error rather than "Incomplete Phase or Gate". An intentionally phase-only strategy stays a reviewable phase-only draft, never synthetic checked Gate coverage.
+3. Produce a single SERVER-VALIDATED before/after proposal projection, shared by originating saved Chat card and Roadmap provisional in-canvas view. New objects/fields/removals/reorders/dependencies are represented truthfully; no browser parsing of summaries, raw JSON or chat markdown. Keep approval identities server-side.
+4. Preserve c12-roadmap-publish-ux Unit A: one inline full-width historical Chat proposal card with inert terminal states; active-Roadmap-tab-only automatic provisional preview, no tab switch/focus theft; manual View in Roadmap. While browsing historical revisions, suppress autopreview. Do not claim Applied or GREEN from staging.
+5. Retire the *authoritative response-parser route* to canonical AI mutations, but preserve readable answer text and harmless existing read-only analytics. Do not remove unrelated Planning/Chat/Work APIs.
+
+QUALIFY
+- Disposable tower-defense fixture produces >=5 ordered Phase records and nested >=2 Gate records with Criteria in >=3 Phases; staged IDs, preview counts, omissions and exact parent links identical after save/reopen of proposal.
+- Incremental batches, duplicate/stale/missing-object/cross-batch reference, cancelled/partial generation, phase-only and task-bullet negative; no silent Gate invention or dropped content.
+- Chat/canvas projection same proposal ID; active/background/closed Roadmap tab correct; saved historical card inert; no write before human Apply; no new model call for parse. Validate bounded Qwen-compatible payload, real selected model if available; if not, label actual model behavior untested without blocking deterministic source work.
+- Focused tests, typecheck/build, exact bytes/no-write; record genuine source-bound evidence and STOP.
+EXIT: Complete validated preview P2 only. Apply and rejection belong to P3.
