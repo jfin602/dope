@@ -1,0 +1,40 @@
+TASK: Correction 12 / P5 — bounded completeness, recovery and owner review
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Soft target <=8 minutes; hard stop 15 minutes per bounded runner step. Report NOT GREEN/STOP with facts if safety or scope cannot be achieved.
+- Existing runner owns commits and verified checkpoint. Do NOT self-commit, bump version, run overlapping stacks or start live local-model/browser qualification.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Check local manifest and existing runner before editing; fail safely on mismatch.
+
+PREFLIGHT / AUTHORITY
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047/0048/0049, docs/planning/p12/roadmap-phase-orchestration-contract.md, c12-rm-orch README/assessment/plan, prior Pn outcome, actual source/tests.
+- Verify actual local HEAD/branch/status/diff and reconcile reported dirty D2 files. Remote documentation is not proof of local status. No reset/stash/clean, force push, overwriting owner's tower-defense project or unsafe automatic migration.
+- Reuse existing schema-2 RoadmapStore/Service, protected Pi broker/Ask-Allow, /roadmap skill, one noncanonical proposal/stage authority, granular owner approval, checked linked Markdown sync, History and evidence/qualification. Never add a second writer, generic model filesystem channel, provider switch or self-Apply.
+- Use disposable fixtures and focused tests, report exact counts, source hashes and truthful scope. A matching commit alone is not GREEN.
+
+PREREQUISITE
+- P2 serialized controller, P3 authoritative native staging and P4 live provisional events are source-verified. Reuse existing proposal review and source/lease checks.
+
+OBJECTIVE
+- Finish or stop a multi-Phase draft truthfully, recover a narrowly failed Phase without restarting work, and make only fully validated, dependency-closed proposals available for owner review.
+
+IMPLEMENT
+1. Implement controller-owned explicit project requirement/scope ledger: user-stated goals, candidate Gate/Criterion coverage, unresolved or ambiguous requirements and validated staged phase summaries. Deterministic structural checks are enforceable; model self-reported semantic coverage is *untrusted evidence*, not a completeness proof. Expose gaps in owner review.
+2. Decide next Phase, bounded continuation or terminal outcome using actual stage state, call/tokens/time/phase ceilings and uncovered scope. Do not stop merely on an arbitrary Phase count or model claim of completion; do not loop indefinitely seeking an unverifiable perfect plan.
+3. On invalid/incomplete Phase or missing Gate, attempt at most one targeted safe correction of that Phase using same selected model and relevant compact state. If still malformed, stop Incomplete/Failed and retain inspectable staged work, with Apply unavailable until independent fresh validation of a reviewable subset. No silent schema fallback, full-plan rerun or extra format-conversion call.
+4. Bind final review-ready to complete dependency-closed server proposal under current project/owner/revision/source/lease. Integrate existing canvas selective Apply/Reject and Chat compact outcome summary. Rejecting parent cannot orphan Gate, rejected operations do not silently reappear, stale selected approvals fail closed.
+5. Cancellation, stale lease, source/model drift, timeout and restart invalidate generation authority and stop future Pi calls. Preserved partial draft can be inspected and explicitly continued only with fresh source/model/owner verification and a new review lease; never auto-Apply or auto-sync.
+6. Record actual call count, timestamps, time to first validated Phase, final-review latency, retry count, provider finish/reasoning/final token usage if exposed, and unknown fields when unavailable. Do not invent success percentages.
+
+QUALIFY
+- Complete project with many Phases, incomplete Gate, missing scope, duplicate Phase, repeated failed correction, cancellation halfway, stale after source edit, retry exhaustion, restart inspection, selected Phase subset, and source collision.
+- Successful explicit owner Apply only is canonical; reject/no-op/failure has no applied History/linked-Markdown mutation. Full expected subset preserves nested entities across reload and correct source sync.
+- Security negatives: wrong project/chat/turn/lease/source, provider switch, model-created self-approval, protected /roadmap spoof and Work/qualifying evidence mutation.
+- Focused source tests, typecheck, hashes, real outcome reporting; no live Pi/browser performance claim.
+
+EXIT
+- New workflow can finalize safe review or truthful partial stop. Any automated stale/cancelled Apply or silent Gate omission => STOP.
