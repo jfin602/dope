@@ -1,0 +1,39 @@
+TASK: Correction 12 / P2 — establish synchronized generation controller
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Soft target <=8 minutes; hard stop 15 minutes per bounded runner step. Report NOT GREEN/STOP with facts if safety or scope cannot be achieved.
+- Existing runner owns commits and the verified checkpoint. Do NOT self-commit, bump version, run overlapping stacks or start a live local-model/browser qualification.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Check actual local package manifest and existing runner before editing; fail safely on mismatch.
+
+PREFLIGHT / AUTHORITY
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047/0048/0049, docs/planning/p12/roadmap-phase-orchestration-contract.md, c12-rm-orch README/assessment/plan, prior Pn outcome, actual source/tests.
+- Verify local git HEAD/branch/status/diff and all nine reported uncommitted D2 files if present. Remote documentation is not local proof. No reset/stash/clean, force push, overwriting owner's tower-defense project, discarding changes, or unsafe automatic migration.
+- Reuse existing trusted schema-2 RoadmapStore/Service, ProjectPlanningActions, Pi broker/Ask-Allow, protected /roadmap permission, single noncanonical proposal/lease/source owner, granular canvas review, linked Markdown sync, History and independent qualification. No second writer, arbitrary model shell/filesystem, silent provider/model switch or model self-Apply.
+- Use disposable fixtures. Test relevant changed packages with focused suites/builds, capture exact counts and no-write bytes/hashes. A matching commit is not a qualification receipt.
+
+PREREQUISITE
+- P1 must have safely retired all old executable generation routes and preserved native stage authority on actual local source.
+
+OBJECTIVE
+- Introduce one first-class Chat/backend Roadmap Generation Controller, coordinating serialized bounded local-model Phase calls without staging or browser work yet.
+
+IMPLEMENT
+1. Inspect actual Pi session orchestration, model selection/reasoning capture, Chat persistence, project context and cancellation. Add one greenfield controller entry linked to existing Chat request/turn, owner/project/root, canonical revision/source fingerprint and selected model/provider/context. No parallel session-store, provider or raw file writer.
+2. Define typed state machine `initializing / generating-phase / validating / staging / review-ready / incomplete / failed / cancelled / stale` and monotonic generation-ID-bound events. Serialize one active inference call; await validated Phase completion before scheduling the next. Controller, not model, chooses next call and capped remaining budget.
+3. Bounded phase count, per-phase gate/subcall ceilings, total calls/tokens, idle timeout, deadline, retry cap and optional cancellation. Capture actual provider finish/reasoning/final usage when exposed, mark unavailable values unknown. No silent model/provider/reasoning switch. Ensure cancellation aborts where supported and prevents late callbacks, stale events or next Phase call.
+4. Maintain compact context snapshot and scope ledger references without re-sending entire transcript each call. Include no secret lease/capability tokens in model prompt. Preserve proper /roadmap/greenfield authority and Ask/Allow.
+5. Use injected deterministic fake model calls and stage stub (not old generator) to prove strict sequencing and lifecycle. New entry initially reports unavailable to complete until P3 wires real stage operations.
+
+QUALIFY
+- Concurrent phase attempts never overlap within session; no call after cancel/timeout/stale; duplicate/delayed events ignored; bounded failures terminate.
+- Model drift/project switch/revision drift/wrong Chat or impersonated permission all fail closed.
+- Continuous ordinary Chat read-only answers and native edits retain behavior.
+- Focused unit/integration tests/typecheck with exact numbers and no canonical/Markdown/History writes.
+
+EXIT
+- Controller state machine and serialized calls source-qualified with fake native stage; NOT claimed real Qwen generation or complete Roadmap. P3 requires this exact interface.
