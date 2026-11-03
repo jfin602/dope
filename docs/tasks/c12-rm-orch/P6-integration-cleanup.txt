@@ -19,18 +19,21 @@ PREFLIGHT / AUTHORITY
 PREREQUISITE
 - P1–P5 exist and are verified for their exact source scope. If P1 left unreachable legacy imports, P6 must remove them, not convert them into compatibility wrappers.
 
+COMMAND ORIGIN INVARIANT
+- Controller starts only after a trusted top-level user Chat submission beginning `/gen-roadmap <roadmap prompt>` (exact token, whitespace separator, nonempty body; multiline allowed). Chat parses before Pi and passes only prompt body as scope. Missing/near-match/embedded command, natural-language requests, `/roadmap`, `/roadmap generate`, UI direct call, Work, model/tool output and replay are never trigger paths. No classifier, aliases, auto-fallback, or button auto-submit; retained UI may only prefill. This command does not bypass permissions/Ask-Allow/owner Apply.
+
 OBJECTIVE
 - Source-level closure: one generation route, no lingering old grammars/orchestrators/fallbacks/unused code; full protected proposal/canvas/Markdown behavior still works.
 
 IMPLEMENT
-1. Trace every greenfield entry, provider dispatch, Chat response path, stage producer, preview listener and status card. Create a reachable-call-graph inventory from actual source. Verify all greenfield requests use the single controller; old full-plan prose parser, typed monolith, RM1 grammar, two-pass D2 conversion, model-managed native generation and legacy fallback selectors are absent from executable product paths, not just hidden.
+1. Trace every greenfield entry, provider dispatch, Chat response path, stage producer, preview listener and status card. Create a reachable-call-graph inventory from actual source. Verify that **only** trusted `/gen-roadmap <roadmap prompt>` user Chat commands use the single controller; ordinary Chat/Planning and uncommanded greenfield discussion do not; old full-plan prose parser, typed monolith, RM1 grammar, two-pass D2 conversion, model-managed native generation and legacy fallback selectors are absent from executable product paths, not just hidden.
 2. Delete remaining dead generator source, prompt builders, TypeScript exports, flags, UI branches, integration adapters, exclusive test assertions and obsolete references. Retain archived Chat output readability and unrelated import/Markdown parsers and common staged proposal/approval owner. No transitional compatibility shims. Check for duplicate authority, proposal writers or source synchronization paths.
-3. Confirm new tests cover any security/safety behavior removed from old tests: scope/status, Phase/Gate identity, event backpressure, cancel/stale/drift, Ask/Allow, current-turn protected /roadmap, source hash, lease, granular owner Apply/Reject, historical restore, linked Markdown conflict and no-write before Apply.
+3. Confirm tests prove exact command-only routing (including multiline body), and zero controller calls for missing body, unprefixed natural language, `/roadmap`, `/roadmap generate`, near-match/nonleading/quoted command, button-direct UI, Work/tool/model message and replay. Cover remaining security/safety behavior removed from old tests: scope/status, Phase/Gate identity, event backpressure, cancel/stale/drift, Ask/Allow, current-turn protected /roadmap, source hash, lease, granular owner Apply/Reject, historical restore, linked Markdown conflict and no-write before Apply.
 4. Run focused tests and relevant workspace builds. Run broader tests as time allows, attribute existing failures against reproducible baseline when possible; never relabel unknown failures pre-existing or silently delete meaningful tests. Run `git diff --check` and targeted reference search.
 5. Verify trace instrumentation gives the data needed to assess performance in P7 without introducing extra model calls or synchronous UI waits. Provide exact cleanup manifest and remaining native/browser evidence gaps.
 
 QUALIFY
-- Code/tests prove all public greenfield routes converge to exactly one controller, and no old route remains invocable under flags, direct methods, replayed events or restart.
+- Code/tests prove the trusted `/gen-roadmap` command is the sole controller route and no uncommanded Chat/Planning/Work/UI/model/tool entry or old flag/direct method/replay/restart route can reach it.
 - Stage shows real nested gates but cannot mutate canonical/Markdown/History; a verified owner Apply can still selectively commit with safe revalidation; UI and async event safety verified on exact source.
 - Report files deleted, files retained and why, test/build counts, remaining issues, HEAD/diff and explicit source-scoped disposition. If any unreachable but preserved old-generation code remains, do **not** call clean replacement complete.
 

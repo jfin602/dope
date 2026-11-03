@@ -20,16 +20,20 @@ PREREQUISITE
 - This stack is approved for docs; execution requires explicit owner Run. If local D2 dirty changes cannot be safely reconciled, STOP, show exact files/conflicts; do not destroy them.
 
 OBJECTIVE
+
+COMMAND-ONLY EXECUTION BOUNDARY
+The **sole executable entry** to the Roadmap Generation Controller is a **trusted user-authored Chat submission** starting with the exact leading command `/gen-roadmap <roadmap prompt>`. Parse at the Chat command boundary **before any Pi inference**; after normalizing outer composer whitespace, require the exact `/gen-roadmap` token, a whitespace separator and a nonempty trimmed prompt (multiline body allowed). Strip the token before passing the body to the controller, retain trusted user-command provenance, and show usage with **zero controller/inference/stage/write calls** for missing body. Never scan quoted/code/prose content or model/tool output for executable commands. No intent classifier or natural-language routing, no automatic greenfield or Planning invocation, no `/roadmap` or `/roadmap generate` alias, no direct Generate Roadmap button, Work, injected tool/model text, old-format fallback or replay invocation. A retained UI affordance may only prefill the command for the user to submit. Normal Chat/Planning and ordinary `/roadmap` editing are unaffected. The command conveys requested intent, **not** permission to bypass Ask/Allow, project/source/revision/lease checks or final owner Apply.
+
 - Make every old greenfield generation method unreachable with **no compatibility fallback**, while retaining the real protected native proposal/service infrastructure.
 
 IMPLEMENT
 1. Trace actual greenfield entry through Chat/backend/Pi. Inventory legacy natural full-plan response parsing, strict whole-plan JSON, RM1 parser/prompt, locked natural-text + converter second call, model-controlled default multi-batch greenfield choreography, fallbacks, feature switches, UI completion hooks, and their exclusive tests. Classify every dependency as obsolete generator, shared authoritative staging/Apply/service, historical artifact reader or unrelated text/Markdown import.
 2. Remove obsolete generator implementations, dispatch branches, prompt/templates, providers' legacy greenfield selections, flags and exclusive tests. Remove dead imports/calls. Do **not** remove general typed native small edits, staged candidate/proposal validation, current project permissions or readability of saved historical outputs.
-3. Replace old generation trigger with **one deliberate fail-closed "new controller not yet ready" seam** for P2/P3, without calling any old formatter or attempting any source write. Keep ordinary read-only Chat and manual Roadmap editing.
-4. Add source tests proving no remaining public/runtime route can invoke full-plan prose parsing, RM1, typed monolith, two-pass conversion or legacy staging. Reject old persisted in-flight completions; historic inert Chat text stays readable. Inventory residual symbols for P6 final exhaustive check without treating them as permitted fallbacks.
+3. Remove old implicit generation triggers. Only the trusted leading `/gen-roadmap <roadmap prompt>` Chat command may enter the fail-closed "new controller not yet ready" seam for P2/P3. Missing body gives usage with zero inference. Normal Chat/Planning and `/roadmap` editing cannot start generation.
+4. Add source tests proving no remaining public/runtime route can invoke full-plan prose parsing, RM1, typed monolith, two-pass conversion or legacy staging. Prove zero controller calls for unprefixed natural language, `/roadmap`, `/roadmap generate`, empty/quoted/embedded/near-match `/gen-roadmap`, old button direct action, Work/model/tool origin and replay. Reject old persisted in-flight completions; historic inert Chat text stays readable. Inventory residual symbols for P6 final exhaustive check without treating them as permitted fallbacks.
 
 QUALIFY
-- Call old routes/flags/late D2 converter events: explicit unavailable/no-write, not silently continued.
+- Call old routes/flags/late D2 converter events: explicit unavailable/no-write, not silently continued. Valid `/gen-roadmap` alone reaches the not-yet-ready seam.
 - Manual single-field typed staging/preview/approval and existing accepted Roadmaps remain intact; no project/Markdown/History writes from disabled greenfield path.
 - Exact git diff, changed file inventory, focused tests/typechecks, no-write assertion and remaining safety blockers.
 

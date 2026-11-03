@@ -19,6 +19,9 @@ PREFLIGHT / AUTHORITY
 PREREQUISITE
 - P2 serialized controller, P3 authoritative native staging and P4 live provisional events are source-verified. Reuse existing proposal review and source/lease checks.
 
+COMMAND ORIGIN INVARIANT
+- Controller starts only after a trusted top-level user Chat submission beginning `/gen-roadmap <roadmap prompt>` (exact token, whitespace separator, nonempty body; multiline allowed). Chat parses before Pi and passes only prompt body as scope. Missing/near-match/embedded command, natural-language requests, `/roadmap`, `/roadmap generate`, UI direct call, Work, model/tool output and replay are never trigger paths. No classifier, aliases, auto-fallback, or button auto-submit; retained UI may only prefill. This command does not bypass permissions/Ask-Allow/owner Apply.
+
 OBJECTIVE
 - Finish or stop a multi-Phase draft truthfully, recover a narrowly failed Phase without restarting work, and make only fully validated, dependency-closed proposals available for owner review.
 
@@ -27,13 +30,13 @@ IMPLEMENT
 2. Decide next Phase, bounded continuation or terminal outcome using actual stage state, call/tokens/time/phase ceilings and uncovered scope. Do not stop merely on an arbitrary Phase count or model claim of completion; do not loop indefinitely seeking an unverifiable perfect plan.
 3. On invalid/incomplete Phase or missing Gate, attempt at most one targeted safe correction of that Phase using same selected model and relevant compact state. If still malformed, stop Incomplete/Failed and retain inspectable staged work, with Apply unavailable until independent fresh validation of a reviewable subset. No silent schema fallback, full-plan rerun or extra format-conversion call.
 4. Bind final review-ready to complete dependency-closed server proposal under current project/owner/revision/source/lease. Integrate existing canvas selective Apply/Reject and Chat compact outcome summary. Rejecting parent cannot orphan Gate, rejected operations do not silently reappear, stale selected approvals fail closed.
-5. Cancellation, stale lease, source/model drift, timeout and restart invalidate generation authority and stop future Pi calls. Preserved partial draft can be inspected and explicitly continued only with fresh source/model/owner verification and a new review lease; never auto-Apply or auto-sync.
+5. Cancellation, stale lease, source/model drift, timeout and restart invalidate generation authority and stop future Pi calls. Preserved partial draft can be inspected. Subsequent continuation requires a **new explicitly submitted `/gen-roadmap <roadmap prompt>` Chat command** with fresh source/model/owner verification and a new review lease; no hidden Continue button, auto-resume or replay may launch the controller. Never auto-Apply or auto-sync.
 6. Record actual call count, timestamps, time to first validated Phase, final-review latency, retry count, provider finish/reasoning/final token usage if exposed, and unknown fields when unavailable. Do not invent success percentages.
 
 QUALIFY
 - Complete project with many Phases, incomplete Gate, missing scope, duplicate Phase, repeated failed correction, cancellation halfway, stale after source edit, retry exhaustion, restart inspection, selected Phase subset, and source collision.
 - Successful explicit owner Apply only is canonical; reject/no-op/failure has no applied History/linked-Markdown mutation. Full expected subset preserves nested entities across reload and correct source sync.
-- Security negatives: wrong project/chat/turn/lease/source, provider switch, model-created self-approval, protected /roadmap spoof and Work/qualifying evidence mutation.
+- Security negatives: wrong project/chat/turn/lease/source, provider switch, model-created self-approval, protected `/roadmap` spoof, ordinary natural-language auto-trigger, invalid or embedded `/gen-roadmap`, UI direct-call, Work/tool/replay origin and Work/qualifying evidence mutation.
 - Focused source tests, typecheck, hashes, real outcome reporting; no live Pi/browser performance claim.
 
 EXIT

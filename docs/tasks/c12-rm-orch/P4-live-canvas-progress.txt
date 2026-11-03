@@ -17,13 +17,16 @@ PREFLIGHT / AUTHORITY
 - Use disposable fixtures and focused tests, report exact counts, source hashes and truthful scope. A matching commit alone is not GREEN.
 
 PREREQUISITE
-- P2 controller events and P3 real validated native Phase/Gate stage snapshots must exist. STOP if producer cannot identify one proposal and monotonic stage sequence.
+- P2 explicit-command-authorized controller events and P3 real validated native Phase/Gate stage snapshots must exist. STOP if producer cannot identify one proposal and monotonic stage sequence.
+
+COMMAND ORIGIN INVARIANT
+- Controller starts only after a trusted top-level user Chat submission beginning `/gen-roadmap <roadmap prompt>` (exact token, whitespace separator, nonempty body; multiline allowed). Chat parses before Pi and passes only prompt body as scope. Missing/near-match/embedded command, natural-language requests, `/roadmap`, `/roadmap generate`, UI direct call, Work, model/tool output and replay are never trigger paths. No classifier, aliases, auto-fallback, or button auto-submit; retained UI may only prefill. This command does not bypass permissions/Ask-Allow/owner Apply.
 
 OBJECTIVE
 - Let the user watch Phases, Gates and Criteria appear inside the existing center Roadmap canvas **as validated native operations complete**, without slowing Pi inference or model tool execution.
 
 IMPLEMENT
-1. Trace backend stage owner projection and existing Chat/canvas event bridge. Publish minimal authoritative `generationId / proposalId / seq / status / counts / projectionRevision` after each successful validated Phase/Gate stage (or bounded batch), bound to exact project/Chat/turn/revision/source owner. No browser parsing of model prose or second proposal store.
+1. Trace backend stage owner projection and existing Chat/canvas event bridge. Publish minimal authoritative `generationId / proposalId / seq / status / counts / projectionRevision` solely for sessions bound to an authenticated `/gen-roadmap` Chat invocation after each successful validated Phase/Gate stage (or bounded batch), bound to exact project/Chat/turn/revision/source owner. No browser parsing of model prose or second proposal store.
 2. Consume stage events through existing canvas provisional overlay and proposal owner. Update nested Phase/Gate/Criteria in place; show Generating/Incomplete/Ready/Failed/Cancelled/Stale, actual stage counts and no accepted/planned/qualified inflation. Only completed, validated objects appear; incomplete children are visibly not review-ready.
 3. Preserve active-tab-only automatic preview, manual View in Roadmap, one-time initial optional locate, canvas pan/zoom/user camera, keyboard selection/focus, historical revision browsing and project/tab isolation. Do not auto-switch tabs, repeatedly fit viewport, or steal focus. Respect reduced-motion.
 4. UI render notifications can be asynchronous/coalesced/dropped, but stage data, proposal sequence and audit owner remain durable/authoritative. Inference and broker stages never await animation or UI paint; re-open reconstructs current validated projection by owner readback, not replay of missing render events.

@@ -24,11 +24,14 @@ The key cost is possible higher aggregate latency from multiple serial calls. It
 
 ## Explicit removal inventory for P1
 
-Inspect (without assumptions) actual Chat greenfield dispatch/routing, Pi prompt construction, response extractors, RM1 parser/test fixtures, `UntrustedTypedRoadmapCandidate` whole-plan converter uses, locked plan/second-pass lifecycle, old multi-batch plan coordinator, provider fallbacks, feature flags, UI phase cards/status strings and completion handlers. For each symbol classify **legacy generator exclusively**, **shared security/proposal owner**, or **unrelated Markdown/import/Chat functionality**; delete only the first class. Shared typed proposal/staging is preserved. Record all callsites and test owners so new controller is sole reachability root; tests replace old grammar assertions with new source/security expectations. Remove any dead code that could reintroduce old paths.
+Inspect (without assumptions) actual Chat greenfield dispatch/routing, Pi prompt construction, response extractors, RM1 parser/test fixtures, `UntrustedTypedRoadmapCandidate` whole-plan converter uses, locked plan/second-pass lifecycle, old multi-batch plan coordinator, provider fallbacks, feature flags, UI phase cards/status strings and completion handlers. For each symbol classify **legacy generator exclusively**, **shared security/proposal owner**, or **unrelated Markdown/import/Chat functionality**; delete only the first class. Shared typed proposal/staging is preserved. Record all callsites and test owners so the `/gen-roadmap` Chat command is sole reachability root; tests replace old grammar assertions with new source/security expectations. Remove any dead code that could reintroduce old paths.
 
 Do not delete historical docs/evidence or user-authored plans. In-flight old-format generation must terminate explicitly on cutover rather than silently upgrade; archived inert responses remain readable but never become new mutation authority. No compat shim.
 
 ## Proposed boundaries
+
+**Activation boundary:** The **sole executable entry** to the Roadmap Generation Controller is a **trusted user-authored Chat submission** starting with the exact leading command `/gen-roadmap <roadmap prompt>`. Parse at the Chat command boundary **before any Pi inference**; after normalizing outer composer whitespace, require the exact `/gen-roadmap` token, a whitespace separator and a nonempty trimmed prompt (multiline body allowed). Strip the token before passing the body to the controller, retain trusted user-command provenance, and show usage with **zero controller/inference/stage/write calls** for missing body. Never scan quoted/code/prose content or model/tool output for executable commands. No intent classifier or natural-language routing, no automatic greenfield or Planning invocation, no `/roadmap` or `/roadmap generate` alias, no direct Generate Roadmap button, Work, injected tool/model text, old-format fallback or replay invocation. A retained UI affordance may only prefill the command for the user to submit. Normal Chat/Planning and ordinary `/roadmap` editing are unaffected. The command conveys requested intent, **not** permission to bypass Ask/Allow, project/source/revision/lease checks or final owner Apply.
+
 
 Controller (Chat/backend) owns session identity/selected-model binding/call schedule; Pi runs only bounded actual native Phase/Gate edit calls; existing StageOwner owns noncanonical proposal + trusted root/project/revision/source identity; service owns canonical Apply/History/Markdown; canvas listens to validated proposal stage events. There is no planner-output parser and no second source of truth.
 
@@ -42,6 +45,7 @@ The initial content request must not demand a strict full plan. A current-Phase 
 - **Stale/wrong source/project:** exact root/chat/turn/owner/revision/hash/lease/model constraints; fail closed and do not auto-rebase.
 - **Cancellation races:** late Pi events discarded by generation ID; active calls aborted where supported; no new call after cancel.
 - **UI backpressure:** nonblocking event transport, coalescing projection renders only; never delay inference or tool execution.
+- **Accidental invocation:** explicit command-only origin, no intent classifier, UI direct call or Work/model/tool route; zero-controller-call negatives.
 - **Runner/historical risk:** keep old reports, source receipts, dirty D2 code and independent Work/evidence/qualification concerns intact.
 
 ## Scope excluded

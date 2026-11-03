@@ -6,6 +6,10 @@
 
 Replace every obsolete greenfield Roadmap generation method with **one Dope-owned synchronized phase-by-phase controller**, using Qwen3.5-9B's proven bounded native edit capabilities. Sequentially request a Phase plus small nested Gate/Criteria operations, validate/stage each real result in one authoritative noncanonical proposal, and display the growing draft on the existing canvas. No whole-plan output format, model-driven orchestration, response parsing, RM1 grammar, two-pass conversion, old fallback or parallel writer. Human Apply remains mandatory.
 
+## Explicit command entry
+
+The **sole executable entry** to the Roadmap Generation Controller is a **trusted user-authored Chat submission** starting with the exact leading command `/gen-roadmap <roadmap prompt>`. Parse at the Chat command boundary **before any Pi inference**; after normalizing outer composer whitespace, require the exact `/gen-roadmap` token, a whitespace separator and a nonempty trimmed prompt (multiline body allowed). Strip the token before passing the body to the controller, retain trusted user-command provenance, and show usage with **zero controller/inference/stage/write calls** for missing body. Never scan quoted/code/prose content or model/tool output for executable commands. No intent classifier or natural-language routing, no automatic greenfield or Planning invocation, no `/roadmap` or `/roadmap generate` alias, no direct Generate Roadmap button, Work, injected tool/model text, old-format fallback or replay invocation. A retained UI affordance may only prefill the command for the user to submit. Normal Chat/Planning and ordinary `/roadmap` editing are unaffected. The command conveys requested intent, **not** permission to bypass Ask/Allow, project/source/revision/lease checks or final owner Apply.
+
 ## Superseded implementation routes
 
 The following remain historical evidence, **not active generation implementation instructions or parallel stacks**: `c12-roadmap-sync`'s generation strategy; `c12-rmr-man`, `c12-rmr-man/fast`, `c12-map-markers` M1–M3 and its `two-pass` D1–D3; related F*/R* repair prompts and old output grammars. Do not rewrite old prompts/qualification or remove accepted Roadmaps. Keep ADR 0047's schema-2, canvas edit/decision and Markdown sync protections and ADR 0048's independent engineering qualification.
@@ -16,12 +20,12 @@ The following remain historical evidence, **not active generation implementation
 
 | Prompt | Mode | Owner and bounded exit |
 | --- | --- | --- |
-| [P1 — Retire legacy generators](P1-legacy-retirement.txt) | Runner | Exactly one pending greenfield entry; all old executable generation routes, flags and exclusive tests deleted; intentionally fail-closed until new controller |
+| [P1 — Retire legacy generators](P1-legacy-retirement.txt) | Runner | Exactly one `/gen-roadmap`-only fail-closed seam; all old executable generation routes, flags and exclusive tests deleted; intentionally fail-closed until new controller |
 | [P2 — Controller runtime](P2-controller-state-machine.txt) | Runner | Bound serialized Phase calls, model/context/session identity, timeouts/cancel and no parallel generation |
 | [P3 — Native Phase/Gate staging](P3-native-phase-staging.txt) | Runner | Actual phase-level validated typed staging under one existing proposal; no canonical write |
 | [P4 — Live Roadmap projection](P4-live-canvas-progress.txt) | Runner | Incremental nonblocking server-validated staged Phase/Gate/Criteria updates in canvas |
 | [P5 — Scope, completion and recovery](P5-completion-recovery.txt) | Runner | Bounded failure/retry/coverage ledger, review readiness, partial/cancel/stale safety |
-| [P6 — Final consolidation](P6-integration-cleanup.txt) | Runner | Dead-path/code/import removal, existing authority regression suite, accurate measured instrumentation and clean single entry |
+| [P6 — Final consolidation](P6-integration-cleanup.txt) | Runner | Dead-path/code/import removal, existing authority regression suite, accurate measured instrumentation and clean command-only entry |
 | [P7 — Connected browser closeout](P7-codex-browser-closeout.txt) | **Manual** | Exact-source selected-local-model Chrome dogfood; independent Electron owner gap; full no-write/Apply/Markdown proof |
 
 **Existing runner grammar:** `P1`–`P7` contiguous with exactly one last `closeout`; each prompt identifies `Correction 12 / Pn`, `GPT-6 Sol High`, Browser required, and unchanged `0.12.7`. Only P1–P6 are implementation checkpoints. The runner owns successful commits; implementation agents do not self-commit. P7 must never be marked PASSED merely because P1–P6 committed.

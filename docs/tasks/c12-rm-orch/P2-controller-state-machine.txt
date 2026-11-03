@@ -19,15 +19,18 @@ PREFLIGHT / AUTHORITY
 PREREQUISITE
 - P1 must have safely retired all old executable generation routes and preserved native stage authority on actual local source.
 
+COMMAND ORIGIN INVARIANT
+- Controller starts only after a trusted top-level user Chat submission beginning `/gen-roadmap <roadmap prompt>` (exact token, whitespace separator, nonempty body; multiline allowed). Chat parses before Pi and passes only prompt body as scope. Missing/near-match/embedded command, natural-language requests, `/roadmap`, `/roadmap generate`, UI direct call, Work, model/tool output and replay are never trigger paths. No classifier, aliases, auto-fallback, or button auto-submit; retained UI may only prefill. This command does not bypass permissions/Ask-Allow/owner Apply.
+
 OBJECTIVE
 - Introduce one first-class Chat/backend Roadmap Generation Controller, coordinating serialized bounded local-model Phase calls without staging or browser work yet.
 
 IMPLEMENT
-1. Inspect actual Pi session orchestration, model selection/reasoning capture, Chat persistence, project context and cancellation. Add one greenfield controller entry linked to existing Chat request/turn, owner/project/root, canonical revision/source fingerprint and selected model/provider/context. No parallel session-store, provider or raw file writer.
+1. Inspect actual Pi session orchestration, model selection/reasoning capture, Chat persistence, project context and cancellation. Add one command-only controller entry linked to an authorized `/gen-roadmap` Chat request/turn, owner/project/root, canonical revision/source fingerprint and selected model/provider/context. No parallel session-store, provider or raw file writer.
 2. Define typed state machine `initializing / generating-phase / validating / staging / review-ready / incomplete / failed / cancelled / stale` and monotonic generation-ID-bound events. Serialize one active inference call; await validated Phase completion before scheduling the next. Controller, not model, chooses next call and capped remaining budget.
 3. Bounded phase count, per-phase gate/subcall ceilings, total calls/tokens, idle timeout, deadline, retry cap and optional cancellation. Capture actual provider finish/reasoning/final usage when exposed, mark unavailable values unknown. No silent model/provider/reasoning switch. Ensure cancellation aborts where supported and prevents late callbacks, stale events or next Phase call.
-4. Maintain compact context snapshot and scope ledger references without re-sending entire transcript each call. Include no secret lease/capability tokens in model prompt. Preserve proper /roadmap/greenfield authority and Ask/Allow.
-5. Use injected deterministic fake model calls and stage stub (not old generator) to prove strict sequencing and lifecycle. New entry initially reports unavailable to complete until P3 wires real stage operations.
+4. Strip the `/gen-roadmap` prefix and pass the nonempty trimmed (possibly multiline) prompt body as scope; retain verified command origin in session identity. Usage errors make zero inference/stage calls. Maintain compact context snapshot and scope ledger references without re-sending entire transcript each call. Include no secret lease/capability tokens in model prompt. Preserve proper /roadmap/greenfield authority and Ask/Allow.
+5. Use injected deterministic fake model calls and stage stub (not old generator) to prove strict sequencing and lifecycle. Negative tests for normal Chat/Planning 'generate a roadmap', `/roadmap`, `/roadmap generate`, empty/near-match/nonleading/quoted command, UI direct calls, Work/model/tool text, and replay must show zero controller calls. New entry initially reports unavailable to complete until P3 wires real stage operations.
 
 QUALIFY
 - Concurrent phase attempts never overlap within session; no call after cancel/timeout/stale; duplicate/delayed events ignored; bounded failures terminate.

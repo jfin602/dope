@@ -19,15 +19,18 @@ PREFLIGHT / AUTHORITY
 PREREQUISITE
 - P1 safe cutover and P2 serialized controller verified on exact local source. STOP on absent typed stage owner or unauthorized Pi tool seam.
 
+COMMAND ORIGIN INVARIANT
+- Controller starts only after a trusted top-level user Chat submission beginning `/gen-roadmap <roadmap prompt>` (exact token, whitespace separator, nonempty body; multiline allowed). Chat parses before Pi and passes only prompt body as scope. Missing/near-match/embedded command, natural-language requests, `/roadmap`, `/roadmap generate`, UI direct call, Work, model/tool output and replay are never trigger paths. No classifier, aliases, auto-fallback, or button auto-submit; retained UI may only prefill. This command does not bypass permissions/Ask-Allow/owner Apply.
+
 OBJECTIVE
-- Make each controller call build **one** concrete Phase with nested Gates/Criteria via proven bounded native edits, all in one existing server-owned provisional proposal.
+- Make each **explicit-command-authorized** controller call build **one** concrete Phase with nested Gates/Criteria via proven bounded native edits, all in one existing server-owned provisional proposal.
 
 IMPLEMENT
 1. Inspect actual `roadmap_read`/`roadmap_stage` contract, `RoadmapNativeStageOwner`/`stageTypedRoadmapDraft` shared semantics and source checks. Reuse real operation validator and trusted owner; no monolithic JSON/RM1 parser, extra conversion model call, model-issued owner IDs or parallel proposal per Phase.
 2. Controller supplies minimal prompt for current Phase only: project goal, a compact summary of accepted/provisionally staged Phases, outstanding scope and available small edit tool schema. Assign/generate trusted IDs/parents in Dope backend. Stage a Phase and bounded Gates/observable Criteria, with per-Gate small serial edits if a Phase batch is too much for selected model. Bound and validate all subcalls.
 3. Validate Phase title/objective, each Gate title/purpose, parent and observable Criterion, duplicate names/IDs and stages, dependency closure, expected operation count and version. Never silently drop incomplete nested content, invent evidence or infer Gate coverage from untrusted bullets.
 4. Ensure revision-zero with null/unlinked source fingerprint is accepted when genuinely current, while stale linked source, wrong project/Chat/owner, expired lease, invalid action, oversized payload and model switch are rejected precisely.
-5. After *validated* Phase stage, return authoritative proposal/stage snapshot and schedule next Phase through P2 controller. Keep one noncanonical proposal identity throughout; model cannot Apply/approve or change Markdown/History.
+5. After *validated* Phase stage, return authoritative proposal/stage snapshot and schedule next Phase through P2 controller. Keep one noncanonical proposal identity throughout; model cannot initiate `/gen-roadmap`, Apply/approve or change Markdown/History.
 
 QUALIFY
 - Deterministic fake-Pi project builds >=3 ordered Phases, >=3 Gates each with Criteria (or Gate-specific test fixtures aligned with actual limits); stable relationships and operation identities.
