@@ -111,10 +111,12 @@ export function typedRoadmapDraftInstruction(requiredMechanics: readonly string[
     return 'Return one complete Roadmap Markers v1 answer, exactly:\nRM1\n' +
         'P|Phase title|Phase objective\nG|Gate title|Gate purpose\n' +
         'C|One observable expected-result sentence\nEND\n' +
-        'Repeat G/C and P groups in delivery order. Use 2–12 Phases, or at least five when requested; ' +
-        '1–8 necessary Gates per Phase and 1–6 distinct testable results per Gate. ' +
-        'Cover every named mechanic without decorative Gates. Dope derives Criterion titles, IDs and internal structure. ' +
-        'No other text, fences, tool calls, literal | in fields, authority values, invented dependencies or claims of verification.' +
+        'Output the lines immediately, without analysis, an outline, or commentary. ' +
+        'For each Phase, write its P row, then each Gate G row immediately followed by its C rows; then write the next P row. ' +
+        'A P or G row has exactly two separator bars; a C row has exactly one. Never put a bar inside a field. ' +
+        'Use 2–12 Phases; if at least five are requested, use five unless more are explicitly required. Use 1–8 necessary Gates per Phase and ' +
+        '1–6 distinct observable C sentences per Gate. Cover every named MVP mechanic; keep optional features outside the MVP. ' +
+        'End with END. No JSON, fences, tool calls, IDs, dependencies, authority fields, or verification claims.' +
         requirements;
 }
 

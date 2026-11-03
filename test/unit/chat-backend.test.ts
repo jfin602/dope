@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -25,26 +25,6 @@ import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
 const id = () => randomUUID();
-async function savedRoadmapOffer(backend: ChatBackend, projectHandle: string, root: string,
-    chatId: string, leaseToken: string, output = 'I can generate a roadmap draft.') {
-    const messageId = id(), executionId = id(), now = new Date().toISOString();
-    const actualModel = { schemaVersion: 1 as const, connectionId: 'local', modelId: 'q4',
-        providerId: 'local', modelLabel: 'Q4' };
-    let snapshot = await backend.read(projectHandle);
-    snapshot = await backend.mutate({ projectHandle, expectedRevision: snapshot.revision, leaseToken,
-        operation: { type: 'begin-assistant', chatId, message: { schemaVersion: 1, id: messageId,
-            role: 'assistant', createdAt: now, content: '', execution: { schemaVersion: 1,
-                id: executionId, status: 'pending', selectedModel: { connectionId: 'local', modelId: 'q4' },
-                startedAt: now } } } });
-    await backend.mutate({ projectHandle, expectedRevision: snapshot.revision, leaseToken,
-        operation: { type: 'finish-assistant', chatId, messageId, outcome: 'complete',
-            content: output, actualModel } });
-    return (backend as unknown as { offerRoadmap(root: string, chatId: string,
-        messageId: string, leaseToken: string, opportunity: string, output: string, direct: boolean): Promise<{
-            id: string; token: string; expiresAt: number } | undefined> }).offerRoadmap(root, chatId,
-                messageId, leaseToken, 'revision zero', output, true);
-}
-
 test('Chat command approval is lease and turn scoped, one use, redacted, and sandboxed', async () => {
     const root = await folder(), repository = new ChatRepository();
     await mkdir(join(root, '.git'));
@@ -199,51 +179,50 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('/roadmap starts reviewed creation when the project has no accepted Roadmap', async () => {
+test('/roadmap preview retains its current owner identity and RM1 creation stages only a proposal', async () => {
     const root = await folder(), repository = new ChatRepository(), roadmapStore = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(roadmapStore);
-    const sent: { content: string }[][] = [];
+    const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+        inputsCurrent: async () => false };
+    let sent: { role: string; content: string }[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
-            streaming: true, contextWindowTokens: 32768 } }] }] }),
-    async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
-        sent.push(request.messages);
-        yield { type: 'complete' as const,
-            text: 'Phase 1 — Playable core\nBuild one map and one tower.\n- Place a tower\n' +
-                'Phase 2 — MVP loop\nAdd waves and progression.\n- Defeat an enemy wave',
+            streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } }] }] }),
+    async *generate(_selection: unknown, request: { messages: { role: string; content: string }[];
+        projectTools?: unknown }) {
+        sent = request.messages;
+        assert.equal(request.projectTools, undefined);
+        yield { type: 'complete' as const, text: [
+            'RM1', 'P|Path|Build a fixed route', 'G|Waypoints|Move enemies through the route',
+            'C|An enemy visits every waypoint in order.', 'P|Combat|Build one tower',
+            'G|Projectile attack|Damage an enemy after cooldown',
+            'C|The tower fires a projectile after its cooldown and damages the target.', 'END'].join('\n'),
             actualModelId: 'q4', finishReason: 'stop' };
     } };
-    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Plan a PixiJS tower defense MVP' }],
-        refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 32768 }) };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
-        composer as never, undefined, undefined, undefined, greenfield, undefined, roadmapStore);
+        new ChatContextComposer({} as never, {} as never, index as never, repository, roadmapStore,
+            undefined, greenfield), undefined, undefined, undefined, greenfield, undefined, roadmapStore);
     try {
         const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
         await backend.mutate({ projectHandle, expectedRevision: 0,
             operation: { type: 'create-chat', id: chatId, folderPath: '' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!lease.acquired) throw new Error('Lease missing');
-        const selection = { connectionId: 'local', modelId: 'q4' };
-        const content = '/roadmap i want to make a pixijs tower defense game. generate a roadmap for my mvp';
-        const preview = await backend.previewContext({ projectHandle, chatId, selectedModel: selection,
+        const content = '/roadmap Create a complete tower-defense Roadmap';
+        const selectedModel = { connectionId: 'local', modelId: 'q4' };
+        const preview = await backend.previewContext({ projectHandle, chatId, selectedModel,
             content, context: [] });
-        assert.deepEqual(preview.refs, []);
+        assert.deepEqual(preview.refs.map(ref => ref.kind), ['roadmap']);
+        assert.equal(preview.refs[0].ownerRevision, 0);
         const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: selection, content });
-        assert.ok(sent.some(messages => messages.some(message =>
-            /When no accepted Roadmap exists/.test(message.content))));
-        assert.ok(turn.roadmapOffer, 'the explicit creation request should offer review');
-        assert.equal((await roadmapStore.read(root)).revision, 0, 'the answer and offer do not write a Roadmap');
-        assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
-        const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            turn.roadmapOffer.id, turn.roadmapOffer.token, true, selection);
-        assert.notEqual(review, 'declined');
-        if (review === 'declined') throw new Error('Review missing');
-        assert.deepEqual(review.phases.map(phase => phase.title), ['Playable core', 'MVP loop']);
-        assert.equal((await roadmapStore.read(root)).revision, 0, 'review is still noncanonical');
-        assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token,
-            review.token, true), 1);
-        assert.equal((await roadmapStore.read(root)).revision, 0, 'accepted draft awaits Roadmap approval');
+            selectedModel, content, context: [] });
+        assert.deepEqual(turn.refs.map(ref => ref.kind), ['roadmap']);
+        assert.ok(turn.proposal);
+        assert.equal(sent.filter(message => message.role === 'system').length, 1);
+        assert.match(sent[0].content, /Roadmap Markers v1/);
+        assert.equal((await roadmapStore.read(root)).revision, 0);
+        await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
+        await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -274,337 +253,17 @@ test('ordinary Chat opportunity suppresses duplicate or unverifiable offers with
     } finally { backend.dispose(); }
 });
 
-test('one checked Roadmap offer uses identical button and exact Chat consent without model or file writes', async () => {
-    const root = await folder(), repository = new ChatRepository();
-    const state = { projectId: 'uninitialized', revision: 0, linkedDocument: undefined as string | undefined,
-        canonicalMarkdown: false, pendingCreation: false, checkpoints: 0, drafts: 0,
-        acceptedPlans: 0, pendingPlans: 0 };
-    let reads = 0;
-    const greenfield = { readOpportunity: async () => { reads++; return { ...state }; } };
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, undefined, undefined,
-        undefined, undefined, undefined, greenfield as never);
+test('retired response-parsed Roadmap offer cannot bypass current proposal authority', async () => {
+    const root = await folder(), backend = new ChatBackend(new ChatRepository(), { notifyChatEvent() {} },
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, new RoadmapStore());
     try {
-        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
-        await backend.mutate({ projectHandle, expectedRevision: 0,
-            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-        const claim = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
-        if (!claim.acquired) throw new Error('Lease missing');
-        const makeOffer = () => savedRoadmapOffer(backend, projectHandle, root, chatId, claim.token);
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: claim.token,
-            content: 'Yes, create the roadmap.' }), /No current Roadmap offer/);
-        const first = (await makeOffer())!;
-        assert.ok(first.id && first.token && first.expiresAt > Date.now());
-        assert.equal(await makeOffer(), undefined);
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: claim.token,
-            content: 'Yes' }), /runtime unavailable/);
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: claim.token,
-            content: 'He wrote "Yes, create the roadmap."' }), /runtime unavailable/);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, id(),
-            first.id, first.token, true), /no longer current/);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            first.id, id(), true), /no longer current/);
-        await assert.rejects(backend.decideRoadmapOffer('wrong', chatId, claim.token,
-            first.id, first.token, true), /Invalid/);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            first.id, first.token, true), /No unique ordered implementation sequence/);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            first.id, first.token, true), /no longer current/);
-        const second = (await makeOffer())!;
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: claim.token,
-            content: 'Yes, create the roadmap.' }), /No unique ordered implementation sequence/);
-        assert.ok(reads >= 4);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            second.id, second.token, true), /no longer current/);
-        const declined = (await makeOffer())!;
-        assert.equal(await backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            declined.id, declined.token, false), 'declined');
-        assert.deepEqual(await readdir(root), ['.dope']);
-        assert.equal((await readdir(join(root, '.dope'))).includes('roadmap.json'), false);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
-});
-
-test('saved phase outline previews, fails, cancels and accepts without another model call', async () => {
-    const root = await folder(), repository = new ChatRepository();
-    const greenfield = new RoadmapGreenfield(new RoadmapStore());
-    const progress: { messageId: string; stage: string }[] = [];
-    let cancelNext = false;
-    let backend: ChatBackend;
-    const client = { notifyChatEvent(event: ChatEvent) {
-        if (event.kind !== 'planning-progress') return;
-        progress.push({ messageId: event.messageId, stage: event.stage });
-        if (cancelNext && event.stage === 'checking-owner') {
-            cancelNext = false;
-            void backend.cancelTurn(projectHandle, chatId, lease.token);
-        }
-    } };
-    backend = new ChatBackend(repository, client, undefined, undefined, undefined, undefined, undefined, greenfield);
-    const projectHandle = (await backend.attach(pathToFileURL(root).href)).projectHandle;
-    const chatId = id();
-    await backend.mutate({ projectHandle, expectedRevision: 0,
-        operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-    const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
-    if (!lease.acquired) throw new Error('Lease missing');
-    const outline = 'Phase 1 — Foundation\n- Make scene\nPhase 2 — Path\n- Move enemies\n' +
-        'Phase 3 — Towers\n- Place towers\nPhase 4 — Polish\n- Show loss';
-    const makeOffer = (answer = outline) => savedRoadmapOffer(backend, projectHandle, root, chatId, lease.token, answer);
-    try {
-        const first = await makeOffer(); assert.ok(first);
-        const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            first.id, first.token, true);
-        if (review === 'declined') throw new Error('Expected review');
-        assert.deepEqual(review.phases.map(phase => phase.title), ['Foundation', 'Path', 'Towers', 'Polish']);
-        assert.deepEqual(progress.filter(item => item.messageId === first.id).map(item => item.stage),
-            ['checking-owner', 'validating-draft', 'preparing-draft', 'draft-ready']);
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-        assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token, review.token, false), undefined);
-
-        const broken = await makeOffer('Phase 1 — Start\nPhase 3 — Gap'); assert.ok(broken);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            broken.id, broken.token, true), /Phase numbers/);
-        assert.equal(progress.filter(item => item.messageId === broken.id).at(-1)?.stage, 'failed');
-
-        cancelNext = true;
-        const cancelled = await makeOffer(); assert.ok(cancelled);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            cancelled.id, cancelled.token, true), /cancelled/i);
-        assert.equal(progress.filter(item => item.messageId === cancelled.id).at(-1)?.stage, 'cancelled');
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-
-        const finalOffer = await makeOffer(); assert.ok(finalOffer);
-        const finalReview = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            finalOffer.id, finalOffer.token, true);
-        if (finalReview === 'declined') throw new Error('Expected final review');
-        assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token, finalReview.token, true), 1);
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 1);
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+        await assert.rejects(backend.decideRoadmapOffer(projectHandle, id(), id(), id(), id(), true),
+            /Saved-answer Roadmap creation is retired/);
+        await assert.rejects(backend.decideStrategicDraft(projectHandle, id(), id(), id(), true),
+            /Response-parsed strategic drafts are retired/);
         assert.equal((await new RoadmapStore().read(root)).revision, 0);
-        assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
-});
-
-test('P4 saved developer wording is recognized in the actual Roadmap review diagnostic', async () => {
-    const root = await folder(), repository = new ChatRepository();
-    const greenfield = new RoadmapGreenfield(new RoadmapStore());
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, undefined, undefined,
-        undefined, undefined, undefined, greenfield);
-    try {
-        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
-        let snapshot = await backend.mutate({ projectHandle, expectedRevision: 0,
-            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
-        if (!lease.acquired) throw new Error('Lease missing');
-        snapshot = await backend.mutate({ projectHandle, expectedRevision: snapshot.revision,
-            leaseToken: lease.token, operation: { type: 'append-user', chatId, message: {
-                schemaVersion: 1, id: id(), role: 'user', createdAt: new Date().toISOString(),
-                content: "I want to make a 2D tower defense game with PixiJS. Let's do a fixed enemy path. " +
-                    'You collect money for killing enemies. Your main tower has persistent health throughout every wave. ' +
-                    'If your tower health reaches 0 you lose. You use your money to buy more towers and abilities.',
-                contextRefs: [] } } });
-        const answer = '**Recommended Implementation Order:**\n' +
-            '1. Set up PixiJS scene with basic game loop\n' +
-            '2. Implement enemy movement along fixed path\n' +
-            '3. Build core tower functionality with shooting mechanics\n' +
-            '4. Add resource collection and UI for money display\n' +
-            '5. Create tower purchasing system and upgrade abilities';
-        const offer = await savedRoadmapOffer(backend, projectHandle, root, chatId, lease.token, answer);
-        assert.ok(offer);
-        const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            offer.id, offer.token, true);
-        if (review === 'declined') throw new Error('Expected review');
-        assert.match(review.diagnostic, /zero health means loss: Uncovered/);
-        assert.match(review.diagnostic, /implementation tasks and feature lists did not become required Gates/);
-        assert.equal(review.phases.every(phase => phase.gates.length === 0), true);
-        assert.doesNotMatch(review.diagnostic, /Not in saved request/);
-        assert.equal(review.phases.length, 5);
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-        assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
-});
-
-test('saved explicit Gate acceptance criteria remain proposed and do not write canonical Roadmap', async () => {
-    const root = await folder(), repository = new ChatRepository();
-    const greenfield = new RoadmapGreenfield(new RoadmapStore());
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, undefined, undefined,
-        undefined, undefined, undefined, greenfield);
-    try {
-        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
-        let snapshot = await backend.mutate({ projectHandle, expectedRevision: 0,
-            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
-        if (!lease.acquired) throw new Error('Lease missing');
-        snapshot = await backend.mutate({ projectHandle, expectedRevision: snapshot.revision,
-            leaseToken: lease.token, operation: { type: 'append-user', chatId, message: {
-                schemaVersion: 1, id: id(), role: 'user', createdAt: new Date().toISOString(),
-                content: 'If the main tower health reaches 0, the player loses.', contextRefs: [] } } });
-        const answer = 'Phase 1: Game loop\n- Implement combat\n' +
-            'Gate: Main tower defeat\nAcceptance criteria:\n- If main tower health reaches 0, the player loses\n' +
-            'Phase 2: Polish\n- Add effects';
-        const offer = await savedRoadmapOffer(backend, projectHandle, root, chatId, lease.token, answer);
-        assert.ok(offer);
-        const review = await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            offer.id, offer.token, true);
-        if (review === 'declined') throw new Error('Expected review');
-        assert.equal(review.phases[0].gates.length, 1);
-        assert.equal(review.phases[0].gates[0].criteria[0].expectedResult,
-            'If main tower health reaches 0, the player loses');
-        assert.match(review.diagnostic, /zero health means loss: Covered/);
-        assert.match(review.diagnostic, /no qualification evidence/);
-        assert.equal((await new RoadmapStore().read(root)).revision, 0);
-        assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
-});
-
-test('ordinary Chat offers a generic project roadmap and both consent routes share reviewed noncanonical creation', async () => {
-    for (const route of ['button', 'chat', 'decline'] as const) {
-        const root = await folder(), repository = new ChatRepository();
-        const greenfield = new RoadmapGreenfield(new RoadmapStore());
-        const projectId = (await greenfield.owner(root)).projectId;
-        const source = join(root, 'inventory.csv');
-        const evidence = 'item,quantity\nbolts,12\n';
-        await writeFile(source, evidence);
-        const sourceHash = createHash('sha256').update(evidence).digest('hex');
-        const outline = { type: 'strategic-roadmap-draft', projectId, ownerRevision: 0,
-            phases: ['Import inventory', 'Build reports'].map((title, index) => ({ title,
-                objective: `Deliver ${title.toLowerCase()}`,
-                checkpoints: [{ title: `${title} milestone`, objective: `Verify ${title.toLowerCase()}`,
-                    dependsOn: index ? [index] : [] }] })) };
-        let generationCalls = 0, ordinaryCalls = 0;
-        const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
-            models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true, streaming: true,
-                contextWindowTokens: 32768 } }] }] }),
-        async *generate(_selection: unknown, request: { messages: { content: string }[] }) {
-            if (request.messages.some(message => message.content.includes('strategic-roadmap-draft'))) {
-                generationCalls++;
-                yield { type: 'complete' as const, text: JSON.stringify(outline), finishReason: 'stop',
-                    actualModelId: 'q4' };
-            } else {
-                ordinaryCalls++;
-                const revised = request.messages.at(-1)?.content.includes('Please revise the inventory phase plan');
-                yield { type: 'complete' as const,
-                    text: ordinaryCalls === 1 || revised ? 'Phase 1 — Import inventory\n- Validate inventory.csv rows\n' +
-                        'Phase 2 — Build reports\n- Add a stock report\n' +
-                        'I can generate a provisional Roadmap draft.' : 'No new Roadmap proposal.',
-                    finishReason: 'stop', actualModelId: 'q4' };
-            }
-        } };
-        const composer = { compose: async (_root: string, _chat: unknown, content: string) => ({ messages: [{ role: 'user',
-            content: `${content}\nPlan inventory reports using verified inventory.csv (${sourceHash}):\n${evidence}` }],
-            refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0 }) };
-        const grounder = { ground: async () => ({ blocks: [{ ref: { kind: 'file', id: 'inventory.csv',
-            sourceHash, contentHash: sourceHash, includedBytes: Buffer.byteLength(evidence) } }] }) };
-        const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
-            composer as never, undefined, grounder as never, undefined, greenfield);
-        try {
-            const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
-            await backend.mutate({ projectHandle, expectedRevision: 0,
-                operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-            const lease = await backend.claim({ projectHandle, chatId, ownerId: `panel-${route}` });
-            if (!lease.acquired) throw new Error('Lease missing');
-            const selection = { connectionId: 'local', modelId: 'q4' };
-            await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-                selectedModel: selection, content: 'Yes, create the roadmap.' }), /No current Roadmap offer/);
-            const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-                selectedModel: selection, content: 'Let us build an inventory reporting tool.' });
-            assert.ok(turn.roadmapOffer, 'ordinary Chat must return an owner-checked typed offer');
-            assert.match((await backend.get(projectHandle, chatId))!.messages.at(-1)!.content,
-                /Validate inventory.csv rows/);
-            assert.equal(turn.roadmapOffer.projectId, projectId);
-            if (route === 'decline') {
-                assert.equal(await backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-                    turn.roadmapOffer.id, turn.roadmapOffer.token, false), 'declined');
-                const followup = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-                    selectedModel: selection, content: 'How should we plan the import?' });
-                assert.equal(followup.roadmapOffer, undefined, 'Not now must suppress an unsolicited repeat offer');
-                assert.equal(generationCalls, 0);
-                await backend.release(projectHandle, chatId, lease.token);
-                const restored = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
-                    composer as never, undefined, grounder as never, undefined, greenfield);
-                try {
-                    const attached = await restored.attach(pathToFileURL(root).href);
-                    const nextLease = await restored.claim({ projectHandle: attached.projectHandle,
-                        chatId, ownerId: 'restored-panel' });
-                    if (!nextLease.acquired) throw new Error('Restored lease missing');
-                    const resumed = await restored.runTurn({ projectHandle: attached.projectHandle, chatId,
-                        leaseToken: nextLease.token, selectedModel: selection,
-                        content: 'How should we plan the report?' });
-                    assert.equal(resumed.roadmapOffer, undefined, 'decline must survive reload');
-                    await assert.rejects(restored.runTurn({ projectHandle: attached.projectHandle, chatId,
-                        leaseToken: nextLease.token, selectedModel: selection,
-                        content: 'Please generate a roadmap draft.' }), /already has a Roadmap decision/);
-                    const revised = await restored.runTurn({ projectHandle: attached.projectHandle, chatId,
-                        leaseToken: nextLease.token, selectedModel: selection,
-                        content: 'Please revise the inventory phase plan. End by offering a provisional Roadmap draft for review.' });
-                    assert.ok(revised.roadmapOffer, 'an explicit revised saved answer can receive a fresh offer');
-                } finally { restored.dispose(); }
-                continue;
-            }
-            let review;
-            if (route === 'button') review = await backend.decideRoadmapOffer(projectHandle, chatId,
-                lease.token, turn.roadmapOffer.id, turn.roadmapOffer.token, true, selection);
-            else {
-                const response = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-                    selectedModel: selection, content: 'Yes, create the roadmap.' });
-                review = response.roadmapDraftReview;
-            }
-            assert.ok(review && review !== 'declined');
-            if (!review || review === 'declined') throw new Error('Review missing');
-            assert.equal(generationCalls, 0, 'saved-answer extraction must not call the model again');
-            assert.ok(ordinaryCalls >= 1);
-            assert.deepEqual(review.phases.map(phase => phase.title), ['Import inventory', 'Build reports']);
-            assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-            assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
-            await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-                turn.roadmapOffer.id, turn.roadmapOffer.token, true, selection), /no longer current/);
-            assert.equal(await backend.decideStrategicDraft(projectHandle, chatId, lease.token,
-                review.token, true), 1);
-            assert.equal((await greenfield.readOpportunity(root)).drafts, 1);
-            assert.equal((await new RoadmapStore().read(root)).revision, 0);
-            assert.equal(await readFile(source, 'utf8'), 'item,quantity\nbolts,12\n');
-            assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
-        } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
-    }
-});
-
-test('Roadmap offer fails closed on owner changes, expiration, foreign Chat, and lost writer', async () => {
-    const root = await folder(), repository = new ChatRepository();
-    const state = { projectId: 'uninitialized', revision: 0, linkedDocument: undefined as string | undefined,
-        canonicalMarkdown: false, pendingCreation: false, checkpoints: 0, drafts: 0,
-        acceptedPlans: 0, pendingPlans: 0 };
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, undefined, undefined,
-        undefined, undefined, undefined, { readOpportunity: async () => ({ ...state }) } as never);
-    try {
-        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id(), other = id();
-        await backend.mutate({ projectHandle, expectedRevision: 0,
-            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
-        await backend.mutate({ projectHandle, expectedRevision: 1,
-            operation: { type: 'create-chat', id: other, folderPath: '' } });
-        const claim = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
-        if (!claim.acquired) throw new Error('Lease missing');
-        const makeOffer = () => savedRoadmapOffer(backend, projectHandle, root, chatId, claim.token,
-            'A roadmap draft is available.');
-        for (const change of [{ revision: 1 }, { linkedDocument: 'ROADMAP.md' }, { drafts: 1 },
-            { pendingCreation: true }, { canonicalMarkdown: true }, { projectId: id() }]) {
-            const offer = (await makeOffer())!;
-            Object.assign(state, change);
-            await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-                offer.id, offer.token, true), /owner or draft changed/);
-            Object.assign(state, { projectId: 'uninitialized', revision: 0, linkedDocument: undefined,
-                drafts: 0, pendingCreation: false, canonicalMarkdown: false });
-        }
-        const foreign = (await makeOffer())!;
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, other, claim.token,
-            foreign.id, foreign.token, true), /no longer current/);
-        const reloaded = new ChatBackend(repository, { notifyChatEvent() {} });
-        try {
-            const attached = await reloaded.attach(pathToFileURL(root).href);
-            await assert.rejects(reloaded.runTurn({ projectHandle: attached.projectHandle,
-                chatId, leaseToken: claim.token, content: 'Yes, create the roadmap.' }), /No current Roadmap offer/);
-        } finally { reloaded.dispose(); }
-        foreign.expiresAt = Date.now() - 1;
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            foreign.id, foreign.token, true), /expired/);
-        await backend.release(projectHandle, chatId, claim.token);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, claim.token,
-            foreign.id, foreign.token, true), /no longer current/);
+        await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 

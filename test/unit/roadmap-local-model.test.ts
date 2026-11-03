@@ -179,7 +179,9 @@ test('one compact typed five-Phase draft is complete and remains untrusted', asy
     assert.ok(!JSON.stringify(candidate).includes('projectId'));
     assert.match(typedRoadmapDraftInstruction(['currency spending']), /currency spending/);
     assert.match(typedRoadmapDraftInstruction(), /RM1\nP\|Phase title\|Phase objective/);
-    assert.doesNotMatch(typedRoadmapDraftInstruction(), /JSON|expectedStage|new:p|sourceHash/);
+    assert.match(typedRoadmapDraftInstruction(), /Output the lines immediately, without analysis/);
+    assert.match(typedRoadmapDraftInstruction(), /No JSON/);
+    assert.doesNotMatch(typedRoadmapDraftInstruction(), /Return (?:strict )?JSON|expectedStage|new:p|sourceHash/);
 });
 
 test('typed Roadmap rejects incomplete, oversized, foreign authority and invalid nested fields', () => {
