@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-11-03 — DO NOT RUN:** [ADR 0049](../../../decisions/0049-roadmap-phase-orchestration.md) / [c12-rm-orch](../../c12-rm-orch/README.md) retire this natural-plan/locked-snapshot→RM1 second inference architecture. D1–D3 remain untouched for historical evidence, but no conversion shim or automatic fallback survives the forthcoming P1 clean cutover. Only the checked shared proposal owners and protective services are reused. Documentation only; local dirty D2 files must be safely reconciled before P1.
+
 # c12-map-markers/two-pass — one Chat turn, two automatic local-model passes
 
 **Owner direction:** 2026-11-03 (America/Chicago), /prompt-ass → /prompt-plan + /prompt-write. **Status: THREE MANUAL PROMPTS AUTHORED, NOT RUN OR QUALIFIED.** Current remote documentation/source reference is `1aeba34f2b37226f59d252a1c74dc45e6d82d563`; local HEAD, uncommitted work and product version must be inspected at every run. Historical M1–M3, M3-R1/R2, F1–F6 and their NOT GREEN reports are preserved. No product implementation, code execution or version/model change is authorized by merely writing these prompts.
