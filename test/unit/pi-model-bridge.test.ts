@@ -22,9 +22,10 @@ function fixture() {
         credential: async () => undefined });
     const host = { async openNoToolSession(...args: any[]) { calls.push(args); return { version: '1.4.0', tools: [], resources: 'isolated' }; },
         async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
-            tools: ['read_file', 'list_files', 'edit_file', 'run_command'], resources: 'isolated' }; },
+            tools: ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'], resources: 'isolated' }; },
         async openChatToolsSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
-            tools: ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command'],
+            tools: args[4] === true ? ['roadmap_read', 'roadmap_stage', 'roadmap_cancel'] :
+                ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command'],
             resources: 'isolated' }; } };
     return { state, bridge, host, calls, failRefresh: () => { refreshError = true; },
         restoreRefresh: () => { refreshError = false; } };
@@ -82,6 +83,16 @@ test('Pi Chat binding accepts only the complete brokered tool boundary', async (
         tools: ['read_file', 'list_files', 'search_paths', 'search_text'], resources: 'isolated' }) };
     await assert.rejects(bridge.bind(selected, incomplete as any, '/tmp', { chatTools: true }),
         /Pi tool boundary changed/);
+});
+
+test('protected native Roadmap mode has only read, stage and cancel tools', async () => {
+    const f = fixture();
+    f.state.registry.models[0].capabilities.agentExecution = known(true);
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
+        { chatTools: true, roadmapTools: true });
+    assert.equal(f.calls[0][4], true);
+    assert.deepEqual((await f.host.openChatToolsSession({ baseUrl: 'local' }, '/tmp', undefined, undefined, true)).tools,
+        ['roadmap_read', 'roadmap_stage', 'roadmap_cancel']);
 });
 
 test('freshly refreshed exact model reuses a verified tool capability without another synthetic loop', async () => {

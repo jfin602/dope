@@ -87,7 +87,7 @@ export interface ConversationRequest {
     controls?: Readonly<Record<string, string>>;
     signal?: AbortSignal;
     /** Backend-only authority for eligible local Pi project discovery. Never serialized to a provider. */
-    projectTools?: { root: string;
+    projectTools?: { root: string; roadmapTools?: boolean;
         execute(name: string, args: unknown, signal?: AbortSignal): Promise<string> };
 }
 export interface ConversationUsage {

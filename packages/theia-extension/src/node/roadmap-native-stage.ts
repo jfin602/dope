@@ -1,0 +1,194 @@
+import { createHash, randomUUID } from 'node:crypto';
+import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
+import type { GatePlanningAction } from '@dope/project-intelligence/lib/node/project-planning-actions';
+import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { checkedRoadmapDocumentFile } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
+
+type Context = { root: string; projectId: string; chatId: string; turnId: string; lease: string };
+type Operation = { id: string; action: GatePlanningAction; batch: number };
+export type NativeRoadmapStage = { id: string; context: Context; revision: number;
+    sourceHash: string | null; expires: number; operations: Operation[]; entityIds: Map<string, string> };
+const shape: Record<string, readonly string[]> = {
+    'phase.create': ['id', 'title', 'objective'], 'phase.edit': ['id', 'title', 'objective'],
+    'phase.delete': ['id'], 'phase.reorder': ['ids'], 'phase.dependencies': ['id', 'dependencies'],
+    'gate.create': ['id', 'parentPhaseId', 'designation', 'title', 'purpose', 'criteria'],
+    'gate.edit': ['id', 'title', 'purpose'], 'gate.delete': ['id'],
+    'gate.reparent': ['id', 'parentPhaseId', 'order'], 'gate.reorder': ['parentPhaseId', 'ids'],
+    'gate.dependencies': ['id', 'dependencies'], 'criterion.add': ['gateId', 'id', 'title', 'expectedResult'],
+    'criterion.edit': ['gateId', 'id', 'title', 'expectedResult'], 'criterion.remove': ['gateId', 'id'],
+    'criterion.reorder': ['gateId', 'ids'], 'correction.attach': ['id', 'parent', 'title', 'objective'],
+    'correction.edit': ['id', 'title', 'objective'], 'correction.reparent': ['id', 'parent'],
+    'correction.delete': ['id']
+};
+const object = (value: unknown): value is Record<string, unknown> =>
+    !!value && typeof value === 'object' && !Array.isArray(value);
+const id = (value: unknown): value is string => typeof value === 'string' &&
+    value.length > 0 && value.length <= 128 && value.trim() === value && !/[\p{Cc}\p{Cf}]/u.test(value);
+const text = (value: unknown): value is string => typeof value === 'string' &&
+    !!value.trim() && value.length <= 2048 && !/[\p{Cc}\p{Cf}]/u.test(value) &&
+    !/<\/?[a-z][^>]*>|javascript:|!\[[^\]]*\]\(https?:/iu.test(value);
+const newId = (value: unknown): value is string => typeof value === 'string' && /^new:[a-z0-9-]{1,32}$/i.test(value);
+const source = (index: RoadmapGateIndex): string | null => index.linkedDocument?.sourceHash ?? null;
+
+/** Noncanonical in-memory owner. P2 may validate/project these operations; P3 alone may apply them. */
+export class RoadmapNativeStageOwner {
+    private readonly stages = new Map<string, NativeRoadmapStage>();
+    constructor(private readonly store: RoadmapStore) {}
+    private async current(context: Context): Promise<RoadmapGateIndex> {
+        const index = await this.store.read<RoadmapGateIndex>(context.root);
+        if (index.projectRoot !== context.root || index.projectId !== context.projectId || index.revision < 1)
+            throw new Error('ROADMAP_OWNER_CHANGED');
+        return index;
+    }
+    private async checkedSource(index: RoadmapGateIndex): Promise<void> {
+        if (!index.linkedDocument) return;
+        if (index.linkedDocument.syncState !== 'synced') throw new Error('ROADMAP_SOURCE_NOT_SYNCED');
+        const file = await checkedRoadmapDocumentFile(index.projectRoot, index.linkedDocument.path);
+        if (createHash('sha256').update(file.bytes).digest('hex') !== index.linkedDocument.sourceHash)
+            throw new Error('ROADMAP_SOURCE_CHANGED');
+    }
+    private assert(stage: NativeRoadmapStage, context: Context, index: RoadmapGateIndex): void {
+        if (stage.context.root !== context.root || stage.context.projectId !== context.projectId ||
+            stage.context.chatId !== context.chatId || stage.context.turnId !== context.turnId ||
+            stage.context.lease !== context.lease || Date.now() >= stage.expires ||
+            stage.revision !== index.revision || stage.sourceHash !== source(index))
+            throw new Error('ROADMAP_STAGE_STALE');
+    }
+    async read(context: Context, args: unknown): Promise<unknown> {
+        if (!object(args) || args.version !== 1 || Object.keys(args).some(k => !['version', 'ids', 'offset', 'limit'].includes(k)))
+            throw new Error('ROADMAP_READ_ARGUMENTS');
+        const ids = args.ids === undefined ? undefined : Array.isArray(args.ids) && args.ids.length <= 20 &&
+            args.ids.every(id) ? new Set(args.ids as string[]) : undefined;
+        if (args.ids !== undefined && !ids) throw new Error('ROADMAP_READ_IDS');
+        const offset = args.offset ?? 0, limit = args.limit ?? 20;
+        if (!Number.isSafeInteger(offset) || (offset as number) < 0 || !Number.isSafeInteger(limit) ||
+            (limit as number) < 1 || (limit as number) > 20) throw new Error('ROADMAP_READ_PAGE');
+        const index = await this.current(context);
+        let syncState = index.linkedDocument?.syncState;
+        if (syncState === 'synced') try { await this.checkedSource(index); }
+        catch { syncState = 'source-changed'; }
+        const entities = [
+            ...index.phases.map(item => ({ kind: 'phase', value: { id: item.id, title: item.title,
+                objective: item.objective, order: item.order, dependencies: item.dependencies,
+                implementationStatus: item.implementationStatus, qualificationStatus: item.qualificationStatus } })),
+            ...index.gates.map(item => ({ kind: 'gate', value: { id: item.id, parentPhaseId: item.parentPhaseId,
+                designation: item.designation, title: item.title, purpose: item.purpose, order: item.order,
+                dependencies: item.dependencies, implementationStatus: item.implementationStatus,
+                qualificationStatus: item.qualificationStatus, criterionIds: item.criteria.map(c => c.id) } })),
+            ...index.gates.flatMap(gate => gate.criteria.map(item => ({ kind: 'criterion',
+                value: { id: item.id, gateId: gate.id, title: item.title, expectedResult: item.expectedResult,
+                    order: item.order } }))),
+            ...index.corrections.map(item => ({ kind: 'correction', value: { id: item.id, parent: item.parent,
+                criterionId: item.criterionId, title: item.title, objective: item.objective, order: item.order,
+                implementationStatus: item.implementationStatus, qualificationStatus: item.qualificationStatus } }))
+        ].filter(entry => !ids || ids.has(entry.value.id));
+        const page = entities.slice(offset as number, (offset as number) + (limit as number));
+        return { version: 1, projectId: index.projectId, revision: index.revision,
+            link: index.linkedDocument ? { path: index.linkedDocument.path,
+                sourceHash: index.linkedDocument.sourceHash, syncState } : null,
+            entries: page, nextOffset: (offset as number) + page.length < entities.length ? (offset as number) + page.length : null };
+    }
+    async stage(context: Context, args: unknown): Promise<unknown> {
+        if (!object(args) || args.version !== 1 || Object.keys(args).some(k =>
+            !['version', 'expectedRevision', 'expectedSourceHash', 'actions'].includes(k)) ||
+            !Array.isArray(args.actions) || !args.actions.length || args.actions.length > 8 ||
+            Buffer.byteLength(JSON.stringify(args), 'utf8') > 16_000)
+            throw new Error('ROADMAP_STAGE_ARGUMENTS');
+        const index = await this.current(context);
+        await this.checkedSource(index);
+        if (args.expectedRevision !== index.revision || args.expectedSourceHash !== source(index))
+            throw new Error('ROADMAP_STAGE_STALE_SOURCE');
+        const prior = this.stages.get(context.chatId);
+        if (prior) this.assert(prior, context, index);
+        if ((prior?.operations.length ?? 0) + args.actions.length > 48) throw new Error('ROADMAP_STAGE_LIMIT');
+        const kinds = new Map<string, string>([
+            ...index.phases.map(item => [item.id, 'phase']), ...index.gates.map(item => [item.id, 'gate']),
+            ...index.corrections.map(item => [item.id, 'correction']),
+            ...index.gates.flatMap(gate => gate.criteria.map(item => [item.id, 'criterion']))
+        ] as [string, string][]);
+        const aliases = new Map(prior?.entityIds ?? []);
+        for (const operation of prior?.operations ?? []) {
+            const action = operation.action;
+            if ('id' in action && typeof action.id === 'string' &&
+                ['phase.create', 'gate.create', 'criterion.add', 'correction.attach'].includes(action.type))
+                kinds.set(action.id, action.type.split('.')[0] === 'criterion' ? 'criterion' : action.type.split('.')[0]);
+            if (action.type === 'gate.create') for (const criterion of action.criteria) kinds.set(criterion.id, 'criterion');
+        }
+        const accepted: Operation[] = [];
+        const created: Record<string, string> = {};
+        for (const [at, raw] of args.actions.entries()) {
+            if (!object(raw) || typeof raw.type !== 'string' || !shape[raw.type])
+                throw new Error(`ROADMAP_STAGE_ACTION_${at}: unsupported kind`);
+            const actionType = raw.type;
+            const required = shape[actionType];
+            const optional = raw.type === 'correction.attach' || raw.type === 'correction.reparent' ? ['criterionId'] : [];
+            const missing = required.filter(field => !(field in raw));
+            if (missing.length) throw new Error(`ROADMAP_STAGE_ACTION_${at}: missing ${missing.join(', ')}`);
+            if (Object.keys(raw).some(field => field !== 'type' && !required.includes(field) && !optional.includes(field)))
+                throw new Error(`ROADMAP_STAGE_ACTION_${at}: unexpected field`);
+            const create = ['phase.create', 'gate.create', 'criterion.add', 'correction.attach'].includes(raw.type);
+            if (create && (!newId(raw.id) || aliases.has(raw.id)))
+                throw new Error(`ROADMAP_STAGE_ACTION_${at}: distinct new: ID required`);
+            if (create) { const durable = randomUUID(); aliases.set(raw.id as string, durable); created[raw.id as string] = durable;
+                kinds.set(durable, raw.type.split('.')[0] === 'criterion' ? 'criterion' : raw.type.split('.')[0]); }
+            if (raw.type === 'gate.create') {
+                if (!Array.isArray(raw.criteria) || raw.criteria.length > 12) throw new Error(`ROADMAP_STAGE_ACTION_${at}: criteria limit`);
+                for (const criterion of raw.criteria) {
+                    if (!object(criterion) || Object.keys(criterion).sort().join(',') !== 'expectedResult,id,title' ||
+                        !newId(criterion.id) || aliases.has(criterion.id) || !text(criterion.title) || !text(criterion.expectedResult))
+                        throw new Error(`ROADMAP_STAGE_ACTION_${at}: invalid criterion`);
+                    const durable = randomUUID(); aliases.set(criterion.id, durable); created[criterion.id] = durable; kinds.set(durable, 'criterion');
+                }
+            }
+            const replace = (value: unknown): unknown => {
+                if (typeof value === 'string') return aliases.get(value) ?? value;
+                if (Array.isArray(value)) return value.map(replace);
+                if (object(value)) return Object.fromEntries(Object.entries(value).map(([key, part]) => [key, replace(part)]));
+                return value;
+            };
+            const action = replace(raw) as GatePlanningAction;
+            for (const [field, value] of Object.entries(action as unknown as Record<string, unknown>)) {
+                if (field === 'type') continue;
+                if (['title', 'objective', 'purpose', 'expectedResult', 'designation'].includes(field) && !text(value))
+                    throw new Error(`ROADMAP_STAGE_ACTION_${at}: invalid ${field}`);
+                if (['id', 'gateId', 'parentPhaseId', 'criterionId'].includes(field) && (!id(value) || !kinds.has(value)))
+                    throw new Error(`ROADMAP_STAGE_ACTION_${at}: unknown ${field}`);
+                if (field === 'id' && kinds.get(value as string) !== actionType.split('.')[0] ||
+                    field === 'gateId' && kinds.get(value as string) !== 'gate' ||
+                    field === 'parentPhaseId' && kinds.get(value as string) !== 'phase' ||
+                    field === 'criterionId' && kinds.get(value as string) !== 'criterion')
+                    throw new Error(`ROADMAP_STAGE_ACTION_${at}: wrong ${field} kind`);
+                if (field === 'parent' && (!object(value) || !['phase', 'gate'].includes(value.kind as string) ||
+                    Object.keys(value).sort().join(',') !== 'id,kind' || !id(value.id) ||
+                    kinds.get(value.id) !== value.kind)) throw new Error(`ROADMAP_STAGE_ACTION_${at}: invalid parent`);
+                if (['ids', 'dependencies'].includes(field) && (!Array.isArray(value) || value.length > 32 ||
+                    value.some(part => !id(part) || kinds.get(part) !== (field === 'dependencies' ? actionType.split('.')[0] :
+                        actionType === 'criterion.reorder' ? 'criterion' : actionType.split('.')[0])) ||
+                    new Set(value).size !== value.length))
+                    throw new Error(`ROADMAP_STAGE_ACTION_${at}: invalid ${field}`);
+                if (field === 'order' && (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > 4096))
+                    throw new Error(`ROADMAP_STAGE_ACTION_${at}: invalid order`);
+            }
+            accepted.push({ id: randomUUID(), action, batch: prior?.operations.length ?
+                Math.max(...prior.operations.map(item => item.batch)) + 1 : 1 });
+        }
+        const stage: NativeRoadmapStage = prior ?? { id: randomUUID(), context, revision: index.revision,
+            sourceHash: source(index), expires: Date.now() + 10 * 60_000, operations: [], entityIds: new Map() };
+        stage.operations.push(...accepted); stage.entityIds = aliases;
+        this.stages.set(context.chatId, stage);
+        return { version: 1, proposalId: stage.id, acceptedOperationIds: accepted.map(item => item.id),
+            createdEntityIds: created, totalOperations: stage.operations.length, complete: false };
+    }
+    async cancel(context: Context, args: unknown): Promise<unknown> {
+        if (!object(args) || args.version !== 1 || Object.keys(args).join(',') !== 'version') throw new Error('ROADMAP_CANCEL_ARGUMENTS');
+        const index = await this.current(context);
+        await this.checkedSource(index);
+        const stage = this.stages.get(context.chatId);
+        if (!stage) return { version: 1, cancelled: false };
+        this.assert(stage, context, index);
+        this.stages.delete(context.chatId);
+        return { version: 1, cancelled: true, proposalId: stage.id, cancelledOperationIds: stage.operations.map(item => item.id) };
+    }
+    forget(chatId: string): void { this.stages.delete(chatId); }
+    get(chatId: string): NativeRoadmapStage | undefined { return this.stages.get(chatId); }
+}

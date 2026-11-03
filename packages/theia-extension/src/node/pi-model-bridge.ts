@@ -47,7 +47,7 @@ export class PiModelBridge {
     }
 
     async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
-        cwd: string, options: { tools?: boolean; chatTools?: boolean; reasoningMode?: string } = {}): Promise<PiLocalBinding> {
+        cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean; reasoningMode?: string } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
         const before = await this.dependencies.inventory();
@@ -125,16 +125,20 @@ export class PiModelBridge {
             latest.observations.find(item => item.connectionId === selection.connectionId)?.health !== 'ready')
             throw unavailable('Local model changed during binding; refresh AI Center and retry');
         const endpoint = connection.config.endpoint.replace(/\/$/, '');
-        const opened = await (options.tools ? host.openWorkSession : options.chatTools ? host.openChatToolsSession : host.openNoToolSession).call(host,
-            { id: selection.modelId, name: model.label,
+        const modelSpec = { id: selection.modelId, name: model.label,
             provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
             reasoning: !!reasoning, input: ['text'],
             ...(reasoning ? { compat: reasoning.format === 'qwen-chat-template' ?
                 { thinkingFormat: 'qwen-chat-template' } : { supportsReasoningEffort: true } } : {}),
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-            contextWindow: loaded, maxTokens: maxOutputTokens }, cwd, credential, thinkingLevel);
+            contextWindow: loaded, maxTokens: maxOutputTokens };
+        const opened = options.chatTools && options.roadmapTools ?
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true) :
+            await (options.tools ? host.openWorkSession : options.chatTools ? host.openChatToolsSession : host.openNoToolSession)
+                .call(host, modelSpec, cwd, credential, thinkingLevel);
         const expected = options.tools ? ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command'] :
-            options.chatTools ? ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
+            options.chatTools ? options.roadmapTools ? ['roadmap_cancel', 'roadmap_read', 'roadmap_stage'] :
+                ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
             JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected))
             throw unavailable('Pi tool boundary changed; restart Dope');

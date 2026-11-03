@@ -15,6 +15,7 @@ let session;
 let isolatedDir;
 let workMode = false;
 let chatToolsMode = false;
+let roadmapToolsMode = false;
 let workRequestId;
 let nextToolId = 0;
 let activeRequest = false;
@@ -121,13 +122,23 @@ const CHAT_TOOLS = {
   search_text: { query: Type.String() },
   run_command: { command: Type.String() }
 };
+const ROADMAP_TOOLS = {
+  roadmap_read: { version: Type.Literal(1), ids: Type.Optional(Type.Array(Type.String())),
+    offset: Type.Optional(Type.Integer()), limit: Type.Optional(Type.Integer()) },
+  roadmap_stage: { version: Type.Literal(1), expectedRevision: Type.Integer(),
+    expectedSourceHash: Type.Union([Type.String(), Type.Null()]), actions: Type.Array(Type.Any()) },
+  roadmap_cancel: { version: Type.Literal(1) }
+};
 function chatTools() {
-  return Object.entries(CHAT_TOOLS).map(([name, properties]) => ({
+  return Object.entries(roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
       name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. For later pages pass nextOffset as offset and sourceHash as expectedSourceHash. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
+      name === 'roadmap_read' ? 'Read bounded current typed Roadmap entities and revision. Version must be 1.' :
+      name === 'roadmap_stage' ? 'Stage typed Roadmap actions for human review. Never applied. Use current revision and source hash from roadmap_read; use new: aliases for new entities.' :
+      name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
@@ -237,6 +248,7 @@ function assertLocalModel(model) {
 async function dispose() {
   workMode = false;
   chatToolsMode = false;
+  roadmapToolsMode = false;
   for (const pending of pendingTools.values()) pending.reject(new Error('Pi session closed'));
   pendingTools.clear();
   session?.dispose();
@@ -285,7 +297,8 @@ export async function dispatch(message) {
         });
         workMode = message.mode === 'work';
         chatToolsMode = message.mode === 'chat-tools';
-        const chatToolNames = Object.keys(CHAT_TOOLS);
+        roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
+        const chatToolNames = Object.keys(roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           thinkingLevel,

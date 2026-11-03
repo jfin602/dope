@@ -96,9 +96,9 @@ export class PiRuntimeHost {
     }
 
     openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
-        thinkingLevel?: string):
+        thinkingLevel?: string, roadmapTools = false):
         Promise<{ version: string; tools: string[]; resources: string }> {
-        return this.request({ type: 'open', mode: 'chat-tools', model, cwd,
+        return this.request({ type: 'open', mode: 'chat-tools', model, cwd, roadmapTools,
             ...(credential ? { credential } : {}), thinkingLevel });
     }
 

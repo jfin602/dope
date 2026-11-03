@@ -466,7 +466,7 @@ export class ChatContextComposer {
     async compose(root: string, chat: Chat, content: string, selections: ChatContextSelection[],
         capabilities: ConversationModelCapabilities, grounding?: GroundingResult,
         strictHelpJson = false, bridgeMode = false, roadmapOpportunity?: string,
-        piMode = false, roadmapSkill = false): Promise<ComposedChatContext> {
+        piMode = false, roadmapSkill = false, nativeRoadmap = false): Promise<ComposedChatContext> {
         if (!content.trim()) throw new Error('Enter a message before sending');
         if (!Array.isArray(selections) || selections.length > 20) throw new Error('Too many context selections');
         const policy = chat.settings.context;
@@ -488,7 +488,9 @@ export class ChatContextComposer {
         };
         const helpId = roadmapSkill ? undefined : selectDopeCapabilityHelp(content);
         const help = helpId ? await this.helpContext(root, helpId, selections, strictHelpJson) : undefined;
-        const gateAction = !help && roadmapSkill && selections.some(source =>
+        const gateAction = !nativeRoadmap && !help && roadmapSkill && selections.some(source =>
+            source.kind === 'roadmap' && !source.draftHandle);
+        const gateRead = !nativeRoadmap && !gateAction && selections.some(source =>
             source.kind === 'roadmap' && !source.draftHandle);
         const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
         const roadmapInstruction = roadmapAction && !bridgeMode;
@@ -498,7 +500,7 @@ export class ChatContextComposer {
             (roadmapOpportunity ? tokens(roadmapOpportunity) : 0) -
             (roadmapInstruction ? tokens(ROADMAP_ACTION_INSTRUCTION) : 0) -
             (gateAction ? tokens(GATE_ACTION_INSTRUCTION) : 0) -
-            (!gateAction && selections.some(source => source.kind === 'roadmap' && !source.draftHandle) ?
+            (gateRead ?
                 tokens(GATE_READ_INSTRUCTION) : 0) -
             (help ? tokens(help.instruction) : 0);
         if (remaining < 0) throw new Error('Message exceeds selected model input budget');
@@ -588,7 +590,7 @@ export class ChatContextComposer {
         if (roadmapOpportunity) messages.push({ role: 'system', content: roadmapOpportunity });
         if (roadmapInstruction) messages.push({ role: 'system', content: ROADMAP_ACTION_INSTRUCTION });
         if (gateAction) messages.push({ role: 'system', content: GATE_ACTION_INSTRUCTION });
-        else if (selections.some(source => source.kind === 'roadmap' && !source.draftHandle))
+        else if (gateRead)
             messages.push({ role: 'system', content: GATE_READ_INSTRUCTION });
         if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];
