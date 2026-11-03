@@ -1,0 +1,34 @@
+TASK: c12-roadmap-sync / P8 — compared, developer-approved restore as a NEW revision (linked source safe)
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 manual connected Codex Chrome).
+- Focused target <=8 minutes per working cycle, hard cap 15; stop NOT GREEN on unsafe/unfinished boundaries.
+- Phase runner owns successful implementation checkpoint commits. Do NOT self-commit, /activate, automatically run other stacks, change version/lockfiles/model/provider, grant generic shell or Work permissions.
+- Ponytail FULL only for implementation agent if actually installed; never inject it into Dope's selected Pi model.
+
+VERSIONING
+- Documented reference 0.12.7; verify current LOCAL manifest, source and actual runner expectations. Preserve version unless separately approved.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, native Roadmap contract, historical restore contract, c12-roadmap-sync README/assessment/plan and all previous Pn exact-source evidence. Inspect LOCAL HEAD/status/diff, owner modifications and live components; do not treat GitHub main as identical to checkout.
+- Reuse existing RoadmapStore/Service, ProjectPlanningActions, Pi broker, saved ChatPanel, RoadmapCanvas/Inspector and source-aware Markdown writer. Preserve protected /roadmap, Ask/Allow, owner/project/source/revision/lease/decision checks, immutable history and evidence/qualification. No reset/stash/clean, source clobber, real owner workspace modification or parallel c12-undo/c12-roadmap-native-authoring execution. Use disposable fixtures.
+
+
+PREREQUISITE: P4 archive + P5 secure source-sync owner + P7 historical canvas all source-qualified. Inspect original c12-undo P3 existing code/evidence first; integrate, never duplicate writer.
+
+OBJECTIVE
+From historical Rk compared to current Rm, explicit developer **Confirm Restore** creates Rm+1 with appropriately restored editable structure. Preserve Rk..Rm and later History, source and protected evidence; never destructively rewind the counter.
+
+IMPLEMENT
+1. Preview exact hash-verified Rk versus current authoritative Rm: Phase/Gate/Criterion/Correction additions/deletions/moves/text/relations and protected qualification/evidence/coverage implications; show linked Markdown source-aware diff when applicable. Bind review to project/root/owner, history digest, current head/index revision/hash, source path/hash/mapping, exact resulting typed editable structure and short-lived one-use approval identity.
+2. Human explicitly inspects and confirms. Under RoadmapStore owner lock repeat authorization and integrity checks, dependency validation, current head/source fingerprints. For unlinked restore create one new monotonic revision with restoredFromRevision/previousHeadRevision and idempotent receipt. No write for Reject, no-op or failed-zero-effect; duplicate confirm/restart cannot create multiple heads/History entries.
+3. Restore **editable structure only**. Preserve immutable audit/evidence/Chat/Work/previous revisions/waiver decisions; do not blindly paste historical Green, Gate-set completeness or linked ownership into current status. Recompute changed requirements' coverage/qualification freshness via protected typed owner; mark stale/unknown appropriately. If needed safe reconciliation cannot be proved, BLOCK rather than bypass saveGateIndex protections.
+4. For linked Markdown, use existing source-aware checked structural patch/diff owner and P5 durable sync/recovery. Preserve unrelated prose/mappings, current source hash/external edits, canonical safe path; show explicit reviewed diff and apply only on success. If unsupported linked multi-field restore, disable and truthfully report FULL SCOPE NOT GREEN; no raw historic file overwrite, silent unlink or source clobber. Crash between index/file/archive/receipt reconciles actual effects and truthful pending/partial, never false Synced.
+5. Wire Compare/Confirm/Return into P7 strip. After confirmed restore return current Rm+1; Undo next previews old Rm, not removed history. Existing pending Chat proposals stale/revalidated; no model call or Work operation. One read-only Project History receipt only after verified canonical effect.
+
+QUALIFY
+- Current R9, choose R5; preview and Cancel no write; confirm produces R10 with editable structure R5 and history R5..R9 accessible; old R9 accessible by Undo, exactly one actual receipt. Cross-entity dependencies and criteria IDs valid.
+- Historical Gate Green/waiver/evidence fixture stays as immutable past fact and does NOT become current Green after restore; affected coverage/qualification stale as required.
+- Positive checked linked restore with unchanged unrelated prose/mappings/hash and file/index verified after restart; negative external edit, stale lease, concurrent new head, changed source, symlink/root escape, collision, unsupported grammar, duplicate click and crash boundaries block or reconcile without silent overwrite.
+- Focused RoadmapStore/Service/history/source adapter/UI tests, types/build. STOP NOT GREEN if mandatory linked restore lacks a safe positive path.
+EXIT: P8 scoped GREEN only with real verified restore-as-new-head and linked-source/evidence safety.
