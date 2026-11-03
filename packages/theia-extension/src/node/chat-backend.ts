@@ -1816,7 +1816,7 @@ export class ChatBackend implements ChatService {
                         actual = { schemaVersion: 1, connectionId: route.actualTarget.connectionId,
                             modelId: route.actualTarget.modelId, providerId: route.executionLabels.provider,
                             modelLabel: route.executionLabels.model };
-                        if (sequence === 0) await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id,
+                        if (sequence === 0 && !typedRoadmap) await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id,
                             actualModel: actual, routingProvenance });
                     } else if (!publicationIntent) {
                         routingProvenance = exactRoutingProvenance(request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
