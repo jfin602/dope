@@ -79,6 +79,8 @@ export class ChatPanelController {
     context: ChatContextSelection[] = [];
     lastContext?: ChatContextPreview;
     planningProposal?: ChatPlanningProposal;
+    nativeRoadmapReview?: { proposalId: string; ids: string[]; decision: 'apply' | 'reject'; token: string;
+        summary: string; preview?: ChatPlanningProposal['preview'] };
     planningDecision?: { id: string; status: 'accepted' | 'rejected' | 'failed'; changedIds: string[] };
     roadmapOffer?: ChatRoadmapOffer;
     strategicDraftReview?: ChatStrategicDraftReview;
@@ -677,6 +679,35 @@ export class ChatPanelController {
             this.planningProposal = undefined;
             this.planningProposalError = `Planning proposal was not applied: ${String(error)}. Refresh the selection for the next turn.`;
         } finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
+    async reviewNativeRoadmap(ids: string[], decision: 'apply' | 'reject'): Promise<void> {
+        const lease = this.lease, proposal = this.planningProposal;
+        if (!lease || !proposal?.operations || this.pending || this.running ||
+            proposal.chatId !== lease.chatId) return;
+        this.pending = true; this.changed();
+        try {
+            const review = await lease.connection.reviewNativeRoadmap(lease.handle, lease.chatId,
+                lease.token, proposal.id, ids, decision);
+            if (lease !== this.lease || proposal !== this.planningProposal) return;
+            this.nativeRoadmapReview = { proposalId: proposal.id, ids, decision, ...review };
+        } catch (error) { this.planningProposalError = `Roadmap subset is unavailable: ${String(error)}`;
+        } finally { this.pending = false; this.changed(); }
+    }
+    async decideNativeRoadmap(): Promise<void> {
+        const lease = this.lease, review = this.nativeRoadmapReview;
+        if (!lease || !review || this.pending || this.running) return;
+        this.pending = true; this.changed();
+        try {
+            const result = await lease.connection.decideNativeRoadmap(lease.handle, lease.chatId,
+                lease.token, review.proposalId, review.ids, review.decision, review.token);
+            if (lease !== this.lease) return;
+            this.planningProposal = result.proposal;
+            this.planningProposalError = result.revision ?
+                `Roadmap updated at revision ${result.revision}: ${result.changedIds.join(', ')}` :
+                `${review.ids.length} Roadmap operation(s) rejected`;
+        } catch (error) { this.planningProposalError = `Roadmap decision was not applied: ${String(error)}`;
+        } finally { this.nativeRoadmapReview = undefined; this.pending = false; this.changed();
+            await this.refresh(true); }
     }
     canViewPlanningProposal(id: string): boolean {
         return !!this.lease && this.lease.workspace === this.workspace && this.lease.chatId === this.chatId &&

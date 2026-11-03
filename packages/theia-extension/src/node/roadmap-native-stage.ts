@@ -5,10 +5,12 @@ import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-s
 import { checkedRoadmapDocumentFile } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 
 type Context = { root: string; projectId: string; chatId: string; turnId: string; lease: string };
-type Operation = { id: string; action: GatePlanningAction; batch: number };
+export type NativeOperationStatus = 'Pending' | 'Applied' | 'Rejected' | 'Stale' | 'Conflict' | 'Denied' | 'Failed' | 'Superseded';
+type Operation = { id: string; action: GatePlanningAction; batch: number; status: NativeOperationStatus };
 export type NativeRoadmapStage = { id: string; context: Context; revision: number;
     sourceHash: string | null; expires: number; operations: Operation[]; entityIds: Map<string, string>;
-    done: boolean; strategy: 'full' | 'phase-only' };
+    done: boolean; strategy: 'full' | 'phase-only'; review?: { token: string; ids: string[];
+        decision: 'apply' | 'reject'; revision: number; indexHash: string } };
 const shape: Record<string, readonly string[]> = {
     'phase.create': ['id', 'title', 'objective'], 'phase.edit': ['id', 'title', 'objective'],
     'phase.delete': ['id'], 'phase.reorder': ['ids'], 'phase.dependencies': ['id', 'dependencies'],
@@ -188,7 +190,7 @@ export class RoadmapNativeStageOwner {
                 if (field === 'order' && (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > 4096))
                     throw new Error(`ROADMAP_STAGE_ACTION_${at}: invalid order`);
             }
-            accepted.push({ id: randomUUID(), action, batch: expectedStage });
+            accepted.push({ id: randomUUID(), action, batch: expectedStage, status: 'Pending' });
         }
         const stage: NativeRoadmapStage = prior ?? { id: randomUUID(), context, revision: index.revision,
             sourceHash: source(index), expires: Date.now() + 10 * 60_000, operations: [], entityIds: new Map(),
@@ -235,6 +237,76 @@ export class RoadmapNativeStageOwner {
             after.gates.reduce((sum, gate) => sum + gate.criteria.length, 0) > 64)
             throw new Error('ROADMAP_STAGE_PROJECTION_LIMIT: reduce the draft to 64 entities');
         return { before, after, stage };
+    }
+
+    /** Review binds the exact subset to one fresh canonical basis; selection alone has no effect. */
+    async review(context: Context, ids: readonly string[], decision: 'apply' | 'reject'):
+        Promise<{ token: string; before: RoadmapGateIndex; after?: RoadmapGateIndex; indexHash: string }> {
+        const before = await this.current(context);
+        await this.checkedSource(before);
+        const stage = this.stages.get(context.chatId);
+        if (!stage || !stage.done) throw new Error('ROADMAP_REVIEW_MISSING');
+        this.assert(stage, context, before);
+        if (!ids.length || ids.length > 48 || new Set(ids).size !== ids.length ||
+            ids.some(opId => !stage.operations.some(item => item.id === opId && item.status === 'Pending')))
+            throw new Error('ROADMAP_REVIEW_SELECTION_CHANGED');
+        const selected = new Set(ids);
+        const operations = stage.operations.filter(item => selected.has(item.id));
+        // A rejected creator cannot leave a pending operation referring to its identity.
+        if (decision === 'reject') for (const item of operations) {
+            const action = item.action;
+            if (!['phase.create', 'gate.create', 'criterion.add', 'correction.attach'].includes(action.type)) continue;
+            const created = new Set<string>(['id' in action ? action.id ?? '' : '',
+                ...(action.type === 'gate.create' ? action.criteria.map(criterion => criterion.id) : [])]);
+            const dependent = stage.operations.find(other => other.status === 'Pending' && !selected.has(other.id) &&
+                [...created].some(entityId => entityId && JSON.stringify(other.action).includes(`"${entityId}"`)));
+            if (dependent) throw new Error(`ROADMAP_REVIEW_DEPENDENT_${dependent.id}: select the dependent operation too`);
+        }
+        let after: RoadmapGateIndex | undefined;
+        if (decision === 'apply') {
+            // The domain validator checks parents, dependency closure, cycles, ordering and no-op.
+            after = await this.store.mutateGateIndex(context.root, before.revision, before.projectId,
+                operations.map(item => item.action), true);
+        }
+        const indexHash = await this.store.gateIndexHash(context.root);
+        if (!indexHash) throw new Error('ROADMAP_REVIEW_INDEX_MISSING');
+        const token = randomUUID();
+        stage.review = { token, ids: [...ids], decision, revision: before.revision, indexHash };
+        return { token, before, after, indexHash };
+    }
+
+    async decide(context: Context, token: string, ids: readonly string[], decision: 'apply' | 'reject'):
+        Promise<{ revision?: number; changedIds: string[]; statuses: { id: string; status: NativeOperationStatus }[] }> {
+        const stage = this.stages.get(context.chatId);
+        const review = stage?.review;
+        if (!stage || !review || review.token !== token || review.decision !== decision ||
+            JSON.stringify(review.ids) !== JSON.stringify(ids)) throw new Error('ROADMAP_APPROVAL_UNAVAILABLE');
+        stage.review = undefined; // one use, including failed and duplicate clicks
+        const before = await this.current(context);
+        await this.checkedSource(before);
+        this.assert(stage, context, before);
+        if (review.revision !== before.revision || review.indexHash !== await this.store.gateIndexHash(context.root))
+            throw new Error('ROADMAP_APPROVAL_STALE_INDEX');
+        const selected = new Set(ids);
+        const operations = stage.operations.filter(item => selected.has(item.id) && item.status === 'Pending');
+        if (operations.length !== ids.length) throw new Error('ROADMAP_APPROVAL_SELECTION_CHANGED');
+        let revision: number | undefined;
+        let changedIds: string[] = [];
+        if (decision === 'apply') {
+            const after = await this.store.mutateGateIndex(context.root, before.revision, before.projectId,
+                operations.map(item => item.action), false, { indexHash: review.indexHash });
+            revision = after.revision;
+            const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
+                ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
+            const old = new Map(entities(before).map(item => [item.id, item]));
+            const next = new Map(entities(after).map(item => [item.id, item]));
+            changedIds = [...new Set([...old.keys(), ...next.keys()])].filter(entityId =>
+                JSON.stringify(old.get(entityId)) !== JSON.stringify(next.get(entityId)));
+            stage.revision = revision;
+            stage.sourceHash = source(after);
+        }
+        for (const item of operations) item.status = decision === 'apply' ? 'Applied' : 'Rejected';
+        return { revision, changedIds, statuses: stage.operations.map(item => ({ id: item.id, status: item.status })) };
     }
     async cancel(context: Context, args: unknown): Promise<unknown> {
         if (!object(args) || args.version !== 1 || Object.keys(args).join(',') !== 'version') throw new Error('ROADMAP_CANCEL_ARGUMENTS');

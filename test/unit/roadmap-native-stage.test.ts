@@ -89,6 +89,48 @@ test('native stage rejects wrong identity, stale basis, invalid actions and over
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('reviewed native subset applies one revision, preserves pending decisions and rejects children without writes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-native-subset-'));
+    try {
+        const store = new RoadmapStore();
+        await store.saveGateIndex(root, 0, 'uninitialized', { schemaVersion: 2, projectId: 'owner',
+            projectRoot: root, revision: 1, phases: [], gates: [], corrections: [] });
+        const owner = new RoadmapNativeStageOwner(store);
+        const context = { root, projectId: 'owner', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const staged = await owner.stage(context, { version: 1, expectedRevision: 1,
+            expectedSourceHash: null, expectedStage: 1, done: true,
+            actions: [
+                { type: 'phase.create', id: 'new:p', title: 'Phase', objective: 'Ship' },
+                ...['A', 'B', 'C'].map((letter, at) => ({ type: 'gate.create', id: `new:g${letter}`,
+                    parentPhaseId: 'new:p', designation: `G${at + 1}`, title: `Gate ${letter}`,
+                    purpose: `Verify ${letter}`, criteria: [{ id: `new:c${letter}`,
+                        title: `Check ${letter}`, expectedResult: `Pass ${letter}` }] }))
+            ] }) as { acceptedOperationIds: string[] };
+        const [phase, a, b, c] = staged.acceptedOperationIds;
+        const file = join(root, '.dope', 'roadmap.json');
+        const original = await readFile(file);
+        await assert.rejects(owner.review(context, [a], 'apply'), /Missing Roadmap Phase/);
+        await assert.rejects(owner.review(context, [phase], 'reject'), /ROADMAP_REVIEW_DEPENDENT/);
+        assert.deepEqual(await readFile(file), original);
+        const review = await owner.review(context, [phase, a, b], 'apply');
+        assert.equal(review.after?.gates.length, 2);
+        await assert.rejects(owner.decide(context, review.token, [phase, a], 'apply'), /APPROVAL_UNAVAILABLE/);
+        const applied = await owner.decide(context, review.token, [phase, a, b], 'apply');
+        assert.equal(applied.revision, 2);
+        assert.equal((await store.read(root)).revision, 2);
+        await assert.rejects(owner.decide(context, review.token, [phase, a, b], 'apply'), /APPROVAL_UNAVAILABLE/);
+        const rejectReview = await owner.review(context, [c], 'reject');
+        const acceptedBytes = await readFile(file);
+        const rejected = await owner.decide(context, rejectReview.token, [c], 'reject');
+        assert.equal(rejected.revision, undefined);
+        assert.deepEqual(await readFile(file), acceptedBytes);
+        assert.deepEqual(rejected.statuses.map(item => item.status), ['Applied', 'Applied', 'Applied', 'Rejected']);
+        const index = await store.read(root);
+        assert.equal(index.gates.length, 2);
+        assert.deepEqual(index.gates.map(gate => gate.criteria[0].title), ['Check A', 'Check B']);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('complete tower-defense batches produce one saved exact projection without owner writes', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-native-complete-'));
     try {

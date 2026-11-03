@@ -150,7 +150,9 @@ test('saved Chat retains a native staged Roadmap proposal and validated preview 
         assert.equal(turn.proposal.revision, 1);
         assert.equal(turn.proposal.sourceHash, sourceHash);
         assert.equal(turn.proposal.chatId, chatId);
-        assert.equal(turn.proposal.previewOnly, true);
+        assert.equal(turn.proposal.previewOnly, undefined);
+        assert.equal(turn.proposal.operations?.length, 9);
+        assert.ok(turn.proposal.operations?.every(item => item.status === 'Pending'));
         assert.equal(turn.proposal.preview?.source, 'validated-roadmap');
         assert.equal(turn.proposal.preview?.totalChanged, 13);
         assert.equal(turn.proposal.preview?.additionalChanges, 0);
@@ -180,7 +182,7 @@ test('saved Chat retains a native staged Roadmap proposal and validated preview 
             assert.equal(assistant.planningActivity?.proposal?.ownerId, projectId);
             assert.equal(assistant.planningActivity?.proposal?.revision, 1);
             assert.equal(assistant.planningActivity?.proposal?.sourceHash, sourceHash);
-            assert.equal(assistant.planningActivity?.proposal?.previewOnly, true);
+            assert.equal(assistant.planningActivity?.proposal?.previewOnly, undefined);
             assert.deepEqual(assistant.planningActivity?.proposal?.changedIds, turn.proposal.changedIds);
             assert.deepEqual(assistant.planningActivity?.proposal?.preview,
                 JSON.parse(JSON.stringify(turn.proposal.preview)));

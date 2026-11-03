@@ -199,7 +199,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private strategicPresentationKey = '';
     private strategicPresentationTarget?: { workspace: string; projectId: string; chatId: string };
     private strategicPresentationQueue: Promise<void> = Promise.resolve();
-    private viewedProposal?: { uri: string; chatId: string; id: string };
+    private viewedProposal?: { uri: string; chatId: string; id: string; proposal: ChatPlanningProposal };
     private autoPreviewTurn?: { uri: string; chatId: string };
     private readonly autoPreviewedProposals = new Set<string>();
     private readonly openPlanningActivities = new Set<string>();
@@ -378,7 +378,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (!viewed) return;
         const state = this.controller;
         if (state.workspace === viewed.uri && state.chatId === viewed.chatId &&
-            state.planningProposal?.id === viewed.id) return;
+            state.planningProposal?.id === viewed.id) {
+            if (state.planningProposal !== viewed.proposal) {
+                if (state.planningProposal.preview) void this.viewCurrentRoadmapProposal(state.planningProposal);
+                else { this.viewedProposal = undefined;
+                    void this.clearRoadmapProposal?.(viewed.uri, viewed.chatId, viewed.id, false, []); }
+            }
+            return;
+        }
         this.viewedProposal = undefined;
         const decision = state.planningDecision?.id === viewed.id ? state.planningDecision : undefined;
         void this.clearRoadmapProposal?.(viewed.uri, viewed.chatId, viewed.id,
@@ -411,7 +418,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const active = () => !automatic || !!this.roadmapPicker?.active?.();
         if (!uri || !chatId || !state.canViewPlanningProposal(proposal.id) || !this.viewRoadmapProposal ||
             !active()) return;
-        const viewed = { uri, chatId, id: proposal.id };
+        const viewed = { uri, chatId, id: proposal.id, proposal };
         this.viewedProposal = viewed;
         try {
             await this.viewRoadmapProposal(uri, chatId, proposal, () =>
@@ -560,6 +567,79 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             'Validation summary' : proposal.preview ? 'Full diagnostic diff' : 'Review before and after';
         const diffText = document.createElement('pre'); diffText.textContent = proposal.summary;
         diff.append(diffLabel, diffText);
+        if (proposal.operations) {
+            const pending = proposal.operations.filter(item => item.status === 'Pending');
+            const selected = new Set<string>();
+            const list = document.createElement('div');
+            list.className = 'dope-chat-roadmap-operations';
+            for (const operation of proposal.operations) {
+                const row = document.createElement('label');
+                const box = document.createElement('input'); box.type = 'checkbox';
+                box.disabled = operation.status !== 'Pending' || state.pending;
+                box.addEventListener('change', () => {
+                    if (box.checked) selected.add(operation.id); else selected.delete(operation.id);
+                });
+                const label = document.createElement('span');
+                label.textContent = `${operation.type} · ${operation.targetId} · ${operation.status}`;
+                row.append(box, label); list.append(row);
+            }
+            review.append(list);
+            const actions = document.createElement('div');
+            actions.className = 'dope-chat-plan-review-actions';
+            if (proposal.preview && this.viewRoadmapProposal)
+                actions.append(this.button('View in Roadmap', () => void this.viewCurrentRoadmapProposal(proposal),
+                    !state.canViewPlanningProposal(proposal.id)));
+            const reviewSubset = (ids: string[], decision: 'apply' | 'reject') =>
+                void state.reviewNativeRoadmap(ids, decision);
+            actions.append(
+                this.button('Apply Selected', () => reviewSubset([...selected], 'apply'), state.pending),
+                this.button('Reject Selected', () => reviewSubset([...selected], 'reject'), state.pending),
+                this.button('Apply All Remaining', () => reviewSubset(pending.map(item => item.id), 'apply'), state.pending),
+                this.button('Reject All Remaining', () => reviewSubset(pending.map(item => item.id), 'reject'), state.pending));
+            for (const operation of pending) {
+                const one = document.createElement('div');
+                one.className = 'dope-chat-plan-review-actions';
+                one.append(this.button(`Apply ${operation.type}`, () => reviewSubset([operation.id], 'apply'), state.pending),
+                    this.button(`Reject ${operation.type}`, () => reviewSubset([operation.id], 'reject'), state.pending));
+                if (operation.type === 'phase.create') {
+                    const descendants = new Set([operation.targetId]);
+                    const ids = [operation.id];
+                    for (const child of pending) {
+                        if (child.id === operation.id) continue;
+                        const entity = proposal.preview?.entities.find(item => item.id === child.targetId)?.after;
+                        if (entity?.parentId && descendants.has(entity.parentId)) {
+                            ids.push(child.id); descendants.add(child.targetId);
+                        }
+                    }
+                    one.append(this.button('Apply Phase + descendants', () => reviewSubset(ids, 'apply'), state.pending),
+                        this.button('Reject Phase + descendants', () => reviewSubset(ids, 'reject'), state.pending));
+                }
+                review.append(one);
+            }
+            if (state.nativeRoadmapReview?.proposalId === proposal.id) {
+                const confirmation = document.createElement('p');
+                confirmation.textContent = state.nativeRoadmapReview.summary;
+                const exact = state.nativeRoadmapReview.preview;
+                if (exact) {
+                    const details = document.createElement('details'); details.open = true;
+                    const caption = document.createElement('summary');
+                    caption.textContent = 'Exact selected changes before Apply';
+                    details.append(caption);
+                    for (const entity of exact.entities) {
+                        const row = document.createElement('pre');
+                        row.textContent = `${entity.action} ${entity.id}\nBefore: ${JSON.stringify(entity.before ?? null)}\nAfter: ${JSON.stringify(entity.after ?? null)}`;
+                        details.append(row);
+                    }
+                    actions.append(details);
+                }
+                actions.append(confirmation,
+                    this.button('Confirm reviewed decision', () => void state.decideNativeRoadmap(), state.pending),
+                    this.button('Cancel review', () => { state.nativeRoadmapReview = undefined; this.render(); }, state.pending));
+            }
+            review.prepend(heading, affected);
+            review.append(diff, actions);
+            return review;
+        }
         const decisions = document.createElement('div');
         decisions.className = 'dope-chat-plan-review-actions';
         if (proposal.preview && proposal.revision > 0 && this.viewRoadmapProposal) {

@@ -441,6 +441,11 @@ export class RoadmapStore {
         finally { await handle.close(); }
     }
 
+    /** Exact canonical bytes used by a reviewed native subset. */
+    async gateIndexHash(root: string): Promise<string | null> {
+        return this.indexHash((await this.paths(root)).file);
+    }
+
     /** Persist one reviewed schema-2 revision without changing a linked Markdown source. */
     async saveGateIndex(root: string, expectedRevision: number, expectedProjectId: string | undefined,
         candidate: RoadmapGateIndex): Promise<RoadmapGateIndex> {
@@ -573,15 +578,18 @@ export class RoadmapStore {
 
     /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
-        operation: RoadmapGateMutation | RoadmapGateMutation[], previewOnly = false): Promise<RoadmapGateIndex> {
+        operation: RoadmapGateMutation | RoadmapGateMutation[], previewOnly = false,
+        nativeBasis?: { indexHash: string }): Promise<RoadmapGateIndex> {
         const operations = Array.isArray(operation) ? operation : [operation];
         if (!revision(expectedRevision) || !id(expectedProjectId) || !operations.length ||
-            operations.length > (previewOnly ? 48 : 3) ||
+            operations.length > (previewOnly || nativeBasis ? 48 : 3) ||
             operations.some(item => !item || typeof item !== 'object'))
             throw new Error('Invalid Roadmap mutation authority');
         const next = await this.locked(root, async () => {
             const { file } = await this.paths(root);
             const expectedHash = await this.indexHash(file);
+            if (nativeBasis && (typeof nativeBasis.indexHash !== 'string' ||
+                nativeBasis.indexHash !== expectedHash)) throw new Error('Stale native Roadmap index hash');
             const current = await this.read<RoadmapGateIndex>(root);
             if (current.pendingPublication) throw new Error('Pending Roadmap publication requires recovery');
             if (!current.revision || current.projectId !== expectedProjectId)

@@ -62,6 +62,8 @@ export interface ChatContextDiagnostic { kind: 'omitted' | 'truncated' | 'histor
 export interface ChatContextPreview { refs: ChatContextRef[]; diagnostics: ChatContextDiagnostic[]; usedTokens: number; budgetTokens: number }
 export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: string; ownerId: string;
     revision: number; sourceHash?: string; changedIds: string[]; action: { type: string; id: string }; summary: string;
+    operations?: { id: string; type: string; targetId: string;
+        status: 'Pending' | 'Applied' | 'Rejected' | 'Stale' | 'Conflict' | 'Denied' | 'Failed' | 'Superseded' }[];
     previewOnly?: boolean;
     publication?: { mode: 'publish' | 'link'; path: string; sourceHash: string;
         phaseCount: number; gateCount: number; criterionCount: number;
@@ -134,6 +136,12 @@ export interface ChatService {
         requestId: string, allowOnce: boolean): Promise<void>;
     decidePlanningProposal(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined>;
+    reviewNativeRoadmap(projectHandle: string, chatId: ChatId, leaseToken: string, proposalId: string,
+        operationIds: string[], decision: 'apply' | 'reject'):
+        Promise<{ token: string; summary: string; preview?: ChatPlanningProposal['preview'] }>;
+    decideNativeRoadmap(projectHandle: string, chatId: ChatId, leaseToken: string, proposalId: string,
+        operationIds: string[], decision: 'apply' | 'reject', token: string):
+        Promise<{ revision?: number; changedIds: string[]; proposal?: ChatPlanningProposal }>;
     decideRoadmapOffer(projectHandle: string, chatId: ChatId, leaseToken: string,
         offerId: string, token: string, approve: boolean, selectedModel?: ChatModelSelection): Promise<'declined' | ChatStrategicDraftReview>;
     decideStrategicDraft(projectHandle: string, chatId: ChatId, leaseToken: string,

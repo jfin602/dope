@@ -505,13 +505,22 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             v.proposalId === undefined || JSON.stringify(v.proposal).length > 65536)
             throw new Error('Invalid saved Roadmap proposal');
         const p = record(v.proposal, ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'sourceHash',
-            'changedIds', 'action', 'summary', 'preview', 'publication', 'previewOnly'],
+            'changedIds', 'action', 'summary', 'preview', 'publication', 'previewOnly', 'operations'],
             ['id', 'chatId', 'messageId', 'ownerId', 'revision', 'changedIds', 'action', 'summary']);
         const action = record(p.action, ['type', 'id'], ['type', 'id']);
         if (p.previewOnly !== undefined && p.previewOnly !== true) throw new Error('Invalid preview-only flag');
         if (p.id !== v.proposalId || !Array.isArray(p.changedIds) || p.changedIds.length > 64 ||
             p.changedIds.some(id => typeof id !== 'string'))
             throw new Error('Invalid saved Roadmap proposal');
+        if (p.operations !== undefined && (!Array.isArray(p.operations) || p.operations.length > 48 ||
+            p.operations.some((item: unknown) => {
+                try { const op = record(item, ['id', 'type', 'targetId', 'status'],
+                    ['id', 'type', 'targetId', 'status']);
+                    identifier(op.id); string(op.type, 'operation type'); identifier(op.targetId);
+                    choice(op.status, ['Pending', 'Applied', 'Rejected', 'Stale', 'Conflict', 'Denied',
+                        'Failed', 'Superseded'] as const, 'operation status'); return false;
+                } catch { return true; }
+            }))) throw new Error('Invalid saved Roadmap operations');
         const parseEntity = (value: unknown): import('./service').ChatRoadmapPreviewEntity => {
             const e = record(value, ['kind', 'id', 'title', 'detail', 'designation', 'parentId', 'order',
                 'dependencies', 'criteria', 'additionalCriteria'], ['kind', 'id']);
@@ -583,6 +592,13 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             changedIds: p.changedIds.map(id => string(id, 'changed Roadmap ID')),
             action: { type: string(action.type, 'proposal action'), id: string(action.id, 'proposal target') },
             summary: string(p.summary, 'proposal summary'),
+            ...(p.operations === undefined ? {} : { operations: (p.operations as unknown[]).map(item => {
+                const op = item as Record<string, unknown>;
+                return { id: identifier(op.id), type: string(op.type, 'operation type'),
+                    targetId: identifier(op.targetId), status: choice(op.status,
+                        ['Pending', 'Applied', 'Rejected', 'Stale', 'Conflict', 'Denied', 'Failed',
+                            'Superseded'] as const, 'operation status') };
+            }) }),
             ...(p.previewOnly === undefined ? {} : { previewOnly: true as const }),
             ...(p.sourceHash === undefined ? {} : { sourceHash: string(p.sourceHash, 'source hash') }),
             ...(savedPreview === undefined ? {} : { preview: savedPreview }),
