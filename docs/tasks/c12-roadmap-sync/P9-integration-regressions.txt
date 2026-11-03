@@ -1,0 +1,33 @@
+TASK: c12-roadmap-sync / P9 — full-source integration, dead-form/parser cleanup and regression gate
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High. Browser required: no (P10 manual connected Codex Chrome).
+- Focused target <=8 minutes per working cycle, hard cap 15; stop NOT GREEN on unsafe/unfinished boundaries.
+- Phase runner owns successful implementation checkpoint commits. Do NOT self-commit, /activate, automatically run other stacks, change version/lockfiles/model/provider, grant generic shell or Work permissions.
+- Ponytail FULL only for implementation agent if actually installed; never inject it into Dope's selected Pi model.
+
+VERSIONING
+- Documented reference 0.12.7; verify current LOCAL manifest, source and actual runner expectations. Preserve version unless separately approved.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047, native Roadmap contract, historical restore contract, c12-roadmap-sync README/assessment/plan and all previous Pn exact-source evidence. Inspect LOCAL HEAD/status/diff, owner modifications and live components; do not treat GitHub main as identical to checkout.
+- Reuse existing RoadmapStore/Service, ProjectPlanningActions, Pi broker, saved ChatPanel, RoadmapCanvas/Inspector and source-aware Markdown writer. Preserve protected /roadmap, Ask/Allow, owner/project/source/revision/lease/decision checks, immutable history and evidence/qualification. No reset/stash/clean, source clobber, real owner workspace modification or parallel c12-undo/c12-roadmap-native-authoring execution. Use disposable fixtures.
+
+
+PREREQUISITE: All P1–P8 source-qualified on the exact actual local checkout. If a mandatory linked restore/auto sync or archive path remains unsupported, STOP NOT GREEN instead of staging a fake closeout.
+
+OBJECTIVE
+Create one coherent implementation across native Pi tools, server proposal transactions, canvas field editor, Markdown sync and formal Undo/Redo/restore; remove superseded authority/UI paths without damaging other Dope functionality. This is RUNNER final code gate, NOT manual browser qualification.
+
+IMPLEMENT
+1. Trace end-to-end canonical mutation flow: Pi read/stage/validate -> single saved Chat/canvas proposal -> selection/Apply/Reject -> one actual revision/archive -> linked background sync -> inline field edit -> historical preview -> compared restore to new head. Ensure every accepted Gate/Criterion count matches staged/preview/committed/canvas/Markdown; no text-response parser emits authoritative creates/edits; no duplicate proposal store/source writer.
+2. Remove dead *Roadmap-specific* huge approval form, obsolete response-parsed mutation writer, shadow preview and duplicate status elements after parity. Preserve import/relink/conflict recovery and other independent Chat/Work/Planning/Docs/History modules. Update applicable Dope Help capability labels against real controls; do not edit immutable qualification reports/prompts.
+3. Establish deterministic regression suite using disposable tower-defense graph: stable Phase/Gate/Criteria IDs, selective decisions, stale/out-of-order leases, project switching, plain Chat read-only, model unavailable/partial, zero-accepted vs planned and no false GREEN, external Markdown source edits, retries/interrupted writes, revision archive all owners, historical read-only, reviewed restore and direct pencil focus/keyboard/narrow.
+4. Check previous UI/permissions behavior: saved Chat history and clean Copy, conditional active-tab preview, no focus/camera hijack, Pi Ask/Allow, original /roadmap protection, unrelated Work read/tool grants, editor undo, no unrelated changed source or provider defaults.
+5. Run focused and project-wide relevant tests, typecheck and browser/Electron builds from exact candidate; inspect logs and actual failures. Fix only in-scope defects, preserve current owner dirty work, do not claim GUI from build. Record verified source hashes, actual test counts, any mandatory untested negatives and P10 browser prerequisites.
+
+QUALIFY
+- One current source commit/diff set with complete tested domain/review/UI/Markdown/history integration; >=5 Phases and nested Gates remain after reload with expected accepted subset and distinct proposed ghosts.
+- Negative no-write and conflict/restart matrix source-bound; no duplicated History/qualification evidence; a successful linked restore reopens with correct file bytes/hash.
+- No disabled misleading controls, shadow response parser writer, background UI modal, undesired global Ctrl+Z or accidental model/Work grants.
+EXIT: P9 GREEN only for test/build/source-integrated contract. Never substitute P9 for P10 real connected browser or native owner test. Runner must STOP before P10.
