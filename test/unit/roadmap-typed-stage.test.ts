@@ -131,9 +131,17 @@ test('protected current-turn Chat uses one tool-free typed answer and persists t
             calls++;
             assert.equal(request.projectTools, undefined);
             assert.equal(request.maxOutputTokens, 4096);
-            assert.match(JSON.stringify(request.messages), /roadmap-draft/);
+            assert.match(JSON.stringify(request.messages), /RM1/);
+            assert.doesNotMatch(JSON.stringify(request.messages), /"type":"roadmap-draft"/);
+            const draft = candidate().draft;
             yield { type: 'complete' as const, actualModelId: 'q4', finishReason: 'stop',
-                text: JSON.stringify(candidate().draft) };
+                usage: { tokenMeasurement: 'unavailable' as const },
+                text: ['RM1', ...draft.phases.flatMap(phase => [
+                    `P|${phase.title}|${phase.objective}`, ...phase.gates.flatMap(gate => [
+                        `G|${gate.title}|${gate.purpose}`,
+                        ...gate.criteria.map(criterion => `C|${criterion.expectedResult}`)
+                    ])
+                ]), 'END'].join('\n') };
         } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
         composer, undefined, { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
@@ -150,7 +158,7 @@ test('protected current-turn Chat uses one tool-free typed answer and persists t
             content: 'Create a complete development Roadmap for a tower-defense game.', context: [] });
         assert.equal(calls, 1);
         assert.ok(result.proposal, result.proposalError);
-        assert.equal(result.proposal.operations?.length, 19);
+        assert.equal(result.proposal.operations?.length, 15);
         assert.equal(result.proposal.preview?.totalChanged, 35);
         assert.equal((await store.read(root)).revision, 0);
         assert.equal(await store.gateIndexHash(root), null);
@@ -159,6 +167,9 @@ test('protected current-turn Chat uses one tool-free typed answer and persists t
         assert.equal(saved.role, 'assistant');
         assert.equal(saved.planningActivity?.status, 'pending');
         assert.equal(saved.planningActivity?.proposalId, result.proposal.id);
+        assert.match(saved.planningActivity?.diagnostic ?? '', /finishReason=stop.*markerEND=yes.*reasoningTokens=unavailable/);
+        assert.equal(saved.execution.finishReason, 'stop');
+        assert.equal(saved.execution.tokenUsage?.tokenMeasurement, 'unavailable');
         assert.equal(saved.execution.toolEvents?.length ?? 0, 0);
         const ids = result.proposal.operations!.map(item => item.id);
         const review = await backend.reviewNativeRoadmap(projectHandle, chatId, lease.token,
@@ -169,6 +180,59 @@ test('protected current-turn Chat uses one tool-free typed answer and persists t
         assert.deepEqual((await store.listRevisions(root, (await store.read(root)).projectId)).revisions
             .map(item => item.revision), [1]);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('protected marker failures save bounded diagnostics without a proposal or Roadmap write', async () => {
+    for (const mode of ['missing-end', 'length', 'reasoning-only', 'oversized'] as const) {
+        const root = await mkdtemp(join(tmpdir(), `dope-marker-${mode}-`));
+        const store = new RoadmapStore(), repository = new ChatRepository();
+        const chatId = randomUUID();
+        const composer = new ChatContextComposer({} as never, {} as never,
+            { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+                inputsCurrent: async () => false } as never, repository, store);
+        const model = { id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
+            streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } };
+        const models = { list: async () => ({ connections: [{ id: 'local', ready: true,
+            providerId: 'local', models: [model] }] }),
+            async *generate() {
+                if (mode === 'reasoning-only') {
+                    yield { type: 'activity' as const, kind: 'thinking' as const, text: 'An outline without final text' };
+                    return;
+                }
+                const marker = 'RM1\nP|Path|Build a path\nG|Waypoints|Move enemies\n' +
+                    'C|Enemies visit waypoints in order\nP|Combat|Build a tower\n' +
+                    'G|Attack|Damage enemies\nC|Projectiles damage enemies\nEND';
+                yield { type: 'complete' as const,
+                    text: mode === 'missing-end' ? marker.slice(0, -3) :
+                        mode === 'oversized' ? marker + 'x'.repeat(32768) : marker,
+                    finishReason: mode === 'length' ? 'length' : 'stop',
+                    usage: { tokenMeasurement: 'unavailable' as const } };
+            } };
+        const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+            composer, undefined, { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
+            undefined, undefined, undefined, store);
+        try {
+            const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+            await backend.mutate({ projectHandle, expectedRevision: 0,
+                operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Marker negative' } });
+            const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+            assert.equal(lease.acquired, true);
+            if (!lease.acquired) throw new Error('Chat lease unavailable');
+            await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                selectedModel: { connectionId: 'local', modelId: 'q4' },
+                content: '/roadmap Create a complete development Roadmap', context: [] }));
+            const saved = (await repository.read(root)).chats.find(chat => chat.id === chatId)!.messages
+                .find(message => message.role === 'assistant')!;
+            assert.equal(saved.execution.status, 'failed', mode);
+            assert.match(saved.execution.failure ?? '', /RM1 completion:.*reasoningTokens=unavailable/, mode);
+            assert.equal(saved.planningActivity?.status, 'failed', mode);
+            assert.equal(saved.planningActivity?.proposalId, undefined, mode);
+            assert.equal((await store.read(root)).revision, 0, mode);
+            assert.equal(await store.gateIndexHash(root), null, mode);
+            await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
+            await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
+        } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    }
 });
 
 test('two competing typed creation proposals cannot both initialize a revision-zero Roadmap', async () => {

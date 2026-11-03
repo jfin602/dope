@@ -57,9 +57,22 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             if (event.modelId !== selection.modelId)
                 throw new ModelRuntimeFailure('Local server answered with a different model; reselect the loaded model in AI Center',
                     'model-unavailable');
-            if (event.finishReason !== 'stop')
-                throw new ModelRuntimeFailure('Local answer reached its output limit; shorten the request or use a larger model',
-                    'incomplete-answer');
+            if (event.finishReason !== 'stop') {
+                const reported = event.usage?.tokenMeasurement === 'provider-reported';
+                const output = reported && Number.isSafeInteger(event.usage.outputTokens) ? event.usage.outputTokens : undefined;
+                const reasoning = reported && Number.isSafeInteger(event.usage.reasoningTokens) ?
+                    event.usage.reasoningTokens : undefined;
+                const final = output !== undefined && reasoning !== undefined && output >= reasoning ?
+                    output - reasoning : 'unavailable';
+                const finish = event.finishReason === 'length' ? 'length' : 'other';
+                const ended = /(?:^|\n)END\r?\n?$/.test(event.text);
+                throw new ModelRuntimeFailure('Local answer did not complete; shorten the request or use a larger model. ' +
+                    `finishReason=${finish}, providerFinalText=${event.text ? 'present' : 'absent'}, ` +
+                    `providerMarkerEND=${ended ? 'yes' : 'no'}, reasoningTokens=${reasoning ?? 'unavailable'}, ` +
+                    `finalTokens=${final}, totalTokens=${reported ? event.usage.totalTokens ?? 'unavailable' : 'unavailable'}, ` +
+                    `requestedOutputTokens=${maxOutputTokens}, measuredContextTokens=${binding.contextWindowTokens}`,
+                'incomplete-answer');
+            }
             yield { type: 'complete', text: event.text, usage: event.usage,
                 ...(event.compaction ? { compaction: { canonicalContextSha256:
                     createHash('sha256').update(JSON.stringify(request.messages)).digest('hex'),

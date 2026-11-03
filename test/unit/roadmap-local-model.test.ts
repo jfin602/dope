@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { allowsPlainGateAnswer, generateTypedRoadmapDraft, localPlanningJson, parseStrategicDraft,
-    parseRoadmapMarkers, parseTypedRoadmapDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget, typedRoadmapDraftInstruction,
+    parseRoadmapMarkers, parseTypedRoadmapDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget,
+    roadmapMarkerCompletionDiagnostic, typedRoadmapDraftInstruction,
     verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
@@ -153,7 +154,12 @@ const towerDraft = () => ({ type: 'roadmap-draft', schemaVersion: 1, phases: [
 
 test('one compact typed five-Phase draft is complete and remains untrusted', async () => {
     const draft = towerDraft();
-    const text = JSON.stringify(draft);
+    const text = ['RM1', ...draft.phases.flatMap(phase => [
+        `P|${phase.title}|${phase.objective}`, ...phase.gates.flatMap(gate => [
+            `G|${gate.title}|${gate.purpose}`,
+            ...gate.criteria.map(criterion => `C|${criterion.expectedResult}`)
+        ])
+    ]), 'END'].join('\n');
     assert.ok(Buffer.byteLength(text) < roadmapLocalBudget(16384, 4096).maxOutputBytes);
     let calls = 0;
     const candidate = await generateTypedRoadmapDraft(async function* () {
@@ -172,7 +178,8 @@ test('one compact typed five-Phase draft is complete and remains untrusted', asy
     assert.deepEqual(candidate.coverageWarnings, []);
     assert.ok(!JSON.stringify(candidate).includes('projectId'));
     assert.match(typedRoadmapDraftInstruction(['currency spending']), /currency spending/);
-    assert.doesNotMatch(typedRoadmapDraftInstruction(), /expectedStage/);
+    assert.match(typedRoadmapDraftInstruction(), /RM1\nP\|Phase title\|Phase objective/);
+    assert.doesNotMatch(typedRoadmapDraftInstruction(), /JSON|expectedStage|new:p|sourceHash/);
 });
 
 test('typed Roadmap rejects incomplete, oversized, foreign authority and invalid nested fields', () => {
@@ -227,7 +234,7 @@ test('typed generation is one bounded call and cancellation or prose is non-appl
     }, new AbortController().signal, 100), /reserved output/);
     await assert.rejects(generateTypedRoadmapDraft(async function* () {
         yield { type: 'complete', text: 'This is a read-only Chat answer.' };
-    }, new AbortController().signal, 16384), /malformed JSON/);
+    }, new AbortController().signal, 16384), /finish reason/);
     await assert.rejects(generateTypedRoadmapDraft(async function* () {
         yield { type: 'delta', text: '{}' };
     }, new AbortController().signal, 16384), /without completion/);
@@ -235,6 +242,30 @@ test('typed generation is one bounded call and cancellation or prose is non-appl
         yield { type: 'activity', kind: 'tool', text: 'roadmap_stage' };
         yield { type: 'complete', text: JSON.stringify(towerDraft()) };
     }, new AbortController().signal, 16384), /attempted a tool call/);
+});
+
+test('marker generation consumes only a completed final answer and exposes truthful bounded diagnostics', async () => {
+    const marker = markerLines().join('\n');
+    const result = await generateTypedRoadmapDraft(async function* () {
+        yield { type: 'activity', kind: 'thinking', text: 'untrusted outline' };
+        yield { type: 'delta', text: marker };
+        yield { type: 'complete', text: marker, finishReason: 'stop' };
+    }, new AbortController().signal, 32768);
+    assert.equal(result.draft.phases.length, 5);
+    for (const [text, reason] of [[marker.slice(0, -3), 'stop'], [marker, 'length'], ['', 'stop']] as const)
+        await assert.rejects(generateTypedRoadmapDraft(async function* () {
+            yield { type: 'complete', text, finishReason: reason };
+        }, new AbortController().signal, 32768), /END|truncated|RM1 line 1/);
+    await assert.rejects(generateTypedRoadmapDraft(async function* () {
+        yield { type: 'activity', kind: 'thinking', text: marker };
+    }, new AbortController().signal, 32768), /without completion/);
+    const diagnostic = roadmapMarkerCompletionDiagnostic({ text: marker, finishReason: 'stop',
+        usage: { tokenMeasurement: 'unavailable' } }, 4096, 32768);
+    assert.match(diagnostic, /completedFinalText=present, markerEND=yes, reasoningTokens=unavailable, finalTokens=unavailable, totalTokens=unavailable/);
+    assert.match(roadmapMarkerCompletionDiagnostic({ text: marker.slice(0, -3), finishReason: 'length',
+        usage: { tokenMeasurement: 'provider-reported', outputTokens: 2002, reasoningTokens: 1800,
+            totalTokens: 2400 } }, 2048, 32768),
+    /finishReason=length, completedFinalText=present, markerEND=no, reasoningTokens=1800, finalTokens=202, totalTokens=2400/);
 });
 
 test('strict Planning buffers JSON while forwarding genuine activity before validation', async () => {

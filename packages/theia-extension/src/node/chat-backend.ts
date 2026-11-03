@@ -14,10 +14,10 @@ import { ModelConnectionsRegistry } from './model-connections';
 import { ChatContextComposer } from './chat-context-composer';
 import { ChatProjectGrounder, type GroundingResult } from './chat-project-grounder';
 import { runChatInvestigationCommand } from './chat-command-broker';
-import { AIRoleRoutingService, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
+import { AIRoleRoutingService, RoleRoutingFailure, exactRoutingProvenance, type RoutedConversationEvent } from './ai-role-routing';
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import { LocalPlanningOutputFailure, allowsPlainGateAnswer, generateTypedRoadmapDraft, localPlanningJson,
-    requestsRoadmapOwnerRevision, roadmapLocalBudget, typedRoadmapDraftInstruction,
+    requestsRoadmapOwnerRevision, roadmapLocalBudget, roadmapMarkerCompletionDiagnostic, typedRoadmapDraftInstruction,
     verifyRoadmapLocalInput, type UntrustedTypedRoadmapCandidate } from './roadmap-local-model';
 import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview,
     type StrategicDraftPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
@@ -1177,6 +1177,7 @@ export class ChatBackend implements ChatService {
         const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
         let output = '';
         let typedCandidate: UntrustedTypedRoadmapCandidate | undefined;
+        let typedModelComplete: Extract<ConversationEvent, { type: 'complete' }> | undefined;
         let actual: ChatModelProvenance = { schemaVersion: 1, connectionId: connection.id,
             modelId: model.id, providerId: connection.providerId, modelLabel: model.label };
         let routingProvenance: RoutingProvenance | undefined;
@@ -1598,19 +1599,18 @@ export class ChatBackend implements ChatService {
                     usage: { tokenMeasurement: 'unavailable' }, finishReason: 'deterministic-intent' };
             })() : typedRoadmap && localRoadmap ? (async function* (backend: ChatBackend) {
                 if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
-                let modelComplete: Extract<ConversationEvent, { type: 'complete' }> | undefined;
                 const source = async function* () {
                     for await (const event of generate()) {
-                        if (event.type === 'complete') modelComplete = event;
+                        if (event.type === 'complete') typedModelComplete = event;
                         if (event.type === 'activity') recordActivity(event.kind, event.text);
                         yield event;
                     }
                 };
                 typedCandidate = await generateTypedRoadmapDraft(source, abort.signal, budget!.maxOutputBytes);
-                if (!modelComplete) throw new Error('Typed Roadmap completion missing');
+                if (!typedModelComplete) throw new Error('Typed Roadmap completion missing');
                 await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
                 const count = typedCandidate.draft.phases.reduce((sum, phase) => sum + phase.gates.length, 0);
-                yield { ...modelComplete, text: `Typed Roadmap draft generated: ${typedCandidate.draft.phases.length} Phases, ` +
+                yield { ...typedModelComplete, text: `Typed Roadmap draft generated: ${typedCandidate.draft.phases.length} Phases, ` +
                     `${count} Gates. Awaiting checked proposal review.` };
             })(this) : nativeRoadmap ? generate() : localRoadmap ? (async function* (backend: ChatBackend) {
                 const guardedGenerate = async function* (retryInstruction?: string) {
@@ -1766,7 +1766,9 @@ export class ChatBackend implements ChatService {
                         await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
                             { schemaVersion: 1, kind: 'roadmap-gate-proposal', refs: proposalRefs,
                                 status: result.proposal ? 'pending' : 'rejected',
-                                ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
+                                ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } :
+                                    typedRoadmap ? { diagnostic: roadmapMarkerCompletionDiagnostic(typedModelComplete,
+                                        budget!.output, model.capabilities.contextWindowTokens!).slice(0, 500) } : {}),
                                 ...(result.proposal ? { proposalId: result.proposal.id, proposal: result.proposal } : {}) });
                     }
                     if (localRoadmap && !nativeRoadmap && !typedRoadmap || publicationIntent) {
@@ -1803,19 +1805,26 @@ export class ChatBackend implements ChatService {
             if (nativeRoadmap || typedRoadmap) this.nativeStages?.forget(key);
             if (this.proposals.get(key)?.messageId === assistant?.id) this.clearProposal(key);
             if (assistant) {
-                if (localRoadmap && error instanceof LocalPlanningOutputFailure && error.rawText)
+                if (localRoadmap && !typedRoadmap && error instanceof LocalPlanningOutputFailure && error.rawText)
                     recordActivity('provisional', error.rawText);
                 const cancelled = abort.signal.aborted || error instanceof ModelRuntimeFailure && error.failureClass === 'cancelled';
                 const storageCode = (error as NodeJS.ErrnoException)?.code;
-                const failure = error instanceof ModelRuntimeFailure ? error.message :
+                const baseFailure = error instanceof ModelRuntimeFailure ? error.message :
+                    typedRoadmap && error instanceof RoleRoutingFailure &&
+                        error.message.startsWith('Local answer did not complete;') ? error.message :
                     storageCode === 'ENOSPC' || storageCode === 'EDQUOT' ? 'Chat storage exhausted during activity capture' :
                     storageCode === 'EIO' ? 'Chat activity storage failed with an I/O error' :
                     error instanceof Error && /^(?:Pi Chat stream backpressure limit exceeded|Pi worker output limit exceeded|Chat activity storage limit reached)$/u.test(error.message) ?
                         error.message : 'Conversation failed';
+                const diagnostic = typedRoadmap ? roadmapMarkerCompletionDiagnostic(typedModelComplete,
+                    budget!.output, model.capabilities.contextWindowTokens!) : undefined;
+                const failure = diagnostic && !cancelled ? `${baseFailure}. ${diagnostic}`.slice(0, 1000) : baseFailure;
                 try { await flushActivity(); } catch { /* Final mutation below still carries the captured snapshot. */ }
                 try { await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: '', activity: activity?.snapshot(),
                     contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
+                    ...(typedModelComplete?.usage ? { tokenUsage: typedModelComplete.usage } : {}),
+                    ...(typedModelComplete?.finishReason ? { finishReason: typedModelComplete.finishReason } : {}),
                     ...(toolEvents.length ? { sourceRefs, toolEvents } : {}),
                     ...(!cancelled ? { failure } : {}) });
                     void this.repository.removeActivityLog(root, key, assistant.id, assistant.execution.id)
@@ -1824,7 +1833,8 @@ export class ChatBackend implements ChatService {
                 if (localRoadmap) try {
                     await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
                         { schemaVersion: 1, kind: cancelled ? 'cancelled' : 'error',
-                            status: cancelled ? 'cancelled' : 'failed', refs: preview.refs });
+                            status: cancelled ? 'cancelled' : 'failed', refs: preview.refs,
+                            ...(diagnostic && !cancelled ? { diagnostic: failure } : {}) });
                 } catch { /* The execution failure remains the authoritative saved outcome. */ }
             }
             throw error;

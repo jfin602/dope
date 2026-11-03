@@ -145,7 +145,10 @@ export class AIRoleRoutingService {
                 attempts.push({ target, outcome: category });
                 if (category === 'cancelled' || !mayFallback || meaningfulOutput ||
                     !['unavailable', 'transient-transport', 'transient-upstream'].includes(category))
-                    throw new RoleRoutingFailure(attempts);
+                    throw new RoleRoutingFailure(attempts, request.localOnly && error instanceof ModelRuntimeFailure &&
+                        error.failureClass === 'incomplete-answer' &&
+                        error.message.startsWith('Local answer did not complete;') ?
+                        error.message.slice(0, 600) : undefined);
             }
         }
         throw new RoleRoutingFailure(attempts);

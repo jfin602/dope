@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
-import type { ConversationMessage, ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
+import type { ConversationMessage, ConversationModelCapabilities, ConversationUsage } from '@dope/contracts/lib/model-runtime';
 import type { StrategicDraftInput } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 
 const SYSTEM_RESERVE = 512;
@@ -107,16 +107,35 @@ const TYPED_DRAFT_MAX_ENTITIES = 64;
 
 export function typedRoadmapDraftInstruction(requiredMechanics: readonly string[] = []): string {
     const requirements = requiredMechanics.length ?
-        ` Give each required mechanic an observable Gate criterion: ${requiredMechanics.join('; ')}.` : '';
-    return 'For a new Roadmap, return exactly one completed compact JSON object, no prose or fences: ' +
-        '{"type":"roadmap-draft","schemaVersion":1,"phases":[{"title":"...","objective":"...",' +
-        '"gates":[{"title":"...","purpose":"...","criteria":[{"title":"...",' +
-        '"expectedResult":"observable behavior"}]}]}]}. ' +
-        'Order 2–12 deliverable Phases; every Phase needs 1–8 Gates and every Gate 1–6 testable Criteria. ' +
-        'At most 48 staging operations (Phases, Gates and explicit dependencies). Optional phase dependsOn is an array of earlier ' +
-        '1-based Phase positions. Include only the shown fields. Do not supply project IDs, revisions, ' +
-        'source hashes, UUIDs, operation IDs, staging batches, approval tokens, status or proof of qualification.' +
+        ` Include an observable C result for each required mechanic: ${requiredMechanics.join('; ')}.` : '';
+    return 'Return one complete Roadmap Markers v1 answer, exactly:\nRM1\n' +
+        'P|Phase title|Phase objective\nG|Gate title|Gate purpose\n' +
+        'C|One observable expected-result sentence\nEND\n' +
+        'Repeat G/C and P groups in delivery order. Use 2–12 Phases, or at least five when requested; ' +
+        '1–8 necessary Gates per Phase and 1–6 distinct testable results per Gate. ' +
+        'Cover every named mechanic without decorative Gates. Dope derives Criterion titles, IDs and internal structure. ' +
+        'No other text, fences, tool calls, literal | in fields, authority values, invented dependencies or claims of verification.' +
         requirements;
+}
+
+/** Bounded, content-free diagnostics for the one-pass marker completion. */
+export function roadmapMarkerCompletionDiagnostic(complete: { text: string; finishReason?: string;
+    usage?: ConversationUsage } | undefined, requestedOutputTokens: number, measuredContextTokens: number): string {
+    const usage = complete?.usage;
+    const reported = usage?.tokenMeasurement === 'provider-reported';
+    const token = (value: number | undefined) => reported && Number.isSafeInteger(value) && value! >= 0 ? value : 'unavailable';
+    const reasoning = token(usage?.reasoningTokens);
+    const final = typeof reasoning === 'number' && typeof token(usage?.outputTokens) === 'number' ?
+        (usage!.outputTokens! - reasoning) : 'unavailable';
+    const finish = complete?.finishReason;
+    const safeFinish = finish && ['stop', 'eos', 'end_turn', 'length'].includes(finish) ? finish :
+        finish ? 'other' : 'unavailable';
+    const hasFinal = complete ? complete.text.length > 0 : false;
+    const ended = complete ? /(?:^|\n)END\r?\n?$/.test(complete.text) : false;
+    return `RM1 completion: requestedOutputTokens=${requestedOutputTokens}, ` +
+        `measuredContextTokens=${measuredContextTokens}, finishReason=${safeFinish}, ` +
+        `completedFinalText=${hasFinal ? 'present' : 'absent'}, markerEND=${ended ? 'yes' : 'no'}, ` +
+        `reasoningTokens=${reasoning}, finalTokens=${final}, totalTokens=${token(usage?.totalTokens)}`;
 }
 
 /** A complete answer is an untrusted candidate, never a canonical Roadmap mutation. */
@@ -345,7 +364,7 @@ export async function generateTypedRoadmapDraft<T extends { type: string; text: 
             return fail('Typed Roadmap draft generation attempted a tool call', '', 'invalid-json');
     }
     if (!complete) return fail('Typed Roadmap draft stream ended without completion', '', 'incomplete-answer');
-    return parseTypedRoadmapDraft(complete.text, complete.finishReason, requiredMechanics, maxOutputBytes);
+    return parseRoadmapMarkers(complete.text, complete.finishReason, requiredMechanics, maxOutputBytes);
 }
 /** The loaded local context is observed by model discovery, never inferred from a model name. */
 export function roadmapLocalBudget(measuredContext: number | undefined, requestedOutput: number,

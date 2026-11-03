@@ -79,6 +79,21 @@ test('Pi stops on changed model, insufficient context and cancellation', async (
     }, /cancelled/);
 });
 
+test('Pi length stop exposes bounded provider usage and marker completion state without output text', async () => {
+    const partial = fixture({ text: 'RM1\nP|Path|Build path', modelId: 'fixture-model', finishReason: 'length',
+        usage: { tokenMeasurement: 'provider-reported', inputTokens: 40, outputTokens: 2002,
+            reasoningTokens: 1800, totalTokens: 2042 } });
+    await assert.rejects(async () => {
+        for await (const _event of piConversation(selection,
+            { messages: [{ role: 'user', content: 'Plan' }], maxOutputTokens: 2048 },
+            bridge as never, partial.factory as never)) { /* no completed answer */ }
+    }, error => {
+        assert.match(String(error), /finishReason=length.*providerMarkerEND=no.*reasoningTokens=1800.*finalTokens=202.*totalTokens=2042/);
+        assert.doesNotMatch(String(error), /P\|Path\|Build path/);
+        return true;
+    });
+});
+
 test('active Pi cancellation stops the worker turn and preserves cancelled status', async () => {
     const controller = new AbortController();
     let released = false;

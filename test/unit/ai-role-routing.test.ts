@@ -70,6 +70,21 @@ test('local planning forwards a transport guard and never authorizes hosted rout
     assert.deepEqual(guards, [{ localOnly: true }]);
 });
 
+test('local-only route keeps bounded Pi length diagnostics without enabling fallback', async () => {
+    const safe = 'Local answer did not complete; finishReason=length, providerFinalText=absent, ' +
+        'reasoningTokens=unavailable, finalTokens=unavailable, totalTokens=unavailable';
+    const base = harness({ preferred: 'a', fallbacks: ['b'], models: [model('a', 'local'), model('b')],
+        scripts: { a: [new ModelRuntimeFailure(safe, 'incomplete-answer')] } });
+    await assert.rejects(base.run({ requestHard: { ...hard(), locality: 'local-only' },
+        hostedProjectDataAuthorized: false, allowFallback: false, localOnly: true }), error => {
+        assert.ok(error instanceof RoleRoutingFailure);
+        assert.match(error.message, /finishReason=length.*totalTokens=unavailable/);
+        assert.deepEqual(error.attempts.map(attempt => attempt.outcome), ['semantic-failure']);
+        return true;
+    });
+    assert.deepEqual(base.calls, ['a']);
+});
+
 async function rejected(run: () => Promise<unknown>, expected: string[]) {
     await assert.rejects(run, error => {
         assert.ok(error instanceof RoleRoutingFailure);
