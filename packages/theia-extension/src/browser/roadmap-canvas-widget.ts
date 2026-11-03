@@ -49,9 +49,13 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
     const [error, setError] = React.useState<string>();
     const [busy, setBusy] = React.useState(false);
     const input = React.useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+    const pencil = React.useRef<HTMLButtonElement>(null);
     React.useEffect(() => { if (editing) input.current?.focus(); }, [editing]);
     React.useEffect(() => { if (!save) setEditing(false); }, [save]);
-    const cancel = () => { setDraft(value); setError(undefined); setEditing(false); };
+    const cancel = () => {
+        setDraft(value); setError(undefined); setEditing(false);
+        requestAnimationFrame(() => pencil.current?.focus());
+    };
     const confirm = async () => {
         if (!save || busy) return;
         if (!draft.trim()) { setError(`${label} is required`); return; }
@@ -68,11 +72,11 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
             React.createElement('label', null, label, multiline ?
                 React.createElement('textarea', { ref: input, value: draft, rows: 3, disabled: busy,
                     onChange: event => setDraft(event.target.value), onKeyDown: event => {
-                        if (event.key === 'Escape') { event.preventDefault(); cancel(); }
+                        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); }
                     } }) : React.createElement('input', { ref: input, value: draft, disabled: busy,
                     onChange: event => setDraft(event.target.value), onKeyDown: event => {
-                        if (event.key === 'Escape') { event.preventDefault(); cancel(); }
-                        if (event.key === 'Enter') { event.preventDefault(); void confirm(); }
+                        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); }
+                        if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); void confirm(); }
                     } })),
             React.createElement('span', { className: 'dope-roadmap-inline-actions' },
                 React.createElement('button', { type: 'button', disabled: busy, onClick: event => {
@@ -83,7 +87,7 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
             error && React.createElement('small', { role: 'alert' }, error)) :
             React.createElement(React.Fragment, null,
                 React.createElement('span', { className: field === 'title' ? 'dope-roadmap-inline-title' : undefined }, value),
-                save && React.createElement('button', { type: 'button', className: 'dope-roadmap-pencil',
+                save && React.createElement('button', { ref: pencil, type: 'button', className: 'dope-roadmap-pencil',
                     title: `Edit ${label}`, 'aria-label': `Edit ${label}`, onClick: event => {
                         event.preventDefault();
                         setDraft(value); setError(undefined); setEditing(true);

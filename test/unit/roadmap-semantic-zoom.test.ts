@@ -69,13 +69,14 @@ test('explicit disclosure reveals only the selected checkpoint prompts and colla
     assert.ok(open.get('fix1')!.y < open.get('correction')!.y);
 });
 
-test('the displayed count follows the same visible graph as prompt disclosure without a Roadmap refresh', () => {
+test('the canvas and implementation summary share one visible graph for prompt disclosure without a Roadmap refresh', () => {
     const widget = readFileSync(resolve(import.meta.dirname,
         '../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts'), 'utf8');
     const render = widget.slice(widget.indexOf('    private render(): void {'), widget.indexOf('    private renderImplementationSummary('));
     const expansion = widget.slice(widget.indexOf('    private setExpansion('), widget.indexOf('    private focusSelection('));
     const next = widget.slice(widget.indexOf('    private nextPrompts('), widget.indexOf('    protected override onAfterAttach('));
-    assert.match(render, /const visible = roadmapVisibleGraph\([\s\S]*?this\.renderFlow\(visible\);[\s\S]*?const displayedCount = visible\.nodes\.length/);
+    assert.match(render, /const visible = roadmapVisibleGraph\([\s\S]*?this\.renderFlow\(visible\);[\s\S]*?this\.renderImplementationSummary\(visible\);/);
+    assert.doesNotMatch(render, /displayed checkpoints/);
     assert.match(expansion, /this\.schedulePresentation\(\);\s*this\.render\(\);/);
     assert.match(next, /this\.schedulePresentation\(\);\s*this\.render\(\);/);
     assert.doesNotMatch(expansion + next, /this\.refresh\(/);
