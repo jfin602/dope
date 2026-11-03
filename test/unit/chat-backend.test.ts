@@ -179,25 +179,77 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('/roadmap preview retains its current owner identity and RM1 creation stages only a proposal', async () => {
+test('/roadmap runs natural plan then locked RM1 conversion in one Chat turn and stages only a proposal', async () => {
     const root = await folder(), repository = new ChatRepository(), roadmapStore = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(roadmapStore);
     const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
         inputsCurrent: async () => false };
-    let sent: { role: string; content: string }[] = [];
+    const natural = `Phase 1 — Path and enemies
+Objective: Build a fixed waypoint path and enemies with health.
+Gate — Enemy motion
+Purpose: Move enemies with health over every waypoint.
+- Enemies traverse every waypoint in order and lose health when hit.
+Phase 2 — Tower combat
+Objective: Build a tower that targets enemies and fires projectiles on cooldowns.
+Gate — Projectile attack
+Purpose: Target enemies and fire one projectile after each cooldown.
+- The tower targets an enemy and fires a projectile after its cooldown.
+Phase 3 — Waves
+Objective: Deliver repeated waves of enemies.
+Gate — Wave advance
+Purpose: Start the next wave after the current one ends.
+- The next wave begins after all current enemies are defeated.
+Phase 4 — Economy
+Objective: Earn currency from kills and spend it on defenses.
+Gate — Buy towers
+Purpose: Purchase towers with earned currency.
+- A kill earns currency and buying a tower deducts its cost.
+Phase 5 — Main tower and defeat
+Objective: Keep main-tower health persistent across waves.
+Gate — Defeat
+Purpose: Persist main-tower health and end play at zero.
+- Main-tower health persists across waves and zero health ends the game.`;
+    const markers = ['RM1',
+        'P|Path and enemies|Build a fixed waypoint path and enemies with health.',
+        'G|Enemy motion|Move enemies with health over every waypoint.',
+        'C|Enemies traverse every waypoint in order and lose health when hit.',
+        'P|Tower combat|Build a tower that targets enemies and fires projectiles on cooldowns.',
+        'G|Projectile attack|Target enemies and fire one projectile after each cooldown.',
+        'C|The tower targets an enemy and fires a projectile after its cooldown.',
+        'P|Waves|Deliver repeated waves of enemies.',
+        'G|Wave advance|Start the next wave after the current one ends.',
+        'C|The next wave begins after all current enemies are defeated.',
+        'P|Economy|Earn currency from kills and spend it on defenses.',
+        'G|Buy towers|Purchase towers with earned currency.',
+        'C|A kill earns currency and buying a tower deducts its cost.',
+        'P|Main tower and defeat|Keep main-tower health persistent across waves.',
+        'G|Defeat|Persist main-tower health and end play at zero.',
+        'C|Main-tower health persists across waves and zero health ends the game.', 'END'].join('\n');
+    const sent: { role: string; content: string }[][] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
             streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } }] }] }),
     async *generate(_selection: unknown, request: { messages: { role: string; content: string }[];
         projectTools?: unknown }) {
-        sent = request.messages;
+        sent.push(request.messages);
         assert.equal(request.projectTools, undefined);
-        yield { type: 'complete' as const, text: [
-            'RM1', 'P|Path|Build a fixed route', 'G|Waypoints|Move enemies through the route',
-            'C|An enemy visits every waypoint in order.', 'P|Combat|Build one tower',
-            'G|Projectile attack|Damage an enemy after cooldown',
-            'C|The tower fires a projectile after its cooldown and damages the target.', 'END'].join('\n'),
-            actualModelId: 'q4', finishReason: 'stop' };
+        if (sent.length === 2) {
+            const saved = (await repository.read(root)).chats[0].messages;
+            assert.equal(saved.length, 2);
+            assert.equal(saved[1].role, 'assistant');
+            if (saved[1].role !== 'assistant') throw new Error('assistant missing');
+            assert.equal(saved[1].execution.status, 'streaming');
+            assert.equal(saved[1].lockedRoadmapPlan?.text, natural);
+            assert.equal(saved[1].lockedRoadmapPlan?.sha256, createHash('sha256').update(natural).digest('hex'));
+            assert.deepEqual(request.messages.map(message => message.role), ['system', 'user']);
+            assert.equal(request.messages[1].content, natural);
+            assert.doesNotMatch(JSON.stringify(request.messages), /\/roadmap|roadmap_stage|previous Chat|strict JSON/);
+        }
+        yield { type: 'complete' as const, text: sent.length === 1 ? natural : markers,
+            actualModelId: 'q4', finishReason: 'stop',
+            usage: { inputTokens: 12, outputTokens: 100, reasoningTokens: 20,
+                tokenMeasurement: 'provider-reported' as const },
+            provenance: { connectionId: 'local', modelId: 'q4', providerId: 'local', modelLabel: 'Q4' } };
     } };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
         new ChatContextComposer({} as never, {} as never, index as never, repository, roadmapStore,
@@ -208,6 +260,10 @@ test('/roadmap preview retains its current owner identity and RM1 creation stage
             operation: { type: 'create-chat', id: chatId, folderPath: '' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!lease.acquired) throw new Error('Lease missing');
+        assert.throws(() => backend.mutate({ projectHandle, expectedRevision: 1, leaseToken: lease.token,
+            operation: { type: 'finish-assistant', chatId, messageId: id(), outcome: 'complete', content: '',
+                planningActivity: { schemaVersion: 1, kind: 'roadmap-gate-proposal', status: 'pending', refs: [] } } }),
+        /Backend-only Roadmap outcome/);
         const content = '/roadmap Create a complete tower-defense Roadmap';
         const selectedModel = { connectionId: 'local', modelId: 'q4' };
         const preview = await backend.previewContext({ projectHandle, chatId, selectedModel,
@@ -218,8 +274,78 @@ test('/roadmap preview retains its current owner identity and RM1 creation stage
             selectedModel, content, context: [] });
         assert.deepEqual(turn.refs.map(ref => ref.kind), ['roadmap']);
         assert.ok(turn.proposal);
-        assert.equal(sent.filter(message => message.role === 'system').length, 1);
-        assert.match(sent[0].content, /Roadmap Markers v1/);
+        assert.equal(sent.length, 2);
+        assert.equal(sent[0].filter(message => message.role === 'system').length, 1);
+        assert.match(sent[0][0].content, /readable implementation Roadmap/);
+        const saved = (await repository.read(root)).chats[0].messages;
+        assert.equal(saved.length, 2);
+        assert.equal(saved[1].role, 'assistant');
+        if (saved[1].role !== 'assistant') throw new Error('assistant missing');
+        assert.equal(saved[1].execution.status, 'complete');
+        assert.equal(saved[1].planningActivity?.status, 'pending');
+        assert.equal(saved[1].lockedRoadmapPlan?.text, natural);
+        assert.deepEqual(saved[1].planningActivity?.proposal?.counts, { phases: 5, gates: 5, criteria: 5 });
+        assert.equal((await roadmapStore.read(root)).revision, 0);
+        await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
+        await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('a malformed second pass retains an inert locked plan and writes no Roadmap', async () => {
+    const root = await folder(), repository = new ChatRepository(), roadmapStore = new RoadmapStore();
+    const greenfield = new RoadmapGreenfield(roadmapStore);
+    const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+        inputsCurrent: async () => false };
+    const natural = `Phase 1 — Path
+Objective: Build a fixed path for enemies.
+Gate — Movement
+Purpose: Move enemies across the path.
+- Enemies cross every waypoint in sequence.
+Phase 2 — Combat
+Objective: Build a basic tower attack.
+Gate — Attack
+Purpose: Damage enemies with a tower.
+- The tower damages one visible enemy when fired.`;
+    let calls = 0;
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
+            streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } }] }] }),
+    async *generate(_selection: unknown, request: { messages: { role: string; content: string }[] }) {
+        calls++;
+        if (calls === 2) {
+            assert.deepEqual(request.messages.map(message => message.role), ['system', 'user']);
+            assert.equal(request.messages[1].content, natural);
+            const saved = (await repository.read(root)).chats[0].messages[1];
+            assert.equal(saved.role, 'assistant');
+            if (saved.role !== 'assistant') throw new Error('assistant missing');
+            assert.equal(saved.execution.status, 'streaming');
+            assert.equal(saved.lockedRoadmapPlan?.text, natural);
+        }
+        yield { type: 'complete' as const, text: calls === 1 ? natural : 'not RM1',
+            actualModelId: 'q4', finishReason: 'stop',
+            usage: { tokenMeasurement: 'unavailable' as const },
+            provenance: { connectionId: 'local', modelId: 'q4', providerId: 'local', modelLabel: 'Q4' } };
+    } };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        new ChatContextComposer({} as never, {} as never, index as never, repository, roadmapStore,
+            undefined, greenfield), undefined, undefined, undefined, greenfield, undefined, roadmapStore);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/roadmap Create a Roadmap for a small puzzle app' }), /RM1/);
+        assert.equal(calls, 2);
+        const messages = (await new ChatRepository().read(root)).chats[0].messages;
+        assert.equal(messages.length, 2);
+        assert.equal(messages[1].role, 'assistant');
+        if (messages[1].role !== 'assistant') throw new Error('assistant missing');
+        assert.equal(messages[1].execution.status, 'failed');
+        assert.equal(messages[1].lockedRoadmapPlan?.text, natural);
+        assert.equal(messages[1].planningActivity?.status, 'failed');
         assert.equal((await roadmapStore.read(root)).revision, 0);
         await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
         await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });

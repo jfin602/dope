@@ -3405,11 +3405,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const responseNotices = document.createElement('div');
         responseNotices.className = 'dope-chat-response-notices';
         responseNotices.setAttribute('aria-label', 'Chat notices and reviews');
-        if (state.running && state.planningProgress?.stage === 'validating' && !state.roadmapStage) {
+        if (state.running && state.planningProgress && !state.roadmapStage) {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';
             progress.setAttribute('role', 'status');
-            progress.textContent = 'Validating local planning result…';
+            progress.textContent = state.planningProgress.stage === 'waiting' ? 'Planning Roadmap…' :
+                state.planningProgress.stage === 'plan-locked' ? 'Natural Roadmap saved…' :
+                state.planningProgress.stage === 'converting' ? 'Converting saved Roadmap…' :
+                'Validating local planning result…';
             responseNotices.append(progress);
         }
         if (state.context.length) {

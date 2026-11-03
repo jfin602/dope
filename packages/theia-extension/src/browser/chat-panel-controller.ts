@@ -97,7 +97,7 @@ export class ChatPanelController {
     runStartedAt?: string;
     stream: { chatId: string; messageId: string; executionId: string; content: string; sequence: number;
         activitySequence: number; events: ChatActivityEvent[] } | undefined;
-    planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
+    planningProgress?: { messageId: string; stage: 'waiting' | 'plan-locked' | 'converting' | 'validating' };
     roadmapGenerationStage?: Extract<import('@dope/chat/lib/service').ChatEvent, { kind: 'planning-progress' }>['stage'];
     roadmapGenerationProjectId?: string;
     roadmapStage?: Extract<ChatEvent, { kind: 'roadmap-stage' }>['snapshot'];
@@ -236,7 +236,8 @@ export class ChatPanelController {
                         return;
                     }
                     if (!this.running || event.chatId !== this.chatId ||
-                        event.stage !== 'waiting' && event.stage !== 'validating' ||
+                        event.stage !== 'waiting' && event.stage !== 'plan-locked' &&
+                        event.stage !== 'converting' && event.stage !== 'validating' ||
                         this.planningProgress?.messageId === event.messageId && this.planningProgress.stage === event.stage) return;
                     this.planningProgress = { messageId: event.messageId, stage: event.stage };
                     this.changed();

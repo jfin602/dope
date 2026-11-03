@@ -11,7 +11,7 @@ const MAX_PLANNING_JSON_BYTES = 32768;
 const EMPTY_NO_ACTION_MESSAGES = new Set(['source-backed answer', 'brief source-backed reason', 'brief reason']);
 
 /** Pass 1 asks for readable planning prose; it grants no Roadmap authority. */
-export const naturalRoadmapPlanInstruction = `Write a complete, readable implementation Roadmap for the user's request. Use ordered Phase 1, Phase 2, ... headings. Under each Phase describe its objective, named Gates, and bullet acceptance checks that someone can observe or test. Keep each Gate and its checks under its owning Phase. Cover every requirement in the request; for a tower-defense game include waypoints, enemy motion and health, tower targeting, projectiles and cooldowns, waves, earned and spent currency, persistent main-tower health, and loss at zero health. Do not write RM1, JSON, operation IDs, source hashes, approvals, tool calls, or implementation code. Finish the full plan in the final answer.`;
+export const naturalRoadmapPlanInstruction = `Write a complete, readable implementation Roadmap for the user's request. Use ordered Phase 1 — Title headings. Under each Phase write one Objective: sentence, then named Gate — Title headings. Under each Gate write one Purpose: sentence and bullet acceptance checks that someone can observe or test. Keep each Gate and its checks under its owning Phase. Cover every requirement in the request; for a tower-defense game include waypoints, enemy motion and health, tower targeting, projectiles and cooldowns, waves, earned and spent currency, persistent main-tower health, and loss at zero health. Do not write RM1, JSON, operation IDs, source hashes, approvals, tool calls, or implementation code. Finish the full plan in the final answer.`;
 
 export interface NaturalRoadmapPlanCheck { complete: boolean; phaseCount: number; gateCount: number;
     acceptanceCount: number; coverageWarnings: string[] }
@@ -60,6 +60,82 @@ export function checkNaturalRoadmapPlan(text: string, finishReason: string | und
         gateCount >= phaseCount && acceptanceCount >= gateCount && warnings.length === 0,
         phaseCount, gateCount, acceptanceCount, coverageWarnings: warnings };
 }
+
+export interface NaturalRoadmapOutline { phases: Array<{ title: string; objective: string;
+    gates: Array<{ title: string; purpose: string; criteria: string[] }> }> }
+const anchor = (value: string): string => value.replace(/\*\*|__|`/gu, '').replace(/\s+/gu, ' ').trim();
+/** A conservative read of natural headings and bullets. Unmapped prose is never silently converted. */
+export function extractNaturalRoadmapOutline(text: string): NaturalRoadmapOutline {
+    const outline: NaturalRoadmapOutline = { phases: [] };
+    let phase: NaturalRoadmapOutline['phases'][number] | undefined;
+    let gate: NaturalRoadmapOutline['phases'][number]['gates'][number] | undefined;
+    const closeGate = () => {
+        if (gate && (!gate.purpose || !gate.criteria.length))
+            throw new LocalPlanningOutputFailure('Natural Gate needs a purpose and acceptance checks', '', 'incomplete-answer');
+    };
+    const closePhase = () => {
+        closeGate();
+        if (phase && (!phase.objective || !phase.gates.length))
+            throw new LocalPlanningOutputFailure('Natural Phase needs an objective and Gate', '', 'incomplete-answer');
+    };
+    for (const raw of text.split(/\r?\n/u)) {
+        const line = raw.trim();
+        if (!line) continue;
+        const phaseHeading = /^(?:#{1,4}\s*)?(?:\*\*)?Phase\s+(\d+)\s*[:.\-–—]\s*(.+?)(?:\*\*)?$/iu.exec(line);
+        if (phaseHeading) {
+            closePhase();
+            if (Number(phaseHeading[1]) !== outline.phases.length + 1)
+                throw new LocalPlanningOutputFailure('Natural Phase order changed', '', 'incomplete-answer');
+            phase = { title: anchor(phaseHeading[2]), objective: '', gates: [] };
+            outline.phases.push(phase); gate = undefined; continue;
+        }
+        const gateHeading = /^(?:#{1,5}\s*)?(?:[-*]\s*)?(?:\*\*)?Gate\s*(?:\d+\s*)?[:.\-–—]\s*(.+?)(?:\*\*)?$/iu.exec(line);
+        if (gateHeading) {
+            closeGate();
+            if (!phase || !phase.objective) throw new LocalPlanningOutputFailure('Natural Gate lacks an owning Phase objective', '', 'incomplete-answer');
+            gate = { title: anchor(gateHeading[1]), purpose: '', criteria: [] };
+            phase.gates.push(gate); continue;
+        }
+        const objective = /^(?:\*\*)?Objective(?:\*\*)?\s*:\s*(.+)$/iu.exec(line);
+        if (objective && phase && !gate && !phase.objective) { phase.objective = anchor(objective[1]); continue; }
+        const purpose = /^(?:\*\*)?Purpose(?:\*\*)?\s*:\s*(.+)$/iu.exec(line);
+        if (purpose && gate && !gate.purpose) { gate.purpose = anchor(purpose[1]); continue; }
+        if (phase && !gate && !phase.objective) { phase.objective = anchor(line); continue; }
+        if (gate && !gate.purpose && !/^[-*]\s/u.test(line)) { gate.purpose = anchor(line); continue; }
+        const criterion = /^[-*]\s+(?:(?:Acceptance|Check|Criterion)\s*[:.\-–—]\s*)?(.+)$/iu.exec(line);
+        if (criterion && gate?.purpose) { gate.criteria.push(anchor(criterion[1])); continue; }
+        throw new LocalPlanningOutputFailure('Natural Roadmap contains text outside an owned Phase, Gate or check', '', 'incomplete-answer');
+    }
+    closePhase();
+    if (outline.phases.length < 2 || outline.phases.length > 12)
+        throw new LocalPlanningOutputFailure('Natural Roadmap needs 2–12 complete Phases', '', 'incomplete-answer');
+    return outline;
+}
+
+/** Exact normalized anchors are a bounded corroboration, not a semantic proof. */
+export function verifyRoadmapConversion(plan: string, candidate: UntrustedTypedRoadmapCandidate): void {
+    const source = extractNaturalRoadmapOutline(plan).phases;
+    const converted = candidate.draft.phases;
+    if (source.length !== converted.length) throw new Error('Roadmap conversion changed Phase count');
+    source.forEach((phase, i) => {
+        const target = converted[i];
+        if (anchor(phase.title) !== anchor(target.title) || anchor(phase.objective) !== anchor(target.objective) ||
+            phase.gates.length !== target.gates.length)
+            throw new Error(`Roadmap conversion changed Phase ${i + 1} or its Gates`);
+        phase.gates.forEach((gate, j) => {
+            const next = target.gates[j];
+            if (anchor(gate.title) !== anchor(next.title) || anchor(gate.purpose) !== anchor(next.purpose) ||
+                gate.criteria.length !== next.criteria.length || gate.criteria.some((criterion, k) =>
+                    anchor(criterion) !== anchor(next.criteria[k].expectedResult)))
+                throw new Error(`Roadmap conversion changed Phase ${i + 1} Gate ${j + 1} or its checks`);
+        });
+    });
+}
+
+export const lockedRoadmapConversionInstruction = 'Transcribe the supplied locked Roadmap into RM1 lines only. ' +
+    'Start RM1; for each Phase in order emit P|exact title|exact objective, each Gate G|exact title|exact purpose, ' +
+    'and each acceptance bullet as C|exact observable sentence. Copy text without paraphrase, omission, addition, or new requirements. ' +
+    'End with END. No reasoning text, JSON, code fences, tools, IDs, source fields, or approval claims.';
 
 export class LocalPlanningOutputFailure extends ModelRuntimeFailure {
     constructor(message: string, readonly rawText: string,

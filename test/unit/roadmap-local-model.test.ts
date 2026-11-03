@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { allowsPlainGateAnswer, generateTypedRoadmapDraft, localPlanningJson, parseStrategicDraft,
-    checkNaturalRoadmapPlan, naturalRoadmapPlanInstruction,
+    checkNaturalRoadmapPlan, extractNaturalRoadmapOutline, naturalRoadmapPlanInstruction,
     parseRoadmapMarkers, parseTypedRoadmapDraft, requestsRoadmapOwnerRevision, roadmapLocalBudget,
     roadmapMarkerCompletionDiagnostic, typedRoadmapDraftInstruction,
-    verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
+    verifyRoadmapConversion, verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
@@ -28,6 +28,27 @@ const markerLines = () => [
     'C|Main tower health persists across waves and zero health ends the game',
     'END'
 ];
+
+test('locked natural outline corroborates every converted Phase, Gate and Criterion anchor', () => {
+    const lines = markerLines();
+    let phase = 0;
+    const natural = lines.slice(1, -1).map(line => {
+        const [kind, first, second] = line.split('|');
+        if (kind === 'P') return `Phase ${++phase} — ${first}\nObjective: ${second}`;
+        if (kind === 'G') return `Gate — ${first}\nPurpose: ${second}`;
+        return `- ${first}`;
+    }).join('\n');
+    assert.equal(extractNaturalRoadmapOutline(natural).phases.length, 5);
+    const candidate = parseRoadmapMarkers(lines.join('\n'), 'stop');
+    assert.doesNotThrow(() => verifyRoadmapConversion(natural, candidate));
+    const omitted = parseRoadmapMarkers(lines.filter(line => line !==
+        'C|Enemies with zero health disappear from the path').join('\n'), 'stop');
+    assert.throws(() => verifyRoadmapConversion(natural, omitted), /checks/);
+    const changed = parseRoadmapMarkers(lines.map(line => line === 'G|Enemy motion|Spawn enemies with health and move them over waypoints' ?
+        'G|Different motion|Spawn enemies with health and move them over waypoints' : line).join('\n'), 'stop');
+    assert.throws(() => verifyRoadmapConversion(natural, changed), /Gate 1/);
+    assert.throws(() => extractNaturalRoadmapOutline(natural + '\nUnmapped requirement'), /outside an owned/);
+});
 
 const naturalPlan = `Phase 1 — Path and enemies
 Objective: Build a waypoint path and enemies with health.

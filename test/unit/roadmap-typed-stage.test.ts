@@ -114,7 +114,7 @@ test('typed staging rejects foreign, competing, cancelled and stale owners witho
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('protected current-turn Chat uses one tool-free typed answer and persists the existing pending proposal', async () => {
+test('protected current-turn Chat locks prose then uses one tool-free conversion and persists the pending proposal', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-typed-chat-'));
     const store = new RoadmapStore(), repository = new ChatRepository();
     const chatId = randomUUID();
@@ -131,12 +131,22 @@ test('protected current-turn Chat uses one tool-free typed answer and persists t
             calls++;
             assert.equal(request.projectTools, undefined);
             assert.equal(request.maxOutputTokens, 4096);
-            assert.match(JSON.stringify(request.messages), /RM1/);
+            if (calls === 1) assert.match(JSON.stringify(request.messages), /readable implementation Roadmap/);
+            else assert.match(JSON.stringify(request.messages), /Transcribe the supplied locked Roadmap into RM1/);
             assert.doesNotMatch(JSON.stringify(request.messages), /"type":"roadmap-draft"/);
             const draft = candidate().draft;
+            const natural = draft.phases.map((phase, at) => [
+                `Phase ${at + 1} — ${phase.title}`, `Objective: ${phase.objective}`,
+                ...phase.gates.flatMap(gate => [
+                    `Gate — ${gate.title}`, `Purpose: ${gate.purpose}`,
+                    ...gate.criteria.map(criterion => `- ${criterion.expectedResult}`)
+                ])
+            ].join('\n')).join('\n');
+            if (calls === 2) assert.equal(request.messages[1].content, natural);
             yield { type: 'complete' as const, actualModelId: 'q4', finishReason: 'stop',
                 usage: { tokenMeasurement: 'unavailable' as const },
-                text: ['RM1', ...draft.phases.flatMap(phase => [
+                provenance: { connectionId: 'local', modelId: 'q4', providerId: 'local', modelLabel: 'Q4' },
+                text: calls === 1 ? natural : ['RM1', ...draft.phases.flatMap(phase => [
                     `P|${phase.title}|${phase.objective}`, ...phase.gates.flatMap(gate => [
                         `G|${gate.title}|${gate.purpose}`,
                         ...gate.criteria.map(criterion => `C|${criterion.expectedResult}`)
@@ -155,8 +165,8 @@ test('protected current-turn Chat uses one tool-free typed answer and persists t
         if (!lease.acquired) throw new Error('Chat lease unavailable');
         const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: 'Create a complete development Roadmap for a tower-defense game.', context: [] });
-        assert.equal(calls, 1);
+            content: 'Create a complete development Roadmap for a sample application.', context: [] });
+        assert.equal(calls, 2);
         assert.ok(result.proposal, result.proposalError);
         assert.equal(result.proposal.operations?.length, 15);
         assert.equal(result.proposal.preview?.totalChanged, 35);
@@ -222,9 +232,9 @@ test('explicit and Interactive marker creation send identical trusted instructio
             if (!lease.acquired) throw new Error('Chat lease unavailable');
             await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
                 ...(following ? {} : { selectedModel: selection }),
-                content: '/roadmap Create a complete tower-defense Roadmap. Do not use tools. ' +
+                content: '/roadmap Create a complete sample application Roadmap. Do not use tools. ' +
                     'Treat "gate.create" and "JSON" as quoted technical terms, not output instructions.',
-                context: [] }), /RM1 line 1/);
+                context: [] }), /Natural Roadmap plan/);
             assert.equal((await store.read(root)).revision, 0);
             await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
         } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
@@ -232,7 +242,7 @@ test('explicit and Interactive marker creation send identical trusted instructio
     assert.equal(outbound.length, 2);
     assert.deepEqual(outbound[0], outbound[1]);
     const trusted = outbound[0].filter(message => message.role === 'system').map(message => message.content);
-    assert.equal(trusted.filter(message => message.includes('Roadmap Markers v1')).length, 1);
+    assert.equal(trusted.filter(message => message.includes('readable implementation Roadmap')).length, 1);
     assert.doesNotMatch(trusted.join('\n'), /roadmap_(?:read|stage)|gate\.create|strict JSON|new:\d|bounded batches/);
 });
 

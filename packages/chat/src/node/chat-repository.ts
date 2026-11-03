@@ -644,6 +644,7 @@ export class ChatRepository {
                                 JSON.stringify(message.activity.events)))
                         throw new Error('Stale or out-of-order Chat activity');
                     messages[at] = parseChatMessage({ ...message, content: operation.content,
+                        ...(operation.planningActivity ? { planningActivity: operation.planningActivity } : {}),
                         ...(operation.activity ? { activity: operation.activity } : {}), execution: {
                         ...message.execution, status: operation.outcome, actualModel: operation.actualModel ?? message.execution.actualModel,
                         routingProvenance: operation.routingProvenance ?? message.execution.routingProvenance,

@@ -1,5 +1,5 @@
 import type { Chat, ChatCollection, ChatColor, ChatContextKind, ChatContextRef, ChatFolderPath, ChatId, ChatMessage,
-    ChatExecution, ChatModelProvenance, ChatModelSelection, ChatSettings } from './index';
+    ChatExecution, ChatModelProvenance, ChatModelSelection, ChatPlanningActivity, ChatSettings } from './index';
 import type { RoutingProvenance } from '@dope/ai';
 import type { ChatExecutionActivity, ChatActivityKind } from './activity';
 
@@ -27,6 +27,7 @@ export type ChatOperation =
     | { type: 'record-assistant-activity'; chatId: ChatId; messageId: string; activity: ChatExecutionActivity }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
         content: string; activity?: ChatExecutionActivity; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;
+        planningActivity?: ChatPlanningActivity;
         contextUsage?: ChatExecution['contextUsage']; tokenUsage?: ChatExecution['tokenUsage'];
         compaction?: ChatExecution['compaction']; finishReason?: string;
         sourceRefs?: ChatExecution['sourceRefs']; toolEvents?: ChatExecution['toolEvents'] };
@@ -103,7 +104,7 @@ export interface ChatCommandPreview { id: string; command: string; project: stri
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;
-        stage: 'waiting' | 'validating' | 'checking-owner' | 'generating-draft' | 'validating-draft' | 'preparing-draft' | 'draft-ready' | 'cancelled' | 'failed' }
+        stage: 'waiting' | 'plan-locked' | 'converting' | 'validating' | 'checking-owner' | 'generating-draft' | 'validating-draft' | 'preparing-draft' | 'draft-ready' | 'cancelled' | 'failed' }
     | { projectHandle: string; kind: 'roadmap-stage'; chatId: ChatId; messageId: string;
         snapshot: ChatRoadmapStageSnapshot | null; reason?: 'cancelled' | 'failed' | 'stale' }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
