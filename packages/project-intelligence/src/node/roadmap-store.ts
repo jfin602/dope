@@ -7,7 +7,7 @@ import { checkedRoadmapDocumentFile, planRoadmapDocumentPatch, publishRoadmapDoc
 import { readRoadmapMappedSections, previewRoadmapDocumentSync, previewRoadmapPendingRecovery } from './roadmap-document-sync';
 import type { RoadmapMappedSection, RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPreview } from './roadmap-document-sync';
 import type { RoadmapDocumentPatch } from './roadmap-document-patch';
-import { gateField, planGateDocumentPatch, previewGateDocumentSync, previewGateDocumentRelink, structureDiagnostics,
+import { gateField, gateIndexStructure, planGateDocumentPatch, previewGateDocumentSync, previewGateDocumentRelink, structureDiagnostics,
     readGateMappedDocument } from './roadmap-gate-document';
 import type { GateDocumentEdit, GateDocumentPatch, GateDocumentSyncPreview, GateDocumentRelinkPreview,
     GateMappedField } from './roadmap-gate-document';
@@ -21,13 +21,17 @@ import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from './ro
 import { RoadmapRevisionArchive } from './roadmap-revision-archive';
 import type { RoadmapRevisionList, RoadmapRevisionRecord } from './roadmap-revision-archive';
 import { autoSyncIndexDigest, journalMatches, overlayAutoSync, prepareAutoSync, publishAutoSync, recoverAutoSyncBackup,
-    readAutoSyncJournal, withAutoSyncIntent, writeAutoSyncJournal } from './roadmap-auto-sync';
+    readAutoSyncJournal, verifyAutoSync, withAutoSyncIntent, writeAutoSyncJournal } from './roadmap-auto-sync';
 import type { RoadmapAutoSyncJournal } from './roadmap-auto-sync';
+import type { RoadmapAutoSyncReconciliationPreview } from './roadmap-auto-sync';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_CHECKPOINTS = 4096;
 const MAX_LINKS = 128;
 const missing = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
+const autoSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const autoSyncInFlight = new Map<string, Promise<RoadmapGateIndex>>();
+const autoSyncReschedule = new Set<string>();
 const revision = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
 const id = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 256 && !/[\x00-\x1f]/.test(value);
 const text = (value: unknown, limit: number): value is string => typeof value === 'string' && value.length <= limit && !value.includes('\0');
@@ -367,7 +371,7 @@ export class RoadmapStore {
     private readonly listeners = new Set<(change: RoadmapChange) => void>();
     private readonly publicationReviews = new Map<string, RoadmapPublicationPreview>();
     private readonly existingLinkReviews = new Map<string, RoadmapExistingLinkPreview>();
-    private readonly scheduledAutoSync = new Set<string>();
+    private readonly reconciliationReviews = new Map<string, RoadmapAutoSyncReconciliationPreview>();
 
     onChange(listener: (change: RoadmapChange) => void): () => void {
         this.listeners.add(listener);
@@ -617,7 +621,7 @@ export class RoadmapStore {
         const mapped = await readGateMappedDocument(root, linked);
         if (mapped.hash !== source.sha256 || mapped.diagnostics.length || mapped.fields.length !== sections.length)
             throw new Error('Gate source changed or mapped sections are ambiguous');
-        linked.lastSynced = { sourceHash: source.sha256, fields: mapped.fields };
+        linked.lastSynced = { sourceHash: source.sha256, fields: mapped.fields, structure: mapped.structure };
         const next: RoadmapGateIndex = { schemaVersion: 2, projectId, projectRoot: root, revision: expectedRevision + 1,
             phases, gates, corrections, linkedDocument: linked };
         return this.saveGateIndex(root, expectedRevision, current.projectId, next);
@@ -1011,18 +1015,33 @@ export class RoadmapStore {
     }
 
     private scheduleAutoSync(root: string): void {
-        if (this.scheduledAutoSync.has(root)) return;
-        this.scheduledAutoSync.add(root);
-        setTimeout(() => {
-            this.scheduledAutoSync.delete(root);
+        if (autoSyncInFlight.has(root)) { autoSyncReschedule.add(root); return; }
+        if (autoSyncTimers.has(root)) return;
+        const timer = setTimeout(() => {
+            autoSyncTimers.delete(root);
             void this.recoverAutoSync(root).catch(error => {
                 if (/Roadmap locked/.test(String(error))) setTimeout(() => this.scheduleAutoSync(root), 100);
             });
         }, 20);
+        autoSyncTimers.set(root, timer);
     }
 
     /** Safe to call after restart or retry. The index intent survives a crash before any side journal write. */
     async recoverAutoSync(root: string): Promise<RoadmapGateIndex> {
+        const timer = autoSyncTimers.get(root);
+        if (timer) { clearTimeout(timer); autoSyncTimers.delete(root); }
+        const existing = autoSyncInFlight.get(root);
+        if (existing) return existing;
+        const work = this.recoverAutoSyncNow(root);
+        autoSyncInFlight.set(root, work);
+        try { return await work; }
+        finally {
+            if (autoSyncInFlight.get(root) === work) autoSyncInFlight.delete(root);
+            if (autoSyncReschedule.delete(root)) this.scheduleAutoSync(root);
+        }
+    }
+
+    private async recoverAutoSyncNow(root: string): Promise<RoadmapGateIndex> {
         const result = await this.locked(root, async () => {
             const bytes = await this.canonicalBytes(root);
             if (!bytes) throw new Error('Roadmap is not initialized');
@@ -1035,9 +1054,13 @@ export class RoadmapStore {
             let journal: RoadmapAutoSyncJournal = journalMatches(index, existing) ? existing! :
                 { version: 1, projectId: index.projectId, intent, status: 'pending' };
             try {
-                await recoverAutoSyncBackup(root, index, journal.targetHash);
+                await recoverAutoSyncBackup(root, index, journal.targetHash, journal.beforeHash);
+                if (journal.status === 'synced' && journal.targetHash && journal.sections && journal.fields) {
+                    await verifyAutoSync(root, index, journal);
+                    return overlayAutoSync(index, journal);
+                }
                 if (!journal.content || !journal.targetHash || !journal.sections || !journal.fields) {
-                    const prepared = await prepareAutoSync(root, index);
+                    const prepared = await prepareAutoSync(root, index, journal.beforeHash);
                     journal = { ...journal, status: 'pending', content: prepared.content,
                         targetHash: prepared.targetHash, sections: prepared.sections, fields: prepared.fields };
                     await writeAutoSyncJournal(root, journal);
@@ -1051,7 +1074,7 @@ export class RoadmapStore {
                 await writeAutoSyncJournal(root, journal);
             } catch (error) {
                 const message = String(error);
-                journal.status = /changed externally|mapping differs|Unsafe|symlink|missing|collision|Stale linked/.test(message) ?
+                journal.status = /changed externally|mapping differs|structure differs|Unsafe|symlink|missing|collision|Stale linked/.test(message) ?
                     'conflict' : 'failed';
                 journal.reason = message.slice(0, 1024);
                 await writeAutoSyncJournal(root, journal);
@@ -1060,6 +1083,65 @@ export class RoadmapStore {
         });
         this.publish({ root, projectId: result.projectId, revision: result.revision, changedIds: [] });
         return result;
+    }
+
+    /** Review only a prose-only external source change against the last verified mapping. */
+    async previewAutoSyncReconciliation(root: string): Promise<RoadmapAutoSyncReconciliationPreview> {
+        const bytes = await this.canonicalBytes(root);
+        if (!bytes) throw new Error('Roadmap is not initialized');
+        const index = parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root);
+        const linked = index.linkedDocument;
+        if (!linked?.syncIntent || linked.projectRoot !== root || linked.projectId !== index.projectId)
+            throw new Error('No pending linked Roadmap synchronization');
+        const preview: RoadmapAutoSyncReconciliationPreview = { approvalId: randomUUID(),
+            projectId: index.projectId, revision: index.revision, path: linked.path,
+            acceptedHash: linked.sourceHash, compatible: false, diagnostics: [] };
+        try {
+            const source = await checkedRoadmapDocumentFile(root, linked.path);
+            preview.externalHash = publicationHash(source.bytes);
+            if (preview.externalHash === linked.sourceHash)
+                preview.diagnostics.push('Source matches the accepted bytes; retry synchronization');
+            else {
+                const prepared = await prepareAutoSync(root, index, preview.externalHash);
+                preview.targetHash = prepared.targetHash;
+                preview.before = prepared.before;
+                preview.after = prepared.content;
+                preview.compatible = true;
+                this.reconciliationReviews.set(preview.approvalId, structuredClone(preview));
+                if (this.reconciliationReviews.size > 32)
+                    this.reconciliationReviews.delete(this.reconciliationReviews.keys().next().value!);
+            }
+        } catch (error) { preview.diagnostics.push(String(error)); }
+        return preview;
+    }
+
+    async applyAutoSyncReconciliation(root: string, preview: RoadmapAutoSyncReconciliationPreview,
+        approved: boolean): Promise<RoadmapGateIndex> {
+        const reviewed = this.reconciliationReviews.get(preview.approvalId);
+        this.reconciliationReviews.delete(preview.approvalId);
+        if (!approved) return this.read<RoadmapGateIndex>(root);
+        if (!reviewed || !preview.compatible || JSON.stringify(reviewed) !== JSON.stringify(preview))
+            throw new Error('Stale or unissued Roadmap reconciliation review');
+        await this.locked(root, async () => {
+            const bytes = await this.canonicalBytes(root);
+            if (!bytes) throw new Error('Roadmap is not initialized');
+            const index = parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root);
+            const linked = index.linkedDocument;
+            if (!linked?.syncIntent || index.projectId !== preview.projectId || index.revision !== preview.revision ||
+                linked.sourceHash !== preview.acceptedHash || linked.path !== preview.path ||
+                linked.syncIntent.indexDigest !== autoSyncIndexDigest(index))
+                throw new Error('Stale Roadmap reconciliation revision');
+            const prepared = await prepareAutoSync(root, index, preview.externalHash);
+            if (prepared.before !== preview.before || prepared.content !== preview.after ||
+                prepared.targetHash !== preview.targetHash || !preview.externalHash)
+                throw new Error('Stale Roadmap reconciliation source or result');
+            const journal: RoadmapAutoSyncJournal = { version: 1, projectId: index.projectId,
+                intent: linked.syncIntent, status: 'pending', beforeHash: preview.externalHash,
+                content: prepared.content, targetHash: prepared.targetHash,
+                sections: prepared.sections, fields: prepared.fields };
+            await writeAutoSyncJournal(root, journal);
+        });
+        return this.recoverAutoSync(root);
     }
 
     private async inspectExistingRoadmapLink(root: string, current: RoadmapGateIndex,
@@ -1128,7 +1210,8 @@ export class RoadmapStore {
                 projectId: current.projectId, projectRoot: root, path: preview.path,
                 sourceHash: preview.sourceHash, publicationIntentHash: intentHash, syncState: 'synced',
                 sections: preview.sections,
-                lastSynced: { sourceHash: preview.sourceHash, fields: preview.fields },
+                lastSynced: { sourceHash: preview.sourceHash, fields: preview.fields,
+                    structure: gateIndexStructure(current) },
             };
             const next: RoadmapGateIndex = { ...current, revision: current.revision + 1,
                 phases: current.phases.map(phase => ({ ...phase, draftAcceptance: 'published' })),
@@ -1195,7 +1278,8 @@ export class RoadmapStore {
             projectId: current.projectId, projectRoot: root, path: pending.path, sourceHash: pending.sourceHash,
             publicationIntentHash: publicationHash(JSON.stringify({ ...generated, approvalId: pending.approvalId })),
             syncState: 'synced', sections: generated.sections,
-            lastSynced: { sourceHash: pending.sourceHash, fields: generated.fields } };
+            lastSynced: { sourceHash: pending.sourceHash, fields: generated.fields,
+                structure: gateIndexStructure(basis) } };
         const mapped = await readGateMappedDocument(root, linked);
         if (mapped.hash !== pending.sourceHash || mapped.diagnostics.length ||
             JSON.stringify(mapped.fields) !== JSON.stringify(generated.fields))
@@ -1309,7 +1393,7 @@ export class RoadmapStore {
                 gate.qualificationStatus = 'stale';
         }
         next.linkedDocument = { ...next.linkedDocument!, sourceHash, syncState: 'synced', pending: undefined,
-            lastSynced: { sourceHash, fields } };
+            lastSynced: { sourceHash, fields, structure: gateIndexStructure(next) } };
         return next;
     }
 

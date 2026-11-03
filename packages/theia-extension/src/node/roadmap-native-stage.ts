@@ -51,6 +51,14 @@ export class RoadmapNativeStageOwner {
             throw new Error('ROADMAP_SOURCE_CHANGED');
     }
     private assert(stage: NativeRoadmapStage, context: Context, index: RoadmapGateIndex): void {
+        // A selected apply can advance the canonical revision before its checked Markdown
+        // projection finishes. Its verified sync changes the source hash without another
+        // Roadmap revision; keep the remaining reviewed operations bound to that revision.
+        if (stage.revision === index.revision && stage.sourceHash !== source(index) &&
+            stage.operations.some(item => item.status === 'Applied') &&
+            index.linkedDocument?.syncState === 'synced' &&
+            index.linkedDocument.lastSynced?.sourceHash === index.linkedDocument.sourceHash)
+            stage.sourceHash = index.linkedDocument.sourceHash;
         if (stage.context.root !== context.root || stage.context.projectId !== context.projectId ||
             stage.context.chatId !== context.chatId || stage.context.turnId !== context.turnId ||
             stage.context.lease !== context.lease || Date.now() >= stage.expires ||

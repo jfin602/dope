@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { link, lstat, open, rename, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { checkedRoadmapDocumentFile, publishRoadmapDocumentPatch } from './roadmap-document-patch';
-import { readGateMappedDocument, structureDiagnostics } from './roadmap-gate-document';
+import { gateField, gateIndexStructure, readGateMappedDocument, structureDiagnostics } from './roadmap-gate-document';
 import { checkedPublicationPath, serializeRoadmapPublication, publicationHash } from './roadmap-publication';
 import { parseGateSource } from './roadmap-import';
 import type { RoadmapGateIndex, RoadmapGateLinkedDocument } from './roadmap-gate-domain';
@@ -16,6 +16,8 @@ export interface RoadmapAutoSyncJournal {
     intent: Intent;
     status: 'pending' | 'syncing' | 'synced' | 'conflict' | 'failed' | 'recoverable';
     targetHash?: string;
+    /** Exact externally edited source accepted by a human review for this intent. */
+    beforeHash?: string;
     content?: string;
     sections?: RoadmapGateLinkedDocument['sections'];
     fields?: GateMappedField[];
@@ -36,6 +38,12 @@ export function autoSyncIndexDigest(index: RoadmapGateIndex): string {
 export function withAutoSyncIntent(index: RoadmapGateIndex): RoadmapGateIndex {
     const linked = index.linkedDocument;
     if (!linked || linked.pending || index.pendingPublication) return index;
+    const basis = linked.lastSynced;
+    if (linked.syncState === 'synced' && basis?.structure && basis.sourceHash === linked.sourceHash &&
+        JSON.stringify(basis.structure) === JSON.stringify(gateIndexStructure(index)) &&
+        basis.fields.length === linked.sections.length && basis.fields.every(field =>
+            JSON.stringify(field) === JSON.stringify(gateField(index, field.kind, field.id))))
+        return index;
     linked.syncState = 'pending-sync';
     delete linked.syncIntent;
     linked.syncIntent = { revision: index.revision, path: linked.path,
@@ -59,6 +67,7 @@ export async function readAutoSyncJournal(root: string): Promise<RoadmapAutoSync
             !/^[a-f0-9]{64}$/.test(value.intent.indexDigest) ||
             !/^[a-f0-9]{64}$/.test(value.intent.expectedSourceHash) ||
             !['pending', 'syncing', 'synced', 'conflict', 'failed', 'recoverable'].includes(value.status) ||
+            value.beforeHash !== undefined && !/^[a-f0-9]{64}$/.test(value.beforeHash) ||
             value.targetHash !== undefined && (!/^[a-f0-9]{64}$/.test(value.targetHash) ||
                 typeof value.content !== 'string' || digest(value.content) !== value.targetHash))
             throw new Error('Corrupt Roadmap sync journal');
@@ -99,7 +108,8 @@ export function overlayAutoSync(index: RoadmapGateIndex, journal: RoadmapAutoSyn
     if (journal!.status === 'synced' && journal!.targetHash && journal!.sections && journal!.fields) {
         linked.sourceHash = journal!.targetHash;
         linked.sections = journal!.sections;
-        linked.lastSynced = { sourceHash: journal!.targetHash, fields: journal!.fields };
+        linked.lastSynced = { sourceHash: journal!.targetHash, fields: journal!.fields,
+            structure: gateIndexStructure(index) };
         linked.syncState = 'synced';
         delete linked.syncIntent;
     } else linked.syncState = journal!.status === 'pending' ? 'pending-sync' : journal!.status;
@@ -108,20 +118,32 @@ export function overlayAutoSync(index: RoadmapGateIndex, journal: RoadmapAutoSyn
 
 interface PreparedSync { content: string; targetHash: string;
     sections: RoadmapGateLinkedDocument['sections']; fields: GateMappedField[]; before: string }
+export interface RoadmapAutoSyncReconciliationPreview {
+    approvalId: string; projectId: string; revision: number; path: string;
+    acceptedHash: string; externalHash?: string; targetHash?: string;
+    compatible: boolean; diagnostics: string[]; before?: string; after?: string;
+}
 
 /** Replace only the mapped grammar. Unmapped prose stays attached to its section, including on moves. */
-export async function prepareAutoSync(root: string, index: RoadmapGateIndex): Promise<PreparedSync> {
+export async function prepareAutoSync(root: string, index: RoadmapGateIndex,
+    reviewedSourceHash?: string): Promise<PreparedSync> {
     const linked = index.linkedDocument;
     if (!linked?.syncIntent || linked.syncIntent.indexDigest !== autoSyncIndexDigest(index))
         throw new Error('Stale Roadmap synchronization revision');
     const source = await checkedRoadmapDocumentFile(root, linked.path);
-    if (digest(source.bytes) !== linked.sourceHash) throw new Error('Linked Markdown changed externally');
+    const actualHash = digest(source.bytes);
+    if (actualHash !== (reviewedSourceHash ?? linked.sourceHash))
+        throw new Error('Linked Markdown changed externally');
     const before = source.bytes.toString('utf8');
     if (!Buffer.from(before).equals(source.bytes)) throw new Error('Unsupported linked Markdown encoding');
     const mapped = await readGateMappedDocument(root, linked);
     if (mapped.diagnostics.length || mapped.missingMetadata.length ||
         !linked.lastSynced || JSON.stringify(mapped.fields) !== JSON.stringify(linked.lastSynced.fields))
         throw new Error('Linked Markdown mapping differs from accepted source');
+    if (actualHash !== linked.sourceHash && (!reviewedSourceHash ||
+        !linked.lastSynced.structure ||
+        JSON.stringify(mapped.structure) !== JSON.stringify(linked.lastSynced.structure)))
+        throw new Error('Linked Markdown structure differs from accepted source');
     const generated = serializeRoadmapPublication(index, linked.path, true);
     const lines = before.split(/\r\n|\n|\r/);
     const owned = new Set<number>();
@@ -206,9 +228,9 @@ export async function publishAutoSync(root: string, index: RoadmapGateIndex,
     const source = await checkedRoadmapDocumentFile(root, linked.path);
     const actual = digest(source.bytes);
     if (actual === journal.targetHash) { await verifyAutoSync(root, index, journal); return; }
-    if (actual !== linked.sourceHash) throw new Error('Linked Markdown changed externally');
+    if (actual !== (journal.beforeHash ?? linked.sourceHash)) throw new Error('Linked Markdown changed externally');
     await publishRoadmapDocumentPatch(root, {
-        path: linked.path, checkpointId: 'automatic-sync', beforeHash: linked.sourceHash,
+        path: linked.path, checkpointId: 'automatic-sync', beforeHash: actual,
         afterHash: journal.targetHash, before: source.bytes.toString('utf8'), after: journal.content,
         changedLines: [], requiresApproval: true });
     await verifyAutoSync(root, index, journal);
@@ -216,7 +238,7 @@ export async function publishAutoSync(root: string, index: RoadmapGateIndex,
 
 /** The source-aware patcher can be interrupted after moving the old file to its backup. */
 export async function recoverAutoSyncBackup(root: string, index: RoadmapGateIndex,
-    targetHash?: string): Promise<void> {
+    targetHash?: string, reviewedSourceHash?: string): Promise<void> {
     const linked = index.linkedDocument!;
     const file = await checkedPublicationPath(root, linked.path);
     const backup = `${file}.dope-pending-backup`;
@@ -232,7 +254,8 @@ export async function recoverAutoSyncBackup(root: string, index: RoadmapGateInde
             throw new Error('Linked Markdown backup changed');
         backupHash = digest(await handle.readFile());
     } finally { await handle.close(); }
-    if (backupHash !== linked.sourceHash) throw new Error('Linked Markdown backup differs from accepted source');
+    const expectedHash = reviewedSourceHash ?? linked.sourceHash;
+    if (backupHash !== expectedHash) throw new Error('Linked Markdown backup differs from accepted source');
     let sourceHash: string | undefined;
     try { sourceHash = digest((await checkedRoadmapDocumentFile(root, linked.path)).bytes); }
     catch (error) { if (!absent(error)) throw error; }
@@ -241,7 +264,7 @@ export async function recoverAutoSyncBackup(root: string, index: RoadmapGateInde
         catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
         sourceHash = digest((await checkedRoadmapDocumentFile(root, linked.path)).bytes);
     }
-    if (sourceHash !== linked.sourceHash && sourceHash !== targetHash)
+    if (sourceHash !== expectedHash && sourceHash !== targetHash)
         throw new Error('Linked Markdown source collision during recovery');
     const parent = await open(dirname(file), 'r');
     try { await parent.sync(); } finally { await parent.close(); }

@@ -1820,6 +1820,31 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 });
                 this.importEntry.append(retry);
             }
+            if (linked.syncState === 'conflict') {
+                const reconcile = document.createElement('button'); reconcile.type = 'button';
+                reconcile.textContent = 'Review external Markdown edits';
+                reconcile.onclick = () => void (async () => {
+                    try {
+                        const review = await this.service.previewAutoSyncReconciliation(uri);
+                        if (!review.compatible || !review.before || !review.after) {
+                            this.sourceError = review.diagnostics.join('; ') || 'External Markdown requires manual conflict review';
+                            this.renderImportEntry(); return;
+                        }
+                        const accepted = window.confirm(`Review Markdown reconciliation for ${review.path}.\n` +
+                            `Roadmap revision ${review.revision}; external SHA-256 ${review.externalHash}; ` +
+                            `result SHA-256 ${review.targetHash}.\n\n` +
+                            `Current Markdown:\n${review.before.slice(0, 12000)}\n\n` +
+                            `Proposed Markdown:\n${review.after.slice(0, 12000)}\n\n` +
+                            'Apply this reviewed result?');
+                        await this.service.applyAutoSyncReconciliation(uri, review, accepted);
+                        await this.refresh();
+                    } catch (error) {
+                        if (this.projectUri === uri) { this.sourceError = `Markdown reconciliation failed: ${String(error)}`;
+                            this.renderImportEntry(); }
+                    }
+                })();
+                this.importEntry.append(reconcile);
+            }
         }
         if (this.openLinkedDocument) {
             const openSource = document.createElement('button'); openSource.type = 'button';

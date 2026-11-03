@@ -1306,7 +1306,7 @@ export class ChatBackend implements ChatService {
                     composed.refs.some(item => item.kind === 'roadmap') ? 'gate' : 'unlinked';
         const nativeRoadmap = localRoadmap && roadmapSkill && localMode === 'gate' && !greenfieldSkill &&
             !!this.nativeStages && !!this.grounder;
-        if (roadmapSkill && !greenfieldSkill && localMode === 'gate' && !nativeRoadmap)
+        if (roadmapSkill && !publicationIntent && !greenfieldSkill && localMode === 'gate' && !nativeRoadmap)
             throw new Error('Protected native Roadmap tools are unavailable; no proposal was staged');
         let eligibleObjective = true;
         if (localRoadmap && localMode !== 'gate' && !draft && !helpTurn && this.planning) {

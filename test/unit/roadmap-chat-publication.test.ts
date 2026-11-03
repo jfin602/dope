@@ -110,5 +110,6 @@ test('protected Chat publish and link share RoadmapStore, require approval and s
             assert.equal(modelCalls, 0, 'typed publication intent does not need a model generation');
             backend.dispose();
         }
-    } finally { for (const root of roots) await rm(root, { recursive: true, force: true }); }
+    } finally { for (const root of roots) await rm(root, {
+        recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });

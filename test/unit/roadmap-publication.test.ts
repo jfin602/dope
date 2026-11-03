@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, open, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -376,6 +376,37 @@ test('linked structural edits synchronize through a durable revision intent and 
     assert.equal(blocked.linkedDocument?.syncState, 'conflict');
     assert.match(await readFile(file, 'utf8'), /Author note outside/);
     assert.equal(blocked.corrections[0].id, 'correction-new');
+    const review = await store.previewAutoSyncReconciliation(root);
+    assert.equal(review.compatible, true, review.diagnostics.join('; '));
+    assert.match(review.after!, /Author note outside/);
+    assert.match(review.after!, /Revised Gate/);
+    const settled = await store.applyAutoSyncReconciliation(root, review, true);
+    assert.equal(settled.linkedDocument?.syncState, 'synced');
+    assert.match(await readFile(file, 'utf8'), /Author note outside/);
+    assert.match(await readFile(file, 'utf8'), /Correction correction-new/);
+    assert.equal((await new RoadmapStore().recoverAutoSync(root)).revision, settled.revision);
+}));
+
+test('reviewed external prose rejects stale approval and structural overlap', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'PLAN.md');
+    await store.applyRoadmapPublication(root, first, true);
+    (store as unknown as { scheduleAutoSync: () => void }).scheduleAutoSync = () => {};
+    const saved = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    await store.mutateGateIndex(root, saved.revision, saved.projectId,
+        { type: 'gate.edit', id: 'gate-1', title: 'Canonical change', purpose: 'Check' });
+    const file = join(root, 'PLAN.md');
+    await writeFile(file, `${first.content}\nIndependent note.\n`);
+    const review = await store.previewAutoSyncReconciliation(root);
+    assert.equal(review.compatible, true, review.diagnostics.join('; '));
+    await writeFile(file, `${first.content}\nAnother independent note.\n`);
+    await assert.rejects(store.applyAutoSyncReconciliation(root, review, true), /changed externally/);
+    const structural = first.content.replace('Dependencies: gate-1', 'Dependencies: none');
+    await writeFile(file, structural);
+    const overlap = await store.previewAutoSyncReconciliation(root);
+    assert.equal(overlap.compatible, false);
+    assert.match(overlap.diagnostics.join(' '), /structure differs/);
+    assert.equal(await readFile(file, 'utf8'), structural);
+    await assert.rejects(store.applyAutoSyncReconciliation(root, overlap, true), /unissued/);
 }));
 
 test('automatic linked sync writes manual and structural changes and survives restart', async () => fixture(async (root, store) => {
@@ -478,4 +509,95 @@ test('deleted file and symlink replacement block automatic sync without rolling 
     const unsafe = await new RoadmapStore().recoverAutoSync(root);
     assert.equal(unsafe.linkedDocument?.syncState, 'conflict');
     assert.equal(await readFile(outside, 'utf8'), 'unrelated\n');
+}));
+
+test('backup collision and permission denial leave the canonical edit pending and source intact', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'PLAN.md');
+    await store.applyRoadmapPublication(root, first, true);
+    (store as unknown as { scheduleAutoSync: () => void }).scheduleAutoSync = () => {};
+    const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    const applied = await store.mutateGateIndex(root, current.revision, current.projectId,
+        { type: 'gate.edit', id: 'gate-1', title: 'Pending after failure', purpose: 'Check' });
+    const file = join(root, 'PLAN.md');
+    const unrelated = join(root, 'unrelated.txt');
+    await writeFile(unrelated, 'keep this\n');
+    const backup = `${file}.dope-pending-backup`;
+    await mkdir(backup);
+    const collision = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(collision.revision, applied.revision);
+    assert.equal(collision.linkedDocument?.syncState, 'conflict');
+    assert.equal(await readFile(file, 'utf8'), first.content);
+    assert.equal(await readFile(unrelated, 'utf8'), 'keep this\n');
+    await rm(backup, { recursive: true });
+    await chmod(root, 0o500);
+    try {
+        const denied = await new RoadmapStore().recoverAutoSync(root);
+        assert.equal(denied.linkedDocument?.syncState, 'failed');
+        assert.equal(await readFile(file, 'utf8'), first.content);
+    } finally { await chmod(root, 0o700); }
+    const recovered = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(recovered.linkedDocument?.syncState, 'synced');
+    assert.match(await readFile(file, 'utf8'), /Pending after failure/);
+    assert.equal(await readFile(unrelated, 'utf8'), 'keep this\n');
+}));
+
+test('partial external source bytes are a conflict and never become an automatic result', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'PLAN.md');
+    await store.applyRoadmapPublication(root, first, true);
+    (store as unknown as { scheduleAutoSync: () => void }).scheduleAutoSync = () => {};
+    const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    await store.mutateGateIndex(root, current.revision, current.projectId,
+        { type: 'gate.edit', id: 'gate-1', title: 'Pending result', purpose: 'Check' });
+    const file = join(root, 'PLAN.md');
+    const partial = first.content.slice(0, Math.floor(first.content.length / 2));
+    await writeFile(file, partial);
+    const blocked = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(blocked.linkedDocument?.syncState, 'conflict');
+    assert.equal(await readFile(file, 'utf8'), partial);
+    assert.equal((await new RoadmapStore().previewAutoSyncReconciliation(root)).compatible, false);
+}));
+
+test('evidence-only canonical revisions do not queue or rewrite unchanged Markdown', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'PLAN.md');
+    await store.applyRoadmapPublication(root, first, true);
+    const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    const file = join(root, 'PLAN.md');
+    const bytes = await readFile(file);
+    const next = await store.mutateGateIndex(root, current.revision, current.projectId,
+        { type: 'gate.blockers', id: 'gate-1', reasons: ['Independent qualification pending'] });
+    assert.equal(next.revision, current.revision + 1);
+    assert.equal(next.linkedDocument?.syncIntent, undefined);
+    assert.deepEqual(await readFile(file), bytes);
+    assert.equal((await new RoadmapStore().read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root))
+        .linkedDocument?.syncState, 'synced');
+}));
+
+test('partial temporary source write fails closed and a restart retries exact bytes', async () => fixture(async (root, store) => {
+    const first = await store.previewRoadmapPublication(root, 'PLAN.md');
+    await store.applyRoadmapPublication(root, first, true);
+    (store as unknown as { scheduleAutoSync: () => void }).scheduleAutoSync = () => {};
+    const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+    const applied = await store.mutateGateIndex(root, current.revision, current.projectId,
+        { type: 'gate.edit', id: 'gate-1', title: 'After partial write', purpose: 'Check' });
+    const prepared = await prepareAutoSync(root, applied);
+    const journal = { version: 1 as const, projectId: applied.projectId, intent: applied.linkedDocument!.syncIntent!,
+        status: 'syncing' as const, content: prepared.content, targetHash: prepared.targetHash,
+        sections: prepared.sections, fields: prepared.fields };
+    const handle = await open(join(root, 'PLAN.md'), 'r');
+    const prototype = Object.getPrototypeOf(handle) as { writeFile: (...args: unknown[]) => Promise<void> };
+    const original = prototype.writeFile;
+    await handle.close();
+    let injected = false;
+    prototype.writeFile = async function (this: { write: (value: string) => Promise<unknown> },
+        ...args: unknown[]): Promise<void> {
+        if (!injected) { injected = true; await this.write('partial'); throw new Error('injected partial write'); }
+        return original.apply(this, args);
+    };
+    try { await assert.rejects(publishAutoSync(root, applied, journal), /injected partial write/); }
+    finally { prototype.writeFile = original; }
+    assert.equal(injected, true);
+    assert.equal(await readFile(join(root, 'PLAN.md'), 'utf8'), first.content);
+    const settled = await new RoadmapStore().recoverAutoSync(root);
+    assert.equal(settled.linkedDocument?.syncState, 'synced');
+    assert.match(await readFile(join(root, 'PLAN.md'), 'utf8'), /After partial write/);
 }));

@@ -5,6 +5,7 @@ import type { RoadmapGateIndex, RoadmapGateLinkedDocument } from './roadmap-gate
 
 export type GateSectionKind = RoadmapGateLinkedDocument['sections'][number]['kind'];
 export interface GateMappedField { kind: GateSectionKind; id: string; title: string; detail: string }
+export type GateMappedStructure = Awaited<ReturnType<typeof readGateMappedDocument>>['structure'];
 export interface GateDocumentEdit { kind: 'phase' | 'gate' | 'criterion'; id: string; sourceHash: string;
     title?: string; detail?: string }
 export interface GateDocumentPatch { path: string; checkpointId: string; beforeHash: string; afterHash: string;
@@ -113,8 +114,8 @@ export async function readGateMappedDocument(root: string, linked: RoadmapGateLi
                 ...(item.criterionId ? { criterionId: item.criterionId } : {}), order: item.order ?? order })) } };
 }
 
-export function structureDiagnostics(index: RoadmapGateIndex, mapped: Awaited<ReturnType<typeof readGateMappedDocument>>): string[] {
-    const expected = { phases: [...index.phases].sort((a, b) => a.order - b.order).map(item => ({
+export function gateIndexStructure(index: RoadmapGateIndex): GateMappedStructure {
+    return { phases: [...index.phases].sort((a, b) => a.order - b.order).map(item => ({
             id: item.id, order: item.order, dependencies: item.dependencies })),
         gates: [...index.gates].sort((a, b) => index.phases.find(p => p.id === a.parentPhaseId)!.order -
             index.phases.find(p => p.id === b.parentPhaseId)!.order || a.order - b.order).map(item => ({
@@ -124,7 +125,9 @@ export function structureDiagnostics(index: RoadmapGateIndex, mapped: Awaited<Re
         corrections: [...index.corrections].sort((a, b) => a.order - b.order).map(item => ({
             id: item.id, parent: item.parent,
             ...(item.criterionId ? { criterionId: item.criterionId } : {}), order: item.order })) };
-    return same(expected, mapped.structure) ? [] : ['Phase, Gate, Criterion or Correction topology differs from accepted Roadmap'];
+}
+export function structureDiagnostics(index: RoadmapGateIndex, mapped: Awaited<ReturnType<typeof readGateMappedDocument>>): string[] {
+    return same(gateIndexStructure(index), mapped.structure) ? [] : ['Phase, Gate, Criterion or Correction topology differs from accepted Roadmap'];
 }
 
 export async function planGateDocumentPatch(root: string, index: RoadmapGateIndex, edit: GateDocumentEdit): Promise<GateDocumentPatch> {

@@ -193,3 +193,111 @@ test('saved Chat retains a native staged Roadmap proposal and validated preview 
         } finally { reloaded.dispose(); }
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
+
+test('linked native Chat subset approval synchronizes Markdown while rejected operations stay inert', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-linked-ai-sync-'));
+    const store = new RoadmapStore(), repository = new ChatRepository();
+    const projectId = randomUUID(), chatId = randomUUID();
+    try {
+        await store.saveGateIndex(root, 0, 'uninitialized', { schemaVersion: 2, projectId,
+            projectRoot: root, revision: 1,
+            phases: [{ id: 'phase-one', projectId, title: 'First Phase', objective: 'Deliver result',
+                order: 0, dependencies: [], implementationStatus: 'unknown', qualificationStatus: 'unknown',
+                draftAcceptance: 'accepted', gateSetCoverage: { status: 'unreviewed' } }],
+            gates: [{ id: 'gate-one', projectId, parentPhaseId: 'phase-one', designation: 'G1',
+                title: 'First Gate', purpose: 'Check result', order: 0, dependencies: [],
+                criteria: [{ id: 'criterion-one', projectId, title: 'Check result',
+                    expectedResult: 'Result visible', order: 0, evidence: [] }],
+                implementationStatus: 'unknown', qualificationStatus: 'unknown', draftAcceptance: 'accepted' }],
+            corrections: [] });
+        const publication = await store.previewRoadmapPublication(root, 'PLAN.md');
+        const linked = await store.applyRoadmapPublication(root, publication, true);
+        const file = join(root, 'PLAN.md');
+        const before = await readFile(file);
+        const composer = new ChatContextComposer({} as never, {} as never,
+            { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+                inputsCurrent: async () => false } as never, repository, store);
+        let generations = 0;
+        const models = { list: async () => ({ connections: [{ id: 'local', ready: true,
+            providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+                capabilities: { conversationalText: true, streaming: true,
+                    contextWindowTokens: 32768, maxInputTokens: 32768 } }] }] }),
+        async *generate(_selection: unknown, request: { projectTools?: {
+            roadmapTools?: boolean; execute(name: string, args: unknown): Promise<string> } }) {
+            assert.equal(request.projectTools?.roadmapTools, true);
+            const basis = JSON.parse(await request.projectTools!.execute('roadmap_read', { version: 1 })) as {
+                revision: number; link: { sourceHash: string } };
+            const numbers = ++generations === 1 ? [2, 3] : [4, 5];
+            await request.projectTools!.execute('roadmap_stage', { version: 1,
+                expectedRevision: basis.revision, expectedSourceHash: basis.link.sourceHash,
+                expectedStage: 1, done: true, actions: numbers.map(number => ({
+                    type: 'gate.create', id: `new:gate${number}`, parentPhaseId: 'phase-one',
+                    designation: `G${number}`, title: `AI Gate ${number}`,
+                    purpose: `Verify ${number}`, criteria: [{ id: `new:criterion${number}`,
+                        title: `Check ${number}`, expectedResult: `Result ${number}` }] })) });
+            yield { type: 'complete' as const, actualModelId: 'q4', text: 'Two Gates staged for review.' };
+        } };
+        const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+            composer, undefined, { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
+            undefined, undefined, undefined, store);
+        try {
+            const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+            await backend.mutate({ projectHandle, expectedRevision: 0,
+                operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+            const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+            if (!lease.acquired) throw new Error('Chat lease unavailable');
+            const turn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                selectedModel: { connectionId: 'local', modelId: 'q4' },
+                content: '/roadmap Add two Gates for the first Phase.',
+                context: [{ kind: 'roadmap', id: 'roadmap', projectId,
+                    ownerRevision: linked.revision, sourceHash: linked.linkedDocument!.sourceHash }] });
+            assert.ok(turn.proposal, turn.proposalError);
+            assert.deepEqual(await readFile(file), before);
+            const [first, second] = turn.proposal.operations!.map(item => item.id);
+            const review = await backend.reviewNativeRoadmap(projectHandle, chatId, lease.token,
+                turn.proposal.id, [first], 'apply');
+            const result = await backend.decideNativeRoadmap(projectHandle, chatId, lease.token,
+                turn.proposal.id, [first], 'apply', review.token);
+            assert.ok(result.revision && result.revision > linked.revision);
+            const settled = await new RoadmapStore().recoverAutoSync(root);
+            assert.equal(settled.linkedDocument?.syncState, 'synced');
+            assert.match(await readFile(file, 'utf8'), /AI Gate 2/);
+            assert.doesNotMatch(await readFile(file, 'utf8'), /AI Gate 3/);
+            const acceptedBytes = await readFile(file);
+            const reject = await backend.reviewNativeRoadmap(projectHandle, chatId, lease.token,
+                turn.proposal.id, [second], 'reject');
+            await backend.decideNativeRoadmap(projectHandle, chatId, lease.token,
+                turn.proposal.id, [second], 'reject', reject.token);
+            assert.deepEqual(await readFile(file), acceptedBytes);
+            const current = await store.read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root);
+            const staleTurn = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                selectedModel: { connectionId: 'local', modelId: 'q4' },
+                content: '/roadmap Propose two more Gates for the first Phase.',
+                context: [{ kind: 'roadmap', id: 'roadmap', projectId,
+                    ownerRevision: current.revision, sourceHash: current.linkedDocument!.sourceHash }] });
+            assert.ok(staleTurn.proposal, staleTurn.proposalError);
+            const staleIds = staleTurn.proposal.operations!.map(item => item.id);
+            const staleReview = await backend.reviewNativeRoadmap(projectHandle, chatId, lease.token,
+                staleTurn.proposal.id, [staleIds[0]], 'apply');
+            const independent = await store.mutateGateIndex(root, current.revision, projectId,
+                { type: 'phase.edit', id: 'phase-one', title: 'Independently revised Phase',
+                    objective: 'Deliver result' });
+            await new RoadmapStore().recoverAutoSync(root);
+            const independentBytes = await readFile(file);
+            await assert.rejects(backend.decideNativeRoadmap(projectHandle, chatId, lease.token,
+                staleTurn.proposal.id, [staleIds[0]], 'apply', staleReview.token), /STALE|NOT_SYNCED/);
+            assert.deepEqual(await readFile(file), independentBytes);
+            assert.equal((await store.read(root)).revision, independent.revision);
+            const reopened = new ChatBackend(new ChatRepository(), { notifyChatEvent() {} });
+            try {
+                const attached = await reopened.attach(pathToFileURL(root).href);
+                const chat = await reopened.get(attached.projectHandle, chatId);
+                assert.ok(chat?.messages.some(item => item.role === 'assistant' &&
+                    item.planningActivity?.proposalId === turn.proposal!.id &&
+                    item.planningActivity?.status === 'applied'));
+            } finally { reopened.dispose(); }
+            assert.equal((await new RoadmapStore().read<import('../../packages/project-intelligence/lib/node/roadmap-gate-domain.js').RoadmapGateIndex>(root))
+                .linkedDocument?.syncState, 'synced');
+        } finally { backend.dispose(); }
+    } finally { await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
+});

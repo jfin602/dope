@@ -184,7 +184,12 @@ export interface RoadmapGateLinkedDocument {
     publicationIntentHash?: string;
     sections: { sectionKey: string; kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string }[];
     lastSynced?: { sourceHash: string; fields: { kind: 'phase' | 'gate' | 'criterion' | 'correction'; id: string;
-        title: string; detail: string }[] };
+        title: string; detail: string }[]; structure?: {
+        phases: { id: string; order: number; dependencies: string[] }[];
+        gates: { id: string; parentPhaseId: string; designation: string; order: number;
+            dependencies: string[]; criteria: string[] }[];
+        corrections: { id: string; parent: { kind: 'phase' | 'gate'; id: string };
+            criterionId?: string; order: number }[] } };
     pending?: { basisRevision: number; beforeHash: string; afterHash: string; edit: { kind: 'phase' | 'gate' | 'criterion';
         id: string; title?: string; detail?: string }; outcome: 'prepared' | 'document-written' | 'conflict' };
 }
@@ -434,13 +439,33 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
         }
         if (linked.lastSynced !== undefined) {
             const basis = linked.lastSynced;
-            assertion(record(basis) && keys(basis, ['sourceHash', 'fields']) && hash(basis.sourceHash) &&
+            assertion(record(basis) && keys(basis, ['sourceHash', 'fields'], ['structure']) && hash(basis.sourceHash) &&
                 Array.isArray(basis.fields) && basis.fields.length === sections.length &&
                 basis.fields.every((field: unknown) => record(field) && keys(field, ['kind', 'id', 'title', 'detail']) &&
                     member(field.kind, ['phase', 'gate', 'criterion', 'correction']) && identifier(field.id) &&
                     prose(field.title, 512) && typeof field.detail === 'string' && field.detail.length <= 8192 &&
                     sections.some(section => section.id === field.id && section.kind === field.kind)) &&
                 new Set(basis.fields.map((field: { id: string }) => field.id)).size === sections.length, 'linked basis');
+            if (basis.structure !== undefined) {
+                const shape = basis.structure;
+                assertion(record(shape) && keys(shape, ['phases', 'gates', 'corrections']) &&
+                    (['phases', 'gates', 'corrections'] as const).every(name => Array.isArray(shape[name]) &&
+                        shape[name].length <= MAX_ENTITIES) &&
+                    shape.phases.every((item: unknown) => record(item) && keys(item, ['id', 'order', 'dependencies']) &&
+                        identifier(item.id) && natural(item.order) && Array.isArray(item.dependencies) &&
+                        item.dependencies.every(identifier)) &&
+                    shape.gates.every((item: unknown) => record(item) &&
+                        keys(item, ['id', 'parentPhaseId', 'designation', 'order', 'dependencies', 'criteria']) &&
+                        identifier(item.id) && identifier(item.parentPhaseId) && identifier(item.designation) &&
+                        natural(item.order) && Array.isArray(item.dependencies) && item.dependencies.every(identifier) &&
+                        Array.isArray(item.criteria) && item.criteria.every(identifier)) &&
+                    shape.corrections.every((item: unknown) => record(item) &&
+                        keys(item, ['id', 'parent', 'order'], ['criterionId']) && identifier(item.id) &&
+                        record(item.parent) && keys(item.parent, ['kind', 'id']) &&
+                        member(item.parent.kind, ['phase', 'gate']) && identifier(item.parent.id) &&
+                        (item.criterionId === undefined || identifier(item.criterionId)) && natural(item.order)),
+                'linked basis structure');
+            }
         }
         if (linked.pending !== undefined) {
             const pending = linked.pending;
