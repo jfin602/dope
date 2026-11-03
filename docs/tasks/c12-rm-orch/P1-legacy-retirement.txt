@@ -1,0 +1,37 @@
+TASK: Correction 12 / P1 — retire obsolete Roadmap generation routes
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Soft target <=8 minutes; hard stop 15 minutes per bounded runner step. Report NOT GREEN/STOP with facts if safety or scope cannot be achieved.
+- Existing runner owns commits and the verified checkpoint. Do NOT self-commit, bump version, run overlapping stacks or start a live local-model/browser qualification.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Check actual local package manifest and existing runner before editing; fail safely on mismatch.
+
+PREFLIGHT / AUTHORITY
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047/0048/0049, docs/planning/p12/roadmap-phase-orchestration-contract.md, c12-rm-orch README/assessment/plan, prior Pn outcome, actual source/tests.
+- Verify local git HEAD/branch/status/diff and all nine reported uncommitted D2 files if present. Remote documentation is not local proof. No reset/stash/clean, force push, overwriting owner's tower-defense project, discarding changes, or unsafe automatic migration.
+- Reuse existing trusted schema-2 RoadmapStore/Service, ProjectPlanningActions, Pi broker/Ask-Allow, protected /roadmap permission, single noncanonical proposal/lease/source owner, granular canvas review, linked Markdown sync, History and independent qualification. No second writer, arbitrary model shell/filesystem, silent provider/model switch or model self-Apply.
+- Use disposable fixtures. Test relevant changed packages with focused suites/builds, capture exact counts and no-write bytes/hashes. A matching commit is not a qualification receipt.
+
+PREREQUISITE
+- This stack is approved for docs; execution requires explicit owner Run. If local D2 dirty changes cannot be safely reconciled, STOP, show exact files/conflicts; do not destroy them.
+
+OBJECTIVE
+- Make every old greenfield generation method unreachable with **no compatibility fallback**, while retaining the real protected native proposal/service infrastructure.
+
+IMPLEMENT
+1. Trace actual greenfield entry through Chat/backend/Pi. Inventory legacy natural full-plan response parsing, strict whole-plan JSON, RM1 parser/prompt, locked natural-text + converter second call, model-controlled default multi-batch greenfield choreography, fallbacks, feature switches, UI completion hooks, and their exclusive tests. Classify every dependency as obsolete generator, shared authoritative staging/Apply/service, historical artifact reader or unrelated text/Markdown import.
+2. Remove obsolete generator implementations, dispatch branches, prompt/templates, providers' legacy greenfield selections, flags and exclusive tests. Remove dead imports/calls. Do **not** remove general typed native small edits, staged candidate/proposal validation, current project permissions or readability of saved historical outputs.
+3. Replace old generation trigger with **one deliberate fail-closed "new controller not yet ready" seam** for P2/P3, without calling any old formatter or attempting any source write. Keep ordinary read-only Chat and manual Roadmap editing.
+4. Add source tests proving no remaining public/runtime route can invoke full-plan prose parsing, RM1, typed monolith, two-pass conversion or legacy staging. Reject old persisted in-flight completions; historic inert Chat text stays readable. Inventory residual symbols for P6 final exhaustive check without treating them as permitted fallbacks.
+
+QUALIFY
+- Call old routes/flags/late D2 converter events: explicit unavailable/no-write, not silently continued.
+- Manual single-field typed staging/preview/approval and existing accepted Roadmaps remain intact; no project/Markdown/History writes from disabled greenfield path.
+- Exact git diff, changed file inventory, focused tests/typechecks, no-write assertion and remaining safety blockers.
+
+EXIT
+- P1 source-verified only when old generator code is removed/unreachable and shared authoritative paths remain usable. Temporary explicit unavailability is expected until P3. No P2 unless P1 safe. STOP on missing/ambiguous source ownership.
