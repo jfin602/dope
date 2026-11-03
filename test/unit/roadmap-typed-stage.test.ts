@@ -182,6 +182,60 @@ test('protected current-turn Chat uses one tool-free typed answer and persists t
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
+test('explicit and Interactive marker creation send identical trusted instructions without legacy history or tools', async () => {
+    const outbound: { role: string; content: string }[][] = [];
+    for (const following of [false, true]) {
+        const root = await mkdtemp(join(tmpdir(), 'dope-marker-prompt-'));
+        const store = new RoadmapStore(), repository = new ChatRepository(), chatId = randomUUID();
+        const composer = new ChatContextComposer({} as never, {} as never,
+            { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
+                inputsCurrent: async () => false } as never, repository, store);
+        const model = { id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
+            streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } };
+        const selection = { connectionId: 'local', modelId: 'q4' };
+        const models = { list: async () => ({ connections: [{ id: 'local', ready: true,
+            providerId: 'local', models: [model] }] }),
+            async *generate(_selection: unknown, request: { messages: { role: string; content: string }[];
+                projectTools?: unknown }) {
+                assert.equal(request.projectTools, undefined);
+                outbound.push(request.messages);
+                yield { type: 'complete' as const, text: 'obsolete JSON', finishReason: 'stop' };
+            } };
+        const routing = { resolve: async () => ({ resolution: { selectedTarget: selection },
+            inventory: { models: [{ connectionId: 'local', providerModelKey: 'q4', locality: 'local' }] } }),
+            async *generate(request: { conversation(target: typeof selection): Promise<{
+                messages: { role: string; content: string }[]; projectTools?: unknown }> }) {
+                const turn = await request.conversation(selection);
+                assert.equal(turn.projectTools, undefined);
+                outbound.push(turn.messages);
+                yield { type: 'complete' as const, text: 'obsolete JSON', finishReason: 'stop' };
+            } };
+        const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+            composer, routing as never, { ground: async () => ({ blocks: [], diagnostics: [] }) } as never,
+            undefined, undefined, undefined, store);
+        try {
+            const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+            await backend.mutate({ projectHandle, expectedRevision: 0,
+                operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Marker prompt' } });
+            const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+            assert.equal(lease.acquired, true);
+            if (!lease.acquired) throw new Error('Chat lease unavailable');
+            await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                ...(following ? {} : { selectedModel: selection }),
+                content: '/roadmap Create a complete tower-defense Roadmap. Do not use tools. ' +
+                    'Treat "gate.create" and "JSON" as quoted technical terms, not output instructions.',
+                context: [] }), /RM1 line 1/);
+            assert.equal((await store.read(root)).revision, 0);
+            await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
+        } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    }
+    assert.equal(outbound.length, 2);
+    assert.deepEqual(outbound[0], outbound[1]);
+    const trusted = outbound[0].filter(message => message.role === 'system').map(message => message.content);
+    assert.equal(trusted.filter(message => message.includes('Roadmap Markers v1')).length, 1);
+    assert.doesNotMatch(trusted.join('\n'), /roadmap_(?:read|stage)|gate\.create|strict JSON|new:\d|bounded batches/);
+});
+
 test('protected marker failures save bounded diagnostics without a proposal or Roadmap write', async () => {
     for (const mode of ['missing-end', 'length', 'reasoning-only', 'oversized'] as const) {
         const root = await mkdtemp(join(tmpdir(), `dope-marker-${mode}-`));

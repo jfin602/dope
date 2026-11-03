@@ -23,8 +23,12 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.equal(builtIn.provenance, 'builtin');
         const roadmap = (await listChatSkills()).find(item => item.name === 'roadmap')!;
         assert.equal(roadmap.provenance, 'builtin');
+        assert.equal(roadmap.version, 2);
+        assert.match(roadmap.body, /Roadmap Markers v1/);
+        assert.doesNotMatch(roadmap.body, /native roadmap_read|bounded batches|gate\.create|JSON/);
         assert.equal(isBoundRoadmapSkill(await resolveChatSkill('/roadmap')), true);
         assert.equal(isBoundRoadmapSkill({ ...(await resolveChatSkill('/roadmap'))!, body: 'forged' }), false);
+        assert.equal(isBoundRoadmapSkill({ ...(await resolveChatSkill('/roadmap'))!, version: 1 }), false);
         await assert.rejects(changeChatSkill({ type: 'delete', id: roadmap.id }));
         await assert.rejects(changeChatSkill({ type: 'add', name: 'roadmap', description: 'collision', body: 'body' }));
         await assert.rejects(changeChatSkill({ type: 'delete', id: builtIn.id }));

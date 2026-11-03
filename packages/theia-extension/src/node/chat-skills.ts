@@ -13,8 +13,8 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     enabled: true, provenance: 'builtin', version: 1 },
 { id: 'builtin:roadmap', name: 'roadmap', title: 'Roadmap',
     description: 'Discuss Roadmap work, create a reviewed draft, or propose a reviewed change.',
-    body: 'Use the verified project state and native roadmap_read, roadmap_stage and roadmap_cancel tools for Roadmap creation or changes. On an uninitialized Roadmap, stage a complete Phase, Gate and observable Criterion graph in bounded batches; the developer reviews it before the first canonical revision. For read-only questions, answer without staging. Ask one precise question when required facts are missing. Never turn final response text into a Roadmap mutation, claim an unapproved change, invent evidence or Green status, write Markdown, or run Work.',
-    enabled: true, provenance: 'builtin', version: 1 }];
+    body: 'For a new Roadmap, follow the Roadmap Markers v1 instruction supplied for this turn: one RM1 answer with P, G and C records ending in END. Dope derives internal titles and IDs and stages a proposal for developer review. For changes to an existing Roadmap, use the authorized native Roadmap tools and current verified project state. For read-only questions, answer without staging. Ask one precise question when required facts are missing. Never claim an unapproved change, invent evidence or Green status, write Markdown, or run Work.',
+    enabled: true, provenance: 'builtin', version: 2 }];
 let serial = Promise.resolve();
 
 export function validateSkill(name: string, description: string, body: string, title = name): void {

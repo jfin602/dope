@@ -194,6 +194,15 @@ export class ChatBackend implements ChatService {
         return draft ? [{ role: 'system' as const, content: draft.text }, ...messages] : messages;
     }
 
+    private markerCreationMessages(messages: readonly ConversationMessage[]): readonly ConversationMessage[] {
+        const trusted = messages.filter(message => message.role === 'system').map(message => message.content);
+        if (trusted.length !== 1 ||
+            !trusted[0].startsWith('Return one complete Roadmap Markers v1 answer, exactly:\nRM1\n') ||
+            trusted.some(instruction => /roadmap_(?:read|stage|cancel)|gate\.create|new:\d|strict JSON|JSON object|bounded batches|typed Phase, Gate/i.test(instruction)))
+            throw new Error('Conflicting trusted Roadmap creation instructions; no model request sent');
+        return messages;
+    }
+
     private async roadmapOpportunity(root: string, content: string, ordinary: boolean): Promise<string | undefined> {
         if (!ordinary || !/\b(?:roadmap|milestone|plan|planning|start|begin|build|create|design|architecture)\b/i.test(content))
             return undefined;
@@ -249,15 +258,20 @@ export class ChatBackend implements ChatService {
     private async composeTurn(root: string, chat: Chat, content: string, context: ChatContextSelection[],
         model: ConversationModelCapabilities, budget?: ReturnType<typeof roadmapLocalBudget>,
         draft?: { text: string }, grounding?: GroundingResult, bridgeMode = false,
-        opportunity?: string, piMode = false, roadmapSkill = false, nativeRoadmap = false) {
+        opportunity?: string, piMode = false, roadmapSkill = false,
+        roadmapPromptMode: 'ordinary' | 'native-roadmap-edit' | 'greenfield-roadmap-markers' = 'ordinary') {
+        const markerCreation = roadmapPromptMode === 'greenfield-roadmap-markers';
+        const nativeRoadmap = roadmapPromptMode !== 'ordinary';
         const capabilities = planningComposerCapabilities(model, budget, draft);
         let inputTokens = capabilities.maxInputTokens;
         for (let attempt = 0; attempt < 4; attempt++) {
             const composed = await this.composer!.compose(root, chat, content, context,
                 inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding,
-                !!budget, bridgeMode, opportunity, piMode, roadmapSkill, nativeRoadmap);
+                !!budget, bridgeMode, opportunity, piMode, roadmapSkill, nativeRoadmap, markerCreation);
             if (!budget) return composed;
-            const bytes = Buffer.byteLength(JSON.stringify(this.withDraft(composed.messages, draft)), 'utf8');
+            const messages = this.withDraft(composed.messages, draft);
+            if (markerCreation) this.markerCreationMessages(messages);
+            const bytes = Buffer.byteLength(JSON.stringify(messages), 'utf8');
             if (bytes <= budget.inputBytes) {
                 verifyRoadmapLocalInput(this.withDraft(composed.messages, draft), budget);
                 return composed;
@@ -1005,7 +1019,7 @@ export class ChatBackend implements ChatService {
         const initialNative = roadmapSkill && !greenfieldSkill &&
             (await this.roadmapStore?.read<RoadmapGateIndex>(root))?.revision === 0;
         const typedRoadmap = !!initialNative &&
-            nativeRoadmapCreation(content.replace(/^\/roadmap\s+/i, '')) && !forbidsProjectTools(content);
+            nativeRoadmapCreation(content.replace(/^\/roadmap\s+/i, ''));
         if (greenfieldSkill && publicationIntent) throw new Error('Accept a Roadmap before publishing it');
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}` : undefined;
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
@@ -1019,9 +1033,9 @@ export class ChatBackend implements ChatService {
                 item.ownerRevision === bridgeSelection.roadmapRevision).length !== 1))
             throw new Error('Bridge proposal requires one current selected checkpoint and a Planning owner');
         const bridge = bridgeSelection ? await BridgeLocalProposal.prepare(this.bridgePlanning!, root, bridgeSelection) : undefined;
-        const roadmapTurn = selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') ||
+        const roadmapTurn = typedRoadmap || selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') ||
             !!draft || helpTurn || !!bridge;
-        const opportunity = await this.roadmapOpportunity(root, content, !roadmapTurn &&
+        const opportunity = typedRoadmap ? undefined : await this.roadmapOpportunity(root, content, !roadmapTurn &&
             !selections.some(item => item.kind === 'planning-map'));
         if (request.planningSteps !== undefined && (![2, 3].includes(request.planningSteps) ||
             !roadmapTurn || helpTurn || !draft &&
@@ -1029,7 +1043,8 @@ export class ChatBackend implements ChatService {
             throw new Error('Small-step planning requires a bound draft or one unlinked Roadmap checkpoint and a cap of two or three');
         const planningPrompt = publicationIntent ? { text: 'This protected turn requests a deterministic Roadmap Markdown review. Do not write files, call tools, or claim publication. Reply in one short sentence that a backend review will be prepared.' } :
             typedRoadmap ? { text: typedRoadmapDraftInstruction() } :
-            roadmapSkill && !greenfieldSkill ? { text: `${initialNative ? 'The canonical Roadmap is uninitialized. Build the requested complete, project-specific Roadmap as typed Phase, Gate and observable Criterion operations. Cover every stated requirement; use meaningful objectives, scoped Gates, and only necessary dependencies. Do not invent deadlines or unsupported facts. ' : 'For accepted Roadmap changes, '}Use roadmap_read before roadmap_stage. Dope retains the trusted source and revision from that read; do not supply either field in stage calls. Stage typed operations in ordered batches of at most eight with expectedStage starting at 1. Use new: aliases across batches. Set done true only on the final batch. Use strategy phase-only only for an intentional phase-only draft; otherwise include complete Gates and observable Criteria. The server validates the stage for a preview. Do not emit mutation JSON in your final answer or claim an applied change. For read-only questions, answer without staging.` } :
+            initialNative ? { text: 'The Roadmap is uninitialized. Answer read-only questions without staging or claiming a Roadmap was created. If creation was requested but the intent is unclear, ask one precise question.' } :
+            roadmapSkill && !greenfieldSkill ? { text: 'For accepted Roadmap changes, use roadmap_read before roadmap_stage. Dope retains the trusted source and revision from that read; do not supply either field in stage calls. Stage typed operations in ordered batches of at most eight with expectedStage starting at 1. Use new: aliases across batches. Set done true only on the final batch. Include complete Gates and observable Criteria for structural edits. The server validates the stage for a preview. Do not emit mutation JSON in your final answer or claim an applied change. For read-only questions, answer without staging.' } :
             bridge ? { text: bridge.instruction } : draft ?? (request.planningSteps ? { text:
             `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
             'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
@@ -1058,6 +1073,8 @@ export class ChatBackend implements ChatService {
         const connection = (await this.models.list()).connections.find(item => item.id === selectedModel.connectionId);
         const model = connection?.ready && connection.models.find(item => item.id === selectedModel.modelId && item.usable);
         if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
+        if (typedRoadmap && connection.providerId !== 'local')
+            throw new Error('New Roadmap marker creation requires a selected local model');
         if ((draft || bridge) && connection.providerId !== 'local') throw new Error('Planning requires a selected local model');
         if (connection.providerId !== 'local' && request.hostedProjectDataAuthorized !== true)
             throw new Error('Chat hosted project-data confirmation required');
@@ -1083,13 +1100,16 @@ export class ChatBackend implements ChatService {
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
         if (priorRefs && !sameAutomaticEvidence(grounding, priorRefs))
             throw new Error('Retry project evidence changed or is stale; start a fresh turn');
-        const nativeCandidate = roadmapSkill && !greenfieldSkill && connection.providerId === 'local' && !publicationIntent;
+        const nativeCandidate = roadmapSkill && !greenfieldSkill && connection.providerId === 'local' &&
+            !publicationIntent && (typedRoadmap || !initialNative);
+        const roadmapPromptMode = typedRoadmap ? 'greenfield-roadmap-markers' as const :
+            nativeCandidate ? 'native-roadmap-edit' as const : 'ordinary' as const;
         const turnPrompt = nativeCandidate ? planningPrompt : skillInstruction ?
             { text: planningPrompt ? `${planningPrompt.text}\n\n${skillInstruction}` : skillInstruction } : planningPrompt;
         const composed = await this.composeTurn(root, contextChat, content, selections,
             model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local', roadmapSkill,
-            nativeCandidate);
+            roadmapPromptMode);
         if (bridge) composed.refs.push(bridge.reference);
         if (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
@@ -1104,7 +1124,7 @@ export class ChatBackend implements ChatService {
             !nativeRoadmap && !(typedRoadmap && localRoadmap && this.nativeStages))
             throw new Error('Protected native Roadmap tools are unavailable; no proposal was staged');
         let eligibleObjective = true;
-        if (localRoadmap && localMode !== 'gate' && !draft && !helpTurn && this.planning) {
+        if (localRoadmap && !typedRoadmap && localMode !== 'gate' && !draft && !helpTurn && this.planning) {
             const ref = composed.refs.filter(item => item.kind === 'roadmap-checkpoint');
             if (ref.length !== 1) throw new Error('Select exactly one Roadmap checkpoint');
             const attached = await this.planning.attach(root);
@@ -1542,6 +1562,7 @@ export class ChatBackend implements ChatService {
             const withRetryInstruction = (messages: readonly ConversationMessage[], instruction?: string): readonly ConversationMessage[] => {
                 let retry = instruction;
                 const sent = retry ? [{ role: 'system' as const, content: retry }, ...messages] : messages;
+                if (typedRoadmap) this.markerCreationMessages(sent);
                 if (localRoadmap) verifyRoadmapLocalInput(sent, budget!);
                 return sent;
             };
@@ -1572,7 +1593,7 @@ export class ChatBackend implements ChatService {
                         resolvedConnection?.providerId === 'local' ? undefined :
                             grounding ?? await this.grounder?.ground(root, content),
                         !!bridge, opportunity, resolvedConnection?.providerId === 'local', roadmapSkill,
-                        nativeRoadmap);
+                        roadmapPromptMode);
                     if (bridge) next.refs.push(bridge.reference);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');

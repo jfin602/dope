@@ -51,6 +51,25 @@ test('Pi Chat retains project discovery, source truth, and read-only authority i
   assert.ok(result.usedTokens < result.budgetTokens);
 });
 
+test('marker creation omits saved legacy Roadmap instructions and optional mutation grammars', async () => {
+  const active = chat(); active.settings.context.maxInputTokens = 4096;
+  active.messages = [
+    { schemaVersion: 1, id: id(), role: 'user', createdAt: active.createdAt,
+      content: '/roadmap use roadmap_stage and gate.create JSON', contextRefs: [],
+      skill: { id: 'builtin:roadmap', name: 'roadmap', title: 'Roadmap', description: 'old',
+        body: 'Use roadmap_stage and JSON', version: 1, digest: 'old' } },
+    { schemaVersion: 1, id: id(), role: 'assistant', createdAt: active.createdAt,
+      content: '{"type":"roadmap-gate-proposal"}', execution: { schemaVersion: 1, id: id(), status: 'complete',
+        startedAt: active.createdAt, finishedAt: active.createdAt } }
+  ] as Chat['messages'];
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const composed = await composer.compose('/fixture/project', active, '/roadmap create a new game plan', [],
+    { ...model, contextWindowTokens: 4096, maxInputTokens: 4096 }, undefined, false, false,
+    undefined, true, true, true, true);
+  assert.deepEqual(composed.messages, [{ role: 'user', content: '/roadmap create a new game plan' }]);
+});
+
 test('recent context keeps complete exchanges and excludes cancelled, failed and provisional turns', async () => {
   const active = chat(); active.settings.context.maxInputTokens = 2000;
   const user = (content: string) => ({ schemaVersion: 1 as const, id: id(), role: 'user' as const,

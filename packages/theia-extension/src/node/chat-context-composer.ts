@@ -466,8 +466,11 @@ export class ChatContextComposer {
     async compose(root: string, chat: Chat, content: string, selections: ChatContextSelection[],
         capabilities: ConversationModelCapabilities, grounding?: GroundingResult,
         strictHelpJson = false, bridgeMode = false, roadmapOpportunity?: string,
-        piMode = false, roadmapSkill = false, nativeRoadmap = false): Promise<ComposedChatContext> {
+        piMode = false, roadmapSkill = false, nativeRoadmap = false,
+        markerCreation = false): Promise<ComposedChatContext> {
         if (!content.trim()) throw new Error('Enter a message before sending');
+        if (markerCreation && (!roadmapSkill || !nativeRoadmap))
+            throw new Error('Marker creation requires a protected Roadmap turn without model-facing staging');
         if (!Array.isArray(selections) || selections.length > 20) throw new Error('Too many context selections');
         const policy = chat.settings.context;
         const window = capabilities.contextWindowTokens ?? policy.maxInputTokens + policy.reservedOutputTokens;
@@ -488,13 +491,13 @@ export class ChatContextComposer {
         };
         const helpId = roadmapSkill ? undefined : selectDopeCapabilityHelp(content);
         const help = helpId ? await this.helpContext(root, helpId, selections, strictHelpJson) : undefined;
-        const gateAction = !nativeRoadmap && !help && roadmapSkill && selections.some(source =>
+        const gateAction = !markerCreation && !nativeRoadmap && !help && roadmapSkill && selections.some(source =>
             source.kind === 'roadmap' && !source.draftHandle);
-        const gateRead = !nativeRoadmap && !gateAction && selections.some(source =>
+        const gateRead = !markerCreation && !nativeRoadmap && !gateAction && selections.some(source =>
             source.kind === 'roadmap' && !source.draftHandle);
-        const roadmapAction = !help && selections.some(source => source.kind === 'roadmap-checkpoint');
+        const roadmapAction = !markerCreation && !help && selections.some(source => source.kind === 'roadmap-checkpoint');
         const roadmapInstruction = roadmapAction && !bridgeMode;
-        const piInstruction = piMode ? `${PI_CHAT_INSTRUCTION} Workspace root: ${root}` : undefined;
+        const piInstruction = piMode && !markerCreation ? `${PI_CHAT_INSTRUCTION} Workspace root: ${root}` : undefined;
         let remaining = budgetTokens - tokens(content) - (grounding ? tokens(GROUNDED_CHAT_INSTRUCTION) : 0) -
             (piInstruction ? tokens(piInstruction) : 0) -
             (roadmapOpportunity ? tokens(roadmapOpportunity) : 0) -
@@ -515,7 +518,7 @@ export class ChatContextComposer {
             throw new Error('Roadmap element kind requires Roadmap context');
         if (elementSelections.length && !roadmapSkill)
             throw new Error('Selected Roadmap elements require the protected /roadmap command');
-        const memory = !help && (roadmapAction || chat.messages.some(message => message.role === 'assistant' &&
+        const memory = !markerCreation && !help && (roadmapAction || chat.messages.some(message => message.role === 'assistant' &&
             message.execution.status === 'complete' &&
             message.planningActivity?.status === 'applied')) ? this.decisionContext(chat) : undefined;
         const wrapperTokens = selections.length || grounding?.blocks.length || memory ? tokens('\n\nProject context:\n') : 0;
@@ -594,7 +597,7 @@ export class ChatContextComposer {
             messages.push({ role: 'system', content: GATE_READ_INSTRUCTION });
         if (help) messages.push({ role: 'system', content: help.instruction });
         const historyMessages: ConversationMessage[] = [];
-        if (policy.history === 'recent' && !help) {
+        if (policy.history === 'recent' && !help && !markerCreation) {
             const exchanges: { user: Chat['messages'][number]; assistant: Chat['messages'][number] }[] = [];
             for (const item of chat.messages) {
                 if (item.role === 'user') {
