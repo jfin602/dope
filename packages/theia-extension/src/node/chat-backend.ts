@@ -959,13 +959,7 @@ export class ChatBackend implements ChatService {
             origin: 'trusted-user-chat' as const };
         const modelKey = JSON.stringify(identity.model);
         const selectionContext = JSON.stringify(request.context ?? []);
-        const previous = this.generationPartial.get(request.chatId);
-        const resume = previous && previous.scope === scope.trim() && previous.root === root &&
-            previous.projectId === index.projectId && previous.revision === index.revision &&
-            previous.sourceHash === sourceHash && previous.indexHash === indexHash &&
-            previous.model === modelKey && previous.connection === connectionFingerprint &&
-            previous.selectionContext === selectionContext ? previous.phases : [];
-        // A mismatched partial is inspectable in saved Chat, but has no replay authority.
+        // Historic partials remain in saved Chat; every command opens a new protected execution.
         this.generationPartial.delete(request.chatId);
         const context = JSON.stringify({ projectId: index.projectId, revision: index.revision,
             sourceHash, indexHash, phases: index.phases.slice(-12).map(phase => ({ id: phase.id,
@@ -1027,70 +1021,91 @@ export class ChatBackend implements ChatService {
                 generationCallNumber++;
                 traceGeneration(input.identity.generationId, 'phase-dispatched',
                     { phase: input.phase, call: generationCallNumber });
-                let operation: GenerationPhase | 'finish' | undefined;
-                let unresolved: string[] = [];
                 let usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number;
                     reasoningTokens?: number; finishReason?: string; reasoning?: string } = {};
                 let sequence = 0;
                 let toolOutputStarted = false;
+                let toolQueue: Promise<void> = Promise.resolve();
+                let toolCalls = 0;
                 const toolEvents = generationToolEvents;
-                const tools = { root, roadmapGeneration: true,
-                    roadmapPhaseOnly: input.phase === 1, generationId: input.identity.generationId,
+                const tools = { root, roadmapGeneration: true, generationId: input.identity.generationId,
                     execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
-                        traceGeneration(input.identity.generationId, 'tool-call-start',
-                            { phase: input.phase, call: generationCallNumber, tool: name });
-                        const allowed = name === 'roadmap_phase' || name === 'roadmap_finish';
-                        let current = false;
-                        try {
-                            current = !input.signal.aborted && !signal?.aborted &&
-                                this.generationControllers.get(request.chatId)?.controller === controller &&
-                                await generationCurrent(controller.identity);
-                        } catch { /* A failed authority read is a denied, recorded tool call. */ }
-                        const record = args && typeof args === 'object' && !Array.isArray(args) ?
-                            args as Record<string, unknown> : undefined;
-                        const valid = allowed && current && !operation && record?.version === 1 &&
-                            (name === 'roadmap_phase' ?
-                                record.phase === input.phase && Object.keys(record).sort().join(',') ===
-                                    'gates,objective,phase,title,version' &&
-                                typeof record.title === 'string' && typeof record.objective === 'string' &&
-                                Array.isArray(record.gates) && record.gates.length > 0 && record.gates.length <= 12 &&
-                                record.gates.every(gate => gate && typeof gate === 'object' && !Array.isArray(gate) &&
-                                    Object.keys(gate).sort().join(',') === 'criteria,purpose,title' &&
-                                    typeof gate.title === 'string' && typeof gate.purpose === 'string' &&
-                                    Array.isArray(gate.criteria) && gate.criteria.length > 0 && gate.criteria.length <= 12 &&
-                                    gate.criteria.every((criterion: unknown) => criterion && typeof criterion === 'object' &&
-                                        !Array.isArray(criterion) && Object.keys(criterion).sort().join(',') ===
-                                            'expectedResult,title' &&
-                                        typeof (criterion as { title: unknown }).title === 'string' &&
-                                        typeof (criterion as { expectedResult: unknown }).expectedResult === 'string')) :
-                                input.phase > 1 && Object.keys(record).sort().join(',') === 'unresolved,version' &&
-                                Array.isArray(record.unresolved) && record.unresolved.length <= 16 &&
-                                record.unresolved.every(item => typeof item === 'string' && !!item.trim() && item.length <= 300));
-                        const status = valid ? 'completed' : 'denied';
-                        toolEvents.push({ name: name as 'roadmap_phase' | 'roadmap_finish', status,
-                            truncated: false, brokerExecuted: !!current, stage: current ? 'broker' : 'authority' });
-                        traceGeneration(input.identity.generationId, 'tool-call-complete',
-                            { phase: input.phase, call: generationCallNumber, tool: name, status });
-                        recordGenerationActivity('tool', `${allowed ? name : 'roadmap_phase'}: ${status}`);
-                        if (!valid) return JSON.stringify({ version: 1, error: 'ROADMAP_GENERATION_TOOL_DENIED' });
-                        if (name === 'roadmap_phase') {
-                            const gates = record!.gates as GenerationPhase['gates'];
-                            operation = { title: record!.title as string, objective: record!.objective as string,
-                                gates, subcalls: Math.ceil((gates.length + 1) / 8) };
-                        } else { operation = 'finish'; unresolved = [...record!.unresolved as string[]]; }
-                        return JSON.stringify({ version: 1, accepted: true, phase: input.phase });
+                        // Pi can dispatch a batch. Capture its order, but admit only one checked stage at a time.
+                        const ordinal = ++toolCalls;
+                        const work = async (): Promise<string> => {
+                            const started = performance.now();
+                            traceGeneration(input.identity.generationId, 'tool-call-start',
+                                { phase: ordinal, call: generationCallNumber, tool: name });
+                            let status: 'completed' | 'failed' | 'denied' = 'denied';
+                            let error = 'ROADMAP_GENERATION_TOOL_DENIED';
+                            let output = '';
+                            let current = false;
+                            try {
+                                current = !input.signal.aborted && !signal?.aborted &&
+                                    this.generationControllers.get(request.chatId)?.controller === controller &&
+                                    await generationCurrent(controller.identity);
+                                if (!current) throw new Error('ROADMAP_GENERATION_STALE');
+                                await input.admitTool();
+                                const record = args && typeof args === 'object' && !Array.isArray(args) ?
+                                    args as Record<string, unknown> : undefined;
+                                if (!record || record.version !== 1) throw new Error('ROADMAP_GENERATION_ARGUMENTS');
+                                if (name === 'roadmap_phase') {
+                                    if (Object.keys(record).sort().join(',') !== 'gates,objective,phase,title,version' ||
+                                        !Number.isSafeInteger(record.phase) || typeof record.title !== 'string' ||
+                                        typeof record.objective !== 'string' || !Array.isArray(record.gates) ||
+                                        !record.gates.length || record.gates.length > 12 ||
+                                        !record.gates.every(gate => gate && typeof gate === 'object' &&
+                                            !Array.isArray(gate) && Object.keys(gate).sort().join(',') ===
+                                                'criteria,purpose,title' && typeof gate.title === 'string' &&
+                                            typeof gate.purpose === 'string' && Array.isArray(gate.criteria) &&
+                                            gate.criteria.length > 0 && gate.criteria.length <= 12 &&
+                                            gate.criteria.every((criterion: unknown) => criterion &&
+                                                typeof criterion === 'object' && !Array.isArray(criterion) &&
+                                                Object.keys(criterion).sort().join(',') === 'expectedResult,title' &&
+                                                typeof (criterion as { title: unknown }).title === 'string' &&
+                                                typeof (criterion as { expectedResult: unknown }).expectedResult === 'string')))
+                                        throw new Error('ROADMAP_GENERATION_ARGUMENTS');
+                                    const gates = record.gates as GenerationPhase['gates'];
+                                    const phase = { title: record.title, objective: record.objective, gates,
+                                        subcalls: Math.ceil((gates.length + 1) / 8) };
+                                    const receipt = await input.submitPhase(record.phase as number, phase);
+                                    output = JSON.stringify({ version: 1, accepted: true, ...receipt });
+                                } else if (name === 'roadmap_finish') {
+                                    if (Object.keys(record).sort().join(',') !== 'unresolved,version' ||
+                                        !Array.isArray(record.unresolved) || record.unresolved.length > 16 ||
+                                        !record.unresolved.every(item => typeof item === 'string' &&
+                                            !!item.trim() && item.length <= 300))
+                                        throw new Error('ROADMAP_GENERATION_ARGUMENTS');
+                                    await input.finish(record.unresolved as string[]);
+                                    output = JSON.stringify({ version: 1, accepted: true, status: 'review-ready' });
+                                } else throw new Error('ROADMAP_GENERATION_TOOL_DENIED');
+                                status = 'completed';
+                            } catch (cause) {
+                                if (current) input.rejectTool();
+                                error = String(cause).replace(/^Error: /, '').slice(0, 180);
+                                status = current ? 'failed' : 'denied';
+                                output = JSON.stringify({ version: 1, accepted: false, error });
+                            }
+                            toolEvents.push({ name: name as 'roadmap_phase' | 'roadmap_finish', status,
+                                truncated: false, brokerExecuted: current, stage: current ? 'broker' : 'authority' });
+                            traceGeneration(input.identity.generationId, 'tool-call-complete',
+                                { phase: ordinal, call: generationCallNumber, tool: name, status,
+                                    durationMs: Math.round(performance.now() - started) });
+                            recordGenerationActivity('tool', `${name}: ${status}`);
+                            return output;
+                        };
+                        const result = toolQueue.then(work);
+                        toolQueue = result.then(() => undefined, () => undefined);
+                        return result;
                     } };
-                const instructions = `Submit only Phase ${input.phase} with roadmap_phase: title, objective, ` +
-                    'small Gates and observable Criteria. Dope owns IDs, staging and approval. ' +
-                    (input.phase > 1 ? 'If the Roadmap is complete, use roadmap_finish instead. ' : '') +
-                    (input.correction ? `Correction: ${input.correction} ` : '') +
-                    'Only tool arguments are accepted.';
+                const instructions = `Use roadmap_phase for each next Phase, in order, with a title, objective, ` +
+                    `Gates and observable Criteria. Wait for each checked stage receipt before continuing. ` +
+                    `Finish with roadmap_finish and list unresolved requirements. Dope owns IDs, staging and approval. ` +
+                    `Only tool arguments are accepted.`;
                 const messages: ConversationMessage[] = [{ role: 'system', content: instructions },
                     ...(composed?.messages.slice(0, -1) ?? []),
                     { role: 'user', content: (composed?.messages.at(-1)?.content ?? input.scope) + '\n\n' +
-                        JSON.stringify({ phase: input.phase, project: input.context,
-                            stagedPhaseSummaries: input.ledger,
-                            ...(input.correction ? { correction: input.correction } : {}) }) }];
+                        JSON.stringify({ project: input.context, scope: input.scope }) }];
                 const outputBudget = Math.min(4096, Math.max(2048, chat.settings.context.reservedOutputTokens));
                 traceGeneration(input.identity.generationId, 'model-dispatch',
                     { phase: input.phase, call: generationCallNumber, outputBudget,
@@ -1141,17 +1156,14 @@ export class ChatBackend implements ChatService {
                 }
                 if (!await generationCurrent(input.identity) || input.signal.aborted)
                     throw new Error('ROADMAP_GENERATION_STALE');
-                if (!operation) return { done: false, usage,
-                    invalidReason: 'The requested typed Phase or finish operation was missing or denied.' };
-                if (operation === 'finish') {
-                    return { done: true, unresolved, usage };
-                }
-                return { done: false, phase: operation, usage };
+                await toolQueue;
+                return { usage };
             },
             stage: {
                 validate: async (phase, bound, signal) => nativeAdapter.validate(phase, bound, signal),
                 stage: (phase, bound, signal) => nativeAdapter.stage(phase, bound, signal),
-                complete: (bound, signal) => nativeAdapter.complete(bound, signal)
+                complete: (bound, signal) => nativeAdapter.complete(bound, signal),
+                snapshot: async () => nativeAdapter.snapshot()
             },
             onEvent: event => {
                 if (event.state !== 'initializing')
@@ -1170,7 +1182,7 @@ export class ChatBackend implements ChatService {
                         event.state === 'stale' ? 'stale' : 'failed' }); }
                 catch { /* The validated stage owner does not depend on a UI listener. */ }
             }
-        }, undefined, resume);
+        });
         nativeAdapter = new RoadmapGenerationNativeStage(this.nativeStages!, request.leaseToken,
             controller.identity, update => {
                 if (this.generationControllers.get(request.chatId)?.controller !== controller ||

@@ -111,19 +111,29 @@ test('Chat command brokers serial typed Pi Phases into one saved review proposal
                         Promise<{ status: string; output: string }>) {
                     inference++;
                     const input = JSON.parse(messages.at(-1)!.content.split('\n\n').at(-1)!) as {
-                        phase: number; stagedPhaseSummaries: string[] };
-                    assert.equal(input.phase, inference);
-                    assert.equal(input.stagedPhaseSummaries.length, inference - 1);
-                    const name = input.phase <= 3 ? 'roadmap_phase' : 'roadmap_finish';
-                    const args = input.phase <= 3 ? { version: 1, phase: input.phase,
-                        title: `Phase ${input.phase}`, objective: `Deliver tower defense feature ${input.phase}`,
-                        gates: [{ title: `Gate ${input.phase}`, purpose: 'Verify the game feature',
-                            criteria: [{ title: 'Observable game behavior',
-                                expectedResult: `Feature ${input.phase} is visible` }] }] } :
-                        { version: 1, unresolved: [] };
-                    const reply = await onTool({ id: inference, name, arguments: args });
-                    assert.equal(reply.status, 'completed');
-                    assert.equal(JSON.parse(reply.output).accepted, true);
+                        project: string; scope: string };
+                    assert.ok(input.project);
+                    assert.match(input.scope, /tower-defense/);
+                    let proposalId: string | undefined;
+                    for (let phase = 1; phase <= 3; phase++) {
+                        const reply = await onTool({ id: phase, name: 'roadmap_phase', arguments: {
+                            version: 1, phase, title: `Phase ${phase}`,
+                            objective: `Deliver tower defense feature ${phase}`,
+                            gates: [{ title: `Gate ${phase}`, purpose: 'Verify the game feature',
+                                criteria: [{ title: 'Observable game behavior',
+                                    expectedResult: `Feature ${phase} is visible` }] }] } });
+                        assert.equal(reply.status, 'completed');
+                        const receipt = JSON.parse(reply.output);
+                        assert.equal(receipt.accepted, true);
+                        assert.equal(receipt.phase, phase);
+                        assert.equal(receipt.phases, phase);
+                        assert.ok(receipt.stageSequence >= phase);
+                        if (proposalId) assert.equal(receipt.proposalId, proposalId);
+                        proposalId = receipt.proposalId;
+                    }
+                    const finish = await onTool({ id: 4, name: 'roadmap_finish',
+                        arguments: { version: 1, unresolved: ['Remaining mechanics require owner review'] } });
+                    assert.equal(JSON.parse(finish.output).status, 'review-ready');
                     yield { type: 'complete', text: '', modelId: 'q4', finishReason: 'stop',
                         usage: { inputTokens: 20, outputTokens: 20, totalTokens: 40,
                             tokenMeasurement: 'provider-reported' } };
@@ -142,7 +152,7 @@ test('Chat command brokers serial typed Pi Phases into one saved review proposal
         const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: '/gen-roadmap Build a TypeScript/PixiJS tower-defense game with fixed enemy paths, towers, waves, currency, and persistent base health.' });
-        assert.equal(inference, 4);
+        assert.equal(inference, 1);
         assert.ok(result.proposal);
         assert.equal(result.proposal.counts?.phases, 3);
         assert.equal(result.proposal.counts?.gates, 3);
@@ -172,7 +182,7 @@ test('Chat command brokers serial typed Pi Phases into one saved review proposal
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'hosted', modelId: 'q4' },
             content: '/gen-roadmap Build phases' }), /Review or dismiss the existing Roadmap proposal/);
-        assert.equal(inference, 4);
+        assert.equal(inference, 1);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -222,7 +232,7 @@ test('rejected native operation stops generation and saves a failed noncanonical
         calls++;
         const denied = JSON.parse(await request.projectTools.execute('roadmap_finish',
             { version: 1, unresolved: [] }));
-        assert.match(denied.error, /DENIED/);
+        assert.match(denied.error, /FINISH_DENIED/);
         yield { type: 'complete', text: '', actualModelId: 'q4', finishReason: 'stop',
             usage: { tokenMeasurement: 'provider-reported', totalTokens: 10 } };
     } };
@@ -238,41 +248,43 @@ test('rejected native operation stops generation and saves a failed noncanonical
         const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: '/gen-roadmap Build a game' });
-        assert.match(result.proposalError ?? '', /Phase retry limit reached/);
+        assert.match(result.proposalError ?? '', /stopped before roadmap_finish/);
         assert.equal(result.proposal, undefined);
-        assert.equal(calls, 2);
+        assert.equal(calls, 1);
         const saved = (await repository.read(root)).chats.find(chat => chat.id === chatId)!;
         assert.equal(saved.messages[1].role === 'assistant' && saved.messages[1].execution.status, 'failed');
         assert.deepEqual(saved.messages[1].role === 'assistant' &&
             saved.messages[1].execution.toolEvents?.map(event => [event.name, event.status]),
-        [['roadmap_finish', 'denied'], ['roadmap_finish', 'denied']]);
+        [['roadmap_finish', 'failed']]);
         assert.equal(JSON.stringify(await store.read(root)), before);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('a new explicit command resumes only freshly revalidated partial Phases', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dope-gen-resume-'));
+test('a new explicit command starts a fresh execution after an incomplete draft', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-gen-fresh-'));
     const repository = new ChatRepository(), store = new RoadmapStore();
-    let calls = 0;
+    let executions = 0;
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true,
         providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
             capabilities: { contextWindowTokens: 8192 } }] }] }),
-    async *generate(_selection: unknown, request: { messages: { content: string }[];
-        projectTools: { execute(name: string, args: unknown): Promise<string> } }) {
-        calls++;
-        const input = JSON.parse(request.messages.at(-1)!.content.split('\n\n').at(-1)!) as {
-            phase: number; stagedPhaseSummaries: string[] };
-        if (calls === 1 || calls === 4) {
-            assert.equal(input.phase, calls === 1 ? 1 : 2);
-            const response = await request.projectTools.execute('roadmap_phase', {
-                version: 1, phase: input.phase, title: `Phase ${input.phase}`,
-                objective: `Objective ${input.phase}`, gates: [{ title: `Gate ${input.phase}`,
-                    purpose: 'Purpose', criteria: [{ title: 'Observable', expectedResult: 'Observed' }] }] });
-            assert.equal(JSON.parse(response).accepted, true);
-        } else if (calls === 5) {
-            assert.equal(input.phase, 3);
-            assert.equal(input.stagedPhaseSummaries.length, 2);
-            await request.projectTools.execute('roadmap_finish', { version: 1, unresolved: [] });
+    async *generate(_selection: unknown, request: { projectTools: {
+        execute(name: string, args: unknown): Promise<string> } }) {
+        executions++;
+        const first = JSON.parse(await request.projectTools.execute('roadmap_phase', {
+            version: 1, phase: 1, title: 'Phase 1', objective: 'Objective 1',
+            gates: [{ title: 'Gate 1', purpose: 'Purpose',
+                criteria: [{ title: 'Observable', expectedResult: 'Observed' }] }] }));
+        assert.equal(first.accepted, true);
+        assert.equal(first.phases, 1);
+        if (executions === 2) {
+            const next = JSON.parse(await request.projectTools.execute('roadmap_phase', {
+                version: 1, phase: 2, title: 'Phase 2', objective: 'Objective 2',
+                gates: [{ title: 'Gate 2', purpose: 'Purpose',
+                    criteria: [{ title: 'Observable 2', expectedResult: 'Observed 2' }] }] }));
+            assert.equal(next.accepted, true);
+            const finish = JSON.parse(await request.projectTools.execute('roadmap_finish',
+                { version: 1, unresolved: ['Scope details require owner review'] }));
+            assert.equal(finish.accepted, true);
         }
         yield { type: 'complete', text: '', actualModelId: 'q4', finishReason: 'stop',
             usage: { tokenMeasurement: 'provider-reported', totalTokens: 10 } };
@@ -289,12 +301,10 @@ test('a new explicit command resumes only freshly revalidated partial Phases', a
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: '/gen-roadmap Build two Phases' };
         const first = await backend.runTurn(request);
-        assert.match(first.proposalError ?? '', /retry limit/i);
-        assert.equal(calls, 3);
+        assert.match(first.proposalError ?? '', /stopped before roadmap_finish/);
         const second = await backend.runTurn(request);
-        assert.equal(calls, 5);
+        assert.equal(executions, 2);
         assert.equal(second.proposal?.counts?.phases, 2);
-        assert.equal(second.proposal?.counts?.gates, 2);
         assert.equal((await store.read(root)).phases.length, 0);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

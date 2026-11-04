@@ -17,7 +17,6 @@ let workMode = false;
 let chatToolsMode = false;
 let roadmapToolsMode = false;
 let roadmapGenerationMode = false;
-let roadmapPhaseOnly = false;
 let roadmapGenerationId;
 let roadmapStartedAt = 0;
 let workRequestId;
@@ -224,8 +223,7 @@ const ROADMAP_GENERATION_TOOLS = {
     }, { additionalProperties: false }), { minItems: 1, maxItems: 12 }) }
 };
 function chatTools() {
-  return Object.entries(roadmapGenerationMode ? roadmapPhaseOnly ?
-    { roadmap_phase: ROADMAP_GENERATION_TOOLS.roadmap_phase } : ROADMAP_GENERATION_TOOLS :
+  return Object.entries(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
     roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
@@ -233,7 +231,7 @@ function chatTools() {
       name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. For later pages pass nextOffset as offset and sourceHash as expectedSourceHash. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
       name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Read before staging; Dope retains source and revision preconditions.' :
-      name === 'roadmap_phase' ? 'Submit exactly the requested next Phase with nested Gates and observable Criteria. Dope validates and stages it after this model call. This tool cannot apply a Roadmap.' :
+      name === 'roadmap_phase' ? 'Submit the next Phase with nested Gates and observable Criteria. Wait for the checked noncanonical stage receipt before continuing. This tool cannot apply a Roadmap.' :
       name === 'roadmap_finish' ? 'Signal that no further Phase is proposed, listing unresolved or uncertain requirements. Dope checks the staged draft before review.' :
       name === 'roadmap_stage' ? 'Stage typed Roadmap actions in batches of 1-8 (48 total) after roadmap_read. Dope supplies trusted source and revision preconditions; do not include them. Start expectedStage at 1 and increment per accepted batch. Use new: aliases for created IDs across batches. Gate designations are G1, G2, etc. within each Phase, and every created Gate needs an observable Criterion. Set done true only on the final batch; full requires Gates and Criteria, phase-only is for an intentional Phase draft. This never applies canonical state.' :
       name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
@@ -257,11 +255,7 @@ function chatTools() {
         if (result.status !== 'completed') throw new Error('Dope Chat tool denied by project authority');
         if (typeof result.output !== 'string' || Buffer.byteLength(result.output, 'utf8') > 12_000)
           throw new Error('Dope Chat tool output limit exceeded');
-        // Generation has one brokered operation per controller call. Let Pi end
-        // this turn at the tool boundary so it cannot request the next Phase
-        // before Dope validates and stages the current one.
-        if (roadmapGenerationMode) return { content: [{ type: 'text', text: result.output }],
-          terminate: true };
+        if (roadmapGenerationMode) return { content: [{ type: 'text', text: result.output }] };
         if (name === 'roadmap_stage' && roadmapResultShape(result.output).errorCode === 'ROADMAP_STAGE_ARGUMENTS') {
           const key = hash(JSON.stringify(normalized(params)));
           const repeated = (rejectedRoadmapStages.get(key) ?? 0) + 1;
@@ -367,7 +361,6 @@ async function dispose() {
   chatToolsMode = false;
   roadmapToolsMode = false;
   roadmapGenerationMode = false;
-  roadmapPhaseOnly = false;
   roadmapGenerationId = undefined;
   for (const pending of pendingTools.values()) pending.reject(new Error('Pi session closed'));
   pendingTools.clear();
@@ -421,9 +414,7 @@ export async function dispatch(message) {
         chatToolsMode = message.mode === 'chat-tools';
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
         roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;
-        roadmapPhaseOnly = roadmapGenerationMode && message.roadmapPhaseOnly === true;
-        const chatToolNames = Object.keys(roadmapGenerationMode ? roadmapPhaseOnly ?
-          { roadmap_phase: ROADMAP_GENERATION_TOOLS.roadmap_phase } : ROADMAP_GENERATION_TOOLS :
+        const chatToolNames = Object.keys(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
           roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
@@ -504,6 +495,8 @@ export async function dispatch(message) {
       session.agent.state.model = { ...session.model, maxTokens: message.maxOutputTokens };
       let attemptedTool = false;
       let toolCount = 0;
+      let reportedInput = 0, reportedOutput = 0, reportedTotal = 0, reportedReasoning = 0;
+      let usageUnknown = false;
       let firstProviderOutput = false;
       let lastProviderOutputAt = 0;
       workRequestId = message.id;
@@ -523,6 +516,20 @@ export async function dispatch(message) {
           roadmapTrace('tool-call-start', { toolName: event.toolName });
         if (roadmapGenerationMode && event.type === 'tool_execution_end')
           roadmapTrace('tool-call-complete', { toolName: event.toolName, isError: event.isError === true });
+        if (roadmapGenerationMode && event.type === 'turn_end' && event.message?.role === 'assistant') {
+          const usage = event.message.usage;
+          if (Number.isSafeInteger(usage?.totalTokens) && usage.totalTokens > 0) {
+            reportedInput += Number.isSafeInteger(usage.input) ? usage.input : 0;
+            reportedOutput += Number.isSafeInteger(usage.output) ? usage.output : 0;
+            reportedTotal += usage.totalTokens;
+            reportedReasoning += Number.isSafeInteger(usage.reasoning) ? usage.reasoning : 0;
+            if (reportedTotal > 256_000) {
+              chatLoopStopped = true;
+              chatLoopReason = 'Roadmap generation reported token budget exceeded';
+              void session.abort();
+            }
+          } else usageUnknown = true;
+        }
         if (['turn_start', 'turn_end', 'message_start', 'message_end', 'tool_execution_start',
           'tool_execution_end', 'agent_end', 'agent_settled'].includes(event.type))
           trace(event.type, { toolName: event.toolName,
@@ -568,26 +575,26 @@ export async function dispatch(message) {
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
       if (chatLoopStopped) throw new Error(chatLoopReason);
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
-      const generationToolBoundary = roadmapGenerationMode && toolCount > 0 &&
-        assistant?.stopReason === 'toolUse' && assistant.content.some(item => item.type === 'toolCall');
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
-          !generationToolBoundary && (assistant.stopReason === 'toolUse' ||
+          (assistant.stopReason === 'toolUse' ||
             assistant.content.some(item => item.type === 'toolCall')))
         throw new Error('Local Pi completion failed or attempted a tool call');
-      if (generationToolBoundary) roadmapTrace('pi-turn-finished-after-tool', { toolCount });
       const text = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
       if (Buffer.byteLength(text, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
       if (chatToolsMode && assistant.stopReason === 'stop' && text)
         message.emit?.({ type: 'delta', text });
       return { text, modelId: assistant.responseModel ?? assistant.model,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
-        usage: { inputTokens: assistant.usage?.input, outputTokens: assistant.usage?.output,
+        usage: { inputTokens: roadmapGenerationMode ? reportedInput : assistant.usage?.input,
+          outputTokens: roadmapGenerationMode ? reportedOutput : assistant.usage?.output,
           // Pi normalizes an absent OpenAI reasoning breakdown to zero. Only a
           // positive count proves that the provider actually reported one.
-          ...(assistant.usage?.totalTokens && assistant.usage.reasoning > 0 ?
-            { reasoningTokens: assistant.usage.reasoning } : {}),
-          totalTokens: assistant.usage?.totalTokens,
-          tokenMeasurement: assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' },
+          ...((roadmapGenerationMode ? reportedReasoning : assistant.usage?.reasoning) > 0 ?
+            { reasoningTokens: roadmapGenerationMode ? reportedReasoning : assistant.usage.reasoning } : {}),
+          totalTokens: roadmapGenerationMode ? usageUnknown || !reportedTotal ? undefined : reportedTotal :
+            assistant.usage?.totalTokens,
+          tokenMeasurement: roadmapGenerationMode ? usageUnknown || !reportedTotal ? 'unavailable' :
+            'provider-reported' : assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' },
         ...(compactionRecord ? { compaction: compactionRecord } : {}) };
     }
     case 'work': {

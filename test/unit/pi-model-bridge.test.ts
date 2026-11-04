@@ -106,9 +106,6 @@ test('protected generation mode exposes only bounded typed Phase and finish tool
     assert.equal(f.calls[0][5], true);
     assert.deepEqual((await f.host.openChatToolsSession({ baseUrl: 'local' }, '/tmp',
         undefined, undefined, false, true)).tools, ['roadmap_phase', 'roadmap_finish']);
-    await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
-        { chatTools: true, roadmapGeneration: true, roadmapPhaseOnly: true });
-    assert.deepEqual(f.calls[2].slice(4), [false, true, true]);
 });
 
 test('freshly refreshed exact model reuses a verified tool capability without another synthetic loop', async () => {

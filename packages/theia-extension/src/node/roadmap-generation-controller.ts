@@ -13,7 +13,7 @@ export type GenerationLimits = Readonly<{ maxPhases: number; maxGatesPerPhase: n
     maxSubcallsPerPhase: number; maxCalls: number; maxTokens: number; idleMs: number;
     deadlineMs: number; maxRetries: number }>;
 export const defaultGenerationLimits: GenerationLimits = {
-    maxPhases: 12, maxGatesPerPhase: 12, maxSubcallsPerPhase: 8, maxCalls: 64,
+    maxPhases: 12, maxGatesPerPhase: 12, maxSubcallsPerPhase: 8, maxCalls: 16,
     maxTokens: 256_000, idleMs: 60_000, deadlineMs: 8 * 60_000, maxRetries: 1
 };
 export type GenerationUsage = Readonly<{ inputTokens?: number; outputTokens?: number;
@@ -21,8 +21,9 @@ export type GenerationUsage = Readonly<{ inputTokens?: number; outputTokens?: nu
 export type GenerationPhase = Readonly<{ title: string; objective: string;
     gates: readonly { title: string; purpose: string; criteria: readonly { title: string;
         expectedResult: string }[] }[]; subcalls: number }>;
-export type GenerationCallResult = Readonly<{ phase?: GenerationPhase; done: boolean;
-    usage?: GenerationUsage; unresolved?: readonly string[]; invalidReason?: string }>;
+export type GenerationCallResult = Readonly<{ usage?: GenerationUsage }>;
+export type GenerationStageReceipt = Readonly<{ proposalId: string; stageSequence: number;
+    phase: number; phases: number; gates: number; criteria: number; status: 'staged' }>;
 export type GenerationScopeLedger = Readonly<{ requirements: readonly string[];
     staged: readonly Readonly<{ phase: number; title: string; objective: string;
         gates: readonly Readonly<{ title: string; criteria: readonly string[] }>[] }>[];
@@ -49,11 +50,17 @@ export interface GenerationDependencies {
     call(input: Readonly<{ identity: GenerationIdentity; scope: string; phase: number;
         context: string; ledger: readonly string[]; remainingCalls: number;
         remainingTokens: number; correction?: string; signal: AbortSignal;
-        report(event: GenerationProviderProgress): void }>): Promise<GenerationCallResult>;
+        report(event: GenerationProviderProgress): void;
+        admitTool(): Promise<void>;
+        rejectTool(): void;
+        submitPhase(phaseNumber: number, phase: GenerationPhase): Promise<GenerationStageReceipt>;
+        finish(unresolved: readonly string[]): Promise<void> }>): Promise<GenerationCallResult>;
     /** P3 supplies the checked native stage owner. No stage means no inference. */
     stage?: Readonly<{ validate(phase: GenerationPhase, identity: GenerationIdentity, signal: AbortSignal): Promise<boolean>;
         stage(phase: GenerationPhase, identity: GenerationIdentity, signal: AbortSignal): Promise<string>;
-        complete(identity: GenerationIdentity, signal: AbortSignal): Promise<boolean> }>;
+        complete(identity: GenerationIdentity, signal: AbortSignal): Promise<boolean>;
+        snapshot?(identity: GenerationIdentity, signal: AbortSignal): Promise<{
+            proposalId: string; sequence: number; counts: { phases: number; gates: number; criteria: number } } | undefined> }>;
     onEvent?(event: GenerationEvent): void;
     onProviderProgress?(event: GenerationProviderProgress): void;
 }
@@ -85,11 +92,13 @@ export class RoadmapGenerationController {
     private endedAt = 0;
     private firstStageAt = 0;
     private retries = 0;
+    private consecutiveFailures = 0;
+    private finished = false;
+    private lastToolAt = 0;
 
     constructor(identity: Omit<GenerationIdentity, 'generationId'>, private readonly scope: string,
         private readonly context: string, private readonly deps: GenerationDependencies,
-        private readonly limits: GenerationLimits = defaultGenerationLimits,
-        private readonly resume: readonly GenerationPhase[] = []) {
+        private readonly limits: GenerationLimits = defaultGenerationLimits) {
         if (identity.origin !== 'trusted-user-chat' || !scope.trim() || !identity.root || !identity.projectId ||
             !identity.chatId || !identity.turnId || !identity.ownerId || identity.model.providerId !== 'local' ||
             !identity.model.connectionId || !identity.model.modelId || !Number.isSafeInteger(identity.revision) ||
@@ -99,7 +108,7 @@ export class RoadmapGenerationController {
             !bounded(limits.maxTokens, 10_000_000) || !bounded(limits.idleMs, 3_600_000) ||
             !bounded(limits.deadlineMs, 3_600_000) || !Number.isSafeInteger(limits.maxRetries) ||
             limits.maxRetries < 0 || limits.maxRetries > 1 || context.length > 24_000 ||
-            scope.length > 4_000 || resume.length > limits.maxPhases)
+            scope.length > 4_000)
             throw new Error('Invalid Roadmap generation identity or limits');
         this.identity = Object.freeze({ ...identity, generationId: randomUUID(),
             model: Object.freeze({ ...identity.model,
@@ -216,119 +225,102 @@ export class RoadmapGenerationController {
         this.started = true;
         this.startedAt = Date.now();
         this.deadline = this.startedAt + this.limits.deadlineMs;
-        // P2 has no stage implementation. A real model call cannot begin until P3 supplies it.
         if (!this.deps.stage) { this.emit('incomplete', 'Native phase staging unavailable'); return this.result(); }
         try {
             if (!await this.current()) return this.result();
-            for (const phase of this.resume) {
-                if (!await this.current() || !await this.timed(this.deps.stage.validate(phase, this.identity,
-                    this.abort.signal))) {
-                    if (!terminal.has(this.state)) this.emit('incomplete', 'Saved Phase cannot be revalidated');
-                    return this.result();
-                }
-                const reference = await this.timed(this.deps.stage.stage(phase, this.identity, this.abort.signal));
-                if (!await this.current() || !reference) return this.result();
-                this.ledger.push(`${reference}; Gates: ${phase.gates.map(gate =>
-                    gate.title.trim()).join(', ')}`.slice(0, 256));
-                this.validatedPhases.push(structuredClone(phase));
-                this.staged.push({ phase: ++this.phases, title: phase.title.trim(),
-                    objective: phase.objective.trim(), gates: phase.gates.map(gate => ({
-                        title: gate.title.trim(), criteria: gate.criteria.map(item => item.expectedResult.trim()) })) });
-            }
-            while (true) {
-                let accepted = false;
-                let correction: string | undefined;
-                for (let attempt = 0; attempt <= this.limits.maxRetries; attempt++) {
-                    if (attempt > 0) this.retries++;
-                    if (this.calls >= this.limits.maxCalls || this.chargedTokens >= this.limits.maxTokens) {
-                        this.emit('incomplete', 'Generation budget exhausted'); return this.result();
-                    }
-                    if (!await this.current()) return this.result();
-                    this.emit('generating-phase');
-                    this.calls++;
-                    const callNumber = this.calls;
-                    let providerSequence = 0;
-                    let accepting = true;
-                    const answer = await this.timedCall(progress => this.deps.call({ identity: this.identity, scope: this.scope,
-                        phase: this.phases + 1, context: this.context, ledger: [...this.ledger],
-                        remainingCalls: this.limits.maxCalls - this.calls,
-                        remainingTokens: this.limits.maxTokens - this.chargedTokens,
-                        ...(correction ? { correction } : {}), signal: this.abort.signal,
-                        report: event => {
-                            if (!accepting || this.abort.signal.aborted || this.state !== 'generating-phase' ||
-                                event.generationId !== this.identity.generationId || event.call !== callNumber ||
-                                !Number.isSafeInteger(event.sequence) || event.sequence <= providerSequence) return;
-                            if (!['reasoning', 'final', 'tool-argument', 'usage'].includes(event.kind) ||
-                                event.kind !== 'usage' && (typeof event.text !== 'string' ||
-                                    !event.text.trim() || event.text.length > 8192)) return;
-                            providerSequence = event.sequence;
-                            this.providerProgress.push(event);
-                            if (event.kind !== 'usage') progress();
-                            try { this.deps.onProviderProgress?.(event); } catch { /* Projection is advisory. */ }
-                        } }));
-                    accepting = false;
-                    if (!await this.current()) return this.result();
-                    this.usage.push(answer.usage ?? {});
-                    const tokens = answer.usage?.totalTokens;
-                    if (tokens === undefined) {
-                        this.unknownTokens = true;
-                        this.chargedTokens += Math.min(this.identity.model.contextWindowTokens,
-                            this.limits.maxTokens - this.chargedTokens);
-                    }
-                    else if (!Number.isSafeInteger(tokens) || tokens < 0) {
-                        this.emit('failed', 'Invalid provider usage'); return this.result();
-                    } else { this.knownTokens += tokens; this.chargedTokens += tokens; }
-                    if (this.chargedTokens > this.limits.maxTokens) {
-                        this.emit('incomplete', 'Token budget exhausted'); return this.result();
-                    }
-                    if (answer.done && !answer.phase) {
-                        if (!this.phases) { this.emit('incomplete', 'No validated Phase'); return this.result(); }
-                        this.unresolved = [...new Set((answer.unresolved ?? []).map(item => item.trim())
-                            .filter(Boolean))].slice(0, 16);
+            this.emit('generating-phase');
+            const callNumber = 1;
+            let providerSequence = 0;
+            let accepting = true;
+            let refreshIdle: () => void = () => undefined;
+            const answer = await this.timedCall(progress => {
+                refreshIdle = progress;
+                return this.deps.call({ identity: this.identity, scope: this.scope, phase: 1,
+                    context: this.context, ledger: this.ledger, remainingCalls: this.limits.maxCalls,
+                    remainingTokens: this.limits.maxTokens, signal: this.abort.signal,
+                    report: event => {
+                        if (!accepting || this.abort.signal.aborted || terminal.has(this.state) ||
+                            event.generationId !== this.identity.generationId || event.call !== callNumber ||
+                            !Number.isSafeInteger(event.sequence) || event.sequence <= providerSequence) return;
+                        if (!['reasoning', 'final', 'tool-argument', 'usage'].includes(event.kind) ||
+                            event.kind !== 'usage' && (typeof event.text !== 'string' ||
+                                !event.text.trim() || event.text.length > 8192)) return;
+                        providerSequence = event.sequence;
+                        this.providerProgress.push(event);
+                        if (event.kind !== 'usage') progress();
+                        try { this.deps.onProviderProgress?.(event); } catch { /* Advisory. */ }
+                    },
+                    admitTool: async () => {
+                        if (!await this.current() || this.calls >= this.limits.maxCalls ||
+                            this.consecutiveFailures > this.limits.maxRetries ||
+                            this.chargedTokens >= this.limits.maxTokens)
+                            throw new Error('ROADMAP_GENERATION_TOOL_BUDGET_OR_STALE');
+                        this.calls++;
+                    },
+                    rejectTool: () => { this.consecutiveFailures++; this.retries++; },
+                    submitPhase: async (number, phase) => {
+                        if (!await this.current() || this.finished || number !== this.phases + 1 ||
+                            this.phases >= this.limits.maxPhases ||
+                            !bounded(phase.subcalls, this.limits.maxSubcallsPerPhase) ||
+                            phase.gates.length > this.limits.maxGatesPerPhase)
+                            throw new Error('ROADMAP_GENERATION_PHASE_ORDER_OR_BUDGET');
                         this.emit('validating');
-                        if (!await this.timed(this.deps.stage.complete(this.identity, this.abort.signal)) ||
-                            !await this.current()) {
-                            if (!terminal.has(this.state)) this.emit('incomplete', 'Stage is incomplete');
-                            return this.result();
-                        }
-                        this.emit('review-ready'); return this.result();
-                    }
-                    const phase = answer.phase;
-                    if (this.phases >= this.limits.maxPhases) {
-                        this.emit('incomplete', 'Phase limit reached without a complete draft'); return this.result();
-                    }
-                    if (!phase || !bounded(phase.subcalls, this.limits.maxSubcallsPerPhase) ||
-                        !phase.title.trim() || !phase.objective.trim() || !phase.gates.length ||
-                        phase.gates.length > this.limits.maxGatesPerPhase) {
-                        correction = answer.invalidReason ?? 'Provide one complete Phase with Gates and observable Criteria.';
-                        continue;
-                    }
-                    this.emit('validating');
-                    if (!await this.timed(this.deps.stage.validate(phase, this.identity, this.abort.signal)) ||
-                        !await this.current()) {
-                        correction = 'Correct this Phase: title, objective, unique Gate names, and observable Criteria are required.';
-                        continue;
-                    }
-                    this.emit('staging');
-                    const reference = await this.timed(this.deps.stage.stage(phase, this.identity, this.abort.signal));
-                    if (!await this.current()) return this.result();
-                    if (!reference || reference.length > 256) {
-                        this.emit('failed', 'Native stage did not return a bounded reference'); return this.result();
-                    }
-                    this.ledger.push(`${reference}; Gates: ${phase.gates.map(gate =>
-                        gate.title.trim()).join(', ')}`.slice(0, 256));
-                    this.validatedPhases.push(structuredClone(phase));
-                    this.staged.push({ phase: this.phases + 1, title: phase.title.trim(),
-                        objective: phase.objective.trim(), gates: phase.gates.map(gate => ({
-                            title: gate.title.trim(),
-                            criteria: gate.criteria.map(criterion => criterion.expectedResult.trim()) })) });
-                    if (!this.firstStageAt) this.firstStageAt = Date.now();
-                    this.phases++;
-                    accepted = true;
-                    break;
-                }
-                if (!accepted) { this.emit('incomplete', 'Phase retry limit reached'); return this.result(); }
-            }
+                        if (!await this.timed(this.deps.stage!.validate(phase, this.identity, this.abort.signal)) ||
+                            !await this.current()) throw new Error('ROADMAP_GENERATION_INVALID_PHASE');
+                        this.emit('staging');
+                        const reference = await this.timed(this.deps.stage!.stage(phase, this.identity, this.abort.signal));
+                        if (!await this.current() || !reference) throw new Error('ROADMAP_GENERATION_STAGE_CHANGED');
+                        const snapshot = await this.deps.stage!.snapshot?.(this.identity, this.abort.signal);
+                        if (!snapshot || snapshot.counts.phases !== this.phases + 1)
+                            throw new Error('ROADMAP_GENERATION_RECEIPT_MISSING');
+                        this.ledger.push(`${reference}; Gates: ${phase.gates.map(gate => gate.title.trim()).join(', ')}`.slice(0, 256));
+                        this.validatedPhases.push(structuredClone(phase));
+                        this.staged.push({ phase: number, title: phase.title.trim(), objective: phase.objective.trim(),
+                            gates: phase.gates.map(gate => ({ title: gate.title.trim(),
+                                criteria: gate.criteria.map(item => item.expectedResult.trim()) })) });
+                        this.phases++; this.consecutiveFailures = 0;
+                        if (!this.firstStageAt) this.firstStageAt = Date.now();
+                        this.lastToolAt = Date.now(); this.emit('generating-phase'); refreshIdle();
+                        return { proposalId: snapshot.proposalId, stageSequence: snapshot.sequence,
+                            phase: number, ...snapshot.counts, status: 'staged' };
+                    },
+                    finish: async unresolved => {
+                        if (!await this.current() || this.finished || !this.phases ||
+                            this.chargedTokens >= this.limits.maxTokens)
+                            throw new Error('ROADMAP_GENERATION_FINISH_DENIED');
+                        const required = this.scope.match(/\b(?:exactly|build|create)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b.{0,40}\bphases?\b/i);
+                        const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+                            'nine', 'ten', 'eleven', 'twelve'];
+                        const requiredCount = required ? /^\d+$/u.test(required[1]) ? Number(required[1]) :
+                            words.indexOf(required[1].toLowerCase()) + 1 : 0;
+                        if (requiredCount && this.phases < requiredCount)
+                            throw new Error('ROADMAP_GENERATION_REQUIRED_PHASES_MISSING');
+                        const candidates = this.requirements.filter(requirement => {
+                            const words = requirement.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? [];
+                            return !words.some(word => this.staged.some(phase =>
+                                [phase.title, phase.objective, ...phase.gates.flatMap(gate =>
+                                    [gate.title, ...gate.criteria])].some(value => value.toLowerCase().includes(word))));
+                        });
+                        if (candidates.length && !unresolved.length)
+                            throw new Error('ROADMAP_GENERATION_SCOPE_UNRESOLVED');
+                        this.unresolved = [...new Set(unresolved.map(item => item.trim()).filter(Boolean))].slice(0, 16);
+                        this.emit('validating');
+                        if (!await this.timed(this.deps.stage!.complete(this.identity, this.abort.signal)) ||
+                            !await this.current()) throw new Error('ROADMAP_GENERATION_STAGE_INCOMPLETE');
+                        this.finished = true; this.lastToolAt = Date.now(); refreshIdle();
+                        this.emit('generating-phase');
+                    } });
+            });
+            accepting = false;
+            if (!await this.current()) return this.result();
+            this.usage.push(answer.usage ?? {});
+            const tokens = answer.usage?.totalTokens;
+            if (tokens === undefined) this.unknownTokens = true;
+            else if (!Number.isSafeInteger(tokens) || tokens < 0) throw new Error('Invalid provider usage');
+            else { this.knownTokens = tokens; this.chargedTokens = tokens; }
+            if (this.chargedTokens > this.limits.maxTokens) throw new Error('Token budget exhausted');
+            this.emit(this.finished ? 'review-ready' : 'incomplete',
+                this.finished ? undefined : 'The model stopped before roadmap_finish');
         } catch (error) {
             if (!terminal.has(this.state)) {
                 this.abort.abort();

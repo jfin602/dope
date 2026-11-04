@@ -10,6 +10,7 @@ export type GenerationStageUpdate = Readonly<{ generationId: string; proposalId:
 export class RoadmapGenerationNativeStage {
     private nextStage = 1;
     private readonly names = new Set<string>();
+    private broken = false;
     constructor(private readonly owner: RoadmapNativeStageOwner,
         private readonly lease: string, private readonly identity: GenerationIdentity,
         private readonly onProjection?: (update: GenerationStageUpdate) => void) {}
@@ -28,7 +29,7 @@ export class RoadmapGenerationNativeStage {
         chatId: this.identity.chatId, turnId: this.identity.turnId, lease: this.lease }; }
 
     validate(phase: GenerationPhase, identity: GenerationIdentity, signal: AbortSignal): boolean {
-        if (signal.aborted || identity !== this.identity || !Number.isSafeInteger(phase.subcalls) ||
+        if (this.broken || signal.aborted || identity !== this.identity || !Number.isSafeInteger(phase.subcalls) ||
             phase.subcalls < 1 || phase.gates.length < 1 || phase.gates.length > 12) return false;
         const valid = (value: string) => typeof value === 'string' && !!value.trim() && value.length <= 2048 &&
             !/[\p{Cc}\p{Cf}]/u.test(value) && !/<\/?[a-z][^>]*>|javascript:|!\[[^\]]*\]\(https?:/iu.test(value);
@@ -63,28 +64,38 @@ export class RoadmapGenerationNativeStage {
                 title: criterion.title.trim(), expectedResult: criterion.expectedResult.trim() })) }));
         const existing = this.owner.get(identity.chatId);
         const proposalId = existing?.id;
-        for (let offset = 0; offset < actions.length; offset += 8) {
-            if (signal.aborted) throw new Error('ROADMAP_GENERATION_CANCELLED');
-            const result = await this.owner.stage(this.context(), { version: 1,
-                expectedRevision: identity.revision, expectedSourceHash: identity.sourceHash,
-                expectedStage: this.nextStage, strategy: 'full', done: false,
-                actions: actions.slice(offset, offset + 8) }) as { proposalId: string;
-                    acceptedOperationIds: string[]; nextStage: number };
-            if (signal.aborted || result.acceptedOperationIds.length !== Math.min(8, actions.length - offset) ||
-                result.nextStage !== this.nextStage + 1 || proposalId && result.proposalId !== proposalId)
-                throw new Error('ROADMAP_GENERATION_STAGE_CHANGED');
-            const snapshot = this.owner.get(identity.chatId)?.snapshot;
-            if (!snapshot || snapshot.proposalId !== result.proposalId ||
-                snapshot.sequence !== this.nextStage) throw new Error('ROADMAP_GENERATION_SNAPSHOT_CHANGED');
-            this.notify(snapshot);
-            this.nextStage++;
+        let acceptedBatches = 0;
+        try {
+            for (let offset = 0; offset < actions.length; offset += 8) {
+                if (signal.aborted) throw new Error('ROADMAP_GENERATION_CANCELLED');
+                const result = await this.owner.stage(this.context(), { version: 1,
+                    expectedRevision: identity.revision, expectedSourceHash: identity.sourceHash,
+                    expectedStage: this.nextStage, strategy: 'full', done: false,
+                    actions: actions.slice(offset, offset + 8) }) as { proposalId: string;
+                        acceptedOperationIds: string[]; nextStage: number };
+                if (signal.aborted || result.acceptedOperationIds.length !== Math.min(8, actions.length - offset) ||
+                    result.nextStage !== this.nextStage + 1 || proposalId && result.proposalId !== proposalId)
+                    throw new Error('ROADMAP_GENERATION_STAGE_CHANGED');
+                const snapshot = this.owner.get(identity.chatId)?.snapshot;
+                if (!snapshot || snapshot.proposalId !== result.proposalId ||
+                    snapshot.sequence !== this.nextStage) throw new Error('ROADMAP_GENERATION_SNAPSHOT_CHANGED');
+                this.notify(snapshot);
+                this.nextStage++; acceptedBatches++;
+            }
+        } catch (error) {
+            // A stage may have committed before its acknowledgement was lost. Invalidate
+            // the whole noncanonical draft; retrying against an uncertain sequence is unsafe.
+            this.broken = true;
+            this.owner.forget(identity.chatId);
+            throw new Error(`${acceptedBatches ? 'ROADMAP_GENERATION_STAGE_PARTIAL' :
+                'ROADMAP_GENERATION_STAGE_FAILED'}: ${String(error).slice(0, 160)}`);
         }
         this.names.add(phase.title.trim().toLowerCase());
         return phase.title.trim().slice(0, 160);
     }
 
     async complete(identity: GenerationIdentity, signal: AbortSignal): Promise<boolean> {
-        if (signal.aborted || identity !== this.identity) return false;
+        if (this.broken || signal.aborted || identity !== this.identity) return false;
         await this.owner.finish(this.context(), identity.revision, identity.sourceHash);
         const snapshot = this.owner.get(identity.chatId)?.snapshot;
         if (!snapshot?.complete) throw new Error('ROADMAP_GENERATION_FINAL_SNAPSHOT_MISSING');
