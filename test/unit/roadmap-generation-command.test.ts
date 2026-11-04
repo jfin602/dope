@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -10,6 +10,7 @@ import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backen
 import { piConversation } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
 import * as legacyParserModule from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 import * as legacyStageModule from '../../packages/theia-extension/lib/node/roadmap-typed-stage.js';
 
@@ -18,6 +19,24 @@ test('retired full-plan parsers and converter are absent from runtime exports', 
         'checkNaturalRoadmapPlan', 'extractNaturalRoadmapOutline', 'parseStrategicDraft'])
         assert.equal(name in legacyParserModule, false, name);
     assert.equal('stageTypedRoadmapDraft' in legacyStageModule, false);
+    for (const method of ['previewStrategicDraft', 'acceptStrategicDraft', 'rejectStrategicDraft'])
+        assert.equal(method in RoadmapGreenfield.prototype, false, method);
+});
+
+test('only Chat backend constructs the controller; retired generation RPCs and UI review are absent', async () => {
+    const sourceRoot = join(import.meta.dirname, '../../packages/theia-extension/src');
+    const files = (await readdir(join(sourceRoot, 'node'))).filter(name => name.endsWith('.ts'));
+    const constructors: string[] = [];
+    for (const name of files) {
+        const source = await readFile(join(sourceRoot, 'node', name), 'utf8');
+        if (source.includes('new RoadmapGenerationController(')) constructors.push(name);
+        assert.doesNotMatch(source, /previewStrategicDraft|acceptStrategicDraft|decideRoadmapOffer|decideStrategicDraft/);
+    }
+    assert.deepEqual(constructors, ['chat-backend.ts']);
+    const frontend = await readFile(join(sourceRoot, 'browser/frontend-module.ts'), 'utf8');
+    const canvas = await readFile(join(sourceRoot, 'browser/roadmap-canvas-widget.ts'), 'utf8');
+    assert.doesNotMatch(frontend + canvas, /presentStrategicReview|decideRoadmapOffer|decideStrategicDraft/);
+    assert.doesNotMatch(frontend, /runGenerationCommand|RoadmapGenerationController/);
 });
 
 const none = ['Create a roadmap', '/roadmap', '/roadmap generate', '"/gen-roadmap plan"',
@@ -61,8 +80,8 @@ test('fresh generation command and empty body fail before inference or Roadmap w
         assert.equal(JSON.stringify(await repository.read(root)), before);
         await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
         await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, chatId, lease.token,
-            'old-offer', 'old-token', true), /retired/);
+        assert.equal('decideRoadmapOffer' in backend, false);
+        assert.equal('decideStrategicDraft' in backend, false);
         assert.equal(inference, 0);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

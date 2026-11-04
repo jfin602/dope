@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, ChatSearchRequest, ChatService,
-    ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal, ChatRoadmapOffer,
-    ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
+    ChatTurnRequest, ChatOperation, ChatContextPreview, ChatTurnResult, ChatPlanningProposal,
+    ChatContextSelection, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import { changeChatSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
@@ -18,8 +18,7 @@ import { AIRoleRoutingService, RoleRoutingFailure, exactRoutingProvenance, type 
 import { ProjectPlanningActions, type PlanningAction, type PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import { LocalPlanningOutputFailure, allowsPlainGateAnswer, localPlanningJson, requestsRoadmapOwnerRevision,
     roadmapLocalBudget, verifyRoadmapLocalInput } from './roadmap-local-model';
-import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview,
-    type StrategicDraftPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
+import { RoadmapGreenfield, type GreenfieldEdit, type GreenfieldEditPreview } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import { readRoadmapDocumentCapabilities } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import { selectDopeCapabilityHelp } from './dope-capability-help';
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
@@ -108,24 +107,11 @@ export class ChatBackend implements ChatService {
         nativeStageId?: string; generationOnly?: boolean;
         publication?: { root: string; mode: 'publish' | 'link'; preview: RoadmapPublicationPreview | RoadmapExistingLinkPreview };
         undo?: { handle: string; ownerId: string; revision: number; token: string };
-        roadmapOffer?: ChatRoadmapOffer;
         draft?: { handle: string; preview: GreenfieldEditPreview };
         }>();
     private readonly nativeProposalEdits = new Set<string>();
     private readonly gateUndo = new Map<string, { handle: string; ownerId: string; revision: number;
         token: string; leaseToken: string }>();
-    private readonly strategicReviews = new Map<string, { root: string; leaseToken: string; messageId: string; offerId: string;
-        question: string; preview: StrategicDraftPreview; extractedSourceId?: string }>();
-
-    private extractedSourceHash(chat: Chat, sourceId: string): string {
-        const index = chat.messages.findIndex(item => item.id === sourceId && item.role === 'assistant');
-        if (index < 0) throw new Error('Saved planning answer changed');
-        const source = chat.messages[index];
-        return createHash('sha256').update(JSON.stringify({ sourceId, content: source.content,
-            decisions: chat.messages.slice(0, index).filter(item => item.role === 'user')
-                .map(item => ({ id: item.id, content: item.content })) })).digest('hex');
-    }
-
     private async updateRoadmapAction(root: string, chatId: string, messageId: string, leaseToken: string,
         offerId: string, expected: ChatRoadmapAction['status'], status: ChatRoadmapAction['status'],
         extra: Partial<Pick<ChatRoadmapAction, 'stage' | 'draftRevision' | 'diagnostic'>> = {}): Promise<void> {
@@ -136,14 +122,6 @@ export class ChatBackend implements ChatService {
         const { stage: _stage, draftRevision: _draftRevision, diagnostic: _diagnostic, ...base } = message.roadmapAction;
         await this.repository.recordRoadmapAction(root, chatId, messageId, leaseToken,
             { ...base, status, ...extra }, { offerId, status: expected });
-    }
-
-    private roadmapSourceMessages(chat: Chat): unknown[] {
-        return chat.messages.map(message => {
-            if (message.role !== 'assistant') return message;
-            const { roadmapAction: _action, ...source } = message;
-            return source;
-        });
     }
 
     constructor(private readonly repository: ChatRepository, private readonly client: ChatClient,
@@ -207,11 +185,11 @@ export class ChatBackend implements ChatService {
             if (state.revision || state.linkedDocument || state.canonicalMarkdown || state.pendingCreation || state.drafts)
                 return base + `linked document ${state.linkedDocument ? JSON.stringify(state.linkedDocument) : 'none'}, ` +
                     `root ROADMAP.md present ${state.canonicalMarkdown}, ${state.gates} accepted Gates, ` +
-                    `${state.draftGates} Gates in drafts, ${state.proposedGates} proposed Gates, ` +
+                    `${state.draftGates} Gates in drafts, ` +
                     `creation pending ${state.pendingCreation}, ${state.drafts} Greenfield drafts. ` +
                     'An owner, creation, or draft already exists. Offer Open, Continue, or Review Roadmap as appropriate; do not offer a duplicate draft.';
             return base + 'revision zero, no linked document, pending creation, or Greenfield draft. ' +
-                'Roadmap generation is currently unavailable. Answer the user without offering to start generation or claiming a draft exists.';
+                'A user may submit a fresh /gen-roadmap command with a prompt in Chat. Do not start generation from this ordinary message or claim a draft exists.';
         } catch {
             return 'Roadmap opportunity: the current project owner or draft state could not be verified. ' +
                 'Do not infer absence or offer draft creation; suggest checking Roadmap first.';
@@ -355,9 +333,6 @@ export class ChatBackend implements ChatService {
                 if (this.disposed) throw new Error('Disposed Chat connection');
                 this.clearProposal(request.chatId);
                 this.clearGateUndo(request.chatId);
-                const prior = this.strategicReviews.get(request.chatId);
-                if (prior) { this.greenfield?.rejectStrategicDraft(prior.preview.token);
-                    this.strategicReviews.delete(request.chatId); }
                 this.leases.set(request.chatId, { root, token: result.token });
                 this.commandModes.set(request.chatId, 'ask');
             } catch (error) {
@@ -398,9 +373,6 @@ export class ChatBackend implements ChatService {
         await this.repository.release(root, chatId, token);
         if (this.leases.get(chatId)?.token === token) {
             this.leases.delete(chatId); this.clearProposal(chatId); this.clearGateUndo(chatId);
-            const review = this.strategicReviews.get(chatId);
-            if (review) { this.greenfield?.rejectStrategicDraft(review.preview.token);
-                this.strategicReviews.delete(chatId); }
         }
     }
     async setCommandMode(projectHandle: string, chatId: string, leaseToken: string,
@@ -493,17 +465,6 @@ export class ChatBackend implements ChatService {
         const undo = this.gateUndo.get(chatId);
         if (undo) this.planning?.detach(undo.handle);
         this.gateUndo.delete(chatId);
-    }
-
-    async decideRoadmapOffer(_projectHandle: string, _chatId: string, _leaseToken: string,
-        _offerId: string, _token: string, _approve: boolean, _selectedModel?: { connectionId: string; modelId: string }):
-        Promise<'declined' | ChatStrategicDraftReview> {
-        throw new Error('Saved-answer Roadmap creation is retired; request a new native Roadmap proposal');
-    }
-
-    async decideStrategicDraft(_projectHandle: string, _chatId: string, _leaseToken: string,
-        _token: string, _approve: boolean): Promise<number | undefined> {
-        throw new Error('Response-parsed strategic drafts are retired; request a native Roadmap proposal');
     }
 
     private async retirePending(root: string, chatId: string, leaseToken: string,
@@ -1344,7 +1305,7 @@ export class ChatBackend implements ChatService {
         if (command.kind === 'ready') return this.runGenerationCommand(root, request, command.body);
         if (!request.retryMessageId && (/^\/roadmap\s+generate(?:\s|$)/u.test(request.content?.trim() ?? '') ||
             /^yes,?\s+create the roadmap[.!]?$/iu.test(request.content?.trim() ?? '')))
-            throw new Error('Legacy Roadmap generation is unavailable; use /gen-roadmap <roadmap prompt> when the new controller is ready');
+            throw new Error('Legacy Roadmap generation is unavailable; submit /gen-roadmap <roadmap prompt> as a fresh Chat command');
         if (!this.models || this.turns.has(request.chatId) || this.generationControllers.has(request.chatId) ||
             this.generationPreparing.has(request.chatId))
             throw new Error('Chat turn already active or runtime unavailable');
@@ -1352,17 +1313,6 @@ export class ChatBackend implements ChatService {
         const chat = snapshot.chats.find(item => item.id === request.chatId);
         if (!chat) throw new Error('Chat not found');
         // Saved offers remain inert; a saved answer never becomes Roadmap mutation authority.
-        const priorOffer = this.proposals.get(request.chatId);
-        if (priorOffer?.roadmapOffer) {
-            await this.updateRoadmapAction(root, request.chatId, priorOffer.messageId, request.leaseToken,
-                priorOffer.roadmapOffer.id, 'offered', 'stale').catch(() => {});
-        }
-        const priorReview = this.strategicReviews.get(request.chatId);
-        const relevantReviewChange = /\b(?:roadmap|phase|gate|criterion|criteria|checkpoint|tower|enemy|health|currency|money|abilit(?:y|ies))\b/i.test(request.content ?? '');
-        if (priorReview && relevantReviewChange) { this.greenfield?.rejectStrategicDraft(priorReview.preview.token);
-            await this.updateRoadmapAction(root, request.chatId, priorReview.messageId, request.leaseToken,
-                priorReview.offerId, 'ready', 'stale').catch(() => {});
-            this.strategicReviews.delete(request.chatId); }
         await this.repository.renew(root, request.chatId, request.leaseToken);
         await this.retirePending(root, request.chatId, request.leaseToken, 'superseded');
         this.clearProposal(request.chatId);
@@ -2254,8 +2204,6 @@ export class ChatBackend implements ChatService {
         this.disposed = true;
         for (const chatId of this.proposals.keys()) this.clearProposal(chatId);
         for (const chatId of this.gateUndo.keys()) this.clearGateUndo(chatId);
-        for (const review of this.strategicReviews.values()) this.greenfield?.rejectStrategicDraft(review.preview.token);
-        this.strategicReviews.clear();
         for (const turn of this.turns.values()) turn.abort.abort();
         for (const generation of this.generationControllers.values()) generation.controller.cancel();
         this.generationControllers.clear();

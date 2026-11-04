@@ -165,7 +165,7 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
         assert.equal(sent[0]?.role, 'system');
         assert.match(sent[0].content, /Pi read_file/);
         assert.ok(sent.some(message => /Checked read-only Roadmap opportunity.*revision zero/s.test(message.content)));
-        assert.ok(sent.some(message => /Roadmap generation is currently unavailable/.test(message.content)));
+        assert.ok(sent.some(message => /fresh \/gen-roadmap command/.test(message.content)));
         assert.equal(sent.some(message => /implementation-plan|pixi\.js: absent/.test(message.content)), false);
         const saved = (await backend.get(projectHandle, chatId))!.messages;
         assert.equal(saved[0].role, 'user');
@@ -190,7 +190,7 @@ test('ordinary Chat opportunity suppresses duplicate or unverifiable offers with
         (backend as unknown as { roadmapOpportunity(root: string, content: string, ordinary: boolean): Promise<string | undefined> })
             .roadmapOpportunity('/tmp/project', content, true);
     try {
-        assert.match((await read())!, /Roadmap generation is currently unavailable/);
+        assert.match((await read())!, /fresh \/gen-roadmap command/);
         assert.equal(await read('What is the weather?'), undefined);
         assert.equal(await (backend as unknown as { roadmapOpportunity(root: string, content: string,
             ordinary: boolean): Promise<string | undefined> }).roadmapOpportunity('/tmp/project', 'Plan it', false), undefined);
@@ -211,10 +211,8 @@ test('retired response-parsed Roadmap offer cannot bypass current proposal autho
         undefined, undefined, undefined, undefined, undefined, undefined, undefined, new RoadmapStore());
     try {
         const { projectHandle } = await backend.attach(pathToFileURL(root).href);
-        await assert.rejects(backend.decideRoadmapOffer(projectHandle, id(), id(), id(), id(), true),
-            /Saved-answer Roadmap creation is retired/);
-        await assert.rejects(backend.decideStrategicDraft(projectHandle, id(), id(), id(), true),
-            /Response-parsed strategic drafts are retired/);
+        assert.equal('decideRoadmapOffer' in backend, false);
+        assert.equal('decideStrategicDraft' in backend, false);
         assert.equal((await new RoadmapStore().read(root)).revision, 0);
         await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }

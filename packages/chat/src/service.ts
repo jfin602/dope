@@ -81,30 +81,16 @@ export interface ChatRoadmapPreviewEntity { kind: 'phase' | 'gate' | 'criterion'
     title?: string; detail?: string; designation?: string; parentId?: string; order?: number;
     dependencies?: string[]; criteria?: { id: string; title: string; expectedResult: string }[];
     additionalCriteria?: number }
-/** A transient, noncanonical permission to attempt one draft generation. Never a draft or publication grant. */
-export interface ChatRoadmapOffer { id: string; token: string; projectHandle: string; projectId: string; chatId: ChatId; messageId: string;
-    ownerId: string; ownerRevision: number; basis: 'empty-owner'; expiresAt: number }
-export interface ChatStrategicDraftReview { token: string; projectId: string; revision: number; diagnostic?: string;
-    draft: { revision: number; phases: { id: string; title: string; objective: string;
-        kind?: 'correction'; parentId?: string; gates?: { id: string; parentPhaseId: string; designation: string;
-            title: string; purpose: string; criteria: { id: string; title: string; expectedResult: string }[] }[];
-        checkpoints: { id: string; title: string; objective: string;
-            dependencies?: string[] }[] }[] };
-    phases: { title: string; objective: string; gates?: { id: string; parentPhaseId: string; designation: string;
-        title: string; purpose: string; criteria: { id: string; title: string; expectedResult: string }[] }[];
-        checkpoints: { id: string; title: string; objective: string;
-        dependencies: string[] }[] }[] }
 export interface ChatTurnResult extends ChatContextPreview { proposal?: ChatPlanningProposal;
     roadmapFocus?: { projectId: string; revision: number; id: string };
-    proposalError?: string; roadmapOffer?: ChatRoadmapOffer;
-    roadmapDraftReview?: ChatStrategicDraftReview }
+    proposalError?: string }
 export type ChatCommandMode = 'ask' | 'allow';
 export interface ChatCommandPreview { id: string; command: string; project: string; cwd: string;
     sandbox: string; effect: string; expiresAt: number }
 export type ChatEvent =
     | { projectHandle: string; revision: number; kind: 'changed' | 'lease-changed'; chatId?: ChatId }
     | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;
-        stage: 'waiting' | 'plan-locked' | 'converting' | 'validating' | 'checking-owner' | 'generating-draft' | 'validating-draft' | 'preparing-draft' | 'draft-ready' | 'cancelled' | 'failed' }
+        stage: 'waiting' | 'validating' | 'failed' | 'cancelled' }
     | { projectHandle: string; kind: 'roadmap-stage'; chatId: ChatId; messageId: string;
         snapshot: ChatRoadmapStageSnapshot | null; reason?: 'cancelled' | 'failed' | 'stale';
         generation?: { generationId: string; proposalId: string; seq: number;
@@ -164,9 +150,5 @@ export interface ChatService {
     decideNativeRoadmap(projectHandle: string, chatId: ChatId, leaseToken: string, proposalId: string,
         operationIds: string[], decision: 'apply' | 'reject', token: string):
         Promise<{ revision?: number; changedIds: string[]; proposal?: ChatPlanningProposal }>;
-    decideRoadmapOffer(projectHandle: string, chatId: ChatId, leaseToken: string,
-        offerId: string, token: string, approve: boolean, selectedModel?: ChatModelSelection): Promise<'declined' | ChatStrategicDraftReview>;
-    decideStrategicDraft(projectHandle: string, chatId: ChatId, leaseToken: string,
-        token: string, approve: boolean): Promise<number | undefined>;
     cancelTurn(projectHandle: string, chatId: ChatId, leaseToken: string): Promise<void>;
 }

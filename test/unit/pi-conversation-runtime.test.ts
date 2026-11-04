@@ -79,8 +79,8 @@ test('Pi stops on changed model, insufficient context and cancellation', async (
     }, /cancelled/);
 });
 
-test('Pi length stop exposes bounded provider usage and marker completion state without output text', async () => {
-    const partial = fixture({ text: 'RM1\nP|Path|Build path', modelId: 'fixture-model', finishReason: 'length',
+test('Pi length stop exposes bounded provider usage without output text', async () => {
+    const partial = fixture({ text: 'unfinished private answer', modelId: 'fixture-model', finishReason: 'length',
         usage: { tokenMeasurement: 'provider-reported', inputTokens: 40, outputTokens: 2002,
             reasoningTokens: 1800, totalTokens: 2042 } });
     await assert.rejects(async () => {
@@ -88,8 +88,8 @@ test('Pi length stop exposes bounded provider usage and marker completion state 
             { messages: [{ role: 'user', content: 'Plan' }], maxOutputTokens: 2048 },
             bridge as never, partial.factory as never)) { /* no completed answer */ }
     }, error => {
-        assert.match(String(error), /finishReason=length.*providerMarkerEND=no.*reasoningTokens=1800.*finalTokens=202.*totalTokens=2042/);
-        assert.doesNotMatch(String(error), /P\|Path\|Build path/);
+        assert.match(String(error), /finishReason=length.*reasoningTokens=1800.*finalTokens=202.*totalTokens=2042/);
+        assert.doesNotMatch(String(error), /unfinished private answer/);
         return true;
     });
 });

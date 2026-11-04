@@ -1,7 +1,7 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
 import type { Chat, ChatCollection, ChatFolderPath, ChatActivityEvent } from '@dope/chat';
 import type { ChatClient, ChatEvent, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
-    ChatPlanningProposal, ChatRoadmapOffer, ChatStrategicDraftReview, ChatTurnResult,
+    ChatPlanningProposal, ChatTurnResult,
     ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
@@ -82,8 +82,6 @@ export class ChatPanelController {
     nativeRoadmapReview?: { proposalId: string; ids: string[]; decision: 'apply' | 'reject'; token: string;
         summary: string; preview?: ChatPlanningProposal['preview'] };
     planningDecision?: { id: string; status: 'accepted' | 'rejected' | 'failed'; changedIds: string[] };
-    roadmapOffer?: ChatRoadmapOffer;
-    strategicDraftReview?: ChatStrategicDraftReview;
     planningProposalError?: string;
     planningProposalErrorMessageId?: string;
     planningMode: 'follow' | 'pin' = 'follow';
@@ -97,13 +95,10 @@ export class ChatPanelController {
     runStartedAt?: string;
     stream: { chatId: string; messageId: string; executionId: string; content: string; sequence: number;
         activitySequence: number; events: ChatActivityEvent[] } | undefined;
-    planningProgress?: { messageId: string; stage: 'waiting' | 'plan-locked' | 'converting' | 'validating' };
-    roadmapGenerationStage?: Extract<import('@dope/chat/lib/service').ChatEvent, { kind: 'planning-progress' }>['stage'];
-    roadmapGenerationProjectId?: string;
+    planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
     roadmapStage?: Extract<ChatEvent, { kind: 'roadmap-stage' }>['snapshot'];
     roadmapStageError?: string;
     private endedRoadmapTurnId?: string;
-    activeRoadmapOfferId?: string;
     transientUser: { chatId: string; content: string; previousIds: Set<string> } | undefined;
     private connection?: ChatConnection;
     private handle?: string;
@@ -174,7 +169,6 @@ export class ChatPanelController {
         this.error = '';
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
         this.lastContext = undefined; this.planningProposal = undefined;
-        this.roadmapOffer = undefined; this.strategicDraftReview = undefined;
         this.roadmapStage = undefined; this.roadmapStageError = undefined;
         this.endedRoadmapTurnId = undefined;
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
@@ -182,8 +176,6 @@ export class ChatPanelController {
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.commandMode = 'ask'; this.pendingCommand = undefined; this.toolProgress = undefined;
         this.planningProgress = undefined;
-        this.roadmapGenerationStage = undefined; this.roadmapGenerationProjectId = undefined;
-        this.activeRoadmapOfferId = undefined;
         this.planningMode = 'follow'; this.pinnedPlanning = undefined;
         if (workspace && this.restoredPlanning?.workspace === workspace) {
             this.planningMode = 'pin'; this.pinnedPlanning = this.restoredPlanning.selection;
@@ -230,8 +222,7 @@ export class ChatPanelController {
                 }
                 if (event.kind === 'planning-progress') {
                     if (!this.running || event.chatId !== this.chatId ||
-                        event.stage !== 'waiting' && event.stage !== 'plan-locked' &&
-                        event.stage !== 'converting' && event.stage !== 'validating' ||
+                        event.stage !== 'waiting' && event.stage !== 'validating' ||
                         this.planningProgress?.messageId === event.messageId && this.planningProgress.stage === event.stage) return;
                     this.planningProgress = { messageId: event.messageId, stage: event.stage };
                     this.changed();
@@ -325,7 +316,7 @@ export class ChatPanelController {
 
     private async leave(): Promise<void> {
         this.clearRestoreRetry();
-        if (this.running || this.roadmapGenerationStage && this.pending) await this.cancel();
+        if (this.running) await this.cancel();
         if (this.renewal) clearInterval(this.renewal);
         this.renewal = undefined;
         const lease = this.lease;
@@ -364,7 +355,6 @@ export class ChatPanelController {
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
         this.lastContext = undefined; this.planningProposal = undefined;
-        this.roadmapOffer = undefined; this.strategicDraftReview = undefined;
         this.roadmapStage = undefined; this.roadmapStageError = undefined;
         this.endedRoadmapTurnId = undefined;
         this.planningProposalError = undefined; this.planningProposalErrorMessageId = undefined;
@@ -372,8 +362,6 @@ export class ChatPanelController {
         this.turnModel = undefined; this.stream = undefined; this.transientUser = undefined;
         this.commandMode = 'ask'; this.pendingCommand = undefined;
         this.planningProgress = undefined;
-        this.roadmapGenerationStage = undefined; this.roadmapGenerationProjectId = undefined;
-        this.activeRoadmapOfferId = undefined;
         this.changed();
         await this.leave();
         await Promise.allSettled(previous);
@@ -586,10 +574,6 @@ export class ChatPanelController {
             this.changed(); return false;
         }
         const content = this.draft;
-        const keepReview = !!this.strategicDraftReview && !retryMessageId &&
-            (/^roadmap[.!?]?$/i.test(content.trim()) ||
-                !/\b(?:roadmap|phase|checkpoint|tower|enemy|health|currency|money|abilit(?:y|ies))\b/i.test(content));
-        this.activeRoadmapOfferId = undefined;
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
         this.running = true; this.runStartedAt = new Date().toISOString();
@@ -599,8 +583,6 @@ export class ChatPanelController {
         this.endedRoadmapTurnId = undefined;
         this.planningProposal = undefined; this.planningProposalError = undefined;
         this.planningProposalErrorMessageId = undefined;
-        this.roadmapOffer = undefined;
-        if (!keepReview) this.strategicDraftReview = undefined;
         if (!retryMessageId && chatId) this.transientUser = { chatId, content,
             previousIds: new Set(this.chat?.messages.filter(message => message.role === 'user').map(message => message.id)) };
         if (!retryMessageId) this.draft = '';
@@ -631,9 +613,6 @@ export class ChatPanelController {
                 const focused = await this.planning.focusRoadmap(this.workspace, result.roadmapFocus);
                 if (this.planningMode === 'pin') this.pinnedPlanning = focused;
             }
-            this.roadmapOffer = result.roadmapOffer;
-            if (result.roadmapDraftReview) { this.transientUser = undefined;
-                this.strategicDraftReview = result.roadmapDraftReview; }
             this.planningProposalError = result.proposalError;
             this.planningProposalErrorMessageId = result.proposalError ? result.proposal?.messageId : undefined;
             completed = true;
@@ -652,7 +631,7 @@ export class ChatPanelController {
                 this.roadmapStage = undefined; this.roadmapStageError = undefined;
                 this.stream = undefined; this.planningProgress = undefined;
                 this.pendingCommand = undefined;
-                this.roadmapGenerationStage = undefined; this.activeRoadmapOfferId = undefined; this.changed();
+                this.changed();
                 await this.refresh(true);
                 if (!completed && this.transientUser?.chatId === chatId) {
                     if (this.error && !retryMessageId) this.draft = content;
@@ -661,24 +640,6 @@ export class ChatPanelController {
                 }
             }
         }
-    }
-    async decideStrategicDraft(approve: boolean): Promise<void> {
-        const lease = this.lease, review = this.strategicDraftReview;
-        if (!lease || !review || this.pending || this.running) return;
-        const generation = this.generation;
-        this.pending = true; this.changed();
-        try {
-            await lease.connection.decideStrategicDraft(lease.handle, lease.chatId,
-                lease.token, review.token, approve);
-            if (generation !== this.generation || lease !== this.lease) return;
-            this.strategicDraftReview = undefined;
-        } catch (error) { if (generation !== this.generation || lease !== this.lease) return;
-            this.error = `Strategic draft was not accepted: ${String(error)}`;
-            this.strategicDraftReview = undefined;
-        } finally { if (generation === this.generation && lease === this.lease) {
-            try { await this.refresh(true); }
-            finally { this.pending = false; this.changed(); }
-        } }
     }
     async decidePlanningProposal(approve: boolean): Promise<void> {
         const lease = this.lease, proposal = this.planningProposal;
@@ -835,7 +796,7 @@ export class ChatPanelController {
     }
     async cancel(): Promise<void> {
         const lease = this.lease;
-        if (lease && (this.running || this.roadmapGenerationStage && this.pending))
+        if (lease && this.running)
             await lease.connection.cancelTurn(lease.handle, lease.chatId, lease.token).catch(() => {});
     }
     async newFolder(parent: ChatFolderPath, name: string): Promise<boolean> {

@@ -66,10 +66,9 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 const final = output !== undefined && reasoning !== undefined && output >= reasoning ?
                     output - reasoning : 'unavailable';
                 const finish = event.finishReason === 'length' ? 'length' : 'other';
-                const ended = /(?:^|\n)END\r?\n?$/.test(event.text);
                 throw new ModelRuntimeFailure('Local answer did not complete; shorten the request or use a larger model. ' +
                     `finishReason=${finish}, providerFinalText=${event.text ? 'present' : 'absent'}, ` +
-                    `providerMarkerEND=${ended ? 'yes' : 'no'}, reasoningTokens=${reasoning ?? 'unavailable'}, ` +
+                    `reasoningTokens=${reasoning ?? 'unavailable'}, ` +
                     `finalTokens=${final}, totalTokens=${reported ? event.usage.totalTokens ?? 'unavailable' : 'unavailable'}, ` +
                     `requestedOutputTokens=${maxOutputTokens}, measuredContextTokens=${binding.contextWindowTokens}`,
                 'incomplete-answer');

@@ -12,7 +12,7 @@ import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-renderin
 import type { ChatOperation } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import { CHAT_COLORS, type ChatSettings, type ChatModelSelection, type ChatAssistantMessage } from '@dope/chat';
-import type { ChatContextSelection, ChatStrategicDraftReview, ChatEvent, ChatPlanningProposal } from '@dope/chat/lib/service';
+import type { ChatContextSelection, ChatEvent, ChatPlanningProposal } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { AICenterContribution } from './ai-center-contribution';
@@ -196,9 +196,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         void overlay.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }],
             { duration: 140, easing: 'ease-in', fill: 'forwards' }).finished.then(finish, finish);
     }
-    private strategicPresentationKey = '';
-    private strategicPresentationTarget?: { workspace: string; projectId: string; chatId: string };
-    private strategicPresentationQueue: Promise<void> = Promise.resolve();
     private viewedProposal?: { uri: string; chatId: string; id: string; proposal: ChatPlanningProposal };
     private autoPreviewTurn?: { uri: string; chatId: string };
     private readonly autoPreviewedProposals = new Set<string>();
@@ -274,10 +271,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         connectionStatus?: ConnectionStatusService,
         private readonly openRoadmapDraft?: (projectUri: string, projectId: string, chatId: string,
             revision: number) => Promise<void>,
-        private readonly presentStrategicRoadmap?: (projectUri: string, projectId: string, chatId: string,
-            state: { stage?: Extract<ChatEvent, { kind: 'planning-progress' }>['stage'];
-                review?: ChatStrategicDraftReview; error?: string; clear?: boolean; busy?: boolean },
-            decide: (approve: boolean) => Promise<void>, open: boolean) => Promise<void>,
         private readonly fileDialogs?: FileDialogService, private readonly files?: FileService,
         private readonly viewRoadmapProposal?: (uri: string, chatId: string, proposal: ChatPlanningProposal,
             isCurrent: () => boolean, activate?: boolean) => Promise<void>,
@@ -301,7 +294,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.addClass('dope-chat-panel');
         this.controller = new ChatPanelController(connect, kind => {
             if (kind === 'activity' && this.updateLiveStreamActivity()) return;
-            this.render(); this.syncStrategicRoadmap();
+            this.render();
         }, owners, this.id,
             () => { void this.shell.activateWidget(this.id); }, planningSelection, (event, workspace) => {
                 onRoadmapStage?.(event, workspace);
@@ -339,44 +332,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.planningListener = planningSelection?.onChange(() => this.render());
         this.initialAttach = this.attach();
         if (this.module === 'chat') void this.loadModels();
-    }
-
-    private syncStrategicRoadmap(): void {
-        if (!this.presentStrategicRoadmap || this.module !== 'chat') return;
-        const state = this.controller;
-        const workspace = state.workspace, chatId = state.chatId;
-        const projectId = state.strategicDraftReview?.projectId ?? state.roadmapGenerationProjectId;
-        if (workspace && chatId && projectId && (state.roadmapGenerationStage || state.strategicDraftReview)) {
-            const previous = this.strategicPresentationTarget;
-            const open = !previous || previous.workspace !== workspace || previous.chatId !== chatId ||
-                previous.projectId !== projectId;
-            this.strategicPresentationTarget = { workspace, chatId, projectId };
-            const key = `${workspace}:${chatId}:${state.roadmapGenerationStage ?? ''}:${state.strategicDraftReview?.token ?? ''}:${state.pending}`;
-            if (key === this.strategicPresentationKey) return;
-            this.strategicPresentationKey = key;
-            const payload = { stage: state.roadmapGenerationStage, review: state.strategicDraftReview, busy: state.pending };
-            this.strategicPresentationQueue = this.strategicPresentationQueue.then(() =>
-                this.presentStrategicRoadmap!(workspace, projectId, chatId, payload,
-                    approve => state.strategicDraftReview ? state.decideStrategicDraft(approve) : state.cancel(), open))
-                .catch(() => { state.error = 'Roadmap editor unavailable. Open Roadmap to retry.';
-                    this.render(); });
-            return;
-        }
-        const target = this.strategicPresentationTarget;
-        if (!target) return;
-        if (state.pending) return;
-        this.strategicPresentationTarget = undefined;
-        this.strategicPresentationKey = '';
-        const acceptedMessage = state.chat?.messages.find(message => message.role === 'assistant' &&
-            message.roadmapAction?.status === 'accepted' && message.roadmapAction.projectId === target.projectId);
-        const accepted = acceptedMessage?.role === 'assistant' ? acceptedMessage.roadmapAction : undefined;
-        const error = state.error || undefined;
-        this.strategicPresentationQueue = this.strategicPresentationQueue.then(async () => {
-            if (accepted?.draftRevision !== undefined && accepted.chatId === target.chatId)
-                await this.openRoadmapDraft?.(target.workspace, accepted.projectId, accepted.chatId, accepted.draftRevision);
-            else await this.presentStrategicRoadmap!(target.workspace, target.projectId, target.chatId,
-                error ? { error } : { clear: true }, async () => {}, false);
-        }).catch(() => {});
     }
 
     private syncViewedProposal(): void {
@@ -778,44 +733,20 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const action = message.roadmapAction, state = this.controller;
         if (!action || action.chatId !== state.chatId || !state.workspace ||
             action.sourceMessageId !== undefined && action.sourceMessageId !== message.id) return undefined;
-        const liveOffer = state.roadmapOffer?.id === action.offerId &&
-            state.roadmapOffer.messageId === message.id && state.roadmapOffer.projectId === action.projectId &&
-            Date.now() < state.roadmapOffer.expiresAt ? state.roadmapOffer : undefined;
-        const liveReview = action.status === 'ready' && !!state.strategicDraftReview &&
-            state.strategicDraftReview.projectId === action.projectId;
         const card = document.createElement('section');
         card.className = 'dope-chat-roadmap-offer';
         card.setAttribute('aria-label', 'Roadmap action');
         const heading = document.createElement('strong');
         const note = document.createElement('p'); note.setAttribute('role', 'status');
         const actions = document.createElement('div'); actions.className = 'dope-chat-roadmap-offer-actions';
-        const status = action.status === 'offered' && state.activeRoadmapOfferId === action.offerId &&
-            state.roadmapGenerationStage ? 'generating' : action.status;
-        if (status === 'offered' && liveOffer) {
+        const status = action.status;
+        if (status === 'offered') {
             heading.textContent = 'Create Roadmap Draft';
-            note.textContent = 'Insert /gen-roadmap into Chat, add a prompt, and submit it yourself. Generation is currently unavailable.';
+            note.textContent = 'This saved offer is no longer active. To generate a Roadmap, submit /gen-roadmap with a prompt in Chat.';
             const generate = this.button('Write generation command', () => state.prefillRoadmapGeneration(),
                 state.pending || state.running);
             generate.className = 'dope-chat-roadmap-offer-primary';
             actions.append(generate);
-        } else if (status === 'generating') {
-            heading.textContent = 'Preparing Roadmap Draft';
-            const stage = state.roadmapGenerationStage ?? action.stage;
-            note.textContent = stage === 'checking-owner' ? 'Checking Roadmap…' :
-                stage === 'generating-draft' ? 'Optional model expansion…' :
-                stage === 'validating-draft' ? 'Extracting saved plan…' :
-                stage === 'preparing-draft' ? 'Validating preview…' :
-                'Checking draft state…';
-            actions.append(this.button('Cancel generation', () => void state.cancel()));
-        } else if (status === 'ready' && liveReview) {
-            heading.textContent = 'Roadmap Ready for Review';
-            note.textContent = action.diagnostic ?? 'Review the proposed phases in the Roadmap editor.';
-            actions.append(this.button('Open Roadmap', () => {
-                const review = state.strategicDraftReview, workspace = state.workspace, chatId = state.chatId;
-                if (review && workspace && chatId && review.projectId === action.projectId)
-                    void this.presentStrategicRoadmap?.(workspace, action.projectId, chatId,
-                        { review }, approve => state.decideStrategicDraft(approve), true);
-            }));
         } else if (status === 'accepted') {
             heading.textContent = 'Roadmap Draft Accepted';
             note.textContent = 'Accepted draft · not yet published. Canonical Markdown still requires separate approval.';
@@ -835,7 +766,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 'The offer or review session ended. Ask Chat for a new phase outline to continue.' :
                 action.diagnostic ?? (status === 'ready' ?
                 'The review session ended. Request a new draft to continue.' :
-                status === 'offered' ? 'Request a new offer to generate a draft.' :
                 status === 'declined' ? 'You chose not to prepare this Roadmap draft.' :
                 status === 'rejected' ? 'The proposed draft was rejected. No Roadmap was created.' :
                 status === 'cancelled' ? 'Draft preparation was canceled.' : 'No active Roadmap action.');
@@ -3409,8 +3339,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             progress.className = 'dope-chat-planning-progress';
             progress.setAttribute('role', 'status');
             progress.textContent = state.planningProgress.stage === 'waiting' ? 'Planning Roadmap…' :
-                state.planningProgress.stage === 'plan-locked' ? 'Natural Roadmap saved…' :
-                state.planningProgress.stage === 'converting' ? 'Converting saved Roadmap…' :
                 'Validating local planning result…';
             responseNotices.append(progress);
         }

@@ -13,33 +13,6 @@ const fixture = async (run: (root: string) => Promise<void>): Promise<void> => {
     try { await run(root); } finally { await rm(root, { recursive: true, force: true }); }
 };
 
-test('whole strategic draft is one reviewed noncanonical transaction with stable dependency identities', async () => fixture(async root => {
-    const store = new RoadmapStore(), greenfield = new RoadmapGreenfield(store);
-    const sourceHash = 'a'.repeat(64), projectId = (await store.read(root)).projectId;
-    const chatId = '123e4567-e89b-42d3-a456-426614174000';
-    const phases = ['Foundation', 'First playable', 'Expansion'].map((title, phase) => ({
-        title, objective: `Deliver ${title.toLowerCase()} outcome`,
-        checkpoints: [{ title: `${title} milestone`, objective: `Verify ${title.toLowerCase()} outcome`,
-            dependsOn: phase ? [phase] : [] }] }));
-    const input = { projectId, ownerRevision: 0, phases };
-    const preview = await greenfield.previewStrategicDraft(root, input, sourceHash);
-    assert.equal(preview.after.phases.length, 3);
-    assert.equal(preview.after.phases[2].checkpoints[0].dependencies?.[0],
-        preview.after.phases[1].checkpoints[0].id);
-    assert.equal((await greenfield.readOpportunity(root)).drafts, 0);
-    assert.equal((await store.read(root)).revision, 0);
-    assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
-    await assert.rejects(greenfield.acceptStrategicDraft(root, chatId, preview, 'b'.repeat(64)), /source/);
-    const review = await greenfield.previewStrategicDraft(root, input, sourceHash);
-    assert.equal((await greenfield.acceptStrategicDraft(root, chatId, review, sourceHash)).revision, 1);
-    assert.equal((await greenfield.readOpportunity(root)).drafts, 1);
-    assert.equal((await store.read(root)).revision, 0);
-    assert.equal((await readdir(root)).includes('ROADMAP.md'), false);
-    const restored = new RoadmapGreenfield(store);
-    assert.equal((await restored.restore(root))[0]?.draft.phases.length, 3);
-    await assert.rejects(greenfield.acceptStrategicDraft(root, chatId, review, sourceHash), /Stale/);
-}));
-
 test('a capped draft sequence is provisional until approved and checks each projected step', async () => fixture(async root => {
     const store = new RoadmapStore();
     const drafts = new RoadmapGreenfield(store);
@@ -154,12 +127,10 @@ test('retired accepted plans stay readable and do not own new Roadmap drafts', a
     assert.equal((await drafts.listImplementationPlans(root))[0].plan.objective, 'Historical plan');
     assert.equal((await drafts.list(root)).length, 1);
     drafts.cancel(created.handle);
-    const sourceHash = 'a'.repeat(64);
-    const preview = await drafts.previewStrategicDraft(root, { projectId, ownerRevision: 0,
-        phases: [{ title: 'New Roadmap', objective: 'Keep planning', checkpoints: [
-            { title: 'First step', objective: 'Deliver it', dependsOn: [] }] }] }, sourceHash);
-    await drafts.acceptStrategicDraft(root, chatId, preview, sourceHash);
-    assert.equal(drafts.chatDraft(root, chatId)?.handle, preview.handle);
+    const createdForChat = await drafts.begin(root);
+    drafts.edit(createdForChat.handle, 0, { type: 'create-phase', title: 'New Roadmap', objective: 'Keep planning' });
+    drafts.bindChat(root, createdForChat.handle, chatId);
+    assert.equal(drafts.chatDraft(root, chatId)?.handle, createdForChat.handle);
     assert.equal((await drafts.listImplementationPlans(root))[0].plan.objective, 'Historical plan');
     const saved = JSON.parse(await readFile(join(root, '.dope', 'roadmap-drafts.json'), 'utf8'));
     assert.equal(saved.drafts.find((item: { handle: string }) => item.handle === handle).chatId, undefined);

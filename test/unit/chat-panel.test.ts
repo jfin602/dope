@@ -63,7 +63,7 @@ test('retired strategic generation has only an inert historical card and command
     assert.doesNotMatch(controller, /async decideRoadmapOffer\(/);
     assert.match(controller, /prefillRoadmapGeneration\(\)/);
     assert.match(controller, /lease\.connection\.cancelTurn\(lease\.handle, lease\.chatId, lease\.token\)/);
-    assert.match(widget, /Extracting saved plan/);
+    assert.doesNotMatch(widget, /Extracting saved plan/);
     assert.doesNotMatch(widget, /Waiting for the selected model/);
     assert.match(widget, /Write generation command/);
     assert.doesNotMatch(widget, /state\.decideRoadmapOffer/);
@@ -71,8 +71,8 @@ test('retired strategic generation has only an inert historical card and command
     assert.doesNotMatch(widget, /roadmapOpenTarget/);
     assert.match(widget, /role', 'status'/);
     assert.match(widget, /Open Roadmap/);
-    assert.match(widget, /this\.syncStrategicRoadmap\(\)/);
-    assert.match(widget, /Review the proposed phases in the Roadmap editor/);
+    assert.doesNotMatch(widget, /this\.syncStrategicRoadmap\(\)/);
+    assert.doesNotMatch(widget, /Review the proposed phases in the Roadmap editor/);
     assert.doesNotMatch(widget, /this\.button\('Accept into draft'/);
     assert.doesNotMatch(widget, /shell\.addWidget\(.*Roadmap/);
 });

@@ -46,11 +46,6 @@ export interface GreenfieldPreview { token: string; draftRevision: number; path:
     phases: GreenfieldPhase[]; gates: GreenfieldGate[]; unresolvedCoverage: string[]; requiresApproval: true }
 export interface GreenfieldEditPreview { token: string; draftRevision: number; before: GreenfieldDraft;
     after: GreenfieldDraft; action: GreenfieldEdit; actions?: GreenfieldEdit[]; requiresApproval: true }
-export interface StrategicDraftInput { projectId: string; ownerRevision: number; allowIncomplete?: true; phases: {
-    title: string; objective: string; checkpoints: { title: string; objective: string; dependsOn: number[] }[];
-    gates?: { title: string; purpose: string; criteria: { title: string; expectedResult: string }[] }[] }[] }
-export interface StrategicDraftPreview { token: string; handle: string; projectId: string; ownerRevision: number;
-    draftRevision: number; sourceHash: string; before: GreenfieldDraft; after: GreenfieldDraft; requiresApproval: true }
 /** Noncanonical presentation notification. A proposed value is a fully validated preview, never an accepted edit. */
 export interface GreenfieldChange { root: string; projectId: string; handle: string; revision: number;
     epoch: string; sequence: number; kind: 'accepted' | 'proposed' | 'cleared' | 'cancelled'; draft?: GreenfieldDraft }
@@ -193,7 +188,6 @@ function validDraft(value: unknown): value is GreenfieldDraft {
 
 /** A local, disposable draft. Only an approved preview crosses into the Roadmap owner. */
 export class RoadmapGreenfield {
-    private readonly strategicPreviews = new Map<string, { root: string; preview: StrategicDraftPreview }>();
     private readonly drafts = new Map<string, { root: string; projectId: string; value: GreenfieldDraft;
         implementationPlan?: ImplementationPlanDraft; planOnly?: true; ownerRevision?: number }>();
     private readonly chats = new Map<string, { root: string; handle: string }>();
@@ -339,7 +333,7 @@ export class RoadmapGreenfield {
     /** Read-only opportunity snapshot for ordinary Chat; no draft or owner is created. */
     async readOpportunity(root: string): Promise<{ projectId: string; revision: number;
         linkedDocument?: string; canonicalMarkdown: boolean; pendingCreation: boolean; checkpoints: number;
-        gates: number; draftGates: number; proposedGates: number; drafts: number }> {
+        gates: number; draftGates: number; drafts: number }> {
         const owner = await this.store.read<RoadmapGateIndex>(root);
         await this.ensureRestored(root);
         const entries = this.entries(root);
@@ -356,8 +350,6 @@ export class RoadmapGreenfield {
             gates: current.gates.filter(gate => gate.draftAcceptance !== 'proposed').length,
             draftGates: entries.filter(item => !item.planOnly).reduce((count, item) =>
                 count + item.value.phases.reduce((sum, phase) => sum + (phase.gates?.length ?? 0), 0), 0),
-            proposedGates: [...this.strategicPreviews.values()].filter(item => item.root === root).reduce((count, item) =>
-                count + item.preview.after.phases.reduce((sum, phase) => sum + (phase.gates?.length ?? 0), 0), 0),
             drafts: entries.filter(item => !item.planOnly).length };
     }
 
@@ -427,98 +419,6 @@ export class RoadmapGreenfield {
         this.persist(root, [...this.entries(root), { handle, projectId: current.projectId, value }]);
         this.drafts.set(handle, { root, projectId: current.projectId, value });
         return { handle, draft: copy(value) };
-    }
-
-    /** Complete strategic outline stays transient until its own review is approved. */
-    async previewStrategicDraft(root: string, input: StrategicDraftInput, sourceHash: string): Promise<StrategicDraftPreview> {
-        if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root || !(await stat(root)).isDirectory())
-            throw new Error('Invalid strategic draft project root');
-        await this.ensureRestored(root);
-        const owner = await this.store.read(root);
-        if (!input || input.projectId !== owner.projectId || input.ownerRevision !== owner.revision || owner.revision ||
-            owner.linkedDocument || owner.pendingCreation || this.entries(root).some(item => !item.planOnly))
-            throw new Error('Stale or foreign Roadmap owner or competing draft');
-        await this.assertNoRoadmapSource(root);
-        if ([...this.strategicPreviews.values()].some(item => item.root === root))
-            throw new Error('Another strategic draft awaits review');
-        if (!/^[0-9a-f]{64}$/.test(sourceHash) || !input || !fields(input, ['projectId', 'ownerRevision', 'phases'], ['allowIncomplete']) ||
-            (input.allowIncomplete !== undefined && input.allowIncomplete !== true) ||
-            !Array.isArray(input.phases) || input.phases.length < 1 || input.phases.length > 32)
-            throw new Error('Invalid strategic draft phase count or source');
-        const handle = randomUUID(), ids: string[] = [];
-        let checkpointCount = 0;
-        const phases: GreenfieldPhase[] = input.phases.map((phase, phaseIndex) => {
-            if (!phase || !fields(phase, ['title', 'objective', 'checkpoints'], ['gates']) ||
-                !title(phase.title) || !objective(phase.objective) ||
-                (!input.allowIncomplete && !phase.objective.trim()) ||
-                !Array.isArray(phase.checkpoints ?? []) || !Array.isArray(phase.gates ?? []) ||
-                (!input.allowIncomplete && !(phase.gates?.length || phase.checkpoints?.length)) ||
-                (phase.checkpoints?.length ?? 0) > 16 || (phase.gates?.length ?? 0) > 16)
-                throw new Error(`Invalid strategic phase ${phaseIndex + 1}: title, objective or requirements missing`);
-            const phaseId = stableId(`strategic-phase:${owner.projectId}:${sourceHash}:${phaseIndex}:${phase.title}`);
-            return { id: phaseId, title: phase.title, objective: phase.objective,
-                gates: (phase.gates ?? []).map((gate, index) => {
-                    if (!gate || !fields(gate, ['title', 'purpose', 'criteria']) || !title(gate.title) ||
-                        !objective(gate.purpose) || !Array.isArray(gate.criteria) || gate.criteria.length > 16)
-                        throw new Error(`Invalid strategic Gate ${phaseIndex + 1}.${index + 1}`);
-                    const id = stableId(`strategic-gate:${owner.projectId}:${sourceHash}:${phaseIndex}:${index}`);
-                    return { id, parentPhaseId: phaseId, designation: `G${index + 1}`, title: gate.title,
-                        purpose: gate.purpose, criteria: gate.criteria.map((criterion, criterionIndex) => {
-                            if (!criterion || !fields(criterion, ['title', 'expectedResult']) ||
-                                !title(criterion.title) || !objective(criterion.expectedResult))
-                                throw new Error('Invalid strategic Gate criterion');
-                            return { id: stableId(`strategic-criterion:${id}:${criterionIndex}`),
-                                title: criterion.title, expectedResult: criterion.expectedResult };
-                        }) };
-                }),
-                checkpoints: (phase.checkpoints ?? []).map((checkpoint, index) => {
-                    checkpointCount++;
-                    if (!checkpoint || !fields(checkpoint, ['title', 'objective', 'dependsOn']) ||
-                        !title(checkpoint.title) || !objective(checkpoint.objective) ||
-                        (!input.allowIncomplete && !checkpoint.objective.trim()) ||
-                        !Array.isArray(checkpoint.dependsOn) || checkpoint.dependsOn.length > 128 ||
-                        new Set(checkpoint.dependsOn).size !== checkpoint.dependsOn.length ||
-                        checkpoint.dependsOn.some(value => !Number.isSafeInteger(value) || value < 1 || value >= checkpointCount))
-                        throw new Error(`Invalid strategic checkpoint ${phaseIndex + 1}.${index + 1} or dependency`);
-                    const id = stableId(`strategic-checkpoint:${owner.projectId}:${sourceHash}:${checkpointCount}:${checkpoint.title}`);
-                    const dependencies = checkpoint.dependsOn.map(number => ids[number - 1]);
-                    ids.push(id);
-                    return { id, title: checkpoint.title, objective: checkpoint.objective, dependencies };
-                }) };
-        });
-        const before: GreenfieldDraft = { revision: 0, phases: [] };
-        const after: GreenfieldDraft = { revision: 1, phases };
-        if (checkpointCount > 256 || !validDraft(after) || Buffer.byteLength(JSON.stringify(after), 'utf8') > MAX_DRAFT_BYTES)
-            throw new Error('Strategic draft graph is empty, cyclic, duplicated or exceeds size limits');
-        const preview: StrategicDraftPreview = { token: randomUUID(), handle, projectId: owner.projectId,
-            ownerRevision: owner.revision, draftRevision: 0, sourceHash, before, after, requiresApproval: true };
-        this.strategicPreviews.set(preview.token, { root, preview: copy(preview) });
-        return copy(preview);
-    }
-
-    rejectStrategicDraft(token: string): void { this.strategicPreviews.delete(token); }
-
-    async acceptStrategicDraft(root: string, chatId: string, preview: StrategicDraftPreview,
-        currentSourceHash: string): Promise<GreenfieldDraft> {
-        const pending = this.strategicPreviews.get(preview?.token);
-        this.strategicPreviews.delete(preview?.token);
-        if (!pending || pending.root !== root || !uuid(chatId) ||
-            JSON.stringify(pending.preview) !== JSON.stringify(preview) || preview.sourceHash !== currentSourceHash)
-            throw new Error('Stale strategic draft preview or source');
-        await this.ensureRestored(root);
-        const owner = await this.store.read(root);
-        const existingChat = this.chats.get(chatId);
-        if (owner.projectId !== preview.projectId || owner.revision !== preview.ownerRevision || owner.revision ||
-            owner.linkedDocument || owner.pendingCreation || this.entries(root).some(item => !item.planOnly) ||
-            existingChat && !this.drafts.get(existingChat.handle)?.planOnly)
-            throw new Error('Stale or foreign Roadmap owner or competing draft');
-        this.persist(root, [...this.entries(root).map(item => item.planOnly && item.chatId === chatId ?
-            { ...item, chatId: undefined } : item),
-            { handle: preview.handle, projectId: preview.projectId, value: preview.after, chatId }]);
-        this.drafts.set(preview.handle, { root, projectId: preview.projectId, value: copy(preview.after) });
-        this.chats.set(chatId, { root, handle: preview.handle });
-        this.announce(preview.handle, 'accepted', preview.after);
-        return copy(preview.after);
     }
 
     cancel(handle: string): void {
