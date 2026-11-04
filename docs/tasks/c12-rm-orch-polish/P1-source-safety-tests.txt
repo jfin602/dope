@@ -1,0 +1,35 @@
+TASK: Correction 12 / P1 — stabilize Roadmap source-drift and fixture safety tests
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Existing runner owns successful implementation commits; do not self-commit. Target <=8 minutes focused; hard cap 15 minutes per bounded step. Stop PARTIAL/NOT GREEN or BLOCKED on unmet safety/predecessor, never manufacture a checkpoint.
+- No live Qwen inference, browser execution, automatic closeout, package/version/provider/model change, or overlapping correction stack.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Verify actual LOCAL manifest, branch, HEAD, status and in-flight source before editing; fail safely on mismatch rather than bumping version.
+
+PREFLIGHT / PROTECTION
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0040/0045/0046/0047/0048/0049/0050, docs/planning/p12/roadmap-chat-polish-contract.md, c12-rm-orch-polish README/assessment/plan, prior Pn result, old c12-rm-orch-fix P3 NOT GREEN report and exact source/tests.
+- Preserve uncommitted changes and active project state; no reset, stash, clean, force push, owner real tower-defense writes, source authority bypass, model selection change or generic model shell/file write. Use disposable fixtures and identified per-test managed roots only.
+- Preserve single protected Pi tool loop, validated StageOwner stage-before-tool-success, exact /gen-roadmap user-origin command, Ask/Allow, lease/project/root/chat/turn/revision/source, noncanonical proposal, explicit owner Apply, linked Markdown sync, append-only revisions and evidence-bound GREEN. Do not restore old natural/JSON/RM1/two-pass/per-Phase generation modes.
+
+
+OBJECTIVE
+Repair or correctly attribute the mandatory P3 source-drift test and intermittent ENOTEMPTY cleanup. Preserve real checked staging/cancellation and prove no stale source can be staged/approved through the serial Pi worker tool loop.
+
+IMPLEMENT
+1. Read the *actual* previous failed test and `test/unit/roadmap-generation-worker-integration.test.ts` on local HEAD. Reproduce the source-drift case in a disposable fixture. Determine whether `Invalid Roadmap owner or revision` occurs while building an invalid baseline owner/source, or correctly signals a product defect after a legitimate source change; do not assume fixture bug.
+2. Build a legitimate current revision and linked source fingerprint using existing protected public store/link interfaces. Start the genuine protected Chat → Pi worker → StageOwner two-Phase sequence; let Phase 1 validate/stage then pause the Phase 2 tool callback at a controlled barrier. Externally change the linked Markdown bytes/hash (and separately test canonical revision change) without conflicting with stage-owned revision/proposal. Resume callback and prove authority rejects Phase 2 or final Apply under stale basis; no canonical changes, unauthorized sync, or silently valid approval.
+3. Cover revision-zero/unlinked `null` source fingerprint as a positive case. Reject forged owner, changed chat/project/root/turn/model, duplicate/delayed callback and abort before stage; preserve valid Phase 1 as noncanonical only if protected inspection policy permits, never automatically Apply.
+4. Investigate ENOTEMPTY on isolated rerun by tracing fixture child-process/worker/async file lifecycle and teardown ordering. Await/quiesce owned Pi/StageOwner operations, close handles, clean only validated disposable directories. Do not add arbitrary sleeps or sweep unrelated `dope-*` folders. Record if failure is unverifiable/flaky/unattributed; no implied PASS.
+5. Repair narrow production logic only if the test exposes a genuine source/owner verification defect. Do not weaken authorization, hash/stale checks, approval preconditions or legitimate filesystem concurrency controls to make tests pass.
+
+QUALIFY
+- The previously failing source-drift case passes on current exact source with a meaningful changed linked-source hash **between** valid staged operations; a stale second tool cannot stage and stale Apply cannot commit. Positive same-source 2-Phase worker fixture still works, selected Apply only after approval; canonical/Markdown/applied History pre-Apply remain unchanged.
+- Run targeted tests normally and serially, then appropriate Pi worker, StageOwner, source/link/sync tests, relevant workspace typecheck/build and `git diff --check`. Record actual test counts, past failing case details, fixture ownership/cleanup evidence, exact START/END HEAD/diff and any attributable failures.
+- If ENOTEMPTY still intermittent, capture evidence, classify honestly and explain risk to P2; do not label as fixed based on one pass.
+
+EXIT
+- P1 source-qualified only when mandatory stale-source negative is verified, cleanup is safe or its residual impact explicitly bounded, and no production authority regresses. Otherwise STOP with smallest remaining defect. P2 may not proceed over an unsafe source gate.
