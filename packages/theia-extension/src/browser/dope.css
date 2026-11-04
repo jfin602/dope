@@ -196,6 +196,13 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-inline-field input, .dope-roadmap-inline-field textarea { box-sizing: border-box; width: 100%; min-width: 150px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-widget-border)); padding: 5px 7px; font: inherit; }
 .dope-roadmap-inline-field textarea { resize: vertical; }
 .dope-roadmap-inline-actions { display: inline-flex; gap: 5px; }
+.dope-roadmap-create-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.dope-roadmap-create-actions > button { box-sizing: border-box; display: inline-flex; flex: 0 1 auto; align-items: center; gap: 5px; min-width: 0; max-width: 100%; min-height: 28px; padding: 3px 8px; border: 1px solid var(--theia-widget-border); border-radius: 5px; color: var(--theia-button-secondaryForeground, var(--theia-editor-foreground)); background: var(--theia-button-secondaryBackground, var(--theia-editorWidget-background, var(--theia-editor-background))); font: inherit; font-size: 12px; font-weight: 600; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; cursor: pointer; touch-action: manipulation; }
+.dope-roadmap-create-actions > button:hover { border-color: var(--theia-focusBorder); background: var(--theia-button-secondaryHoverBackground, var(--theia-list-hoverBackground, var(--theia-editorWidget-background, var(--theia-editor-background)))); }
+.dope-roadmap-create-actions > button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-roadmap-create-actions > button .codicon { flex: none; font-size: 12px; }
+.dope-dark .dope-roadmap-create-actions > button:hover { border-color: var(--dope-primary); }
+.dope-dark .dope-roadmap-create-actions > button .codicon { color: var(--dope-text-accent); }
 .dope-roadmap-inline-field button, .dope-roadmap-native-review button { min-height: 30px; min-width: 30px; touch-action: manipulation; }
 .dope-roadmap-inline-field button:focus-visible, .dope-roadmap-native-review button:focus-visible, .dope-roadmap-native-review input:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-roadmap-inline-field small[role='alert'] { color: var(--theia-errorForeground); width: 100%; }
