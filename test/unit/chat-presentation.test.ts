@@ -20,6 +20,7 @@ test('native Roadmap card states keep saved terminal and inactive pending propos
     assert.doesNotMatch(widget, /responseNotices\.append\(this\.liveStageNotice\)/);
     assert.doesNotMatch(widget, /Apply All Remaining|Reject All Remaining|Apply Phase \+ descendants/);
     assert.doesNotMatch(widget, /dope-chat-tool-calls|Tool calls \(\$\{/);
+    assert.doesNotMatch(widget, /Broker receipts/);
     assert.match(frontend, /await widget\.presentChatProposal\(projectUri, chatId, proposal\);[\s\S]*?if \(activate\) await context\.container\.get\(CommandRegistry\)\.executeCommand\('dope\.roadmap\.open'\)/);
     assert.match(canvas, /index\.linkedDocument\?\.sourceHash !== proposal\.sourceHash/);
     assert.match(canvas, /private async reviewProposal\(ids: string\[\], decision: 'apply' \| 'reject'/);

@@ -2950,20 +2950,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     info.append(row);
                 };
                 detail('Status', `${execution.status}${execution.failure ? ` · ${execution.failure}` : ''}`);
-                if (execution.toolEvents?.length) {
-                    const tools = document.createElement('details');
-                    const toolsLabel = document.createElement('summary');
-                    toolsLabel.textContent = `Broker receipts (${execution.toolEvents.length})`;
-                    tools.append(toolsLabel);
-                    for (const call of execution.toolEvents) {
-                        const row = document.createElement('div');
-                        row.textContent = `${call.name} · ${call.status}` +
-                            (call.code ? ` · ${call.code}` : '') +
-                            (call.stage ? ` · ${call.stage}` : '');
-                        tools.append(row);
-                    }
-                    info.append(tools);
-                }
                 if (message.planningActivity?.kind === 'roadmap-gate-proposal') {
                     const raw = document.createElement('details');
                     const label = document.createElement('summary'); label.textContent = 'Original proposal JSON';
