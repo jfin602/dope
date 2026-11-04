@@ -1,3 +1,5 @@
+> **2026-11-04 FOLLOW-ON POST-GENERATION POLISH (DOCS ONLY):** [ADR 0050](0050-roadmap-chat-polish-and-review-controls.md) and [c12-rm-orch-polish](../tasks/c12-rm-orch-polish/README.md) freeze the source-qualified continuous Pi tool loop while fixing source-drift tests, normal Apply History, icon-only protruding Roadmap review tabs and Chat footer/tool-list UX. This is a **polish successor**, not a new generator or automatic upgrade of the historical P3 NOT GREEN. Runner P1–P3 are source-only; all visible UI changes/qualification are manual M1–M3 following the runner. No code or model test has run from this addendum.
+
 > **2026-11-04 CORRECTION AUTHORING STATUS:** The continuous Pi tool-loop and live Phase loading refinement below now has [assessment/plan](../tasks/c12-rm-orch/fix/README.md) and [runner-compatible P1–P3 prompts](../tasks/c12-rm-orch-fix/README.md). These are authored only, not run. The existing c12-rm-orch P1–P6 checkpoints, prior P7 NOT GREEN and historic generation designs remain factual records, not active fallback routes.
 
 # ADR 0049 — Controller-owned incremental Roadmap generation
