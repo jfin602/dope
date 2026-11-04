@@ -1,8 +1,8 @@
-> **2026-11-04 TOOL-LOOP FIX PROMPTS AUTHORED — NOT RUN:** For the current approved continuous Pi generation approach and next-Phase loading state, see [c12-rm-orch/fix](fix/README.md) and the sole runner-compatible [c12-rm-orch-fix prompts](../c12-rm-orch-fix/README.md). Historical P1–P7 prompts and P7 NOT GREEN remain unchanged. No implementation or new qualification by this note.
+> **2026-11-04 CURRENT CORRECTION STATUS:** The protected continuous Pi tool-loop and live next-Phase canvas were implemented to P1/P2 checkpoint level, but full source/native qualification remains incomplete. The [Qwen3.5-9B P3 closeout](../c12-rm-orch-fix/qualification/2026-11-04-p3-connected-browser-closeout.md) is **PARTIAL / NOT GREEN**; the later [GPT-OSS 20B owner observation](../c12-rm-orch-fix/qualification/2026-11-04-gpt-oss-20b-owner-observation.md) is **PARTIAL / HOLD**, with two failed `roadmap_finish` calls. Historical original P1–P7 reports remain unchanged; [ADR 0049](../../decisions/0049-roadmap-phase-orchestration.md) remains the single approved generation architecture.
 
-> **2026-11-04 CURRENT FORWARD GENERATION REFINEMENT — DOCS ONLY:** [ADR 0049](../../decisions/0049-roadmap-phase-orchestration.md) now specifies **one continuous, protected Pi tool execution** accepting serial `roadmap_phase` tool proposals rather than launching an independent inference execution per Phase. The tool must **validate and stage before reporting success**, and the live Roadmap canvas must immediately show each **staged/provisional** Phase with Gates/Criteria plus one subtle nonblocking `Generating next Phase…` placeholder. Only explicit owner Apply makes an element canonical/accepted. See [R1–R3 prospective correction](continuous-tool-loop/README.md). Historical P1–P6 checkpoints and P7 NOT GREEN remain immutable and must not be rerun/relabelled. No product change, new prompts, model trial or GREEN by this docs update.\n\n# c12-rm-orch — clean Roadmap orchestration replacement
+# c12-rm-orch — clean Roadmap orchestration replacement
 
-**Owner authorization:** 2026-11-03, `/docs-apply + /prompt-ass + /prompt-plan + /prompt-write c12-rm-orch`. **Status:** architecture/assessment/plan/runner prompts authored; **NOT RUN or qualified**. Product reference: `0.12.7` (verify actual owner's local manifest before any run). **Authority:** [ADR 0049](../../decisions/0049-roadmap-phase-orchestration.md) · [Detailed contract](../../planning/p12/roadmap-phase-orchestration-contract.md) · [Assessment](prompt-assessment.md) · [Plan](implementation-plan.md).
+**Owner authorization:** 2026-11-03, `/docs-apply + /prompt-ass + /prompt-plan + /prompt-write c12-rm-orch`. **Status (2026-11-04):** Historical original P1–P6 implementation checkpoints exist, with P7 NOT GREEN. The current continuous-loop correction has P1/P2 implementation checkpoints and incomplete manual P3 qualification. Neither stack is fully GREEN. Product reference: `0.12.7` (verify actual owner's local manifest before any run). **Authority:** [ADR 0049](../../decisions/0049-roadmap-phase-orchestration.md) · [Detailed contract](../../planning/p12/roadmap-phase-orchestration-contract.md) · [Assessment](prompt-assessment.md) · [Plan](implementation-plan.md).
 
 ## Purpose
 
@@ -32,7 +32,7 @@ The following remain historical evidence, **not active generation implementation
 
 **Existing runner grammar:** `P1`–`P7` contiguous with exactly one last `closeout`; each prompt identifies `Correction 12 / Pn`, `GPT-6 Sol High`, Browser required, and unchanged `0.12.7`. Only P1–P6 are implementation checkpoints. The runner owns successful commits; implementation agents do not self-commit. P7 must never be marked PASSED merely because P1–P6 committed.
 
-## Commands — only when owner explicitly starts the runner
+## Historical runner commands — not an instruction to rerun
 
 ```bash
 npm run codex:phase:validate -- c12-rm-orch
