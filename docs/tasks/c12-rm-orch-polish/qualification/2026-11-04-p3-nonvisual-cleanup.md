@@ -1,0 +1,20 @@
+# P3 nonvisual generation cleanup — PARTIAL / NOT GREEN
+
+**Source basis:** `main` pre-task HEAD `a35489b42b8263dc940802981db91d26b0f8260d`, clean at entry, version `0.12.7`. Changes remain uncommitted for the phase runner. No Browser, live model, native GUI, owner project, package, provider or version change.
+
+## Source trace and changes
+
+The executable path is the exact leading user `/gen-roadmap` parser in `roadmap-generation-command.ts`, `ChatBackend.runTurn` and `runGenerationCommand`, one `RoadmapGenerationController.run`, Pi's `roadmap_phase` and `roadmap_finish` broker callbacks, `RoadmapGenerationNativeStage` and `RoadmapNativeStageOwner`, then a saved Chat proposal and explicit checked review. The backend serializes tool callbacks on `toolQueue`; the controller requires the checked native stage receipt before success. The Pi worker exposes only the two generation tools in this mode. The retired full-plan parser/converter exports and alternate generation RPCs remain absent (also covered by `roadmap-generation-command.test.ts`).
+
+Removed the unread `generationPartial` in-memory map and its write/delete, the associated unused model/context string snapshots, the controller's unconsumed `validatedPhases` duplicate, and its write-only `lastToolAt` timestamp. Executable-source reference search found no reader for those fields. Incomplete content remains inspectable through the saved Chat failure diagnostic and bounded `scopeLedger.staged`; historical saved Chat is unchanged. No test or shared module was deleted.
+
+Retained `roadmap-local-model.ts` and `localPlanningJson` because ordinary Gate/help/bridge turns still call them; those JSON envelopes are not the `/gen-roadmap` path. Retained `roadmap-generation-native-stage.ts`, `roadmap-native-stage.ts`, Pi bridge/worker, Chat activity/tool event recording, StageOwner receipts, source/lease checks, review/Apply/Reject and RoadmapStore/History/Markdown owners. Also retained the live controller state/events, timing and scope ledger, and browser next-Phase loader/active-tab behavior. Visual review controls in `roadmap-proposal-cards.ts` and `roadmap-canvas-widget.ts`, Chat tool/footer sections, and `dope.css` are deferred to M1/M2; no UI code or CSS changed.
+
+## Verification and limit
+
+- `npm run typecheck` and `npm run build:extension`: PASS. `git diff --check`: PASS.
+- Direct source tests: 106/106 PASS across generation command (8, including pre-Apply no canonical write), controller (7), native adapter (3), StageOwner (10), Chat backend (10), Pi conversation runtime (9), Pi model bridge (12), History owner metadata (8), publication (31), document sync (3), sync recovery (3), and linked store (2).
+- `roadmap-local-model.test.ts` passed 18/18 on one direct run. A later direct rerun had 16 pass and 2 fixture-cleanup `ENOTEMPTY` failures under disposable `/tmp/dope-short-chat-*` roots; no source assertion failure was shown. This cleanup remains unattributed to a product change.
+- `roadmap-generation-worker-integration.test.ts` direct run: 1/6 PASS (reviewed linked basis). All five socket-backed cases, including serial two-Phase, mid-turn source and revision drift, post-proposal changed source, and cancellation, stopped during fixture setup at `listen EPERM: operation not permitted 127.0.0.1`. The initial multi-file `node --test` run also failed to show per-case detail for this file and one other; direct runs supplied the attribution. The earlier P1 recovery passed these six cases on its recorded source, but that result does not qualify these new bytes.
+
+**Disposition:** implementation is a bounded dead-state cleanup; exact-source P3 qualification is **PARTIAL / NOT GREEN** because the required worker negative/positive gate could not run in this sandbox. The runner must not infer a GREEN receipt from a checkpoint commit or advance automatically to manual P4. Rerun the worker cases on these exact bytes in a permitted environment before claiming source qualification. M1/M2/M3 own subsequent browser display qualification.

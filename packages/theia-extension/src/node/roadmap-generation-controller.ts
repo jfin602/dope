@@ -41,9 +41,7 @@ export type GenerationResult = Readonly<{ state: GenerationState; identity: Gene
     events: readonly GenerationEvent[]; phases: number; calls: number;
     tokens: number | 'unknown'; usage: readonly GenerationUsage[];
     providerProgress: readonly GenerationProviderProgress[];
-    scopeLedger: GenerationScopeLedger; metrics: GenerationMetrics;
-    /** Validated content only; replay requires a fresh trusted command and source-bound stage. */
-    validatedPhases: readonly GenerationPhase[] }>;
+    scopeLedger: GenerationScopeLedger; metrics: GenerationMetrics }>;
 export interface GenerationDependencies {
     /** Recheck the lease, selected model, Chat turn, project and canonical source before and after awaits. */
     current(identity: GenerationIdentity): Promise<boolean>;
@@ -78,7 +76,6 @@ export class RoadmapGenerationController {
     private readonly ledger: string[] = [];
     private readonly staged: { phase: number; title: string; objective: string;
         gates: { title: string; criteria: string[] }[] }[] = [];
-    private readonly validatedPhases: GenerationPhase[] = [];
     private readonly requirements: string[];
     private unresolved: string[] = [];
     private calls = 0;
@@ -94,7 +91,6 @@ export class RoadmapGenerationController {
     private retries = 0;
     private consecutiveFailures = 0;
     private finished = false;
-    private lastToolAt = 0;
 
     constructor(identity: Omit<GenerationIdentity, 'generationId'>, private readonly scope: string,
         private readonly context: string, private readonly deps: GenerationDependencies,
@@ -213,7 +209,7 @@ export class RoadmapGenerationController {
             usage: [...this.usage], providerProgress: [...this.providerProgress],
             scopeLedger: { requirements: [...this.requirements], staged: structuredClone(this.staged),
                 unresolved: [...this.unresolved], candidateCoverage: candidates,
-                semanticCoverage: 'unverified' }, validatedPhases: structuredClone(this.validatedPhases),
+                semanticCoverage: 'unverified' },
             metrics: { startedAt: new Date(this.startedAt).toISOString(),
                 endedAt: new Date(this.endedAt).toISOString(), durationMs: this.endedAt - this.startedAt,
                 ...(this.firstStageAt ? { timeToFirstStageMs: this.firstStageAt - this.startedAt } : {}),
@@ -275,13 +271,12 @@ export class RoadmapGenerationController {
                         if (!snapshot || snapshot.counts.phases !== (this.identity.baselinePhases ?? 0) + this.phases + 1)
                             throw new Error('ROADMAP_GENERATION_RECEIPT_MISSING');
                         this.ledger.push(`${reference}; Gates: ${phase.gates.map(gate => gate.title.trim()).join(', ')}`.slice(0, 256));
-                        this.validatedPhases.push(structuredClone(phase));
                         this.staged.push({ phase: number, title: phase.title.trim(), objective: phase.objective.trim(),
                             gates: phase.gates.map(gate => ({ title: gate.title.trim(),
                                 criteria: gate.criteria.map(item => item.expectedResult.trim()) })) });
                         this.phases++; this.consecutiveFailures = 0;
                         if (!this.firstStageAt) this.firstStageAt = Date.now();
-                        this.lastToolAt = Date.now(); this.emit('generating-phase'); refreshIdle();
+                        this.emit('generating-phase'); refreshIdle();
                         return { proposalId: snapshot.proposalId, stageSequence: snapshot.sequence,
                             phase: number, ...snapshot.counts, status: 'staged' };
                     },
@@ -308,7 +303,7 @@ export class RoadmapGenerationController {
                         this.emit('validating');
                         if (!await this.timed(this.deps.stage!.complete(this.identity, this.abort.signal)) ||
                             !await this.current()) throw new Error('ROADMAP_GENERATION_STAGE_INCOMPLETE');
-                        this.finished = true; this.lastToolAt = Date.now(); refreshIdle();
+                        this.finished = true; refreshIdle();
                         this.emit('generating-phase');
                     } });
             });

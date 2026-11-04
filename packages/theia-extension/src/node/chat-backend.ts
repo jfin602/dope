@@ -89,10 +89,6 @@ export class ChatBackend implements ChatService {
     private readonly turns = new Map<string, { token: string; abort: AbortController }>();
     private readonly generationPreparing = new Set<string>();
     private readonly generationControllers = new Map<string, { token: string; controller: RoadmapGenerationController }>();
-    private readonly generationPartial = new Map<string, { scope: string; root: string;
-        projectId: string; revision: number; sourceHash: string | null; indexHash: string | null;
-        model: string; connection: string; selectionContext: string;
-        phases: readonly GenerationPhase[] }>();
     private readonly nativeStages?: RoadmapNativeStageOwner;
     private readonly roadmapPreparations = new Map<string, { token: string; abort: AbortController }>();
     /** Leases belong to this RPC connection, not to the reusable panel ID or backend PID. */
@@ -958,10 +954,7 @@ export class ChatBackend implements ChatService {
                 providerId: 'local' as const, contextWindowTokens: model.capabilities.contextWindowTokens,
                 reasoningControls: { ...chat.settings.reasoningControls } },
             origin: 'trusted-user-chat' as const };
-        const modelKey = JSON.stringify(identity.model);
-        const selectionContext = JSON.stringify(request.context ?? []);
         // Historic partials remain in saved Chat; every command opens a new protected execution.
-        this.generationPartial.delete(request.chatId);
         const context = JSON.stringify({ projectId: index.projectId, revision: index.revision,
             sourceHash, indexHash, phases: index.phases.slice(-12).map(phase => ({ id: phase.id,
                 title: phase.title.slice(0, 160) })), gateCount: index.gates.length });
@@ -1240,12 +1233,6 @@ export class ChatBackend implements ChatService {
         }
         finally { if (this.generationControllers.get(request.chatId)?.controller === controller)
             this.generationControllers.delete(request.chatId); }
-        if (result.state !== 'review-ready' && result.validatedPhases.length &&
-            result.validatedPhases.length < 12)
-            this.generationPartial.set(request.chatId, { scope: scope.trim(), root,
-                projectId: identity.projectId, revision: identity.revision, sourceHash, indexHash,
-                model: modelKey, connection: connectionFingerprint, selectionContext,
-                phases: result.validatedPhases });
         try {
         const usageSum = (key: 'inputTokens' | 'outputTokens' | 'totalTokens' | 'reasoningTokens') =>
             result.usage.length && result.usage.every(item => Number.isSafeInteger(item[key]) &&
