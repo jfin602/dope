@@ -1,0 +1,39 @@
+TASK: Correction 12 / P1 — protected continuous Pi Roadmap tool loop
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Focused implementation target <=8 minutes; hard 15-minute stop per bounded cycle. Do not overrun to fake PASS.
+- Use existing codex:phase runner; runner owns actual successful implementation commit. NO self-commit, version bump, live Qwen/browser, parallel stacks, automatic following closeout or fabricated qualification.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Verify actual local manifest/HEAD; fail closed on mismatch rather than changing version.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0040/0045/0046/0047/0048/0049, docs/planning/p12/roadmap-phase-orchestration-contract.md, docs/tasks/c12-rm-orch/fix/README.md, prompt-assessment.md and implementation-plan.md, current source, old c12-rm-orch P7 NOT GREEN report and prior P1–P6 evidence.
+- Inspect LOCAL git branch/HEAD/status/diff, selected Pi model bridge, chat-backend.ts, roadmap-generation-controller.ts, roadmap-generation-native-stage.ts, roadmap-native-stage.ts, pi-runtime/worker.mjs, permissions and actual tests. Remote GitHub branch does not prove local dirty tree. Respect all existing P7 and skill-picker changes; do not reset/stash/clean or overwrite them. Use disposable fixtures, never the owner's real project.
+- Keep exact trusted user /gen-roadmap command, Ask/Allow, selected local model/context/reasoning, project/root/chat/turn/lease/source/revision, one checked noncanonical proposal, manual Apply authority, linked Markdown/History/qualification protection. No generic model shell/filesystem rights.
+
+OBJECTIVE
+Replace the one-inference-execution-per-Phase scheduler with **ONE bounded protected Pi agent execution** that accepts sequential roadmap_phase native tool calls and then roadmap_finish, while reusing the existing Dope controller and checked StageOwner. The model may propose the next Phase in the same Pi context, but Dope owns admission and stage order.
+
+IMPLEMENT
+1. Trace and document current denial: the Chat tool handler's !operation latch blocks a second roadmap_phase call after the first. The first tool's accepted:true currently reflects argument checks rather than verified StageOwner stage. Changing the latch alone is NOT the fix.
+2. Refactor the existing RoadmapGenerationController/ChatBackend/Pi model bridge and worker seam so /gen-roadmap opens one bounded Pi execution. Permit multiple successive roadmap_phase tool requests in that execution; do not start a new inference context per Phase. The controller retains generation ID, selected model, scope ledger, expected next Phase, tool/token/idle/absolute budgets, reason stream and explicit cancellation. No parallel second controller or selectable old scheduler fallback.
+3. The protected tool handler validates argument shape, exactly expected Phase number, title/objective, Gates/observable Criteria, duplicate names, current owner/root/project/chat/turn/lease/model/source/index revision and cancellation **immediately before each stage**. Strictly serialize callbacks even if Pi submits tool calls in a batch. Use the existing RoadmapNativeStageOwner and noncanonical projection, not an independent store.
+4. **Await checked staging before returning tool success.** Return a bounded truthful receipt with proposal ID, authoritative stage sequence, accepted Phase index, actual nested counts and status; no approval tokens/secrets. On validation/stage failure return a precise finite error without incrementing expected Phase. Do not block on the enclosing agent execution to finish (avoid circular wait). Do not call canonical Apply or source writer.
+5. After a successful Phase stage, advance expected index and allow Pi to continue naturally with next roadmap_phase; preserve stable proposal and source basis across operations. A repeated Phase 1 / parallel Phase 2 / skipped Phase / old generation ID / delayed callback must not stage duplicate content.
+6. Make roadmap_finish a genuine finalization operation. Reject finish at zero Phases, incomplete or dependency-unsafe Gate/Criteria, unmet required scope without explicit unresolved record, stale source/lease and out-of-budget calls. Only after authoritative stage completeness may one final review-ready proposal be exposed. The model cannot decide owner acceptance.
+7. Remove the old per-Phase inference caller from executable routing; no JSON/RM1/Markdown plan extraction, two-pass converter, model fallback, unconditional old denial after staging, or legacy mode toggle. Keep saved history readable and ordinary manual Roadmap edits functional.
+8. Keep abort propagation, provider activity diagnostics and total deadline truthful. Never turn continuous thinking into unlimited execution; record actual stage/finish timings and unknown token data explicitly.
+
+QUALIFY
+- Use a deterministic fake local model behind the **real protected Pi worker protocol**, not just direct controller unit tests. In one actual agent execution: submit Phase 1 (one Gate/two Criteria) -> await real StageOwner success -> submit Phase 2 (one Gate/two Criteria) -> stage -> roadmap_finish. Verify **one proposal ID**, correct distinct Phase/Gate/Criterion identities and strict stage sequence; Phase 1 receipt arrives before Phase 2 is allowed. No ROADMAP_GENERATION_TOOL_DENIED merely because Phase 1 succeeded.
+- Negative tests: duplicate/out-of-order/parallel tool calls, failed stage after valid shape, malformed children, source/revision change between tools, cancelled/stale callbacks, lost lease, different model/chat/project, forged command/replayed old turn, bounded bad-tool retries, finish before completion, producer disconnect, idle/absolute limits.
+- Verify saved Chat transcript records real native tool status; no canonical Roadmap, linked Markdown or applied History writes before human Apply; Ask/Allow and /gen-roadmap user origin remain protected.
+- Run focused Pi/Chat/controller/native-stage integration tests, relevant typecheck/extension and Pi builds, git diff --check; report exact commands/test counts and source identity. No browser or live model.
+
+EXIT
+- SOURCE-VERIFIED only if one real Pi worker execution stages two valid Phases and completes one noncanonical reviewable proposal, with all mandatory permission/source/no-write negative cases passing.
+- If only mocked separate calls work, or actual StageOwner ack is absent, report PARTIAL / NOT GREEN and STOP. Unsafe tool self-approval/source write is STOP. Do not start P2 unless the producer interface is source-verified.

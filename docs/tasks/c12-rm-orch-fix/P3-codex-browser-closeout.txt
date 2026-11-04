@@ -1,0 +1,41 @@
+TASK: Correction 12 / P3 — connected Codex Browser continuous tool-loop closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- This is the **sole final MANUAL closeout** of c12-rm-orch-fix. Do NOT include it as an automatic runner implementation step or fabricate a P3 PASS commit. Real-model qualification requires explicit owner authorization and stable-host preflight.
+- One bounded two-Phase live selected-model test, with no repeated speculative retries. Expand to full MVP only after successful two-Phase evidence and separate owner approval. Stop safely on host instability, source conflict or unauthorized state.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Verify actual local package version, HEAD, dirty files, compiled/browser source and bundle hashes. No automatic upgrade or selected-model/provider/reasoning/context switch.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0040/0045/0046/0047/0048/0049, docs/planning/p12/roadmap-phase-orchestration-contract.md, docs/tasks/c12-rm-orch/fix/README.md, prompt-assessment.md and implementation-plan.md, P1/P2 source test reports, prior P7 NOT GREEN and latest Pi/LM Studio activity reports.
+- Inspect LOCAL git status/HEAD/diff, currently connected Codex Browser source/bundle, selected Qwen3.5-9B Q4_K_M and LM Studio readiness, Pi/worker status and memory/host stability. Use a disposable PixiJS project (NOT owner's active tower-defense workspace), no reset/stash/clean, force push, extra generic model privileges, hidden model switch or owner-approval bypass.
+- Preserve exact /gen-roadmap top-level user command, Ask/Allow, project/root/chat/turn/lease/source/revision checks. Connected Codex Browser evidence is NOT native Electron GUI proof.
+
+OBJECTIVE
+Prove Qwen3.5-9B can generate and stage **two separate Phases through successive native tool calls in ONE protected Pi execution**. See Phase 1 on the Roadmap while Phase 2 is being generated, with a truthful subtle loading indicator; then reach reviewed owner acceptance with real persistence.
+
+TWO-PHASE REQUEST (exact intent, one submitted Chat command)
+`/gen-roadmap Create exactly two ordered Phases for a TypeScript/PixiJS prototype. Phase 1 renders a fixed waypoint path; Phase 2 spawns one enemy that follows that path and stops at the last waypoint. Each Phase must have exactly one Gate with two observable acceptance Criteria. Stop and request review after those two Phases.`
+
+OBSERVE
+1. Capture command submission and actual selected model, prompt/worker/session identity, timing, real reasoning progress when exposed, and maximum output/idle/hard limits without modifying them solely to pass.
+2. Observe first roadmap_phase request and **authoritative StageOwner receipt before tool success**, with Phase 1, one Gate/two Criteria and exact proposal/sequence identity. Do not call a mere model/tool "completed" label a server stage.
+3. While the same Pi execution continues to Phase 2, confirm Phase 1 and children are visible as **Staged · Provisional** on the existing canvas; exactly one `Generating next Phase…` placeholder is shown without invented ID/title/Gate/percentage or extra staged count. Test that pan/zoom and focus remain usable; no UI wait/backpressure delays inference.
+4. Observe subsequent roadmap_phase for Phase 2 within that SAME agent execution, with verified server stage and matching proposal ID, correct new Phase index/Gate/two Criteria. It must not be denied solely because Phase 1 was processed. Placeholder is replaced by real Phase 2 and removed after finalization.
+5. Observe roadmap_finish; verify required two Phases, two Gates, four observable Criteria and dependency/scope closure under current source/lease. One review-ready noncanonical proposal, no stale/cancelled Apply authority.
+6. Before Apply independently prove canonical schema-2 Roadmap, linked Markdown and applied History unchanged. Exercise explicit owner selective Apply/Reject through the real UI (including Phase descendants), verify only selected operations become canonical accepted, and check source-protected Markdown/History/reload/identities. A provisional staged Phase is NOT owner accepted and does NOT count as Gate GREEN.
+7. Safely test inactive Roadmap, manual return to proposal, no camera/focus hijack and static reduced-motion if available. Respect source safety: never edit owner's real project or force source collision. Use P1/P2 deterministic negatives as source evidence, not fake live coverage.
+8. Record time to first provider output, first tool request, first validated Phase/stage, interval to Phase 2, total review-ready duration, calls/tools/retries, finish reason and token usage (unknown if unavailable). Compare observed latency to previous P7 first-Phase timeout, without treating one successful run as a proven global performance improvement.
+
+SEPARATE FULL MVP QUALIFICATION
+- Only after the two-Phase trial passes AND owner explicitly authorizes another bounded live run may the agent attempt full TypeScript/PixiJS tower-defense MVP Roadmap: >=5 ordered Phases with Gates and observable Criteria covering fixed waypoints, enemy spawn/health, tower targeting/cooldown/projectiles, waves, kill-earned currency, purchase/spending, persistent main-tower health and defeat at zero.
+- If two-Phase trial fails, STOP and report NOT GREEN without automatic broad retry or provider/model change. The broader full MVP, source collision live negatives and native Electron evidence remain independent gaps until actually observed.
+
+REQUIRED EVIDENCE AND DISPOSITION
+- Report exact tested HEAD, dirty state, source/bundle hashes, selected actual model/host, timestamps/traces, StageOwner receipts/proposal ID, browser observations/screenshots, first/second Phase staging, loader behavior, final review, pre-Apply no-write and post-Apply canonical/Markdown/History hashes, test/build counts and unobserved cases.
+- SCOPED GREEN only if **all mandatory two-Phase live cases** are witnessed on exact source, authority maintained and no pre-Apply writes. This does not declare full MVP or native Electron Green.
+- PARTIAL / NOT GREEN for any incomplete live model, no second Phase, missing real stage receipts, loader missing, stuck finish or unobserved review. STOP for security/data corruption, bypass or unstable host. Preserve old P7 NOT GREEN and do not automatically start additional prompts, commit closeout, bump version or declare Phase 12/13 qualified.

@@ -1,0 +1,38 @@
+TASK: Correction 12 / P2 — live staged Phases and next-Phase loading
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Focused source implementation target <=8 minutes; hard 15-minute stop. STOP truthfully if integration/security boundary cannot be verified.
+- Existing runner owns passing implementation checkpoint commits; NO self-commit, model/provider/version change, live Qwen inference, connected Browser qualification, or P3 execution.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Verify local manifest, HEAD and previous P1 source changes before coding; do not bump version.
+
+PREFLIGHT
+- Read BOOT.md, AGENTS.md, docs/workflow.md; ADRs 0040/0045/0046/0047/0048/0049; docs/planning/p12/roadmap-phase-orchestration-contract.md; docs/tasks/c12-rm-orch/fix/assessment and plan; stack README; P1 exact source/test outcome and previous P7 NOT GREEN. Inspect actual LOCAL git status/HEAD/diff, Pi broker, single RoadmapNativeStageOwner, stage events, RoadmapCanvas/UI, Chat proposal lifecycle, source-protected Apply and relevant tests. No reset/stash/clean, force-push, overwritten owner project, unrelated Work/Chat changes or new Roadmap writer.
+- Prerequisite: P1 proves serial stage-before-tool-success through actual worker protocol, with existing proposal owner protected. If missing, STOP/BLOCKED; do not fake stage events from model tool-call text.
+
+OBJECTIVE
+On successful native provisional staging, immediately display the **real Phase and nested Gates/Criteria** on the Roadmap canvas. During the next Phase's inference, display one subtle, nonblocking `Generating next Phase…` placeholder. Distinguish tool-accepted/staged from **owner-accepted canonical** status throughout.
+
+IMPLEMENT
+1. Reuse the current authoritative noncanonical proposal projection and generation-ID/stage-sequence event bridge. Each verified StageOwner phase operation publishes one monotonic bounded snapshot containing exact Phase/Gate/Criteria. The UI is an observer, not a second state authority; missed/coalesced UI events rehydrate from the canonical proposal owner (not fake browser data).
+2. As soon as Phase 1 stages, show its real Phase card and nested Gate/Criteria in their normal Roadmap spatial positions, **Staged · Provisional** (distinct from existing accepted/Planned/GREEN). Preserve it while Pi continues to Phase 2. Each newly staged Phase replaces the next placeholder with its validated card; no final-answer wait.
+3. Add at most ONE `Generating next Phase…` placeholder at the next horizontal Phase position when the controller is still active and preparing the next Phase. This is a UI-only loading affordance: no persistent entity ID, invented Phase title, Gate or Criterion, fake count/rank/percentage, or Apply/Reject action. Subtle pulse/spinner or skeleton only under permitted motion; reduced-motion gets static accessible status. Use Dope theme accent only when the Dope theme is selected; otherwise neutral styling consistent with current theme.
+4. Never wait for animation, render acknowledgment, DOM paint, tab state or viewport update from the Pi tool handler/stage callback. UI events may coalesce/drop independently, while authoritative StageOwner stage receipts and Chat transcript are not dropped. Measure and test that an unmounted/slow observer cannot stall inference/staging.
+5. Keep active-tab-only automatic preview; inactive Roadmap must not steal Chat focus or auto-open. Preserve once-only initial locate, user pan/zoom, selection, keyboard navigation, historical revision browsing, project switch, accessible announcement, reduced-motion and cancellation.
+6. On review-ready, remove loading placeholder and expose checked owner review. On incomplete, failed, cancelled, stale, source drift, worker loss or session disposal, remove loader and invalidate any approval authority; retain only safe inert partial diagnostics. Never mistake tool result completion for successful owner Apply.
+7. On explicit owner Apply, selected Phase(s) and nested Gates/Criteria become canonical accepted Roadmap entities and are visible using existing planned/accepted visuals when Gate requirements are met. The rest remain clearly provisional/pending/rejected. Preserve granular selection/dependencies, source/revision/lease rechecks, History real-effect receipts, safe linked Markdown sync and separately evidence-qualified GREEN. No writes from loading or stage-render updates.
+8. Remove superseded per-Phase inference-specific loading/status branches and any parallel canvas ghost store; do not reintroduce old parsers or fallback mode.
+
+QUALIFY
+- Use deterministic actual stage-producer events integrated with canvas UI tests. Phase 1 and Gate/2 Criteria appear before final response, next placeholder appears, Phase 2 stages under same proposal ID, loader moves then disappears at finish. Exactly staged Phase/Gate/Criteria counts, no counted loader.
+- Negative UI cases: no stage receipt despite tool args, duplicate/out-of-order events, hidden/reopened Roadmap, slow/unmounted listener, camera user moved, inactive tab, historical view, screen-reader announcement, reduced motion, project switch, cancel and source drift. Assert no focused tab, camera or Chat stream hijack.
+- Transaction cases: before human Apply canonical Roadmap, linked Markdown and applied History unchanged; after selective Apply only chosen valid entities accepted with dependency closure, linked sync/History receipts and reload. Reject/no-op, stale or cancelled proposal cannot Apply. Gate GREEN remains evidence-bound.
+- Run focused Pi-projection/Chat/canvas/source transaction tests, relevant build/typecheck and git diff --check; report real counts, byte hashes where meaningful, and unobserved live/browser cases.
+
+EXIT
+- SOURCE-VERIFIED only if stage-proven live nested canvas + nonblocking next-Phase loading + real owner acceptance distinction all pass. UI animation must never block tool performance; source/permission bypass is STOP.
+- Do not run P3 or claim connected Chrome/native Electron GREEN. Runner controls successful P2 checkpoint.
