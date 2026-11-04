@@ -257,6 +257,11 @@ function chatTools() {
         if (result.status !== 'completed') throw new Error('Dope Chat tool denied by project authority');
         if (typeof result.output !== 'string' || Buffer.byteLength(result.output, 'utf8') > 12_000)
           throw new Error('Dope Chat tool output limit exceeded');
+        // Generation has one brokered operation per controller call. Let Pi end
+        // this turn at the tool boundary so it cannot request the next Phase
+        // before Dope validates and stages the current one.
+        if (roadmapGenerationMode) return { content: [{ type: 'text', text: result.output }],
+          terminate: true };
         if (name === 'roadmap_stage' && roadmapResultShape(result.output).errorCode === 'ROADMAP_STAGE_ARGUMENTS') {
           const key = hash(JSON.stringify(normalized(params)));
           const repeated = (rejectedRoadmapStages.get(key) ?? 0) + 1;
@@ -563,9 +568,13 @@ export async function dispatch(message) {
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
       if (chatLoopStopped) throw new Error(chatLoopReason);
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
+      const generationToolBoundary = roadmapGenerationMode && toolCount > 0 &&
+        assistant?.stopReason === 'toolUse' && assistant.content.some(item => item.type === 'toolCall');
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
-          assistant.stopReason === 'toolUse' || assistant.content.some(item => item.type === 'toolCall'))
+          !generationToolBoundary && (assistant.stopReason === 'toolUse' ||
+            assistant.content.some(item => item.type === 'toolCall')))
         throw new Error('Local Pi completion failed or attempted a tool call');
+      if (generationToolBoundary) roadmapTrace('pi-turn-finished-after-tool', { toolCount });
       const text = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
       if (Buffer.byteLength(text, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
       if (chatToolsMode && assistant.stopReason === 'stop' && text)
