@@ -15,11 +15,11 @@ test('native Roadmap card states keep saved terminal and inactive pending propos
     const frontend = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
     const canvas = await readFile(new URL('../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts', import.meta.url), 'utf8');
     assert.match(widget, /if \(proposal\.operations\) return this\.nativeRoadmapSummaryCard/);
-    assert.match(widget, /if \(savedProposal\) content\.append\(savedProposal\)/);
+    assert.match(widget, /if \(savedProposal\) item\.append\(savedProposal\)/);
     assert.match(widget, /card\.classList\.add\('dope-chat-native-live'\);[\s\S]*?content\.append\(card\)/);
     assert.doesNotMatch(widget, /responseNotices\.append\(this\.liveStageNotice\)/);
     assert.doesNotMatch(widget, /Apply All Remaining|Reject All Remaining|Apply Phase \+ descendants/);
-    assert.match(widget, /document\.createElement\(isInlineRoadmapProposal\(message\) \? 'details' : 'div'\)/);
+    assert.doesNotMatch(widget, /dope-chat-tool-calls|Tool calls \(\$\{/);
     assert.match(frontend, /await widget\.presentChatProposal\(projectUri, chatId, proposal\);[\s\S]*?if \(activate\) await context\.container\.get\(CommandRegistry\)\.executeCommand\('dope\.roadmap\.open'\)/);
     assert.match(canvas, /index\.linkedDocument\?\.sourceHash !== proposal\.sourceHash/);
     assert.match(canvas, /private async reviewProposal\(ids: string\[\], decision: 'apply' \| 'reject'/);
@@ -51,6 +51,24 @@ test('saved and live diagnostic activity retains full content in the existing vi
     assert.equal(chatActivityPresentation({ ...completed, activity: undefined }), undefined);
 });
 
+test('older saved broker receipts without reasoning remain visible in one activity timeline', () => {
+    const message = { id: 'older', content: 'Done.', execution: { id: 'execution', status: 'complete',
+        toolEvents: [{ name: 'roadmap_read', status: 'completed', truncated: false },
+            { name: 'roadmap_stage', status: 'failed', truncated: false }] } } as ChatAssistantMessage;
+    assert.deepEqual(chatActivityPresentation(message)?.parts, [
+        { kind: 'tool', name: 'roadmap_read', status: 'completed' },
+        { kind: 'tool', name: 'roadmap_stage', status: 'failed' },
+    ]);
+    assert.equal(chatActivityPresentation(message)?.unavailable, true);
+    const partial = { ...message, activity: { events: [
+        { sequence: 1, kind: 'thinking', text: 'Before tools.' },
+        { sequence: 2, kind: 'tool', text: 'roadmap_read: running' },
+    ], truncated: false } } as ChatAssistantMessage;
+    assert.deepEqual(chatActivityPresentation(partial)?.parts.map(part => part.kind === 'tool' ?
+        `${part.name} ${part.status}` : part.text),
+    ['Before tools.', 'roadmap_read completed', 'roadmap_stage failed']);
+});
+
 test('failed Chat response shows one error in its response slot before the footer', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     const failed = { id: 'interrupted', content: '', execution: {
@@ -59,7 +77,7 @@ test('failed Chat response shows one error in its response slot before the foote
     assert.equal(chatResponseCopyText(failed), '');
     assert.match(widget, /message\.execution\.status === 'failed' && message\.execution\.failure[\s\S]*?content\.append\(recovery\)/);
     assert.ok(widget.indexOf('content.append(recovery)') < widget.indexOf('item.append(content)'));
-    assert.ok(widget.indexOf('item.append(content)') < widget.indexOf('item.append(footer, info)'));
+    assert.ok(widget.indexOf('item.append(content)') < widget.indexOf('item.append(info, footer)'));
     assert.equal((widget.match(/content\.append\(recovery\)/g) ?? []).length, 1);
     assert.doesNotMatch(widget, /item\.append\(recovery\)/);
     assert.match(widget, /inlineTurnError \? '' : state\.error/);
@@ -128,11 +146,11 @@ test('only verified Roadmap decision turns use the inline proposal card across s
     for (const status of ['pending', 'applied', 'denied', 'stale', 'failed'] as const) {
         const restored = { ...message, planningActivity: { ...message.planningActivity!, status } };
         assert.equal(isInlineRoadmapProposal(restored), true);
-        assert.deepEqual(planningOutcome(restored), { summary, questions: [] });
-        assert.equal(chatResponseCopyText(restored), summary);
+        assert.deepEqual(planningOutcome(restored), { summary: `Roadmap · ${nativeRoadmapCardStatus(status, status === 'pending')}`, questions: [] });
+        assert.equal(chatResponseCopyText(restored), `Roadmap · ${nativeRoadmapCardStatus(status, status === 'pending')}`);
     }
     assert.equal(planningOutcome({ ...message, content: '{"type":"roadmap-gate-proposal"}' })?.summary,
-        'Roadmap change ready for review.');
+        'Roadmap · Ready');
     assert.equal(isInlineRoadmapProposal({ ...message, planningActivity: undefined }), false);
     assert.equal(isInlineRoadmapProposal({ ...message,
         planningActivity: { ...message.planningActivity!, kind: 'no-action' } }), false);
@@ -145,11 +163,11 @@ test('Roadmap proposal presentation stays in the originating response and automa
     const canvas = await readFile(new URL('../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     assert.match(widget, /if \(activity && !isInlineRoadmapProposal\(message\)\)/);
-    assert.match(widget, /if \(savedProposal\) content\.append\(savedProposal\)/);
+    assert.match(widget, /if \(savedProposal\) item\.append\(savedProposal\)/);
     assert.match(widget, /return this\.roadmapProposalReviewCard\(this\.controller\.planningProposal\)/);
     assert.match(widget, /diagnostic\.textContent = activity\.diagnostic;\s*card\.append\(diagnostic\)/);
     assert.match(widget, /saved\.planningActivity\?\.diagnostic !== state\.planningProposalError/);
-    assert.match(widget, /item\.append\(footer, info\)/);
+    assert.match(widget, /item\.append\(info, footer\)/);
     assert.match(css, /\.dope-chat-message-roadmap-proposal \.dope-chat-message-content \{[^}]*max-width: 100%/);
     assert.match(css, /\.dope-chat-message-roadmap-proposal \.dope-chat-plan-review \{[^}]*width: 100%/);
     assert.match(widget, /if \(state\.running\) \{\s*this\.autoPreviewTurn =/);
@@ -385,7 +403,7 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
     assert.match(widget, /navigator\.clipboard\?\.writeText\(text\)/);
     assert.match(widget, /copyChatText\(body\)/);
     assert.match(widget, /summary\.textContent = outcome\.summary/);
-    assert.match(widget, /if \(outcome\) \{/);
+    assert.match(widget, /if \(outcome && !isInlineRoadmapProposal\(message\)\) \{/);
     assert.doesNotMatch(widget, /body\.replace\(\/\\s\+\/g, ' '\)\.slice\(0, 160\)/);
     assert.match(widget, /this\.openPlanningActivities\.add\(message\.id\)/);
     assert.match(widget, /if \(activity\.alert\) item\.classList\.add\('dope-chat-message-alert'\)/);

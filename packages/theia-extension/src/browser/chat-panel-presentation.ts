@@ -158,20 +158,6 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
         return reply;
 }
 
-/** The proposal's model-written summary is display text only; the saved activity owns its status. */
-function gateProposalSummary(message: ChatAssistantMessage): string | undefined {
-    if (message.planningActivity?.kind !== 'roadmap-gate-proposal' || !message.planningActivity.proposalId)
-        return undefined;
-    try {
-        const value: unknown = JSON.parse(message.content);
-        if (!value || typeof value !== 'object' || Array.isArray(value) ||
-            (value as Record<string, unknown>).type !== 'roadmap-gate-proposal') return undefined;
-        const summary = (value as Record<string, unknown>).summary;
-        return typeof summary === 'string' && !!summary.trim() && summary.length <= 200 &&
-            !/[\x00-\x1f\x7f]/.test(summary) ? summary.trim() : undefined;
-    } catch { return undefined; }
-}
-
 /** Explain only the backend-verified activity; raw model text is never an authority signal. */
 export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
     const activity = message.planningActivity;
@@ -182,12 +168,18 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         activity.status === 'pending' ? 'The plan is ready for review. The accepted draft and canonical Roadmap are unchanged.' :
         activity.status === 'applied' ? 'The reviewed plan was saved in the noncanonical draft.' :
         'The plan was not applied.', questions: [] };
-    if (activity.kind === 'roadmap-gate-proposal') return {
-        summary: gateProposalSummary(message) ?? (activity.status === 'applied' ? 'Roadmap change applied.' :
-            activity.status === 'pending' ? 'Roadmap change ready for review.' :
-            'Roadmap change was not applied.'),
-        questions: [],
-    };
+    if (activity.kind === 'roadmap-gate-proposal') {
+        const operations = activity.proposal?.operations;
+        const partial = activity.status === 'applied' && operations?.some(operation => operation.status === 'Applied') &&
+            operations.some(operation => operation.status === 'Rejected');
+        const counts = operations ? (['Applied', 'Rejected', 'Pending'] as const).map(status => {
+            const count = operations.filter(operation => operation.status === status).length;
+            return count ? `${count} ${status.toLowerCase()}` : '';
+        }).filter(Boolean).join(' · ') : '';
+        return { summary: `Roadmap · ${partial ? 'Partially applied' :
+            nativeRoadmapCardStatus(activity.status, activity.status === 'pending')}` +
+            (counts ? ` · ${counts} operations` : ''), questions: [] };
+    }
     if (activity.kind === 'roadmap-publication') return {
         summary: activity.status === 'applied' ? 'The reviewed Roadmap Markdown operation is confirmed.' :
             activity.status === 'pending' ? 'Review the verified Markdown preview before approval.' :
@@ -459,9 +451,8 @@ export function chatActivityPresentation(message: ChatAssistantMessage,
         events: import('@dope/chat').ChatActivityEvent[] }):
     ChatActivityDisplay | undefined {
     const matchingStream = stream?.messageId === message.id && stream.executionId === message.execution.id ? stream : undefined;
-    const events = matchingStream ?
-        matchingStream.events : message.activity?.events ?? [];
-    if (!events.length && message.execution.status === 'complete') return undefined;
+    const events = matchingStream ? matchingStream.events : message.activity?.events ?? [];
+    if (!events.length && !message.execution.toolEvents?.length && message.execution.status === 'complete') return undefined;
     const display = presentChatActivity(events, !!message.activity?.truncated, message,
         message.execution.status === 'complete' || !!matchingStream?.content,
         message.activity?.issue);
@@ -513,6 +504,16 @@ function activityTimeline(events: readonly import('@dope/chat').ChatActivityEven
             if (pending?.kind === 'tool') pending.status = status;
             else parts.push({ kind: 'tool', name, status, ...(path ? { path } : {}) });
         }
+    }
+    // A recovered stream can be shorter than the durable broker receipts. Match
+    // each receipt once, then show any missing call after the captured stream.
+    // Receipts have call order but no timestamp relative to reasoning chunks.
+    const matched = new Set<ChatActivityPart>();
+    for (const call of message?.execution.toolEvents ?? []) {
+        const existing = parts.find(part => part.kind === 'tool' && part.name === call.name &&
+            !matched.has(part) && (part.status === call.status || part.status === 'running'));
+        if (existing?.kind === 'tool') { existing.status = call.status; matched.add(existing); }
+        else parts.push({ kind: 'tool', name: call.name, status: call.status });
     }
     // Older saved calls have no path in their activity marker. Attribute refs
     // only when every completed call of that type has a matching stored ref.

@@ -440,34 +440,55 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private nativeRoadmapSummaryCard(status: string, counts?: { phases: number; gates: number; criteria: number },
         warnings: readonly string[] = [], diagnostic?: string,
-        view?: { run: () => void; disabled?: boolean }): HTMLElement {
+        view?: { run: () => void; disabled?: boolean },
+        operations?: NonNullable<ChatPlanningProposal['operations']>): HTMLElement {
         const card = document.createElement('section');
         card.className = 'dope-chat-plan-review dope-chat-native-summary';
         card.dataset.status = status.toLowerCase().split(' ')[0];
         card.setAttribute('aria-label', `Roadmap proposal: ${status}`);
         const heading = document.createElement('strong'); heading.textContent = `Roadmap · ${status}`;
         const totals = document.createElement('p');
-        totals.textContent = counts ? `${counts.phases} Phases · ${counts.gates} Gates · ${counts.criteria} Criteria` :
+        const operationCount = (state: string) => operations?.filter(operation => operation.status === state).length ?? 0;
+        const decisions = operations ? [
+            ['Applied', operationCount('Applied')], ['Rejected', operationCount('Rejected')],
+            ['Pending', operationCount('Pending')],
+        ].filter(([, count]) => count) : [];
+        totals.textContent = operations ? decisions.length ? decisions.map(([label, count]) =>
+            `${count} ${label} operation${count === 1 ? '' : 's'}`).join(' · ') :
+            `${operations.length} operations · status in Details` :
+            counts ? `${counts.phases} proposed Phases · ${counts.gates} Gates · ${counts.criteria} Criteria` :
             'Roadmap counts unavailable';
         card.append(heading, totals);
-        for (const warning of warnings.slice(0, 3)) {
-            const line = document.createElement('p'); line.className = 'dope-chat-native-warning';
-            line.textContent = warning; card.append(line);
-        }
-        if (warnings.length > 3) {
-            const more = document.createElement('p'); more.textContent = `${warnings.length - 3} additional warnings`;
-            card.append(more);
+        if (warnings.length || diagnostic || counts || operations) {
+            const details = document.createElement('details');
+            const label = document.createElement('summary');
+            label.textContent = warnings.length ? `Details · ${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : 'Details';
+            details.append(label);
+            if (counts) {
+                const proposed = document.createElement('p');
+                proposed.textContent = `Recorded Roadmap totals: ${counts.phases} Phases · ${counts.gates} Gates · ` +
+                    `${counts.criteria} Criteria. These totals are not applied counts.`;
+                details.append(proposed);
+            }
+            for (const operation of operations ?? []) {
+                const row = document.createElement('p');
+                row.textContent = `${operation.type} · ${operation.status}`;
+                details.append(row);
+            }
+            for (const warning of warnings) {
+                const line = document.createElement('p'); line.className = 'dope-chat-native-warning';
+                line.textContent = warning; details.append(line);
+            }
+            if (diagnostic) {
+                const note = document.createElement('p'); note.textContent = diagnostic.slice(0, 2048);
+                details.append(note);
+            }
+            card.append(details);
         }
         if (view) {
             const action = this.button('View in Roadmap', view.run, !!view.disabled);
             action.className = 'dope-chat-native-view';
             card.append(action);
-        }
-        if (diagnostic) {
-            const details = document.createElement('details');
-            const label = document.createElement('summary'); label.textContent = 'Details';
-            const note = document.createElement('p'); note.textContent = diagnostic.slice(0, 2048);
-            details.append(label, note); card.append(details);
         }
         return card;
     }
@@ -510,7 +531,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             proposal.operations.some(item => item.status === 'Pending') ? 'Ready' : 'Stale', proposal.counts,
             proposal.warnings, proposal.summary, this.viewRoadmapProposal ? {
                 run: () => void this.viewCurrentRoadmapProposal(proposal),
-                disabled: !state.canViewPlanningProposal(proposal.id) } : undefined);
+                disabled: !state.canViewPlanningProposal(proposal.id) } : undefined, proposal.operations);
         const heading = document.createElement('strong');
         const draftProposal = isDraftPlanningAction(proposal.action.type);
         heading.textContent = proposal.preview ? 'Proposed Roadmap Change' :
@@ -638,9 +659,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             return this.roadmapProposalReviewCard(this.controller.planningProposal);
         const proposal = activity.proposal;
         if (proposal?.operations) {
-            const status = nativeRoadmapCardStatus(activity.status, false);
+            const applied = proposal.operations.some(operation => operation.status === 'Applied');
+            const rejected = proposal.operations.some(operation => operation.status === 'Rejected');
+            const status = activity.status === 'applied' && applied && rejected ? 'Partially applied' :
+                nativeRoadmapCardStatus(activity.status, false);
             return this.nativeRoadmapSummaryCard(status, proposal.counts, proposal.warnings,
-                activity.diagnostic ?? proposal.summary);
+                activity.status === 'applied' ? undefined : activity.diagnostic ?? proposal.summary,
+                undefined, proposal.operations);
         }
         const status = activity.status === 'applied' ? 'Applied' :
             activity.status === 'denied' ? 'Rejected · no change' :
@@ -2728,7 +2753,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             } else if (message.role === 'assistant') {
                 const activity = planningActivityPresentation(message);
                 const outcome = message.execution.status === 'failed' ? undefined : planningOutcome(message);
-                if (outcome) {
+                if (outcome && !isInlineRoadmapProposal(message)) {
                     if (message.planningActivity?.kind === 'no-action' &&
                         message.planningActivity.status === 'no-action') {
                         content.append(renderUntrustedMessageMarkdown(this.markdown, outcome.summary));
@@ -2863,30 +2888,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (message.execution.status === 'failed' && message.execution.failure ||
                     message.execution.status === 'complete' && chatResponseCopyText(message) ||
                     active && state.stream?.content) content.classList.add('dope-chat-final-answer');
-                const liveCalls = diagnostic?.parts.filter(part => part.kind === 'tool') ?? [];
-                const toolCalls = active && liveCalls.length ? liveCalls :
-                    message.execution.toolEvents?.length ? message.execution.toolEvents : liveCalls;
-                if (toolCalls.length) {
-                    const calls = document.createElement(isInlineRoadmapProposal(message) ? 'details' : 'div');
-                    calls.className = 'dope-chat-tool-calls';
-                    if (!isInlineRoadmapProposal(message)) calls.setAttribute('role', 'group');
-                    calls.setAttribute('aria-label', 'Tool calls');
-                    const heading = document.createElement(isInlineRoadmapProposal(message) ? 'summary' : 'strong');
-                    heading.textContent = `Tool calls (${toolCalls.length})`;
-                    calls.append(heading);
-                    const list = document.createElement('ol');
-                    for (const call of toolCalls) {
-                        const entry = document.createElement('li');
-                        entry.textContent = `${call.name} · ${call.status}`;
-                        list.append(entry);
-                    }
-                    calls.append(list);
-                    item.append(calls);
-                }
                 item.append(content);
                 const savedProposal = this.savedRoadmapProposalCard(message);
-                if (savedProposal) content.append(savedProposal);
-                const action = this.roadmapActionCard(message);
+                if (savedProposal) item.append(savedProposal);
+                const action = savedProposal ? undefined : this.roadmapActionCard(message);
                 if (action) item.append(action);
                 if (state.pendingCommand && message.id === activeAssistant?.id) {
                     const command = this.commandApprovalCard();
@@ -2945,6 +2950,20 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     info.append(row);
                 };
                 detail('Status', `${execution.status}${execution.failure ? ` · ${execution.failure}` : ''}`);
+                if (execution.toolEvents?.length) {
+                    const tools = document.createElement('details');
+                    const toolsLabel = document.createElement('summary');
+                    toolsLabel.textContent = `Broker receipts (${execution.toolEvents.length})`;
+                    tools.append(toolsLabel);
+                    for (const call of execution.toolEvents) {
+                        const row = document.createElement('div');
+                        row.textContent = `${call.name} · ${call.status}` +
+                            (call.code ? ` · ${call.code}` : '') +
+                            (call.stage ? ` · ${call.stage}` : '');
+                        tools.append(row);
+                    }
+                    info.append(tools);
+                }
                 if (message.planningActivity?.kind === 'roadmap-gate-proposal') {
                     const raw = document.createElement('details');
                     const label = document.createElement('summary'); label.textContent = 'Original proposal JSON';
@@ -2997,7 +3016,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     actions.append(retry);
                 }
                 footer.append(actions, time);
-                item.append(footer, info);
+                item.append(info, footer);
             }
             transcript.append(item);
         }
