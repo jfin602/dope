@@ -65,6 +65,15 @@ export interface GenerationDependencies {
 
 const terminal = new Set<GenerationState>(['review-ready', 'incomplete', 'failed', 'cancelled', 'stale']);
 const bounded = (value: number, ceiling: number) => Number.isSafeInteger(value) && value > 0 && value <= ceiling;
+const requestedPhaseCount = (scope: string): number => {
+    const plain = scope.replace(/\*/gu, '');
+    const match = plain.match(/\b(?:(?:build|create)\s+)?exactly\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+phases?\b/iu) ??
+        plain.match(/\b(?:build|create)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+phases?\b/iu);
+    if (!match) return 0;
+    const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+        'nine', 'ten', 'eleven', 'twelve'];
+    return /^\d+$/u.test(match[1]) ? Number(match[1]) : words.indexOf(match[1].toLowerCase()) + 1;
+};
 
 export class RoadmapGenerationController {
     readonly identity: GenerationIdentity;
@@ -281,24 +290,20 @@ export class RoadmapGenerationController {
                             phase: number, ...snapshot.counts, status: 'staged' };
                     },
                     finish: async unresolved => {
-                        if (!await this.current() || this.finished || !this.phases ||
-                            this.chargedTokens >= this.limits.maxTokens)
-                            throw new Error('ROADMAP_GENERATION_FINISH_DENIED');
-                        const required = this.scope.match(/\b(?:exactly|build|create)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b.{0,40}\bphases?\b/i);
-                        const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
-                            'nine', 'ten', 'eleven', 'twelve'];
-                        const requiredCount = required ? /^\d+$/u.test(required[1]) ? Number(required[1]) :
-                            words.indexOf(required[1].toLowerCase()) + 1 : 0;
-                        if (requiredCount && this.phases < requiredCount)
-                            throw new Error('ROADMAP_GENERATION_REQUIRED_PHASES_MISSING');
-                        const candidates = this.requirements.filter(requirement => {
-                            const words = requirement.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? [];
-                            return !words.some(word => this.staged.some(phase =>
-                                [phase.title, phase.objective, ...phase.gates.flatMap(gate =>
-                                    [gate.title, ...gate.criteria])].some(value => value.toLowerCase().includes(word))));
-                        });
-                        if (candidates.length && !unresolved.length)
-                            throw new Error('ROADMAP_GENERATION_SCOPE_UNRESOLVED');
+                        if (!await this.current())
+                            throw new Error('ROADMAP_GENERATION_FINISH_DENIED: Project, source or lease changed; start a fresh request.');
+                        if (this.finished)
+                            throw new Error('ROADMAP_GENERATION_FINISH_DENIED: This draft is already review-ready.');
+                        if (!this.phases)
+                            throw new Error('ROADMAP_GENERATION_FINISH_DENIED: Stage a valid Phase before finishing.');
+                        if (this.chargedTokens >= this.limits.maxTokens)
+                            throw new Error('ROADMAP_GENERATION_FINISH_DENIED: Token budget exhausted.');
+                        const requiredCount = requestedPhaseCount(this.scope);
+                        if (requiredCount && this.phases !== requiredCount)
+                            throw new Error(`ROADMAP_GENERATION_REQUIRED_PHASES_MISSING: Stage exactly ${requiredCount} requested Phases before finishing; ${this.phases} staged.`);
+                        // Word overlap is only an advisory coverage candidate. Different wording
+                        // cannot prove a requested requirement absent, or prove it satisfied.
+                        // The review ledger keeps every request and marks semantic coverage unverified.
                         this.unresolved = [...new Set(unresolved.map(item => item.trim()).filter(Boolean))].slice(0, 16);
                         this.emit('validating');
                         if (!await this.timed(this.deps.stage!.complete(this.identity, this.abort.signal)) ||

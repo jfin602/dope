@@ -1069,7 +1069,7 @@ export class ChatBackend implements ChatService {
                                         !Array.isArray(record.unresolved) || record.unresolved.length > 16 ||
                                         !record.unresolved.every(item => typeof item === 'string' &&
                                             !!item.trim() && item.length <= 300))
-                                        throw new Error('ROADMAP_GENERATION_ARGUMENTS');
+                                        throw new Error('ROADMAP_GENERATION_ARGUMENTS: roadmap_finish needs version 1 and unresolved as an array of short strings; use [] if none.');
                                     await input.finish(record.unresolved as string[]);
                                     output = JSON.stringify({ version: 1, accepted: true, status: 'review-ready' });
                                 } else throw new Error('ROADMAP_GENERATION_TOOL_DENIED');
@@ -1294,7 +1294,7 @@ export class ChatBackend implements ChatService {
         const scopeWarnings = [...result.scopeLedger.candidateCoverage.map(item =>
             `User goal, semantic coverage unverified: ${item.requirement.slice(0, 300)}; ` +
             (item.candidates.length ? `candidate Gate(s): ${item.candidates.join(', ').slice(0, 140)}` :
-                'no text-matched Gate or Criterion; review this gap')),
+                'no text-matched Gate or Criterion; inspect coverage manually')),
             ...result.scopeLedger.unresolved.map(item => `Model-reported unresolved: ${item.slice(0, 440)}`)];
         const proposal: ChatPlanningProposal = { id: stage.id, chatId: request.chatId,
             messageId: assistant.id, ownerId: before.projectId, revision: before.revision,

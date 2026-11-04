@@ -227,6 +227,24 @@ test('one real Pi worker execution waits for checked Phase receipts, then finish
     } finally { await f.close(); }
 });
 
+test('real Pi worker accepts empty unresolved after two checked Phases', async () => {
+    const f = await fixture(undefined, 2, []);
+    try {
+        const before = JSON.stringify(await f.store.read(f.root));
+        const result = await run(f);
+        assert.equal(result.proposalError, undefined);
+        assert.deepEqual(result.proposal?.counts, { phases: 2, gates: 2, criteria: 4 });
+        const chat = (await f.repository.read(f.root)).chats.find(item => item.id === f.chatId)!;
+        assert.deepEqual(chat.messages[1].role === 'assistant' &&
+            chat.messages[1].execution.toolEvents?.map(item => [item.name, item.status]),
+            [['roadmap_phase', 'completed'], ['roadmap_phase', 'completed'],
+                ['roadmap_finish', 'completed']]);
+        assert.ok(result.proposal?.warnings?.some(item => item.includes('semantic coverage unverified')));
+        assert.equal(JSON.stringify(await f.store.read(f.root)), before);
+        await assert.rejects(readFile(join(f.root, 'ROADMAP.md')), { code: 'ENOENT' });
+    } finally { await f.close(); }
+});
+
 test('source change before a second worker tool rejects the stale callback', async () => {
     const f = await fixture(2, 2);
     try {

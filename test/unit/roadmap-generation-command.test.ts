@@ -282,6 +282,10 @@ test('a new explicit command starts a fresh execution after an incomplete draft'
                 gates: [{ title: 'Gate 2', purpose: 'Purpose',
                     criteria: [{ title: 'Observable 2', expectedResult: 'Observed 2' }] }] }));
             assert.equal(next.accepted, true);
+            const malformed = JSON.parse(await request.projectTools.execute('roadmap_finish',
+                { version: 1, unresolved: 'none' }));
+            assert.equal(malformed.accepted, false);
+            assert.match(malformed.error, /ROADMAP_GENERATION_ARGUMENTS/);
             const finish = JSON.parse(await request.projectTools.execute('roadmap_finish',
                 { version: 1, unresolved: ['Scope details require owner review'] }));
             assert.equal(finish.accepted, true);

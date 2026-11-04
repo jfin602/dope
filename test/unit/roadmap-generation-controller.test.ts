@@ -57,6 +57,117 @@ test('one execution stages two Phases before receipts and finishes one proposal'
     await assert.rejects(controller.run(), /already started/);
 });
 
+test('Markdown phase count and different wording permit a checked empty-unresolved finish', async () => {
+    const native = stage();
+    const result = await new RoadmapGenerationController(identity,
+        'Create exactly **2 Phases**: draw a visible fixed waypoint path; move one enemy to its end.', '{}', {
+            current: async () => true, stage: native.owner,
+            call: async input => {
+                for (let number = 1; number <= 2; number++) {
+                    await input.admitTool();
+                    await input.submitPhase(number, phase(number));
+                }
+                await input.admitTool();
+                await input.finish([]);
+                return {};
+            }
+        }, limits).run();
+    assert.equal(result.state, 'review-ready');
+    assert.equal(native.complete, 1);
+    assert.deepEqual(result.scopeLedger.unresolved, []);
+    assert.equal(result.scopeLedger.semanticCoverage, 'unverified');
+    assert.ok(result.scopeLedger.candidateCoverage.some(item => item.candidates.length === 0));
+});
+
+test('explicitly unresolved semantic requirements remain in the review ledger', async () => {
+    const native = stage();
+    const result = await new RoadmapGenerationController(identity, 'Build 2 Phases for unknown mechanics', '{}', {
+        current: async () => true, stage: native.owner,
+        call: async input => {
+            for (let number = 1; number <= 2; number++) {
+                await input.admitTool(); await input.submitPhase(number, phase(number));
+            }
+            await input.admitTool(); await input.finish(['Unknown mechanic needs owner review']);
+            return {};
+        }
+    }, limits).run();
+    assert.equal(result.state, 'review-ready');
+    assert.deepEqual(result.scopeLedger.unresolved, ['Unknown mechanic needs owner review']);
+});
+
+test('missing requested Phase denies finish, then one corrected Phase and finish succeed', async () => {
+    const native = stage();
+    const result = await new RoadmapGenerationController(identity, 'Create exactly **2 Phases**', '{}', {
+        current: async () => true, stage: native.owner,
+        call: async input => {
+            await input.admitTool(); await input.submitPhase(1, phase(1));
+            await input.admitTool();
+            await assert.rejects(input.finish([]), /REQUIRED_PHASES_MISSING.*2 requested Phases/);
+            input.rejectTool();
+            await input.admitTool(); await input.submitPhase(2, phase(2));
+            await input.admitTool(); await input.finish([]);
+            return {};
+        }
+    }, limits).run();
+    assert.equal(result.state, 'review-ready');
+    assert.equal(result.metrics.retries, 1);
+    assert.equal(native.complete, 1);
+});
+
+test('exhausted failed finish attempts cannot issue another tool call', async () => {
+    const native = stage();
+    const result = await new RoadmapGenerationController(identity, 'Create exactly **2 Phases**', '{}', {
+        current: async () => true, stage: native.owner,
+        call: async input => {
+            await input.admitTool(); await input.submitPhase(1, phase(1));
+            for (let attempt = 0; attempt < 2; attempt++) {
+                await input.admitTool();
+                await assert.rejects(input.finish([]), /REQUIRED_PHASES_MISSING/);
+                input.rejectTool();
+            }
+            await assert.rejects(input.admitTool(), /TOOL_BUDGET_OR_STALE/);
+            return {};
+        }
+    }, limits).run();
+    assert.equal(result.state, 'incomplete');
+    assert.equal(native.complete, 0);
+    assert.equal(result.metrics.retries, 2);
+});
+
+test('a successful finish cannot be duplicated in the same execution', async () => {
+    const native = stage();
+    const result = await new RoadmapGenerationController(identity, 'One Phase', '{}', {
+        current: async () => true, stage: native.owner,
+        call: async input => {
+            await input.admitTool(); await input.submitPhase(1, phase(1));
+            await input.admitTool(); await input.finish([]);
+            await input.admitTool();
+            await assert.rejects(input.finish([]), /FINISH_DENIED/);
+            input.rejectTool();
+            return {};
+        }
+    }, limits).run();
+    assert.equal(result.state, 'review-ready');
+    assert.equal(native.complete, 1);
+});
+
+test('stale identity at finish leaves the staged draft incomplete', async () => {
+    const native = stage();
+    let current = true;
+    const result = await new RoadmapGenerationController(identity, 'One Phase', '{}', {
+        current: async () => current, stage: native.owner,
+        call: async input => {
+            await input.admitTool(); await input.submitPhase(1, phase(1));
+            current = false;
+            await input.admitTool().catch(() => undefined);
+            await assert.rejects(input.finish([]), /FINISH_DENIED/);
+            return {};
+        }
+    }, limits).run();
+    assert.equal(result.state, 'stale');
+    assert.equal(native.complete, 0);
+});
+
 test('duplicate and skipped Phase attempts do not stage a second Phase', async () => {
     const native = stage();
     const result = await new RoadmapGenerationController(identity, 'Scope', '{}', {

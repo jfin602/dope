@@ -120,6 +120,7 @@ test('invalid nested content and cancelled stage cannot advance native proposal'
             gates: [{ title: 'Gate', purpose: 'Verify first', criteria: [
                 { title: 'Observable', expectedResult: 'A visible result' }] }] };
         const signal = new AbortController().signal;
+        assert.equal(adapter.validate({ ...phase, gates: [] }, identity, signal), false);
         assert.equal(adapter.validate({ ...phase, gates: [{ ...phase.gates[0], criteria: [] }] }, identity, signal), false);
         assert.equal(adapter.validate({ ...phase, gates: [phase.gates[0], phase.gates[0]] }, identity, signal), false);
         assert.equal(adapter.validate(phase, { ...identity, projectId: 'foreign' }, signal), false);
