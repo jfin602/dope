@@ -30,3 +30,33 @@ export function proposalEntityOperations(proposal: ChatPlanningProposal, entityI
     }
     return pending.filter(operation => owners.has(operation.targetId)).map(operation => operation.id);
 }
+
+/** Close a visible review request over pending creators without adding unrelated branches. */
+export function proposalReviewScope(proposal: ChatPlanningProposal, ids: readonly string[],
+    decision: 'apply' | 'reject'): string[] {
+    const pending = proposal.operations?.filter(item => item.status === 'Pending') ?? [];
+    const selected = new Set(ids.filter(id => pending.some(item => item.id === id)));
+    const entities = proposal.preview?.entities ?? [];
+    const byId = new Map(entities.map(entity => [entity.id, entity]));
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const item of pending) {
+            const entity = byId.get(item.targetId);
+            const parent = entity?.after?.parentId ?? entity?.before?.parentId;
+            if (decision === 'apply' && selected.has(item.id) && parent) {
+                for (const creator of pending.filter(candidate => candidate.targetId === parent &&
+                    ['phase.create', 'gate.create', 'correction.attach'].includes(candidate.type))) {
+                    if (!selected.has(creator.id)) { selected.add(creator.id); changed = true; }
+                }
+            }
+            if (decision === 'reject' && !selected.has(item.id) &&
+                pending.some(candidate => selected.has(candidate.id) && candidate.id !== item.id &&
+                    (candidate.targetId === parent || candidate.targetId === item.targetId) &&
+                    ['phase.create', 'gate.create', 'correction.attach'].includes(candidate.type))) {
+                selected.add(item.id); changed = true;
+            }
+        }
+    }
+    return pending.filter(item => selected.has(item.id)).map(item => item.id);
+}

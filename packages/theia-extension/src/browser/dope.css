@@ -2,7 +2,7 @@
 .dope-roadmap-canvas { box-sizing: border-box; height: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; color: var(--theia-editor-foreground); background: var(--theia-editor-background); font-family: var(--theia-ui-font-family); }
 .dope-roadmap-canvas > header { display: flex; flex: none; flex-wrap: nowrap; align-items: center; gap: 4px; min-width: 0; padding: 4px 6px; overflow-x: auto; border-bottom: 1px solid var(--theia-widget-border); }
 .dope-roadmap-canvas h2 { margin: 0; font-size: 18px; }
-.dope-roadmap-stage-host { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; }
+.dope-roadmap-stage-host { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; container-type: inline-size; }
 .dope-roadmap-context-bar { position: absolute; z-index: 12; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 680px; padding: 8px 10px; border: 1px solid var(--theia-focusBorder); border-radius: 8px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); box-shadow: 0 4px 12px var(--theia-widget-shadow, transparent); }
 .dope-roadmap-context-bar strong { flex: 1 1 210px; }
 .dope-roadmap-context-bar button, .dope-roadmap-context-pick { min-height: 28px; padding: 3px 8px; border: 1px solid var(--theia-widget-border); border-radius: 5px; color: var(--theia-editor-foreground); background: var(--theia-button-secondaryBackground, var(--theia-editorWidget-background)); cursor: pointer; }
@@ -203,9 +203,37 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-pencil:hover, .dope-roadmap-pencil:focus-visible { opacity: 1; }
 .dope-roadmap-native-review { position: absolute; z-index: 7; top: 8px; right: 8px; width: min(520px, calc(100% - 16px)); max-height: min(40vh, 360px); overflow: auto; padding: 8px 10px; border: 1px solid var(--theia-widget-border); border-radius: 8px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); box-shadow: 0 4px 16px var(--theia-widget-shadow, transparent); }
 .dope-roadmap-native-review[hidden] { display: none; }
-.dope-roadmap-proposal-select { min-height: 26px; padding: 2px 6px; border: 1px solid var(--theia-widget-border); border-radius: 5px; color: var(--theia-editor-foreground); background: var(--theia-button-secondaryBackground, var(--theia-editorWidget-background)); cursor: pointer; font: inherit; font-size: 11px; }
-.dope-roadmap-proposal-select[aria-pressed="true"] { border-color: var(--theia-focusBorder); background: color-mix(in srgb, var(--theia-focusBorder) 22%, var(--theia-editorWidget-background)); font-weight: 700; }
-.dope-roadmap-proposal-select:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
+.dope-roadmap-stage .react-flow__node:has(> .dope-roadmap-proposal-phase) { padding-top: 38px; overflow: visible; }
+.dope-roadmap-proposal-phase { box-sizing: border-box; max-width: calc(100cqw - 48px); min-width: min(260px, calc(100cqw - 48px)); }
+.dope-roadmap-proposal-phase, .dope-roadmap-proposal-change, .dope-roadmap-proposal-created,
+.dope-roadmap-proposal-new-gate, .dope-roadmap-proposal-criterion { position: relative; overflow: visible; }
+.dope-roadmap-proposal-new-gate, .dope-roadmap-proposal-criterion,
+.dope-roadmap-proposal-change, .dope-roadmap-proposal-created { margin-top: 38px; }
+.dope-roadmap-proposal-tab { box-sizing: border-box; position: absolute; z-index: 10; top: -33px; right: 8px;
+  display: inline-flex; align-items: center; padding: 2px; gap: 2px; height: 34px;
+  border: 1px solid var(--theia-widget-border); border-bottom-color: var(--theia-editor-background);
+  border-radius: 7px 7px 0 0; background: var(--theia-editor-background);
+  box-shadow: 0 -2px 8px var(--theia-widget-shadow, transparent); white-space: nowrap; }
+.dope-roadmap-proposal-tab button { box-sizing: border-box; display: inline-grid; place-items: center;
+  width: 30px; height: 30px; min-width: 30px; min-height: 30px; padding: 0; border: 0; border-radius: 4px;
+  color: var(--theia-editor-foreground); background: transparent; cursor: pointer; font: inherit; font-size: 18px; line-height: 1; }
+.dope-roadmap-proposal-tab button:hover, .dope-roadmap-proposal-tab button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--theia-focusBorder) 18%, var(--theia-editor-background)); }
+.dope-roadmap-proposal-tab .dope-roadmap-proposal-apply:hover,
+.dope-roadmap-review-apply:hover { color: var(--theia-testing-iconPassed, var(--theia-editor-foreground)); }
+.dope-roadmap-proposal-tab .dope-roadmap-proposal-reject:hover,
+.dope-roadmap-review-reject:hover { color: var(--theia-errorForeground, var(--theia-editor-foreground)); }
+.dope-roadmap-proposal-tab button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }
+.dope-roadmap-proposal-tab button:disabled { opacity: .45; cursor: not-allowed; }
+.dope-roadmap-stage[data-review-small-zoom="true"] .dope-roadmap-proposal-tab { display: none; }
+.dope-roadmap-native-actions .dope-roadmap-review-action { width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--theia-widget-border); border-radius: 5px; color: var(--theia-editor-foreground);
+  background: var(--theia-button-secondaryBackground, var(--theia-editorWidget-background));
+  font-size: 15px; cursor: pointer; }
+.dope-roadmap-native-actions .dope-roadmap-review-action:hover { border-color: var(--theia-focusBorder); }
+.dope-roadmap-native-actions .dope-roadmap-review-action:disabled { opacity: .45; cursor: not-allowed; }
+.dope-roadmap-native-actions .dope-roadmap-review-divider { height: 22px; border-left: 1px solid var(--theia-widget-border); margin: 0 3px; }
+.dope-roadmap-native-actions .dope-roadmap-review-action:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-roadmap-proposal-field { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 5px; min-width: 0; max-width: 100%; }
 .dope-roadmap-proposal-field > span { overflow-wrap: anywhere; }
 .dope-roadmap-proposal-field input, .dope-roadmap-proposal-field textarea { box-sizing: border-box; width: min(100%, 360px); min-width: 140px; color: var(--theia-input-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border, var(--theia-widget-border)); padding: 5px 7px; font: inherit; }

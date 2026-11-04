@@ -30,7 +30,7 @@ import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
 import { NextPhaseLoader, ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode,
     type ProposalChange, type ProposedFieldSave } from './roadmap-proposal-cards';
-import { proposalEntityOperations } from './roadmap-proposal-selection';
+import { proposalEntityOperations, proposalReviewScope } from './roadmap-proposal-selection';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
     roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot, roadmapProposalCamera,
     type RoadmapViewportState } from './roadmap-viewport';
@@ -324,6 +324,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private proposalReview?: { ids: string[]; decision: 'apply' | 'reject'; summary: string;
         preview?: ChatPlanningProposal['preview'] };
     private proposalError?: string;
+    private proposalFocus?: { entityId: string; action: string };
     private chatProposal?: { uri: string; chatId: string; proposal: ChatPlanningProposal };
     private pendingChatProposalCamera?: string;
     private chatProposalCameraQueued = false;
@@ -829,13 +830,25 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.proposalBar.className = 'dope-roadmap-native-review';
         this.proposalBar.setAttribute('aria-label', 'Review proposed Roadmap changes');
         this.proposalBar.hidden = true;
+        this.stage.addEventListener('keydown', event => {
+            if (!event.shiftKey || !['Enter', ' '].includes(event.key) ||
+                !(event.target instanceof HTMLButtonElement) || !event.target.dataset.proposalAction) return;
+            event.preventDefault(); event.stopPropagation();
+            event.target.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
+        }, true);
         this.stage.addEventListener('click', event => {
-            const control = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-proposal-select]');
+            const control = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-proposal-action]');
             const proposal = this.history ? undefined : this.chatProposal?.proposal;
-            if (!control || !proposal || this.mutating) return;
-            const ids = proposalEntityOperations(proposal, control.dataset.proposalSelect ?? '',
-                control.dataset.proposalSubtree === 'true');
+            if (!control || !proposal || this.mutating || control.disabled) return;
+            const entityId = control.dataset.proposalEntityId ?? '';
+            const ids = proposalEntityOperations(proposal, entityId, (event as MouseEvent).shiftKey);
             if (!ids.length) return;
+            const action = control.dataset.proposalAction;
+            this.proposalFocus = { entityId, action: action ?? 'select' };
+            if (action === 'apply' || action === 'reject') {
+                void this.reviewProposal(proposalReviewScope(proposal, ids, action), action);
+                return;
+            }
             const remove = ids.every(id => this.proposalSelection.has(id));
             for (const id of ids) if (remove) this.proposalSelection.delete(id); else this.proposalSelection.add(id);
             this.proposalReview = undefined;
@@ -2002,6 +2015,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (this.history || !shown || !this.nativeProposalBridge || !ids.length || this.mutating) return;
         this.mutating = true;
         this.proposalError = undefined;
+        this.renderProposalBar();
+        this.updateProposalSelectionControls();
         try {
             const result = await this.nativeProposalBridge(shown.uri, shown.chatId, shown.proposal.id,
                 ids, decision, confirm);
@@ -2016,7 +2031,26 @@ export class RoadmapCanvasWidget extends BaseWidget {
             } else this.proposalReview = { ids, decision, summary: result.summary ?? 'Review selected changes',
                 preview: result.preview };
         } catch (error) { this.proposalError = String(error); }
-        finally { this.mutating = false; this.render(); }
+        finally {
+            this.mutating = false; this.render();
+            requestAnimationFrame(() => {
+                if (this.proposalReview) this.proposalBar.querySelector<HTMLButtonElement>('[data-review-confirm]')?.focus();
+                else this.focusProposalOrigin();
+            });
+        }
+    }
+
+    private focusProposalOrigin(): void {
+        const origin = this.proposalFocus;
+        const control = [...this.stage.querySelectorAll<HTMLButtonElement>('button[data-proposal-action]')]
+            .find(item => item.dataset.proposalEntityId === origin?.entityId &&
+                item.dataset.proposalAction === origin?.action && !item.disabled && !item.hidden);
+        if (control) control.focus();
+        else {
+            const fallback = this.proposalBar.querySelector<HTMLButtonElement>('button:not(:disabled)');
+            if (fallback) fallback.focus();
+            else { this.stage.tabIndex = -1; this.stage.focus(); }
+        }
     }
 
     private renderProposalBar(): void {
@@ -2029,17 +2063,32 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const selected = operations.filter(item => this.proposalSelection.has(item.id)).map(item => item.id);
         title.textContent = `Proposed Roadmap · ${selected.length} selected of ${operations.length} remaining · not applied`;
         this.proposalBar.append(title);
-        const button = (label: string, ids: string[], decision: 'apply' | 'reject') => {
-            const control = document.createElement('button'); control.type = 'button'; control.textContent = label;
+        const button = (label: string, icon: string, ids: string[], decision: 'apply' | 'reject') => {
+            const control = document.createElement('button'); control.type = 'button';
+            control.textContent = icon;
+            control.title = label;
+            control.setAttribute('aria-label', label);
+            control.className = `dope-roadmap-review-action dope-roadmap-review-${decision}`;
             control.disabled = this.mutating || !ids.length;
-            control.onclick = () => void this.reviewProposal(ids, decision);
+            control.onclick = () => { this.proposalFocus = undefined;
+                void this.reviewProposal(proposalReviewScope(proposal, ids, decision), decision); };
             return control;
         };
         const all = operations.map(item => item.id);
         const actions = document.createElement('div'); actions.className = 'dope-roadmap-native-actions';
-        actions.append(button(`Apply selected (${selected.length})`, selected, 'apply'),
-            button(`Reject selected (${selected.length})`, selected, 'reject'),
-            button('Apply all remaining', all, 'apply'), button('Reject all remaining', all, 'reject'));
+        actions.append(button(`Apply selected (${selected.length}) — review`, '✓', selected, 'apply'),
+            button(`Reject selected (${selected.length}) — review`, '×', selected, 'reject'));
+        const divider = document.createElement('span'); divider.className = 'dope-roadmap-review-divider';
+        divider.setAttribute('aria-hidden', 'true'); actions.append(divider);
+        actions.append(button(`Apply all remaining (${all.length}) — review`, '✓✓', all, 'apply'),
+            button(`Reject all remaining (${all.length}) — review`, '××', all, 'reject'));
+        if (this.stage.dataset.reviewSmallZoom === 'true') {
+            const zoom = document.createElement('button'); zoom.type = 'button';
+            zoom.textContent = 'Zoom in for element review';
+            zoom.title = 'Zoom in for individual Roadmap review controls';
+            zoom.onclick = () => this.intentionalCamera(flow => flow.zoomTo(0.85));
+            actions.append(zoom);
+        }
         this.proposalBar.append(actions);
         if (this.proposalReview) {
             const review = this.proposalReview;
@@ -2064,9 +2113,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
             }
             const confirm = document.createElement('button'); confirm.type = 'button';
             confirm.textContent = `Confirm ${review.decision} of ${review.ids.length} operation(s)`;
+            confirm.dataset.reviewConfirm = 'true';
+            confirm.disabled = this.mutating;
             confirm.onclick = () => void this.reviewProposal(review.ids, review.decision, true);
             const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel review';
-            cancel.onclick = () => { this.proposalReview = undefined; this.renderProposalBar(); };
+            cancel.disabled = this.mutating;
+            cancel.onclick = () => { this.proposalReview = undefined; this.renderProposalBar();
+                requestAnimationFrame(() => this.focusProposalOrigin()); };
             this.proposalBar.append(exact, confirm, cancel);
         }
         if (this.proposalError) {
@@ -2077,12 +2130,23 @@ export class RoadmapCanvasWidget extends BaseWidget {
 
     private updateProposalSelectionControls(): void {
         const proposal = this.history ? undefined : this.chatProposal?.proposal;
-        for (const control of this.stage.querySelectorAll<HTMLButtonElement>('button[data-proposal-select]')) {
-            const ids = proposal ? proposalEntityOperations(proposal, control.dataset.proposalSelect ?? '',
-                control.dataset.proposalSubtree === 'true') : [];
-            control.hidden = !ids.length;
-            control.disabled = !ids.length || this.mutating;
-            control.setAttribute('aria-pressed', String(!!ids.length && ids.every(id => this.proposalSelection.has(id))));
+        for (const control of this.stage.querySelectorAll<HTMLButtonElement>('button[data-proposal-action]')) {
+            const ids = proposal ? proposalEntityOperations(proposal, control.dataset.proposalEntityId ?? '') : [];
+            const available = !!ids.length && !this.mutating;
+            control.disabled = !available;
+            const embedded = ids.length > 0 && !proposal?.operations?.some(item =>
+                ids.includes(item.id) && item.targetId === control.dataset.proposalEntityId);
+            const action = control.dataset.proposalAction ?? 'select';
+            if (embedded) {
+                const scope = `${action === 'select' ? 'Select' : action === 'apply' ? 'Apply' : 'Reject'} owning Gate with embedded Criterion${action === 'select' ? '' : ' — review'}`;
+                control.setAttribute('aria-label', scope);
+                control.title = scope;
+            } else control.title = available ? control.getAttribute('aria-label') ?? '' :
+                'No pending operation for this element or its owning Gate.';
+            if (control.dataset.proposalAction === 'select') {
+                control.setAttribute('aria-pressed', String(!!ids.length && ids.every(id => this.proposalSelection.has(id))));
+                control.querySelector('span')!.textContent = ids.length && ids.every(id => this.proposalSelection.has(id)) ? '☑' : '☐';
+            }
         }
         for (const control of this.stage.querySelectorAll<HTMLButtonElement>('button[data-proposal-edit-entity]')) {
             const ids = proposal ? proposalEntityOperations(proposal, control.dataset.proposalEditEntity ?? '') : [];
@@ -2241,6 +2305,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 ariaLabel: `${item.label}; ${titles.get(item.from) ?? item.from} to ${titles.get(item.to) ?? item.to}; endpoint status ${status}`,
                 className: `dope-roadmap-edge dope-roadmap-edge-${item.kind}${item.kind === 'dependency' ? ` dope-roadmap-edge-${status}` : ''}${projection?.nodes.find(node => node.id === item.to)?.draftState ? ` dope-roadmap-draft-${projection.nodes.find(node => node.id === item.to)?.draftState}` : ''}${roadmapConnectorTouchesSelection(item, this.selectedId) ? ' dope-roadmap-edge-related' : ''}` };
         });
+        this.stage.dataset.reviewSmallZoom = String((this.displayedViewport?.zoom ?? 1) < 0.8);
         this.root.render(React.createElement(ReactFlow, {
             id: 'dope-roadmap-flow', nodes, edges, nodeTypes: roadmapNodeTypes, edgeTypes: roadmapEdgeTypes,
             defaultViewport: this.displayedViewport ?? { x: 20, y: 20, zoom: 1 }, minZoom: 0.2, maxZoom: 2,
@@ -2287,6 +2352,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 }
             },
             onMoveEnd: (event: unknown, viewport: { x: number; y: number; zoom: number }) => {
+                const previousSmallZoom = this.stage.dataset.reviewSmallZoom;
+                this.stage.dataset.reviewSmallZoom = String(viewport.zoom < 0.8);
+                if (previousSmallZoom !== this.stage.dataset.reviewSmallZoom) this.renderProposalBar();
                 if (!this.projectId || !this.projectUri || cameraGeneration !== this.cameraGeneration ||
                     cameraProjectUri !== this.projectUri) return;
                 if (roadmapUserViewportEvent(event)) this.recordUserCamera(viewport);

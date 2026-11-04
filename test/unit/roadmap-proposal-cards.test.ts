@@ -57,9 +57,13 @@ test('native stage snapshots render a provisional Phase, then nested Gate and Cr
         assert.match(firstHtml, /Initial setup/);
         assert.match(firstHtml, /Awaiting Gates/);
         assert.match(firstHtml, /Proposed · Not applied/);
-        assert.match(firstHtml, /Select proposed Phase/);
-        assert.match(firstHtml, /data-proposal-subtree="true"/);
-        assert.match(firstHtml, /Select only proposed Phase/);
+        assert.match(firstHtml, /dope-roadmap-proposal-tab/);
+        assert.match(firstHtml, /data-proposal-action="select"/);
+        assert.match(firstHtml, /data-proposal-action="apply"/);
+        assert.match(firstHtml, /data-proposal-action="reject"/);
+        assert.match(firstHtml, /Select Phase/);
+        assert.match(firstHtml, /Shift activates this element and its pending descendants/);
+        assert.doesNotMatch(firstHtml, />Select with children<|>Apply selected</);
         assert.match(firstHtml, /Edit proposed Phase title/);
         assert.match(firstHtml, /Edit proposed Phase objective/);
         assert.doesNotMatch(firstHtml, /none →|Order:|Dependencies:|Planned|GREEN/);
@@ -75,8 +79,8 @@ test('native stage snapshots render a provisional Phase, then nested Gate and Cr
         assert.match(secondHtml, /Verify setup/);
         assert.match(secondHtml, /Check launch/);
         assert.match(secondHtml, /App launches/);
-        assert.match(secondHtml, /Select proposed Gate/);
-        assert.match(secondHtml, /Select proposed Criterion/);
+        assert.match(secondHtml, /Select Gate/);
+        assert.match(secondHtml, /Select Criterion/);
         assert.match(secondHtml, /Edit proposed Gate title/);
         assert.match(secondHtml, /Edit proposed Gate purpose/);
         assert.match(secondHtml, /Edit proposed Criterion title/);

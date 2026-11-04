@@ -82,12 +82,21 @@ function ProposedField({ id, field, value, label, save, multiline }: { id: strin
 const proposed = (source: boolean): string =>
     `Proposed · Not applied${source ? ' · Linked Markdown source-owned' : ''}`;
 
-function selectControl(id: string, label: string, subtree = false): React.ReactElement {
-    return React.createElement('button', { type: 'button',
-        className: 'dope-roadmap-proposal-select nodrag nopan',
-        'data-proposal-select': id, 'data-proposal-subtree': subtree ? 'true' : undefined,
-        'aria-pressed': false, 'aria-label': label,
-        onClick: (event: React.MouseEvent) => event.stopPropagation() }, subtree ? 'Select with children' : 'Select');
+/** The same three controls are mounted on the border of every pending element. */
+export function ProposalControlTab({ id, scope }: { id: string; scope: string }): React.ReactElement {
+    const label = `${scope}. Shift activates this element and its pending descendants`;
+    const control = (action: 'select' | 'apply' | 'reject', symbol: string, name: string) =>
+        React.createElement('button', { type: 'button', key: action,
+            className: `dope-roadmap-proposal-control dope-roadmap-proposal-${action} nodrag nopan`,
+            'data-proposal-action': action, 'data-proposal-entity-id': id,
+            'aria-label': `${name} ${label}${action === 'select' ? '' : ' — review'}`,
+            title: `${name} ${label}${action === 'select' ? '' : ' — review'}`,
+            'aria-pressed': action === 'select' ? false : undefined,
+            onClick: (event: React.MouseEvent) => event.stopPropagation() },
+            React.createElement('span', { 'aria-hidden': true }, symbol));
+    return React.createElement('div', { className: 'dope-roadmap-proposal-tab nodrag nopan',
+        role: 'group', 'aria-label': `Review ${scope}` },
+        control('select', '☐', 'Select'), control('apply', '✓', 'Apply'), control('reject', '×', 'Reject'));
 }
 
 /** Existing entities keep their precise diff; creation has no previous value to compare. */
@@ -97,7 +106,7 @@ export function ProposedChange({ change, source, sourceChanges, save }: { change
     if (change.action === 'create' && after) return React.createElement('div', {
         className: 'dope-roadmap-correction-row dope-roadmap-proposal-created',
         'data-proposal-entity': change.id },
-        selectControl(change.id, `Select proposed ${after.kind} ${after.title ?? ''}`),
+        React.createElement(ProposalControlTab, { id: change.id, scope: `${after.kind} ${after.title ?? ''}` }),
         React.createElement('small', { className: 'dope-roadmap-authority' }, proposed(source)),
         React.createElement('strong', null, after.kind === 'criterion' ?
             React.createElement(ProposedField, { id: after.id, field: 'title', value: after.title ?? '',
@@ -110,7 +119,7 @@ export function ProposedChange({ change, source, sourceChanges, save }: { change
             `${label}: ${oldValue ?? 'none'} → ${newValue ?? 'none'}`);
     return React.createElement('div', { className: `dope-roadmap-proposal-change dope-roadmap-proposal-${change.action}`,
         'data-proposal-entity': change.id },
-        selectControl(change.id, `Select proposed ${value?.kind ?? 'change'} ${value?.title ?? ''}`),
+        React.createElement(ProposalControlTab, { id: change.id, scope: `${value?.kind ?? 'change'} ${value?.title ?? ''}` }),
         React.createElement('small', null, proposed(source)),
         React.createElement('strong', null, `${change.action === 'delete' ? 'Remove ' : ''}${value?.kind ?? 'element'} · ${value?.title ?? change.id}`),
         change.action === 'edit' ? field('Title', before?.title, after?.title) : null,
@@ -140,7 +149,8 @@ export function ProposedCriterionRow({ criterion, source, save, provisional }: {
     return React.createElement('details', { className: 'dope-roadmap-proposal-criterion',
         'data-proposal-entity': criterion.id },
         React.createElement('summary', null, criterion.title ?? criterion.id),
-        !provisional && selectControl(criterion.id, `Select proposed Criterion ${criterion.title ?? ''}`),
+        !provisional && React.createElement(ProposalControlTab,
+            { id: criterion.id, scope: `Criterion ${criterion.title ?? ''}` }),
         React.createElement('small', null, provisional ? 'Staged · Provisional' : proposed(source)),
         React.createElement(ProposedField, { id: criterion.id, field: 'title', value: criterion.title ?? '',
             label: 'Criterion title', save }),
@@ -160,6 +170,7 @@ export function ProposedGateCard({ change, children, source, save, provisional }
     return React.createElement('details', { className: 'dope-roadmap-gate-row dope-roadmap-proposal-new-gate nodrag nopan',
         'data-proposal-gate-id': gate.id, open: true,
         onClick: (event: React.MouseEvent) => event.stopPropagation() },
+        !provisional && React.createElement(ProposalControlTab, { id: gate.id, scope: `Gate ${gate.title ?? ''}` }),
         React.createElement('summary', { className: 'dope-roadmap-gate-summary',
             'aria-label': `${provisional ? 'Staged · Provisional' : proposed(source)} Gate ${gate.designation ?? ''}: ${gate.title ?? gate.id}; not qualified` },
             React.createElement('span', { className: 'dope-roadmap-gate-icon', 'aria-hidden': true }, '◇'),
@@ -169,7 +180,6 @@ export function ProposedGateCard({ change, children, source, save, provisional }
                 provisional ? 'Staged · Provisional' : 'Proposed · Not applied'),
             React.createElement('span', { className: 'dope-roadmap-gate-chevron', 'aria-hidden': true }, '⌄')),
         React.createElement('div', { className: 'dope-roadmap-gate-foldout', 'data-proposal-entity': gate.id },
-            !provisional && selectControl(gate.id, `Select proposed Gate ${gate.title ?? ''}`),
             React.createElement('small', { className: 'dope-roadmap-authority' },
                 provisional ? 'Staged · Provisional' : proposed(source)),
             React.createElement(ProposedField, { id: gate.id, field: 'title', value: gate.title ?? '',
@@ -197,9 +207,9 @@ export function ProposedPhaseNode({ data }: { data: { change: ProposalChange; ch
     return React.createElement('section', { className: 'dope-roadmap-node dope-roadmap-phase-card dope-roadmap-proposal-phase',
         'data-phase-id': phase.id, 'data-proposal-entity': phase.id,
         'aria-label': `${data.provisional ? 'Staged · Provisional' : 'Proposed'} Phase${label ? ` ${label}` : ''}: ${phase.title ?? phase.id}; ${gates.length ? 'Gates not accepted' : 'Awaiting Gates'}` },
+        !data.provisional && React.createElement(ProposalControlTab,
+            { id: phase.id, scope: `Phase ${phase.title ?? ''}` }),
         React.createElement('div', { className: 'dope-roadmap-phase-main' },
-            !data.provisional && selectControl(phase.id, `Select only proposed Phase ${phase.title ?? ''}`),
-            !data.provisional && selectControl(phase.id, `Select proposed Phase ${phase.title ?? ''} and its children`, true),
             React.createElement('small', { className: 'dope-roadmap-authority' },
                 data.provisional ? 'Staged · Provisional' : proposed(data.source)),
             React.createElement('small', { className: 'dope-roadmap-phase-label' }, label ? `PHASE ${label}` : 'PHASE'),

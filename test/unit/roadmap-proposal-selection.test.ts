@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ChatPlanningProposal } from '../../packages/chat/src/service.ts';
-import { proposalEntityOperations } from '../../packages/theia-extension/lib/browser/roadmap-proposal-selection.js';
+import { proposalEntityOperations, proposalReviewScope } from '../../packages/theia-extension/lib/browser/roadmap-proposal-selection.js';
 
 function fixture(): ChatPlanningProposal {
     const operations: NonNullable<ChatPlanningProposal['operations']> = [];
@@ -48,4 +48,15 @@ test('a separately staged Criterion selects only its own operation', () => {
     assert.deepEqual(proposalEntityOperations(proposal, 'phase-1', true), ['op-p1', 'op-g1', 'op-c1']);
     proposal.operations!.at(-1)!.status = 'Rejected';
     assert.deepEqual(proposalEntityOperations(proposal, 'criterion-1'), []);
+});
+
+test('review closes child Apply over its creator and parent Reject over descendants', () => {
+    const proposal = fixture();
+    assert.deepEqual(proposalReviewScope(proposal, ['op-g1'], 'apply'), ['op-p1', 'op-g1']);
+    assert.deepEqual(proposalReviewScope(proposal, ['op-p1'], 'reject'), ['op-p1', 'op-g1']);
+    assert.deepEqual(proposalReviewScope(proposal, ['op-g1'], 'reject'), ['op-g1']);
+    assert.deepEqual(proposalReviewScope(proposal, ['op-p1'], 'apply'), ['op-p1']);
+    proposal.operations!.push({ id: 'op-c1', type: 'criterion.add', targetId: 'criterion-1', status: 'Pending' });
+    assert.deepEqual(proposalReviewScope(proposal, ['op-c1'], 'apply'), ['op-p1', 'op-g1', 'op-c1']);
+    assert.deepEqual(proposalReviewScope(proposal, ['op-p1'], 'reject'), ['op-p1', 'op-g1', 'op-c1']);
 });
