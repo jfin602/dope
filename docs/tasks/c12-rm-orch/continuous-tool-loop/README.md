@@ -1,3 +1,5 @@
+> **2026-11-04 FOLLOW-ON AUTHORING COMPLETE — NOT RUN:** The targeted [c12-rm-orch/fix assessment and plan](../fix/README.md) are now written, with the **only runnable** [c12-rm-orch-fix correction prompts](../../c12-rm-orch-fix/README.md). R1/P1 and R2/P2 are runner implementation prompts; R3/P3 is a manual browser closeout. The original prospective design below remains intact as the rationale. No implementation/model trial/qualification is claimed.
+
 # c12-rm-orch — continuous Pi tool-loop correction (prospective R1–R3)
 
 **Owner approval:** 2026-11-04, `/docs-review` followed by `/docs-apply`, including the requirement that each successful Phase appears on the Roadmap with a loading affordance for the next. **Status:** DOCUMENTATION DESIGN ONLY — prompts NOT AUTHORED, implementation NOT RUN, model/browser behavior NOT QUALIFIED. **Authority:** [ADR 0049 refinement](../../../decisions/0049-roadmap-phase-orchestration.md) · [forward contract](../../../planning/p12/roadmap-phase-orchestration-contract.md). Product reference `0.12.7`; verify actual local worktree.
