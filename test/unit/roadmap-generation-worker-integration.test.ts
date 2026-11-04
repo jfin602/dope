@@ -258,7 +258,7 @@ test('source change before a second worker tool rejects the stale callback', asy
 });
 
 test('linked source changed after a valid proposal prevents selected Apply', async () => {
-    const f = await fixture();
+    const f = await fixture(undefined, 2, ['Remaining tower features require owner review']);
     try {
         const path = await linkedRoadmap(f);
         const result = await run(f);

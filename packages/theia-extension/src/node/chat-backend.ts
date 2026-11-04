@@ -952,6 +952,7 @@ export class ChatBackend implements ChatService {
         const sourceHash = index.linkedDocument?.sourceHash ?? null;
         const indexHash = await this.roadmapStore!.gateIndexHash(root);
         const identity = { root, projectId: index.projectId, revision: index.revision, sourceHash, indexHash,
+            baselinePhases: index.phases.length,
             chatId: request.chatId, turnId: randomUUID(), ownerId: index.projectId,
             model: { connectionId: selection.connectionId, modelId: selection.modelId,
                 providerId: 'local' as const, contextWindowTokens: model.capabilities.contextWindowTokens,

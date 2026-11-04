@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 export type GenerationState = 'initializing' | 'generating-phase' | 'validating' | 'staging' |
     'review-ready' | 'incomplete' | 'failed' | 'cancelled' | 'stale';
 export type GenerationIdentity = Readonly<{ generationId: string; root: string; projectId: string;
-    revision: number; sourceHash: string | null; indexHash: string | null;
+    revision: number; sourceHash: string | null; indexHash: string | null; baselinePhases?: number;
     chatId: string; turnId: string; ownerId: string;
     model: Readonly<{ connectionId: string; modelId: string; providerId: 'local';
         contextWindowTokens: number; reasoningControls: Readonly<Record<string, string>> }>;
@@ -101,6 +101,7 @@ export class RoadmapGenerationController {
         private readonly limits: GenerationLimits = defaultGenerationLimits) {
         if (identity.origin !== 'trusted-user-chat' || !scope.trim() || !identity.root || !identity.projectId ||
             !identity.chatId || !identity.turnId || !identity.ownerId || identity.model.providerId !== 'local' ||
+            !Number.isSafeInteger(identity.baselinePhases ?? 0) || (identity.baselinePhases ?? 0) < 0 ||
             !identity.model.connectionId || !identity.model.modelId || !Number.isSafeInteger(identity.revision) ||
             identity.revision < 0 || !bounded(identity.model.contextWindowTokens, 1_000_000) ||
             !bounded(limits.maxPhases, 100) || !bounded(limits.maxGatesPerPhase, 100) ||
@@ -271,7 +272,7 @@ export class RoadmapGenerationController {
                         const reference = await this.timed(this.deps.stage!.stage(phase, this.identity, this.abort.signal));
                         if (!await this.current() || !reference) throw new Error('ROADMAP_GENERATION_STAGE_CHANGED');
                         const snapshot = await this.deps.stage!.snapshot?.(this.identity, this.abort.signal);
-                        if (!snapshot || snapshot.counts.phases !== this.phases + 1)
+                        if (!snapshot || snapshot.counts.phases !== (this.identity.baselinePhases ?? 0) + this.phases + 1)
                             throw new Error('ROADMAP_GENERATION_RECEIPT_MISSING');
                         this.ledger.push(`${reference}; Gates: ${phase.gates.map(gate => gate.title.trim()).join(', ')}`.slice(0, 256));
                         this.validatedPhases.push(structuredClone(phase));

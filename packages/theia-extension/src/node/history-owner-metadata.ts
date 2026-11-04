@@ -1,4 +1,5 @@
 import { constants } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { lstat, open, realpath, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { ChatRepository } from '@dope/chat/lib/node/chat-repository';
@@ -127,15 +128,32 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
             const revisions = await store.listRevisions(root, index.projectId, undefined, MAX_ITEMS);
             for (const record of revisions.revisions) {
                 const from = record.receipt.restoredFromRevision;
-                if (from === undefined || record.receipt.previousHeadRevision !== record.revision - 1 ||
-                    !record.receipt.operationIds?.some(item => /^restore-approval:/.test(item))) continue;
-                result.entries.push({ ...project, kind: 'event', source: 'roadmap',
-                    sourceId: `restore:${index.projectId}:${record.revision}`,
-                    owner: { kind: 'editor', projectRelativePath: '.dope/roadmap.json' },
-                    title: `Roadmap restored from R${from} as R${record.revision}`,
-                    status: { kind: 'owner', label: 'Reviewed restore' }, availability: 'available',
-                    ownerRevision: record.revision, ownerProjectId: index.projectId,
-                    occurredAt: record.capturedAt, observedAt: null });
+                const operationIds = record.receipt.operationIds;
+                if (from !== undefined && record.receipt.previousHeadRevision === record.revision - 1 &&
+                    operationIds?.some(item => /^restore-approval:/.test(item))) {
+                    result.entries.push({ ...project, kind: 'event', source: 'roadmap',
+                        sourceId: `restore:${index.projectId}:${record.revision}`,
+                        owner: { kind: 'editor', projectRelativePath: '.dope/roadmap.json' },
+                        title: `Roadmap restored from R${from} as R${record.revision}`,
+                        status: { kind: 'owner', label: 'Reviewed restore' }, availability: 'available',
+                        ownerRevision: record.revision, ownerProjectId: index.projectId,
+                        occurredAt: record.capturedAt, observedAt: null });
+                } else if (record.provenance === 'owner-write' && record.receipt.kind === 'committed-owner-write' &&
+                    from === undefined && record.receipt.previousHeadRevision === undefined &&
+                    operationIds?.length && new Set(operationIds).size === operationIds.length &&
+                    operationIds.every(item => /^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(item))) {
+                    // Only the reviewed native Apply path persists its accepted operation UUIDs.
+                    // Other owner writes and linked Markdown sync have no such receipt.
+                    const count = operationIds.length;
+                    const eventHash = createHash('sha256').update(JSON.stringify(operationIds)).digest('hex');
+                    result.entries.push({ ...project, kind: 'event', source: 'roadmap',
+                        sourceId: `apply:${index.projectId}:${record.revision}:${eventHash}`,
+                        owner: { kind: 'editor', projectRelativePath: '.dope/roadmap.json' },
+                        title: `Roadmap Apply: ${count} accepted operation${count === 1 ? '' : 's'} (R${record.revision})`,
+                        status: { kind: 'owner', label: 'Reviewed Apply' }, availability: 'available',
+                        ownerRevision: record.revision, ownerProjectId: index.projectId,
+                        occurredAt: record.capturedAt, observedAt: null });
+                }
             }
             result.truncated ||= !!revisions.nextBefore;
         }

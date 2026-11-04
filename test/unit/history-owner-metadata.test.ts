@@ -8,6 +8,9 @@ import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js'
 import { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
 import { createProjectMind } from '../../packages/project-intelligence/lib/index.js';
 import { readHistoryOwnerMetadata } from '../../packages/theia-extension/lib/node/history-owner-metadata.js';
+import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import { RoadmapNativeStageOwner } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
+import { gateFixture } from './roadmap-gate-document-fixture.ts';
 
 const observedAt = '2026-10-12T12:00:00.000Z';
 const basis = { architectureRevision: 1, architectureFingerprint: 'a', physicalInputFingerprint: 'b', physicalGeneration: 1 };
@@ -132,5 +135,119 @@ test('a denied metadata read remains a source diagnostic', async () => {
     const result = await readHistoryOwnerMetadata(project(root), observedAt, denied);
     assert.deepEqual(result.entries, []);
     assert.deepEqual(result.diagnostics, [{ source: 'chat', message: 'Chat metadata read denied' }]);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Project History projects each reviewed Roadmap Apply receipt once, including partial review and restore', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-history-roadmap-'));
+  try {
+    const store = new RoadmapStore(), owner = new RoadmapNativeStageOwner(store);
+    const context = { root, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+    const history = () => readHistoryOwnerMetadata(project(root), observedAt);
+    assert.equal((await history()).entries.filter(item => item.source === 'roadmap').length, 0);
+    const staged = await owner.stage(context, { version: 1, expectedRevision: 0,
+      expectedSourceHash: null, expectedStage: 1, done: true, actions: [
+        { type: 'phase.create', id: 'new:p1', title: 'First Phase', objective: 'Build first' },
+        { type: 'gate.create', id: 'new:g1', parentPhaseId: 'new:p1', designation: 'G1',
+          title: 'First Gate', purpose: 'Verify first', criteria: [
+            { id: 'new:c1', title: 'One', expectedResult: 'One works' },
+            { id: 'new:c2', title: 'Two', expectedResult: 'Two works' }] },
+        { type: 'phase.create', id: 'new:p2', title: 'Second Phase', objective: 'Build second' },
+        { type: 'gate.create', id: 'new:g2', parentPhaseId: 'new:p2', designation: 'G1',
+          title: 'Second Gate', purpose: 'Verify second', criteria: [
+            { id: 'new:c3', title: 'Three', expectedResult: 'Three works' }] }
+      ] }) as { acceptedOperationIds: string[] };
+    assert.equal((await history()).entries.filter(item => item.source === 'roadmap').length, 0);
+    const firstIds = staged.acceptedOperationIds.slice(0, 2);
+    const firstReview = await owner.review(context, firstIds, 'apply');
+    await owner.decide(context, firstReview.token, firstIds, 'apply');
+    const first = (await history()).entries.filter(item => item.source === 'roadmap');
+    assert.equal(first.length, 1);
+    assert.equal(first[0].title, 'Roadmap Apply: 2 accepted operations (R1)');
+    assert.equal(first[0].ownerRevision, 1);
+    assert.equal(first[0].status.kind === 'owner' && first[0].status.label, 'Reviewed Apply');
+    const secondIds = staged.acceptedOperationIds.slice(2);
+    const secondReview = await owner.review(context, secondIds, 'apply');
+    await owner.decide(context, secondReview.token, secondIds, 'apply');
+    const two = (await history()).entries.filter(item => item.source === 'roadmap');
+    assert.deepEqual(two.map(item => item.ownerRevision), [2, 1]);
+    assert.equal(new Set(two.map(item => item.sourceId)).size, 2);
+    assert.deepEqual((await new RoadmapStore().listRevisions(root, (await store.read(root)).projectId)).revisions
+      .slice(0, 2).map(item => item.receipt.operationIds?.length), [2, 2]);
+    const repeated = (await history()).entries.filter(item => item.source === 'roadmap');
+    assert.deepEqual(repeated, two);
+    const fresh = await readHistoryOwnerMetadata(project(root), observedAt);
+    assert.deepEqual(fresh.entries.filter(item => item.source === 'roadmap'), two);
+    assert.deepEqual((await history()).entries.filter(item => item.source === 'roadmap'), two);
+    const otherRoot = await mkdtemp(join(tmpdir(), 'dope-history-other-'));
+    try { assert.equal((await readHistoryOwnerMetadata(project(otherRoot), observedAt))
+      .entries.filter(item => item.source === 'roadmap').length, 0); }
+    finally { await rm(otherRoot, { recursive: true, force: true }); }
+    const rejectedContext = { ...context, projectId: (await store.read(root)).projectId,
+      chatId: 'rejected-chat', turnId: 'rejected-turn' };
+    const rejectedStage = await owner.stage(rejectedContext, { version: 1, expectedRevision: 2,
+      expectedSourceHash: null, expectedStage: 1, done: true, actions: [
+        { type: 'phase.edit', id: (await store.read(root)).phases[0].id,
+          title: 'Rejected edit', objective: 'Build first' }
+      ] }) as { acceptedOperationIds: string[] };
+    const reject = await owner.review(rejectedContext, rejectedStage.acceptedOperationIds, 'reject');
+    await owner.decide(rejectedContext, reject.token, rejectedStage.acceptedOperationIds, 'reject');
+    assert.deepEqual((await history()).entries.filter(item => item.source === 'roadmap'), two);
+    const current = await store.read(root);
+    const preview = await store.previewRestore(root, current.projectId, 1);
+    await store.applyRestore(root, preview, true);
+    const restored = (await history()).entries.filter(item => item.source === 'roadmap');
+    assert.equal(restored.length, 3);
+    assert.equal(restored[0].title, 'Roadmap restored from R1 as R3');
+    assert.equal(restored.filter(item => item.status.kind === 'owner' && item.status.label === 'Reviewed Apply').length, 2);
+    await writeFile(join(root, '.dope', 'roadmap-revisions', 'r-000000000002.json'), '{corrupt');
+    const corrupt = await history();
+    assert.equal(corrupt.entries.filter(item => item.source === 'roadmap').length, 0);
+    assert.ok(corrupt.diagnostics.some(item => item.source === 'roadmap' && /Corrupt/.test(item.message)));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('linked Markdown synchronization does not create another Apply History event', async () => {
+  await gateFixture(async (root, _file, store) => {
+    const index = await store.read(root), owner = new RoadmapNativeStageOwner(store);
+    const context = { root, projectId: index.projectId, chatId: 'chat', turnId: 'turn', lease: 'lease' };
+    const history = () => readHistoryOwnerMetadata(project(root), observedAt);
+    assert.equal((await history()).entries.filter(item => item.source === 'roadmap').length, 0);
+    const staged = await owner.stage(context, { version: 1, expectedRevision: index.revision,
+      expectedSourceHash: index.linkedDocument!.sourceHash, expectedStage: 1, done: true,
+      actions: [{ type: 'gate.edit', id: index.gates[0].id, title: 'Reviewed Gate',
+        purpose: index.gates[0].purpose }] }) as { acceptedOperationIds: string[] };
+    const review = await owner.review(context, staged.acceptedOperationIds, 'apply');
+    await owner.decide(context, review.token, staged.acceptedOperationIds, 'apply');
+    const beforeSync = (await history()).entries.filter(item => item.source === 'roadmap');
+    assert.equal(beforeSync.length, 1);
+    assert.equal(beforeSync[0].title, `Roadmap Apply: 1 accepted operation (R${index.revision + 1})`);
+    await store.recoverAutoSync(root);
+    const afterSync = (await history()).entries.filter(item => item.source === 'roadmap');
+    assert.deepEqual(afterSync, beforeSync);
+    assert.equal((await store.read(root)).revision, index.revision + 1);
+  });
+});
+
+test('Apply All creates one History event with its actual operation count', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-history-apply-all-'));
+  try {
+    const store = new RoadmapStore(), owner = new RoadmapNativeStageOwner(store);
+    const context = { root, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+    const staged = await owner.stage(context, { version: 1, expectedRevision: 0,
+      expectedSourceHash: null, expectedStage: 1, done: true, actions: [
+        { type: 'phase.create', id: 'new:p', title: 'Phase', objective: 'Build' },
+        { type: 'gate.create', id: 'new:g', parentPhaseId: 'new:p', designation: 'G1',
+          title: 'Gate', purpose: 'Check', criteria: [
+            { id: 'new:c1', title: 'First', expectedResult: 'First works' },
+            { id: 'new:c2', title: 'Second', expectedResult: 'Second works' }] }
+      ] }) as { acceptedOperationIds: string[] };
+    const review = await owner.review(context, staged.acceptedOperationIds, 'apply');
+    await owner.decide(context, review.token, staged.acceptedOperationIds, 'apply');
+    const entries = (await readHistoryOwnerMetadata(project(root), observedAt)).entries
+      .filter(item => item.source === 'roadmap');
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].title, 'Roadmap Apply: 2 accepted operations (R1)');
+    assert.equal((await store.read(root)).gates[0].criteria.length, 2);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
