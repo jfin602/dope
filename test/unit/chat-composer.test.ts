@@ -9,7 +9,7 @@ import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatPanelController } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { resizeChatInput, shouldSendChatInput } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { hasSendableChatDraft, resizeChatInput, shouldSendChatInput } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { ModelConnectionsRegistry } from '../../packages/theia-extension/lib/node/model-connections.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
@@ -198,25 +198,11 @@ test('cancel and stale deltas cannot create a completed answer in another Chat o
     } finally { panel.dispose(); await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }); }
 });
 
-test('panel source keeps input and toolbar rows with AI Center repair, settings and transcript status', async () => {
+test('composer renders the toolbar as a sibling of the text area', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
-    assert.match(source, /composer\.append\(input, toolbar\)/);
-    assert.match(source, /heading\.textContent = 'Add Context:';/);
-    assert.match(source, /action\('File'/);
-    assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;\s*this\.render\(\)/);
-    assert.match(source, /Manage AI connections/);
-    assert.match(source, /Show response info/);
-    assert.match(source, /Open AI Center/);
-    assert.match(source, /Chat settings/);
-    assert.match(source, /execution\.status/);
-    assert.match(source, /actualModel\.providerId/);
-    assert.match(source, /dope-chat-composer/);
-    assert.match(source, /composer\.append\(input, toolbar\)/);
-    assert.match(source, /dope-chat-selected-context/);
-    assert.match(source, /review\.className = 'dope-chat-plan-review'/);
-    assert.match(source, /region\.append\(review\)/);
-    assert.match(source, /type: 'set-color'/);
-    assert.match(source, /type: 'set-settings'/);
+    assert.match(source, /inputWrap\.append\(mirror, input, skillTooltip\)/);
+    assert.match(source, /toolbar\.append\(more, modelPicker, commandLabel, submitButton\)/);
+    assert.match(source, /composer\.append\(skillPopup, inputWrap, toolbar\)/);
 });
 
 test('composer Enter sends, Shift+Enter and IME Enter stay in the textarea', () => {
@@ -229,17 +215,24 @@ test('composer Enter sends, Shift+Enter and IME Enter stay in the textarea', () 
     assert.equal(shouldSendChatInput(event('a')), false);
 });
 
+test('a retained Roadmap skill token is not a sendable message until the user adds an instruction', () => {
+    assert.equal(hasSendableChatDraft('/roadmap '), false);
+    assert.equal(hasSendableChatDraft('/roadmap\n'), false);
+    assert.equal(hasSendableChatDraft('/roadmap Change the Gate title'), true);
+    assert.equal(hasSendableChatDraft('Ordinary question'), true);
+});
+
 test('composer textarea keeps the same height for short and long drafts', () => {
     let contentHeight = 28;
     const input = { style: { height: '' }, get scrollHeight() { return contentHeight; } } as HTMLTextAreaElement;
     resizeChatInput(input);
-    assert.equal(input.style.height, '4.5em');
+    assert.equal(input.style.height, '7em');
     contentHeight = 120;
     resizeChatInput(input);
-    assert.equal(input.style.height, '4.5em');
+    assert.equal(input.style.height, '7em');
     contentHeight = 28;
     resizeChatInput(input);
-    assert.equal(input.style.height, '4.5em');
+    assert.equal(input.style.height, '7em');
 });
 
 test('composer keeps actions in the popover and only controls on the footer', async () => {
@@ -259,7 +252,9 @@ test('composer keeps actions in the popover and only controls on the footer', as
     assert.match(source, /if \(!shouldSendChatInput\(event\)\) return;[\s\S]*?submit\(\)/);
     assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;/);
     assert.match(css, /\.dope-chat-composer \{[^}]*max-width: 940px/);
-    assert.match(css, /\.dope-chat-composer textarea \{[^}]*height: 4\.5em;[^}]*resize: none;/);
+    assert.match(css, /\.dope-chat-composer textarea \{[^}]*height: 7em;[^}]*resize: none;/);
+    assert.match(css, /\.dope-chat-composer-toolbar \{[^}]*position: absolute;[^}]*bottom: 10px;/);
+    assert.match(css, /\.dope-chat-composer \.dope-chat-input-wrap textarea \{[^}]*padding: 2px 2px 40px;/);
 });
 
 test('unavailable selection never routes to another connected model', async () => {

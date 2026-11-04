@@ -390,9 +390,7 @@ export class ChatContextComposer {
         }
         if (source.kind === 'roadmap-checkpoint') return this.roadmapContext(root, source);
         if (source.kind === 'roadmap') {
-            const recent = roadmapSkill ? active.messages.filter(item => item.role === 'user')
-                .slice(-3).map(item => item.content).join('\n') : '';
-            return this.gateContext(root, source, `${content}\n${recent}`, roadmapSkill);
+            return this.gateContext(root, source, content, roadmapSkill);
         }
         if (source.kind === 'architecture') {
             const state = await readInitialization(root);

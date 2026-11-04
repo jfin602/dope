@@ -6,7 +6,7 @@ import type { ChatClient, ChatEvent, ChatOperation, ChatService, ChatContextSele
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
-import { isDraftPlanningAction } from './chat-panel-presentation';
+import { hasSendableChatDraft, isDraftPlanningAction } from './chat-panel-presentation';
 
 export type ChatConnection = ChatService & { setClient(client: ChatClient | undefined): void; dispose(): void };
 export type ChatMode = 'select-chat' | 'chat';
@@ -585,7 +585,8 @@ export class ChatPanelController {
     async runTurn(model?: ChatModelSelection, retryMessageId?: string,
         confirmHosted?: () => boolean, bridgeBranchIds?: string[]): Promise<boolean> {
         const lease = this.lease;
-        if (!lease || this.running || this.pending || !this.chat || !retryMessageId && !this.draft.trim()) return false;
+        if (!lease || this.running || this.pending || !this.chat ||
+            !retryMessageId && !hasSendableChatDraft(this.draft)) return false;
         if (!retryMessageId && this.context.some(item => item.kind === 'roadmap' && item.elementKind) &&
             !/^\/roadmap(?=\s|$)/.test(this.draft)) {
             this.error = 'Selected Roadmap elements require /roadmap at the start of the message.';
@@ -603,7 +604,11 @@ export class ChatPanelController {
         this.planningProposalErrorMessageId = undefined;
         if (!retryMessageId && chatId) this.transientUser = { chatId, content,
             previousIds: new Set(this.chat?.messages.filter(message => message.role === 'user').map(message => message.id)) };
-        if (!retryMessageId) this.draft = '';
+        if (!retryMessageId) {
+            const roadmapSkill = /^\/roadmap(?=\s|$)/u.test(content);
+            this.draft = roadmapSkill ? '/roadmap ' : '';
+            if (roadmapSkill) this.autoRoadmapPrefix = false;
+        }
         this.turnModel = undefined;
         this.changed();
         try {
@@ -683,6 +688,7 @@ export class ChatPanelController {
         const lease = this.lease, proposal = this.planningProposal;
         if (!lease || !proposal?.operations || this.pending || this.running ||
             proposal.chatId !== lease.chatId) return;
+        this.nativeRoadmapReview = undefined;
         this.pending = true; this.changed();
         try {
             const review = await lease.connection.reviewNativeRoadmap(lease.handle, lease.chatId,

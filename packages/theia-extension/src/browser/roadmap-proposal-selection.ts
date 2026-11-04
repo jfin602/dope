@@ -28,7 +28,9 @@ export function proposalEntityOperations(proposal: ChatPlanningProposal, entityI
         if (gate?.criteria?.some(criterion => selected.has(criterion.id) &&
             !proposal.operations?.some(operation => operation.targetId === criterion.id))) owners.add(gate.id);
     }
-    return pending.filter(operation => owners.has(operation.targetId)).map(operation => operation.id);
+    return pending.filter(operation => owners.has(operation.targetId) ||
+        ('targetIds' in operation && Array.isArray(operation.targetIds) &&
+            operation.targetIds.some((id: unknown) => typeof id === 'string' && owners.has(id)))).map(operation => operation.id);
 }
 
 /** Close a visible review request over pending creators without adding unrelated branches. */

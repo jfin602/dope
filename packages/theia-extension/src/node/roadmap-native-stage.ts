@@ -4,6 +4,7 @@ import type { GatePlanningAction } from '@dope/project-intelligence/lib/node/pro
 import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { checkedRoadmapDocumentFile } from '@dope/project-intelligence/lib/node/roadmap-document-patch';
 import { roadmapProposalPreview } from './roadmap-proposal-presentation';
+import { assertRoadmapStageTargets } from './roadmap-stage-overlap';
 
 type Context = { root: string; projectId: string; chatId: string; turnId: string; lease: string;
     generation?: true };
@@ -97,20 +98,20 @@ export class RoadmapNativeStageOwner {
         if (syncState === 'synced') try { await this.checkedSource(index); }
         catch { syncState = 'source-changed'; }
         const entities = [
-            ...index.phases.map(item => ({ kind: 'phase', value: { id: item.id, title: item.title,
+            ...index.phases.filter(item => !ids || ids.has(item.id)).map(item => ({ kind: 'phase', value: { id: item.id, title: item.title,
                 objective: item.objective, order: item.order, dependencies: item.dependencies,
                 implementationStatus: item.implementationStatus, qualificationStatus: item.qualificationStatus } })),
-            ...index.gates.map(item => ({ kind: 'gate', value: { id: item.id, parentPhaseId: item.parentPhaseId,
+            ...index.gates.filter(item => !ids || ids.has(item.id)).map(item => ({ kind: 'gate', value: { id: item.id, parentPhaseId: item.parentPhaseId,
                 designation: item.designation, title: item.title, purpose: item.purpose, order: item.order,
                 dependencies: item.dependencies, implementationStatus: item.implementationStatus,
                 qualificationStatus: item.qualificationStatus, criterionIds: item.criteria.map(c => c.id) } })),
-            ...index.gates.flatMap(gate => gate.criteria.map(item => ({ kind: 'criterion',
+            ...index.gates.flatMap(gate => gate.criteria.filter(item => !ids || ids.has(item.id)).map(item => ({ kind: 'criterion',
                 value: { id: item.id, gateId: gate.id, title: item.title, expectedResult: item.expectedResult,
                     order: item.order } }))),
-            ...index.corrections.map(item => ({ kind: 'correction', value: { id: item.id, parent: item.parent,
+            ...index.corrections.filter(item => !ids || ids.has(item.id)).map(item => ({ kind: 'correction', value: { id: item.id, parent: item.parent,
                 criterionId: item.criterionId, title: item.title, objective: item.objective, order: item.order,
                 implementationStatus: item.implementationStatus, qualificationStatus: item.qualificationStatus } }))
-        ].filter(entry => !ids || ids.has(entry.value.id));
+        ];
         const page = entities.slice(offset as number, (offset as number) + (limit as number));
         const stage = this.stages.get(context.chatId);
         if (stage) this.assert(stage, context, index);
@@ -253,6 +254,7 @@ export class RoadmapNativeStageOwner {
         // Validate the whole partial graph before changing the in-memory owner. A Phase may
         // lack a future Gate here; complete() alone enforces the final full-plan contract.
         const operations = [...stage.operations, ...accepted];
+        if (!stage.isolated) assertRoadmapStageTargets(operations);
         const after = await this.store.mutateGateIndex(context.root, index.revision, stage.ownerId,
             operations.map(item => item.action), true, stage.isolated ?
                 { indexHash: stage.basisHash ?? null, replace: true } : undefined);

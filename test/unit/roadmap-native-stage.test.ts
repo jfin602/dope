@@ -96,6 +96,11 @@ test('pending edit refuses changed linked source, project, turn and expired stag
     await gateFixture(async (root, file, store) => {
         const owner = new RoadmapNativeStageOwner(store), index = await store.read(root);
         const context = { root, projectId: index.projectId, chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const selectedRead = await owner.read(context, { version: 1, ids: [index.gates[0].id] }) as
+            { entries: { kind: string; value: { id: string } }[]; nextOffset: number | null };
+        assert.deepEqual(selectedRead.entries.map(entry => [entry.kind, entry.value.id]),
+            [['gate', index.gates[0].id]]);
+        assert.equal(selectedRead.nextOffset, null);
         const staged = await owner.stage(context, { version: 1, expectedRevision: index.revision,
             expectedSourceHash: index.linkedDocument!.sourceHash, expectedStage: 1, done: true,
             actions: [{ type: 'gate.edit', id: index.gates[0].id, title: 'Proposed Gate',

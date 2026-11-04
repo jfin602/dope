@@ -13,6 +13,12 @@ export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatC
     const entities = new Map<string, unknown>();
     const ancestors = new Map<string, unknown>();
     const selected = new Set<string>();
+    // A field edit needs the current fields and exact identities, not archived
+    // verification records. Keep those records for read-only and proof requests.
+    const fieldEdit = /\b(?:change|edit|rename|set|update)\b/i.test(request) &&
+        /\b(?:title|objective|purpose|expected\s+result)\b/i.test(request);
+    const includeVerification = !fieldEdit ||
+        /\b(?:evidence|qualification|qualify|status|pass|fail|green|verify|verification|proof|review)\b/i.test(request);
     const identity = (kind: string, id: string) => `${kind}:${id}`;
     const publication = (state: 'proposed' | 'accepted' | 'published') =>
         state === 'published' ? 'canonical published' : state === 'accepted' ?
@@ -47,8 +53,10 @@ export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatC
         const value = parent.criteria.find(item => item.id === id);
         if (!value) throw new Error('Selected Roadmap Criterion is missing; select it again');
         addGateAncestor(parent.id);
+        const { evidence, ...fields } = value;
         entities.set(identity('criterion', id), { kind: 'criterion', parentGateId: parent.id,
-            parentPhaseId: parent.parentPhaseId, publicationState: publication(parent.draftAcceptance), ...value });
+            parentPhaseId: parent.parentPhaseId, publicationState: publication(parent.draftAcceptance), ...fields,
+            ...(includeVerification ? { evidence } : {}) });
     };
     const addCorrection = (id: string) => {
         const value = index.corrections.find(item => item.id === id);
@@ -62,10 +70,12 @@ export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatC
         const value = gate(id);
         addPhaseAncestor(value.parentPhaseId);
         ancestors.delete(identity('gate', id));
-        entities.set(identity('gate', id), { kind: 'gate', ...value,
+        const { qualificationSource, ...fields } = value;
+        entities.set(identity('gate', id), { kind: 'gate', ...fields,
             publicationState: publication(value.draftAcceptance),
             criteria: undefined, criterionIds: value.criteria.map(item => item.id),
-            actualQualification: evaluateGateQualification(value, value.qualificationSource) });
+            ...(includeVerification ? { qualificationSource,
+                actualQualification: evaluateGateQualification(value, qualificationSource) } : {}) });
         for (const item of value.criteria) addCriterion(id, item.id);
         for (const item of index.corrections.filter(item => item.parent.kind === 'gate' && item.parent.id === id))
             addCorrection(item.id);
@@ -73,12 +83,14 @@ export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatC
     const addPhase = (id: string) => {
         const value = phase(id);
         ancestors.delete(identity('phase', id));
-        entities.set(identity('phase', id), { kind: 'phase', ...value,
+        const { qualificationSource, ...fields } = value;
+        entities.set(identity('phase', id), { kind: 'phase', ...fields,
             publicationState: publication(value.draftAcceptance),
             gateIds: index.gates.filter(item => item.parentPhaseId === id).map(item => item.id),
             correctionIds: index.corrections.filter(item => item.parent.kind === 'phase' && item.parent.id === id)
                 .map(item => item.id),
-            actualQualification: evaluatePhaseQualification(index, id, value.qualificationSource) });
+            ...(includeVerification ? { qualificationSource,
+                actualQualification: evaluatePhaseQualification(index, id, qualificationSource) } : {}) });
         for (const item of index.gates.filter(item => item.parentPhaseId === id)) addGate(item.id);
         for (const item of index.corrections.filter(item => item.parent.kind === 'phase' && item.parent.id === id))
             addCorrection(item.id);

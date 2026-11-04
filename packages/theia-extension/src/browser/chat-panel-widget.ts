@@ -18,7 +18,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
@@ -3092,8 +3092,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const updateSkillPopup = () => {
             const caret = input.selectionStart;
             const match = /^\/([a-z0-9-]*)/i.exec(input.value);
-            if (!match || caret > match[0].length || input.value[match[0].length] &&
-                !/\s/.test(input.value[match[0].length])) { skillPopup.hidden = true; return; }
+            if (!match || caret > match[0].length ||
+                input.value[match[0].length] !== undefined) { skillPopup.hidden = true; return; }
             const query = match[1].toLowerCase();
             const candidates = (this.skills ?? []).filter(skill => skill.enabled);
             const detected = candidates.find(skill => skill.name === query);
@@ -3295,14 +3295,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const canSend = Boolean(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel);
             const confirmHosted = () => window.confirm('Send this Chat message, history and selected project context to the hosted model chosen by Interactive?');
             const submit = () => {
-                if (!canSend || state.pending || !state.draft.trim()) return;
+                if (!canSend || state.pending || !hasSendableChatDraft(state.draft)) return;
                 const previousTop = scroll.scrollTop;
                 void state.runTurn(state.turnModel, undefined, confirmHosted);
                 const current = this.content.querySelector<HTMLElement>('.dope-chat-scroll');
                 if (current) current.scrollTop = previousTop;
                 this.scrollToLatest();
             };
-            submitButton = this.button('', submit, !canSend || state.pending || !state.draft.trim());
+            submitButton = this.button('', submit, !canSend || state.pending || !hasSendableChatDraft(state.draft));
             submitButton.title = 'Send'; submitButton.setAttribute('aria-label', 'Send');
             const icon = document.createElement('span'); icon.className = codicon('arrow-up');
             icon.setAttribute('aria-hidden', 'true'); submitButton.append(icon);
@@ -3327,25 +3327,23 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             state.setDraft(input.value);
             if (!state.running) submitButton.disabled =
                 !(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel) ||
-                state.pending || !state.draft.trim();
+                state.pending || !hasSendableChatDraft(state.draft);
             resizeChatInput(input);
             updateSkillPopup();
             updateSkillHighlight();
         };
         toolbar.append(more, modelPicker, commandLabel, submitButton);
-        inputWrap.append(toolbar);
-        composer.append(skillPopup, inputWrap);
+        composer.append(skillPopup, inputWrap, toolbar);
         updateSkillPopup();
         updateSkillHighlight();
         const responseNotices = document.createElement('div');
         responseNotices.className = 'dope-chat-response-notices';
         responseNotices.setAttribute('aria-label', 'Chat notices and reviews');
-        if (state.running && state.planningProgress && !state.roadmapStage) {
+        if (state.running && state.planningProgress?.stage === 'validating' && !state.roadmapStage) {
             const progress = document.createElement('p');
             progress.className = 'dope-chat-planning-progress';
             progress.setAttribute('role', 'status');
-            progress.textContent = state.planningProgress.stage === 'waiting' ? 'Planning Roadmap…' :
-                'Validating local planning result…';
+            progress.textContent = 'Validating local planning result…';
             responseNotices.append(progress);
         }
         if (state.context.length) {

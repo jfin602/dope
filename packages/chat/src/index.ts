@@ -569,9 +569,12 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             throw new Error('Invalid saved Roadmap warnings');
         if (p.operations !== undefined && (!Array.isArray(p.operations) || p.operations.length > 48 ||
             p.operations.some((item: unknown) => {
-                try { const op = record(item, ['id', 'type', 'targetId', 'status'],
+                try { const op = record(item, ['id', 'type', 'targetId', 'targetIds', 'status'],
                     ['id', 'type', 'targetId', 'status']);
-                    identifier(op.id); string(op.type, 'operation type'); identifier(op.targetId);
+                    identifier(op.id); string(op.type, 'operation type'); string(op.targetId, 'Roadmap target ID');
+                    if (op.targetIds !== undefined && (!Array.isArray(op.targetIds) || op.targetIds.length > 64))
+                        throw new Error('Invalid Roadmap operation targets');
+                    for (const id of op.targetIds ?? []) string(id, 'Roadmap target ID');
                     choice(op.status, ['Pending', 'Applied', 'Rejected', 'Stale', 'Conflict', 'Denied',
                         'Failed', 'Superseded'] as const, 'operation status'); return false;
                 } catch { return true; }
@@ -655,7 +658,10 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             ...(p.operations === undefined ? {} : { operations: (p.operations as unknown[]).map(item => {
                 const op = item as Record<string, unknown>;
                 return { id: identifier(op.id), type: string(op.type, 'operation type'),
-                    targetId: identifier(op.targetId), status: choice(op.status,
+                    targetId: string(op.targetId, 'Roadmap target ID'),
+                    ...(op.targetIds === undefined ? {} : { targetIds: (op.targetIds as unknown[]).map(id =>
+                        string(id, 'Roadmap target ID')) }),
+                    status: choice(op.status,
                         ['Pending', 'Applied', 'Rejected', 'Stale', 'Conflict', 'Denied', 'Failed',
                             'Superseded'] as const, 'operation status') };
             }) }),

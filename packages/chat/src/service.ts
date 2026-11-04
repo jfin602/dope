@@ -65,7 +65,7 @@ export interface ChatPlanningProposal { id: string; chatId: ChatId; messageId: s
     revision: number; generation?: number; sourceHash?: string; changedIds: string[];
     counts?: { phases: number; gates: number; criteria: number }; warnings?: string[];
     action: { type: string; id: string }; summary: string;
-    operations?: { id: string; type: string; targetId: string;
+    operations?: { id: string; type: string; targetId: string; targetIds?: string[];
         status: 'Pending' | 'Applied' | 'Rejected' | 'Stale' | 'Conflict' | 'Denied' | 'Failed' | 'Superseded' }[];
     previewOnly?: boolean;
     publication?: { mode: 'publish' | 'link'; path: string; sourceHash: string;

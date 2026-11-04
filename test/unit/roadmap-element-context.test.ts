@@ -111,7 +111,8 @@ test('serialized model messages carry only the selected Gate and refuse an incom
         { conversationalText: true, streaming: true, contextWindowTokens: 16384 },
         undefined, false, false, undefined, false, true);
     const serialized = JSON.stringify(composed.messages);
-    assert.match(serialized, /gate-one|Ambiguous target test passed/);
+    assert.match(serialized, /gate-one|Verify target handling/);
+    assert.doesNotMatch(serialized, /Ambiguous target test passed|evidence-one/);
     assert.doesNotMatch(serialized, /gate-two|Other readiness|Secret sibling purpose|siblingGateOrder/);
     assert.deepEqual(composed.refs.map(ref => [ref.id, ref.elementKind]), [['gate-one', 'gate']]);
     const relationship = await composer.compose(source.projectRoot, chat, '/roadmap Move G1 after G2', selection,
@@ -123,6 +124,35 @@ test('serialized model messages carry only the selected Gate and refuse an incom
         { conversationalText: true, streaming: true, contextWindowTokens: 500,
             maxInputTokens: 500 }, undefined, false, false, undefined, false, true),
     /does not fit|exceeds/);
+});
+
+test('selected field edits omit verification records but proof requests retain them', () => {
+    const source = index();
+    const selected = [select('gate', 'gate-one'), select('criterion', 'criterion-one')];
+    const fieldEdit = JSON.parse(roadmapElementContext(source, selected, '/roadmap Change the Gate purpose'));
+    assert.deepEqual(fieldEdit.selected, [
+        { kind: 'gate', id: 'gate-one' }, { kind: 'criterion', id: 'criterion-one' }]);
+    assert.equal(fieldEdit.entities.find((item: { id: string }) => item.id === 'criterion-one').evidence, undefined);
+    assert.equal(fieldEdit.entities.find((item: { id: string }) => item.id === 'gate-one').actualQualification, undefined);
+    const proof = roadmapElementContext(source, selected, '/roadmap Show the verification evidence');
+    assert.match(proof, /Ambiguous target test passed/);
+    assert.ok(Buffer.byteLength(JSON.stringify(fieldEdit)) < Buffer.byteLength(proof));
+});
+
+test('unselected edit target lookup ignores older Chat requests', async () => {
+    const source = index();
+    const composer = new ChatContextComposer({} as never, {} as never, {} as never, {} as never,
+        { read: async () => source } as never);
+    const chat = { id: 'chat-one', messages: [{ role: 'user', content: '/roadmap Edit gate-one' }],
+        settings: { context: { maxInputTokens: 12000, reservedOutputTokens: 1024,
+            history: 'recent', savedChatSearch: false, allowedSources: [] } } } as never;
+    const composed = await composer.compose(source.projectRoot, chat, '/roadmap Change the title',
+        [{ kind: 'roadmap', id: 'roadmap', projectId: source.projectId, ownerRevision: source.revision }],
+        { conversationalText: true, streaming: true, contextWindowTokens: 16384 },
+        undefined, false, false, undefined, true, true, true);
+    const context = composed.messages.at(-1)?.content ?? '';
+    assert.match(context, /No unique target resolved/);
+    assert.doesNotMatch(context, /"target":\{/);
 });
 
 test('large selected Roadmap remains complete within the measured 16K input bound and fails closed when mandatory fields grow', async () => {

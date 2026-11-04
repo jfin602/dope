@@ -7,7 +7,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapNativeStageOwner } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
-import { NextPhaseLoader, ProposedPhaseNode, ProposedChange, ProposedGateCard, proposedFieldEditorNext, proposedFieldKeyAction } from
+import { NextPhaseLoader, ProposedPhaseNode, ProposedChange, ProposedFieldDiff, ProposedGateCard, proposedFieldEditorNext, proposedFieldKeyAction } from
     '../../packages/theia-extension/lib/browser/roadmap-proposal-cards.js';
 import { roadmapProposalPreview } from '../../packages/theia-extension/lib/node/roadmap-proposal-presentation.js';
 import { nextPhasePosition, showNextPhaseLoader } from '../../packages/theia-extension/lib/browser/roadmap-live-stage.js';
@@ -157,8 +157,10 @@ test('validated existing-element edit and removal retain field diffs and removal
         const edit = roadmapProposalPreview(before, edited,
             [{ type: 'gate.edit', id: edited.gates[0].id, title: edited.gates[0].title,
                 purpose: 'New purpose' }], [edited.gates[0].id]).entities[0];
-        const editHtml = renderToStaticMarkup(React.createElement(ProposedChange, { change: edit, source: false }));
-        assert.match(editHtml, /Purpose: .* → New purpose/);
+        const editHtml = renderToStaticMarkup(React.createElement(ProposedFieldDiff,
+            { change: edit, field: 'purpose', label: 'Gate purpose' }));
+        assert.match(editHtml, /dope-roadmap-proposal-field-diff/);
+        assert.match(editHtml, /<ins>New purpose<\/ins>/);
         const removed = structuredClone(before);
         removed.gates = [];
         const deletion = roadmapProposalPreview(before, removed,

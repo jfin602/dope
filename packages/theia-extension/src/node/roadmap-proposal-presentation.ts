@@ -4,8 +4,14 @@ import type { GatePlanningAction } from '@dope/project-intelligence/lib/node/pro
 
 type Preview = NonNullable<ChatPlanningProposal['preview']>;
 type Entity = Preview['entities'][number];
+export function roadmapActionTargets(action: GatePlanningAction): string[] {
+    return 'ids' in action ? [...action.ids] : 'id' in action && action.id ? [action.id] :
+        'gateId' in action ? [action.gateId] : [];
+}
+// Native Roadmap fields are capped at 2,048 characters. Preserve the entire
+// validated value so edits beyond a short preview prefix still remain visible.
 const limit = (value: string | undefined): string | undefined => value === undefined ? undefined :
-    value.length > 320 ? `${value.slice(0, 319)}…` : value;
+    value.length > 2048 ? `${value.slice(0, 2047)}…` : value;
 const parents = (before: RoadmapGateIndex, after: RoadmapGateIndex, entities: Entity[]): Record<string, string> => {
     const ids = new Set(entities.flatMap(item => [item.before?.parentId, item.after?.parentId]).filter(
         (id): id is string => !!id));
@@ -43,8 +49,7 @@ export function roadmapProposalPreview(before: RoadmapGateIndex, after: RoadmapG
         return { id, action, before: previous, after: next } as Entity;
     });
     const steps = actions.map(action => {
-        const ids = 'ids' in action ? action.ids : 'id' in action && action.id ? [action.id] :
-            'gateId' in action ? [action.gateId] : [];
+        const ids = roadmapActionTargets(action);
         const id = ids[0] ?? before.projectId;
         const entity = find(after, id) ?? find(before, id);
         return { type: action.type, id, title: entity?.title ?? id, affectedCount: ids.length };

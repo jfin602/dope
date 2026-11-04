@@ -29,6 +29,7 @@ import { acceptsLiveRoadmapStage, nextPhasePosition, showNextPhaseLoader } from 
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
 import { NextPhaseLoader, ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode,
+    ProposedFieldDiff, ProposalControlTab, hasStructuralProposalChange,
     type ProposalChange, type ProposedFieldSave } from './roadmap-proposal-cards';
 import { proposalEntityOperations, proposalReviewScope } from './roadmap-proposal-selection';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
@@ -44,14 +45,14 @@ type InlineSave = (kind: InlineKind, id: string, field: InlineFieldName, value: 
 type StructuralCreateAction = Extract<RoadmapGateMutation, { type: 'phase.create' | 'gate.create' |
     'criterion.add' | 'correction.attach' }>;
 type NativeProposalBridge = (uri: string, chatId: string, proposalId: string, ids: string[],
-    decision: 'apply' | 'reject', confirm: boolean) => Promise<{ summary?: string;
-        preview?: ChatPlanningProposal['preview']; proposal?: ChatPlanningProposal; error?: string }>;
+    decision: 'apply' | 'reject') => Promise<{ proposal?: ChatPlanningProposal; error?: string }>;
 type NativeProposalEditBridge = (uri: string, chatId: string, proposalId: string, operationId: string,
     entityId: string, field: 'title' | 'objective' | 'purpose' | 'expectedResult', value: string) =>
     Promise<ChatPlanningProposal>;
 
-function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: { kind: InlineKind; id: string;
-    field: InlineFieldName; value: string; label: string; multiline?: boolean; save?: InlineSave }): React.ReactElement {
+function InlineRoadmapField({ kind, id, field, value, label, multiline, save, patch, provisional }: { kind: InlineKind; id: string;
+    field: InlineFieldName; value: string; label: string; multiline?: boolean; save?: InlineSave;
+    patch?: ProposalChange & { operationIds?: string[] }; provisional?: boolean }): React.ReactElement {
     const [editing, setEditing] = React.useState(false);
     const [draft, setDraft] = React.useState(value);
     const [error, setError] = React.useState<string>();
@@ -59,7 +60,7 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
     const input = React.useRef<HTMLInputElement & HTMLTextAreaElement>(null);
     const pencil = React.useRef<HTMLButtonElement>(null);
     React.useEffect(() => { if (editing) input.current?.focus(); }, [editing]);
-    React.useEffect(() => { if (!save) setEditing(false); }, [save]);
+    React.useEffect(() => { if (!save || patch) setEditing(false); }, [save, patch]);
     const cancel = () => {
         setDraft(value); setError(undefined); setEditing(false);
         requestAnimationFrame(() => pencil.current?.focus());
@@ -81,15 +82,17 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
     return React.createElement('div', { className: 'dope-roadmap-inline-field nodrag nopan nowheel', onClick: stop,
         onDoubleClick: stop, 'data-inline-field': `${kind}:${id}:${field}`,
         'data-field': field,
-        'data-editing': editing && !!save ? 'true' : undefined },
-        React.createElement('span', { className: `dope-roadmap-inline-value${field === 'title' ? ' dope-roadmap-inline-title' : ''}` }, value),
-        save && React.createElement('button', { ref: pencil, type: 'button', className: 'dope-roadmap-pencil',
+        'data-editing': editing && !!save && !patch ? 'true' : undefined },
+        patch ? React.createElement(ProposedFieldDiff, { change: patch, field, label, provisional,
+            operationIds: patch.operationIds }) :
+            React.createElement('span', { className: `dope-roadmap-inline-value${field === 'title' ? ' dope-roadmap-inline-title' : ''}` }, value),
+        save && !patch && React.createElement('button', { ref: pencil, type: 'button', className: 'dope-roadmap-pencil',
             title: `Edit ${label}`, 'aria-label': `Edit ${label}`, tabIndex: editing ? -1 : 0,
             onClick: event => {
                 event.preventDefault();
                 setDraft(value); setError(undefined); setEditing(true);
             } }, React.createElement('span', { className: codicon('edit'), 'aria-hidden': true })),
-        editing && save && React.createElement('span', { className: 'dope-roadmap-field-editor' },
+        editing && save && !patch && React.createElement('span', { className: 'dope-roadmap-field-editor' },
             multiline ? React.createElement('textarea', { ref: input, value: draft, rows: 1,
                 'aria-label': label, disabled: busy, onChange: event => setDraft(event.target.value),
                 onKeyDown: event => {
@@ -117,6 +120,9 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
     phaseObjective?: string; correctionObjectives?: Record<string, string>; editField?: InlineSave;
     beginCreate?: (kind: 'gate' | 'criterion' | 'correction', parentId: string) => void;
     proposalChanges?: ProposalChange[]; proposalSource?: boolean;
+    proposalSteps?: NonNullable<ChatPlanningProposal['preview']>['steps'];
+    proposalProvisional?: boolean;
+    proposalOperations?: ChatPlanningProposal['operations'];
     proposalSave?: ProposedFieldSave;
     proposalSourceChanges?: { before: string; after: string }[];
     selectedGateId?: string; select: (id: string) => void; selectGate: (gateId: string, phaseId: string) => void;
@@ -125,6 +131,42 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
     reveal: (id: string, element: HTMLButtonElement) => void } }): React.ReactElement {
     const item = data.item;
     const card = item.phaseCard;
+    const patchFor = (id: string, field: InlineFieldName): (ProposalChange & { operationIds?: string[] }) | undefined => {
+        const change = data.proposalChanges?.find(change => change.id === id && change.action === 'edit' &&
+            (field === 'title' ? change.before?.title !== change.after?.title :
+                change.before?.detail !== change.after?.detail));
+        if (!change) return undefined;
+        const kind = change.after?.kind ?? change.before?.kind;
+        const operationIds = data.proposalOperations?.filter(operation => operation.status === 'Pending' &&
+            operation.targetId === id && operation.type === `${kind}.edit`).map(operation => operation.id);
+        return operationIds?.length ? { ...change, operationIds } : change;
+    };
+    const dependencyPatch = (id: string): (ProposalChange & { operationIds?: string[] }) | undefined => {
+        const change = data.proposalChanges?.find(change => change.id === id && change.action === 'edit' &&
+            JSON.stringify(change.before?.dependencies) !== JSON.stringify(change.after?.dependencies));
+        if (!change) return undefined;
+        const kind = change.after?.kind ?? change.before?.kind;
+        const operationIds = data.proposalOperations?.filter(operation => operation.status === 'Pending' &&
+            operation.targetId === id && operation.type === `${kind}.dependencies`).map(operation => operation.id);
+        return operationIds?.length ? { ...change, operationIds } : change;
+    };
+    const removed = (id: string): boolean => !!data.proposalChanges?.some(change =>
+        change.id === id && change.action === 'delete') && !!data.proposalSteps?.some(step =>
+        step.id === id && /\.(?:delete|remove)$/u.test(step.type));
+    const movingFrom = (id: string, parentId: string): boolean => !!data.proposalChanges?.some(change =>
+        change.id === id && change.before?.parentId === parentId &&
+        !!change.after?.parentId && change.after.parentId !== parentId);
+    const movingOut = (id: string): boolean => movingFrom(id, item.id);
+    const reordered = (id: string): boolean => !!data.proposalChanges?.some(change =>
+        change.id === id && change.before && change.after &&
+        change.before.parentId === change.after.parentId && change.before.order !== change.after.order);
+    const structuralOperationIds = (id: string): string[] | undefined => {
+        const ids = data.proposalOperations?.filter(operation => operation.status === 'Pending' &&
+            !operation.type.endsWith('.edit') &&
+            (operation.targetId === id || ('targetIds' in operation && Array.isArray(operation.targetIds) &&
+                operation.targetIds.includes(id)))).map(operation => operation.id);
+        return ids?.length ? ids : undefined;
+    };
     const pick = (kind: NonNullable<ChatContextSelection['elementKind']>, id: string, label: string) =>
         data.contextPick ? React.createElement('button', { type: 'button',
             key: `context:${kind}:${id}`, className: 'dope-roadmap-context-pick nodrag nopan',
@@ -132,11 +174,49 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             'aria-pressed': data.contextPick.selected.includes(`${kind}:${id}`),
             onClick: (event: React.MouseEvent) => { event.stopPropagation(); data.contextPick?.toggle(kind, id); } },
             data.contextPick.selected.includes(`${kind}:${id}`) ? `✓ ${label}` : `+ ${label}`) : null;
+    const renderCriteria = (gate: NonNullable<CheckpointNode['phaseCard']>['gates'][number]): React.ReactElement => {
+        const accepted = gate.criteria.map(criterion => ({ id: criterion.id,
+            order: data.proposalChanges?.find(change => change.id === criterion.id)?.after?.order ?? criterion.order,
+            element: React.createElement('details', { key: criterion.id,
+                className: `${removed(criterion.id) ? 'dope-roadmap-proposal-ghost ' : ''}${reordered(criterion.id) ? 'dope-roadmap-proposal-reordered' : ''}` || undefined,
+                'data-proposal-entity': removed(criterion.id) || reordered(criterion.id) ? criterion.id : undefined },
+                removed(criterion.id) && React.createElement(ProposalControlTab, { id: criterion.id,
+                    scope: `Remove Criterion ${criterion.title}`, provisional: data.proposalProvisional }),
+                reordered(criterion.id) && React.createElement(ProposalControlTab, { id: criterion.id,
+                    scope: `Reorder Criterion ${criterion.title}`, provisional: data.proposalProvisional,
+                    operationIds: structuralOperationIds(criterion.id) }),
+                React.createElement('summary', null, React.createElement(InlineRoadmapField, {
+                    kind: 'criterion', id: criterion.id, field: 'title',
+                    value: criterion.title, label: 'Criterion requirement', save: data.editField,
+                    patch: patchFor(criterion.id, 'title'), provisional: data.proposalProvisional })),
+                pick('criterion', criterion.id, `Criterion · ${criterion.title}`),
+                React.createElement(InlineRoadmapField, { kind: 'criterion', id: criterion.id,
+                    field: 'expectedResult', value: criterion.expectedResult,
+                    label: 'Expected observation', multiline: true, save: data.editField,
+                    patch: patchFor(criterion.id, 'expectedResult'), provisional: data.proposalProvisional }),
+                React.createElement('p', null, criterion.evidence.length ?
+                    criterion.evidence.map(evidence => `${evidence.result} (${evidence.review.status}${evidence.validation ? ', stale' : ''}): ${evidence.summary}`).join('; ') :
+                    'No evidence recorded.')) }));
+        const additions = (data.proposalChanges ?? []).filter(change => change.action === 'create' &&
+            change.after?.kind === 'criterion' && change.after.parentId === gate.id).map(change => ({
+            id: change.id, order: change.after?.order ?? accepted.length,
+            element: React.createElement(ProposedCriterionRow, { key: change.id, criterion: change.after!,
+                save: data.proposalSave, source: !!data.proposalSource,
+                provisional: data.proposalProvisional }) }));
+        const rows = [...accepted, ...additions].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+        return rows.length ? React.createElement('div', { className: 'dope-roadmap-criteria-list' },
+            ...rows.map(row => row.element)) : React.createElement('p', null, 'No criteria recorded.');
+    };
     if (card) return React.createElement(React.Fragment, null,
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
         React.createElement(Handle, { id: 'right-target', type: 'target', position: Position.Right, isConnectable: false }),
-        React.createElement('div', { className: `dope-roadmap-node dope-roadmap-phase-card dope-roadmap-phase-${card.presentation}`,
-            'data-phase-id': item.id },
+        React.createElement('div', { className: `dope-roadmap-node dope-roadmap-phase-card dope-roadmap-phase-${card.presentation}${reordered(item.id) ? ' dope-roadmap-proposal-reordered' : ''}${removed(item.id) ? ' dope-roadmap-proposal-ghost' : ''}`,
+            'data-phase-id': item.id, 'data-proposal-entity': reordered(item.id) || removed(item.id) ? item.id : undefined },
+        reordered(item.id) && React.createElement(ProposalControlTab, { id: item.id,
+            scope: `Reorder Phase ${item.title}`, provisional: data.proposalProvisional,
+            operationIds: structuralOperationIds(item.id) }),
+        removed(item.id) && React.createElement(ProposalControlTab, { id: item.id,
+            scope: `Remove Phase ${item.title}`, provisional: data.proposalProvisional }),
         React.createElement('button', { type: 'button', className: 'dope-roadmap-phase-main',
             'data-checkpoint-id': item.id, 'aria-current': data.selected ? 'true' : undefined,
             'aria-label': `${data.historical ? 'Historical snapshot · ' : ''}Phase ${card.number}: ${item.title}; ${item.statusLabel}`,
@@ -149,9 +229,14 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             React.createElement('span', { className: 'dope-roadmap-status' },
                 `${data.historical ? 'As-of ' : ''}${item.statusLabel}`)),
         React.createElement(InlineRoadmapField, { kind: 'phase', id: item.id, field: 'title', value: item.title,
-            label: 'Phase title', save: data.editField }),
+            label: 'Phase title', save: data.editField, patch: patchFor(item.id, 'title'),
+            provisional: data.proposalProvisional }),
         React.createElement(InlineRoadmapField, { kind: 'phase', id: item.id, field: 'objective',
-            value: data.phaseObjective ?? '', label: 'Phase objective', multiline: true, save: data.editField }),
+            value: data.phaseObjective ?? '', label: 'Phase objective', multiline: true, save: data.editField,
+            patch: patchFor(item.id, 'objective'), provisional: data.proposalProvisional }),
+        dependencyPatch(item.id) && React.createElement(ProposedFieldDiff, { change: dependencyPatch(item.id)!,
+            field: 'dependencies', label: 'Phase dependencies', provisional: data.proposalProvisional,
+            operationIds: dependencyPatch(item.id)?.operationIds }),
         pick('phase', item.id, `Phase ${card.number}`),
         React.createElement('span', { className: 'dope-roadmap-phase-divider', 'aria-hidden': true }),
         React.createElement('span', { className: 'dope-roadmap-phase-count' },
@@ -169,25 +254,28 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             'aria-valuetext': card.required ? `${card.qualified} of ${card.required} gates qualified` : 'No accepted gates' },
             React.createElement('span', { style: { width: card.required ? `${100 * card.qualified / card.required}%` : '0%' } })),
         React.createElement('div', { className: 'dope-roadmap-phase-children nowheel' },
-            ...((data.proposalChanges ?? []).filter(change => change.id === item.id).map(change =>
+            ...((data.proposalChanges ?? []).filter(change => change.id === item.id &&
+                hasStructuralProposalChange(change)).map(change =>
                 React.createElement(ProposedChange, { key: change.id, change, source: !!data.proposalSource,
+                    provisional: data.proposalProvisional,
                     save: data.proposalSave,
+                    operationIds: structuralOperationIds(change.id),
                     sourceChanges: data.proposalSourceChanges }))),
             ...((data.proposalChanges ?? []).filter(change => change.after?.kind === 'gate' &&
                 change.before?.parentId && change.before.parentId !== change.after.parentId &&
                 change.after.parentId === item.id).map(change =>
-                React.createElement('div', { key: `reparent:${change.id}`,
-                    className: 'dope-roadmap-gate-row dope-roadmap-proposal-new-gate',
-                    'data-proposal-gate-id': change.id },
-                React.createElement(ProposedChange, { change, source: !!data.proposalSource,
-                    save: data.proposalSave,
-                    sourceChanges: data.proposalSourceChanges })))),
+                React.createElement(ProposedGateCard, { key: `reparent:${change.id}`, change,
+                    children: (data.proposalChanges ?? []).filter(child => child.after?.parentId === change.id),
+                    source: !!data.proposalSource, provisional: data.proposalProvisional,
+                    order: 100 + (change.after?.order ?? 0) }))),
             data.contextPick ? React.createElement('div', { className: 'dope-roadmap-context-gates' },
                 ...card.gates.map(gate => pick('gate', gate.id, `${gate.designation} · ${gate.title}`))) : null,
             ...card.gates.map(gate => React.createElement('details', { key: gate.id,
+                style: { order: 100 + (data.proposalChanges?.find(change => change.id === gate.id)?.after?.order ?? gate.order) },
                 open: data.proposalAutoExpand && data.proposalChanges?.some(change => change.id === gate.id ||
                     change.before?.parentId === gate.id || change.after?.parentId === gate.id) || undefined,
-                className: `dope-roadmap-gate-row dope-roadmap-gate-${gate.status} nodrag nopan${data.proposalChanges?.some(change => change.id === gate.id && change.action === 'delete') ? ' dope-roadmap-proposal-ghost' : ''}`, 'data-gate-id': gate.id,
+                className: `dope-roadmap-gate-row dope-roadmap-gate-${gate.status} nodrag nopan${removed(gate.id) || movingOut(gate.id) ? ' dope-roadmap-proposal-ghost' : ''}${reordered(gate.id) ? ' dope-roadmap-proposal-reordered' : ''}`, 'data-gate-id': gate.id,
+                'data-proposal-entity': removed(gate.id) || movingOut(gate.id) || reordered(gate.id) ? gate.id : undefined,
                 'aria-current': data.selectedGateId === gate.id ? 'true' : undefined,
                 onClick: event => event.stopPropagation(),
                 onDoubleClick: event => event.stopPropagation(),
@@ -196,6 +284,14 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                         event.stopPropagation(); event.preventDefault(); details.open = false;
                         (event.currentTarget.querySelector('summary') as HTMLElement | null)?.focus();
                     } } },
+                removed(gate.id) && React.createElement(ProposalControlTab, { id: gate.id,
+                    scope: `Remove Gate ${gate.title}`, provisional: data.proposalProvisional }),
+                movingOut(gate.id) && React.createElement(ProposalControlTab, { id: gate.id,
+                    scope: `Move Gate ${gate.title}`, provisional: data.proposalProvisional,
+                    operationIds: structuralOperationIds(gate.id) }),
+                reordered(gate.id) && React.createElement(ProposalControlTab, { id: gate.id,
+                    scope: `Reorder Gate ${gate.title}`, provisional: data.proposalProvisional,
+                    operationIds: structuralOperationIds(gate.id) }),
                 React.createElement('summary', { className: 'dope-roadmap-gate-summary',
                     onClick: event => { if (window.getSelection()?.toString()) event.preventDefault(); } },
                     React.createElement('span', { className: 'dope-roadmap-gate-icon', 'aria-hidden': true },
@@ -203,23 +299,26 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     React.createElement('span', { className: 'dope-roadmap-gate-title' },
                         `${gate.designation} · `,
                         React.createElement(InlineRoadmapField, { kind: 'gate', id: gate.id, field: 'title',
-                            value: gate.title, label: 'Gate title', save: data.editField })),
+                            value: gate.title, label: 'Gate title', save: data.editField,
+                            patch: patchFor(gate.id, 'title'), provisional: data.proposalProvisional })),
                     React.createElement('span', { className: 'dope-roadmap-gate-qualifier' },
                         gate.proposed ? 'Proposed / Not accepted' :
                             `${data.historical ? 'as-of ' : ''}${gate.status.replaceAll('-', ' ')}`),
                     React.createElement('span', { className: 'dope-roadmap-gate-chevron', 'aria-hidden': true }, '⌄')),
                 React.createElement('div', { className: 'dope-roadmap-gate-foldout' },
-                    ...((data.proposalChanges ?? []).filter(change => change.id === gate.id ||
-                        change.before?.parentId === gate.id || change.after?.parentId === gate.id).map(change =>
-                        change.action === 'create' && change.after?.kind === 'criterion' ?
-                            React.createElement(ProposedCriterionRow, { key: change.id, criterion: change.after,
-                                save: data.proposalSave,
-                                source: !!data.proposalSource }) :
+                    ...((data.proposalChanges ?? []).filter(change =>
+                        hasStructuralProposalChange(change) && change.after?.kind !== 'correction' &&
+                        !(change.id === gate.id && movingOut(gate.id)) &&
+                        (change.id === gate.id || change.before?.parentId === gate.id ||
+                            change.after?.parentId === gate.id)).map(change =>
                             React.createElement(ProposedChange, { key: change.id, change, source: !!data.proposalSource,
+                                provisional: data.proposalProvisional,
                                 save: data.proposalSave,
+                                operationIds: structuralOperationIds(change.id),
                                 sourceChanges: data.proposalSourceChanges }))),
                     React.createElement(InlineRoadmapField, { kind: 'gate', id: gate.id, field: 'purpose',
-                        value: gate.purpose, label: 'Gate purpose', multiline: true, save: data.editField }),
+                        value: gate.purpose, label: 'Gate purpose', multiline: true, save: data.editField,
+                        patch: patchFor(gate.id, 'purpose'), provisional: data.proposalProvisional }),
                     React.createElement('strong', null, 'Criteria'),
                     data.beginCreate && React.createElement('div', { className: 'dope-roadmap-inline-actions dope-roadmap-create-actions nodrag nopan' },
                         React.createElement('button', { type: 'button',
@@ -230,29 +329,42 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                             'aria-label': `Add Correction to ${gate.designation} ${gate.title}`,
                             onClick: event => { event.stopPropagation(); data.beginCreate?.('correction', gate.id); } },
                             React.createElement('span', { className: codicon('add'), 'aria-hidden': true }), 'Correction')),
-                    gate.criteria.length ? gate.criteria.map(criterion => React.createElement('details', { key: criterion.id },
-                        React.createElement('summary', null, criterion.title),
-                        React.createElement(InlineRoadmapField, { kind: 'criterion', id: criterion.id, field: 'title',
-                            value: criterion.title, label: 'Criterion requirement', save: data.editField }),
-                        pick('criterion', criterion.id, `Criterion · ${criterion.title}`),
-                        React.createElement(InlineRoadmapField, { kind: 'criterion', id: criterion.id,
-                            field: 'expectedResult', value: criterion.expectedResult,
-                            label: 'Expected observation', multiline: true, save: data.editField }),
-                        React.createElement('p', null, criterion.evidence.length ?
-                            criterion.evidence.map(evidence => `${evidence.result} (${evidence.review.status}${evidence.validation ? ', stale' : ''}): ${evidence.summary}`).join('; ') :
-                            'No evidence recorded.'))) : React.createElement('p', null, 'No criteria recorded.'),
-                    React.createElement('p', null, `Dependencies: ${gate.dependencies.join(', ') || 'None recorded.'}`),
+                    renderCriteria(gate),
+                    dependencyPatch(gate.id) ? React.createElement(ProposedFieldDiff, {
+                        change: dependencyPatch(gate.id)!, field: 'dependencies', label: 'Gate dependencies',
+                        provisional: data.proposalProvisional,
+                        operationIds: dependencyPatch(gate.id)?.operationIds }) :
+                        React.createElement('p', null, `Dependencies: ${gate.dependencies.join(', ') || 'None recorded.'}`),
                     React.createElement('p', null, `Corrections: ${card.corrections.filter(correction =>
                         correction.parent.kind === 'gate' && correction.parent.id === gate.id)
                         .map(correction => correction.title).join(', ') || 'None recorded.'}`),
                     ...card.corrections.filter(correction => correction.parent.kind === 'gate' && correction.parent.id === gate.id)
-                        .map(correction => React.createElement('div', { key: correction.id, className: 'dope-roadmap-correction-row' },
+                        .map(correction => React.createElement('div', { key: correction.id,
+                            className: `dope-roadmap-correction-row${removed(correction.id) || movingFrom(correction.id, gate.id) ? ' dope-roadmap-proposal-ghost' : ''}`,
+                            'data-proposal-entity': removed(correction.id) || movingFrom(correction.id, gate.id) ? correction.id : undefined },
+                            removed(correction.id) && React.createElement(ProposalControlTab, { id: correction.id,
+                                scope: `Remove Correction ${correction.title}`, provisional: data.proposalProvisional }),
+                            movingFrom(correction.id, gate.id) && React.createElement(ProposalControlTab, {
+                                id: correction.id, scope: `Move Correction ${correction.title}`,
+                                provisional: data.proposalProvisional,
+                                operationIds: structuralOperationIds(correction.id) }),
                             React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
-                                field: 'title', value: correction.title, label: 'Correction title', save: data.editField }),
+                                field: 'title', value: correction.title, label: 'Correction title', save: data.editField,
+                                patch: patchFor(correction.id, 'title'), provisional: data.proposalProvisional }),
                             React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
                                 field: 'objective', value: data.correctionObjectives?.[correction.id] ?? '',
-                                label: 'Correction text', multiline: true, save: data.editField }),
+                                label: 'Correction text', multiline: true, save: data.editField,
+                                patch: patchFor(correction.id, 'objective'), provisional: data.proposalProvisional }),
                             pick('correction', correction.id, `Correction · ${correction.title}`))),
+                    ...((data.proposalChanges ?? []).filter(change => change.action === 'create' &&
+                        change.after?.kind === 'correction' && change.after.parentId === gate.id).map(change =>
+                        React.createElement(ProposedChange, { key: change.id, change,
+                            source: !!data.proposalSource, provisional: data.proposalProvisional }))),
+                    ...((data.proposalChanges ?? []).filter(change => change.before?.kind === 'correction' &&
+                        change.after?.parentId === gate.id && change.before.parentId !== gate.id).map(change =>
+                        React.createElement(ProposedChange, { key: `reparent:${change.id}`, change,
+                            source: !!data.proposalSource, provisional: data.proposalProvisional,
+                            operationIds: structuralOperationIds(change.id) }))),
                     React.createElement('button', { type: 'button', className: 'nodrag',
                         onClick: event => { event.stopPropagation(); data.selectGate(gate.id, item.id); } },
                         `Open ${gate.designation} details`)))),
@@ -260,17 +372,40 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                 change.after?.kind === 'gate' && change.after.parentId === item.id).map(change =>
                 React.createElement(ProposedGateCard, { key: change.id, change, save: data.proposalSave,
                     children: (data.proposalChanges ?? []).filter(child => child.after?.parentId === change.id),
-                    source: !!data.proposalSource }))),
+                    source: !!data.proposalSource, provisional: data.proposalProvisional,
+                    order: 100 + (change.after?.order ?? card.gates.length) }))),
             ...card.corrections.filter(correction => correction.parent.kind === 'phase').map(correction =>
-                React.createElement('div', { key: correction.id, className: 'dope-roadmap-correction-row' },
+                React.createElement('div', { key: correction.id,
+                    style: { order: 200 + (data.proposalChanges?.find(change => change.id === correction.id)?.after?.order ?? correction.order) },
+                    className: `dope-roadmap-correction-row${removed(correction.id) || movingFrom(correction.id, item.id) ? ' dope-roadmap-proposal-ghost' : ''}`,
+                    'data-proposal-entity': removed(correction.id) || movingFrom(correction.id, item.id) ? correction.id : undefined },
+                    removed(correction.id) && React.createElement(ProposalControlTab, { id: correction.id,
+                        scope: `Remove Correction ${correction.title}`, provisional: data.proposalProvisional }),
+                    movingFrom(correction.id, item.id) && React.createElement(ProposalControlTab, {
+                        id: correction.id, scope: `Move Correction ${correction.title}`,
+                        provisional: data.proposalProvisional,
+                        operationIds: structuralOperationIds(correction.id) }),
                     React.createElement('small', { className: 'dope-roadmap-correction-status' },
                         `Phase correction · ${correction.qualificationStatus}`),
                     React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
-                        field: 'title', value: correction.title, label: 'Correction title', save: data.editField }),
+                        field: 'title', value: correction.title, label: 'Correction title', save: data.editField,
+                        patch: patchFor(correction.id, 'title'), provisional: data.proposalProvisional }),
                     React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
                         field: 'objective', value: data.correctionObjectives?.[correction.id] ?? '',
-                        label: 'Correction text', multiline: true, save: data.editField }),
-                    pick('correction', correction.id, `Correction · ${correction.title}`))))),
+                        label: 'Correction text', multiline: true, save: data.editField,
+                        patch: patchFor(correction.id, 'objective'), provisional: data.proposalProvisional }),
+                    pick('correction', correction.id, `Correction · ${correction.title}`))),
+            ...((data.proposalChanges ?? []).filter(change => change.action === 'create' &&
+                change.after?.kind === 'correction' && change.after.parentId === item.id).map(change =>
+                React.createElement(ProposedChange, { key: change.id, change,
+                    source: !!data.proposalSource, provisional: data.proposalProvisional,
+                    order: 200 + (change.after?.order ?? card.corrections.length) }))),
+            ...((data.proposalChanges ?? []).filter(change => change.before?.kind === 'correction' &&
+                change.after?.parentId === item.id && change.before.parentId !== item.id).map(change =>
+                React.createElement(ProposedChange, { key: `reparent:${change.id}`, change,
+                    source: !!data.proposalSource, provisional: data.proposalProvisional,
+                    operationIds: structuralOperationIds(change.id),
+                    order: 200 + (change.after?.order ?? card.corrections.length) }))))),
         React.createElement(Handle, { id: 'right', type: 'source', position: Position.Right, isConnectable: false }));
     return React.createElement(React.Fragment, null,
         React.createElement(Handle, { id: 'left', type: 'target', position: Position.Left, isConnectable: false }),
@@ -336,8 +471,6 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly endedStages = new Map<string, string>();
     private stageFrame = 0;
     private readonly proposalSelection = new Set<string>();
-    private proposalReview?: { ids: string[]; decision: 'apply' | 'reject'; summary: string;
-        preview?: ChatPlanningProposal['preview'] };
     private proposalError?: string;
     private proposalFocus?: { entityId: string; action: string };
     private chatProposal?: { uri: string; chatId: string; proposal: ChatPlanningProposal };
@@ -877,7 +1010,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
             const proposal = this.history ? undefined : this.chatProposal?.proposal;
             if (!control || !proposal || this.mutating || control.disabled) return;
             const entityId = control.dataset.proposalEntityId ?? '';
-            const ids = proposalEntityOperations(proposal, entityId, (event as MouseEvent).shiftKey);
+            const exact = control.dataset.proposalOperationIds;
+            const ids = exact ? exact.split(',').filter(id =>
+                proposal.operations?.some(operation => operation.id === id && operation.status === 'Pending')) :
+                proposalEntityOperations(proposal, entityId, (event as MouseEvent).shiftKey);
             if (!ids.length) return;
             const action = control.dataset.proposalAction;
             this.proposalFocus = { entityId, action: action ?? 'select' };
@@ -887,7 +1023,6 @@ export class RoadmapCanvasWidget extends BaseWidget {
             }
             const remove = ids.every(id => this.proposalSelection.has(id));
             for (const id of ids) if (remove) this.proposalSelection.delete(id); else this.proposalSelection.add(id);
-            this.proposalReview = undefined;
             this.renderProposalBar();
             this.updateProposalSelectionControls();
         }, true);
@@ -1015,7 +1150,6 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.historyError = undefined;
             this.pendingChatProposalCamera = undefined;
             this.chatProposalCameraObserver.disconnect();
-            this.proposalReview = undefined;
             this.projection = this.projectIndex(snapshot as unknown as RoadmapIndex, [], []);
             this.selectedId = undefined;
             this.render();
@@ -1473,8 +1607,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.stageNotice.hidden = true;
         this.chatProposal = { uri, chatId, proposal };
         this.proposalSelection.clear();
-        this.proposalReview = undefined;
         this.proposalError = undefined;
+        if (proposal.action.type === 'native-stage-preview') {
+            // Inline patches keep the owner's current camera and selection. Generation
+            // still uses its established reveal behavior below.
+            this.render();
+            return;
+        }
         const first = proposal.preview.entities[0];
         const value = first?.after ?? first?.before;
         const reparentedGate = first?.after?.kind === 'gate' && first.before?.parentId &&
@@ -1666,7 +1805,6 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.chatProposal.proposal.id !== proposalId) return;
         this.chatProposal = undefined;
         this.proposalSelection.clear();
-        this.proposalReview = undefined;
         this.proposalError = undefined;
         if (this.pendingChatProposalCamera === proposalId) {
             this.pendingChatProposalCamera = undefined;
@@ -2054,7 +2192,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.projectUri !== uri || this.isDisposed) return;
             this.liveStage = undefined; this.pendingStage = undefined; this.chatProposal = undefined;
             this.createState = undefined; this.reviewedPlan = undefined; this.selectedId = undefined;
-            this.proposalReview = undefined; this.proposalSelection.clear();
+            this.proposalSelection.clear();
             await this.refresh();
             this.managementMessage = mode === 'unlink' ? 'Roadmap unlinked. Markdown was preserved.' :
                 'The active Roadmap is empty. Markdown and Chat history were preserved.';
@@ -2076,12 +2214,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.chatProposal !== shown) throw new Error('Roadmap proposal changed during edit');
             this.chatProposal = { ...shown, proposal: updated };
             this.proposalSelection.clear();
-            this.proposalReview = undefined;
             this.proposalError = undefined;
         } finally { this.mutating = false; this.render(); }
     };
 
-    private async reviewProposal(ids: string[], decision: 'apply' | 'reject', confirm = false): Promise<void> {
+    private async reviewProposal(ids: string[], decision: 'apply' | 'reject'): Promise<void> {
         const shown = this.chatProposal;
         if (this.history || !shown || !this.nativeProposalBridge || !ids.length || this.mutating) return;
         this.mutating = true;
@@ -2090,24 +2227,17 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.updateProposalSelectionControls();
         try {
             const result = await this.nativeProposalBridge(shown.uri, shown.chatId, shown.proposal.id,
-                ids, decision, confirm);
+                ids, decision);
             if (this.chatProposal !== shown) return;
             if (result.error) throw new Error(result.error);
-            if (confirm) {
-                this.proposalReview = undefined;
-                this.proposalSelection.clear();
-                if (result.proposal?.preview) this.chatProposal = { ...shown, proposal: result.proposal };
-                else this.chatProposal = undefined;
-                await this.refresh();
-            } else this.proposalReview = { ids, decision, summary: result.summary ?? 'Review selected changes',
-                preview: result.preview };
+            this.proposalSelection.clear();
+            if (result.proposal?.preview) this.chatProposal = { ...shown, proposal: result.proposal };
+            else this.chatProposal = undefined;
+            await this.refresh();
         } catch (error) { this.proposalError = String(error); }
         finally {
             this.mutating = false; this.render();
-            requestAnimationFrame(() => {
-                if (this.proposalReview) this.proposalBar.querySelector<HTMLButtonElement>('[data-review-confirm]')?.focus();
-                else this.focusProposalOrigin();
-            });
+            requestAnimationFrame(() => this.focusProposalOrigin());
         }
     }
 
@@ -2149,54 +2279,22 @@ export class RoadmapCanvasWidget extends BaseWidget {
         };
         const all = operations.map(item => item.id);
         const actions = document.createElement('div'); actions.className = 'dope-roadmap-native-actions';
-        actions.append(button(replacement ? `Replace with selected (${selected.length}) — review` :
-            `Apply selected (${selected.length}) — review`, '✓', selected, 'apply'),
-            button(`Reject selected (${selected.length}) — review`, '×', selected, 'reject'));
+        actions.append(button(replacement ? `Replace with selected (${selected.length})` :
+            `Accept selected (${selected.length})`, '✓', selected, 'apply'),
+            button(`Reject selected (${selected.length})`, '×', selected, 'reject'));
         const divider = document.createElement('span'); divider.className = 'dope-roadmap-review-divider';
         divider.setAttribute('aria-hidden', 'true'); actions.append(divider);
-        actions.append(button(replacement ? 'Replace current Roadmap — review' :
-            `Apply all remaining (${all.length}) — review`, '✓✓', all, 'apply'),
-            button(`Reject all remaining (${all.length}) — review`, '××', all, 'reject'));
+        actions.append(button(replacement ? 'Replace current Roadmap' :
+            `Accept all remaining (${all.length})`, '✓✓', all, 'apply'),
+            button(`Reject all remaining (${all.length})`, '××', all, 'reject'));
         if (this.stage.dataset.reviewSmallZoom === 'true') {
             const zoom = document.createElement('button'); zoom.type = 'button';
-            zoom.textContent = 'Zoom in for element review';
-            zoom.title = 'Zoom in for individual Roadmap review controls';
+            zoom.textContent = 'Zoom in for easier review';
+            zoom.title = 'Zoom in to enlarge Roadmap review controls';
             zoom.onclick = () => this.intentionalCamera(flow => flow.zoomTo(0.85));
             actions.append(zoom);
         }
         this.proposalBar.append(actions);
-        if (this.proposalReview) {
-            const review = this.proposalReview;
-            const exact = document.createElement('details'); exact.open = true;
-            const caption = document.createElement('summary'); caption.textContent = review.summary;
-            exact.append(caption);
-            const affected = review.preview?.entities ?? proposal.preview?.entities.filter(entity =>
-                proposalEntityOperations(proposal, entity.id).some(id => review.ids.includes(id))) ?? [];
-            for (const entity of affected) {
-                const line = document.createElement('p');
-                const before = entity.before, after = entity.after;
-                line.textContent = `${entity.action === 'create' ? 'Add' : entity.action === 'delete' ? 'Remove' : 'Edit'} ` +
-                    `${after?.kind ?? before?.kind ?? 'change'}: ${after?.title ?? before?.title ?? 'Untitled'}` +
-                    (before && after && before.detail !== after.detail ? ` · ${before.detail ?? 'empty'} → ${after.detail ?? 'empty'}` : '');
-                exact.append(line);
-            }
-            const omitted = review.preview?.additionalChanges ?? proposal.preview?.additionalChanges ?? 0;
-            if (omitted) {
-                const note = document.createElement('p');
-                note.textContent = `${omitted} additional changed entities are omitted from this compact preview.`;
-                exact.append(note);
-            }
-            const confirm = document.createElement('button'); confirm.type = 'button';
-            confirm.textContent = `Confirm ${review.decision} of ${review.ids.length} operation(s)`;
-            confirm.dataset.reviewConfirm = 'true';
-            confirm.disabled = this.mutating;
-            confirm.onclick = () => void this.reviewProposal(review.ids, review.decision, true);
-            const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel review';
-            cancel.disabled = this.mutating;
-            cancel.onclick = () => { this.proposalReview = undefined; this.renderProposalBar();
-                requestAnimationFrame(() => this.focusProposalOrigin()); };
-            this.proposalBar.append(exact, confirm, cancel);
-        }
         if (this.proposalError) {
             const error = document.createElement('p'); error.setAttribute('role', 'alert'); error.textContent = this.proposalError;
             this.proposalBar.append(error);
@@ -2206,21 +2304,29 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private updateProposalSelectionControls(): void {
         const proposal = this.history ? undefined : this.chatProposal?.proposal;
         for (const control of this.stage.querySelectorAll<HTMLButtonElement>('button[data-proposal-action]')) {
-            const ids = proposal ? proposalEntityOperations(proposal, control.dataset.proposalEntityId ?? '') : [];
+            const exact = control.dataset.proposalOperationIds;
+            const ids = proposal ? exact ? exact.split(',').filter(id =>
+                proposal.operations?.some(operation => operation.id === id && operation.status === 'Pending')) :
+                proposalEntityOperations(proposal, control.dataset.proposalEntityId ?? '') : [];
             const available = !!ids.length && !this.mutating;
             control.disabled = !available;
             const embedded = ids.length > 0 && !proposal?.operations?.some(item =>
                 ids.includes(item.id) && item.targetId === control.dataset.proposalEntityId);
             const action = control.dataset.proposalAction ?? 'select';
             if (embedded) {
-                const scope = `${action === 'select' ? 'Select' : action === 'apply' ? 'Apply' : 'Reject'} owning Gate with embedded Criterion${action === 'select' ? '' : ' — review'}`;
+                const scope = `${action === 'select' ? 'Select' : action === 'apply' ? 'Accept' : 'Reject'} owning Gate with embedded Criterion`;
                 control.setAttribute('aria-label', scope);
                 control.title = scope;
             } else control.title = available ? control.getAttribute('aria-label') ?? '' :
                 'No pending operation for this element or its owning Gate.';
             if (control.dataset.proposalAction === 'select') {
-                control.setAttribute('aria-pressed', String(!!ids.length && ids.every(id => this.proposalSelection.has(id))));
-                control.querySelector('span')!.textContent = ids.length && ids.every(id => this.proposalSelection.has(id)) ? '☑' : '☐';
+                const selected = !!ids.length && ids.every(id => this.proposalSelection.has(id));
+                control.setAttribute('aria-pressed', String(selected));
+                control.querySelector('span')!.textContent = selected ? '☑' : '☐';
+                control.closest<HTMLElement>('.dope-roadmap-proposal-field-diff, .dope-roadmap-proposal-change, ' +
+                    '.dope-roadmap-proposal-created, .dope-roadmap-proposal-phase, .dope-roadmap-proposal-new-gate, ' +
+                    '.dope-roadmap-proposal-criterion, .dope-roadmap-proposal-reordered, .dope-roadmap-proposal-ghost')
+                    ?.setAttribute('data-review-selected', String(selected));
             }
         }
         for (const control of this.stage.querySelectorAll<HTMLButtonElement>('button[data-proposal-edit-entity]')) {
@@ -2318,10 +2424,32 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 return gateIndex?.gates.find(gate => gate.id === gateId)?.parentPhaseId ??
                     changes.find(candidate => candidate.after?.kind === 'gate' && candidate.after.id === gateId)?.after?.parentId;
             }
+            if (value?.kind === 'correction') {
+                const parent = value.parentId ?? change.before?.parentId;
+                return gateIndex?.gates.find(gate => gate.id === parent)?.parentPhaseId ??
+                    changes.find(candidate => candidate.after?.kind === 'gate' && candidate.after.id === parent)?.after?.parentId ?? parent;
+            }
             return value?.parentId;
         };
+        const correctionSourcePhase = (change: ProposalChange): string | undefined => {
+            if (change.before?.kind !== 'correction' || !change.after ||
+                change.before.parentId === change.after.parentId) return undefined;
+            const parent = change.before.parentId;
+            return gateIndex?.gates.find(gate => gate.id === parent)?.parentPhaseId ?? parent;
+        };
+        const visiblePhases = visible && !isolated ? roadmapCanvasOrder(visible).filter(item => !!item.phaseCard) : [];
+        const createdPhases = changes.filter(change => change.action === 'create' && change.after?.kind === 'phase');
+        const phaseRoster = [...visiblePhases.map(item => ({ id: item.id, order: item.order })),
+            ...createdPhases.map(change => ({ id: change.id, order: change.after?.order ?? visiblePhases.length }))]
+            .map(item => ({ ...item, order: changes.find(change => change.id === item.id)?.after?.order ?? item.order }))
+            .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+        const phaseSlots = [...visiblePhases].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+            .map(item => positions.get(item.id) ?? { x: 64, y: 64 });
+        while (phaseSlots.length < phaseRoster.length) phaseSlots.push(nextPhasePosition(phaseSlots));
+        const proposalPhasePositions = new Map(phaseRoster.map((item, index) => [item.id, phaseSlots[index]]));
         const nodes: Node[] = (visible && !isolated ? roadmapCanvasOrder(visible) : []).map(item => {
-            const position = this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 };
+            const position = this.placements.get(item.id) ?? proposalPhasePositions.get(item.id) ??
+                positions.get(item.id) ?? { x: 64, y: 64 };
             return {
                 id: item.id, type: 'checkpoint', position,
                 data: { item, selected: item.id === this.selectedId, selectedGateId: this.selectedId,
@@ -2335,7 +2463,12 @@ export class RoadmapCanvasWidget extends BaseWidget {
                     contextPick: !this.history && this.contextPicker ? { selected: [...this.contextPicker.selected.keys()],
                         toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) =>
                             this.toggleContextElement(kind, id) } : undefined,
-                    proposalChanges: changes.filter(change => proposalPhase(change) === item.id),
+                    proposalChanges: changes.filter(change => proposalPhase(change) === item.id ||
+                        change.before?.kind === 'gate' && change.before.parentId === item.id &&
+                        change.after?.parentId !== item.id || correctionSourcePhase(change) === item.id),
+                    proposalSteps: proposal?.preview?.steps ?? liveSnapshot?.preview.steps,
+                    proposalProvisional: !!liveSnapshot,
+                    proposalOperations: proposal?.operations,
                     proposalSave: proposal?.operations && !this.history ? this.saveProposedField : undefined,
                     proposalAutoExpand: !!proposal,
                     proposalSource: proposal?.preview?.source === 'validated-markdown-patch',
@@ -2354,7 +2487,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         });
         for (const change of changes.filter(item => item.action === 'create' && item.after?.kind === 'phase')) {
             nodes.push({ id: `proposal:${change.id}`, type: 'proposalPhase',
-                position: nextPhasePosition(nodes.map(node => node.position)),
+                position: proposalPhasePositions.get(change.id) ?? nextPhasePosition(nodes.map(node => node.position)),
                 data: { change, children: changes.filter(child => child.id !== change.id &&
                     proposalPhase(child) === change.id), source: proposal?.preview?.source === 'validated-markdown-patch',
                     sourceChanges: proposal?.preview?.sourceChanges,

@@ -318,8 +318,11 @@ export function panelModule(options: ChatPanelOptions, saved?: { panelMode: 'cha
 export function shouldSendChatInput(event: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'isComposing' | 'keyCode'>): boolean {
     return event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229;
 }
+export function hasSendableChatDraft(value: string): boolean {
+    return !!value.trim() && !/^\/roadmap\s*$/u.test(value);
+}
 export function resizeChatInput(input: HTMLTextAreaElement): void {
-    input.style.height = '4.5em';
+    input.style.height = '7em';
 }
 /** Presentation-only follow state; a new Chat starts at the latest turn. */
 export class ChatScrollFollow {

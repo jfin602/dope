@@ -68,6 +68,13 @@ test('saved Chat retains a native staged Roadmap proposal and validated preview 
     const index = { status: () => ({ state: 'idle', generation: 0 }), snapshot: () => undefined,
         inputsCurrent: async () => false };
     const composer = new ChatContextComposer({} as never, {} as never, index as never, repository, store);
+    const composedMessages: string[] = [];
+    const compose = composer.compose.bind(composer);
+    composer.compose = async (...args: Parameters<ChatContextComposer['compose']>) => {
+        const result = await compose(...args);
+        composedMessages.push(JSON.stringify(result.messages));
+        return result;
+    };
     const prompts: string[] = [];
     const model = { id: 'q4', label: 'Q4', usable: true, capabilities: { conversationalText: true,
         streaming: true, contextWindowTokens: 32768, maxInputTokens: 32768 } };
@@ -142,9 +149,14 @@ test('saved Chat retains a native staged Roadmap proposal and validated preview 
         if (!lease.acquired) throw new Error('Chat lease unavailable');
         const context = [{ kind: 'roadmap' as const, id: 'roadmap', projectId,
             ownerRevision: 1, sourceHash }];
+        const preview = await backend.previewContext({ projectHandle, chatId,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/roadmap Describe a Phase proposal without staging it.', context });
         const ordinary = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: '/roadmap Describe a Phase proposal without staging it.', context });
+        assert.equal(composedMessages[0], composedMessages[1], 'preview and execution assemble identical edit context');
+        assert.equal(preview.usedTokens, ordinary.usedTokens);
         assert.equal(ordinary.proposal, undefined);
         assert.equal(ordinary.proposalError, undefined);
         assert.equal(prompts.length, 1);

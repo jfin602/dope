@@ -15,7 +15,7 @@ messageMarkdown.renderer.rules.fence = (tokens, index) => {
     // A label is presentation only. Never interpolate untrusted fence info as markup.
     const safeLanguage = /^[a-z][a-z0-9_+.#-]{0,24}$/iu.test(language) ? language : '';
     const label = safeLanguage ? `<span class="dope-message-code-language">${messageMarkdown.utils.escapeHtml(safeLanguage)}</span>` : '';
-    return `<div class="dope-message-code">${label}<pre><code>${messageMarkdown.utils.escapeHtml(token.content)}</code></pre></div>\n`;
+    return `<div class="dope-message-code"><div class="dope-message-code-header">${label}</div><pre><code>${messageMarkdown.utils.escapeHtml(token.content)}</code></pre></div>\n`;
 };
 
 /** Image tokens become text before HTML parsing can create an image request. */
@@ -40,6 +40,42 @@ export function renderUntrustedMessageMarkdown(_markdown: MarkdownRenderer, text
     for (const link of rendered.querySelectorAll('a[href]')) {
         if (!safeChatLink(link.getAttribute('href')!, document.baseURI)) link.removeAttribute('href');
         else link.setAttribute('rel', 'noopener noreferrer');
+    }
+    for (const block of rendered.querySelectorAll<HTMLElement>('.dope-message-code')) {
+        const header = block.querySelector<HTMLElement>('.dope-message-code-header');
+        const code = block.querySelector<HTMLElement>('pre > code');
+        if (!header || !code) continue;
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'dope-message-code-copy';
+        copy.setAttribute('aria-label', 'Copy code block');
+        const icon = document.createElement('span');
+        icon.className = 'codicon codicon-copy';
+        icon.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.setAttribute('role', 'status');
+        label.setAttribute('aria-live', 'polite');
+        label.textContent = 'Copy';
+        copy.append(icon, label);
+        let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
+        copy.addEventListener('click', () => {
+            // Read this block at activation time so an updated streaming block copies what is shown.
+            const content = code.textContent ?? '';
+            const write = navigator.clipboard?.writeText(content) ?? Promise.reject(new Error('Clipboard unavailable'));
+            void write.then(() => showFeedback('Copied'), () => showFeedback('Copy failed'));
+        });
+        const showFeedback = (message: string) => {
+            if (!copy.isConnected) return;
+            if (feedbackTimer) clearTimeout(feedbackTimer);
+            label.textContent = message;
+            copy.setAttribute('aria-label', message);
+            feedbackTimer = setTimeout(() => {
+                label.textContent = 'Copy';
+                copy.setAttribute('aria-label', 'Copy code block');
+                feedbackTimer = undefined;
+            }, 1800);
+        };
+        header.append(copy);
     }
     return rendered;
 }
