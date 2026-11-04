@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import type { ChatSkill, ChatSkillChange, ChatSkillSnapshot } from '@dope/chat/lib/service';
 
 const skillsPath = () => join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'dope', 'chat-skills.json');
-const reserved = new Set(['docs-review', 'docs-apply', 'roadmap', 'skill']);
+const reserved = new Set(['docs-review', 'docs-apply', 'roadmap', 'gen-roadmap', 'skill']);
 const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     title: 'Explain',
     description: 'Explain a topic clearly using the current conversation.',
@@ -14,7 +14,11 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
 { id: 'builtin:roadmap', name: 'roadmap', title: 'Roadmap',
     description: 'Discuss Roadmap work or propose a reviewed change.',
     body: 'Use authorized native Roadmap tools and current verified project state for changes to an existing Roadmap. For read-only questions, answer without staging. Ask one precise question when required facts are missing. Never claim an unapproved change, invent evidence or Green status, write Markdown, or run Work.',
-    enabled: true, provenance: 'builtin', version: 2 }];
+    enabled: true, provenance: 'builtin', version: 2 },
+{ id: 'builtin:gen-roadmap', name: 'gen-roadmap', title: 'Generate Roadmap',
+    description: 'Build a new Roadmap from a prompt with the selected local model, then review it on the canvas.',
+    body: 'This command starts only from a fresh user Chat message with a nonempty prompt. Use one exact local model. Generated Phases are provisional until the owner reviews and applies them. Do not claim accepted changes, evidence, or Green status.',
+    enabled: true, provenance: 'builtin', version: 1 }];
 let serial = Promise.resolve();
 
 export function validateSkill(name: string, description: string, body: string, title = name): void {
@@ -105,6 +109,14 @@ export async function resolveChatSkill(content: string): Promise<ChatSkillSnapsh
     if (!skill.enabled) throw new Error(`Skill /${name} is disabled. Enable it from Select Chat > Skills.`);
     return { id: skill.id, name, title: skill.title, description: skill.description,
         body: skill.body, version: skill.version,
+        digest: createHash('sha256').update(skill.body).digest('hex') };
+}
+
+/** Display metadata only. The trusted Chat command parser owns generation authority. */
+export function generationChatSkillSnapshot(): ChatSkillSnapshot {
+    const skill = builtins.find(item => item.id === 'builtin:gen-roadmap')!;
+    return { id: skill.id, name: skill.name, title: skill.title,
+        description: skill.description, body: skill.body, version: skill.version,
         digest: createHash('sha256').update(skill.body).digest('hex') };
 }
 

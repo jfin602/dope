@@ -4,7 +4,7 @@ import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, Chat
     ChatContextSelection, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
-import { changeChatSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
+import { changeChatSkill, generationChatSkillSnapshot, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
 import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
@@ -1158,7 +1158,8 @@ export class ChatBackend implements ChatService {
             throw new Error('Chat mutation conflict');
         };
         const user: ChatUserMessage = { schemaVersion: 1, id: randomUUID(), role: 'user',
-            createdAt: new Date().toISOString(), content: request.content!.trim(), contextRefs };
+            createdAt: new Date().toISOString(), content: request.content!.trim(), contextRefs,
+            skill: generationChatSkillSnapshot() };
         const now = new Date().toISOString();
         const assistant: ChatAssistantMessage = { schemaVersion: 1, id: identity.turnId, role: 'assistant',
             createdAt: now, content: '', execution: { schemaVersion: 1, id: executionId,

@@ -153,6 +153,8 @@ test('Chat command brokers serial typed Pi Phases into one saved review proposal
             .map((event: any) => event.snapshot.proposalId)).size, 1);
         const saved = (await repository.read(root)).chats.find(item => item.id === chatId)!;
         assert.equal(saved.messages.length, 2);
+        assert.equal(saved.messages[0].role === 'user' && saved.messages[0].skill?.id,
+            'builtin:gen-roadmap');
         assert.equal(saved.messages[1].role, 'assistant');
         assert.equal(saved.messages[1].role === 'assistant' && saved.messages[1].planningActivity?.status, 'pending');
         assert.deepEqual(saved.messages[1].role === 'assistant' &&
