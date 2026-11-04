@@ -17,6 +17,9 @@ let workMode = false;
 let chatToolsMode = false;
 let roadmapToolsMode = false;
 let roadmapGenerationMode = false;
+let roadmapPhaseOnly = false;
+let roadmapGenerationId;
+let roadmapStartedAt = 0;
 let workRequestId;
 let nextToolId = 0;
 let activeRequest = false;
@@ -36,6 +39,12 @@ const trace = (stage, detail = {}) => {
   if (!continuationTrace || ++traceCount > 128) return;
   process.stderr.write(`[dope-pi-continuation] ${JSON.stringify({ at: new Date().toISOString(),
     stage, modelId: session?.model?.id, requestId: workRequestId, ...detail })}\n`);
+};
+const roadmapTrace = (stage, detail = {}) => {
+  if (!roadmapGenerationId) return;
+  process.stderr.write(`[dope-roadmap-generation] ${JSON.stringify({ at: new Date().toISOString(),
+    elapsedMs: Math.round(performance.now() - roadmapStartedAt), generationId: roadmapGenerationId,
+    stage, ...detail })}\n`);
 };
 const roadmapStageShape = params => {
   const value = params && typeof params === 'object' && !Array.isArray(params) ? params : {};
@@ -58,23 +67,29 @@ const roadmapResultShape = output => {
       nextStage: value.nextStage, complete: value.complete, proposalId: value.proposalId };
   } catch { return { resultKind: 'invalid-json' }; }
 };
-if (continuationTrace) {
+{
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
     const endpoint = String(url);
-    if (!endpoint.includes('/chat/completions')) return originalFetch(url, options);
+    if (!endpoint.includes('/chat/completions') || (!continuationTrace && !roadmapGenerationId))
+      return originalFetch(url, options);
     const started = Date.now();
     let body;
     try { body = JSON.parse(String(options?.body)); } catch { /* No prompt text is logged. */ }
     trace('model-request', { messages: body?.messages?.length, tools: body?.tools?.length,
       maxOutputTokens: body?.max_tokens, bodyBytes: Buffer.byteLength(String(options?.body ?? ''), 'utf8') });
+    roadmapTrace('lm-request', { messages: body?.messages?.length, tools: body?.tools?.length,
+      outputBudget: body?.max_tokens, requestBytes: Buffer.byteLength(String(options?.body ?? ''), 'utf8') });
     try {
       const response = await originalFetch(url, options);
       trace('model-response-headers', { status: response.status, elapsedMs: Date.now() - started });
+      roadmapTrace('lm-response-headers', { status: response.status, elapsedMs: Date.now() - started });
       return response;
     } catch (error) {
       trace('model-request-failed', { elapsedMs: Date.now() - started,
         error: error instanceof Error ? error.name : 'unknown' });
+      roadmapTrace('lm-request-failed', { elapsedMs: Date.now() - started,
+        reason: error instanceof Error ? error.name : 'unknown' });
       throw error;
     }
   };
@@ -209,7 +224,8 @@ const ROADMAP_GENERATION_TOOLS = {
     }, { additionalProperties: false }), { minItems: 1, maxItems: 12 }) }
 };
 function chatTools() {
-  return Object.entries(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
+  return Object.entries(roadmapGenerationMode ? roadmapPhaseOnly ?
+    { roadmap_phase: ROADMAP_GENERATION_TOOLS.roadmap_phase } : ROADMAP_GENERATION_TOOLS :
     roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
@@ -346,6 +362,8 @@ async function dispose() {
   chatToolsMode = false;
   roadmapToolsMode = false;
   roadmapGenerationMode = false;
+  roadmapPhaseOnly = false;
+  roadmapGenerationId = undefined;
   for (const pending of pendingTools.values()) pending.reject(new Error('Pi session closed'));
   pendingTools.clear();
   session?.dispose();
@@ -398,7 +416,9 @@ export async function dispatch(message) {
         chatToolsMode = message.mode === 'chat-tools';
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
         roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;
-        const chatToolNames = Object.keys(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
+        roadmapPhaseOnly = roadmapGenerationMode && message.roadmapPhaseOnly === true;
+        const chatToolNames = Object.keys(roadmapGenerationMode ? roadmapPhaseOnly ?
+          { roadmap_phase: ROADMAP_GENERATION_TOOLS.roadmap_phase } : ROADMAP_GENERATION_TOOLS :
           roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
@@ -454,6 +474,12 @@ export async function dispatch(message) {
           message.maxOutputTokens > session.model.maxTokens)
         throw new Error('Invalid bounded Pi turn');
       sessionConsumed = true;
+      if (roadmapGenerationMode && typeof message.generationId === 'string' &&
+          /^[a-f0-9-]{36}$/iu.test(message.generationId)) {
+        roadmapGenerationId = message.generationId;
+        roadmapStartedAt = performance.now();
+        roadmapTrace('pi-worker-turn-start');
+      }
       chatRepeat = undefined;
       chatLoopStopped = false;
       chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
@@ -473,9 +499,25 @@ export async function dispatch(message) {
       session.agent.state.model = { ...session.model, maxTokens: message.maxOutputTokens };
       let attemptedTool = false;
       let toolCount = 0;
+      let firstProviderOutput = false;
+      let lastProviderOutputAt = 0;
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
         nativeCompactionOutcome(event);
+        if (roadmapGenerationMode && event.type === 'message_update' &&
+            ['thinking_delta', 'text_delta', 'toolcall_delta'].includes(event.assistantMessageEvent?.type) &&
+            typeof event.assistantMessageEvent.delta === 'string' &&
+            event.assistantMessageEvent.delta.length) {
+          if (!firstProviderOutput) {
+            firstProviderOutput = true;
+            roadmapTrace('first-provider-output', { kind: event.assistantMessageEvent.type });
+          }
+          lastProviderOutputAt = performance.now();
+        }
+        if (roadmapGenerationMode && event.type === 'tool_execution_start')
+          roadmapTrace('tool-call-start', { toolName: event.toolName });
+        if (roadmapGenerationMode && event.type === 'tool_execution_end')
+          roadmapTrace('tool-call-complete', { toolName: event.toolName, isError: event.isError === true });
         if (['turn_start', 'turn_end', 'message_start', 'message_end', 'tool_execution_start',
           'tool_execution_end', 'agent_end', 'agent_settled'].includes(event.type))
           trace(event.type, { toolName: event.toolName,
@@ -488,6 +530,13 @@ export async function dispatch(message) {
             event.assistantMessageEvent?.type === 'thinking_delta' &&
             typeof event.assistantMessageEvent.delta === 'string')
           message.emit?.({ type: 'activity', kind: 'thinking', text: event.assistantMessageEvent.delta });
+        if (roadmapGenerationMode && event.type === 'message_update' &&
+            ['text_delta', 'toolcall_delta'].includes(event.assistantMessageEvent?.type) &&
+            typeof event.assistantMessageEvent.delta === 'string' &&
+            event.assistantMessageEvent.delta.length)
+          message.emit?.({ type: 'activity', kind: 'provisional',
+            text: event.assistantMessageEvent.type === 'toolcall_delta' ?
+              'Roadmap tool arguments streaming' : 'Roadmap model output streaming' });
         if (!chatToolsMode && (event.type === 'message_update' && event.assistantMessageEvent?.type.startsWith('toolcall_') ||
             event.type === 'tool_execution_start')) {
           attemptedTool = true;
@@ -504,7 +553,13 @@ export async function dispatch(message) {
       } catch (error) {
         if (chatLoopStopped) throw new Error(chatLoopReason);
         throw error;
-      } finally { unsubscribe(); workRequestId = undefined; }
+      } finally {
+        roadmapTrace('pi-worker-turn-end', { providerOutputSeen: firstProviderOutput,
+          lastProviderOutputElapsedMs: lastProviderOutputAt ?
+            Math.round(lastProviderOutputAt - roadmapStartedAt) : undefined });
+        unsubscribe(); workRequestId = undefined;
+        roadmapGenerationId = undefined;
+      }
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
       if (chatLoopStopped) throw new Error(chatLoopReason);
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');

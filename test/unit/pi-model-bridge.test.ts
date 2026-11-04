@@ -24,7 +24,8 @@ function fixture() {
         async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
             tools: ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'], resources: 'isolated' }; },
         async openChatToolsSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
-            tools: args[5] === true ? ['roadmap_phase', 'roadmap_finish'] :
+            tools: args[5] === true ? args[6] === true ? ['roadmap_phase'] :
+                ['roadmap_phase', 'roadmap_finish'] :
                 args[4] === true ? ['roadmap_read', 'roadmap_stage', 'roadmap_cancel'] :
                 ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command'],
             resources: 'isolated' }; } };
@@ -105,6 +106,9 @@ test('protected generation mode exposes only bounded typed Phase and finish tool
     assert.equal(f.calls[0][5], true);
     assert.deepEqual((await f.host.openChatToolsSession({ baseUrl: 'local' }, '/tmp',
         undefined, undefined, false, true)).tools, ['roadmap_phase', 'roadmap_finish']);
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
+        { chatTools: true, roadmapGeneration: true, roadmapPhaseOnly: true });
+    assert.deepEqual(f.calls[2].slice(4), [false, true, true]);
 });
 
 test('freshly refreshed exact model reuses a verified tool capability without another synthetic loop', async () => {

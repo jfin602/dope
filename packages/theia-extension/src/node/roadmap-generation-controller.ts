@@ -33,7 +33,7 @@ export type GenerationMetrics = Readonly<{ startedAt: string; endedAt: string;
     durationMs: number; timeToFirstStageMs?: number; timeToReviewMs?: number;
     retries: number }>;
 export type GenerationProviderProgress = Readonly<{ generationId: string; call: number; sequence: number;
-    kind: 'reasoning' | 'final' | 'usage'; text?: string; usage?: GenerationUsage }>;
+    kind: 'reasoning' | 'final' | 'tool-argument' | 'usage'; text?: string; usage?: GenerationUsage }>;
 export type GenerationEvent = Readonly<{ generationId: string; sequence: number; state: GenerationState;
     phase: number; calls: number; tokens: number | 'unknown'; diagnostic?: string }>;
 export type GenerationResult = Readonly<{ state: GenerationState; identity: GenerationIdentity;
@@ -137,12 +137,54 @@ export class RoadmapGenerationController {
         const remaining = Math.min(this.limits.idleMs, this.deadline - Date.now());
         if (remaining <= 0) throw new Error('generation deadline exceeded');
         return new Promise<T>((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error('generation call timed out')), remaining);
-            const cancelled = () => reject(new Error('generation cancelled'));
+            let settled = false;
+            const finish = (action: () => void) => {
+                if (settled) return;
+                settled = true; clearTimeout(timer); this.abort.signal.removeEventListener('abort', cancelled);
+                action();
+            };
+            const timer = setTimeout(() => finish(() => reject(new Error('generation call timed out'))), remaining);
+            const cancelled = () => finish(() => reject(new Error('generation cancelled')));
             this.abort.signal.addEventListener('abort', cancelled, { once: true });
-            work.then(resolve, reject).finally(() => {
-                clearTimeout(timer); this.abort.signal.removeEventListener('abort', cancelled);
-            }).catch(() => undefined);
+            work.then(value => finish(() => resolve(value)), error => finish(() => reject(error)));
+        });
+    }
+
+    /** Only validated output from the selected provider refreshes this call's idle clock. */
+    private timedCall<T>(invoke: (progress: () => void) => Promise<T>): Promise<T> {
+        const hardRemaining = this.deadline - Date.now();
+        if (hardRemaining <= 0) return Promise.reject(new Error('generation deadline exceeded'));
+        return new Promise<T>((resolve, reject) => {
+            let settled = false;
+            let idleTimer: ReturnType<typeof setTimeout>;
+            const finish = (action: () => void) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(idleTimer); clearTimeout(hardTimer);
+                this.abort.signal.removeEventListener('abort', cancelled);
+                action();
+            };
+            const idle = () => finish(() => {
+                reject(new Error('generation provider idle timeout'));
+                this.abort.abort();
+            });
+            const progress = () => {
+                if (settled || this.abort.signal.aborted) return;
+                clearTimeout(idleTimer);
+                idleTimer = setTimeout(idle, this.limits.idleMs);
+            };
+            const cancelled = () => finish(() => reject(new Error('generation cancelled')));
+            idleTimer = setTimeout(idle, this.limits.idleMs);
+            const hardTimer = setTimeout(() => finish(() => {
+                reject(new Error('generation deadline exceeded'));
+                this.abort.abort();
+            }), hardRemaining);
+            this.abort.signal.addEventListener('abort', cancelled, { once: true });
+            Promise.resolve().then(() => {
+                if (settled || this.abort.signal.aborted) throw new Error('generation cancelled');
+                return invoke(progress);
+            }).then(
+                value => finish(() => resolve(value)), error => finish(() => reject(error)));
         });
     }
 
@@ -207,7 +249,7 @@ export class RoadmapGenerationController {
                     const callNumber = this.calls;
                     let providerSequence = 0;
                     let accepting = true;
-                    const answer = await this.timed(this.deps.call({ identity: this.identity, scope: this.scope,
+                    const answer = await this.timedCall(progress => this.deps.call({ identity: this.identity, scope: this.scope,
                         phase: this.phases + 1, context: this.context, ledger: [...this.ledger],
                         remainingCalls: this.limits.maxCalls - this.calls,
                         remainingTokens: this.limits.maxTokens - this.chargedTokens,
@@ -216,8 +258,12 @@ export class RoadmapGenerationController {
                             if (!accepting || this.abort.signal.aborted || this.state !== 'generating-phase' ||
                                 event.generationId !== this.identity.generationId || event.call !== callNumber ||
                                 !Number.isSafeInteger(event.sequence) || event.sequence <= providerSequence) return;
+                            if (!['reasoning', 'final', 'tool-argument', 'usage'].includes(event.kind) ||
+                                event.kind !== 'usage' && (typeof event.text !== 'string' ||
+                                    !event.text.trim() || event.text.length > 8192)) return;
                             providerSequence = event.sequence;
                             this.providerProgress.push(event);
+                            if (event.kind !== 'usage') progress();
                             try { this.deps.onProviderProgress?.(event); } catch { /* Projection is advisory. */ }
                         } }));
                     accepting = false;

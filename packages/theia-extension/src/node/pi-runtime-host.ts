@@ -22,7 +22,8 @@ export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; tot
     tokenMeasurement: 'provider-reported' | 'unavailable' }
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
     lastWorkSequence?: number;
-    onEvent?: (event: { type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string } | PiWorkEvent) => void;
+    onEvent?: (event: { type: 'delta'; text: string } |
+        { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent) => void;
     onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
 
 /** Only Dope-owned paths are considered. No PATH lookup or user Pi installation is used. */
@@ -64,7 +65,8 @@ export class PiRuntimeHost {
         child.stdout.setEncoding('utf8');
         child.stdout.on('data', (chunk: string) => this.acceptOutput(chunk));
         child.stderr.on('data', (chunk: Buffer) => {
-            if (process.env.DOPE_PI_CONTINUATION_TRACE === '1')
+            if (process.env.DOPE_PI_CONTINUATION_TRACE === '1' ||
+                String(chunk).includes('[dope-roadmap-generation]'))
                 console.info(String(chunk).slice(0, 4096));
         });
         child.on('error', error => this.fail(error));
@@ -96,9 +98,10 @@ export class PiRuntimeHost {
     }
 
     openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
-        thinkingLevel?: string, roadmapTools = false, roadmapGeneration = false):
+        thinkingLevel?: string, roadmapTools = false, roadmapGeneration = false, roadmapPhaseOnly = false):
         Promise<{ version: string; tools: string[]; resources: string }> {
         return this.request({ type: 'open', mode: 'chat-tools', model, cwd, roadmapTools, roadmapGeneration,
+            roadmapPhaseOnly,
             ...(credential ? { credential } : {}), thinkingLevel });
     }
 
@@ -121,12 +124,13 @@ export class PiRuntimeHost {
 
     async *streamTurn(messages: readonly { role: 'system' | 'user' | 'assistant'; content: string }[],
         maxOutputTokens: number, signal?: AbortSignal,
-        onTool?: NonNullable<Pending['onTool']>): AsyncIterable<
-        { type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string } |
+        onTool?: NonNullable<Pending['onTool']>, generationId?: string): AsyncIterable<
+        { type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } |
         { type: 'complete'; text: string; modelId: string;
             finishReason: string; usage: PiTokenUsage; compaction?: PiContextRecord }> {
         if (signal?.aborted) throw new Error('Pi turn cancelled');
-        const queue: ({ type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string })[] = [];
+        const queue: ({ type: 'delta'; text: string } |
+            { type: 'activity'; kind: 'thinking' | 'provisional'; text: string })[] = [];
         let queueBytes = 0;
         let wake: (() => void) | undefined;
         let settled = false;
@@ -136,7 +140,8 @@ export class PiRuntimeHost {
         const notify = () => { wake?.(); wake = undefined; };
         const onAbort = () => this.dispose();
         signal?.addEventListener('abort', onAbort, { once: true });
-        const task = this.request<typeof result>({ type: 'turn', messages, maxOutputTokens }, event => {
+        const task = this.request<typeof result>({ type: 'turn', messages, maxOutputTokens,
+            ...(generationId ? { generationId } : {}) }, event => {
             if (event.type !== 'delta' && event.type !== 'activity') throw new Error('Invalid Pi Chat stream event');
             const bytes = Buffer.byteLength(event.text, 'utf8');
             if (bytes > 8192 || queue.length >= 8192 || queueBytes + bytes > 16 * 1024 * 1024)
@@ -196,7 +201,8 @@ export class PiRuntimeHost {
             this.stdout = this.stdout.slice(newline + 1);
             try {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
-                    event?: { type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking'; text: string } | PiWorkEvent;
+                    event?: { type: 'delta'; text: string } |
+                        { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent;
                     tool?: { id: number; name: string; arguments: unknown } };
                 const pending = this.pending.get(record.id);
                 if (!pending) throw new Error('Unexpected Pi worker response');
@@ -257,7 +263,8 @@ export class PiRuntimeHost {
                             throw new Error('Invalid Pi Work event');
                         pending.lastWorkSequence = event.sequence;
                     } else if ((record.event.type !== 'delta' &&
-                        !(record.event.type === 'activity' && record.event.kind === 'thinking')) ||
+                        !(record.event.type === 'activity' &&
+                            ['thinking', 'provisional'].includes(record.event.kind))) ||
                         typeof record.event.text !== 'string' || Buffer.byteLength(record.event.text, 'utf8') > 8192)
                         throw new Error('Invalid Pi stream event');
                     pending.onEvent?.(record.event);

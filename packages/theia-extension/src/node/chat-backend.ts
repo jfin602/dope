@@ -978,6 +978,10 @@ export class ChatBackend implements ChatService {
         const generationActivity = new ChatActivityRecorder(request.chatId, identity.turnId, executionId);
         let generationActivitySequence = 0;
         let generationCallNumber = 0;
+        const traceStarted = performance.now();
+        const traceGeneration = (generationId: string, stage: string, detail: Record<string, unknown> = {}) =>
+            console.info('[dope-roadmap-generation]', JSON.stringify({ at: new Date().toISOString(),
+                elapsedMs: Math.round(performance.now() - traceStarted), generationId, stage, ...detail }));
         const recordGenerationActivity = (kind: 'thinking' | 'provisional' | 'answer' | 'tool', value: string) => {
             if (!value) return;
             generationActivity.add(kind, value);
@@ -1021,14 +1025,20 @@ export class ChatBackend implements ChatService {
             current: generationCurrent,
             call: async input => {
                 generationCallNumber++;
+                traceGeneration(input.identity.generationId, 'phase-dispatched',
+                    { phase: input.phase, call: generationCallNumber });
                 let operation: GenerationPhase | 'finish' | undefined;
                 let unresolved: string[] = [];
                 let usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number;
                     reasoningTokens?: number; finishReason?: string; reasoning?: string } = {};
                 let sequence = 0;
+                let toolOutputStarted = false;
                 const toolEvents = generationToolEvents;
                 const tools = { root, roadmapGeneration: true,
+                    roadmapPhaseOnly: input.phase === 1, generationId: input.identity.generationId,
                     execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
+                        traceGeneration(input.identity.generationId, 'tool-call-start',
+                            { phase: input.phase, call: generationCallNumber, tool: name });
                         const allowed = name === 'roadmap_phase' || name === 'roadmap_finish';
                         let current = false;
                         try {
@@ -1059,6 +1069,8 @@ export class ChatBackend implements ChatService {
                         const status = valid ? 'completed' : 'denied';
                         toolEvents.push({ name: name as 'roadmap_phase' | 'roadmap_finish', status,
                             truncated: false, brokerExecuted: !!current, stage: current ? 'broker' : 'authority' });
+                        traceGeneration(input.identity.generationId, 'tool-call-complete',
+                            { phase: input.phase, call: generationCallNumber, tool: name, status });
                         recordGenerationActivity('tool', `${allowed ? name : 'roadmap_phase'}: ${status}`);
                         if (!valid) return JSON.stringify({ version: 1, error: 'ROADMAP_GENERATION_TOOL_DENIED' });
                         if (name === 'roadmap_phase') {
@@ -1068,12 +1080,11 @@ export class ChatBackend implements ChatService {
                         } else { operation = 'finish'; unresolved = [...record!.unresolved as string[]]; }
                         return JSON.stringify({ version: 1, accepted: true, phase: input.phase });
                     } };
-                const instructions = `Generate exactly Phase ${input.phase} for the user's Roadmap. ` +
-                    'Use roadmap_phase once with a title, objective, small Gates and observable Criteria. ' +
-                    'Do not assign IDs, stage, apply, write files, or invoke any other tool. ' +
-                    (input.phase > 1 ? 'If the bounded Roadmap is complete, use roadmap_finish instead and list unresolved requirements. ' : '') +
-                    (input.correction ? `Correct only Phase ${input.phase}: ${input.correction} ` : '') +
-                    'Dope validates and stages each Phase after this call. Tool arguments are the only accepted content.';
+                const instructions = `Submit only Phase ${input.phase} with roadmap_phase: title, objective, ` +
+                    'small Gates and observable Criteria. Dope owns IDs, staging and approval. ' +
+                    (input.phase > 1 ? 'If the Roadmap is complete, use roadmap_finish instead. ' : '') +
+                    (input.correction ? `Correction: ${input.correction} ` : '') +
+                    'Only tool arguments are accepted.';
                 const messages: ConversationMessage[] = [{ role: 'system', content: instructions },
                     ...(composed?.messages.slice(0, -1) ?? []),
                     { role: 'user', content: (composed?.messages.at(-1)?.content ?? input.scope) + '\n\n' +
@@ -1081,15 +1092,39 @@ export class ChatBackend implements ChatService {
                             stagedPhaseSummaries: input.ledger,
                             ...(input.correction ? { correction: input.correction } : {}) }) }];
                 const outputBudget = Math.min(4096, Math.max(2048, chat.settings.context.reservedOutputTokens));
+                traceGeneration(input.identity.generationId, 'model-dispatch',
+                    { phase: input.phase, call: generationCallNumber, outputBudget,
+                        messageBytes: Buffer.byteLength(JSON.stringify(messages), 'utf8') });
+                let firstProviderOutput = false;
                 for await (const event of this.models!.generate(selection!, {
                     messages, controls: chat.settings.reasoningControls, signal: input.signal,
                     projectTools: tools, maxOutputTokens: outputBudget }, { localOnly: true })) {
+                    if (event.type === 'activity' || event.type === 'delta') {
+                        if (event.text && !firstProviderOutput) {
+                            firstProviderOutput = true;
+                            traceGeneration(input.identity.generationId, 'first-provider-output',
+                                { phase: input.phase, call: generationCallNumber,
+                                    kind: event.type === 'delta' ? 'final' : event.kind });
+                        }
+                    }
                     if (event.type === 'activity') {
                         if (event.kind === 'thinking') {
                             input.report({ generationId: input.identity.generationId, call: generationCallNumber,
                                 sequence: ++sequence, kind: 'reasoning', text: event.text });
                             recordGenerationActivity('thinking', event.text);
+                        } else if (event.kind === 'provisional') {
+                            input.report({ generationId: input.identity.generationId, call: generationCallNumber,
+                                sequence: ++sequence, kind: 'tool-argument', text: event.text });
+                            if (!toolOutputStarted) {
+                                toolOutputStarted = true;
+                                traceGeneration(input.identity.generationId, 'tool-output-start',
+                                    { phase: input.phase, call: generationCallNumber });
+                                recordGenerationActivity('provisional', event.text);
+                            }
                         } else recordGenerationActivity(event.kind, event.text);
+                    } else if (event.type === 'delta' && event.text) {
+                        input.report({ generationId: input.identity.generationId, call: generationCallNumber,
+                            sequence: ++sequence, kind: 'final', text: event.text });
                     } else if (event.type === 'complete') {
                         if (event.actualModelId && event.actualModelId !== input.identity.model.modelId)
                             throw new Error('ROADMAP_GENERATION_MODEL_CHANGED');
@@ -1097,6 +1132,11 @@ export class ChatBackend implements ChatService {
                             outputTokens: event.usage.outputTokens, totalTokens: event.usage.totalTokens,
                             reasoningTokens: event.usage.reasoningTokens,
                             finishReason: event.finishReason };
+                        traceGeneration(input.identity.generationId, 'model-complete',
+                            { phase: input.phase, call: generationCallNumber,
+                                finishReason: event.finishReason, inputTokens: usage.inputTokens,
+                                outputTokens: usage.outputTokens, reasoningTokens: usage.reasoningTokens,
+                                totalTokens: usage.totalTokens });
                     }
                 }
                 if (!await generationCurrent(input.identity) || input.signal.aborted)
@@ -1114,6 +1154,13 @@ export class ChatBackend implements ChatService {
                 complete: (bound, signal) => nativeAdapter.complete(bound, signal)
             },
             onEvent: event => {
+                if (event.state !== 'initializing')
+                    traceGeneration(event.generationId, 'controller-state',
+                        { state: event.state, phase: event.phase, calls: event.calls,
+                            ...(event.diagnostic ? { reason: event.diagnostic.slice(0, 160) } : {}) });
+                if (['failed', 'cancelled', 'stale'].includes(event.state))
+                    traceGeneration(event.generationId, 'abort-signal',
+                        { reason: event.diagnostic?.slice(0, 160) ?? event.state });
                 if (!['incomplete', 'failed', 'cancelled', 'stale'].includes(event.state) ||
                     this.generationControllers.get(request.chatId)?.controller !== controller) return;
                 this.nativeStages?.forget(request.chatId);
@@ -1171,9 +1218,13 @@ export class ChatBackend implements ChatService {
             modelId: model.id, providerId: 'local', modelLabel: model.label };
         await mutate({ type: 'start-assistant', chatId: request.chatId,
             messageId: assistant.id, actualModel });
+        traceGeneration(controller.identity.generationId, 'chat-command-accepted');
         this.generationControllers.set(request.chatId, { token: request.leaseToken, controller });
         let result;
-        try { result = await controller.run(); }
+        try {
+            traceGeneration(controller.identity.generationId, 'controller-start');
+            result = await controller.run();
+        }
         finally { if (this.generationControllers.get(request.chatId)?.controller === controller)
             this.generationControllers.delete(request.chatId); }
         if (result.state !== 'review-ready' && result.validatedPhases.length &&

@@ -24,6 +24,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             { ...(request.projectTools ? { chatTools: true,
                 ...(request.projectTools.roadmapTools ? { roadmapTools: true } : {}),
                 ...(request.projectTools.roadmapGeneration ? { roadmapGeneration: true } : {}) } : {}),
+                ...(request.projectTools?.roadmapPhaseOnly ? { roadmapPhaseOnly: true } : {}),
                 reasoningMode: request.controls?.['reasoning.effort'] });
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         const maxOutputTokens = request.maxOutputTokens ?? Math.min(binding.reasoningEnabled ? 2048 : 1024,
@@ -53,7 +54,8 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             const output = await request.projectTools!.execute(call.name, call.arguments, request.signal);
             return { status: 'completed', output };
         } : undefined;
-        for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool)) {
+        for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool,
+            request.projectTools?.generationId)) {
             if (event.type === 'delta' || event.type === 'activity') { yield event; continue; }
             if (event.modelId !== selection.modelId)
                 throw new ModelRuntimeFailure('Local server answered with a different model; reselect the loaded model in AI Center',

@@ -81,7 +81,12 @@ test('cancellation discards late model result and schedules no stage or next pha
     let calls = 0, stages = 0;
     const controller = new RoadmapGenerationController(identity, 'Scope', '{}', {
         current: async () => true,
-        call: async () => { calls++; return new Promise(done => { resolve = done; }); },
+        call: async input => {
+            calls++;
+            input.report({ generationId: input.identity.generationId, call: 1,
+                sequence: 1, kind: 'reasoning', text: 'provider output' });
+            return new Promise(done => { resolve = done; });
+        },
         stage: { validate: async () => { stages++; return true; }, stage: async () => 'x',
             complete: async () => true }
     }, limits);
@@ -93,6 +98,7 @@ test('cancellation discards late model result and schedules no stage or next pha
     assert.equal(result.state, 'cancelled');
     assert.equal(calls, 1);
     assert.equal(stages, 0);
+    assert.equal(result.providerProgress.length, 1);
     assert.equal(result.events.at(-1)?.state, 'cancelled');
 });
 
@@ -133,6 +139,71 @@ test('idle timeout stops a pending call and ignores its delayed completion', asy
     assert.equal(result.state, 'failed');
     assert.equal(stages, 0);
     assert.equal(result.calls, 1);
+});
+
+test('genuine provider progress keeps a Phase call alive beyond the idle interval', async () => {
+    let calls = 0, stages = 0;
+    const result = await new RoadmapGenerationController(identity, 'Scope', '{}', {
+        current: async () => true,
+        call: async input => {
+            calls++;
+            if (calls === 2) return { done: true, usage: { totalTokens: 2 } };
+            for (let sequence = 1; sequence <= 6; sequence++) {
+                await new Promise(resolve => setTimeout(resolve, 20));
+                input.report({ generationId: input.identity.generationId, call: calls,
+                    sequence, kind: 'reasoning', text: 'real provider output' });
+            }
+            return { done: false, phase: phase(1), usage: { totalTokens: 2 } };
+        },
+        stage: { validate: async () => true, stage: async () => { stages++; return 'Phase 1'; },
+            complete: async () => true }
+    }, { ...limits, idleMs: 55, deadlineMs: 500 }).run();
+    assert.equal(result.state, 'review-ready');
+    assert.equal(result.phases, 1);
+    assert.equal(stages, 1);
+    assert.equal(result.providerProgress.length, 6);
+    assert.ok(result.metrics.durationMs > 55);
+});
+
+test('continuous provider output cannot evade the absolute generation deadline', async () => {
+    let stages = 0;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const result = await new RoadmapGenerationController(identity, 'Scope', '{}', {
+        current: async () => true,
+        call: input => new Promise(() => {
+            let sequence = 0;
+            interval = setInterval(() => input.report({ generationId: input.identity.generationId,
+                call: 1, sequence: ++sequence, kind: 'tool-argument', text: 'provider tool delta' }), 10);
+        }),
+        stage: { validate: async () => { stages++; return true; }, stage: async () => 'x',
+            complete: async () => true }
+    }, { ...limits, idleMs: 40, deadlineMs: 110 }).run();
+    if (interval) clearInterval(interval);
+    assert.equal(result.state, 'cancelled');
+    assert.match(result.events.at(-1)?.diagnostic ?? '', /deadline exceeded/);
+    assert.ok(result.providerProgress.length > 1);
+    assert.equal(stages, 0);
+});
+
+test('synthetic or invalid progress cannot extend an idle Phase call', async () => {
+    let stages = 0;
+    const result = await new RoadmapGenerationController(identity, 'Scope', '{}', {
+        current: async () => true,
+        call: input => new Promise(() => {
+            let sequence = 0;
+            const timer = setInterval(() => {
+                if (input.signal.aborted) { clearInterval(timer); return; }
+                input.report({ generationId: input.identity.generationId, call: 1,
+                    sequence: ++sequence, kind: 'reasoning', text: ' ' });
+            }, 5);
+        }),
+        stage: { validate: async () => { stages++; return true; }, stage: async () => 'x',
+            complete: async () => true }
+    }, { ...limits, idleMs: 35, deadlineMs: 300 }).run();
+    assert.equal(result.state, 'failed');
+    assert.match(result.events.at(-1)?.diagnostic ?? '', /idle timeout/);
+    assert.equal(result.providerProgress.length, 0);
+    assert.equal(stages, 0);
 });
 
 test('unknown provider usage stays unknown and conservatively consumes token allowance', async () => {

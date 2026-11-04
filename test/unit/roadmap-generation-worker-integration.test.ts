@@ -133,7 +133,8 @@ test('real Pi worker stages three sequential Phases into one protected Chat prop
         assert.deepEqual([result.proposal?.counts?.phases, result.proposal?.counts?.gates,
             result.proposal?.counts?.criteria], [3, 3, 3]);
         assert.deepEqual(f.requests.filter(item => !item.continuation).map(item => item.phase), [1, 2, 3, 4]);
-        for (const item of f.requests) assert.deepEqual(item.tools.sort(), ['roadmap_finish', 'roadmap_phase']);
+        for (const item of f.requests) assert.deepEqual(item.tools.sort(), item.phase === 1 ?
+            ['roadmap_phase'] : ['roadmap_finish', 'roadmap_phase']);
         assert.ok(f.requests.filter(item => item.continuation).every(item => item.accepted));
         assert.ok(f.requests.filter(item => item.continuation).every(item => item.replyPhase === item.phase));
         assert.equal(new Set([result.proposal?.id]).size, 1);
