@@ -1,0 +1,37 @@
+TASK: Correction 12 / P3 — remove dead nonvisual generation paths and regressions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Existing runner owns successful implementation commits; do not self-commit. Target <=8 minutes focused; hard cap 15 minutes per bounded step. Stop PARTIAL/NOT GREEN or BLOCKED on unmet safety/predecessor, never manufacture a checkpoint.
+- No live Qwen inference, browser execution, automatic closeout, package/version/provider/model change, or overlapping correction stack.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Verify actual LOCAL manifest, branch, HEAD, status and in-flight source before editing; fail safely on mismatch rather than bumping version.
+
+PREFLIGHT / PROTECTION
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0040/0045/0046/0047/0048/0049/0050, docs/planning/p12/roadmap-chat-polish-contract.md, c12-rm-orch-polish README/assessment/plan, prior Pn result, old c12-rm-orch-fix P3 NOT GREEN report and exact source/tests.
+- Preserve uncommitted changes and active project state; no reset, stash, clean, force push, owner real tower-defense writes, source authority bypass, model selection change or generic model shell/file write. Use disposable fixtures and identified per-test managed roots only.
+- Preserve single protected Pi tool loop, validated StageOwner stage-before-tool-success, exact /gen-roadmap user-origin command, Ask/Allow, lease/project/root/chat/turn/revision/source, noncanonical proposal, explicit owner Apply, linked Markdown sync, append-only revisions and evidence-bound GREEN. Do not restore old natural/JSON/RM1/two-pass/per-Phase generation modes.
+
+
+PREREQUISITE
+- P1 and P2 interfaces and source tests verified on local HEAD; no known unsafe source/history race.
+
+OBJECTIVE
+Perform a **bounded nonvisual** source cleanup and regression pass before manual UI polishing. Freeze Qwen continuous Pi tool-loop behavior; do not refactor functioning generation architecture or change canvas/Chat presentation during this runner step.
+
+IMPLEMENT
+1. Trace actual executable `/gen-roadmap` entry → protected Pi worker/ChatBackend → serial native roadmap_phase/roadmap_finish tool calls → StageOwner proposal → saved Chat and review. Identify unreachable nonvisual imports/helpers/flags left by response-parsed text, monolithic JSON, RM1, two-pass conversion and independent per-Phase inference. Delete only demonstrably dead code and stale exclusive test assertions; keep historical Chat readers, unrelated Markdown import parsers and shared authoring tools. No alternative mode/fallback remains.
+2. Review nonvisual duplication of generation status, stage-sequence diagnostics, trace wrappers and source identity normalization. Consolidate small helpers only when exact behavior has tests; no broad file splitting, sweeping renames or algorithm changes. Do **not** touch `roadmap-proposal-cards.ts`, `roadmap-canvas-widget.ts` visual review control sections, `chat-panel-widget.ts` tool-call/footer UI sections or `dope.css`: manual M1/M2 own those.
+3. Preserve stream timing, real tool-events, scope ledger, cancellation, stale checking, source/lease isolation, checked Apply/Reject, RoadmapStore/History/Markdown, model reasoning controls and incomplete-draft inspectability. No new output grammar/dual pipeline, generic model filesystem access, or fake stage success. Do not remove the working next-Phase loader or active-tab behavior.
+4. Check for dead test artifacts but replace meaningful security/behavior coverage before removal. Confirm P1 stale-source, P2 Apply History, Pi worker serial two-Phase, cancellation and reviewed owner Apply/Reject tests still pass. Avoid deleting tests merely because flaky or expensive.
+5. Document removed vs retained modules/export/use sites, and any UI dead CSS/hooks deliberately deferred to M1/M2. Clean state should be source-proven, not asserted from a global grep on docs/history.
+
+QUALIFY
+- Run focused Pi/Chat generation worker + controller/staging, source/cancellation, Roadmap revision/History and Markdown tests; relevant extension/typecheck/build, `git diff --check`, targeted executable source reference search. Report exact counts, baseline attribution and no-write-before-Apply test.
+- No connected Browser/live inference/native GUI; M1/M2/M3 must validate display after this checkpoint. If old generation path remains reachable, incomplete qualification rather than a fake cleanup PASS.
+
+EXIT
+- P3 source-qualified only for nonvisual code/reliability. Runner STOPS before P4 manual closeout; no auto-UI polish execution. Do not self-commit or mark manual GREEN.
