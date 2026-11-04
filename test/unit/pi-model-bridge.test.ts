@@ -24,7 +24,8 @@ function fixture() {
         async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
             tools: ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'], resources: 'isolated' }; },
         async openChatToolsSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
-            tools: args[4] === true ? ['roadmap_read', 'roadmap_stage', 'roadmap_cancel'] :
+            tools: args[5] === true ? ['roadmap_phase', 'roadmap_finish'] :
+                args[4] === true ? ['roadmap_read', 'roadmap_stage', 'roadmap_cancel'] :
                 ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command'],
             resources: 'isolated' }; } };
     return { state, bridge, host, calls, failRefresh: () => { refreshError = true; },
@@ -93,6 +94,17 @@ test('protected native Roadmap mode has only read, stage and cancel tools', asyn
     assert.equal(f.calls[0][4], true);
     assert.deepEqual((await f.host.openChatToolsSession({ baseUrl: 'local' }, '/tmp', undefined, undefined, true)).tools,
         ['roadmap_read', 'roadmap_stage', 'roadmap_cancel']);
+});
+
+test('protected generation mode exposes only bounded typed Phase and finish tools', async () => {
+    const f = fixture();
+    f.state.registry.models[0].capabilities.agentExecution = known(true);
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
+        { chatTools: true, roadmapGeneration: true });
+    assert.equal(f.calls[0][4], false);
+    assert.equal(f.calls[0][5], true);
+    assert.deepEqual((await f.host.openChatToolsSession({ baseUrl: 'local' }, '/tmp',
+        undefined, undefined, false, true)).tools, ['roadmap_phase', 'roadmap_finish']);
 });
 
 test('freshly refreshed exact model reuses a verified tool capability without another synthetic loop', async () => {

@@ -25,7 +25,7 @@ import { selectDopeCapabilityHelp } from './dope-capability-help';
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { BridgeLocalProposal } from './bridge-local-proposal';
 import { roadmapGenerationCommand } from './roadmap-generation-command';
-import { RoadmapGenerationController } from './roadmap-generation-controller';
+import { RoadmapGenerationController, type GenerationIdentity, type GenerationPhase } from './roadmap-generation-controller';
 import { roadmapProposalPreview } from './roadmap-proposal-presentation';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
@@ -90,6 +90,10 @@ export class ChatBackend implements ChatService {
     private readonly turns = new Map<string, { token: string; abort: AbortController }>();
     private readonly generationPreparing = new Set<string>();
     private readonly generationControllers = new Map<string, { token: string; controller: RoadmapGenerationController }>();
+    private readonly generationPartial = new Map<string, { scope: string; root: string;
+        projectId: string; revision: number; sourceHash: string | null; indexHash: string | null;
+        model: string; connection: string; selectionContext: string;
+        phases: readonly GenerationPhase[] }>();
     private readonly nativeStages?: RoadmapNativeStageOwner;
     private readonly roadmapPreparations = new Map<string, { token: string; abort: AbortController }>();
     /** Leases belong to this RPC connection, not to the reusable panel ID or backend PID. */
@@ -101,7 +105,7 @@ export class ChatBackend implements ChatService {
     private readonly pendingCancel = new Map<string, string>();
     private readonly proposals = new Map<string, { id: string; messageId: string; leaseToken: string;
         handle?: string; request?: PlanningActionRequest; token?: string; changedIds: string[];
-        nativeStageId?: string;
+        nativeStageId?: string; generationOnly?: boolean;
         publication?: { root: string; mode: 'publish' | 'link'; preview: RoadmapPublicationPreview | RoadmapExistingLinkPreview };
         undo?: { handle: string; ownerId: string; revision: number; token: string };
         roadmapOffer?: ChatRoadmapOffer;
@@ -820,6 +824,14 @@ export class ChatBackend implements ChatService {
             !stage || stage.id !== pending.nativeStageId || stage.context.root !== root ||
             !Array.isArray(operationIds) || !['apply', 'reject'].includes(decision))
             throw new Error('Native Roadmap proposal unavailable');
+        if (pending.generationOnly && decision === 'apply') {
+            const selected = new Set(operationIds);
+            for (const item of stage.operations) if (selected.has(item.id) &&
+                item.action.type === 'phase.create' && !stage.operations.some(gate =>
+                    selected.has(gate.id) && gate.action.type === 'gate.create' &&
+                    gate.action.parentPhaseId === item.action.id))
+                throw new Error('ROADMAP_GENERATION_SELECTED_PHASE_REQUIRES_GATE');
+        }
         await this.repository.renew(root, chatId, leaseToken);
         const message = (await this.repository.read(root)).chats.find(chat => chat.id === chatId)
             ?.messages.find(item => item.id === pending.messageId);
@@ -958,7 +970,8 @@ export class ChatBackend implements ChatService {
     private async prepareGenerationCommand(root: string, request: ChatTurnRequest, scope: string): Promise<ChatTurnResult> {
         await this.repository.renew(root, request.chatId, request.leaseToken);
         const chat = (await this.repository.read(root)).chats.find(item => item.id === request.chatId);
-        if (!chat || request.planningSteps !== undefined || request.bridgeProposal)
+        if (!chat || request.planningSteps !== undefined || request.bridgeProposal ||
+            forbidsProjectTools(request.content ?? ''))
             throw new Error('Roadmap generation requires one current local Chat command');
         const selection = request.selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ?
             chat.settings.modelPolicy.model : undefined);
@@ -968,6 +981,10 @@ export class ChatBackend implements ChatService {
             connection.models.find(item => item.id === selection.modelId && item.usable);
         if (!model || !model.capabilities.contextWindowTokens)
             throw new Error('Selected local model is unavailable');
+        const connectionFingerprint = JSON.stringify(connection);
+        for (const [id, value] of Object.entries(chat.settings.reasoningControls ?? {}))
+            if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
+                throw new Error('Selected local model does not support the saved reasoning control');
         const index = await this.roadmapStore!.read<RoadmapGateIndex>(root);
         if (index.schemaVersion !== 2 || index.projectRoot !== root || !index.projectId)
             throw new Error('Current Roadmap owner is invalid');
@@ -979,31 +996,157 @@ export class ChatBackend implements ChatService {
                 providerId: 'local' as const, contextWindowTokens: model.capabilities.contextWindowTokens,
                 reasoningControls: { ...chat.settings.reasoningControls } },
             origin: 'trusted-user-chat' as const };
+        const modelKey = JSON.stringify(identity.model);
+        const selectionContext = JSON.stringify(request.context ?? []);
+        const previous = this.generationPartial.get(request.chatId);
+        const resume = previous && previous.scope === scope.trim() && previous.root === root &&
+            previous.projectId === index.projectId && previous.revision === index.revision &&
+            previous.sourceHash === sourceHash && previous.indexHash === indexHash &&
+            previous.model === modelKey && previous.connection === connectionFingerprint &&
+            previous.selectionContext === selectionContext ? previous.phases : [];
+        // A mismatched partial is inspectable in saved Chat, but has no replay authority.
+        this.generationPartial.delete(request.chatId);
         const context = JSON.stringify({ projectId: index.projectId, revision: index.revision,
             sourceHash, indexHash, phases: index.phases.slice(-12).map(phase => ({ id: phase.id,
                 title: phase.title.slice(0, 160) })), gateCount: index.gates.length });
+        const composed = this.composer ? await this.composeTurn(root, chat, scope, request.context ?? [],
+            model.capabilities, undefined, undefined, undefined, false, undefined, true) : undefined;
+        const contextRefs = composed?.refs ?? [];
+        const executionId = randomUUID();
+        const generationToolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
+        const generationActivity = new ChatActivityRecorder(request.chatId, identity.turnId, executionId);
+        let generationActivitySequence = 0;
+        let generationCallNumber = 0;
+        const recordGenerationActivity = (kind: 'thinking' | 'provisional' | 'answer' | 'tool', value: string) => {
+            if (!value) return;
+            generationActivity.add(kind, value);
+            for (const item of generationActivity.eventsSince(generationActivitySequence)) try {
+                this.client.notifyChatEvent({ projectHandle: request.projectHandle, kind: 'assistant-activity',
+                    chatId: request.chatId, messageId: identity.turnId, executionId,
+                    sequence: ++generationActivitySequence, activityKind: item.kind, text: item.text });
+            } catch { /* Display cannot affect inference or staging. */ }
+        };
+        const generationCurrent = async (bound: GenerationIdentity): Promise<boolean> => {
+            if (this.disposed || this.root !== bound.root || this.handle !== request.projectHandle ||
+                this.leases.get(bound.chatId)?.token !== request.leaseToken) return false;
+            try { await this.repository.renew(root, bound.chatId, request.leaseToken); } catch { return false; }
+            const selected = (await this.models!.list()).connections.find(item => item.id === bound.model.connectionId);
+            const actual = selected?.ready && selected.providerId === 'local' &&
+                selected.models.find(item => item.id === bound.model.modelId && item.usable);
+            if (!actual || JSON.stringify(selected) !== connectionFingerprint ||
+                actual.capabilities.contextWindowTokens !== bound.model.contextWindowTokens) return false;
+            const currentChat = (await this.repository.read(root)).chats.find(item => item.id === bound.chatId);
+            if (!currentChat || JSON.stringify(currentChat.settings.reasoningControls ?? {}) !==
+                JSON.stringify(bound.model.reasoningControls) ||
+                !request.selectedModel && currentChat.settings.modelPolicy.type === 'exact' &&
+                (currentChat.settings.modelPolicy.model.connectionId !== bound.model.connectionId ||
+                    currentChat.settings.modelPolicy.model.modelId !== bound.model.modelId)) return false;
+            const next = await this.roadmapStore!.read<RoadmapGateIndex>(root);
+            if (next.projectId !== bound.projectId || next.projectRoot !== bound.root ||
+                next.revision !== bound.revision ||
+                (next.linkedDocument?.sourceHash ?? null) !== bound.sourceHash ||
+                await this.roadmapStore!.gateIndexHash(root) !== bound.indexHash) return false;
+            try {
+                const stageRead = await this.nativeStages!.read({ root, projectId: bound.projectId,
+                    chatId: bound.chatId, turnId: bound.turnId, lease: request.leaseToken },
+                    { version: 1 }) as { link?: { syncState?: string } | null };
+                if (stageRead.link && stageRead.link.syncState !== 'synced') return false;
+            }
+            catch { return false; }
+            return true;
+        };
         let nativeAdapter: RoadmapGenerationNativeStage;
         const controller = new RoadmapGenerationController(identity, scope, context, {
-            current: async bound => {
-                if (this.disposed || this.root !== bound.root || this.handle !== request.projectHandle ||
-                    this.leases.get(bound.chatId)?.token !== request.leaseToken) return false;
-                try { await this.repository.renew(root, bound.chatId, request.leaseToken); } catch { return false; }
-                const selected = (await this.models!.list()).connections.find(item => item.id === bound.model.connectionId);
-                const actual = selected?.ready && selected.providerId === 'local' &&
-                    selected.models.find(item => item.id === bound.model.modelId && item.usable);
-                if (!actual || actual.capabilities.contextWindowTokens !== bound.model.contextWindowTokens) return false;
-                const currentChat = (await this.repository.read(root)).chats.find(item => item.id === bound.chatId);
-                if (!currentChat || JSON.stringify(currentChat.settings.reasoningControls ?? {}) !==
-                    JSON.stringify(bound.model.reasoningControls) ||
-                    currentChat.settings.modelPolicy.type === 'exact' &&
-                    (currentChat.settings.modelPolicy.model.connectionId !== bound.model.connectionId ||
-                        currentChat.settings.modelPolicy.model.modelId !== bound.model.modelId)) return false;
-                const next = await this.roadmapStore!.read<RoadmapGateIndex>(root);
-                return next.projectId === bound.projectId && next.projectRoot === bound.root &&
-                    next.revision === bound.revision && (next.linkedDocument?.sourceHash ?? null) === bound.sourceHash &&
-                    await this.roadmapStore!.gateIndexHash(root) === bound.indexHash;
+            current: generationCurrent,
+            call: async input => {
+                generationCallNumber++;
+                let operation: GenerationPhase | 'finish' | undefined;
+                let unresolved: string[] = [];
+                let usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number;
+                    reasoningTokens?: number; finishReason?: string; reasoning?: string } = {};
+                let sequence = 0;
+                const toolEvents = generationToolEvents;
+                const tools = { root, roadmapGeneration: true,
+                    execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
+                        const allowed = name === 'roadmap_phase' || name === 'roadmap_finish';
+                        let current = false;
+                        try {
+                            current = !input.signal.aborted && !signal?.aborted &&
+                                this.generationControllers.get(request.chatId)?.controller === controller &&
+                                await generationCurrent(controller.identity);
+                        } catch { /* A failed authority read is a denied, recorded tool call. */ }
+                        const record = args && typeof args === 'object' && !Array.isArray(args) ?
+                            args as Record<string, unknown> : undefined;
+                        const valid = allowed && current && !operation && record?.version === 1 &&
+                            (name === 'roadmap_phase' ?
+                                record.phase === input.phase && Object.keys(record).sort().join(',') ===
+                                    'gates,objective,phase,title,version' &&
+                                typeof record.title === 'string' && typeof record.objective === 'string' &&
+                                Array.isArray(record.gates) && record.gates.length > 0 && record.gates.length <= 12 &&
+                                record.gates.every(gate => gate && typeof gate === 'object' && !Array.isArray(gate) &&
+                                    Object.keys(gate).sort().join(',') === 'criteria,purpose,title' &&
+                                    typeof gate.title === 'string' && typeof gate.purpose === 'string' &&
+                                    Array.isArray(gate.criteria) && gate.criteria.length > 0 && gate.criteria.length <= 12 &&
+                                    gate.criteria.every((criterion: unknown) => criterion && typeof criterion === 'object' &&
+                                        !Array.isArray(criterion) && Object.keys(criterion).sort().join(',') ===
+                                            'expectedResult,title' &&
+                                        typeof (criterion as { title: unknown }).title === 'string' &&
+                                        typeof (criterion as { expectedResult: unknown }).expectedResult === 'string')) :
+                                input.phase > 1 && Object.keys(record).sort().join(',') === 'unresolved,version' &&
+                                Array.isArray(record.unresolved) && record.unresolved.length <= 16 &&
+                                record.unresolved.every(item => typeof item === 'string' && !!item.trim() && item.length <= 300));
+                        const status = valid ? 'completed' : 'denied';
+                        toolEvents.push({ name: name as 'roadmap_phase' | 'roadmap_finish', status,
+                            truncated: false, brokerExecuted: !!current, stage: current ? 'broker' : 'authority' });
+                        recordGenerationActivity('tool', `${allowed ? name : 'roadmap_phase'}: ${status}`);
+                        if (!valid) return JSON.stringify({ version: 1, error: 'ROADMAP_GENERATION_TOOL_DENIED' });
+                        if (name === 'roadmap_phase') {
+                            const gates = record!.gates as GenerationPhase['gates'];
+                            operation = { title: record!.title as string, objective: record!.objective as string,
+                                gates, subcalls: Math.ceil((gates.length + 1) / 8) };
+                        } else { operation = 'finish'; unresolved = [...record!.unresolved as string[]]; }
+                        return JSON.stringify({ version: 1, accepted: true, phase: input.phase });
+                    } };
+                const instructions = `Generate exactly Phase ${input.phase} for the user's Roadmap. ` +
+                    'Use roadmap_phase once with a title, objective, small Gates and observable Criteria. ' +
+                    'Do not assign IDs, stage, apply, write files, or invoke any other tool. ' +
+                    (input.phase > 1 ? 'If the bounded Roadmap is complete, use roadmap_finish instead and list unresolved requirements. ' : '') +
+                    (input.correction ? `Correct only Phase ${input.phase}: ${input.correction} ` : '') +
+                    'Dope validates and stages each Phase after this call. Tool arguments are the only accepted content.';
+                const messages: ConversationMessage[] = [{ role: 'system', content: instructions },
+                    ...(composed?.messages.slice(0, -1) ?? []),
+                    { role: 'user', content: (composed?.messages.at(-1)?.content ?? input.scope) + '\n\n' +
+                        JSON.stringify({ phase: input.phase, project: input.context,
+                            stagedPhaseSummaries: input.ledger,
+                            ...(input.correction ? { correction: input.correction } : {}) }) }];
+                const outputBudget = Math.min(4096, Math.max(2048, chat.settings.context.reservedOutputTokens));
+                for await (const event of this.models!.generate(selection!, {
+                    messages, controls: chat.settings.reasoningControls, signal: input.signal,
+                    projectTools: tools, maxOutputTokens: outputBudget }, { localOnly: true })) {
+                    if (event.type === 'activity') {
+                        if (event.kind === 'thinking') {
+                            input.report({ generationId: input.identity.generationId, call: generationCallNumber,
+                                sequence: ++sequence, kind: 'reasoning', text: event.text });
+                            recordGenerationActivity('thinking', event.text);
+                        } else recordGenerationActivity(event.kind, event.text);
+                    } else if (event.type === 'complete') {
+                        if (event.actualModelId && event.actualModelId !== input.identity.model.modelId)
+                            throw new Error('ROADMAP_GENERATION_MODEL_CHANGED');
+                        usage = { inputTokens: event.usage.inputTokens,
+                            outputTokens: event.usage.outputTokens, totalTokens: event.usage.totalTokens,
+                            reasoningTokens: event.usage.reasoningTokens,
+                            finishReason: event.finishReason };
+                    }
+                }
+                if (!await generationCurrent(input.identity) || input.signal.aborted)
+                    throw new Error('ROADMAP_GENERATION_STALE');
+                if (!operation) return { done: false, usage,
+                    invalidReason: 'The requested typed Phase or finish operation was missing or denied.' };
+                if (operation === 'finish') {
+                    return { done: true, unresolved, usage };
+                }
+                return { done: false, phase: operation, usage };
             },
-            call: async () => { throw new Error('Native phase operations are unavailable'); },
             stage: {
                 validate: async (phase, bound, signal) => nativeAdapter.validate(phase, bound, signal),
                 stage: (phase, bound, signal) => nativeAdapter.stage(phase, bound, signal),
@@ -1019,7 +1162,7 @@ export class ChatBackend implements ChatService {
                         event.state === 'stale' ? 'stale' : 'failed' }); }
                 catch { /* The validated stage owner does not depend on a UI listener. */ }
             }
-        });
+        }, undefined, resume);
         nativeAdapter = new RoadmapGenerationNativeStage(this.nativeStages!, request.leaseToken,
             controller.identity, update => {
                 if (this.generationControllers.get(request.chatId)?.controller !== controller ||
@@ -1045,13 +1188,153 @@ export class ChatBackend implements ChatService {
             this.pendingCancel.delete(request.chatId);
             controller.cancel();
         }
+        const mutate = async (operation: ChatOperation) => {
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try { return await this.repository.mutate(root, (await this.repository.read(root)).revision,
+                    operation, request.leaseToken); }
+                catch (error) { if (attempt === 2 || !String(error).includes('Stale Chat revision')) throw error; }
+            }
+            throw new Error('Chat mutation conflict');
+        };
+        const user: ChatUserMessage = { schemaVersion: 1, id: randomUUID(), role: 'user',
+            createdAt: new Date().toISOString(), content: request.content!.trim(), contextRefs };
+        const now = new Date().toISOString();
+        const assistant: ChatAssistantMessage = { schemaVersion: 1, id: identity.turnId, role: 'assistant',
+            createdAt: now, content: '', execution: { schemaVersion: 1, id: executionId,
+                status: 'pending', selectedModel: { ...selection },
+                resolutionSource: request.selectedModel ? 'explicit-turn' : 'chat-exact-default', startedAt: now } };
+        await mutate({ type: 'append-user', chatId: request.chatId, message: user });
+        await mutate({ type: 'begin-assistant', chatId: request.chatId, message: assistant });
+        const actualModel: ChatModelProvenance = { schemaVersion: 1, connectionId: connection!.id,
+            modelId: model.id, providerId: 'local', modelLabel: model.label };
+        await mutate({ type: 'start-assistant', chatId: request.chatId,
+            messageId: assistant.id, actualModel });
         this.generationControllers.set(request.chatId, { token: request.leaseToken, controller });
         let result;
         try { result = await controller.run(); }
         finally { if (this.generationControllers.get(request.chatId)?.controller === controller)
             this.generationControllers.delete(request.chatId); }
-        throw new Error(`Roadmap generation is unavailable until native phase staging is ready (${result.state}); ` +
-            'no model or Roadmap write was started');
+        if (result.state !== 'review-ready' && result.validatedPhases.length &&
+            result.validatedPhases.length < 12)
+            this.generationPartial.set(request.chatId, { scope: scope.trim(), root,
+                projectId: identity.projectId, revision: identity.revision, sourceHash, indexHash,
+                model: modelKey, connection: connectionFingerprint, selectionContext,
+                phases: result.validatedPhases });
+        try {
+        const usageSum = (key: 'inputTokens' | 'outputTokens' | 'totalTokens' | 'reasoningTokens') =>
+            result.usage.length && result.usage.every(item => Number.isSafeInteger(item[key]) &&
+                (item[key] ?? -1) >= 0) ? result.usage.reduce((sum, item) => sum + item[key]!, 0) : undefined;
+        const totalTokens = usageSum('totalTokens');
+        const outputTokens = usageSum('outputTokens');
+        const reasoningTokens = usageSum('reasoningTokens');
+        const finalTokens = outputTokens !== undefined && reasoningTokens !== undefined &&
+            outputTokens >= reasoningTokens ? outputTokens - reasoningTokens : undefined;
+        const tokenUsage: NonNullable<ChatAssistantMessage['execution']['tokenUsage']> = {
+            tokenMeasurement: totalTokens === undefined ? 'unavailable' : 'provider-reported',
+            ...(usageSum('inputTokens') === undefined ? {} : { inputTokens: usageSum('inputTokens') }),
+            ...(outputTokens === undefined ? {} : { outputTokens }),
+            ...(totalTokens === undefined ? {} : { totalTokens }),
+            ...(reasoningTokens === undefined ? {} : { reasoningTokens }) };
+        const finishReason = result.usage.at(-1)?.finishReason;
+        const last = result.events.at(-1);
+        if (result.state !== 'review-ready') {
+            this.nativeStages!.forget(request.chatId);
+            const reason = last?.diagnostic ?? `Roadmap generation ${result.state}`;
+            const partial = result.scopeLedger.staged.map(item => `${item.title}: ` +
+                item.gates.map(gate => `${gate.title} (${gate.criteria.join('; ')})`).join(', ')).join(' | ');
+            const diagnostic = (`${reason}. ${result.phases} validated Phase(s); ` +
+                `${result.calls} call(s), ${result.metrics.retries} retry(ies). ` +
+                `Elapsed ${result.metrics.durationMs} ms; first stage ` +
+                `${result.metrics.timeToFirstStageMs ?? 'unknown'} ms. ` +
+                (partial ? `Inspectable partial draft: ${partial}. ` : '') +
+                'No Apply authority; submit a fresh /gen-roadmap command after checking the source and model.')
+                .slice(0, 2000);
+            await mutate({ type: 'finish-assistant', chatId: request.chatId, messageId: assistant.id,
+                outcome: result.state === 'cancelled' ? 'cancelled' : 'failed', content: '',
+                ... (result.state === 'cancelled' ? {} : { failure: reason.slice(0, 1000) }),
+                planningActivity: { schemaVersion: 1,
+                    kind: result.state === 'cancelled' ? 'cancelled' : 'error',
+                    status: result.state === 'cancelled' ? 'cancelled' : 'failed',
+                    refs: contextRefs, diagnostic },
+                activity: generationActivity.snapshot(), actualModel, tokenUsage,
+                ...(finishReason ? { finishReason } : {}),
+                toolEvents: generationToolEvents });
+            return { refs: contextRefs, diagnostics: composed?.diagnostics ?? [],
+                usedTokens: composed?.usedTokens ?? 0, budgetTokens: composed?.budgetTokens ?? 0,
+                proposalError: reason };
+        }
+        const stage = this.nativeStages!.get(request.chatId);
+        if (!await generationCurrent(controller.identity))
+            throw new Error('ROADMAP_GENERATION_FINAL_SOURCE_STALE');
+        if (!stage?.done || stage.context.turnId !== assistant.id || !stage.snapshot?.complete) {
+            this.nativeStages!.forget(request.chatId);
+            throw new Error('ROADMAP_GENERATION_FINAL_STAGE_MISSING');
+        }
+        const { before, after } = await this.nativeStages!.complete(stage.context);
+        const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
+            ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
+        const prior = new Map(entities(before).map(item => [item.id, item]));
+        const next = new Map(entities(after).map(item => [item.id, item]));
+        const changedIds = [...new Set([...prior.keys(), ...next.keys()])].filter(id =>
+            JSON.stringify(prior.get(id)) !== JSON.stringify(next.get(id)));
+        const counts = typedRoadmapCounts(after);
+        const scopeWarnings = [...result.scopeLedger.candidateCoverage.map(item =>
+            `User goal, semantic coverage unverified: ${item.requirement.slice(0, 300)}; ` +
+            (item.candidates.length ? `candidate Gate(s): ${item.candidates.join(', ').slice(0, 140)}` :
+                'no text-matched Gate or Criterion; review this gap')),
+            ...result.scopeLedger.unresolved.map(item => `Model-reported unresolved: ${item.slice(0, 440)}`)];
+        const proposal: ChatPlanningProposal = { id: stage.id, chatId: request.chatId,
+            messageId: assistant.id, ownerId: before.projectId, revision: before.revision,
+            generation: stage.generation, counts, sourceHash: before.linkedDocument?.sourceHash,
+            changedIds, action: { type: 'native-stage-preview', id: before.projectId },
+            operations: stage.operations.map(item => ({ id: item.id, type: item.action.type,
+                targetId: 'id' in item.action ? item.action.id ?? before.projectId :
+                    'gateId' in item.action ? item.action.gateId : before.projectId,
+                status: item.status })),
+            warnings: scopeWarnings.length <= 16 ? scopeWarnings :
+                [...scopeWarnings.slice(0, 15), `${scopeWarnings.length - 15} additional scope or unresolved items; inspect the original Chat request.`],
+            summary: `${counts.phases} Phases, ${counts.gates} Gates, ${counts.criteria} Criteria; ` +
+                `${stage.operations.length} pending operations. Validated preview; no Roadmap change applied.` +
+                ` Scope coverage is unverified. ${result.calls} calls, ${result.metrics.retries} retries; ` +
+                `first stage ${result.metrics.timeToFirstStageMs ?? 'unknown'} ms; ` +
+                `review ${result.metrics.timeToReviewMs ?? 'unknown'} ms; ` +
+                `provider tokens ${totalTokens ?? 'unknown'}, reasoning ${reasoningTokens ?? 'unknown'}, ` +
+                `derived final ${finalTokens ?? 'unknown'}; finish ${finishReason ?? 'unknown'}.`,
+            preview: roadmapProposalPreview(before, after, stage.operations.map(item => item.action), changedIds) };
+        if (Buffer.byteLength(JSON.stringify(proposal), 'utf8') > 60_000) {
+            this.nativeStages!.forget(request.chatId);
+            throw new Error('ROADMAP_GENERATION_PROPOSAL_LIMIT');
+        }
+        const content = `Roadmap draft ready for review: ${counts.phases} Phases, ` +
+            `${counts.gates} Gates, ${counts.criteria} Criteria. No Roadmap changes have been applied.`;
+        if (!await generationCurrent(controller.identity))
+            throw new Error('ROADMAP_GENERATION_FINAL_SOURCE_STALE');
+        await mutate({ type: 'finish-assistant', chatId: request.chatId, messageId: assistant.id,
+            outcome: 'complete', content, activity: generationActivity.snapshot(), actualModel,
+            toolEvents: generationToolEvents, tokenUsage,
+            ...(finishReason ? { finishReason } : {}),
+            planningActivity: { schemaVersion: 1, kind: 'roadmap-gate-proposal', refs: contextRefs,
+                status: 'pending', proposalId: proposal.id, proposal } });
+        this.proposals.set(request.chatId, { id: stage.id, messageId: assistant.id,
+            leaseToken: request.leaseToken, changedIds, nativeStageId: stage.id,
+            generationOnly: true });
+        return { refs: contextRefs, diagnostics: composed?.diagnostics ?? [],
+            usedTokens: composed?.usedTokens ?? 0, budgetTokens: composed?.budgetTokens ?? 0, proposal };
+        } catch (error) {
+            this.nativeStages!.forget(request.chatId);
+            this.clearProposal(request.chatId);
+            const reason = `Roadmap generation finalization failed: ${String(error)}`.slice(0, 1000);
+            const saved = (await this.repository.read(root)).chats.find(item => item.id === request.chatId)
+                ?.messages.find(item => item.id === assistant.id);
+            if (saved?.role === 'assistant' && saved.execution.status === 'pending')
+                await mutate({ type: 'finish-assistant', chatId: request.chatId, messageId: assistant.id,
+                    outcome: 'failed', content: '', failure: reason,
+                    activity: generationActivity.snapshot(), actualModel,
+                    toolEvents: generationToolEvents });
+            return { refs: contextRefs, diagnostics: composed?.diagnostics ?? [],
+                usedTokens: composed?.usedTokens ?? 0, budgetTokens: composed?.budgetTokens ?? 0,
+                proposalError: reason };
+        }
     }
 
     async runTurn(request: ChatTurnRequest): Promise<ChatTurnResult> {

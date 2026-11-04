@@ -47,7 +47,7 @@ export class PiModelBridge {
     }
 
     async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
-        cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean; reasoningMode?: string } = {}): Promise<PiLocalBinding> {
+        cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean; roadmapGeneration?: boolean; reasoningMode?: string } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
         const before = await this.dependencies.inventory();
@@ -132,12 +132,15 @@ export class PiModelBridge {
                 { thinkingFormat: 'qwen-chat-template' } : { supportsReasoningEffort: true } } : {}),
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: loaded, maxTokens: maxOutputTokens };
-        const opened = options.chatTools && options.roadmapTools ?
+        const opened = options.chatTools && options.roadmapGeneration ?
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, true) :
+            options.chatTools && options.roadmapTools ?
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true) :
             await (options.tools ? host.openWorkSession : options.chatTools ? host.openChatToolsSession : host.openNoToolSession)
                 .call(host, modelSpec, cwd, credential, thinkingLevel);
         const expected = options.tools ? ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command'] :
-            options.chatTools ? options.roadmapTools ? ['roadmap_cancel', 'roadmap_read', 'roadmap_stage'] :
+            options.chatTools ? options.roadmapGeneration ? ['roadmap_finish', 'roadmap_phase'] :
+                options.roadmapTools ? ['roadmap_cancel', 'roadmap_read', 'roadmap_stage'] :
                 ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
             JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected))

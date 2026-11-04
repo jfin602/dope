@@ -52,8 +52,9 @@ test('controller strictly serializes validated phases and retains bounded scope 
     assert.equal(result.calls, 4);
     assert.equal(result.tokens, 12);
     assert.equal(peak, 1);
-    assert.deepEqual(ledgers, [[], ['Phase 1'], ['Phase 1', 'Phase 2'],
-        ['Phase 1', 'Phase 2', 'Phase 3']]);
+    const summary = (n: number) => `Phase ${n}; Gates: Gate ${n}`;
+    assert.deepEqual(ledgers, [[], [summary(1)], [summary(1), summary(2)],
+        [summary(1), summary(2), summary(3)]]);
     assert.deepEqual(result.events.map(event => event.sequence),
         result.events.map((_, index) => index + 1));
     assert.ok(result.events.every(event => event.generationId === result.identity.generationId));
@@ -145,4 +146,78 @@ test('unknown provider usage stays unknown and conservatively consumes token all
     assert.equal(result.tokens, 'unknown');
     assert.equal(calls, 1);
     assert.equal(result.phases, 1);
+});
+
+test('one malformed Phase receives targeted correction without restarting accepted work', async () => {
+    const seen: { phase: number; correction?: string; ledger: readonly string[] }[] = [];
+    const staged: string[] = [];
+    const result = await new RoadmapGenerationController(identity,
+        'Enemy spawn; towers and cooldown; persistent base health', '{}', {
+            current: async () => true,
+            call: async input => {
+                seen.push({ phase: input.phase, correction: input.correction, ledger: input.ledger });
+                if (seen.length === 1) return { done: false, phase: phase(1), usage: { totalTokens: 10 } };
+                if (seen.length === 2) return { done: false, invalidReason: 'Gate is missing',
+                    usage: { totalTokens: 10 } };
+                if (seen.length === 3) return { done: false, phase: phase(2),
+                    usage: { totalTokens: 10 } };
+                return { done: true, unresolved: ['Persistent base health needs owner review'],
+                    usage: { totalTokens: 10 } };
+            },
+            stage: { validate: async () => true,
+                stage: async item => { staged.push(item.title); return item.title; },
+                complete: async () => true }
+        }, limits).run();
+    assert.equal(result.state, 'review-ready');
+    assert.deepEqual(staged, ['Phase 1', 'Phase 2']);
+    assert.deepEqual(seen.map(item => item.phase), [1, 2, 2, 3]);
+    assert.equal(seen[2].correction, 'Gate is missing');
+    assert.deepEqual(seen[2].ledger, ['Phase 1; Gates: Gate 1']);
+    assert.deepEqual(result.scopeLedger.requirements,
+        ['Enemy spawn', 'towers and cooldown', 'persistent base health']);
+    assert.equal(result.scopeLedger.semanticCoverage, 'unverified');
+    assert.deepEqual(result.scopeLedger.unresolved, ['Persistent base health needs owner review']);
+    assert.equal(result.scopeLedger.staged.length, 2);
+    assert.equal(result.metrics.retries, 1);
+    assert.ok(result.metrics.timeToFirstStageMs !== undefined);
+    assert.ok(result.metrics.timeToReviewMs !== undefined);
+    assert.equal(result.usage.length, 4);
+});
+
+test('a repeated malformed Phase leaves a bounded inspectable partial draft without review authority', async () => {
+    let calls = 0, completes = 0;
+    const result = await new RoadmapGenerationController(identity, 'Build phases', '{}', {
+        current: async () => true,
+        call: async () => { calls++; return calls === 1 ?
+            { done: false, phase: phase(1), usage: { totalTokens: 1 } } :
+            { done: false, invalidReason: 'Missing Gate', usage: { totalTokens: 1 } }; },
+        stage: { validate: async () => true, stage: async item => item.title,
+            complete: async () => { completes++; return true; } }
+    }, limits).run();
+    assert.equal(result.state, 'incomplete');
+    assert.equal(result.phases, 1);
+    assert.equal(result.calls, 3);
+    assert.equal(result.metrics.retries, 1);
+    assert.equal(result.scopeLedger.staged[0].gates[0].criteria[0], 'Observed');
+    assert.equal(completes, 0);
+});
+
+test('a fresh command revalidates a partial and can finish at the exact Phase ceiling', async () => {
+    const staged: string[] = [];
+    const calls: number[] = [];
+    const constrained = { ...limits, maxPhases: 2 };
+    const result = await new RoadmapGenerationController(identity, 'Enemy spawn; base health', '{}', {
+        current: async () => true,
+        call: async input => { calls.push(input.phase); return input.phase === 2 ?
+            { done: false, phase: phase(2), usage: { totalTokens: 2 } } :
+            { done: true, usage: { totalTokens: 2 } }; },
+        stage: { validate: async () => true, stage: async item => {
+            staged.push(item.title); return item.title; }, complete: async () => true }
+    }, constrained, [phase(1)]).run();
+    assert.equal(result.state, 'review-ready');
+    assert.deepEqual(calls, [2, 3]);
+    assert.deepEqual(staged, ['Phase 1', 'Phase 2']);
+    assert.equal(result.calls, 2);
+    assert.equal(result.scopeLedger.candidateCoverage.length, 2);
+    assert.equal(result.scopeLedger.semanticCoverage, 'unverified');
 });

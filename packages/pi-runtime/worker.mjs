@@ -16,6 +16,7 @@ let isolatedDir;
 let workMode = false;
 let chatToolsMode = false;
 let roadmapToolsMode = false;
+let roadmapGenerationMode = false;
 let workRequestId;
 let nextToolId = 0;
 let activeRequest = false;
@@ -192,14 +193,32 @@ const ROADMAP_TOOLS = {
     done: Type.Optional(Type.Boolean()), actions: Type.Array(roadmapActionSchema, { minItems: 1, maxItems: 8 }) },
   roadmap_cancel: { version: Type.Literal(1) }
 };
+const ROADMAP_GENERATION_TOOLS = {
+  roadmap_finish: { version: Type.Literal(1),
+    unresolved: Type.Array(Type.String({ minLength: 1, maxLength: 300 }), { maxItems: 16 }) },
+  roadmap_phase: { version: Type.Literal(1), phase: Type.Integer({ minimum: 1, maximum: 12 }),
+    title: Type.String({ minLength: 1, maxLength: 2048 }),
+    objective: Type.String({ minLength: 1, maxLength: 2048 }),
+    gates: Type.Array(Type.Object({
+      title: Type.String({ minLength: 1, maxLength: 2048 }),
+      purpose: Type.String({ minLength: 1, maxLength: 2048 }),
+      criteria: Type.Array(Type.Object({
+        title: Type.String({ minLength: 1, maxLength: 2048 }),
+        expectedResult: Type.String({ minLength: 1, maxLength: 2048 })
+      }, { additionalProperties: false }), { minItems: 1, maxItems: 12 })
+    }, { additionalProperties: false }), { minItems: 1, maxItems: 12 }) }
+};
 function chatTools() {
-  return Object.entries(roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
+  return Object.entries(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
+    roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
       name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. For later pages pass nextOffset as offset and sourceHash as expectedSourceHash. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
       name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Read before staging; Dope retains source and revision preconditions.' :
+      name === 'roadmap_phase' ? 'Submit exactly the requested next Phase with nested Gates and observable Criteria. Dope validates and stages it after this model call. This tool cannot apply a Roadmap.' :
+      name === 'roadmap_finish' ? 'Signal that no further Phase is proposed, listing unresolved or uncertain requirements. Dope checks the staged draft before review.' :
       name === 'roadmap_stage' ? 'Stage typed Roadmap actions in batches of 1-8 (48 total) after roadmap_read. Dope supplies trusted source and revision preconditions; do not include them. Start expectedStage at 1 and increment per accepted batch. Use new: aliases for created IDs across batches. Gate designations are G1, G2, etc. within each Phase, and every created Gate needs an observable Criterion. Set done true only on the final batch; full requires Gates and Criteria, phase-only is for an intentional Phase draft. This never applies canonical state.' :
       name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
@@ -326,6 +345,7 @@ async function dispose() {
   workMode = false;
   chatToolsMode = false;
   roadmapToolsMode = false;
+  roadmapGenerationMode = false;
   for (const pending of pendingTools.values()) pending.reject(new Error('Pi session closed'));
   pendingTools.clear();
   session?.dispose();
@@ -377,7 +397,9 @@ export async function dispatch(message) {
         workMode = message.mode === 'work';
         chatToolsMode = message.mode === 'chat-tools';
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
-        const chatToolNames = Object.keys(roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS);
+        roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;
+        const chatToolNames = Object.keys(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
+          roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           thinkingLevel,
