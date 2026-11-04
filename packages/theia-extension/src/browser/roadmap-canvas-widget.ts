@@ -25,6 +25,7 @@ import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePha
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { roadmapHistoryTarget } from './roadmap-history-navigation';
+import { acceptsLiveRoadmapStage } from './roadmap-live-stage';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
 import { ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode,
@@ -1029,16 +1030,19 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }
         const snapshot = event.snapshot;
         const index = this.inspector.gateIndex;
-        if (!index || snapshot.chatId !== event.chatId || snapshot.turnId !== event.messageId ||
-            this.endedStages.get(event.chatId) === event.messageId ||
-            snapshot.projectId !== index.projectId || snapshot.revision !== index.revision ||
-            snapshot.sourceHash !== (index.linkedDocument?.sourceHash ?? null) ||
-            snapshot.expiresAt <= Date.now() || this.chatProposal ||
-            this.liveStage && (this.liveStage.snapshot.chatId !== snapshot.chatId ||
-                this.liveStage.snapshot.turnId !== snapshot.turnId ||
-                this.liveStage.snapshot.proposalId !== snapshot.proposalId ||
-                snapshot.sequence <= this.liveStage.snapshot.sequence) ||
-            this.pendingStage && snapshot.sequence <= this.pendingStage.snapshot.sequence) return;
+        if (!index || this.chatProposal || event.generation &&
+            (event.generation.proposalId !== snapshot.proposalId ||
+                event.generation.seq !== snapshot.sequence ||
+                event.generation.projectionRevision !== snapshot.revision ||
+                event.generation.counts.phases !== snapshot.counts.phases ||
+                event.generation.counts.gates !== snapshot.counts.gates ||
+                event.generation.counts.criteria !== snapshot.counts.criteria ||
+                event.generation.status !== (snapshot.complete ? 'ready' : 'generating')) ||
+            !acceptsLiveRoadmapStage(snapshot, event,
+            { projectId: index.projectId, revision: index.revision,
+                sourceHash: index.linkedDocument?.sourceHash ?? null },
+            this.liveStage?.snapshot, this.pendingStage?.snapshot,
+            this.endedStages.get(event.chatId))) return;
         this.pendingStage = { uri, snapshot };
         if (!this.stageFrame) this.stageFrame = requestAnimationFrame(() => {
             this.stageFrame = 0;
@@ -2316,7 +2320,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             };
         });
         for (const change of changes.filter(item => item.action === 'create' && item.after?.kind === 'phase')) {
-            const farthest = Math.max(64, ...nodes.map(node => node.position.x));
+            const farthest = nodes.length ? Math.max(...nodes.map(node => node.position.x)) : -496;
             nodes.push({ id: `proposal:${change.id}`, type: 'proposalPhase',
                 position: { x: farthest + 560, y: 64 },
                 data: { change, children: changes.filter(child => child.id !== change.id &&

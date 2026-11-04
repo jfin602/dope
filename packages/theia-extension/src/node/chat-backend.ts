@@ -32,6 +32,7 @@ import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadm
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import { verifiedPublicationFile } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import { RoadmapNativeStageOwner } from './roadmap-native-stage';
+import { RoadmapGenerationNativeStage } from './roadmap-generation-native-stage';
 import { typedRoadmapCounts } from './roadmap-typed-stage';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
@@ -370,7 +371,10 @@ export class ChatBackend implements ChatService {
         const root = this.active(projectHandle);
         if (!this.nativeStages || this.leases.get(chatId)?.root !== root ||
             this.leases.get(chatId)?.token !== leaseToken ||
-            this.turns.get(chatId)?.token !== leaseToken || this.turns.get(chatId)?.abort.signal.aborted)
+            !(this.turns.get(chatId)?.token === leaseToken &&
+                !this.turns.get(chatId)?.abort.signal.aborted ||
+                this.generationControllers.get(chatId)?.token === leaseToken &&
+                this.generationControllers.get(chatId)?.controller.identity.turnId === turnId))
             return undefined;
         const stage = this.nativeStages.get(chatId);
         if (!stage || stage.context.root !== root || stage.context.turnId !== turnId ||
@@ -939,11 +943,13 @@ export class ChatBackend implements ChatService {
 
     /** Only the fresh top-level Chat command parser calls this entry. P3 supplies native phase staging. */
     private async runGenerationCommand(root: string, request: ChatTurnRequest, scope: string): Promise<ChatTurnResult> {
-        if (!this.roadmapStore || !this.models || this.turns.has(request.chatId) ||
+        if (!this.roadmapStore || !this.nativeStages || !this.models || this.turns.has(request.chatId) ||
             this.generationControllers.has(request.chatId) || this.generationPreparing.has(request.chatId) ||
             this.leases.get(request.chatId)?.root !== root ||
             this.leases.get(request.chatId)?.token !== request.leaseToken)
             throw new Error('Roadmap generation is unavailable until the new controller is ready');
+        if (this.nativeStages.get(request.chatId) || this.proposals.has(request.chatId))
+            throw new Error('Review or dismiss the existing Roadmap proposal before generating another');
         this.generationPreparing.add(request.chatId);
         try { return await this.prepareGenerationCommand(root, request, scope); }
         finally { this.generationPreparing.delete(request.chatId); }
@@ -976,6 +982,7 @@ export class ChatBackend implements ChatService {
         const context = JSON.stringify({ projectId: index.projectId, revision: index.revision,
             sourceHash, indexHash, phases: index.phases.slice(-12).map(phase => ({ id: phase.id,
                 title: phase.title.slice(0, 160) })), gateCount: index.gates.length });
+        let nativeAdapter: RoadmapGenerationNativeStage;
         const controller = new RoadmapGenerationController(identity, scope, context, {
             current: async bound => {
                 if (this.disposed || this.root !== bound.root || this.handle !== request.projectHandle ||
@@ -996,8 +1003,42 @@ export class ChatBackend implements ChatService {
                     next.revision === bound.revision && (next.linkedDocument?.sourceHash ?? null) === bound.sourceHash &&
                     await this.roadmapStore!.gateIndexHash(root) === bound.indexHash;
             },
-            call: async () => { throw new Error('Native phase operations are unavailable'); }
+            call: async () => { throw new Error('Native phase operations are unavailable'); },
+            stage: {
+                validate: async (phase, bound, signal) => nativeAdapter.validate(phase, bound, signal),
+                stage: (phase, bound, signal) => nativeAdapter.stage(phase, bound, signal),
+                complete: (bound, signal) => nativeAdapter.complete(bound, signal)
+            },
+            onEvent: event => {
+                if (!['incomplete', 'failed', 'cancelled', 'stale'].includes(event.state) ||
+                    this.generationControllers.get(request.chatId)?.controller !== controller) return;
+                this.nativeStages?.forget(request.chatId);
+                try { this.client.notifyChatEvent({ projectHandle: request.projectHandle,
+                    kind: 'roadmap-stage', chatId: request.chatId, messageId: controller.identity.turnId,
+                    snapshot: null, reason: event.state === 'cancelled' ? 'cancelled' :
+                        event.state === 'stale' ? 'stale' : 'failed' }); }
+                catch { /* The validated stage owner does not depend on a UI listener. */ }
+            }
         });
+        nativeAdapter = new RoadmapGenerationNativeStage(this.nativeStages!, request.leaseToken,
+            controller.identity, update => {
+                if (this.generationControllers.get(request.chatId)?.controller !== controller ||
+                    this.leases.get(request.chatId)?.token !== request.leaseToken ||
+                    this.root !== root || this.handle !== request.projectHandle ||
+                    update.generationId !== controller.identity.generationId ||
+                    update.proposalId !== update.snapshot.proposalId ||
+                    update.seq !== update.snapshot.sequence ||
+                    update.projectionRevision !== controller.identity.revision ||
+                    update.snapshot.projectId !== controller.identity.projectId ||
+                    update.snapshot.turnId !== controller.identity.turnId ||
+                    update.snapshot.sourceHash !== controller.identity.sourceHash) return;
+                this.client.notifyChatEvent({ projectHandle: request.projectHandle,
+                    kind: 'roadmap-stage', chatId: request.chatId,
+                    messageId: controller.identity.turnId, snapshot: update.snapshot,
+                    generation: { generationId: update.generationId, proposalId: update.proposalId,
+                        seq: update.seq, status: update.status, counts: update.counts,
+                        projectionRevision: update.projectionRevision } });
+            });
         if (this.disposed || this.root !== root || this.leases.get(request.chatId)?.token !== request.leaseToken)
             throw new Error('Roadmap generation command lost its Chat owner');
         if (this.pendingCancel.get(request.chatId) === request.leaseToken) {

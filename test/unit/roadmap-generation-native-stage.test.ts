@@ -3,9 +3,13 @@ import test from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import * as React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapNativeStageOwner } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
 import { RoadmapGenerationNativeStage } from '../../packages/theia-extension/lib/node/roadmap-generation-native-stage.js';
+import { ProposedPhaseNode } from '../../packages/theia-extension/lib/browser/roadmap-proposal-cards.js';
+import type { GenerationStageUpdate } from '../../packages/theia-extension/src/node/roadmap-generation-native-stage';
 import type { GenerationIdentity, GenerationPhase } from '../../packages/theia-extension/src/node/roadmap-generation-controller';
 
 test('three serial Phases stage nine Gates and Criteria under one proposal without canonical writes', async () => {
@@ -18,7 +22,14 @@ test('three serial Phases stage nine Gates and Criteria under one proposal witho
             chatId: 'chat', turnId: 'turn', ownerId: before.projectId,
             model: { connectionId: 'local', modelId: 'q4', providerId: 'local',
                 contextWindowTokens: 8192, reasoningControls: {} }, origin: 'trusted-user-chat' };
-        const adapter = new RoadmapGenerationNativeStage(owner, 'lease', identity);
+        const updates: GenerationStageUpdate[] = [];
+        let releaseSlowConsumer!: () => void;
+        const slowConsumer = new Promise<void>(resolve => { releaseSlowConsumer = resolve; });
+        const adapter = new RoadmapGenerationNativeStage(owner, 'lease', identity, update => {
+            updates.push(update);
+            // A mounted UI can be arbitrarily slow; it is never a stage barrier.
+            return slowConsumer;
+        });
         const signal = new AbortController().signal;
         let proposalId = '';
         for (let n = 1; n <= 3; n++) {
@@ -40,6 +51,41 @@ test('three serial Phases stage nine Gates and Criteria under one proposal witho
             assert.equal(await store.gateIndexHash(root), hash);
         }
         assert.equal(await adapter.complete(identity, signal), true);
+        await new Promise<void>(resolve => queueMicrotask(resolve));
+        assert.equal(updates.length, 4);
+        assert.deepEqual(updates.map(update => update.seq), [1, 2, 3, 4]);
+        assert.deepEqual(updates.map(update => update.status),
+            ['generating', 'generating', 'generating', 'ready']);
+        assert.ok(updates.every(update => update.generationId === identity.generationId &&
+            update.proposalId === proposalId && update.projectionRevision === 0));
+        assert.deepEqual(updates.map(update => update.counts.phases), [1, 2, 3, 3]);
+        for (const [at, update] of updates.entries()) {
+            const entities = update.snapshot.preview.entities;
+            const phases = entities.filter(item => item.after?.kind === 'phase');
+            assert.equal(phases.length,
+                Math.min(at + 1, 3));
+            assert.equal(entities.filter(item => item.after?.kind === 'gate').length,
+                Math.min(at + 1, 3) * 3);
+            assert.equal(entities.filter(item => item.after?.kind === 'criterion').length,
+                Math.min(at + 1, 3) * 3);
+            const html = phases.map(phase => {
+                const gates = entities.filter(item => item.after?.kind === 'gate' &&
+                    item.after.parentId === phase.id);
+                const ids = new Set(gates.map(item => item.id));
+                const children = entities.filter(item => gates.includes(item) ||
+                    item.after?.kind === 'criterion' && !!item.after.parentId && ids.has(item.after.parentId));
+                return renderToStaticMarkup(React.createElement(ProposedPhaseNode,
+                    { data: { change: phase, children, source: false,
+                        save: async () => undefined } }));
+            }).join('');
+            for (let n = 1; n <= Math.min(at + 1, 3); n++) {
+                assert.match(html, new RegExp(`Phase ${n}`));
+                assert.match(html, new RegExp(`Gate ${n}\\.1`));
+                assert.match(html, new RegExp(`Observation ${n}\\.1`));
+            }
+            assert.doesNotMatch(html, /Planned|GREEN|accepted Phase/);
+        }
+        releaseSlowConsumer();
         const snapshot = await adapter.snapshot();
         assert.equal(snapshot?.proposalId, proposalId);
         assert.equal(snapshot?.complete, true);

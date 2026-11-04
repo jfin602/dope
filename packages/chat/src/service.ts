@@ -106,7 +106,10 @@ export type ChatEvent =
     | { projectHandle: string; kind: 'planning-progress'; chatId: ChatId; messageId: string;
         stage: 'waiting' | 'plan-locked' | 'converting' | 'validating' | 'checking-owner' | 'generating-draft' | 'validating-draft' | 'preparing-draft' | 'draft-ready' | 'cancelled' | 'failed' }
     | { projectHandle: string; kind: 'roadmap-stage'; chatId: ChatId; messageId: string;
-        snapshot: ChatRoadmapStageSnapshot | null; reason?: 'cancelled' | 'failed' | 'stale' }
+        snapshot: ChatRoadmapStageSnapshot | null; reason?: 'cancelled' | 'failed' | 'stale';
+        generation?: { generationId: string; proposalId: string; seq: number;
+            status: 'generating' | 'ready' | 'incomplete' | 'failed' | 'cancelled' | 'stale';
+            counts: ChatRoadmapStageSnapshot['counts']; projectionRevision: number } }
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
     | { projectHandle: string; revision: number; kind: 'assistant-delta'; chatId: ChatId;
         messageId: string; executionId: string; sequence: number; delta: string }

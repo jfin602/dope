@@ -337,7 +337,8 @@ export class RoadmapNativeStageOwner {
         if (this.stages.get(context.chatId) !== stage || stage.done || stage.operations.length !== operationCount)
             throw new Error('ROADMAP_STAGE_CHANGED');
         stage.done = true;
-        stage.snapshot = { ...stage.snapshot, complete: true };
+        // Final validation is a new projection revision even though it adds no operation.
+        stage.snapshot = { ...stage.snapshot, sequence: stage.snapshot.sequence + 1, complete: true };
         return structuredClone(stage.snapshot);
     }
 

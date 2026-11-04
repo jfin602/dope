@@ -1,12 +1,28 @@
 import type { GenerationIdentity, GenerationPhase } from './roadmap-generation-controller';
 import { RoadmapNativeStageOwner, type NativeStageSnapshot } from './roadmap-native-stage';
 
+/** Render notification only. The native stage owner retains the authoritative snapshot. */
+export type GenerationStageUpdate = Readonly<{ generationId: string; proposalId: string;
+    seq: number; status: 'generating' | 'ready'; counts: NativeStageSnapshot['counts'];
+    projectionRevision: number; snapshot: NativeStageSnapshot }>;
+
 /** Translates one bounded controller Phase into the existing checked proposal owner. */
 export class RoadmapGenerationNativeStage {
     private nextStage = 1;
     private readonly names = new Set<string>();
     constructor(private readonly owner: RoadmapNativeStageOwner,
-        private readonly lease: string, private readonly identity: GenerationIdentity) {}
+        private readonly lease: string, private readonly identity: GenerationIdentity,
+        private readonly onProjection?: (update: GenerationStageUpdate) => void) {}
+
+    private notify(snapshot: NativeStageSnapshot): void {
+        if (!this.onProjection) return;
+        const update: GenerationStageUpdate = { generationId: this.identity.generationId,
+            proposalId: snapshot.proposalId, seq: snapshot.sequence,
+            status: snapshot.complete ? 'ready' : 'generating', counts: snapshot.counts,
+            projectionRevision: snapshot.revision, snapshot: structuredClone(snapshot) };
+        queueMicrotask(() => { try { void Promise.resolve(this.onProjection?.(update)).catch(() => undefined); }
+            catch { /* A UI observer cannot change the validated stage. */ } });
+    }
 
     private context() { return { root: this.identity.root, projectId: this.identity.projectId,
         chatId: this.identity.chatId, turnId: this.identity.turnId, lease: this.lease }; }
@@ -57,6 +73,10 @@ export class RoadmapGenerationNativeStage {
             if (signal.aborted || result.acceptedOperationIds.length !== Math.min(8, actions.length - offset) ||
                 result.nextStage !== this.nextStage + 1 || proposalId && result.proposalId !== proposalId)
                 throw new Error('ROADMAP_GENERATION_STAGE_CHANGED');
+            const snapshot = this.owner.get(identity.chatId)?.snapshot;
+            if (!snapshot || snapshot.proposalId !== result.proposalId ||
+                snapshot.sequence !== this.nextStage) throw new Error('ROADMAP_GENERATION_SNAPSHOT_CHANGED');
+            this.notify(snapshot);
             this.nextStage++;
         }
         this.names.add(phase.title.trim().toLowerCase());
@@ -66,6 +86,9 @@ export class RoadmapGenerationNativeStage {
     async complete(identity: GenerationIdentity, signal: AbortSignal): Promise<boolean> {
         if (signal.aborted || identity !== this.identity) return false;
         await this.owner.finish(this.context(), identity.revision, identity.sourceHash);
+        const snapshot = this.owner.get(identity.chatId)?.snapshot;
+        if (!snapshot?.complete) throw new Error('ROADMAP_GENERATION_FINAL_SNAPSHOT_MISSING');
+        this.notify(snapshot);
         return true;
     }
 

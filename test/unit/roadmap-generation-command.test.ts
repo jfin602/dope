@@ -66,7 +66,7 @@ test('fresh generation command and empty body fail before inference or Roadmap w
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('authorized command reaches the new controller but no inference or canonical write before P3', async () => {
+test('authorized command reaches native stage wiring but no inference or canonical write before model integration', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-gen-controller-entry-'));
     const repository = new ChatRepository(), store = new RoadmapStore();
     let inference = 0;
@@ -86,7 +86,7 @@ test('authorized command reaches the new controller but no inference or canonica
         const beforeRoadmap = JSON.stringify(await store.read(root));
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/gen-roadmap Build\nthree phases' }), /native phase staging is ready \(incomplete\)/);
+            content: '/gen-roadmap Build\nthree phases' }), /native phase staging is ready \(failed\)/);
         assert.equal(inference, 0);
         assert.equal(JSON.stringify(await repository.read(root)), beforeChat);
         assert.equal(JSON.stringify(await store.read(root)), beforeRoadmap);
