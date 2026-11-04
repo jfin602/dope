@@ -476,7 +476,8 @@ export class RoadmapStore {
         if (!bytes) throw new Error('Roadmap is not initialized');
         const canonical = parseRoadmapIndex(JSON.parse(bytes.toString('utf8')), root);
         const current = overlayAutoSync(canonical, await readAutoSyncJournal(root));
-        if (current.projectId !== expectedProjectId || fromRevision >= current.revision)
+        if (current.projectId !== expectedProjectId || fromRevision >= current.revision ||
+            fromRevision <= (current.retiredBeforeRevision ?? 0))
             throw new Error('Foreign or current Roadmap revision');
         const record = await this.archive.fetch(root, bytes, expectedProjectId, fromRevision);
         const historical = parseRoadmapIndex(JSON.parse(record.snapshot), root);
@@ -528,6 +529,7 @@ export class RoadmapStore {
                 return { next: current, wrote: false };
             if (!issued || JSON.stringify(issued) !== JSON.stringify(preview) || preview.expiresAt < Date.now() ||
                 preview.projectRoot !== root || preview.projectId !== current.projectId ||
+                preview.fromRevision <= (current.retiredBeforeRevision ?? 0) ||
                 preview.previousHeadRevision !== current.revision || preview.headHash !== receipt.hash)
                 throw new Error('Stale or unissued Roadmap restore approval');
             if (current.pendingPublication || current.linkedDocument &&
@@ -569,6 +571,10 @@ export class RoadmapStore {
         const { directory, file } = await this.paths(root);
         if (next.schemaVersion !== 2 || expectedHash === undefined)
             throw new Error('Checkpoint Roadmap writes are retired; review and reimport into schema 2');
+        const currentBytes = await this.canonicalBytes(root);
+        const current = currentBytes ? parseRoadmapIndex(JSON.parse(currentBytes.toString('utf8')), root) : undefined;
+        if (current?.projectId === next.projectId && current.retiredBeforeRevision !== undefined)
+            next.retiredBeforeRevision = Math.max(next.retiredBeforeRevision ?? 0, current.retiredBeforeRevision);
         parseRoadmapIndex(next, root);
         const bytes = Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
         if (bytes.length > MAX_BYTES) throw new Error('Roadmap index size limit exceeded');
@@ -579,7 +585,6 @@ export class RoadmapStore {
             try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
             const currentHash = await this.indexHash(file);
             if (currentHash !== expectedHash) throw new Error('Roadmap index changed before publication; review and retry');
-            const currentBytes = await this.canonicalBytes(root);
             if ((currentBytes ? createHash('sha256').update(currentBytes).digest('hex') : null) !== expectedHash)
                 throw new Error('Roadmap index changed before archive preparation; review and retry');
             await this.archive.prepare(root, currentBytes, bytes, operationIds);
@@ -603,6 +608,39 @@ export class RoadmapStore {
     /** Exact canonical bytes used by a reviewed native subset. */
     async gateIndexHash(root: string): Promise<string | null> {
         return this.indexHash((await this.paths(root)).file);
+    }
+
+    /** Revisioned lifecycle change. External Markdown and immutable archive records are never removed. */
+    async manageGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
+        action: 'unlink' | 'empty'): Promise<RoadmapGateIndex> {
+        if (action !== 'unlink' && action !== 'empty') throw new Error('Invalid Roadmap lifecycle action');
+        const next = await this.locked(root, async () => {
+            const { file } = await this.paths(root);
+            const hash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (current.revision !== expectedRevision || current.projectId !== expectedProjectId)
+                throw new Error('Stale Roadmap lifecycle approval');
+            if (current.pendingPublication || current.linkedDocument?.syncIntent ||
+                current.linkedDocument?.pending || autoSyncInFlight.has(root))
+                throw new Error('Pending Roadmap source operation requires recovery before lifecycle change');
+            if (action === 'unlink' && !current.linkedDocument)
+                throw new Error('Roadmap has no linked Markdown document');
+            const result: RoadmapGateIndex = current.revision === 0 ?
+                { schemaVersion: 2, projectId: randomUUID(), projectRoot: root, revision: 1,
+                    phases: [], gates: [], corrections: [] } : { ...current, revision: current.revision + 1 };
+            delete result.linkedDocument;
+            if (action === 'empty') {
+                result.phases = []; result.gates = []; result.corrections = [];
+                result.retiredBeforeRevision = current.revision;
+            }
+            parseRoadmapIndex(result, root);
+            await this.replace(root, result, hash, [`roadmap-${action}:${current.revision}`]);
+            const timer = autoSyncTimers.get(root);
+            if (timer) { clearTimeout(timer); autoSyncTimers.delete(root); }
+            return result;
+        });
+        this.publish({ root, projectId: next.projectId, revision: next.revision, changedIds: [] });
+        return next;
     }
 
     /** Persist one reviewed schema-2 revision without changing a linked Markdown source. */
@@ -741,7 +779,7 @@ export class RoadmapStore {
     /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
         operation: RoadmapGateMutation | RoadmapGateMutation[], previewOnly = false,
-        nativeBasis?: { indexHash: string | null; operationIds?: string[] }): Promise<RoadmapGateIndex> {
+        nativeBasis?: { indexHash: string | null; operationIds?: string[]; replace?: boolean }): Promise<RoadmapGateIndex> {
         const operations = Array.isArray(operation) ? operation : [operation];
         if (!revision(expectedRevision) || !id(expectedProjectId) || !operations.length ||
             operations.length > (previewOnly || nativeBasis ? 48 : 3) ||
@@ -754,6 +792,9 @@ export class RoadmapStore {
                 nativeBasis.indexHash !== expectedHash)) throw new Error('Stale native Roadmap index hash');
             const current = await this.read<RoadmapGateIndex>(root);
             if (current.pendingPublication) throw new Error('Pending Roadmap publication requires recovery');
+            if (nativeBasis?.replace && (current.linkedDocument?.syncIntent || current.linkedDocument?.pending ||
+                autoSyncInFlight.has(root)))
+                throw new Error('Pending linked Roadmap sync requires recovery before replacement');
             const initial = current.revision === 0 && current.projectId === 'uninitialized' &&
                 expectedHash === null && (previewOnly || nativeBasis !== undefined) &&
                 expectedProjectId !== 'uninitialized' && current.phases.length === 0 &&
@@ -766,7 +807,11 @@ export class RoadmapStore {
             if (!initial && (!current.revision || current.projectId !== expectedProjectId))
                 throw new Error('Roadmap identity changed; reattach');
             if (current.revision !== expectedRevision) throw new Error('Stale Roadmap revision');
-            const candidate = structuredClone(current);
+            const candidate: RoadmapGateIndex = nativeBasis?.replace ? {
+                schemaVersion: 2, projectId: initial ? expectedProjectId : current.projectId,
+                projectRoot: root, revision: current.revision, phases: [], gates: [], corrections: [],
+                retiredBeforeRevision: current.revision
+            } : structuredClone(current);
             if (initial) candidate.projectId = expectedProjectId;
             const owned = (_entityId: string): void => { /* The checked automatic writer owns linked definitions. */ };
             const unique = (entityId: string): void => {

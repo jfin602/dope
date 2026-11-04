@@ -20,6 +20,8 @@ export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): vo
 
 /** Roadmap reads and a thin RPC bridge to Dope-owned ProjectPlanningActions. */
 export interface RoadmapService {
+    manageRoadmap(projectUri: string, expectedRevision: number, expectedProjectId: string,
+        action: 'unlink' | 'empty'): Promise<RoadmapGateIndex>;
     beginDraft(projectUri: string): Promise<{ handle: string; draft: GreenfieldDraft }>;
     recoverDrafts(projectUri: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string;
         plan?: ImplementationPlanDraft }[]>;

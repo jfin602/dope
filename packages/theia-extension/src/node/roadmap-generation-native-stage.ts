@@ -26,7 +26,8 @@ export class RoadmapGenerationNativeStage {
     }
 
     private context() { return { root: this.identity.root, projectId: this.identity.projectId,
-        chatId: this.identity.chatId, turnId: this.identity.turnId, lease: this.lease }; }
+        chatId: this.identity.chatId, turnId: this.identity.turnId, lease: this.lease,
+        generation: true as const }; }
 
     validate(phase: GenerationPhase, identity: GenerationIdentity, signal: AbortSignal): boolean {
         if (this.broken || signal.aborted || identity !== this.identity || !Number.isSafeInteger(phase.subcalls) ||

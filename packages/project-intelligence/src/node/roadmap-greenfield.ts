@@ -295,11 +295,13 @@ export class RoadmapGreenfield {
     async restore(root: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string }[]> {
         if ([...this.accepting].some(handle => this.drafts.get(handle)?.root === root))
             throw new Error('Greenfield draft acceptance in progress');
-        const owner = await this.store.read(root);
+        const owner = await this.store.read<RoadmapGateIndex>(root);
         const file = this.file(root);
-        if (file.drafts.some(item => !item.planOnly &&
-            (item.projectId !== owner.projectId || owner.revision || owner.linkedDocument || owner.pendingCreation)))
-            throw new Error('Stale greenfield draft owner');
+        // The canonical revision is authoritative after Delete/New or replacement. A
+        // crash between the owner write and draft cleanup cannot revive old drafts.
+        const retained = file.drafts.filter(item => item.projectId === owner.projectId &&
+            (item.planOnly ? (item.ownerRevision ?? 0) > (owner.retiredBeforeRevision ?? -1) :
+                owner.revision === 0 && !owner.linkedDocument && !owner.pendingPublication));
         for (const [handle, entry] of this.drafts) if (entry.root === root) {
             this.drafts.delete(handle);
             this.history.delete(handle);
@@ -307,20 +309,24 @@ export class RoadmapGreenfield {
             this.creationPreviews.delete(handle);
         }
         for (const [id, binding] of this.chats) if (binding.root === root) this.chats.delete(id);
-        for (const item of file.drafts) {
+        for (const item of retained) {
             this.drafts.set(item.handle, { root, projectId: item.projectId, value: copy(item.value),
                 ...(item.implementationPlan ? { implementationPlan: copy(item.implementationPlan) } : {}),
                 ...(item.planOnly ? { planOnly: true, ownerRevision: item.ownerRevision } : {}) });
             if (item.chatId) this.chats.set(item.chatId, { root, handle: item.handle });
         }
         this.generations.set(root, file.revision);
-        return file.drafts.filter(item => !item.planOnly).map(item => ({ handle: item.handle, draft: copy(item.value),
+        if (retained.length !== file.drafts.length) this.persist(root, retained);
+        return retained.filter(item => !item.planOnly).map(item => ({ handle: item.handle, draft: copy(item.value),
             ...(item.chatId ? { chatId: item.chatId } : {}) }));
     }
 
     async ensureRestored(root: string): Promise<void> {
         if (!this.generations.has(root)) await this.restore(root);
     }
+
+    /** Drop retired in-memory handles and reconcile the persisted draft file to the active owner. */
+    async retire(root: string): Promise<void> { await this.restore(root); }
 
     async list(root: string): Promise<{ handle: string; draft: GreenfieldDraft; chatId?: string;
         plan?: ImplementationPlanDraft }[]> {

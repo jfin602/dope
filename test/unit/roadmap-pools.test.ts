@@ -14,7 +14,7 @@ test('legacy pool controls stay keyboard accessible but are hidden for schema-2 
     assert.match(widget, /unlink\.type = 'button'/);
     assert.match(widget, /service\.preview\(request\)/);
     assert.match(widget, /service\.apply\(request, preview\.token/);
-    assert.match(widget, /this\.stage\.append\(this\.contextBar, this\.path, this\.status, this\.strategicBar, this\.importEntry, this\.inspection, this\.phaseFocus, this\.poolButton, this\.pools\)/);
+    assert.match(widget, /this\.stage\.append\(this\.contextBar, this\.path, this\.status, this\.importEntry, this\.inspection, this\.phaseFocus, this\.poolButton, this\.pools\)/);
     assert.match(widget, /this\.poolButton\.hidden = !!this\.inspector\.gateIndex/);
     assert.match(widget, /if \(this\.inspector\.gateIndex\) \{\s*this\.poolOpen = false;\s*this\.pools\.hidden = true/);
     assert.match(widget, /this\.setPoolOpen\(false\)/);

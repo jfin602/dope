@@ -79,31 +79,36 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save }: 
     };
     const stop = (event: React.SyntheticEvent) => event.stopPropagation();
     return React.createElement('div', { className: 'dope-roadmap-inline-field nodrag nopan nowheel', onClick: stop,
-        onDoubleClick: stop, 'data-inline-field': `${kind}:${id}:${field}` },
-        editing && save ? React.createElement(React.Fragment, null,
-            React.createElement('label', null, label, multiline ?
-                React.createElement('textarea', { ref: input, value: draft, rows: 3, disabled: busy,
-                    onChange: event => setDraft(event.target.value), onKeyDown: event => {
-                        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); }
-                    } }) : React.createElement('input', { ref: input, value: draft, disabled: busy,
-                    onChange: event => setDraft(event.target.value), onKeyDown: event => {
-                        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); }
-                        if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); void confirm(); }
-                    } })),
-            React.createElement('span', { className: 'dope-roadmap-inline-actions' },
-                React.createElement('button', { type: 'button', disabled: busy, onClick: event => {
-                    event.preventDefault(); void confirm(); },
-                    'aria-label': `Save ${label}` }, multiline ? 'Save' : '✓'),
-                React.createElement('button', { type: 'button', disabled: busy, onClick: event => {
-                    event.preventDefault(); cancel(); } }, 'Cancel')),
-            error && React.createElement('small', { role: 'alert' }, error)) :
-            React.createElement(React.Fragment, null,
-                React.createElement('span', { className: field === 'title' ? 'dope-roadmap-inline-title' : undefined }, value),
-                save && React.createElement('button', { ref: pencil, type: 'button', className: 'dope-roadmap-pencil',
-                    title: `Edit ${label}`, 'aria-label': `Edit ${label}`, onClick: event => {
-                        event.preventDefault();
-                        setDraft(value); setError(undefined); setEditing(true);
-                    } }, React.createElement('span', { className: codicon('edit'), 'aria-hidden': true }))));
+        onDoubleClick: stop, 'data-inline-field': `${kind}:${id}:${field}`,
+        'data-field': field,
+        'data-editing': editing && !!save ? 'true' : undefined },
+        React.createElement('span', { className: `dope-roadmap-inline-value${field === 'title' ? ' dope-roadmap-inline-title' : ''}` }, value),
+        save && React.createElement('button', { ref: pencil, type: 'button', className: 'dope-roadmap-pencil',
+            title: `Edit ${label}`, 'aria-label': `Edit ${label}`, tabIndex: editing ? -1 : 0,
+            onClick: event => {
+                event.preventDefault();
+                setDraft(value); setError(undefined); setEditing(true);
+            } }, React.createElement('span', { className: codicon('edit'), 'aria-hidden': true })),
+        editing && save && React.createElement('span', { className: 'dope-roadmap-field-editor' },
+            multiline ? React.createElement('textarea', { ref: input, value: draft, rows: 1,
+                'aria-label': label, disabled: busy, onChange: event => setDraft(event.target.value),
+                onKeyDown: event => {
+                    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); }
+                } }) : React.createElement('input', { ref: input, value: draft, 'aria-label': label,
+                disabled: busy, onChange: event => setDraft(event.target.value), onKeyDown: event => {
+                    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); }
+                    if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); void confirm(); }
+                } }),
+            React.createElement('span', { className: 'dope-roadmap-field-editor-actions' },
+                React.createElement('button', { type: 'button', disabled: busy, title: `Save ${label}`,
+                    'aria-label': `Save ${label}`, onClick: event => {
+                        event.preventDefault(); void confirm(); } },
+                React.createElement('span', { className: codicon('check'), 'aria-hidden': true })),
+                React.createElement('button', { type: 'button', disabled: busy, title: `Cancel ${label} edit`,
+                    'aria-label': `Cancel ${label} edit`, onClick: event => {
+                        event.preventDefault(); cancel(); } },
+                React.createElement('span', { className: codicon('close'), 'aria-hidden': true }))),
+            error && React.createElement('small', { role: 'alert' }, error)));
 }
 
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
@@ -315,6 +320,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly contextBar = document.createElement('section');
     private readonly structuralPanel = document.createElement('section');
     private readonly addPhase = document.createElement('button');
+    private readonly management = document.createElement('section');
+    private readonly managementStatus = document.createElement('p');
+    private readonly managementActions: HTMLButtonElement[] = [];
+    private readonly emptyNotice = document.createElement('p');
+    private managementMessage?: string;
     private contextPicker?: { uri: string; projectId: string; revision: number; sourceHash?: string;
         draftHandle?: string; draftRevision?: number;
         selected: Map<string, { kind: NonNullable<ChatContextSelection['elementKind']>; id: string; label: string }>;
@@ -715,7 +725,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.phaseButton.append(' Open Phase');
         this.phaseButton.setAttribute('aria-controls', 'dope-roadmap-phase-focus');
         this.phaseButton.onclick = () => this.openPhaseFocus();
-        icon(this.sourceButton, 'Roadmap Markdown and setup', 'file-text');
+        icon(this.sourceButton, 'Roadmap', 'map');
+        this.sourceButton.classList.add('dope-roadmap-source-button');
         this.sourceButton.append(this.sourceLabel);
         this.sourceLabel.setAttribute('aria-live', 'polite');
         this.sourceButton.setAttribute('aria-controls', 'dope-roadmap-source-panel');
@@ -724,6 +735,26 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.poolButton.append(' Ideas / Issues');
         this.poolButton.setAttribute('aria-controls', 'dope-roadmap-pool-panel');
         this.poolButton.onclick = () => this.setPoolOpen(!this.poolOpen);
+        this.management.className = 'dope-roadmap-management';
+        this.management.setAttribute('aria-label', 'Roadmap management');
+        const managementHeading = document.createElement('h3');
+        managementHeading.textContent = 'Manage Roadmap';
+        const managementButtons = document.createElement('div');
+        managementButtons.className = 'dope-roadmap-management-actions';
+        for (const [label, action] of [
+            ['New / Empty Roadmap', 'new'], ['Unlink Roadmap Markdown', 'unlink'],
+            ['Delete Roadmap', 'delete']
+        ] as const) {
+            const control = document.createElement('button');
+            control.type = 'button'; control.textContent = label;
+            control.setAttribute('aria-label', label);
+            control.onclick = () => void this.manageRoadmap(action);
+            this.managementActions.push(control);
+            managementButtons.append(control);
+        }
+        this.management.append(managementHeading, this.managementStatus, managementButtons);
+        this.emptyNotice.className = 'dope-roadmap-empty-notice';
+        this.emptyNotice.textContent = 'No Roadmap yet. Use New / Empty Roadmap to start with Add Phase, or enter /gen-roadmap in Chat.';
         this.toolbar.append(this.sourceButton, this.addPhase, this.details, this.mind, this.undoRevision, this.redoRevision,
             this.zoomIn, this.zoomOut, this.fitButton, this.arrangeButton,
             this.expandButton, this.collapseButton, this.focusButton, this.nextPromptsButton, this.phaseButton, this.detailLabel, this.reload);
@@ -748,7 +779,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.poolFilter.oninput = () => { this.poolQuery = this.poolFilter.value; this.renderPools(); };
         this.importEntry.className = 'dope-roadmap-import';
         this.importEntry.id = 'dope-roadmap-source-panel';
-        this.importEntry.setAttribute('aria-label', 'Linked Markdown');
+        this.importEntry.setAttribute('aria-label', 'Roadmap management and Markdown');
         this.importEntry.tabIndex = -1;
         this.importEntry.addEventListener('focusin', event => {
             const target = event.target;
@@ -820,13 +851,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.phaseFocus.append(phaseHeader, this.phaseFeedback, this.phaseContent);
         this.setPhaseView('compact');
         this.sourceHeader.className = 'dope-roadmap-source-header';
-        this.sourceSummary.textContent = 'Linked Markdown';
+        this.sourceSummary.textContent = 'Roadmap';
         for (const [button, label, action] of [
-            [this.sourceExpand, 'Expand Linked Markdown', () => this.setSourceView('expanded')],
-            [this.sourceCompact, 'Compact Linked Markdown', () => this.setSourceView('compact')],
-            [this.sourceMinimize, 'Minimize Linked Markdown', () => this.setSourceView('minimized')],
-            [this.sourceClose, 'Close Linked Markdown', () => this.setSourceOpen(false)],
-        ] as const) { button.type = 'button'; button.textContent = label.replace(' Linked Markdown', '');
+            [this.sourceExpand, 'Expand Roadmap panel', () => this.setSourceView('expanded')],
+            [this.sourceCompact, 'Compact Roadmap panel', () => this.setSourceView('compact')],
+            [this.sourceMinimize, 'Minimize Roadmap panel', () => this.setSourceView('minimized')],
+            [this.sourceClose, 'Close Roadmap panel', () => this.setSourceOpen(false)],
+        ] as const) { button.type = 'button'; button.textContent = label.split(' ')[0];
             button.setAttribute('aria-label', label); button.onclick = action; }
         this.sourceHeader.append(this.sourceSummary, this.sourceExpand, this.sourceCompact, this.sourceMinimize, this.sourceClose);
         this.setSourceView('compact');
@@ -878,7 +909,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.structuralPanel.hidden = true;
         this.stage.append(this.contextBar, this.path, this.status, this.importEntry, this.inspection, this.phaseFocus, this.poolButton, this.pools);
         this.stage.append(this.structuralPanel);
-        this.stage.append(this.stageNotice, this.proposalBar, this.historyStrip);
+        this.stage.append(this.stageNotice, this.emptyNotice, this.proposalBar, this.historyStrip);
         this.node.append(this.toolbar, this.stage);
         this.stageResize.observe(this.stage);
         this.setSourceOpen(false);
@@ -1317,7 +1348,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.reviewedPlan.plan.revision !== reviewed.plan.revision || index.revision !== 0)
                 this.reviewedPlan = reviewed ? { uri: projectUri, projectId: index.projectId,
                     handle: reviewed.handle, plan: reviewed.plan } : undefined;
-            if (switched) this.sourceError = undefined;
+            if (switched) { this.sourceError = undefined; this.managementMessage = undefined; }
             if (this.relink && (this.relink.uri !== projectUri || this.relink.preview?.revision !== index.revision))
                 this.relink = undefined;
             if (this.createState && (this.createState.uri !== projectUri || this.createState.projectId !== index.projectId || index.revision !== 0)) {
@@ -1954,6 +1985,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private render(): void {
         const projection = this.projection;
         if (!projection) return;
+        const current = this.inspector.gateIndex;
+        this.emptyNotice.hidden = !!this.history || !!projection.nodes.length ||
+            !!this.liveStage || !!this.chatProposal;
         if (this.history && !this.structuralPanel.hidden) {
             ++this.structuralSerial;
             void this.clearStructuralReview();
@@ -1993,8 +2027,40 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.renderImportEntry();
         // The status region is reserved for actionable diagnostics. The linked-source
         // toolbar and Phase/Gate cards already carry publication and qualification state.
-        this.status.textContent = this.sourceError ?? (projection.diagnostics.length ?
+        this.status.textContent = this.managementMessage ?? this.sourceError ?? (projection.diagnostics.length ?
             `${projection.diagnostics.length} unresolved Roadmap reference(s). Inspect affected cards.` : '');
+    }
+
+    private async manageRoadmap(mode: 'new' | 'unlink' | 'delete'): Promise<void> {
+        const uri = this.projectUri, index = this.inspector.gateIndex;
+        if (!uri || !index || this.mutating || this.history) return;
+        const linked = index.linkedDocument?.path;
+        if (mode === 'unlink' && !linked) return;
+        const message = mode === 'unlink' ?
+            `Unlink this Roadmap from ${linked}? The Markdown file and Roadmap will be preserved.` :
+            mode === 'delete' ?
+                `Delete the active Roadmap from this project? Its Phases, Gates, and active drafts will be removed. ` +
+                `Chat history and ${linked ?? 'any Markdown files'} will be preserved.` :
+                `Start a new empty Roadmap? The current Phases, Gates, and active drafts will be retired. ` +
+                `Chat history and ${linked ?? 'any Markdown files'} will be preserved.`;
+        if (!window.confirm(message)) return;
+        this.mutating = true;
+        try {
+            if (this.projectUri !== uri || this.inspector.gateIndex?.revision !== index.revision ||
+                this.inspector.gateIndex?.projectId !== index.projectId)
+                throw new Error('Project or Roadmap changed; review the action again');
+            await this.service.manageRoadmap(uri, index.revision, index.projectId,
+                mode === 'unlink' ? 'unlink' : 'empty');
+            if (this.projectUri !== uri || this.isDisposed) return;
+            this.liveStage = undefined; this.pendingStage = undefined; this.chatProposal = undefined;
+            this.createState = undefined; this.reviewedPlan = undefined; this.selectedId = undefined;
+            this.proposalReview = undefined; this.proposalSelection.clear();
+            await this.refresh();
+            this.managementMessage = mode === 'unlink' ? 'Roadmap unlinked. Markdown was preserved.' :
+                'The active Roadmap is empty. Markdown and Chat history were preserved.';
+        } catch (error) { if (this.projectUri === uri)
+            this.managementMessage = `Roadmap action needs review: ${String(error)}`; }
+        finally { this.mutating = false; if (!this.isDisposed) this.render(); }
     }
 
     private readonly saveProposedField: ProposedFieldSave = async (entityId, field, value) => {
@@ -2066,7 +2132,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         if (!proposal || !operations.length) return;
         const title = document.createElement('strong');
         const selected = operations.filter(item => this.proposalSelection.has(item.id)).map(item => item.id);
-        title.textContent = `Proposed Roadmap · ${selected.length} selected of ${operations.length} remaining · not applied`;
+        const replacement = proposal.action.type === 'native-generation-replacement';
+        title.textContent = replacement ? `Proposed replacement · ${operations.length} operations · not applied` :
+            `Proposed Roadmap · ${selected.length} selected of ${operations.length} remaining · not applied`;
         this.proposalBar.append(title);
         const button = (label: string, icon: string, ids: string[], decision: 'apply' | 'reject') => {
             const control = document.createElement('button'); control.type = 'button';
@@ -2081,11 +2149,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
         };
         const all = operations.map(item => item.id);
         const actions = document.createElement('div'); actions.className = 'dope-roadmap-native-actions';
-        actions.append(button(`Apply selected (${selected.length}) — review`, '✓', selected, 'apply'),
+        actions.append(button(replacement ? `Replace with selected (${selected.length}) — review` :
+            `Apply selected (${selected.length}) — review`, '✓', selected, 'apply'),
             button(`Reject selected (${selected.length}) — review`, '×', selected, 'reject'));
         const divider = document.createElement('span'); divider.className = 'dope-roadmap-review-divider';
         divider.setAttribute('aria-hidden', 'true'); actions.append(divider);
-        actions.append(button(`Apply all remaining (${all.length}) — review`, '✓✓', all, 'apply'),
+        actions.append(button(replacement ? 'Replace current Roadmap — review' :
+            `Apply all remaining (${all.length}) — review`, '✓✓', all, 'apply'),
             button(`Reject all remaining (${all.length}) — review`, '××', all, 'reject'));
         if (this.stage.dataset.reviewSmallZoom === 'true') {
             const zoom = document.createElement('button'); zoom.type = 'button';
@@ -2236,6 +2306,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 `${edge.label} ${titles.get(edge.from) ?? edge.from}`]);
         const proposal = this.history ? undefined : this.chatProposal?.proposal;
         const liveSnapshot = this.history || proposal ? undefined : this.liveStage?.snapshot;
+        const isolated = !!liveSnapshot?.isolated || proposal?.action.type === 'native-generation-replacement';
         const changes = proposal?.preview?.entities ?? liveSnapshot?.preview.entities ?? [];
         const gateIndex = this.history?.index ?? this.inspector.gateIndex;
         const proposalPhase = (change: ProposalChange): string | undefined => {
@@ -2249,7 +2320,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             }
             return value?.parentId;
         };
-        const nodes: Node[] = (visible ? roadmapCanvasOrder(visible) : []).map(item => {
+        const nodes: Node[] = (visible && !isolated ? roadmapCanvasOrder(visible) : []).map(item => {
             const position = this.placements.get(item.id) ?? positions.get(item.id) ?? { x: 64, y: 64 };
             return {
                 id: item.id, type: 'checkpoint', position,
@@ -2298,7 +2369,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         }
         const displayed = new Map(nodes.map(node => [node.id, node.position]));
         const statuses = new Map(visible?.nodes.map(node => [node.id, node.status]) ?? []);
-        const edges: Edge[] = (visible ? roadmapCanvasConnectors(visible) : []).map(item => {
+        const edges: Edge[] = (visible && !isolated ? roadmapCanvasConnectors(visible) : []).map(item => {
             const status = roadmapEdgeStatus(statuses.get(item.from), statuses.get(item.to));
             const handles = roadmapEdgeHandles(item, displayed);
             return { id: item.id, source: item.from, target: item.to,
@@ -2558,11 +2629,11 @@ export class RoadmapCanvasWidget extends BaseWidget {
             'synced' : sync?.state ?? linked.syncState;
         const notice = this.sourceError ? 'source check failed' : this.syncChecking ? 'checking source' :
             state.replaceAll('-', ' ');
-        this.sourceLabel.textContent = `Markdown · ${notice}`;
-        this.sourceButton.setAttribute('aria-label', `Roadmap Markdown ${linked.path}: ${notice}`);
+        this.sourceLabel.textContent = 'Roadmap';
+        this.sourceButton.setAttribute('aria-label', `Roadmap controls; linked Markdown ${linked.path}: ${notice}`);
         this.sourceButton.dataset.review = String(!!this.sourceError || !!linked.pending ||
             (state !== 'unchanged' && state !== 'synced'));
-        this.sourceSummary.textContent = `Linked Markdown · ${linked.path} · ${notice}`;
+        this.sourceSummary.textContent = 'Roadmap';
         const detail = document.createElement('p');
         detail.textContent = `Roadmap saved at revision ${index.revision} · Linked source: ${linked.path} · accepted SHA-256 ${linked.sourceHash}. ` +
             'Saved Roadmap changes synchronize automatically; external Markdown conflicts require review.';
@@ -2686,6 +2757,18 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private renderImportEntry(): void {
         this.importEntry.replaceChildren();
         this.importEntry.append(this.sourceHeader);
+        const active = this.inspector.gateIndex;
+        const linked = active?.linkedDocument?.path;
+        this.managementStatus.textContent = active?.projectId === 'uninitialized' ?
+            'No active Roadmap · Unlinked' :
+            `Roadmap ${active?.projectId.slice(0, 8) ?? 'Unknown'} · revision ${active?.revision ?? 0} · ` +
+                (linked ? `Linked Markdown: ${linked}` : 'Unlinked');
+        this.managementActions.forEach((control, at) => { control.disabled = this.mutating || !!this.history ||
+            (at === 1 && !linked); });
+        this.importEntry.append(this.management);
+        const markdownHeading = document.createElement('h3');
+        markdownHeading.textContent = 'Markdown';
+        this.importEntry.append(markdownHeading);
         if ((this.inspector.index as unknown as RoadmapGateIndex | undefined)?.schemaVersion === 2 &&
             this.inspector.index?.linkedDocument) {
             this.renderGateLinkedSource();
@@ -2702,17 +2785,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             linkedDocument?.pending ? 'Pending sync · review' :
             sourceState === 'source-changed' ? 'Source changed · review' : approvalPending ? 'Approval required' :
             this.syncChecking ? 'Checking source' : sourceState;
-        this.sourceLabel.textContent = linkedDocument ? `Markdown · ${sourceNotice}` :
-            approvalPending ? 'Markdown · Review first link' :
-            this.inspector.index?.revision === 0 ? 'Markdown / Create' : 'Markdown';
+        this.sourceLabel.textContent = 'Roadmap';
         this.sourceButton.setAttribute('aria-label', linkedDocument ?
-            `Roadmap Markdown ${linkedDocument.path}: ${sourceNotice}${needsReview ? '; review required' : ''}` :
+            `Roadmap controls; linked Markdown ${linkedDocument.path}: ${sourceNotice}${needsReview ? '; review required' : ''}` :
             this.inspector.index?.revision === 0 ?
-                `Roadmap Markdown, import and create${approvalPending ? '; approval required' : ''}` :
-                'Roadmap Markdown: accepted structure has no published file');
+                `Roadmap controls, import and create${approvalPending ? '; approval required' : ''}` :
+                'Roadmap controls; accepted structure has no published Markdown');
         this.sourceButton.dataset.review = String(needsReview);
-        this.sourceSummary.textContent = linkedDocument ? `Linked Markdown · ${linkedDocument.path} · ${sourceNotice}` :
-            approvalPending ? 'Review initial Markdown link' : 'Markdown setup';
+        this.sourceSummary.textContent = 'Roadmap';
         if (!this.projectUri || !this.inspector.index) return;
         if (this.sourceError) { const error = document.createElement('p'); error.setAttribute('role', 'alert');
             error.textContent = this.sourceError; this.importEntry.append(error); }

@@ -53,9 +53,16 @@ function ProposedField({ id, field, value, label, save, multiline }: { id: strin
         finally { setBusy(false); }
     };
     return React.createElement('span', { className: 'dope-roadmap-proposal-field nodrag nopan nowheel',
+        'data-editing': editor.editing && !!save ? 'true' : undefined,
         onClick: (event: React.MouseEvent) => event.stopPropagation() },
-        editor.editing && save ? React.createElement(React.Fragment, null,
-            multiline ? React.createElement('textarea', { ref: input, value: editor.draft, rows: 3,
+        React.createElement('span', { className: 'dope-roadmap-proposal-value' }, value),
+        save && React.createElement('button', { ref: pencil, type: 'button', className: 'dope-roadmap-pencil',
+            'aria-label': `Edit proposed ${label}`, 'data-proposal-edit-entity': id,
+            tabIndex: editor.editing ? -1 : 0,
+            onClick: event => { event.preventDefault(); setEditor(current =>
+                proposedFieldEditorNext(current, { type: 'open', value })); } }, '✎'),
+        editor.editing && save && React.createElement('span', { className: 'dope-roadmap-field-editor' },
+            multiline ? React.createElement('textarea', { ref: input, value: editor.draft, rows: 1,
                 'aria-label': label, disabled: busy, onChange: event => setEditor(current =>
                     proposedFieldEditorNext(current, { type: 'change', value: event.target.value })),
                 onKeyDown: event => { if (proposedFieldKeyAction(event.key, true) === 'cancel') {
@@ -68,15 +75,14 @@ function ProposedField({ id, field, value, label, save, multiline }: { id: strin
                             event.preventDefault(); event.stopPropagation(); cancel(); }
                         else if (action === 'save') {
                             event.preventDefault(); event.stopPropagation(); void confirm(); } } }),
-            React.createElement('button', { type: 'button', disabled: busy,
-                onClick: () => void confirm(), 'aria-label': `Save ${label}` }, 'Save'),
-            React.createElement('button', { type: 'button', disabled: busy, onClick: cancel }, 'Cancel'),
-            editor.error && React.createElement('small', { role: 'alert' }, editor.error)) :
-            React.createElement(React.Fragment, null, React.createElement('span', null, value),
-                save && React.createElement('button', { ref: pencil, type: 'button', className: 'dope-roadmap-pencil',
-                    'aria-label': `Edit proposed ${label}`, 'data-proposal-edit-entity': id,
-                    onClick: event => { event.preventDefault(); setEditor(current =>
-                        proposedFieldEditorNext(current, { type: 'open', value })); } }, '✎')));
+            React.createElement('span', { className: 'dope-roadmap-field-editor-actions' },
+                React.createElement('button', { type: 'button', disabled: busy, title: `Save ${label}`,
+                    'aria-label': `Save ${label}`, onClick: () => void confirm() },
+                React.createElement('span', { 'aria-hidden': true }, '✓')),
+                React.createElement('button', { type: 'button', disabled: busy, title: `Cancel ${label} edit`,
+                    'aria-label': `Cancel ${label} edit`, onClick: cancel },
+                React.createElement('span', { 'aria-hidden': true }, '×'))),
+            editor.error && React.createElement('small', { role: 'alert' }, editor.error)));
 }
 
 const proposed = (source: boolean): string =>

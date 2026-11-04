@@ -30,7 +30,7 @@ test('only rendered connectors touching selection receive motion emphasis', () =
     assert.equal(connectors.some(edge => roadmapConnectorTouchesSelection(edge, undefined)), false);
     assert.equal(JSON.stringify(graph), original);
     const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
-    assert.match(widget, /\(visible \? roadmapCanvasConnectors\(visible\) : \[\]\)\.map/);
+    assert.match(widget, /\(visible && !isolated \? roadmapCanvasConnectors\(visible\) : \[\]\)\.map/);
     assert.match(widget, /roadmapConnectorTouchesSelection\(item, this\.selectedId\) \? ' dope-roadmap-edge-related' : ''/);
 });
 
@@ -181,7 +181,7 @@ test('rendered Tab order follows the same branch traversal as arrow keys', () =>
         pools: { ideas: [], issues: [] }, diagnostics: [] };
     assert.deepEqual(roadmapCanvasOrder(graph).map(item => item.id), ['phase-1', 'correction', 'phase-2']);
     const widget = read('packages/theia-extension/src/browser/roadmap-canvas-widget.ts');
-    assert.match(widget, /const nodes: Node\[\] = \(visible \? roadmapCanvasOrder\(visible\) : \[\]\)\.map/);
+    assert.match(widget, /const nodes: Node\[\] = \(visible && !isolated \? roadmapCanvasOrder\(visible\) : \[\]\)\.map/);
     assert.match(widget, /roadmapSpatialNextId\(ids, positions, current\.dataset\.checkpointId, event\.key\)/);
     const positions = roadmapSpatialLayout(graph);
     const ids = roadmapCanvasOrder(graph).map(item => item.id);

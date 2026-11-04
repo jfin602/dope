@@ -23,7 +23,7 @@ async function fixture(holdPhase?: number, phaseCount = 2,
     const pending = new Map<number, ServerResponse>();
     const turns = new Set<Promise<unknown>>();
     const requests: { phase: number; tools: string[]; continuation: boolean;
-        accepted: boolean; replyPhase?: number }[] = [];
+        accepted: boolean; replyPhase?: number; context: string }[] = [];
     const events: unknown[] = [];
     let waiting: (() => void) | undefined;
     const send = (response: ServerResponse, phase: number, continuation: boolean) => {
@@ -62,7 +62,8 @@ async function fixture(holdPhase?: number, phaseCount = 2,
             const toolReply = continuation ? JSON.stringify(messages.at(-1)) : '';
             requests.push({ phase, continuation, accepted: toolReply.includes('accepted'),
                 replyPhase: continuation ? Number(toolReply.match(/\\?"phase\\?":(\d+)/)?.[1]) : undefined,
-                tools: (body.tools ?? []).map((tool: any) => tool.function.name) });
+                tools: (body.tools ?? []).map((tool: any) => tool.function.name),
+                context: JSON.stringify(messages) });
             if (phase === holdPhase) {
                 pending.set(phase, response); waiting?.(); waiting = undefined;
                 return;
@@ -245,6 +246,30 @@ test('real Pi worker accepts empty unresolved after two checked Phases', async (
     } finally { await f.close(); }
 });
 
+test('rejecting one generated Phase keeps the remaining replacement preview isolated', async () => {
+    const f = await fixture(undefined, 2);
+    try {
+        await linkedRoadmap(f);
+        const result = await run(f);
+        const proposal = result.proposal!;
+        assert.ok(proposal, result.proposalError);
+        assert.ok(proposal.warnings?.some(item => item.includes('Markdown file is preserved')));
+        const first = proposal.operations!.slice(0, 2).map(item => item.id);
+        const review = await f.backend.reviewNativeRoadmap(f.projectHandle, f.chatId, f.token,
+            proposal.id, first, 'reject');
+        const rejected = await f.backend.decideNativeRoadmap(f.projectHandle, f.chatId, f.token,
+            proposal.id, first, 'reject', review.token);
+        assert.equal(rejected.revision, undefined);
+        assert.equal(rejected.proposal?.action.type, 'native-generation-replacement');
+        assert.deepEqual(rejected.proposal?.counts, { phases: 1, gates: 1, criteria: 2 });
+        assert.ok(rejected.proposal?.preview?.entities.every(item => item.before === undefined));
+        assert.equal(rejected.proposal?.preview?.entities.some(item =>
+            item.after?.title === 'Existing Phase' || item.after?.title === 'Existing Gate'), false);
+        assert.deepEqual((await f.store.read<RoadmapGateIndex>(f.root)).phases.map(item => item.title),
+            ['Existing Phase']);
+    } finally { await f.close(); }
+});
+
 test('source change before a second worker tool rejects the stale callback', async () => {
     const f = await fixture(2, 2);
     try {
@@ -252,6 +277,7 @@ test('source change before a second worker tool rejects the stale callback', asy
         const turn = run(f);
         await f.waitPending(2);
         assert.equal(f.requests[1].accepted, true, 'Phase 1 must stage before the held callback');
+        assert.doesNotMatch(f.requests[0].context, /Existing Phase|Existing Gate|Existing criterion/);
         const assistant = (await f.repository.read(f.root)).chats.find(item => item.id === f.chatId)
             ?.messages.find(item => item.role === 'assistant');
         assert.ok(assistant);
@@ -281,6 +307,7 @@ test('linked source changed after a valid proposal prevents selected Apply', asy
         const path = await linkedRoadmap(f);
         const result = await run(f);
         assert.ok(result.proposal, result.proposalError);
+        assert.doesNotMatch(f.requests[0].context, /Existing Phase|Existing Gate|Existing criterion/);
         const before = JSON.stringify(await f.store.read(f.root));
         const original = await readFile(path, 'utf8');
         await writeFile(path, `${original}\nExternal source change.\n`);

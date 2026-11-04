@@ -277,7 +277,7 @@ export class RoadmapGenerationController {
                         const reference = await this.timed(this.deps.stage!.stage(phase, this.identity, this.abort.signal));
                         if (!await this.current() || !reference) throw new Error('ROADMAP_GENERATION_STAGE_CHANGED');
                         const snapshot = await this.deps.stage!.snapshot?.(this.identity, this.abort.signal);
-                        if (!snapshot || snapshot.counts.phases !== (this.identity.baselinePhases ?? 0) + this.phases + 1)
+                        if (!snapshot || snapshot.counts.phases !== this.phases + 1)
                             throw new Error('ROADMAP_GENERATION_RECEIPT_MISSING');
                         this.ledger.push(`${reference}; Gates: ${phase.gates.map(gate => gate.title.trim()).join(', ')}`.slice(0, 256));
                         this.staged.push({ phase: number, title: phase.title.trim(), objective: phase.objective.trim(),

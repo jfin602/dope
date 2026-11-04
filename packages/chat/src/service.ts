@@ -113,7 +113,7 @@ export interface ChatRoadmapStageSnapshot {
     revision: number; sourceHash: string | null; sequence: number; expiresAt: number;
     operationIds: string[]; entityIds: string[];
     counts: { phases: number; gates: number; criteria: number };
-    incompletePhaseIds: string[]; complete: boolean;
+    incompletePhaseIds: string[]; complete: boolean; isolated?: boolean;
     preview: NonNullable<ChatPlanningProposal['preview']>;
 }
 

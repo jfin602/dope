@@ -201,6 +201,8 @@ export interface RoadmapGateIndex {
     phases: RoadmapPhase[];
     gates: RoadmapGate[];
     corrections: RoadmapCorrection[];
+    /** Historical revisions at or before this boundary cannot be restored into the active Roadmap. */
+    retiredBeforeRevision?: number;
     linkedDocument?: RoadmapGateLinkedDocument;
     /** Durable approved file creation intent. A pending intent is never canonical. */
     pendingPublication?: { approvalId: string; basisRevision: number; path: string;
@@ -267,9 +269,11 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     assertion(isRoadmapGateSchemaShape(value), 'schema 2 shape');
     const raw = value as Record<string, unknown>;
     assertion(keys(raw, ['schemaVersion', 'projectId', 'projectRoot', 'revision', 'phases', 'gates', 'corrections'],
-        ['linkedDocument', 'pendingPublication']) &&
+        ['linkedDocument', 'pendingPublication', 'retiredBeforeRevision']) &&
         identifier(projectId) && projectId !== 'uninitialized' && raw.projectId === projectId &&
-        raw.projectRoot === projectRoot && natural(raw.revision) && (raw.revision as number) > 0, 'project or index fields');
+        raw.projectRoot === projectRoot && natural(raw.revision) && (raw.revision as number) > 0 &&
+        (raw.retiredBeforeRevision === undefined || natural(raw.retiredBeforeRevision) &&
+            (raw.retiredBeforeRevision as number) < (raw.revision as number)), 'project or index fields');
     let bytes: number;
     try { bytes = Buffer.byteLength(JSON.stringify(value)); } catch { return failure('serialization'); }
     assertion(bytes <= MAX_INDEX_BYTES, 'size limit');

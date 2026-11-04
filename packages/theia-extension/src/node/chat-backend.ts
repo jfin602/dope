@@ -867,6 +867,10 @@ export class ChatBackend implements ChatService {
             message.planningActivity.proposalId !== proposalId || !message.planningActivity.proposal)
             throw new Error('Native Roadmap activity changed');
         const outcome = await this.nativeStages!.decide(stage.context, token, operationIds, decision);
+        if (outcome.revision && message.planningActivity.proposal.action.type === 'native-generation-replacement')
+            await this.greenfield?.retire(root).catch(error => {
+                console.warn('[dope-roadmap-generation] retired draft cleanup needs retry', String(error));
+            });
         const remaining = outcome.statuses.some(item => item.status === 'Pending');
         let pendingPreview: ChatPlanningProposal['preview'];
         let pendingCounts = message.planningActivity.proposal.counts;
@@ -876,14 +880,17 @@ export class ChatBackend implements ChatService {
             const actions = stage.operations.filter(item => item.status === 'Pending').map(item => item.action);
             try {
                 const projected = await this.roadmapStore!.mutateGateIndex(root, current.revision,
-                    stage.ownerId, actions, true);
+                    stage.ownerId, actions, true, stage.isolated ?
+                        { indexHash: stage.basisHash ?? null, replace: true } : undefined);
                 const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
                     ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
-                const old = new Map(entities(current).map(item => [item.id, item]));
+                const presentationBefore = stage.isolated ? { ...current, phases: [], gates: [],
+                    corrections: [], linkedDocument: undefined } : current;
+                const old = new Map(entities(presentationBefore).map(item => [item.id, item]));
                 const next = new Map(entities(projected).map(item => [item.id, item]));
                 const changed = [...new Set([...old.keys(), ...next.keys()])].filter(id =>
                     JSON.stringify(old.get(id)) !== JSON.stringify(next.get(id)));
-                pendingPreview = roadmapProposalPreview(current, projected, actions, changed);
+                pendingPreview = roadmapProposalPreview(presentationBefore, projected, actions, changed);
                 pendingCounts = typedRoadmapCounts(projected);
                 pendingSummary = `${actions.length} pending operation(s) revalidated at Roadmap revision ${current.revision}.`;
             } catch (error) {
@@ -894,6 +901,8 @@ export class ChatBackend implements ChatService {
         const committed = await this.roadmapStore!.read<RoadmapGateIndex>(root);
         const proposal: ChatPlanningProposal = { ...message.planningActivity.proposal,
             ownerId: committed.projectId,
+            ...(outcome.revision && message.planningActivity.proposal.action.type === 'native-generation-replacement' ?
+                { action: { type: 'native-stage-preview', id: committed.projectId } } : {}),
             revision: outcome.revision ?? message.planningActivity.proposal.revision,
             summary: pendingSummary, counts: remaining ? pendingCounts : typedRoadmapCounts(committed),
             ...(remaining ? { preview: pendingPreview } : {}),
@@ -948,17 +957,25 @@ export class ChatBackend implements ChatService {
         const sourceHash = index.linkedDocument?.sourceHash ?? null;
         const indexHash = await this.roadmapStore!.gateIndexHash(root);
         const identity = { root, projectId: index.projectId, revision: index.revision, sourceHash, indexHash,
-            baselinePhases: index.phases.length,
+            baselinePhases: 0,
             chatId: request.chatId, turnId: randomUUID(), ownerId: index.projectId,
             model: { connectionId: selection.connectionId, modelId: selection.modelId,
                 providerId: 'local' as const, contextWindowTokens: model.capabilities.contextWindowTokens,
                 reasoningControls: { ...chat.settings.reasoningControls } },
             origin: 'trusted-user-chat' as const };
         // Historic partials remain in saved Chat; every command opens a new protected execution.
-        const context = JSON.stringify({ projectId: index.projectId, revision: index.revision,
-            sourceHash, indexHash, phases: index.phases.slice(-12).map(phase => ({ id: phase.id,
-                title: phase.title.slice(0, 160) })), gateCount: index.gates.length });
-        const composed = this.composer ? await this.composeTurn(root, chat, scope, request.context ?? [],
+        const context = JSON.stringify({ projectId: index.projectId,
+            generationWorkspace: 'empty', replacementBasis: { revision: index.revision, indexHash },
+            currentRoadmapPresent: index.phases.length > 0 || index.gates.length > 0 });
+        // Generation receives no saved Roadmap selection, prior Chat planning turn or
+        // accepted draft. Project/source selections remain available when explicit.
+        const cleanChat = { ...chat, messages: [] };
+        const cleanSelections = (request.context ?? []).filter(item =>
+            item.kind !== 'roadmap' && item.kind !== 'roadmap-checkpoint' && item.kind !== 'saved-chat' &&
+            !item.draftHandle &&
+            (!index.linkedDocument || item.id !== index.linkedDocument.path &&
+                item.label !== index.linkedDocument.path));
+        const composed = this.composer ? await this.composeTurn(root, cleanChat, scope, cleanSelections,
             model.capabilities, undefined, undefined, undefined, false, undefined, true) : undefined;
         const contextRefs = composed?.refs ?? [];
         const executionId = randomUUID();
@@ -1001,7 +1018,8 @@ export class ChatBackend implements ChatService {
                 await this.roadmapStore!.gateIndexHash(root) !== bound.indexHash) return false;
             try {
                 const stageRead = await this.nativeStages!.read({ root, projectId: bound.projectId,
-                    chatId: bound.chatId, turnId: bound.turnId, lease: request.leaseToken },
+                    chatId: bound.chatId, turnId: bound.turnId, lease: request.leaseToken,
+                    generation: true },
                     { version: 1 }) as { link?: { syncState?: string } | null };
                 if (stageRead.link && stageRead.link.syncState !== 'synced') return false;
             }
@@ -1288,10 +1306,13 @@ export class ChatBackend implements ChatService {
             ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
         const prior = new Map(entities(before).map(item => [item.id, item]));
         const next = new Map(entities(after).map(item => [item.id, item]));
-        const changedIds = [...new Set([...prior.keys(), ...next.keys()])].filter(id =>
-            JSON.stringify(prior.get(id)) !== JSON.stringify(next.get(id)));
+        const changedIds = stage.isolated ? [...next.keys()] :
+            [...new Set([...prior.keys(), ...next.keys()])].filter(id =>
+                JSON.stringify(prior.get(id)) !== JSON.stringify(next.get(id)));
         const counts = typedRoadmapCounts(after);
-        const scopeWarnings = [...result.scopeLedger.candidateCoverage.map(item =>
+        const scopeWarnings = [...(before.linkedDocument ? [
+            `Replacement unlinks ${before.linkedDocument.path}; the Markdown file is preserved.`] : []),
+            ...result.scopeLedger.candidateCoverage.map(item =>
             `User goal, semantic coverage unverified: ${item.requirement.slice(0, 300)}; ` +
             (item.candidates.length ? `candidate Gate(s): ${item.candidates.join(', ').slice(0, 140)}` :
                 'no text-matched Gate or Criterion; inspect coverage manually')),
@@ -1299,21 +1320,23 @@ export class ChatBackend implements ChatService {
         const proposal: ChatPlanningProposal = { id: stage.id, chatId: request.chatId,
             messageId: assistant.id, ownerId: before.projectId, revision: before.revision,
             generation: stage.generation, counts, sourceHash: before.linkedDocument?.sourceHash,
-            changedIds, action: { type: 'native-stage-preview', id: before.projectId },
+            changedIds, action: { type: 'native-generation-replacement', id: before.projectId },
             operations: stage.operations.map(item => ({ id: item.id, type: item.action.type,
                 targetId: 'id' in item.action ? item.action.id ?? before.projectId :
                     'gateId' in item.action ? item.action.gateId : before.projectId,
                 status: item.status })),
             warnings: scopeWarnings.length <= 16 ? scopeWarnings :
                 [...scopeWarnings.slice(0, 15), `${scopeWarnings.length - 15} additional scope or unresolved items; inspect the original Chat request.`],
-            summary: `${counts.phases} Phases, ${counts.gates} Gates, ${counts.criteria} Criteria; ` +
+            summary: `Replace the current Roadmap with ${counts.phases} Phases, ${counts.gates} Gates, ${counts.criteria} Criteria; ` +
                 `${stage.operations.length} pending operations. Validated preview; no Roadmap change applied.` +
                 ` Scope coverage is unverified. ${result.calls} calls, ${result.metrics.retries} retries; ` +
                 `first stage ${result.metrics.timeToFirstStageMs ?? 'unknown'} ms; ` +
                 `review ${result.metrics.timeToReviewMs ?? 'unknown'} ms; ` +
                 `provider tokens ${totalTokens ?? 'unknown'}, reasoning ${reasoningTokens ?? 'unknown'}, ` +
                 `derived final ${finalTokens ?? 'unknown'}; finish ${finishReason ?? 'unknown'}.`,
-            preview: roadmapProposalPreview(before, after, stage.operations.map(item => item.action), changedIds) };
+            preview: roadmapProposalPreview(stage.isolated ? { ...before, phases: [], gates: [], corrections: [],
+                linkedDocument: undefined } : before, after,
+                stage.operations.map(item => item.action), changedIds) };
         if (Buffer.byteLength(JSON.stringify(proposal), 'utf8') > 60_000) {
             this.nativeStages!.forget(request.chatId);
             throw new Error('ROADMAP_GENERATION_PROPOSAL_LIMIT');

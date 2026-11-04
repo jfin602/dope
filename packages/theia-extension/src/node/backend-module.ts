@@ -124,6 +124,14 @@ export default new ContainerModule(bind => {
             client.onDidCloseConnection(() => { off(); offDraft(); offAgent(); observer.dispose(); for (const handle of handles) actions.detach(handle);
                 dispose(); });
             const backend: RoadmapService = {
+                manageRoadmap: async (uri, revision, projectId, action) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    await greenfield.ensureRestored(root);
+                    const result = await store.manageGateIndex(root, revision, projectId, action);
+                    await greenfield.retire(root);
+                    await observer.observe(root);
+                    return result;
+                },
                 beginDraft: async uri => { const result = await greenfield.begin(await context.container.get(PlanningStore).root(uri));
                     draftHandles.add(result.handle); return result; },
                 recoverDrafts: async uri => {

@@ -3333,7 +3333,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             updateSkillHighlight();
         };
         toolbar.append(more, modelPicker, commandLabel, submitButton);
-        composer.append(skillPopup, inputWrap, toolbar);
+        inputWrap.append(toolbar);
+        composer.append(skillPopup, inputWrap);
         updateSkillPopup();
         updateSkillHighlight();
         const responseNotices = document.createElement('div');

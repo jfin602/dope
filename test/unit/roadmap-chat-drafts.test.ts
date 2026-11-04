@@ -11,7 +11,7 @@ import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/
 import { ProjectPlanningActions } from '../../packages/project-intelligence/lib/node/project-planning-actions.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 
-test('selected local model previews two draft phases with one approval and no canonical write', async () => {
+test('legacy draft Chat mutation is rejected without a canonical write', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-chat-draft-steps-'));
     const store = new RoadmapStore(), greenfield = new RoadmapGreenfield(store);
     const repository = new ChatRepository();
@@ -40,17 +40,12 @@ test('selected local model previews two draft phases with one approval and no ca
         greenfield.bindChat(root, handle, chatId);
         const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'short' }, planningSteps: 2, content: 'Two phases' });
-        assert.ok(result.proposal);
-        assert.equal(result.proposal?.action.type, 'draft-sequence');
+        assert.equal(result.proposal, undefined);
+        assert.match(result.proposalError ?? '', /Legacy draft Chat mutations are retired/);
         assert.equal(greenfield.read(handle).revision, 0);
         assert.equal((await store.read(root)).revision, 0);
         assert.equal(calls, 1);
-        const message = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
-        assert.equal(message.role === 'assistant' && message.planningActivity?.kind, 'roadmap-draft-sequence');
-        assert.equal(message.role === 'assistant' && message.execution.actualModel?.modelId, 'short');
-        await backend.decidePlanningProposal(projectHandle, chatId, lease.token, result.proposal!.id, true);
-        assert.deepEqual(greenfield.read(handle).phases.map(phase => phase.title), ['Design', 'Build']);
-        assert.equal((await store.read(root)).revision, 0);
+        assert.deepEqual(greenfield.read(handle).phases, []);
     } finally {
         await releaseLease?.();
         backend.dispose();
