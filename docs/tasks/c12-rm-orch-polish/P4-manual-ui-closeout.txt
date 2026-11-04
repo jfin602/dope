@@ -1,0 +1,29 @@
+TASK: Correction 12 / P4 — manual UI polish and connected browser closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- **MANUAL FINAL CLOSEOUT ONLY.** Do NOT run this automatically from the phase runner, call `--closeout` to bypass deliberate per-UI verification, create a P4 PASS marker from implementation commits, or self-commit a closeout.
+- UI implementation and browser qualification require deliberate execution of separate M1 → M2 → M3 prompts, NOT a single monolithic ungated source change.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Verify actual local version, HEAD, dirty status and exact served browser bundle before any manual step. Preserve all owner source; no reset/stash/clean, force push or provider/model switch.
+
+OBJECTIVE
+Close `c12-rm-orch-polish` only after (a) runner P1–P3 source prerequisites have genuinely qualified and (b) all **manual** browser-observed UI improvements and safety/History integration have been qualified. This file exists as the runner-recognized final closeout boundary; it is an **index and final assessment**, not an automatic implementation pass.
+
+MANDATORY MANUAL SEQUENCE
+1. Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0050, docs/planning/p12/roadmap-chat-polish-contract.md, stack README/assessment/plan, and P1–P3 exact-source receipts. Verify all mandatory unsafe blockers resolved. No UI run if P1–P3 security prerequisites fail.
+2. Execute `docs/tasks/c12-rm-orch-polish/manual/M1-roadmap-review-tabs.txt` manually in a connected Codex Browser-capable implementation session. Require a real browser pass for icon-only upper-right protruding select/check/X tabs on Phase/Gate/Criterion/Correction, selected/remaining controls, Dope and non-Dope themes, keyboard, narrow geometry, checked Apply/Reject and no unauthorized write.
+3. When M1 qualifies for its scope, execute `manual/M2-chat-transcript-polish.txt` manually. Require connected browser proof that there is **no separate Tool calls dropdown/list**, actual tool events persist in reasoning/activity, the assistant footer is last even after info/roadmap result changes, and compact card diagnostics are accessible without enormous yellow text.
+4. When M2 qualifies for its scope, execute `manual/M3-browser-qualification.txt` manually against exact current source and served bundle. Require combined UI, History, source/approval, reload, reduced-motion, inactive-tab, and regression evidence. A new live Qwen request requires separate express owner authorization and a stable host; otherwise use saved real source-bound transcript and deterministic fixtures, reporting live generation unobserved in this polish pass rather than falsely PASS.
+5. Record each M* result independently. If a required browser case remains unobserved or fails, final is PARTIAL/NOT GREEN, with the explicit missing case and separate native Electron evidence gap. A passing M1 does not substitute for M2/M3.
+6. Preserve the historical Qwen two-Phase 142.9s run, rejected Phase 2/accepted Phase 1 receipts, old P3 NOT GREEN and original prompt bytes. Do not rewrite old reports or alter Gate/Phase GREEN/evidence. No generic model tool self-Apply, source bypass, auto sync before Apply or model/provider changes.
+
+FINAL REPORT
+- Exact starting/end HEAD and dirty files; model/host if a run was authorized; build/bundle hashes; P1–P3 source test counts; M1/M2/M3 browser observations, screenshots/DOM where available; actual accepted/rejected counts; History receipt correctness; selected themes, reduced motion, focus and layout cases; unresolved tests/gaps and independent native Electron status.
+- Implementation/Verification/Progression classification per ADR 0048, not a fabricated single PASS based on a commit.
+- **GREEN** only for the declared bounded polish scope once every mandatory source and browser case passes on one exact candidate. Otherwise report NOT GREEN and stop; do not automatically start another phase or the full tower-defense MVP.
+
+DO NOT EXECUTE THIS FILE THROUGH AN AUTOMATED RUNNER CLOSEOUT.
