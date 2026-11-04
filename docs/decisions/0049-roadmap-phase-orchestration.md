@@ -1,3 +1,5 @@
+> **2026-11-04 CORRECTION AUTHORING STATUS:** The continuous Pi tool-loop and live Phase loading refinement below now has [assessment/plan](../tasks/c12-rm-orch/fix/README.md) and [runner-compatible P1–P3 prompts](../tasks/c12-rm-orch-fix/README.md). These are authored only, not run. The existing c12-rm-orch P1–P6 checkpoints, prior P7 NOT GREEN and historic generation designs remain factual records, not active fallback routes.
+
 # ADR 0049 — Controller-owned incremental Roadmap generation
 
 **Owner decision:** 2026-11-03; **tool-loop and visualization refinement:** 2026-11-04 (America/Chicago). **Status:** APPROVED FORWARD ARCHITECTURE / DOCUMENTATION ONLY. **Implementation:** [c12-rm-orch](../tasks/c12-rm-orch/README.md). **Contract:** [Roadmap phase orchestration](../planning/p12/roadmap-phase-orchestration-contract.md). **Baseline:** Dope 0.12.7 as documented; the owner's actual local HEAD and dirty tree must be verified before execution.
