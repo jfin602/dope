@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { acceptsLiveRoadmapStage } from '../../packages/theia-extension/lib/browser/roadmap-live-stage.js';
+import { acceptsLiveRoadmapStage, showNextPhaseLoader } from '../../packages/theia-extension/lib/browser/roadmap-live-stage.js';
 import type { ChatRoadmapStageSnapshot } from '../../packages/chat/src/service.ts';
 
 test('provisional stage accepts only the next source-bound snapshot from one proposal', () => {
@@ -28,4 +28,11 @@ test('provisional stage accepts only the next source-bound snapshot from one pro
     assert.equal(accepts({ ...snapshot, sequence: 2, turnId: 'replay' }), false);
     assert.equal(accepts({ ...snapshot, sequence: 2, expiresAt: Date.now() - 1 }), false);
     assert.equal(accepts({ ...snapshot, sequence: 2 }, undefined, undefined, 'turn'), false);
+    assert.equal(showNextPhaseLoader(snapshot), false);
+    assert.equal(showNextPhaseLoader({ ...snapshot, counts: { phases: 1, gates: 1, criteria: 2 },
+        incompletePhaseIds: [] }), true);
+    assert.equal(showNextPhaseLoader({ ...snapshot, counts: { phases: 1, gates: 1, criteria: 2 },
+        incompletePhaseIds: [], complete: true }), false);
+    assert.equal(showNextPhaseLoader({ ...snapshot, counts: { phases: 1, gates: 1, criteria: 2 },
+        incompletePhaseIds: [], expiresAt: Date.now() - 1 }), false);
 });

@@ -25,10 +25,10 @@ import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePha
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { roadmapHistoryTarget } from './roadmap-history-navigation';
-import { acceptsLiveRoadmapStage } from './roadmap-live-stage';
+import { acceptsLiveRoadmapStage, nextPhasePosition, showNextPhaseLoader } from './roadmap-live-stage';
 import { RoadmapInspectorWidget } from './roadmap-inspector-widget';
 import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
-import { ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode,
+import { NextPhaseLoader, ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode,
     type ProposalChange, type ProposedFieldSave } from './roadmap-proposal-cards';
 import { proposalEntityOperations } from './roadmap-proposal-selection';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
@@ -292,7 +292,8 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement(Handle, { id: 'top', type: 'source', position: Position.Top, isConnectable: false }),
         React.createElement(Handle, { id: 'bottom', type: 'source', position: Position.Bottom, isConnectable: false }));
 }
-const roadmapNodeTypes = { checkpoint: RoadmapNode, proposalPhase: ProposedPhaseNode };
+const roadmapNodeTypes = { checkpoint: RoadmapNode, proposalPhase: ProposedPhaseNode,
+    nextPhaseLoader: NextPhaseLoader };
 
 function RoadmapBranchEdge(props: EdgeProps): React.ReactElement {
     return React.createElement(BaseEdge, { id: props.id,
@@ -637,7 +638,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         private readonly openWork: () => Promise<void> = async () => {},
         private readonly openLinkedDocument?: (workspace: string, path: string) => Promise<void>,
         private readonly nativeProposalBridge?: NativeProposalBridge,
-        private readonly nativeProposalEditBridge?: NativeProposalEditBridge) {
+        private readonly nativeProposalEditBridge?: NativeProposalEditBridge,
+        private readonly readActiveStage?: (uri: string) => Promise<ChatRoadmapStageSnapshot | undefined>) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -1954,7 +1956,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const live = this.history ? undefined : this.liveStage;
         if (live) {
             const { sequence, counts, incompletePhaseIds, complete } = live.snapshot;
-            this.stageNotice.textContent = `Proposed · Not applied · ${complete ? 'Ready for review' :
+            this.stageNotice.textContent = `Staged · Provisional · ${complete ? 'Ready for review' :
                 incompletePhaseIds.length ? 'Incomplete' : 'Generating'} · Stage ${sequence} · ` +
                 `${counts.phases} provisional Phases, ${counts.gates} provisional Gates, ` +
                 `${counts.criteria} provisional Criteria`;
@@ -2164,7 +2166,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
             relations.set(edge.to, [...(relations.get(edge.to) ?? []),
                 `${edge.label} ${titles.get(edge.from) ?? edge.from}`]);
         const proposal = this.history ? undefined : this.chatProposal?.proposal;
-        const changes = proposal?.preview?.entities ?? (this.history ? undefined : this.liveStage?.snapshot.preview.entities) ?? [];
+        const liveSnapshot = this.history || proposal ? undefined : this.liveStage?.snapshot;
+        const changes = proposal?.preview?.entities ?? liveSnapshot?.preview.entities ?? [];
         const gateIndex = this.history?.index ?? this.inspector.gateIndex;
         const proposalPhase = (change: ProposalChange): string | undefined => {
             const value = change.after ?? change.before;
@@ -2210,14 +2213,19 @@ export class RoadmapCanvasWidget extends BaseWidget {
             };
         });
         for (const change of changes.filter(item => item.action === 'create' && item.after?.kind === 'phase')) {
-            const farthest = nodes.length ? Math.max(...nodes.map(node => node.position.x)) : -496;
             nodes.push({ id: `proposal:${change.id}`, type: 'proposalPhase',
-                position: { x: farthest + 560, y: 64 },
+                position: nextPhasePosition(nodes.map(node => node.position)),
                 data: { change, children: changes.filter(child => child.id !== change.id &&
                     proposalPhase(child) === change.id), source: proposal?.preview?.source === 'validated-markdown-patch',
                     sourceChanges: proposal?.preview?.sourceChanges,
-                    save: proposal?.operations && !this.history ? this.saveProposedField : undefined },
+                    save: proposal?.operations && !this.history ? this.saveProposedField : undefined,
+                    provisional: !!liveSnapshot },
                 draggable: false, selectable: false, className: 'dope-roadmap-proposal-phase-node' });
+        }
+        if (liveSnapshot && showNextPhaseLoader(liveSnapshot)) {
+            nodes.push({ id: 'ui:next-phase-loader', type: 'nextPhaseLoader',
+                position: nextPhasePosition(nodes.map(node => node.position)), data: {}, draggable: false,
+                selectable: false, focusable: false, className: 'dope-roadmap-next-phase-node' });
         }
         const displayed = new Map(nodes.map(node => [node.id, node.position]));
         const statuses = new Map(visible?.nodes.map(node => [node.id, node.status]) ?? []);
@@ -2438,12 +2446,24 @@ export class RoadmapCanvasWidget extends BaseWidget {
     protected override onActivateRequest(msg: Message): void {
         super.onActivateRequest(msg);
         this.queueChatProposalCamera();
+        void this.rehydrateActiveStage();
         if (this.phaseOpen) void this.refreshPhaseEvidence();
     }
 
     protected override onAfterShow(msg: Message): void {
         super.onAfterShow(msg);
         this.queueChatProposalCamera();
+    }
+
+    private async rehydrateActiveStage(): Promise<void> {
+        const uri = this.projectUri;
+        if (!uri || !this.readActiveStage || this.history || this.chatProposal || this.isDisposed) return;
+        try {
+            const snapshot = await this.readActiveStage(uri);
+            if (snapshot && uri === this.projectUri && !this.history && !this.chatProposal)
+                this.receiveChatStage(uri, { projectHandle: '', kind: 'roadmap-stage',
+                    chatId: snapshot.chatId, messageId: snapshot.turnId, snapshot }, true);
+        } catch { /* A missing or stale live stage never grants review authority. */ }
     }
 
     protected override onBeforeDetach(msg: Message): void {

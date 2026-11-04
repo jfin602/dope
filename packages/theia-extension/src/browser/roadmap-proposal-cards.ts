@@ -5,6 +5,13 @@ export type ProposalChange = NonNullable<ChatPlanningProposal['preview']>['entit
 type SourceChange = { before: string; after: string };
 export type ProposedFieldSave = (entityId: string, field: 'title' | 'objective' | 'purpose' | 'expectedResult',
     value: string) => Promise<void>;
+
+export function NextPhaseLoader(): React.ReactElement {
+    return React.createElement('div', { className: 'dope-roadmap-next-phase-loader',
+        role: 'status', 'aria-live': 'polite' },
+        React.createElement('span', { className: 'dope-roadmap-next-phase-pulse', 'aria-hidden': true }),
+        'Generating next Phase…');
+}
 type ProposedFieldEditor = { editing: boolean; draft: string; error?: string };
 type ProposedFieldEvent = { type: 'open'; value: string } | { type: 'cancel'; value: string } |
     { type: 'saved'; value: string } |
@@ -128,13 +135,13 @@ export function ProposedChange({ change, source, sourceChanges, save }: { change
             React.createElement('li', { key: criterion.id }, `${criterion.title} — ${criterion.expectedResult}`))) : null);
 }
 
-export function ProposedCriterionRow({ criterion, source, save }: { criterion: ChatRoadmapPreviewEntity;
-    source: boolean; save?: ProposedFieldSave }): React.ReactElement {
+export function ProposedCriterionRow({ criterion, source, save, provisional }: { criterion: ChatRoadmapPreviewEntity;
+    source: boolean; save?: ProposedFieldSave; provisional?: boolean }): React.ReactElement {
     return React.createElement('details', { className: 'dope-roadmap-proposal-criterion',
         'data-proposal-entity': criterion.id },
         React.createElement('summary', null, criterion.title ?? criterion.id),
-        selectControl(criterion.id, `Select proposed Criterion ${criterion.title ?? ''}`),
-        React.createElement('small', null, proposed(source)),
+        !provisional && selectControl(criterion.id, `Select proposed Criterion ${criterion.title ?? ''}`),
+        React.createElement('small', null, provisional ? 'Staged · Provisional' : proposed(source)),
         React.createElement(ProposedField, { id: criterion.id, field: 'title', value: criterion.title ?? '',
             label: 'Criterion title', save }),
         criterion.detail && React.createElement('p', null,
@@ -142,8 +149,8 @@ export function ProposedCriterionRow({ criterion, source, save }: { criterion: C
                 value: criterion.detail, label: 'Criterion expected result', save, multiline: true })));
 }
 
-export function ProposedGateCard({ change, children, source, save }: { change: ProposalChange;
-    children: ProposalChange[]; source: boolean; save?: ProposedFieldSave }): React.ReactElement {
+export function ProposedGateCard({ change, children, source, save, provisional }: { change: ProposalChange;
+    children: ProposalChange[]; source: boolean; save?: ProposedFieldSave; provisional?: boolean }): React.ReactElement {
     const gate = change.after!;
     const criterionChanges = children.filter(child => child.after?.kind === 'criterion');
     const criteria = new Map<string, ChatRoadmapPreviewEntity>((gate.criteria ?? []).map(item => [item.id, {
@@ -154,15 +161,17 @@ export function ProposedGateCard({ change, children, source, save }: { change: P
         'data-proposal-gate-id': gate.id, open: true,
         onClick: (event: React.MouseEvent) => event.stopPropagation() },
         React.createElement('summary', { className: 'dope-roadmap-gate-summary',
-            'aria-label': `${proposed(source)} Gate ${gate.designation ?? ''}: ${gate.title ?? gate.id}; not qualified` },
+            'aria-label': `${provisional ? 'Staged · Provisional' : proposed(source)} Gate ${gate.designation ?? ''}: ${gate.title ?? gate.id}; not qualified` },
             React.createElement('span', { className: 'dope-roadmap-gate-icon', 'aria-hidden': true }, '◇'),
             React.createElement('span', { className: 'dope-roadmap-gate-title' },
                 `${gate.designation ? `${gate.designation} · ` : ''}${gate.title ?? gate.id}`),
-            React.createElement('span', { className: 'dope-roadmap-gate-qualifier' }, 'Proposed · Not applied'),
+            React.createElement('span', { className: 'dope-roadmap-gate-qualifier' },
+                provisional ? 'Staged · Provisional' : 'Proposed · Not applied'),
             React.createElement('span', { className: 'dope-roadmap-gate-chevron', 'aria-hidden': true }, '⌄')),
         React.createElement('div', { className: 'dope-roadmap-gate-foldout', 'data-proposal-entity': gate.id },
-            selectControl(gate.id, `Select proposed Gate ${gate.title ?? ''}`),
-            React.createElement('small', { className: 'dope-roadmap-authority' }, proposed(source)),
+            !provisional && selectControl(gate.id, `Select proposed Gate ${gate.title ?? ''}`),
+            React.createElement('small', { className: 'dope-roadmap-authority' },
+                provisional ? 'Staged · Provisional' : proposed(source)),
             React.createElement(ProposedField, { id: gate.id, field: 'title', value: gate.title ?? '',
                 label: 'Gate title', save }),
             gate.detail && React.createElement('p', null,
@@ -170,14 +179,15 @@ export function ProposedGateCard({ change, children, source, save }: { change: P
                     label: 'Gate purpose', save, multiline: true })),
             React.createElement('strong', null, 'Criteria'),
             criteria.size ? [...criteria.values()].map(criterion => React.createElement(ProposedCriterionRow,
-                { key: criterion.id, criterion, source, save })) :
+                { key: criterion.id, criterion, source, save, provisional })) :
                 React.createElement('p', { className: 'dope-roadmap-detail' }, 'Awaiting Criteria'),
             ...children.filter(child => child.after?.kind !== 'criterion' || child.action !== 'create')
                 .map(child => React.createElement(ProposedChange, { key: child.id, change: child, source, save }))));
 }
 
 export function ProposedPhaseNode({ data }: { data: { change: ProposalChange; children: ProposalChange[];
-    source: boolean; sourceChanges?: SourceChange[]; save?: ProposedFieldSave } }): React.ReactElement {
+    source: boolean; sourceChanges?: SourceChange[]; save?: ProposedFieldSave;
+    provisional?: boolean } }): React.ReactElement {
     const phase = data.change.after!;
     const gates = data.children.filter(child => child.action === 'create' && child.after?.kind === 'gate');
     const nested = new Set(gates.flatMap(gate => data.children.filter(child =>
@@ -186,11 +196,12 @@ export function ProposedPhaseNode({ data }: { data: { change: ProposalChange; ch
     const label = phaseNumber ? Number(phaseNumber[1]) : phase.order === undefined ? undefined : phase.order + 1;
     return React.createElement('section', { className: 'dope-roadmap-node dope-roadmap-phase-card dope-roadmap-proposal-phase',
         'data-phase-id': phase.id, 'data-proposal-entity': phase.id,
-        'aria-label': `Proposed Phase${label ? ` ${label}` : ''}: ${phase.title ?? phase.id}; ${gates.length ? 'Gates not accepted' : 'Awaiting Gates'}` },
+        'aria-label': `${data.provisional ? 'Staged · Provisional' : 'Proposed'} Phase${label ? ` ${label}` : ''}: ${phase.title ?? phase.id}; ${gates.length ? 'Gates not accepted' : 'Awaiting Gates'}` },
         React.createElement('div', { className: 'dope-roadmap-phase-main' },
-            selectControl(phase.id, `Select only proposed Phase ${phase.title ?? ''}`),
-            selectControl(phase.id, `Select proposed Phase ${phase.title ?? ''} and its children`, true),
-            React.createElement('small', { className: 'dope-roadmap-authority' }, proposed(data.source)),
+            !data.provisional && selectControl(phase.id, `Select only proposed Phase ${phase.title ?? ''}`),
+            !data.provisional && selectControl(phase.id, `Select proposed Phase ${phase.title ?? ''} and its children`, true),
+            React.createElement('small', { className: 'dope-roadmap-authority' },
+                data.provisional ? 'Staged · Provisional' : proposed(data.source)),
             React.createElement('small', { className: 'dope-roadmap-phase-label' }, label ? `PHASE ${label}` : 'PHASE'),
             React.createElement('strong', null,
                 React.createElement(ProposedField, { id: phase.id, field: 'title', value: phase.title ?? '',
@@ -207,7 +218,7 @@ export function ProposedPhaseNode({ data }: { data: { change: ProposalChange; ch
         React.createElement('div', { className: 'dope-roadmap-phase-children nowheel' },
             ...gates.map(gate => React.createElement(ProposedGateCard, { key: gate.id, change: gate,
                 children: data.children.filter(child => child.after?.parentId === gate.id), source: data.source,
-                save: data.save })),
+                save: data.save, provisional: data.provisional })),
             ...data.children.filter(child => (child.action !== 'create' || child.after?.kind !== 'gate') &&
                 !nested.has(child.id)).map(child =>
                 child.action === 'create' && child.after?.kind === 'criterion' ?

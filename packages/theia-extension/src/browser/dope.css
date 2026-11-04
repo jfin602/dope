@@ -176,6 +176,10 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-proposal-ghost { opacity: .68; border-style: dashed; }
 .dope-roadmap-proposal-new-gate { --gate-accent: var(--theia-editorWarning-foreground); border-style: dashed; }
 .dope-roadmap-proposal-phase { --phase-accent: var(--theia-editorWarning-foreground); min-height: 0; border-top-style: dashed; border-right-style: dashed; border-bottom-style: dashed; }
+.dope-roadmap-next-phase-loader { box-sizing: border-box; width: 500px; min-height: 92px; display: flex; align-items: center; gap: 12px; padding: 24px; border: 1px dashed var(--theia-widget-border); border-radius: 18px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); color: var(--theia-descriptionForeground); font-size: 14px; pointer-events: none; }
+.dope-roadmap-next-phase-pulse { width: 12px; height: 12px; flex: none; border-radius: 50%; background: var(--theia-descriptionForeground); opacity: .6; animation: dope-next-phase-pulse 1.8s ease-in-out infinite; }
+.dope-dark .dope-roadmap-next-phase-pulse { background: var(--dope-primary); }
+@keyframes dope-next-phase-pulse { 50% { opacity: .25; transform: scale(.75); } }
 .dope-roadmap-proposal-phase .dope-roadmap-phase-main { cursor: default; }
 .dope-roadmap-proposal-phase .dope-roadmap-authority,
 .dope-roadmap-proposal-new-gate .dope-roadmap-authority,
@@ -247,6 +251,7 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-relationship-summary { margin: 6px 0; padding: 6px 8px; border-left: 2px solid var(--theia-focusBorder); background: var(--theia-editorWidget-background, var(--theia-editor-background)); overflow-wrap: anywhere; }
 @keyframes dope-roadmap-relationship-focus { from { stroke-opacity: .55; } to { stroke-opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
+  .dope-roadmap-next-phase-pulse { animation: none; }
   .dope-roadmap-stage .react-flow__node, .dope-roadmap-node { transition: none; }
   .dope-roadmap-proposal-new-gate .dope-roadmap-gate-chevron { transition: none; }
   .dope-roadmap-edge-related .react-flow__edge-path { animation: none; }

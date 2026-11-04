@@ -134,3 +134,30 @@ test('invalid nested content and cancelled stage cannot advance native proposal'
         assert.deepEqual(await store.read(root), index);
     } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('a multi-batch Phase publishes one complete snapshot after all Gates stage', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-native-phase-batches-'));
+    try {
+        const store = new RoadmapStore(), owner = new RoadmapNativeStageOwner(store);
+        const index = await store.read(root);
+        const identity: GenerationIdentity = { generationId: 'generation', root,
+            projectId: index.projectId, revision: index.revision, sourceHash: null, indexHash: null,
+            chatId: 'chat', turnId: 'turn', ownerId: index.projectId,
+            model: { connectionId: 'local', modelId: 'q4', providerId: 'local',
+                contextWindowTokens: 8192, reasoningControls: {} }, origin: 'trusted-user-chat' };
+        const updates: GenerationStageUpdate[] = [];
+        const adapter = new RoadmapGenerationNativeStage(owner, 'lease', identity,
+            update => { updates.push(update); });
+        const phase: GenerationPhase = { title: 'Large Phase', objective: 'Eight Gates', subcalls: 2,
+            gates: Array.from({ length: 8 }, (_, n) => ({ title: `Gate ${n + 1}`,
+                purpose: `Verify ${n + 1}`, criteria: [{ title: `Criterion ${n + 1}`,
+                    expectedResult: `Result ${n + 1}` }] })) };
+        await adapter.stage(phase, identity, new AbortController().signal);
+        await new Promise<void>(resolve => queueMicrotask(resolve));
+        assert.equal(updates.length, 1);
+        assert.equal(updates[0].seq, 2);
+        assert.deepEqual(updates[0].counts, { phases: 1, gates: 8, criteria: 8 });
+        assert.equal(updates[0].snapshot.preview.entities.filter(item => item.after?.kind === 'gate').length, 8);
+        assert.deepEqual(await store.read(root), index);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});

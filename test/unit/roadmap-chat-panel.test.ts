@@ -39,6 +39,26 @@ test('manual live Roadmap View re-reads the current leased stage and refuses sta
     controller.dispose();
 });
 
+test('active canvas rehydrates a missed stage event from the leased owner', async () => {
+    const controller = new ChatPanelController(() => { throw new Error('no connection'); }, () => {});
+    const snapshot = { proposalId: 'proposal', chatId: 'chat', turnId: 'turn', projectId: 'project',
+        ownerId: 'project', revision: 0, sourceHash: null, sequence: 2,
+        expiresAt: Date.now() + 60_000, operationIds: ['one', 'two'], entityIds: ['phase'],
+        counts: { phases: 1, gates: 1, criteria: 2 }, incompletePhaseIds: [], complete: false,
+        preview: { source: 'validated-roadmap', steps: [], entities: [], totalChanged: 4,
+            additionalChanges: 0, parentTitles: {} } } as ChatRoadmapStageSnapshot;
+    const connection = { readNativeRoadmapStage: async () => snapshot } as unknown as ChatConnection;
+    Object.assign(controller, { workspace: 'file:///project', chatId: 'chat', running: true,
+        toolProgress: { messageId: 'turn', events: [] },
+        lease: { workspace: 'file:///project', chatId: 'chat', handle: 'handle',
+            token: 'lease', connection } });
+    assert.equal((await controller.rehydrateRoadmapStage())?.sequence, 2);
+    assert.equal(controller.roadmapStage?.proposalId, 'proposal');
+    controller.running = false;
+    assert.equal(await controller.rehydrateRoadmapStage(), undefined);
+    controller.dispose();
+});
+
 test('Roadmap preview control shows provisional revision-zero proposals only in the current leased Chat', () => {
     const controller = new ChatPanelController(() => { throw new Error('no connection'); },
         () => {}, new ChatOpenOwners(), 'preview');

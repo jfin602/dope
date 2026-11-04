@@ -532,6 +532,20 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     widget.controller.planningProposal?.id === proposalId);
                 if (!chat) throw new Error('Original Chat proposal is unavailable; return to Chat');
                 return chat.controller.reviseNativeRoadmap(operationId, entityId, field, value);
+            }, async uri => {
+                const widgets = context.container.get(WidgetManager);
+                const matches = [...widgets.getWidgets(CHAT_PANEL_ID),
+                    ...(['left', 'right'] as const).map(side => widgets.tryGetWidget(chatLauncherIds[side]))]
+                    .filter(Boolean) as ChatPanelWidget[];
+                for (const chat of matches) if (chat.moduleKind === 'chat' &&
+                    chat.controller.workspace === uri && chat.controller.running &&
+                    (chat.controller.roadmapStage || chat.controller.stream || chat.controller.toolProgress)) {
+                    try {
+                        const stage = await chat.controller.rehydrateRoadmapStage();
+                        if (stage) return stage;
+                    } catch { /* Another Chat's invalid lease cannot hide the active owner. */ }
+                }
+                return undefined;
             }) })).inSingletonScope();
     // Saved pre-overlay workbench layouts may restore this sidebar. It shares the model but cannot edit.
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>

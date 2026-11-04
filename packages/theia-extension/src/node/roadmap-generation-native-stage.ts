@@ -79,7 +79,6 @@ export class RoadmapGenerationNativeStage {
                 const snapshot = this.owner.get(identity.chatId)?.snapshot;
                 if (!snapshot || snapshot.proposalId !== result.proposalId ||
                     snapshot.sequence !== this.nextStage) throw new Error('ROADMAP_GENERATION_SNAPSHOT_CHANGED');
-                this.notify(snapshot);
                 this.nextStage++; acceptedBatches++;
             }
         } catch (error) {
@@ -91,6 +90,10 @@ export class RoadmapGenerationNativeStage {
                 'ROADMAP_GENERATION_STAGE_FAILED'}: ${String(error).slice(0, 160)}`);
         }
         this.names.add(phase.title.trim().toLowerCase());
+        // Publish only after every bounded batch for this Phase has staged. A
+        // partial multi-batch Phase must never look like the next Phase is ready.
+        const completePhase = this.owner.get(identity.chatId)?.snapshot;
+        if (completePhase) this.notify(completePhase);
         return phase.title.trim().slice(0, 160);
     }
 

@@ -7,9 +7,10 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapNativeStageOwner } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
-import { ProposedPhaseNode, ProposedChange, ProposedGateCard, proposedFieldEditorNext, proposedFieldKeyAction } from
+import { NextPhaseLoader, ProposedPhaseNode, ProposedChange, ProposedGateCard, proposedFieldEditorNext, proposedFieldKeyAction } from
     '../../packages/theia-extension/lib/browser/roadmap-proposal-cards.js';
 import { roadmapProposalPreview } from '../../packages/theia-extension/lib/node/roadmap-proposal-presentation.js';
+import { nextPhasePosition, showNextPhaseLoader } from '../../packages/theia-extension/lib/browser/roadmap-live-stage.js';
 import { gateFixture } from './roadmap-gate-document-fixture.ts';
 
 test('proposed field edit state preserves failed input and discards it on cancel', () => {
@@ -24,6 +25,14 @@ test('proposed field edit state preserves failed input and discards it on cancel
     assert.equal(proposedFieldKeyAction('Escape', true), 'cancel');
     assert.equal(proposedFieldKeyAction('Enter', false), 'save');
     assert.equal(proposedFieldKeyAction('Enter', true), undefined);
+});
+
+test('next-Phase loader is an accessible status without invented Roadmap entities or actions', () => {
+    const html = renderToStaticMarkup(React.createElement(NextPhaseLoader));
+    assert.match(html, /role="status"/);
+    assert.match(html, /aria-live="polite"/);
+    assert.match(html, /Generating next Phase…/);
+    assert.doesNotMatch(html, /data-phase-id|data-proposal-entity|Gate|Criterion|button|Apply|Reject|%/);
 });
 
 test('native stage snapshots render a provisional Phase, then nested Gate and Criterion without diff metadata or writes', async () => {
@@ -74,8 +83,64 @@ test('native stage snapshots render a provisional Phase, then nested Gate and Cr
         assert.match(secondHtml, /Edit proposed Criterion expected result/);
         assert.equal((secondHtml.match(/data-proposal-entity="[^"]+"/g) ?? []).length, 3);
         assert.doesNotMatch(secondHtml, /none →|Order:|Dependencies:|Planned|GREEN/);
+        const stagedHtml = renderToStaticMarkup(React.createElement(ProposedPhaseNode, { data: {
+            change: second.preview.entities.find(item => item.after?.kind === 'phase')!,
+            children: second.preview.entities.filter(item => item.after?.kind !== 'phase'),
+            source: false, provisional: true } }));
+        assert.match(stagedHtml, /Staged · Provisional/);
+        assert.match(stagedHtml, /G1 · Setup Gate/);
+        assert.match(stagedHtml, /Check launch/);
+        assert.doesNotMatch(stagedHtml, /Select proposed|Edit proposed|Planned|GREEN/);
         await owner.cancel(context, { version: 1 });
         assert.equal(await owner.snapshot(context), undefined);
+        assert.equal(await store.gateIndexHash(root), null);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('two authoritative Phase snapshots advance one visual loader without counting it as an entity', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-next-phase-loader-'));
+    try {
+        const store = new RoadmapStore();
+        const owner = new RoadmapNativeStageOwner(store);
+        const context = { root, projectId: 'uninitialized', chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const basis = { version: 1, expectedRevision: 0, expectedSourceHash: null, done: false };
+        const stage = (expectedStage: number, actions: object[]) => owner.stage(context,
+            { ...basis, expectedStage, actions });
+        const phase = (n: number) => ({ type: 'phase.create', id: `new:p${n}`,
+            title: `Phase ${n}`, objective: `Objective ${n}` });
+        const gate = (n: number) => ({ type: 'gate.create', id: `new:g${n}`,
+            parentPhaseId: `new:p${n}`, designation: 'G1', title: `Gate ${n}`, purpose: `Purpose ${n}`,
+            criteria: [1, 2].map(i => ({ id: `new:c${n}${i}`, title: `Criterion ${n}.${i}`,
+                expectedResult: `Result ${n}.${i}` })) });
+        await stage(1, [phase(1), gate(1)]);
+        const first = (await owner.snapshot(context))!;
+        assert.deepEqual(first.counts, { phases: 1, gates: 1, criteria: 2 });
+        assert.equal(showNextPhaseLoader(first), true);
+        const firstPositions = first.preview.entities.filter(item => item.after?.kind === 'phase')
+            .reduce<{ x: number; y: number }[]>((positions) => {
+                positions.push(nextPhasePosition(positions)); return positions;
+            }, []);
+        assert.deepEqual(nextPhasePosition(firstPositions), { x: 624, y: 64 });
+        await stage(2, [phase(2), gate(2)]);
+        const second = (await owner.snapshot(context))!;
+        assert.equal(second.proposalId, first.proposalId);
+        assert.deepEqual(second.counts, { phases: 2, gates: 2, criteria: 4 });
+        assert.equal(showNextPhaseLoader(second), true);
+        const secondPositions = second.preview.entities.filter(item => item.after?.kind === 'phase')
+            .reduce<{ x: number; y: number }[]>((positions) => {
+                positions.push(nextPhasePosition(positions)); return positions;
+            }, []);
+        assert.deepEqual(nextPhasePosition(secondPositions), { x: 1184, y: 64 });
+        const entities = second.preview.entities;
+        assert.equal(entities.filter(item => item.after?.kind === 'phase').length, 2);
+        assert.equal(entities.filter(item => item.after?.kind === 'gate').length, 2);
+        assert.equal(entities.filter(item => item.after?.kind === 'criterion').length, 4);
+        assert.equal(await store.gateIndexHash(root), null);
+        await owner.finish(context, 0, null);
+        const ready = (await owner.snapshot(context))!;
+        assert.equal(ready.complete, true);
+        assert.equal(showNextPhaseLoader(ready), false);
+        assert.deepEqual(ready.counts, second.counts);
         assert.equal(await store.gateIndexHash(root), null);
     } finally { await rm(root, { recursive: true, force: true }); }
 });

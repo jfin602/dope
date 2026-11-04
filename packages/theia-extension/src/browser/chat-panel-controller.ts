@@ -153,6 +153,24 @@ export class ChatPanelController {
         return latest;
     }
 
+    /** An active canvas can recover a dropped projection from the leased backend owner. */
+    async rehydrateRoadmapStage(): Promise<NonNullable<typeof this.roadmapStage> | undefined> {
+        const lease = this.lease;
+        const turnId = this.roadmapStage?.turnId ?? this.stream?.messageId ?? this.toolProgress?.messageId;
+        if (!this.running || !lease || !turnId || lease.workspace !== this.workspace ||
+            lease.chatId !== this.chatId) return undefined;
+        const latest = await lease.connection.readNativeRoadmapStage(lease.handle, lease.chatId,
+            turnId, lease.token);
+        if (!latest || !this.running || this.lease !== lease || this.workspace !== lease.workspace ||
+            this.chatId !== lease.chatId || latest.chatId !== lease.chatId ||
+            latest.turnId !== turnId || latest.expiresAt <= Date.now() ||
+            this.endedRoadmapTurnId === turnId || this.roadmapStage &&
+            (this.roadmapStage.proposalId !== latest.proposalId ||
+                this.roadmapStage.sequence > latest.sequence)) return undefined;
+        this.roadmapStage = latest;
+        return latest;
+    }
+
     async attach(workspace: string | undefined): Promise<void> {
         if (this.disposed || workspace && workspace === this.workspace && this.handle) return;
         this.clearRestoreRetry();

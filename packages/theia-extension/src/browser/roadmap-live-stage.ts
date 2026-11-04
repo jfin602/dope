@@ -16,3 +16,14 @@ export function acceptsLiveRoadmapStage(snapshot: ChatRoadmapStageSnapshot,
             previous.proposalId !== snapshot.proposalId || snapshot.sequence <= previous.sequence)) return false;
     return true;
 }
+
+/** A loading position is derived only from a verified, still active owner snapshot. */
+export function showNextPhaseLoader(snapshot: ChatRoadmapStageSnapshot): boolean {
+    return !snapshot.complete && snapshot.counts.phases > 0 &&
+        snapshot.incompletePhaseIds.length === 0 && snapshot.expiresAt > Date.now();
+}
+
+/** Canvas positions are display-only; no position becomes a Roadmap entity. */
+export function nextPhasePosition(occupied: readonly { x: number }[]): { x: number; y: number } {
+    return { x: (occupied.length ? Math.max(...occupied.map(item => item.x)) : -496) + 560, y: 64 };
+}
