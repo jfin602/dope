@@ -128,6 +128,33 @@ test('pending edit refuses changed linked source, project, turn and expired stag
     });
 });
 
+test('linked source drift between checked stages rejects the next stage and reviewed Apply', async () => {
+    await gateFixture(async (root, file, store) => {
+        const owner = new RoadmapNativeStageOwner(store), index = await store.read(root);
+        const context = { root, projectId: index.projectId, chatId: 'chat', turnId: 'turn', lease: 'lease' };
+        const basis = { version: 1, expectedRevision: index.revision,
+            expectedSourceHash: index.linkedDocument!.sourceHash };
+        const canonical = await readFile(join(root, '.dope', 'roadmap.json'));
+        const first = await owner.stage(context, { ...basis, expectedStage: 1,
+            actions: [{ type: 'phase.create', id: 'new:phase', title: 'First generated Phase',
+                objective: 'Deliver first generated feature' }] }) as { acceptedOperationIds: string[] };
+        assert.equal((await owner.snapshot(context))?.sequence, 1);
+        const original = await sourceBytes(file);
+        const changed = Buffer.concat([original, Buffer.from('\nExternal source change.\n')]);
+        await writeFile(file, changed);
+        await assert.rejects(owner.stage(context, { ...basis, expectedStage: 2, done: true,
+            actions: [{ type: 'gate.create', id: 'new:gate', parentPhaseId: 'new:phase',
+                designation: 'G1', title: 'Generated Gate', purpose: 'Verify generated feature',
+                criteria: [{ id: 'new:criterion', title: 'Result', expectedResult: 'Feature works' }] }] }),
+        /ROADMAP_SOURCE_CHANGED/);
+        assert.equal(owner.get('chat')?.operations.length, 1);
+        await assert.rejects(owner.review(context, first.acceptedOperationIds, 'apply'),
+            /ROADMAP_SOURCE_CHANGED/);
+        assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), canonical);
+        assert.deepEqual(await sourceBytes(file), changed);
+    });
+});
+
 test('native read, multi-batch stage and cancel never write the canonical index', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-roadmap-native-'));
     try {
