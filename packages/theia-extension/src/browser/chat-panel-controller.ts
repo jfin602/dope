@@ -690,6 +690,7 @@ export class ChatPanelController {
             if (lease !== this.lease || proposal !== this.planningProposal) return;
             this.nativeRoadmapReview = { proposalId: proposal.id, ids, decision, ...review };
         } catch (error) { this.planningProposalError = `Roadmap subset is unavailable: ${String(error)}`;
+            this.planningProposalErrorMessageId = proposal.messageId;
         } finally { this.pending = false; this.changed(); }
     }
     async reviseNativeRoadmap(operationId: string, entityId: string,
@@ -718,10 +719,10 @@ export class ChatPanelController {
                 lease.token, review.proposalId, review.ids, review.decision, review.token);
             if (lease !== this.lease) return;
             this.planningProposal = result.proposal;
-            this.planningProposalError = result.revision ?
-                `Roadmap updated at revision ${result.revision}: ${result.changedIds.join(', ')}` :
-                `${review.ids.length} Roadmap operation(s) rejected`;
+            this.planningProposalError = undefined;
+            this.planningProposalErrorMessageId = undefined;
         } catch (error) { this.planningProposalError = `Roadmap decision was not applied: ${String(error)}`;
+            this.planningProposalErrorMessageId = this.planningProposal?.messageId;
         } finally { this.nativeRoadmapReview = undefined; this.pending = false; this.changed();
             await this.refresh(true); }
     }

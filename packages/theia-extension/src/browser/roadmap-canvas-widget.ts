@@ -258,7 +258,8 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     source: !!data.proposalSource }))),
             ...card.corrections.filter(correction => correction.parent.kind === 'phase').map(correction =>
                 React.createElement('div', { key: correction.id, className: 'dope-roadmap-correction-row' },
-                    `Phase correction · ${correction.qualificationStatus}`,
+                    React.createElement('small', { className: 'dope-roadmap-correction-status' },
+                        `Phase correction · ${correction.qualificationStatus}`),
                     React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
                         field: 'title', value: correction.title, label: 'Correction title', save: data.editField }),
                     React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,

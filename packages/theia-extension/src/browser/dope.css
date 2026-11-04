@@ -263,6 +263,7 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-gate-foldout p { margin: 4px 0; }
 .dope-roadmap-gate-foldout button { touch-action: manipulation; }
 .dope-roadmap-correction-row { border-left: 3px solid var(--theia-editorWarning-foreground, var(--theia-widget-border)); }
+.dope-roadmap-correction-status { display: block; margin: 4px 0; color: var(--theia-descriptionForeground); }
 .dope-roadmap-omitted { color: var(--theia-descriptionForeground); font-size: 12px; }
 .dope-roadmap-node .dope-roadmap-association-warning { color: var(--theia-editorWarning-foreground, var(--theia-foreground)); }
 .dope-roadmap-detail { color: var(--theia-descriptionForeground); }
