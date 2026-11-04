@@ -1,0 +1,38 @@
+TASK: Correction 12 / P2 — project History records ordinary reviewed Roadmap Apply
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Existing runner owns successful implementation commits; do not self-commit. Target <=8 minutes focused; hard cap 15 minutes per bounded step. Stop PARTIAL/NOT GREEN or BLOCKED on unmet safety/predecessor, never manufacture a checkpoint.
+- No live Qwen inference, browser execution, automatic closeout, package/version/provider/model change, or overlapping correction stack.
+
+VERSIONING
+- Required unchanged project version: `0.12.7`.
+- Verify actual LOCAL manifest, branch, HEAD, status and in-flight source before editing; fail safely on mismatch rather than bumping version.
+
+PREFLIGHT / PROTECTION
+- Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0040/0045/0046/0047/0048/0049/0050, docs/planning/p12/roadmap-chat-polish-contract.md, c12-rm-orch-polish README/assessment/plan, prior Pn result, old c12-rm-orch-fix P3 NOT GREEN report and exact source/tests.
+- Preserve uncommitted changes and active project state; no reset, stash, clean, force push, owner real tower-defense writes, source authority bypass, model selection change or generic model shell/file write. Use disposable fixtures and identified per-test managed roots only.
+- Preserve single protected Pi tool loop, validated StageOwner stage-before-tool-success, exact /gen-roadmap user-origin command, Ask/Allow, lease/project/root/chat/turn/revision/source, noncanonical proposal, explicit owner Apply, linked Markdown sync, append-only revisions and evidence-bound GREEN. Do not restore old natural/JSON/RM1/two-pass/per-Phase generation modes.
+
+
+PREREQUISITE
+- P1 verified source/owner tests and safe disposable teardown on current source. Stop on missing immutable revision receipt or source ownership.
+
+OBJECTIVE
+Show ordinary owner-approved Roadmap Apply transactions in Project History, not only reviewed restores, deriving entries from existing durable actual-effect receipts. No new canonical history writer or duplicate Markdown-sync entries.
+
+IMPLEMENT
+1. Inspect `packages/theia-extension/src/node/history-owner-metadata.ts` and real RoadmapStore revision archive/revision receipts, operation IDs, project owner and timestamps; reproduce P3 screenshot's gap: revision R1 recorded selected Phase+Gate Apply but recent Project History shows only Chat focus. Distinguish timeline source from canonical revision archive; do not invent absent historical data.
+2. Extend deterministic read-side History projection to include **actual reviewed Apply** records with a stable `sourceId` using project identity+revision+receipt operation identities, real applied revision, captured time, bounded descriptive title, and changed element/operation count where records truthfully support it. Preserve existing reviewed Restore; include other transaction types only when verified receipt defines their semantics.
+3. Do not emit entries for noncanonical Stage, model tool success, Reject, Cancel, stale, failed/no-op Apply or a linked Markdown sync that simply represents the same canonical accepted revision. Do not count nested Criteria as independent operations unless the receipt actually does; avoid mislabeled applied counts. Persisted read must be idempotent and stable over reload/navigation.
+4. Preserve historical immutable records, source hash/index mapping, qualification/evidence and waiver protections. Avoid reading arbitrary user source to infer Apply if durable receipt is absent; use the existing project-scoped, bounded revision APIs with safe corruption/gap behavior.
+5. Ensure front History panel accurately presents the new event using existing History source model without a separate large new UI flow. If a minimal display adapter is required for actual underlying metadata compatibility, keep it source-bound and test it; do not start visual polish work reserved for manual M1–M3.
+
+QUALIFY
+- Disposable fixture tests: no index/revision, one selected Apply with Phase/Gate children, partial follow-up Apply, Apply all, Reject/no-op, source sync, explicit Restore, corrupted/gapped archive, restart/reload, repeated reads and cross-project isolation. Verify exactly one ordinary Apply event per real receipt, stable id/time/revision, no phantom extra receipt.
+- Include actual History integration tests and relevant Roadmap revision/archive tests, typecheck, extension build, `git diff --check`, exact test counts and source/hash evidence; attribute unrelated failures.
+- No live model or browser; History UI visual observation belongs to M3.
+
+EXIT
+- Source-qualified if normal Apply appears as one accurate read-side History event without changing write authority or duplicating sync/restores. Otherwise STOP and preserve original NOT GREEN.
