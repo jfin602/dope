@@ -75,7 +75,8 @@ export function roadmapElementContext(index: RoadmapGateIndex, selections: ChatC
             publicationState: publication(value.draftAcceptance),
             criteria: undefined, criterionIds: value.criteria.map(item => item.id),
             ...(includeVerification ? { qualificationSource,
-                actualQualification: evaluateGateQualification(value, qualificationSource) } : {}) });
+                actualQualification: evaluateGateQualification(value, qualificationSource,
+                    index.phases.find(phase => phase.id === value.parentPhaseId)) } : {}) });
         for (const item of value.criteria) addCriterion(id, item.id);
         for (const item of index.corrections.filter(item => item.parent.kind === 'gate' && item.parent.id === id))
             addCorrection(item.id);

@@ -730,6 +730,8 @@ export class RoadmapStore {
             const work = map.workItems.find(item => item.id === link.workItemId);
             if (!work || work.status !== 'ready' ||
                 !work.acceptanceCriteria.length || !work.validationTargets.length ||
+                link.requiredChecks !== undefined &&
+                    JSON.stringify(link.requiredChecks) !== JSON.stringify(work.validationTargets) ||
                 !link.transformationIds.length ||
                 JSON.stringify([...work.transformationIds].sort()) !== JSON.stringify([...link.transformationIds].sort()) ||
                 link.transformationIds.some(id => !map.transformations.some(item => item.id === id)))
@@ -755,7 +757,8 @@ export class RoadmapStore {
         const review: PhaseWorkReview = { approvalId: randomUUID(), projectRoot: root, projectId, phaseId,
             revision, headHash, expiresAt: Date.now() + 5 * 60_000, planningRevision: planning.revision,
             lockApprovalId: index.phases.find(item => item.id === phaseId)!.planningLock!.approvalId,
-            links: structuredClone(links), items };
+            links: links.map(link => ({ ...structuredClone(link),
+                requiredChecks: [...items.find(item => item.id === link.workItemId)!.validationTargets] })), items };
         this.phaseWorkReviews.set(review.approvalId, structuredClone(review));
         if (this.phaseWorkReviews.size > 32) this.phaseWorkReviews.delete(this.phaseWorkReviews.keys().next().value!);
         return review;
@@ -780,7 +783,13 @@ export class RoadmapStore {
                     JSON.stringify(review.items)) throw new Error('Planning or WorkItem review changed');
             const result = structuredClone(current);
             result.revision++;
-            result.phases.find(item => item.id === review.phaseId)!.workLinks = structuredClone(review.links);
+            const phase = result.phases.find(item => item.id === review.phaseId)!;
+            phase.workLinks = structuredClone(review.links);
+            for (const gate of result.gates.filter(item => item.parentPhaseId === phase.id))
+                gate.qualificationStatus = evaluateGateQualification(gate, gate.qualificationSource, phase).status;
+            const qualification = evaluatePhaseQualification(result, phase.id, phase.qualificationSource);
+            phase.qualificationStatus = qualification.status === 'planned' || qualification.status === 'unplanned' ?
+                'unknown' : qualification.status;
             await this.replace(root, result, review.headHash, [`phase-work-review:${review.phaseId}`,
                 `phase-work-approved-by:${reviewerId}`]);
             return result;
@@ -1410,6 +1419,16 @@ export class RoadmapStore {
                     if (operation.currentSource && operation.currentSource.projectId !== expectedProjectId)
                         throw new Error('Foreign tested source');
                     if (!item.source && operation.currentSource) throw new Error('Source-free manual evidence has no tested source');
+                    if (item.source && operation.currentSource &&
+                        !sameRoadmapSource(item.source, operation.currentSource))
+                        throw new Error('Tested evidence source changed');
+                    if (item.receipt && (item.receipt.reviewerId !== operation.reviewerId ||
+                        item.receipt.reviewedAt !== operation.reviewedAt ||
+                        item.receipt.ownerId !== expectedProjectId ||
+                        item.receipt.phaseId !== gate(operation.gateId).parentPhaseId ||
+                        item.receipt.gateId !== operation.gateId ||
+                        item.receipt.eventId !== item.id || !item.source))
+                        throw new Error('Checked evidence receipt review differs from approval');
                     item.review = { status: 'approved', reviewerId: operation.reviewerId, reviewedAt: operation.reviewedAt };
                     if (operation.currentSource) gate(operation.gateId).qualificationSource = operation.currentSource;
                     break;
@@ -1504,7 +1523,8 @@ export class RoadmapStore {
                 const changedGate = gate(operation.type === 'gate.source' || operation.type === 'gate.blockers' ||
                     operation.type === 'gate.waiver.approve' || operation.type === 'gate.waiver.revoke' ?
                     operation.id : operation.gateId);
-                changedGate.qualificationStatus = evaluateGateQualification(changedGate).status;
+                changedGate.qualificationStatus = evaluateGateQualification(changedGate,
+                    changedGate.qualificationSource, phase(changedGate.parentPhaseId)).status;
             }
             // Definition changes invalidate prior qualification. Evidence review alone does not
             // invalidate the phase's approved gate-set definition.

@@ -27,7 +27,7 @@ export function roadmapPhasePresentation(index: RoadmapGateIndex, phaseId: strin
         !['active', 'implemented'].includes(phase.implementationStatus) &&
         accepted.every(gate => gate.criteria.every(criterion => !criterion.evidence.length))) return 'planned';
     if (qualification !== 'planned') return qualification;
-    const gateStates = accepted.map(gate => evaluateGateQualification(gate, gate.qualificationSource).status);
+    const gateStates = accepted.map(gate => evaluateGateQualification(gate, gate.qualificationSource, phase).status);
     if (gateStates.includes('blocked')) return 'blocked';
     if (gateStates.includes('not-green')) return 'not-green';
     if (gateStates.includes('stale')) return 'stale';
@@ -66,7 +66,7 @@ export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly Roadmap
             .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
             .map(gate => ({ ...gate,
                 status: source.nodes.find(node => node.id === gate.id)?.qualificationStatus ??
-                    evaluateGateQualification(gate, gate.qualificationSource).status,
+                    evaluateGateQualification(gate, gate.qualificationSource, phase).status,
                 proposed: gate.draftAcceptance === 'proposed' }));
         const corrections = index.corrections.filter(item => item.parent.kind === 'phase' && item.parent.id === phase.id ||
             item.parent.kind === 'gate' && gates.some(gate => gate.id === item.parent.id))

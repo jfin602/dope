@@ -266,7 +266,7 @@ export class ChatContextComposer {
             title: target.title, purpose: target.purpose, order: target.order, dependencies: target.dependencies,
             criteria: target.criteria.map(item => ({ id: item.id, title: item.title,
                 expectedResult: item.expectedResult, order: item.order })),
-            qualification: evaluateGateQualification(target, target.qualificationSource)
+            qualification: evaluateGateQualification(target, target.qualificationSource, phase)
         } : { id: target.id, title: target.title, objective: target.objective, order: target.order,
             dependencies: target.dependencies,
             qualification: evaluatePhaseQualification(index, target.id, target.qualificationSource) } : undefined;
@@ -293,7 +293,8 @@ export class ChatContextComposer {
                 lookup: source.id === 'roadmap' && !target && !correction ?
                     'No unique target resolved. Ask for one exact Phase, Gate, Criterion, or Correction ID before editing an existing item.' : undefined } :
                 { nearbyGates: readNearby.map(item => ({ id: item.id, designation: item.designation, title: item.title,
-                    qualification: evaluateGateQualification(item, item.qualificationSource).status })) }) };
+                    qualification: evaluateGateQualification(item, item.qualificationSource,
+                        phases.find(phase => phase.id === item.parentPhaseId)).status })) }) };
         return { label: selected ? `Roadmap ${'parentPhaseId' in selected ? 'Gate' : 'Phase'}: ${selected.title}` : 'Roadmap',
             text: JSON.stringify(facts),
             ...(roadmapSkill && phases.length > 64 ? { omitted: 'Phase index lists the first 64 entries; exact target lookup searched every Phase and Gate' } :

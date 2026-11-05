@@ -115,9 +115,12 @@ export class RoadmapWorkEvidenceIntake {
             run.candidateReview?.candidateFingerprint !== run.candidateFingerprint ||
             !sha(run.candidateFingerprint)) throw new Error('Unaccepted or foreign Work candidate');
         const validation = run.validationResults[input.validationIndex];
+        const requiredChecks = index.phases.find(p => p.id === input.phaseId)?.workLinks
+            ?.find(link => link.workItemId === input.workItemId)?.requiredChecks;
         const expected = index.gates.find(g => g.id === input.gateId)!.criteria.find(c => c.id === input.criterionId)!.expectedResult;
         if (!validation || validation.owner !== 'dope' || validation.kind !== 'test' ||
             validation.status !== 'passed' ||
+            requiredChecks !== undefined && !requiredChecks.includes(validation.label) ||
             !input.assertion.includes(expected) || !time(run.endedAt) || input.reviewedAt < run.endedAt ||
             validation.exitCode !== 0 || !validation.command ||
             validation.candidateFingerprint !== run.candidateFingerprint ||
@@ -145,7 +148,7 @@ export class RoadmapWorkEvidenceIntake {
             workOwnerId: origin.projectId,
             phaseId: input.phaseId, gateId: input.gateId, workItemId: input.workItemId,
             taskId: task.id, runId: run.id, grantId: run.grantId, testedHead: run.basis.head,
-            candidateFingerprint: run.candidateFingerprint!, method: validation.kind,
+            candidateFingerprint: run.candidateFingerprint!, method: validation.kind, checkId: validation.label,
             artifactSha256: digest(JSON.stringify(validation)),
             artifactLocation: `agent-run/${run.id}/validation/${input.validationIndex}`,
             assertionSha256: digest(input.assertion), scope: input.scope,
@@ -172,7 +175,7 @@ export class RoadmapWorkEvidenceIntake {
         const receipt: NonNullable<GateEvidence['receipt']> = {
             eventId: input.eventId, origin: 'reviewed-observation', ownerId: input.projectId,
             phaseId: input.phaseId, gateId: input.gateId, workItemId: input.workItemId,
-            testedHead: input.testedHead, method: input.method,
+            testedHead: input.testedHead, method: input.method, checkId: input.method,
             artifactSha256: input.artifactSha256, artifactLocation: input.artifactLocation,
             assertionSha256: digest(input.assertion),
             scope: input.scope, recordedAt: input.observedAt, reviewerId: input.reviewerId,

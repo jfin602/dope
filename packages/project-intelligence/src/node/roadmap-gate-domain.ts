@@ -29,7 +29,7 @@ export interface GateEvidence {
     receipt?: { eventId: string; origin: 'dope-validation' | 'reviewed-observation';
         ownerId: string; workOwnerId?: string; phaseId: string; gateId: string; workItemId?: string;
         taskId?: string; runId?: string; grantId?: string; testedHead: string;
-        candidateFingerprint?: string; method: string; artifactSha256: string;
+        candidateFingerprint?: string; method: string; checkId?: string; artifactSha256: string;
         artifactLocation: string; assertionSha256: string; scope: string; recordedAt: string;
         reviewerId: string; reviewedAt: string };
 }
@@ -64,7 +64,8 @@ export interface RoadmapGate {
 }
 export type GateQualification = { status: 'green' | 'not-green' | 'unknown' | 'blocked' | 'stale' | 'waived'; reasons: string[] };
 /** Read-only decision. A stored color or implementation status is never evidence. */
-export function evaluateGateQualification(gate: RoadmapGate, currentSource = gate.qualificationSource): GateQualification {
+export function evaluateGateQualification(gate: RoadmapGate, currentSource = gate.qualificationSource,
+    phase?: RoadmapPhase): GateQualification {
     if (gate.waiver) return !currentSource || !sameRoadmapSource(gate.waiver.source, currentSource) ?
         { status: 'stale', reasons: ['Exceptional Gate waiver source changed'] } :
         { status: 'waived', reasons: [`Exceptional Gate waiver: ${gate.waiver.reason}`] };
@@ -75,22 +76,46 @@ export function evaluateGateQualification(gate: RoadmapGate, currentSource = gat
     let stale = false;
     let failed = false;
     for (const criterion of gate.criteria) {
-        const reviewed = criterion.evidence.filter(e => e.review.status === 'approved');
-        if (!reviewed.length) { reasons.push(`${criterion.id}: missing approved evidence`); continue; }
-        const current = reviewed.filter(e => {
-            const drift = e.validation?.status === 'stale' || e.criterionHash !== criterionHash(criterion) ||
-                !!e.source && (!currentSource || !sameRoadmapSource(e.source, currentSource));
-            return !drift;
-        });
-        if (!current.length) {
-            if (reviewed.length) stale = true;
-            const detail = reviewed.at(-1)!;
-            reasons.push(`${criterion.id}: ${detail.validation?.reason ??
-                (detail.criterionHash !== criterionHash(criterion) ? 'Criterion definition changed' : 'Tested source changed')}`);
+        // A locked Phase has an explicit Work-to-Criterion plan. Each linked WorkItem is
+        // a required check; unrelated or legacy evidence cannot satisfy that check.
+        const requiredWork = phase?.planningLock ? [...new Set((phase.workLinks ?? [])
+            .filter(link => link.criterionIds.includes(criterion.id)).map(link => link.workItemId))] : undefined;
+        if (requiredWork && !requiredWork.length) {
+            reasons.push(`${criterion.id}: no reviewed Work check is linked`);
             continue;
         }
-        const latest = current[current.length - 1];
-        if (latest.result !== 'pass') { failed = true; reasons.push(`${criterion.id}: ${latest.result}`); }
+        for (const workItemId of requiredWork ?? [undefined]) {
+            const requiredChecks = workItemId ? phase?.workLinks?.find(link => link.workItemId === workItemId)?.requiredChecks : undefined;
+            for (const checkId of requiredChecks?.length ? requiredChecks : [undefined]) {
+                const reviewed = criterion.evidence.filter(e => e.review.status === 'approved' &&
+                    (workItemId === undefined || e.receipt?.workItemId === workItemId &&
+                        e.receipt.phaseId === phase?.id && e.receipt.gateId === gate.id &&
+                        e.receipt.ownerId === gate.projectId && e.receipt.eventId === e.id &&
+                        !!e.source &&
+                        e.receipt.assertionSha256 !== '0'.repeat(64) &&
+                        (checkId === undefined || e.receipt.checkId === checkId)));
+                const check = [criterion.id, workItemId, checkId].filter(Boolean).join('/');
+                if (!reviewed.length) { reasons.push(`${check}: missing approved evidence`); continue; }
+                const current = reviewed.filter(e => {
+                    const drift = e.validation?.status === 'stale' || e.criterionHash !== criterionHash(criterion) ||
+                        !!e.source && (!currentSource || !sameRoadmapSource(e.source, currentSource));
+                    return !drift;
+                });
+                if (!current.length) {
+                    stale = true;
+                    const detail = reviewed.at(-1)!;
+                    reasons.push(`${check}: ${detail.validation?.reason ??
+                        (detail.criterionHash !== criterionHash(criterion) ? 'Criterion definition changed' : 'Tested source changed')}`);
+                    continue;
+                }
+                const latestAt = Math.max(...current.map(item => Date.parse(item.observedAt)));
+                const latest = current.filter(item => Date.parse(item.observedAt) === latestAt);
+                if (latest.some(item => item.result !== 'pass')) {
+                    failed = true;
+                    reasons.push(`${check}: ${latest.some(item => item.result === 'fail') ? 'fail' : 'inconclusive'}`);
+                }
+            }
+        }
     }
     if (stale) return { status: 'stale', reasons };
     if (failed) return { status: 'not-green', reasons };
@@ -100,7 +125,9 @@ export function evaluateGateQualification(gate: RoadmapGate, currentSource = gat
 export interface PhaseWorkLink { planningProjectId: string; mapId: string; mapRevision: number;
     basis: { architectureRevision: number; architectureFingerprint: string;
         physicalInputFingerprint: string; physicalGeneration: number };
-    workItemId: string; transformationIds: string[]; criterionIds: string[] }
+    workItemId: string; transformationIds: string[]; criterionIds: string[];
+    /** Exact validation labels approved with the Work handoff. Legacy links lack this list. */
+    requiredChecks?: string[] }
 export interface RoadmapPhase {
     id: string;
     projectId: string;
@@ -134,7 +161,7 @@ export function evaluatePhaseQualification(index: RoadmapGateIndex, phaseId: str
     const gates = index.gates.filter(item => item.parentPhaseId === phaseId && item.draftAcceptance !== 'proposed');
     const required = gates.length;
     const results = gates.map(gate => {
-        const evidence = evaluateGateQualification(gate, currentSource);
+        const evidence = evaluateGateQualification(gate, currentSource, phase);
         const result = gate.qualificationStatus === 'stale' && evidence.status === 'green' ?
                 { status: 'stale', reasons: ['Gate status requires requalification'] } : evidence;
         return { gate, result };
@@ -172,10 +199,25 @@ export function evaluatePhaseQualification(index: RoadmapGateIndex, phaseId: str
         }
         return { status: 'waived', qualified, required, reasons };
     }
-    if (phase.qualificationBlockers?.length) return { status: 'blocked', qualified, required, reasons };
+    if (phase.qualificationBlockers?.length || results.some(item => item.result.status === 'blocked'))
+        return { status: 'blocked', qualified, required, reasons };
     if (stale) return { status: 'stale', qualified, required, reasons };
     if (phase.gateSetCoverage.status !== 'approved') return { status: 'planned', qualified, required, reasons };
     return { status: reasons.length ? 'not-green' : 'green', qualified, required, reasons };
+}
+/** Eligibility only: the owner closeout is a separate reviewed action, never a Work or Gate side effect. */
+export function phaseCloseoutEligibility(index: RoadmapGateIndex, phaseId: string, ownerId: string,
+    currentSource?: RoadmapSourceProof): { eligible: boolean; reasons: string[] } {
+    const phase = index.phases.find(item => item.id === phaseId);
+    if (!phase) throw new Error('Missing Roadmap Phase');
+    const qualification = evaluatePhaseQualification(index, phaseId, currentSource);
+    const reasons = [...qualification.reasons];
+    if (!phase.planningLock || phase.planningLock.lockedBy !== ownerId)
+        reasons.push('Explicit locked Phase owner is required for closeout');
+    if (qualification.status !== 'green' && !reasons.length)
+        reasons.push('Current Phase qualification is required for closeout');
+    return { eligible: qualification.status === 'green' && !!phase.planningLock &&
+        phase.planningLock.lockedBy === ownerId, reasons };
 }
 export interface RoadmapCorrection {
     id: string;
@@ -347,7 +389,7 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
                 p.workLinks.length <= MAX_NESTED && new Set(p.workLinks.map(link =>
                     `${link.planningProjectId}/${link.mapId}/${link.workItemId}`)).size === p.workLinks.length &&
                 p.workLinks.every(link => record(link) && keys(link, ['planningProjectId', 'mapId', 'mapRevision',
-                    'basis', 'workItemId', 'transformationIds', 'criterionIds']) &&
+                    'basis', 'workItemId', 'transformationIds', 'criterionIds'], ['requiredChecks']) &&
                     identifier(link.planningProjectId) && identifier(link.mapId) && natural(link.mapRevision) &&
                     identifier(link.workItemId) && record(link.basis) &&
                     keys(link.basis, ['architectureRevision', 'architectureFingerprint', 'physicalInputFingerprint', 'physicalGeneration']) &&
@@ -356,7 +398,11 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
                     Array.isArray(link.transformationIds) && link.transformationIds.length > 0 &&
                     link.transformationIds.every(identifier) && new Set(link.transformationIds).size === link.transformationIds.length &&
                     Array.isArray(link.criterionIds) && link.criterionIds.length > 0 &&
-                    link.criterionIds.every(identifier) && new Set(link.criterionIds).size === link.criterionIds.length),
+                    link.criterionIds.every(identifier) && new Set(link.criterionIds).size === link.criterionIds.length &&
+                    (link.requiredChecks === undefined || Array.isArray(link.requiredChecks) &&
+                        link.requiredChecks.length > 0 && link.requiredChecks.length <= MAX_NESTED &&
+                        link.requiredChecks.every(v => prose(v, 256)) &&
+                        new Set(link.requiredChecks).size === link.requiredChecks.length)),
             'phase Work links');
         }
     }
@@ -411,7 +457,7 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
                     (candidateEvidence.receipt === undefined || record(candidateEvidence.receipt) &&
                         keys(candidateEvidence.receipt, ['eventId', 'origin', 'ownerId', 'phaseId', 'gateId',
                             'testedHead', 'method', 'artifactSha256', 'artifactLocation', 'assertionSha256', 'scope', 'recordedAt',
-                            'reviewerId', 'reviewedAt'], ['workOwnerId', 'workItemId', 'taskId', 'runId', 'grantId', 'candidateFingerprint']) &&
+                            'reviewerId', 'reviewedAt'], ['workOwnerId', 'workItemId', 'taskId', 'runId', 'grantId', 'candidateFingerprint', 'checkId']) &&
                         candidateEvidence.receipt.eventId === candidateEvidence.id &&
                         member(candidateEvidence.receipt.origin, ['dope-validation', 'reviewed-observation']) &&
                         candidateEvidence.receipt.ownerId === projectId &&
@@ -431,7 +477,9 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
                         (candidateEvidence.receipt.grantId === undefined || identifier(candidateEvidence.receipt.grantId)) &&
                         gitHead(candidateEvidence.receipt.testedHead) &&
                         (candidateEvidence.receipt.candidateFingerprint === undefined || hash(candidateEvidence.receipt.candidateFingerprint)) &&
-                        prose(candidateEvidence.receipt.method, 256) && hash(candidateEvidence.receipt.artifactSha256) &&
+                        prose(candidateEvidence.receipt.method, 256) &&
+                        (candidateEvidence.receipt.checkId === undefined || prose(candidateEvidence.receipt.checkId, 256)) &&
+                        hash(candidateEvidence.receipt.artifactSha256) &&
                         prose(candidateEvidence.receipt.artifactLocation, 512) && hash(candidateEvidence.receipt.assertionSha256) &&
                         prose(candidateEvidence.receipt.scope, 1024) &&
                         timestamp(candidateEvidence.receipt.recordedAt) && identifier(candidateEvidence.receipt.reviewerId) &&
@@ -462,7 +510,9 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     cycleCheck(gates as RoadmapGate[], 'gate');
     for (const gate of gates as RoadmapGate[]) {
         if (gate.qualificationStatus === 'green')
-            assertion(evaluateGateQualification(gate).status === 'green', 'unverified Gate Green');
+            assertion(evaluateGateQualification(gate, gate.qualificationSource,
+                (phases as RoadmapPhase[]).find(phase => phase.id === gate.parentPhaseId)).status === 'green',
+            'unverified Gate Green');
         if (gate.qualificationStatus === 'waived') assertion(!!gate.waiver, 'unreviewed Gate waiver');
     }
     for (const phase of phases as RoadmapPhase[]) {

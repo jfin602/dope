@@ -194,7 +194,7 @@ export class RoadmapInspectorWidget extends BaseWidget {
     private renderGate(gate: NonNullable<RoadmapInspectorModel['selectedGate']>): void {
         const index = this.model.gateIndex;
         const phase = index?.phases.find(item => item.id === gate.parentPhaseId);
-        const qualification = evaluateGateQualification(gate, gate.qualificationSource);
+        const qualification = evaluateGateQualification(gate, gate.qualificationSource, phase);
         this.content.append(this.element('h2', roadmapGateLabel(gate)),
             this.element('p', `Gate in ${phase?.title ?? gate.parentPhaseId} · ${gate.draftAcceptance} · ${qualification.status.replaceAll('-', ' ')} · Roadmap revision ${index?.revision}`));
         const objective = this.element('section');

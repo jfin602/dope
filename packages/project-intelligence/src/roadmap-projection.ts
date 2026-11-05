@@ -194,7 +194,8 @@ export function projectRoadmap(index: RoadmapGateIndex, owners: readonly Roadmap
     const gates: GateRoadmapNode[] = [...index.gates].sort((a, b) =>
         compare(a.parentPhaseId, b.parentPhaseId) || a.order - b.order || compare(a.id, b.id)).map(gate => {
         const evidence = gate.criteria.flatMap(criterion => criterion.evidence.map(item => ({ ...item })));
-        const evaluated = evaluateGateQualification(gate, gate.qualificationSource).status;
+        const evaluated = evaluateGateQualification(gate, gate.qualificationSource,
+            index.phases.find(phase => phase.id === gate.parentPhaseId)).status;
         const qualificationStatus = evaluated === 'green' && (gate.qualificationStatus === 'stale' ||
             index.linkedDocument && index.linkedDocument.syncState !== 'synced') ? 'stale' : evaluated;
         return { id: gate.id, kind: 'gate', title: gate.title, order: gate.order,
