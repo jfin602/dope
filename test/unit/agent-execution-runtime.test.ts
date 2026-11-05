@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
 import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/index.js';
 import { AgentExecutionRuntime } from '../../packages/theia-extension/lib/node/agent-execution-runtime.js';
@@ -286,8 +287,16 @@ test('capacity failure after a candidate edit stops without automatic replay and
 }));
 
 test('saved direct candidate resumes in a new run with fresh grant and immutable original', async () => fixture(async f => {
+    f.adapter.id = 'pi-local-work';
     const uri = pathToFileURL(f.root).href;
     const first = await f.backend.start(f.handle, uri, 'task-1', grant(), true);
+    const documentBytes = await readFile(join(f.root, 'docs/workflow.md'));
+    const documentRead = { path: 'docs/workflow.md', question: 'recovery rule',
+        sourceHash: 'a'.repeat(64), contentHash: createHash('sha256').update(documentBytes).digest('hex'),
+        offset: 0, endOffset: Math.min(128, documentBytes.length), fileBytes: documentBytes.length };
+    f.adapter.onEvent?.({ kind: 'work-observation', toolId: 'pi-1', toolName: 'read_file',
+        phase: 'completed', brokerInvoked: true, detail: JSON.stringify({ document: {
+            ...documentRead, read: true, clipped: false } }) });
     const original = await readFile(join(f.root, 'README.md'));
     const changed = Buffer.concat([original, Buffer.from('\nresume fixture\n')]);
     await writeFile(join(f.adapter.starts[0].executionRoot, 'README.md'), changed);
@@ -296,6 +305,7 @@ test('saved direct candidate resumes in a new run with fresh grant and immutable
     const stopped = await terminal(f.store, f.root, first.id);
     await released(f.runtime, f.root);
     assert.equal(stopped.status, 'failed');
+    assert.deepEqual(stopped.documentReads, [documentRead]);
     const archive = (await f.store.partialCandidateRoot(f.root, first.id))!;
     await writeFile(join(archive, 'resume-created.txt'), 'corrupt archive');
     assert.equal((await f.backend.previewCandidateResume(f.handle, first.id)).eligible, false);
@@ -321,6 +331,9 @@ test('saved direct candidate resumes in a new run with fresh grant and immutable
     assert.equal(second.resumedFrom?.runId, first.id);
     assert.notEqual(second.id, first.id);
     assert.equal(second.grantId, freshGrant.id);
+    assert.deepEqual(second.documentReads, [documentRead]);
+    assert.deepEqual(f.adapter.starts[1].priorDocumentReads, [documentRead]);
+    assert.match(f.adapter.starts[1].prompt, /Document meaning\/findings: unknown/);
     assert.equal(await readFile(join(f.adapter.starts[1].executionRoot, 'README.md'), 'utf8'), changed.toString());
     assert.equal(await readFile(join(f.adapter.starts[1].executionRoot, 'resume-created.txt'), 'utf8'), 'created once\n');
     assert.deepEqual(await readFile(join(f.root, 'README.md')), original);
@@ -329,9 +342,17 @@ test('saved direct candidate resumes in a new run with fresh grant and immutable
         preview.candidateFingerprint!, { ...newTask, id: 'task-duplicate' },
         createDefaultExecutionGrant({ id: 'grant-duplicate', revision: 1, taskId: 'task-duplicate',
             acceptedAt: new Date().toISOString() }), true), /already active|already has a continuation/i);
-    f.adapter.fail('second controlled stop');
-    await terminal(f.store, f.root, second.id);
+    await writeFile(join(f.adapter.starts[1].executionRoot, 'resume-created.txt'), 'continued once\n');
+    f.adapter.complete();
+    const reviewed = await terminal(f.store, f.root, second.id);
+    assert.equal(reviewed.status, 'blocked');
+    assert.equal(reviewed.candidateReview?.state, 'ready');
+    assert.equal(reviewed.validationResults.find(result => result.owner === 'dope')?.status, 'passed');
+    assert.equal(await readFile(join(f.root, 'README.md'), 'utf8'), original.toString());
+    await assert.rejects(readFile(join(f.root, 'resume-created.txt')), { code: 'ENOENT' });
     await released(f.runtime, f.root);
+    await f.backend.decideCandidate(f.handle, reviewed.id, reviewed.candidateReview!.revision,
+        reviewed.candidateReview!.candidateFingerprint, 'reject');
     assert.deepEqual(await f.store.readRun(f.root, first.id), stopped);
 }));
 

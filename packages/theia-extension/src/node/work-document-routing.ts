@@ -1,8 +1,10 @@
 import type { LocalToolRequest } from '@dope/agent-core/lib/node/local-tool-contracts';
 import { parseLocalToolRequests } from '@dope/agent-core/lib/node/local-tool-contracts';
+import type { WorkDocumentRead } from '@dope/agent-core';
 
 export interface DocumentPointer { path: string; section?: string; question: string; role: 'task' | 'instructions' }
 export interface DocumentRead { path: string; section?: string; question: string; sourceHash: string | null;
+    contentHash?: string;
     offset: number; endOffset: number; fileBytes: number | null; offered: boolean;
     role: DocumentPointer['role'] | 'agent-selected'; repeated: boolean; circular: boolean; clipped: boolean }
 
@@ -64,7 +66,8 @@ export class WorkDocumentRouting {
 
     constructor(private readonly task: string, instructions: string,
         private readonly workingPaths: readonly string[] = [],
-        private readonly allowed: (path: string) => boolean = () => true) {
+        private readonly allowed: (path: string) => boolean = () => true,
+        private readonly priorReads: readonly WorkDocumentRead[] = []) {
         this.pointers = selectDocumentPointers(task, instructions, workingPaths, allowed);
     }
 
@@ -75,7 +78,8 @@ export class WorkDocumentRouting {
             .join('\n')}\nUse read_file with offset 0 for a first page; continue with nextOffset and expectedSourceHash to reach late sections. Read only what the active implementation question needs. A read does not complete the task.`;
     }
 
-    notice(): string { return this.format(this.pointers); }
+    notice(): string { return this.format(this.pointers.filter(pointer => !this.priorReads.some(read =>
+        read.path === pointer.path && read.section === pointer.section && read.question === pointer.question))); }
 
     additionalInstructions(instructions: string, path: string): string {
         const candidates = selectDocumentPointers(this.task, instructions, [...this.workingPaths, path], this.allowed);
@@ -92,11 +96,12 @@ export class WorkDocumentRouting {
         if (!/\.(?:md|txt)$/iu.test(call.arguments.path) || call.arguments.path.endsWith('/AGENTS.md') ||
             call.arguments.path === 'AGENTS.md') return {};
         const ranged = call.arguments.offset !== undefined;
-        let page: { path: string; sourceHash: string; offset: number; endOffset: number; fileBytes: number;
+        let page: { path: string; sourceHash: string; contentHash?: string; offset: number; endOffset: number; fileBytes: number;
             nextOffset: number | null; truncated: boolean } | undefined;
         if (ranged) {
             try { page = JSON.parse(output); } catch { return {}; }
             if (!page || page.path !== call.arguments.path || !/^[a-f0-9]{64}$/u.test(page.sourceHash) ||
+                page.contentHash !== undefined && !/^[a-f0-9]{64}$/u.test(page.contentHash) ||
                 !Number.isSafeInteger(page.offset) || !Number.isSafeInteger(page.endOffset) ||
                 !Number.isSafeInteger(page.fileBytes) || page.offset !== call.arguments.offset ||
                 page.endOffset < page.offset || page.endOffset > page.fileBytes ||
@@ -115,7 +120,8 @@ export class WorkDocumentRouting {
             this.trail.at(-2)?.path === call.arguments.path && this.trail.at(-2)?.sourceHash === sourceHash &&
             this.trail.at(-2)?.question === question && this.trail.at(-1)?.path !== call.arguments.path;
         const record: DocumentRead = { path: call.arguments.path, section: pointer?.section,
-            question, sourceHash, offset, endOffset, fileBytes: page?.fileBytes ?? null,
+            question, sourceHash, ...(page?.contentHash ? { contentHash: page.contentHash } : {}),
+            offset, endOffset, fileBytes: page?.fileBytes ?? null,
             offered: Boolean(pointer), role: pointer?.role ?? 'agent-selected', repeated, circular, clipped: !ranged };
         this.trail.push(record);
         if (this.trail.length > 16) this.trail.shift();

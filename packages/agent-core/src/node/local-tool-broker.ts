@@ -257,7 +257,7 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
                 output = JSON.stringify({ path: call.arguments.path, offset: call.arguments.offset,
                     endOffset: wire.endOffset, nextOffset: wire.truncated ? wire.endOffset : null,
                     fileBytes: wire.fileBytes, text: bytes.toString('utf8'),
-                    truncated: wire.truncated, sourceHash });
+                    truncated: wire.truncated, sourceHash, contentHash: wire.digest });
             } else output = bytes.toString('utf8');
         } else {
             if (!Array.isArray(wire.entries) || wire.entries.length > call.arguments.maxEntries ||

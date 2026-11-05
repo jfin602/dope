@@ -1,4 +1,5 @@
 import type { ExecutionGrant } from './authority';
+import type { WorkDocumentRead } from './contracts';
 
 /** Ephemeral provider observations. The runtime decides what bounded subset to persist. */
 export type AgentExecutionEvent =
@@ -24,6 +25,10 @@ export interface AgentExecutionRequest {
     selectedLoadedContextTokens?: number; selectedRegistryRevision?: number;
     /** Approved working paths from the task owner; advisory for instruction scope, never a grant. */
     workingPaths?: readonly string[];
+    /** Prior broker-observed ranges. Adapter must verify current bytes before relying on them. */
+    priorDocumentReads?: readonly WorkDocumentRead[];
+    /** Checked owner snapshot to retain across native Pi compaction; never a grant. */
+    recoveryContext?: string;
     prompt: string; reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
     onEvent(event: AgentExecutionEvent): void;
 }

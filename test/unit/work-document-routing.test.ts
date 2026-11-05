@@ -79,3 +79,14 @@ test('newly applicable nested instructions offer only new relevant pointers', ()
     assert.doesNotMatch(added, /docs\/base.md/);
     assert.equal(routing.additionalInstructions('For parser validation use [nested rule](docs/nested.md#rule).', 'src/parser.ts'), '');
 });
+
+test('a verified prior range does not repeat its optional pointer on continuation', () => {
+    const task = 'Implement [parser contract](docs/parser.md#validation).';
+    const prior = [{ path: 'docs/parser.md', section: 'validation', question: 'parser contract',
+        sourceHash: hash, contentHash: 'b'.repeat(64), offset: 0, endOffset: 128, fileBytes: 9000 }];
+    const recovered = new WorkDocumentRouting(task, '', [], () => true, prior);
+    assert.equal(recovered.notice(), '');
+    const changedQuestion = new WorkDocumentRouting('Check [new rule](docs/parser.md#validation).',
+        '', [], () => true, prior);
+    assert.match(changedQuestion.notice(), /docs\/parser.md#validation/);
+});

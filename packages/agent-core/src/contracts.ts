@@ -79,6 +79,9 @@ export interface AgentRun {
     candidateFingerprint?: string;
     /** Checked owner projection captured at Start. It conveys no authority of its own. */
     taskContract?: TaskContractSnapshot;
+    /** Broker-observed document ranges, not claims that their requirements were followed. */
+    documentReads?: WorkDocumentRead[];
+    contextCompactions?: { result: 'succeeded' | 'failed'; reason: 'threshold' | 'overflow' | 'manual' }[];
     resumedFrom?: { runId: string; candidateFingerprint: string };
     candidateReview?: CandidateReview;
     reviewDecision?: CandidateReviewDecision;
@@ -86,6 +89,12 @@ export interface AgentRun {
     recovery?: { adapterId: string; handle: string }; outcome?: { code: 'authority-denied' | 'provider-error' |
         'validation-failed' | 'capacity-exhausted' | 'cancelled' | 'interrupted' | 'other'; summary: string };
     capacityRetries?: number;
+}
+export interface WorkDocumentRead {
+    path: string; section?: string; question: string; sourceHash: string;
+    /** Digest of the file bytes, independent of the isolated candidate identity. */
+    contentHash?: string;
+    offset: number; endOffset: number; fileBytes: number;
 }
 export interface TaskContractSnapshot {
     taskId: string; taskHash: string; objective: string; instructionsHash: string;
@@ -387,15 +396,32 @@ function parseTaskContract(value: unknown): TaskContractSnapshot {
             permissionsHash: hash(grant.permissionsHash) },
         sourceHead: id(x.sourceHead) });
 }
+function parseWorkDocumentRead(value: unknown): WorkDocumentRead {
+    const x = record(value, ['path', 'section', 'question', 'sourceHash', 'contentHash', 'offset', 'endOffset', 'fileBytes']);
+    const offset = integer(x.offset), endOffset = integer(x.endOffset), fileBytes = integer(x.fileBytes);
+    if (!/\.(?:md|txt)$/iu.test(String(x.path)) || endOffset < offset || endOffset > fileBytes)
+        throw new Error('Invalid Work document range');
+    return freeze({ path: projectPath(x.path),
+        ...(x.section === undefined ? {} : { section: bounded(x.section, 100) }),
+        question: bounded(x.question, 100), sourceHash: hash(x.sourceHash),
+        ...(x.contentHash === undefined ? {} : { contentHash: hash(x.contentHash) }),
+        offset, endOffset, fileBytes });
+}
 export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract', 'documentReads', 'contextCompactions']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
     const taskContract = x.taskContract === undefined ? undefined : parseTaskContract(x.taskContract);
+    const documentReads = x.documentReads === undefined ? undefined : array(x.documentReads, 24, parseWorkDocumentRead);
+    const contextCompactions = x.contextCompactions === undefined ? undefined : array(x.contextCompactions, 16, item => {
+        const compact = record(item, ['result', 'reason']);
+        return { result: select(compact.result, ['succeeded', 'failed'] as const),
+            reason: select(compact.reason, ['threshold', 'overflow', 'manual'] as const) };
+    });
     if (taskContract && (taskContract.taskId !== x.taskId || taskContract.grant.id !== x.grantId ||
         taskContract.grant.revision !== x.grantRevision || taskContract.sourceHead !== basis?.head))
         throw new Error('Task Contract does not match run basis');
@@ -461,6 +487,8 @@ export function parseAgentRun(value: unknown): AgentRun {
         requestedPolicy: parseAgentModelPolicy(x.requestedPolicy), projectRoot: '.',
         ...(x.projectId === undefined ? {} : { projectId: id(x.projectId) }),
         ...(taskContract === undefined ? {} : { taskContract }),
+        ...(documentReads === undefined ? {} : { documentReads }),
+        ...(contextCompactions === undefined ? {} : { contextCompactions }),
         createdAt: timestamp(x.createdAt), ...(startedAt ? { startedAt } : {}), ...(endedAt ? { endedAt } : {}),
         ...(executionWorkspace === undefined ? {} : { executionWorkspace: {
             id: id(executionWorkspace.id), basisHead: id(executionWorkspace.basisHead) } }),

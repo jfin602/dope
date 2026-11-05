@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseAgentTask, parseExecutionGrant, projectPath } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
-    AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput } from '@dope/agent-core';
+    AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput,
+    WorkDocumentRead } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
@@ -17,6 +18,7 @@ import type { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map
 import { appliedMapImpact } from './agent-map-impact';
 import { providerSetup } from './provider-setup';
 import { projectWorkTaskContract } from './work-task-contract';
+import { verifyRecoveryReads, workRecoveryContext } from './work-recovery';
 import type { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { createHash } from 'node:crypto';
@@ -41,6 +43,29 @@ function matchesValidationCommand(observed: string, target: string): boolean {
     const command = observed.trim();
     return command === target || command === `/bin/bash -lc ${target}` ||
         (!target.includes("'") && command === `/bin/bash -lc '${target}'`);
+}
+
+/** Persist only checked broker read identities. Model interpretations remain unknown. */
+function observedDocumentRead(observation: AgentExecutionEvent): WorkDocumentRead | undefined {
+    if (observation.kind !== 'work-observation' || observation.toolName !== 'read_file' ||
+        observation.phase !== 'completed' || !observation.brokerInvoked || !observation.detail) return undefined;
+    try {
+        const detail = JSON.parse(observation.detail) as { document?: Record<string, unknown> };
+        const doc = detail.document;
+        if (!doc || doc.read !== true || doc.clipped !== false ||
+            typeof doc.path !== 'string' || !/\.(?:md|txt)$/iu.test(doc.path) ||
+            typeof doc.sourceHash !== 'string' || !/^[a-f0-9]{64}$/u.test(doc.sourceHash) ||
+            typeof doc.contentHash !== 'string' || !/^[a-f0-9]{64}$/u.test(doc.contentHash) ||
+            typeof doc.question !== 'string' || !doc.question.trim() || doc.question.length > 100 ||
+            ![doc.offset, doc.endOffset, doc.fileBytes].every(value => Number.isSafeInteger(value) && (value as number) >= 0) ||
+            (doc.offset as number) > (doc.endOffset as number) ||
+            (doc.endOffset as number) > (doc.fileBytes as number)) return undefined;
+        return { path: projectPath(doc.path),
+            ...(typeof doc.section === 'string' && doc.section.length <= 100 ? { section: doc.section } : {}),
+            question: doc.question, sourceHash: doc.sourceHash,
+            contentHash: doc.contentHash,
+            offset: doc.offset as number, endOffset: doc.endOffset as number, fileBytes: doc.fileBytes as number };
+    } catch { return undefined; }
 }
 
 function phaseStackReviewScope(instructions: string): { delegablePaths: string[]; humanReservedPaths: string[] } | undefined {
@@ -333,6 +358,20 @@ export class AgentExecutionRuntime {
             active.commands.set(observation.commandId, { command: observation.command && observation.command.length <= 160 ?
                 observation.command : '', started: Date.now() });
         void this.serial(active, async () => {
+            if (active.run?.provenance?.adapterId === 'pi-local-work') {
+                const read = observedDocumentRead(observation);
+                if (read) await this.update(active, run => {
+                    const prior = run.documentReads ?? [];
+                    return prior.some(item => JSON.stringify(item) === JSON.stringify(read)) || prior.length >= 24 ? run :
+                        { ...run, documentReads: [...prior, read] };
+                });
+                const compact = observation.kind === 'provider-event' || observation.kind === 'warning' ?
+                    /^Context (compacted|compaction failed) \((threshold|overflow|manual)(?: trigger;.*)?\)$/u.exec(observation.summary) : null;
+                if (compact) await this.update(active, run => (run.contextCompactions?.length ?? 0) >= 16 ? run :
+                    ({ ...run, contextCompactions: [ ...(run.contextCompactions ?? []),
+                        { result: compact[1] === 'compacted' ? 'succeeded' as const : 'failed' as const,
+                            reason: compact[2] as 'threshold' | 'overflow' | 'manual' }] }));
+            }
             if (observation.kind !== 'reasoning' && observation.kind !== 'work-observation' && observation.kind !== 'observation-gap')
                 await this.event(active, kind, summary, path ? { path } : {});
             if (observation.kind === 'observation-gap') {
@@ -624,6 +663,11 @@ export class AgentExecutionRuntime {
                     throw new Error('Original source HEAD changed');
                 await this.store.createTask(root, task);
             } else active.workspace = await ExecutionWorkspace.create(root, acceptedDirty);
+            const checkedRecovery = workRecoveryContext(taskContract, resume ? sourceRun : undefined);
+            if (resume && checkedRecovery.reads.length) {
+                await verifyRecoveryReads(active.workspace.root, grant, checkedRecovery.reads);
+                await active.workspace.assertActiveBasis(root, active.workspace.root);
+            }
             active.initialCandidateFingerprint = await active.workspace.fingerprint();
             active.grant = grant;
             const now = new Date().toISOString();
@@ -633,6 +677,7 @@ export class AgentExecutionRuntime {
                 createdAt: now, basis, executionWorkspace: { id: active.workspace.id, basisHead: active.workspace.head },
                 taskContract,
                 changedFiles: [], validationResults: [],
+                ...(checkedRecovery.reads.length ? { documentReads: checkedRecovery.reads } : {}),
                 ...(resume ? { resumedFrom: { runId: resume.runId, candidateFingerprint: resume.expectedFingerprint } } : {}) };
             active.run = await this.store.createRun(root, pending);
             await this.update(active, run => ({ ...run, status: 'running', startedAt: now,
@@ -665,12 +710,14 @@ export class AgentExecutionRuntime {
                 grant, taskId: task.id,
                 workingPaths: task.origin.kind === 'work-item' ? task.origin.scope.workingSet :
                     task.origin.kind === 'phase-stack' ? phaseStackReviewScope(task.instructions)?.delegablePaths : undefined,
+                ...(checkedRecovery.reads.length ? { priorDocumentReads: checkedRecovery.reads } : {}),
+                recoveryContext: checkedRecovery.text,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
                 modelId: selected.provenance.modelId,
                 ...(selected.loadedContext === undefined ? {} : {
                     selectedLoadedContextTokens: selected.loadedContext,
                     selectedRegistryRevision: selected.registryRevision }),
-                prompt: `${task.objective}\n\n${task.instructions}${continuation}`,
+                prompt: `${task.objective}\n\n${task.instructions}\n\n${checkedRecovery.text}${continuation}`,
                 ...(task.controls.reasoningEffort ? { reasoningEffort: task.controls.reasoningEffort } : {}),
                 onEvent: observation => this.observed(active, observation) };
             const handle = await selected.adapter.start(request);

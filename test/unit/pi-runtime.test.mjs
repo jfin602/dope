@@ -755,7 +755,10 @@ test('Pi Work compacts between distinct tool turns, then continues without repla
         'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
     };
     await dispatch({ type: 'open', mode: 'work', cwd, model });
+    const anchor = 'DOPE CHECKED TASK RECOVERY\nOriginal accepted objective: Inspect distinct authorized sources.\n' +
+      'Acceptance: one approved command, no replay.\nNext step: inspect current evidence.';
     const answer = await dispatch({ type: 'work', id: 77, prompt: 'Inspect distinct authorized sources.',
+      recoveryContext: anchor,
       emit: event => events.push({ ...event, reads }) });
     assert.equal(answer.text, 'Inspection complete after compaction.');
     assert.equal(commandExecutions, 1);
@@ -766,6 +769,8 @@ test('Pi Work compacts between distinct tool turns, then continues without repla
     assert.ok(compactedAt > 0 && compactedAt < reads);
     assert.ok(requests.some(body => JSON.stringify(body.messages).includes('context summarization assistant')));
     assert.ok(requests.some(body => JSON.stringify(body.messages).includes('First read failed; later reads completed')));
+    assert.ok(requests.filter(body => !JSON.stringify(body.messages).includes('context summarization assistant'))
+      .every(body => JSON.stringify(body.messages).includes('Original accepted objective: Inspect distinct authorized sources.')));
     assert.match(answer.compaction.originalSha256, /^[a-f0-9]{64}$/);
   } finally {
     process.stdout.write = originalWrite;

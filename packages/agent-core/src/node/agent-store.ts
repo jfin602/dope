@@ -662,7 +662,8 @@ export class AgentStore implements AgentTranscriptStorage {
     async createRun(root: string, value: AgentRun): Promise<AgentRun> {
         const run = checked(value, parseAgentRun);
         if (run.status !== 'pending' || run.changedFiles.length || run.validationResults.length || run.changeSummary || run.outcome || run.finalGit || run.commandEvidence?.length ||
-            run.candidateDelta || run.candidateFingerprint || run.authorityDecision || run.appliedFiles?.length || run.capacityRetries)
+            run.candidateDelta || run.candidateFingerprint || run.authorityDecision || run.appliedFiles?.length || run.capacityRetries ||
+            run.contextCompactions?.length || run.documentReads?.length && !run.resumedFrom)
             throw new Error('New agent run must be empty and pending');
         const task = await this.readTask(root, run.taskId);
         if (!task || task.projectId !== run.projectId || !same(task.modelPolicy, run.requestedPolicy)) throw new Error('Agent run does not match task');
@@ -709,7 +710,9 @@ export class AgentStore implements AgentTranscriptStorage {
                 (current.capacityRetries ?? 0) > (next.capacityRetries ?? 0) ||
                 (!next.finalGit && current.changedFiles.some((file, index) => next.changedFiles[index] !== file)) ||
                 current.validationResults.some((item, index) => !same(item, next.validationResults[index])) ||
-                current.commandEvidence?.some((item, index) => !same(item, next.commandEvidence?.[index])))
+                current.commandEvidence?.some((item, index) => !same(item, next.commandEvidence?.[index])) ||
+                current.documentReads?.some((item, index) => !same(item, next.documentReads?.[index])) ||
+                current.contextCompactions?.some((item, index) => !same(item, next.contextCompactions?.[index])))
                 throw new Error('Immutable AgentRun evidence changed');
             await this.atomic(join(dir, 'run.json'), next);
         });

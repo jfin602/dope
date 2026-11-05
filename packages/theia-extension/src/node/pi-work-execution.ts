@@ -11,6 +11,7 @@ import type { PiModelBridge } from './pi-model-bridge';
 import type { PiRuntimeFactory, PiRuntimeHost, PiWorkEvent } from './pi-runtime-host';
 import { WorkAgentsRouting } from './work-agents-routing';
 import { WorkDocumentRouting } from './work-document-routing';
+import { verifyRecoveryReads } from './work-recovery';
 import type { DocumentRead } from './work-document-routing';
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -75,6 +76,7 @@ function workResultDetail(call: LocalToolRequest, output: string, truncated: boo
     }
     if (document) detail.document = { path: document.path, section: document.section ?? null,
         question: safe(document.question, 100), sourceHash: document.sourceHash, offset: document.offset,
+        contentHash: document.contentHash,
         endOffset: document.endOffset, fileBytes: document.fileBytes, clipped: document.clipped,
         offered: document.offered, role: document.role, read: true, followed: 'unknown' };
     return JSON.stringify(detail);
@@ -128,6 +130,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         if (!(workspace instanceof ExecutionWorkspace) || workspace.root !== request.executionRoot ||
             workspace.projectRoot !== request.projectRoot) throw new Error('Pi Work candidate unavailable');
         await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
+        const priorReads = request.priorDocumentReads?.length ?
+            await verifyRecoveryReads(request.executionRoot, grant, request.priorDocumentReads) : [];
         const initialFingerprint = await workspace.fingerprint();
         if (!(await preflightLocalToolSandbox()).available) throw new Error('Local OS sandbox unavailable');
         const commands = this.commands(request);
@@ -199,7 +203,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 }
                 const approvedCommands = commands.map(command => `${command.id} (${command.kind})`).join(', ');
                 documents = new WorkDocumentRouting(request.prompt, instructionText, request.workingPaths,
-                    path => checkEffect(grant, { kind: 'workspace-read', scope: 'workspace', path }).allowed);
+                    path => checkEffect(grant, { kind: 'workspace-read', scope: 'workspace', path }).allowed,
+                    priorReads);
                 const pointerNotice = documents.notice();
                 if (pointerNotice) request.onEvent({ kind: 'provider-event',
                     summary: `Optional document pointers offered: ${documents.pointers.length}; ${Buffer.byteLength(pointerNotice, 'utf8')} bytes; no document body read` });
@@ -453,7 +458,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             request.onEvent(piWorkObservation(event));
                         }
                     }
-                });
+                }, request.recoveryContext);
                 flushReasoning();
                 if (cancelled || denied || answer.modelId !== request.modelId) throw new Error('Pi Work denied or model changed');
                 await this.bridge.assertWorkSelection({ connectionId: request.connectionId,

@@ -104,9 +104,10 @@ export class PiRuntimeHost {
             ...(credential ? { credential } : {}), thinkingLevel });
     }
 
-    runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void):
+    runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void,
+        recoveryContext?: string):
         Promise<{ text: string; textTruncated?: boolean; modelId: string; usage?: PiTokenUsage; compaction?: PiContextRecord }> {
-        return this.request({ type: 'work', prompt }, event => {
+        return this.request({ type: 'work', prompt, ...(recoveryContext ? { recoveryContext } : {}) }, event => {
             if (event.type !== 'work') throw new Error('Invalid Pi Work stream event');
             onEvent?.(event);
         }, onTool);
