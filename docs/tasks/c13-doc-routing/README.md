@@ -1,0 +1,16 @@
+# c13-doc-routing — Task-anchored documentation correction
+
+**Status:** P1–P4 runner-compatible correction prompts, P5 manual Chrome checkpoint and F1 later manual full-journey prompt **AUTHORED ONLY / NOT RUN / NOT QUALIFIED**. Product remains `0.13.0` at authoring. **Authority:** [Phase 13 routing contract](../../planning/p13/task-anchored-documentation-routing-contract.md), [lifecycle contract](../../planning/p13/roadmap-work-lifecycle-contract.md), [assessment](prompt-assessment.md), [plan](implementation-plan.md).
+
+This is a bounded **supplement to the existing p13 route**, not another Roadmap, Work, Docs or qualification owner. Preserve [p13 P1–P13](../p13/README.md) bytes, approved version sequence, reports and manual P4/P9/P12/P13 gates. No correction prompt runs merely because it is authored.
+
+## Execution order after a later owner Run
+
+1. Run p13 P1–P8 under its separately authorized runner and pass P4 checkpoint A. At the P9 browser stop, verify P8's actual source-bound result, clean worktree, coherent `0.13.8`, no competing mutator and current selected model. A version commit alone is not GREEN. If the entry is not verified, stop.
+2. Validate this correction stack, then run **P1–P4 only** under a distinct explicit owner Run. Keep product version `0.13.8`, existing grants and candidate review. The correction runner stops before [P5 manual Chrome closeout](P5-browser-closeout.txt); operate P5 separately and record `qualification/p5-browser-closeout.md`. P5 PASS requires actual coding/test effects plus documentation and loop/recovery negatives; an offered pointer or model answer is not enough.
+3. Compare the correction source with P4 checkpoint A and replay any P4 case whose tested seam changed. Only after owner-reviewed P5 PASS, operate the original p13 P9 manually. Its own source-bound PASS and `0.13.9` marker remain mandatory before p13 can resume at P10. If P9 repairs change a P5-tested seam, replay affected P5 cases; no correction report replaces P9.
+4. After original p13 P12 PASS at coherent `0.13.12`, operate [F1 full-journey qualification](manual/F1-full-journey.txt) and record `qualification/f1-full-journey.md` on the same applicable source. Require owner-reviewed F1 PASS before original p13 P13 native/final closeout. Source changes after P12 or F1 require applicability review and affected replay of P4/P5/P9/P12/F1 as needed. No automatic Phase 13 GREEN or `0.13.13` advance.
+
+The `p13` runner does not validate correction reports. The owner checks them at P9 and P13 entry; never use a fabricated commit subject, partial report or model self-assessment to skip a manual gate. Keep immutable executed prompts, applied-only documentation History, Ask/Allow, explicit Run, leases, source protection and separate candidate promotion. Preserve historical NOT GREEN outcomes and the user's persistent projects.
+
+The current correction runner can recognize a reachable matching commit even when its report is NOT GREEN. At each P1–P4 boundary, inspect the actual source-bound implementation and test result before allowing the next prompt; a commit is implementation provenance, not a qualification receipt. Hold on a mandatory failure or unsafe no-change result under ADR 0048, regardless of runner prefix detection.

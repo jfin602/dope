@@ -1,0 +1,25 @@
+TASK: Correction 13 / P3 — Keep Work document reads relevant and finite
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; no manifest, internal pin or lockfile changes.
+
+AUTHORITY AND ENTRY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041 and the Phase 13 routing contract, this plan and verified P1/P2 source. Inspect actual Work `read_file`/`list_files`, offset/hash continuation, limits and tool observations; do not assume a Work text-search tool. Preserve project-root/candidate paths, source fingerprints, protected entries, selected model and grants.
+
+OBJECTIVE
+Offer only task-relevant optional document pointers and let the agent request bounded files/sections through existing safe tools. Retain small path/section/hash/question findings under existing task/run provenance; distinguish offered, read and followed. Detect circular references, unchanged-range rereads and unproductive documentation-only activity as task-aware signals. On a signal return to the active implementation step, choose a justified new section or report a concrete blocker. Changed content and legitimate new questions remain reachable.
+
+IMPLEMENTATION BOUNDARY
+Reuse ADR 0041's pointer model; explicit `/docs-review` corpus discovery remains separate. Provide late-section paging with verified source identity and safe output, without mandatory body injection, recursive traversal, full-repo scans, per-turn extra model calls, fixed research hard stop, general summarizer or parallel documentation index. Preserve visibility of safe tool names/outcomes in originating transcript/History; redact bodies and protected arguments.
+
+FOCUSED VERIFICATION
+T1 focused validation.
+Relevant vs irrelevant file, large tree without bulk scan, late section beyond prefix, circular A→B→A, repeated same range/hash, changed hash, new question requiring deeper reading, no-reference control, failed read, protected path and no false implementation progress from reading. Measure pointer/tool bytes, calls and response time under a supported small-context local-model fixture where feasible. Build touched packages and run targeted broker/Work tests.
+
+EXIT
+Report source/version basis, files, observed reads versus references, focused results and gaps. Stop PARTIAL/NOT GREEN rather than hide an inaccessible required section or impose an arbitrary research cutoff. STOP.

@@ -1,0 +1,25 @@
+TASK: Correction 13 / P4 — Preserve task and document findings through Work recovery
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; no manifest, internal pin or lockfile changes.
+
+AUTHORITY AND ENTRY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0041/0051, the Phase 13 routing contract, this plan and verified P1–P3 effects. Inspect actual Pi fresh-session, native compaction guard, overflow cancellation, Work tool effects, AgentRun/Store persistence and candidate/retry rules. Do not assume persistent Pi memory, generic semantic compaction or safe automatic resume. Explicit correction Run only; no grant bypass.
+
+OBJECTIVE
+At authorized retry/restart and any supported compaction boundary, reconstruct the original objective, accepted plan, acceptance/verification, next step, verified document findings/source hashes, unresolved questions and actual edits/tests from existing durable owners. Reuse unchanged findings without forced rereads or duplicate notices. Treat model summaries as unverified; if evidence/state is unavailable, report a specific unknown/blocker and stop affected mutation. Preserve old candidate bytes after cancel/overflow and require fresh existing grant/lease/source/candidate review before continuation.
+
+IMPLEMENTATION BOUNDARY
+Extend P1 projection and current task/run provenance only. Keep Pi compaction guard and overflow stop when a tool may have changed the candidate; do not build a new session database, hidden work scheduler, document cache of full bodies, automatic retry loop or permit fresh sessions to inherit authority. Record safe outcomes, not secrets or raw source bodies, in Work/History. Preserve exact prior prompts, runs, qualification and rejected candidate evidence.
+
+FOCUSED VERIFICATION
+T2 targeted cross-owner integration validation; reuse P1–P3 focused evidence and run only affected integration suites, not a repeated full aggregate.
+Small measured local-model context, compaction success/failure/overflow, cancellation before/after a candidate edit, backend restart, safe authorized retry, stale source/lease/grant, missing checkpoint, no duplicate reference/read on unchanged content, and one genuine resumed code/test step. Assert no invented memory, replayed mutation or false GREEN. Use focused Pi Work/AgentRun/restart tests and touched-package builds; report unsupported native behaviors honestly.
+
+EXIT
+Report exact source/version, files, focused commands/results, reconstructed versus unknown fields and remaining risks. Stop PARTIAL/NOT GREEN if continuity cannot be proven; P5 manual qualification remains separate. STOP.

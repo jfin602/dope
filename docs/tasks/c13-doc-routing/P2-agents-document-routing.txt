@@ -1,0 +1,25 @@
+TASK: Correction 13 / P2 — Route applicable AGENTS instructions before Work documentation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; no manifest, internal pin or lockfile changes.
+
+AUTHORITY AND ENTRY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0039/0041/0051, the Phase 13 routing contract, this correction plan and verified P1 effects. Confirm current Pi worker `getAgentsFiles`, actual brokered Work read/list behavior and safe project/candidate access. Preserve exact selected provider/local policy, AGENTS scope, grants, no arbitrary Pi resources/host shell and clean source. Explicit correction Run is required; no automatic p13 continuation.
+
+OBJECTIVE
+Make Dope Work consult the root AGENTS.md when present and nested AGENTS.md applicable to the approved working paths **before** task-specific documentation or coding. Re-evaluate nested scope if working paths change. Establish and expose whether Pi loaded an instruction natively or a safe Dope-brokered read supplied it; do not duplicate text already present. Keep AGENTS a concise route to practices/doc locations and required instructions, with optional ADR 0041 references only when relevant. Missing AGENTS is not an error by itself; conflicting or required unreadable instructions produce a targeted limitation, not a fabricated read.
+
+IMPLEMENTATION BOUNDARY
+Use P1 Task Contract and the current isolated Pi/Work broker. Inspect whether native AGENTS loading is actually possible under the pinned isolated loader; if not, use the existing authorized list/read/page path or a narrowly reviewed equivalent. Do not enable arbitrary resource discovery, preload all documentation, scan every Work turn or append duplicate instructions to retries/compaction. Preserve source hash, path/symlink, project/candidate, grant and no-reference behavior.
+
+FOCUSED VERIFICATION
+T1 focused validation.
+Root and nested in-scope/out-of-scope paths, absent root with nested applicable file, no AGENTS, verified already-loaded instruction, duplicate suppression, unreadable/stale/foreign file, instruction that attempts grant expansion, and optional relevant versus irrelevant reference. Assert no extra Dope model call or optional-doc body for no-reference work; measure AGENTS routing bytes separately. Run narrow Pi Work/broker tests and touched-package builds.
+
+EXIT
+Report observed delivery mechanism, source/version basis, files and focused results. Stop PARTIAL/NOT GREEN if safe instruction access or duplicate detection is unresolved. No model self-approved Work or Roadmap status. STOP.

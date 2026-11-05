@@ -1,5 +1,7 @@
 # p13 — Roadmap-Controlled Development: manually gated runner
 
+> **2026-11-05 documentation-routing execution gate:** Before manually operating P9, complete the separate [c13-doc-routing](../c13-doc-routing/README.md) correction P1–P5 at the verified `0.13.8` pause. Before P13 final closeout, complete its F1 full-journey check on source applicable after P12. Hold on any mandatory NOT GREEN/EVIDENCE GAP; neither report replaces P4/P9/P12/P13. Existing `p13/P*.txt` source is unchanged.
+
 **Owner-approved:** 2026-11-05 `/docs-apply + /prompt-plan + /prompt-write p13`, main branch, `0.13.0` baseline `f908c447`; subsequent explicit request adds three manual browser checkpoints. **Status:** prompt/docs only; implementation, live Chrome qualification and native owner signoff NOT RUN. **Authorities:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md), [lifecycle contract](../../planning/p13/roadmap-work-lifecycle-contract.md), [Task-Anchored Documentation Routing](../../planning/p13/task-anchored-documentation-routing-contract.md), [plan](implementation-plan.md), [assessment](prompt-assessment.md).
 
 | Step | Target version | Responsibility | Mode |
@@ -26,4 +28,4 @@ On actual synced main, inspect dirty owner work and use `npm run codex:phase:val
 
 Preserve one schema-2 Roadmap authority; Work executes only under its reviewed grants/candidate promotion, Criterion evidence is source-bound and owner qualification remains separate from task completion. P13 docs/prompt authoring alone is not an implementation Run or a GREEN receipt.
 
-The documentation-routing contract adds forward Phase 13 implementation and qualification requirements. Existing `P*.txt` prompts and historical evidence remain immutable; assess coverage and obtain a separate reviewed correction/qualification route before any later Run if those prompts do not cover it. Do not treat this documentation approval as authorization to start the stack.
+The documentation-routing contract adds forward Phase 13 requirements. The separate [c13-doc-routing correction route](../c13-doc-routing/README.md) addresses the missing Task Contract, AGENTS-first Work behavior, bounded document reads and recovery **at the P9 pause after P8**, without changing this stack's `P*.txt` prompts. Its P5 manual Chrome PASS is required before operating this stack's P9. After this stack's P12 PASS, its F1 manual full-journey PASS is required before P13 final Phase closeout. Neither correction report replaces P9/P12/P13, nor may the runner's commit marker substitute for evidence. All prompts are authored only; no Run or product GREEN by this documentation.

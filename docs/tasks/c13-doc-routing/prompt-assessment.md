@@ -1,0 +1,16 @@
+# /prompt-ass — Phase 13 documentation-routing gap
+
+**Date:** 2026-11-05. **Basis:** clean local `main` HEAD `1a125a111343bc852df10398db78a2ffdb7135c7` at coherent `0.13.0`; the `p13` stack is authored, unrun, and [grammar-valid](../p13/README.md). **Status:** source/document assessment only; no implementation, Run, qualification or version change.
+
+## Observed seams
+
+- Existing [p13 P1–P8](../p13/README.md) address Phase lock, Work links, evidence and recovery. P9 is the first manual Work/evidence checkpoint. None of the immutable P1–P13 prompts implements or qualifies [Task-Anchored Documentation Routing](../../planning/p13/task-anchored-documentation-routing-contract.md). Their `Read AGENTS.md` preflight instructs the *implementation agent*, not Dope Work for a developer's project.
+- `packages/pi-runtime/worker.mjs` supplies an isolated resource loader with `getAgentsFiles: []`, creates a fresh in-memory Pi Work session per start, and guards compaction/overflow. Do not claim native AGENTS loading or durable Pi memory. `packages/theia-extension/src/node/pi-work-execution.ts` currently appends a bounded source/task reference to the Work prompt and brokers candidate `read_file`/`list_files`; offset/hash paging exists, while a path-only read remains clipped. No Work text-search tool is established.
+- `packages/theia-extension/src/node/agent-execution-runtime.ts` owns run/grant/candidate lifecycle. `packages/theia-extension/src/node/workflow-lineage.ts`, `planning-bridge-approvals.ts` and `planning-stack-publication.ts` provide typed lineage, reviewed Bridge bases and published stack identities. Inspect current P1–P8 effects at the actual P9 pause before choosing exact integration points; filenames do not prove their then-current behavior.
+- [ADR 0041](../../decisions/0041-planning-documentation-workflow-and-applied-history.md) offers optional applicable references and agent-managed safe reads. Explicit `/docs-review` discovery has a different scope. [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md) and [ADR 0040](../../decisions/0040-phase-gate-roadmap-domain.md) retain Criterion qualification authority; documentation activity has no GREEN value.
+
+## Gap and implementation boundary
+
+The missing behavior is a checked task projection, applicable AGENTS-first instruction route, relevant bounded reading/loop protection, and recovery that preserves the original objective. It belongs at the existing Work preparation/execution seams. Do not build another task database, general document index, Dope summarizer, Pi resource-discovery platform, or Roadmap status writer. Source inspection at execution must determine whether any narrower existing mechanism already satisfies a requirement.
+
+The p13 version sequence and P9 manual stop make the first safe entry **after P8 has actually completed and before P9 is operated**, at coherent `0.13.8`. The correction does not advance package versions. If P8 is incomplete, NOT GREEN, dirty or lacks applicable source evidence, this route does not start. A scoped real-browser correction check precedes P9; a later full-journey check on the P12 source precedes P13. Neither substitutes for P9/P12/P13 or rewrites historical prompts/results.

@@ -1,0 +1,22 @@
+TASK: Correction 13 / P5 — Manual browser closeout for task-anchored Work documentation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; no manifest, internal pin or lockfile changes.
+
+MANUAL ENTRY
+T3 qualification, independently operated.
+This is a separate owner-operated connected Chrome gate, never run with `--closeout` or inferred from P1–P4 commits. Verify original p13 P8 source/receipt and P4 PASS, correction P1–P4 exact-source effects, coherent unchanged version, clean/known dirty state, served Dope code, selected actual local model/context and disposable project. Read BOOT.md, AGENTS.md, ADRs 0040/0041/0051, Phase 13 routing contract and this stack. Preserve owner's projects, grants, Ask/Allow and candidate review. Do not self-approve or run p13 P9 automatically.
+
+LIVE OBJECTIVE
+Start a real bounded coding task from a linked locked Phase or valid direct Work basis. In the disposable project place root and nested AGENTS instructions plus relevant late-section documentation, with irrelevant and circular material. Verify actual Pi/Dope read events and source hashes, original objective/plan retention, actual candidate code edit, approved test execution and review. Inspect both task/run evidence and Roadmap Criterion: reading/planning alone remains unqualified. Capture an independent no-reference control and measured costs.
+
+MATRIX
+Root/nested scope and duplicate suppression; missing/conflicting instructions; relevant/irrelevant large-tree routing; late-section paging; circular/unchanged reads with legitimate new-question continuation; small supported context/compaction; cancel/restart/authorized retry; current source/grant/candidate protection; actual coding/test effect; documentation-only false-GREEN negative. Use focused repairs and repeat affected live cases on final served source. An unobservable native read is UNKNOWN, not PASS.
+
+REPORT AND EXIT
+Write dated `docs/tasks/c13-doc-routing/qualification/p5-browser-closeout.md` with each case PASS/FAIL/BLOCKED/EVIDENCE GAP, product HEAD/version/dirty basis, served bundle, model/context, task/run/receipt IDs, instruction/document path-section-hash, offered/observed reads, source edit/test/candidate outcomes, measured calls/bytes/time, repairs and explicit owner-reviewed disposition. Compare final correction source with P4 checkpoint A and replay any P4 browser case invalidated by changed seams. Only complete mandatory source-bound PASS clears this correction's scoped gate for original p13 P9; it is **not** Phase 13 GREEN, owner-native evidence or p13 P9 PASS. On any mandatory gap, leave p13 P9 held and report the blocker. Preserve historical reports. STOP.
