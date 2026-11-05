@@ -1,0 +1,26 @@
+TASK: Phase 13 / P1 — Per-Phase planning completion and immutable lock basis
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+The assigned project version is `0.13.1`.
+
+AUTHORITY AND PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0038/0040/0046/0047/0048/0049/0050/0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/implementation-plan.md and previous verified prompt effects. Check actual local main HEAD/branch/diff, currently assigned package versions, linked-source identity, project/root and owner grants. The `0.13.0` baseline exists; this prompt may advance to its target only with actual authorized implementation. A deliberate owner Run of `p13` authorizes its implementation steps, not grants to project Work or autonomous Roadmap qualification. Never reset/stash/clean, self-commit, force-push, bypass Ask/Allow, rewrite historical tests/evidence, change model default, or modify user's persistent project.
+
+OBJECTIVE
+Implement one checked Finish Planning transition using existing schema-2 Roadmap qualification and Gate-set coverage owners. The owner reviews exact required Gate/Criteria list and source/revision basis; commit durable phase-scoped planning-lock receipt only when Gate-set coverage is explicitly approved, pending proposal conflicts resolved and linked source checks satisfy current adapter rules. Keep “has a Gate” distinct from complete coverage. No Work run or Gate status mutation.
+
+MINIMUM IMPLEMENTATION BOUNDARY
+Inspect RoadmapStore/Service, ProjectPlanningActions, coverage/qualification, linked Markdown, Roadmap history/revision and prior source-lease checks. Extend one existing authority. No parallel lock database, no generic model write, no design of Work UI. Reopening before execution is reviewed and revision-bound.
+
+FOCUSED VERIFICATION
+Add/extend narrow Roadmap Gate-set/qualification/store tests: successful single-Phase lock, second Phase still editable, absent/empty required Gates, incomplete Criteria, unapproved coverage, unresolved proposals, source hash mismatch, foreign owner, stale revision, double submit and exact History effect. Build only touched packages. No auto-lock on import/generation.
+
+NON-GOALS
+P2 Work links; P3 canvas; P4 evidence evaluator.
+
+EXIT
+Report exact source and version basis, affected files, commands/results, unresolved cases and next dependency. Keep ordinary implementation and focused validation <=8-minute target/15-minute hard stop; stop with truthful PARTIAL/NOT GREEN rather than skip required safety. Preserve separate T2/T3 qualification. STOP.
