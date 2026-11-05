@@ -662,6 +662,8 @@ export class AgentExecutionRuntime {
                 `under this run's grant, required validation, and human review.` : '';
             const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
                 grant, taskId: task.id,
+                workingPaths: task.origin.kind === 'work-item' ? task.origin.scope.workingSet :
+                    task.origin.kind === 'phase-stack' ? phaseStackReviewScope(task.instructions)?.delegablePaths : undefined,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
                 modelId: selected.provenance.modelId,
                 ...(selected.loadedContext === undefined ? {} : {

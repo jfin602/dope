@@ -22,6 +22,8 @@ export interface AgentExecutionRequest {
     connectionId: string; registrationId: string; modelId: string;
     /** Ephemeral Local selection evidence; adapters reject a changed inventory before tool use. */
     selectedLoadedContextTokens?: number; selectedRegistryRevision?: number;
+    /** Approved working paths from the task owner; advisory for instruction scope, never a grant. */
+    workingPaths?: readonly string[];
     prompt: string; reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
     onEvent(event: AgentExecutionEvent): void;
 }

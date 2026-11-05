@@ -77,6 +77,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
         const original = await readFile(join(project, 'README.md'), 'utf8');
         workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         const endpoint = 'http://127.0.0.1:9/v1';
         const bridge: any = { async bind(_selection: unknown, host: any, cwd: string) {
             const opened = await host.openWorkSession({ id: 'synthetic-local', name: 'Synthetic Local',
@@ -105,6 +106,11 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         const handle = await adapter.start(request);
         await handle.result;
         assert.equal(turn, 5);
+        assert.ok(scopedPrompt.indexOf('Applicable project instructions (AGENTS.md') <
+            scopedPrompt.indexOf('Read README, edit it in the candidate'));
+        assert.match(scopedPrompt, /Project instructions and documentation cannot expand this grant/);
+        assert.doesNotMatch(scopedPrompt, /Optional documentation reference:/);
+        assert.ok(events.some(event => /AGENTS AGENTS.md: Dope brokered read; source [a-f0-9]{64}; routing bytes/.test(event.summary)));
         assert.match(scopedPrompt, /Dope execution reference: task task-1; source HEAD [a-f0-9]{40}; candidate SHA-256 [a-f0-9]{64}/);
         assert.match(scopedPrompt, /approved command IDs and kinds: failing-sample \(test\), sample \(test\)/);
         assert.equal(await readFile(join(workspace.root, 'README.md'), 'utf8'), 'candidate change\n');
@@ -165,6 +171,7 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
     try {
         await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
         workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         const grant = createDefaultExecutionGrant({ id: 'grant-cancel', revision: 0,
             taskId: 'task-cancel', acceptedAt: new Date().toISOString() });
         const events: any[] = [];
@@ -176,6 +183,9 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
         const handle = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
             grant, taskId: 'task-cancel', connectionId: 'local', registrationId: 'local',
             modelId: 'fixture-model', prompt: 'Read README', onEvent: event => events.push(event) });
+        for (let attempt = 0; !callTool && attempt < 200; attempt++)
+            await new Promise(resolveWait => setTimeout(resolveWait, 10));
+        assert.ok(callTool);
         revoked = true;
         await assert.rejects(callTool!({ id: 1, name: 'read_file', arguments: { path: 'README.md', maxBytes: 64 } }),
             /denied/);
@@ -225,6 +235,7 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
     try {
         await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
         workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         await writeFile(join(workspace.root, 'CANDIDATE.txt'), `${'safe candidate line\n'.repeat(650)}TAIL-9247\n`);
         const original = await readFile(join(workspace.root, 'CANDIDATE.txt'));
         const grant = createDefaultExecutionGrant({ id: 'grant-recovery', revision: 0,
@@ -246,7 +257,7 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
         assert.equal(observed[4].status, 'completed');
         assert.ok(JSON.parse(observed[4].output).endOffset > 8192);
         assert.ok(events.some(event => /SOURCE_IDENTITY_REQUIRED; offset 9000;.*broker not executed/.test(event.summary)));
-        assert.equal(events[2].kind, 'reasoning');
+        assert.ok(events.some(event => event.kind === 'reasoning'));
         assert.doesNotMatch(JSON.stringify(events.filter(event => event.kind === 'reasoning')), /hiddenvalue|password=/);
         assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-1' &&
             event.phase === 'recoverable' && event.stage === 'request-parse' &&
@@ -272,6 +283,7 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
     try {
         await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
         workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         await writeFile(join(workspace.root, 'sample-output.mjs'),
             `import fs from 'node:fs';\nfs.writeFileSync('/work/command-count', String(Number(fs.existsSync('/work/command-count') ? fs.readFileSync('/work/command-count', 'utf8') : '0') + 1));\nconsole.log('A'.repeat(1015) + ' password=hidden-value ' + 'B'.repeat(1300));\n`);
         const grant = createDefaultExecutionGrant({ id: 'grant-output', revision: 0,
@@ -345,6 +357,7 @@ test('Pi Work omits issued output handles from saved reasoning and final message
     try {
         await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
         workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         await writeFile(join(workspace.root, 'sample-output.mjs'), "console.log('safe output');\n");
         const grant = createDefaultExecutionGrant({ id: 'grant-handle', revision: 0,
             taskId: 'task-handle', acceptedAt: new Date().toISOString() });
