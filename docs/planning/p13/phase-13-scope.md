@@ -1,3 +1,5 @@
+> **2026-11-05 superseding owner scheduling decision:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md) assigns actual Product Phase 13 / `0.13.0` to Roadmap-Controlled Development. The original LSKM scope below is retained as a **deferred, unassigned successor** under ADR 0023, NOT a runnable `p13` stack, qualified result or automatically numbered Phase 14. Its older Phase-13 references are historical.
+
 # Phase 13 — Living Software Knowledge Model (deferred)
 
 Status: Preserved forward scope; NOT ACTIVATED. The 2026-10-29 owner-approved sequence moves the formerly planned Phase 12 Living Software Knowledge Model to Phase 13, without dropping its safeguards or feature requirements.

@@ -1,3 +1,5 @@
+> **2026-11-05 PHASE 13 ROADMAP-CONTROLLED DEVELOPMENT:** [ADR 0051](decisions/0051-roadmap-work-evidence-lifecycle.md) defines one project-wide Roadmap progress view over existing canonical Phase/Gate/Criterion, PlanningMap/WorkItem and AgentRun/evidence artifacts. Phase lifecycle labels derive from distinct accepted planning lock, execution, verified qualification and owner closeout; a Work task outcome alone never changes Gate GREEN. Historical evidence remains append-only; source drift requires affected requalification. Former Phase 13 LSKM reservation deferred unassigned. Owner-approved `0.13.0` baseline, no Phase 13 product implementation yet.
+
 # Dope Product Model
 
 Status: INITIAL DOMAIN CONTRACT
