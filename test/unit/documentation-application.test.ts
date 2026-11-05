@@ -12,6 +12,7 @@ import { applyDocumentationProposal, readDocumentationApplications,
 import { HistoryBackend } from '../../packages/theia-extension/lib/node/history-backend.js';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-skills.js';
 
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 async function fixture() {
@@ -173,7 +174,8 @@ test('Chat backend requires a distinct exact developer approval and consumes it 
         if (!lease.acquired) throw new Error('Chat lease unavailable');
         state = await repository.mutate(f.root, state.revision, { type: 'append-user', chatId,
             message: { schemaVersion: 1, id: userId, role: 'user', createdAt: new Date().toISOString(),
-                content: '/docs-review the decision', contextRefs: [] } }, lease.token);
+                content: '/docs-review the decision', contextRefs: [],
+                skill: await resolveChatSkill('/docs-review the decision') } }, lease.token);
         const startedAt = new Date().toISOString();
         state = await repository.mutate(f.root, state.revision, { type: 'begin-assistant', chatId,
             message: { schemaVersion: 1, id: messageId, role: 'assistant', content: '', createdAt: startedAt,

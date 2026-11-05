@@ -18,6 +18,14 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
 { id: 'builtin:gen-roadmap', name: 'gen-roadmap', title: 'Generate Roadmap',
     description: 'Build a new Roadmap from a prompt with the selected local model, then review it on the canvas.',
     body: 'This command starts only from a fresh user Chat message with a nonempty prompt. Use one exact local model. Generated Phases are provisional until the owner reviews and applies them. Do not claim accepted changes, evidence, or Green status.',
+    enabled: true, provenance: 'builtin', version: 1 },
+{ id: 'builtin:docs-review', name: 'docs-review', title: 'Review documentation',
+    description: 'Inspect relevant project documents and prepare a reviewed, source-bound diff.',
+    body: 'Use the supplied bounded documentation discovery and brokered read_file ranges to inspect relevant current and historical sources, including late sections when indicated. Distinguish enumerated, searched and actually read files, disclose omissions, and do not claim to have inspected unread text. Return the requested structured review with at most four eligible .md/.txt changes. This turn can only stage a proposal; it never publishes files or records applied History.',
+    enabled: true, provenance: 'builtin', version: 1 },
+{ id: 'builtin:docs-apply', name: 'docs-apply', title: 'Apply reviewed documents',
+    description: 'Find one current reviewed proposal and request a separate owner Apply decision.',
+    body: 'This command does not approve or publish files. Refer only to the one current pending reviewed documentation proposal supplied by Dope. Ask the developer to inspect its saved diff and use Apply reviewed documents on that card. Do not call tools, invent a patch, or claim an application or History entry.',
     enabled: true, provenance: 'builtin', version: 1 }];
 let serial = Promise.resolve();
 
@@ -124,6 +132,15 @@ export function generationChatSkillSnapshot(): ChatSkillSnapshot {
 export function isBoundRoadmapSkill(skill: ChatSkillSnapshot | undefined): boolean {
     const builtIn = builtins.find(item => item.id === 'builtin:roadmap');
     return !!builtIn && !!skill && skill.id === builtIn.id && skill.name === builtIn.name &&
+        skill.version === builtIn.version && skill.body === builtIn.body &&
+        skill.digest === createHash('sha256').update(builtIn.body).digest('hex');
+}
+
+/** Protected Docs operations require the exact built-in send-time snapshot. */
+export function isBoundDocumentationSkill(skill: ChatSkillSnapshot | undefined,
+    name: 'docs-review' | 'docs-apply'): boolean {
+    const builtIn = builtins.find(item => item.id === `builtin:${name}`);
+    return !!builtIn && !!skill && skill.id === builtIn.id && skill.name === name &&
         skill.version === builtIn.version && skill.body === builtIn.body &&
         skill.digest === createHash('sha256').update(builtIn.body).digest('hex');
 }
