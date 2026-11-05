@@ -9,7 +9,7 @@ VERSIONING
 - Correction scope only; no manifest, internal pin or lockfile changes.
 
 AUTHORITY AND ENTRY
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041 and the Phase 13 routing contract, this plan and verified P1/P2 source. Inspect actual Work `read_file`/`list_files`, offset/hash continuation, limits and tool observations; do not assume a Work text-search tool. Preserve project-root/candidate paths, source fingerprints, protected entries, selected model and grants.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041 and the Phase 13 routing contract, this plan and verified P1/P2 source. Inspect actual Work `read_file`/`list_files` in `pi-work-execution.ts` and `packages/pi-runtime/worker.mjs`, including 0-based offset/sourceHash continuation, clipped path-only reads, tool-event attribution and output limits. The worker's other tool declarations do not prove Work has a repository text-search tool; use only the verified Work tool set. Keep the original objective and active step from P1 projection and P2 AGENTS applicability when selecting pointers. Preserve project-root/candidate paths, source fingerprints, protected entries, selected model and grants.
 
 OBJECTIVE
 Offer only task-relevant optional document pointers and let the agent request bounded files/sections through existing safe tools. Retain small path/section/hash/question findings under existing task/run provenance; distinguish offered, read and followed. Detect circular references, unchanged-range rereads and unproductive documentation-only activity as task-aware signals. On a signal return to the active implementation step, choose a justified new section or report a concrete blocker. Changed content and legitimate new questions remain reachable.

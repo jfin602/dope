@@ -1,0 +1,25 @@
+TASK: Correction 13 / P1 — Project existing owners into a durable Work Task Contract
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; no manifest, internal pin or lockfile changes.
+
+AUTHORITY AND ENTRY
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0038/0040/0041/0051, docs/planning/p13/task-anchored-documentation-routing-contract.md and this correction assessment/plan. Verify clean actual P8 source, coherent version, owner-reviewed P4 PASS, project/root/worktree and current Work/Planning/Roadmap records. Stop if p13 P8 is incomplete or source/owner state is unsafe. A separate owner Run of this correction authorizes this implementation only; it grants no developer-project Work, Roadmap GREEN or candidate promotion. Preserve original p13 prompts/evidence, owner work and historical failures; no reset/stash/clean, self-commit or broad new authority.
+
+OBJECTIVE
+Create a checked, compact Task Contract **projection** at existing Work preparation/start and recovery boundaries. Draw original accepted objective/prompt snapshot, typed Roadmap Phase/Gate/Criterion links, Planning Bridge WorkItem/plan, grant/source/candidate scope, acceptance/validation and run/checkpoint state from their current owners. Record source record IDs/revisions/hashes and `unknown` for absent facts. Direct Work without WorkItem remains valid. Neither model text nor docs may redirect the original objective or silently change the accepted basis.
+
+IMPLEMENTATION BOUNDARY
+Inspect P1–P8 actual owner APIs and `workflow-lineage`, `planning-bridge-approvals`, `planning-stack-publication`, AgentStore/AgentExecutionRuntime and Pi Work prompt composition. Reuse existing task/run or Bridge operational records for the projection/checkpoint; no second canonical task database, duplicate Roadmap status, mandatory new WorkItem or unreviewed prompt rewrite. Material accepted requirement changes use ADR 0041's distinct reviewed preparation and task-bound grant; pointer/read changes do not. Keep source/lease/candidate protection.
+
+FOCUSED VERIFICATION
+T1 focused validation.
+Exact objective and acceptance survive projection/reconstruction; valid Roadmap-linked and legacy direct tasks; one-to-many Criterion links; missing/foreign/stale IDs or source; no grant widening from document text; accepted-basis material change vs irrelevant pointer change; reload/retry idempotence. Build only touched packages and run adjacent Work/Bridge tests. Record which fields were actually owner-backed versus unknown.
+
+EXIT
+Report files, source/version basis, focused commands/results and remaining gaps. Keep ordinary implementation <=8-minute target/15-minute hard stop; stop PARTIAL/NOT GREEN on an unresolved authority seam. No broader GUI or Phase GREEN claim. STOP.
