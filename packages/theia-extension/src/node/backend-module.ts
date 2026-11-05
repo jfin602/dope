@@ -155,6 +155,12 @@ export default new ContainerModule(bind => {
                     return store.applyPhaseWork(root, review, approved, reviewerId,
                         () => phasePlanning(root, review.links));
                 },
+                previewPhaseAmendment: async (uri, projectId, revision, phaseId, operations, reviewerId) =>
+                    store.previewPhaseAmendment(await context.container.get(PlanningStore).root(uri),
+                        projectId, revision, phaseId, operations, reviewerId),
+                applyPhaseAmendment: async (uri, review, approved, reviewerId) =>
+                    store.applyPhaseAmendment(await context.container.get(PlanningStore).root(uri),
+                        review, approved, reviewerId),
                 manageRoadmap: async (uri, revision, projectId, action) => {
                     const root = await context.container.get(PlanningStore).root(uri);
                     await greenfield.ensureRestored(root);

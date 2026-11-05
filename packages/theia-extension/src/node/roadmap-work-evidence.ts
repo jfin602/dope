@@ -94,6 +94,11 @@ export class RoadmapWorkEvidenceIntake {
             throw new Error('Invalid AgentRun validation reference');
         const run = await this.agents.readRun(root, input.runId);
         const task = run && await this.agents.readTask(root, run.taskId);
+        const amendment = index.phases.find(p => p.id === input.phaseId)?.amendment;
+        if (amendment?.affectedWorkItemIds.includes(input.workItemId) &&
+            (!run || !task || run.createdAt <= amendment.reviewedAt ||
+                task.createdAt <= amendment.reviewedAt))
+            throw new Error('Work task or run predates reviewed Phase amendment; prepare and grant fresh Work');
         const origin = task?.origin.kind === 'work-item' ? task.origin : undefined;
         if (!run || !task || task.origin.kind !== 'work-item' ||
             !origin || run.projectId !== origin.projectId || task.projectId !== origin.projectId ||
@@ -159,6 +164,10 @@ export class RoadmapWorkEvidenceIntake {
 
     async ingestObservation(root: string, input: ObservationEvidenceRequest): Promise<GateEvidence> {
         const { index, source } = await this.basis(root, input);
+        const amendment = index.phases.find(p => p.id === input.phaseId)?.amendment;
+        if (amendment?.affectedCriterionIds.includes(input.criterionId) &&
+            input.observedAt <= amendment.reviewedAt)
+            throw new Error('Manual observation predates reviewed Phase amendment');
         if (!gitHead(input.testedHead) || !sha(input.artifactSha256) || !time(input.observedAt) ||
             !['pass', 'fail', 'inconclusive'].includes(input.result) ||
             typeof input.method !== 'string' || !input.method.trim() || input.method.length > 256 ||

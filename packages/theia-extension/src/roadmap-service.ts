@@ -1,7 +1,8 @@
 import type { RoadmapIndex, RoadmapChange, RoadmapReplacementPreview, RoadmapRestorePreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { PhaseWorkLink } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
-import type { PhaseWorkReview, FinishPlanningPreview, PhaseCoverageReview } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { PhaseWorkReview, FinishPlanningPreview, PhaseCoverageReview, PhaseAmendmentReview,
+    RoadmapGateMutation } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapRevisionList, RoadmapRevisionRecord } from '@dope/project-intelligence/lib/node/roadmap-revision-archive';
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import type { RoadmapAutoSyncReconciliationPreview } from '@dope/project-intelligence/lib/node/roadmap-auto-sync';
@@ -33,6 +34,10 @@ export interface RoadmapService {
     previewPhaseWork(projectUri: string, projectId: string, revision: number, phaseId: string,
         links: PhaseWorkLink[]): Promise<PhaseWorkReview>;
     applyPhaseWork(projectUri: string, review: PhaseWorkReview, approved: boolean,
+        reviewerId: string): Promise<RoadmapGateIndex>;
+    previewPhaseAmendment(projectUri: string, projectId: string, revision: number, phaseId: string,
+        operations: RoadmapGateMutation[], reviewerId: string): Promise<PhaseAmendmentReview>;
+    applyPhaseAmendment(projectUri: string, review: PhaseAmendmentReview, approved: boolean,
         reviewerId: string): Promise<RoadmapGateIndex>;
     manageRoadmap(projectUri: string, expectedRevision: number, expectedProjectId: string,
         action: 'unlink' | 'empty'): Promise<RoadmapGateIndex>;

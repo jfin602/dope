@@ -182,6 +182,13 @@ export interface PhaseWorkReview {
     items: { id: string; title: string; acceptanceCriteria: string[]; validationTargets: string[];
         criterionIds: string[] }[];
 }
+export interface PhaseAmendmentReview {
+    approvalId: string; projectRoot: string; projectId: string; phaseId: string;
+    revision: number; headHash: string; expiresAt: number; reviewerId: string;
+    operations: RoadmapGateMutation[]; before: string; after: string;
+    affectedGateIds: string[]; affectedCriterionIds: string[]; affectedWorkItemIds: string[];
+    source: RoadmapSourceProof;
+}
 export interface PhaseWorkPlanningSnapshot { projectId: string; revision: number;
     maps: { id: string; projectId: string; revision: number; status: string; basis: PhaseWorkLink['basis'];
         transformations: { id: string }[]; workItems: { id: string; title: string; status: string;
@@ -195,6 +202,41 @@ function phasePlanningDefinition(index: RoadmapGateIndex, phaseId: string): stri
         corrections: index.corrections.filter(item => item.parent.kind === 'phase' ? item.parent.id === phaseId :
             index.gates.find(gate => gate.id === item.parent.id)?.parentPhaseId === phaseId)
             .map(item => [item.id, item.parent, item.criterionId, item.title, item.objective, item.order, item.draftAcceptance]) });
+}
+function amendmentImpact(before: RoadmapGateIndex, after: RoadmapGateIndex, phaseId: string):
+    Pick<PhaseAmendmentReview, 'affectedGateIds' | 'affectedCriterionIds' | 'affectedWorkItemIds'> {
+    const oldPhase = before.phases.find(item => item.id === phaseId);
+    const newPhase = after.phases.find(item => item.id === phaseId);
+    if (!oldPhase?.planningLock || !newPhase) throw new Error('Amendment requires an existing locked Phase');
+    const phaseChanged = JSON.stringify([oldPhase.title, oldPhase.objective, oldPhase.dependencies]) !==
+        JSON.stringify([newPhase.title, newPhase.objective, newPhase.dependencies]);
+    const gateBasis = (index: RoadmapGateIndex, id: string): unknown => {
+        const gate = index.gates.find(item => item.id === id && item.parentPhaseId === phaseId);
+        return gate && [gate.designation, gate.title, gate.purpose, gate.dependencies, gate.draftAcceptance];
+    };
+    const gateIds = new Set([...before.gates, ...after.gates]
+        .filter(item => item.parentPhaseId === phaseId).map(item => item.id));
+    const affectedCriterionIds: string[] = [];
+    const affectedGateIds = [...gateIds].filter(id => {
+        const oldGate = before.gates.find(item => item.id === id);
+        const newGate = after.gates.find(item => item.id === id);
+        const gateChanged = phaseChanged || JSON.stringify(gateBasis(before, id)) !==
+            JSON.stringify(gateBasis(after, id));
+        const criterionIds = new Set([...(oldGate?.criteria ?? []), ...(newGate?.criteria ?? [])]
+            .map(item => item.id));
+        for (const criterionId of criterionIds) {
+            const oldCriterion = oldGate?.criteria.find(item => item.id === criterionId);
+            const newCriterion = newGate?.criteria.find(item => item.id === criterionId);
+            if (gateChanged || JSON.stringify(oldCriterion && [oldCriterion.title, oldCriterion.expectedResult]) !==
+                JSON.stringify(newCriterion && [newCriterion.title, newCriterion.expectedResult]))
+                affectedCriterionIds.push(criterionId);
+        }
+        return gateChanged || affectedCriterionIds.some(criterionId => criterionIds.has(criterionId));
+    });
+    const affectedWorkItemIds = [...new Set((oldPhase.workLinks ?? [])
+        .filter(link => link.criterionIds.some(id => affectedCriterionIds.includes(id)))
+        .map(link => link.workItemId))];
+    return { affectedGateIds, affectedCriterionIds, affectedWorkItemIds };
 }
 export type RoadmapMutation =
     | { type: 'create'; id: string; kind: RoadmapCheckpoint['kind']; title: string; objective: string; order: number; dependencies?: string[]; links?: RoadmapLink[] }
@@ -422,6 +464,7 @@ export class RoadmapStore {
     private readonly coverageReviews = new Map<string, PhaseCoverageReview>();
     private readonly reopenReviews = new Map<string, FinishPlanningPreview>();
     private readonly phaseWorkReviews = new Map<string, PhaseWorkReview>();
+    private readonly amendmentReviews = new Map<string, PhaseAmendmentReview>();
     private readonly planningConflictProbes = new Set<(root: string, projectId: string) => boolean | Promise<boolean>>();
 
     /** Chat proposal owners register their live pending state with the canonical writer. */
@@ -513,7 +556,7 @@ export class RoadmapStore {
     private async coverageBasis(root: string, index: RoadmapGateIndex, phaseId: string): Promise<
         Pick<PhaseCoverageReview, 'requiredGateIds' | 'criteria' | 'source'>> {
         const phase = index.phases.find(item => item.id === phaseId);
-        if (!phase || phase.draftAcceptance === 'proposed' || phase.planningLock)
+        if (!phase || phase.draftAcceptance === 'proposed' || phase.planningLock && !phase.amendment)
             throw new Error('Missing, proposed or locked Roadmap Phase');
         if (index.pendingPublication || index.linkedDocument?.pending || index.linkedDocument?.syncIntent ||
             autoSyncInFlight.has(root)) throw new Error('Pending Roadmap source operation requires recovery');
@@ -691,6 +734,8 @@ export class RoadmapStore {
         const phase = index.phases.find(item => item.id === phaseId);
         if (!phase?.planningLock || phase.draftAcceptance === 'proposed')
             throw new Error('Finish and lock Phase planning before Prepare Work');
+        if (phase.amendment && phase.gateSetCoverage.status !== 'approved')
+            throw new Error('Review amended Gate-set coverage before preparing Work');
         if (JSON.stringify(phase.workLinks) === JSON.stringify(links))
             throw new Error('Phase Work links are already reviewed; no change to apply');
         if (index.pendingPublication || index.linkedDocument?.pending || index.linkedDocument?.syncIntent ||
@@ -796,6 +841,68 @@ export class RoadmapStore {
         });
         this.publish({ root, projectId: next.projectId, revision: next.revision, changedIds: [review.phaseId] });
         return next;
+    }
+
+    /** Review the exact locked definition change and the Work/evidence that it displaces. */
+    async previewPhaseAmendment(root: string, projectId: string, revision: number, phaseId: string,
+        operations: RoadmapGateMutation[], reviewerId: string): Promise<PhaseAmendmentReview> {
+        if (!id(reviewerId) || !operations.length || operations.length > 48)
+            throw new Error('Invalid Phase amendment review');
+        const current = await this.read<RoadmapGateIndex>(root);
+        const phase = current.phases.find(item => item.id === phaseId);
+        if (current.projectId !== projectId || current.revision !== revision ||
+            !phase?.planningLock || phase.planningLock.lockedBy !== reviewerId)
+            throw new Error('Only the current Phase owner can review an amendment');
+        if (current.pendingPublication || current.linkedDocument &&
+            (current.linkedDocument.syncState !== 'synced' || current.linkedDocument.pending ||
+                current.linkedDocument.syncIntent || autoSyncInFlight.has(root)))
+            throw new Error('Linked Roadmap source conflict requires recovery before amendment');
+        for (const probe of this.planningConflictProbes)
+            if (await probe(root, projectId)) throw new Error('Pending Roadmap proposal requires review');
+        if (current.linkedDocument) {
+            const mapped = await readGateMappedDocument(root, current.linkedDocument);
+            if (mapped.hash !== current.linkedDocument.sourceHash || mapped.diagnostics.length ||
+                structureDiagnostics(current, mapped).length)
+                throw new Error('Linked Roadmap source changed before amendment');
+        }
+        const headHash = await this.gateIndexHash(root);
+        if (!headHash) throw new Error('Missing Roadmap amendment source');
+        const approvalId = randomUUID();
+        const candidate = await this.mutateGateIndex(root, revision, projectId, operations, true,
+            { indexHash: headHash, amendment: { phaseId, approvalId } });
+        const impact = amendmentImpact(current, candidate, phaseId);
+        const review: PhaseAmendmentReview = { approvalId, projectRoot: root, projectId, phaseId,
+            revision, headHash, expiresAt: Date.now() + 5 * 60_000, reviewerId,
+            operations: structuredClone(operations), before: phasePlanningDefinition(current, phaseId),
+            after: phasePlanningDefinition(candidate, phaseId), ...impact,
+            source: structuredClone(phase.planningLock.source) };
+        this.amendmentReviews.set(approvalId, structuredClone(review));
+        if (this.amendmentReviews.size > 32) this.amendmentReviews.delete(this.amendmentReviews.keys().next().value!);
+        return review;
+    }
+
+    async applyPhaseAmendment(root: string, review: PhaseAmendmentReview, approved: boolean,
+        reviewerId: string): Promise<RoadmapGateIndex> {
+        const issued = this.amendmentReviews.get(review.approvalId);
+        if (!approved || !id(reviewerId) || reviewerId !== review.reviewerId || !issued ||
+            JSON.stringify(issued) !== JSON.stringify(review) || review.expiresAt < Date.now() ||
+            review.projectRoot !== root) {
+            this.amendmentReviews.delete(review.approvalId);
+            throw new Error('Explicit current Phase amendment approval required');
+        }
+        const current = await this.read<RoadmapGateIndex>(root);
+        if (current.projectId !== review.projectId || current.revision !== review.revision ||
+            await this.gateIndexHash(root) !== review.headHash ||
+            current.phases.find(item => item.id === review.phaseId)?.planningLock?.lockedBy !== reviewerId ||
+            phasePlanningDefinition(current, review.phaseId) !== review.before)
+            throw new Error('Phase amendment source changed; review again');
+        try {
+            return await this.mutateGateIndex(root, review.revision, review.projectId,
+                review.operations, false, { indexHash: review.headHash,
+                    operationIds: [`phase-amendment-review:${review.phaseId}`,
+                        `phase-amendment-approval:${review.approvalId}`, `phase-amended-by:${reviewerId}`],
+                    amendment: { phaseId: review.phaseId, approvalId: review.approvalId } });
+        } finally { this.amendmentReviews.delete(review.approvalId); }
     }
 
     /** Reopening is a separate reviewed transition and cannot erase a running Phase. */
@@ -957,16 +1064,29 @@ export class RoadmapStore {
             for (const phase of current.phases) {
                 const following = next.schemaVersion === 2 ? next.phases.find(item => item.id === phase.id) : undefined;
                 if (phase.planningLock) {
-                    if (!following || phasePlanningDefinition(current, phase.id) !== phasePlanningDefinition(next as RoadmapGateIndex, phase.id))
+                    const amendmentId = operationIds?.find(item => item.startsWith('phase-amendment-approval:'))
+                        ?.slice('phase-amendment-approval:'.length);
+                    const reviewedAmendment = amendmentId ? this.amendmentReviews.get(amendmentId) : undefined;
+                    const amended = reviewedAmendment?.phaseId === phase.id &&
+                        reviewedAmendment.projectRoot === root && reviewedAmendment.projectId === current.projectId &&
+                        reviewedAmendment.revision === current.revision &&
+                        reviewedAmendment.before === phasePlanningDefinition(current, phase.id) &&
+                        reviewedAmendment.after === phasePlanningDefinition(next as RoadmapGateIndex, phase.id);
+                    if (!following || phasePlanningDefinition(current, phase.id) !== phasePlanningDefinition(next as RoadmapGateIndex, phase.id) && !amended)
                         throw new Error('Locked Phase requirements require reviewed reopen or amendment');
-                    if (JSON.stringify(following.gateSetCoverage) !== JSON.stringify(phase.gateSetCoverage))
+                    if (JSON.stringify(following.gateSetCoverage) !== JSON.stringify(phase.gateSetCoverage) &&
+                        !amended && !operationIds?.includes(`phase-coverage-approve:${phase.id}`))
                         throw new Error('Locked Phase Gate-set coverage cannot change silently');
                     if (JSON.stringify(following.planningLock) !== JSON.stringify(phase.planningLock) &&
-                        !operationIds?.includes(`phase-reopen-planning:${phase.id}`))
+                        !operationIds?.includes(`phase-reopen-planning:${phase.id}`) && !amended &&
+                        !operationIds?.includes(`phase-coverage-approve:${phase.id}`))
                         throw new Error('Planning lock requires reviewed reopen');
                     if (JSON.stringify(following.workLinks) !== JSON.stringify(phase.workLinks) &&
-                        !operationIds?.includes(`phase-work-review:${phase.id}`))
+                        !operationIds?.includes(`phase-work-review:${phase.id}`) && !amended)
                         throw new Error('Phase Work links require reviewed handoff');
+                    if (JSON.stringify(following.amendment) !== JSON.stringify(phase.amendment) &&
+                        !amended && !operationIds?.includes(`phase-coverage-approve:${phase.id}`))
+                        throw new Error('Phase amendment metadata requires reviewed transition');
                 } else if (following?.planningLock && !operationIds?.includes(`phase-finish-planning:${phase.id}`))
                     throw new Error('Planning lock requires checked Finish Planning');
             }
@@ -1069,6 +1189,8 @@ export class RoadmapStore {
                         JSON.stringify(item.qualificationBlockers) !== JSON.stringify(previous.qualificationBlockers) ||
                         JSON.stringify(item.exception) !== JSON.stringify(previous.exception)))
                     throw new Error('Phase qualification requires typed review operations');
+                if (previous && JSON.stringify(item.amendment) !== JSON.stringify(previous.amendment))
+                    throw new Error('Phase amendment requires typed owner review');
                 if (item.gateSetCoverage.status === 'approved' && previous && (
                     item.title !== previous.title || item.objective !== previous.objective ||
                     item.draftAcceptance !== previous.draftAcceptance ||
@@ -1177,7 +1299,8 @@ export class RoadmapStore {
     /** One revisioned, project-owned schema-2 mutation. Linked Markdown remains a separate reviewed writer. */
     async mutateGateIndex(root: string, expectedRevision: number, expectedProjectId: string,
         operation: RoadmapGateMutation | RoadmapGateMutation[], previewOnly = false,
-        nativeBasis?: { indexHash: string | null; operationIds?: string[]; replace?: boolean }): Promise<RoadmapGateIndex> {
+        nativeBasis?: { indexHash: string | null; operationIds?: string[]; replace?: boolean;
+            amendment?: { phaseId: string; approvalId: string } }): Promise<RoadmapGateIndex> {
         const operations = Array.isArray(operation) ? operation : [operation];
         if (!revision(expectedRevision) || !id(expectedProjectId) || !operations.length ||
             operations.length > (previewOnly || nativeBasis ? 48 : 3) ||
@@ -1480,6 +1603,8 @@ export class RoadmapStore {
                         reviewedAt: operation.reviewedAt, approvedAtRevision: current.revision + 1,
                         requiredGateIds: [...requiredGateIds].sort(), source: operation.source };
                     item.qualificationSource = operation.source;
+                    if (item.amendment && item.planningLock)
+                        item.planningLock.source = operation.source;
                     break;
                 }
                 case 'phase.coverage.revoke':
@@ -1580,6 +1705,71 @@ export class RoadmapStore {
             }
             if (JSON.stringify(candidate) === JSON.stringify(current)) throw new Error('Roadmap mutation has no changes');
             candidate.revision = current.revision + 1;
+            if (nativeBasis?.amendment) {
+                const { phaseId, approvalId } = nativeBasis.amendment;
+                const review = this.amendmentReviews.get(approvalId);
+                if (!previewOnly && (!review || review.phaseId !== phaseId ||
+                    review.revision !== current.revision || review.headHash !== expectedHash ||
+                    review.after !== phasePlanningDefinition(candidate, phaseId)))
+                    throw new Error('Stale or unissued Phase amendment');
+                if (current.pendingPublication || current.linkedDocument &&
+                    (current.linkedDocument.syncState !== 'synced' || current.linkedDocument.pending ||
+                        current.linkedDocument.syncIntent || autoSyncInFlight.has(root)))
+                    throw new Error('Linked Roadmap source conflict requires recovery before amendment');
+                if (current.linkedDocument) {
+                    const mapped = await readGateMappedDocument(root, current.linkedDocument);
+                    if (mapped.hash !== current.linkedDocument.sourceHash || mapped.diagnostics.length ||
+                        structureDiagnostics(current, mapped).length)
+                        throw new Error('Linked Roadmap source changed; review amendment again');
+                }
+                for (const item of current.phases.filter(item => item.id !== phaseId))
+                    if (phasePlanningDefinition(current, item.id) !== phasePlanningDefinition(candidate, item.id))
+                        throw new Error('Amendment affects another Phase');
+                const impact = amendmentImpact(current, candidate, phaseId);
+                const oldPhase = current.phases.find(item => item.id === phaseId)!;
+                const changed = phasePlanningDefinition(current, phaseId) !== phasePlanningDefinition(candidate, phaseId);
+                if (!changed) throw new Error('Phase amendment has no definition change');
+                const amended = candidate.phases.find(item => item.id === phaseId)!;
+                amended.planningLock = { ...structuredClone(oldPhase.planningLock!), approvalId,
+                    lockedAt: new Date().toISOString(), basisRevision: current.revision,
+                    requiredGateIds: candidate.gates.filter(item => item.parentPhaseId === phaseId &&
+                        item.draftAcceptance !== 'proposed').sort((a, b) => a.order - b.order).map(item => item.id),
+                    criteria: candidate.gates.filter(item => item.parentPhaseId === phaseId &&
+                        item.draftAcceptance !== 'proposed').sort((a, b) => a.order - b.order)
+                        .flatMap(gate => [...gate.criteria].sort((a, b) => a.order - b.order)
+                            .map(item => ({ id: item.id, expectedResult: item.expectedResult }))) };
+                if (!amended.planningLock.requiredGateIds.length || !amended.planningLock.criteria.length)
+                    throw new Error('Amendment cannot empty a locked Phase');
+                if (impact.affectedGateIds.length) {
+                    amended.gateSetCoverage = { status: 'unreviewed' };
+                    amended.qualificationStatus = 'stale';
+                    const retainedLinks = (oldPhase.workLinks ?? []).filter(link =>
+                        !impact.affectedWorkItemIds.includes(link.workItemId));
+                    if (retainedLinks.length) amended.workLinks = structuredClone(retainedLinks);
+                    else delete amended.workLinks;
+                    for (const gate of candidate.gates.filter(item => impact.affectedGateIds.includes(item.id))) {
+                        gate.qualificationStatus = 'stale';
+                        for (const criterion of gate.criteria.filter(item =>
+                            impact.affectedCriterionIds.includes(item.id)))
+                            for (const evidence of criterion.evidence)
+                                evidence.validation = { status: 'stale', reason: 'Reviewed Phase amendment changed the requirement basis' };
+                    }
+                } else {
+                    amended.gateSetCoverage = structuredClone(oldPhase.gateSetCoverage);
+                    amended.qualificationStatus = oldPhase.qualificationStatus;
+                    if (oldPhase.exception) amended.exception = structuredClone(oldPhase.exception);
+                    for (const gate of candidate.gates.filter(item => item.parentPhaseId === phaseId)) {
+                        const oldGate = current.gates.find(item => item.id === gate.id);
+                        if (!oldGate) continue;
+                        gate.qualificationStatus = oldGate.qualificationStatus;
+                        if (oldGate.waiver) gate.waiver = structuredClone(oldGate.waiver);
+                    }
+                }
+                amended.amendment = { approvalId, reviewedBy: oldPhase.planningLock!.lockedBy,
+                    reviewedAt: new Date().toISOString(), oldRevision: current.revision,
+                    newRevision: candidate.revision, oldSource: structuredClone(oldPhase.planningLock!.source),
+                    ...impact };
+            }
             if (candidate.linkedDocument) withAutoSyncIntent(candidate);
             parseRoadmapIndex(candidate, root);
             if (!previewOnly) await this.replace(root, candidate, expectedHash, nativeBasis?.operationIds);
