@@ -18,6 +18,7 @@ import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { FileDialogService } from '@theia/filesystem/lib/browser/file-dialog/file-dialog-service';
 import { OpenerService } from '@theia/core/lib/browser';
+import { ConfirmDialog } from '@theia/core/lib/browser/dialogs';
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { ThemeService } from '@theia/core/lib/browser/theming';
 import { CoreMarkdownRenderer, type MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
@@ -72,7 +73,7 @@ import { SearchInWorkspaceFrontendContribution } from '@theia/search-in-workspac
 import { ExplorerSearchWidget } from './explorer-search-widget';
 import { SearchNavigationContribution } from './search-navigation-contribution';
 import { RoadmapNavigationContribution, roadmapLauncherFactory } from './roadmap-navigation-contribution';
-import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { RoadmapChange, RoadmapIndex } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { GreenfieldChange } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 
@@ -406,7 +407,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             if (selection.mapId && planning.selectedMapId !== selection.mapId ||
                 existingMapId && planning.selectedMapId !== existingMapId)
                 throw new Error('Planning Map selection changed. Select the checkpoint again.');
-            planning.setPrepareWorkContext({ ...selection, planningProjectId });
+            planning.setPrepareWorkContext({ ...selection, planningProjectId,
+                ...(selection.phase && !selection.mapId && existingMapId ? {
+                    mapId: existingMapId, mapRevision: planning.collection?.maps.find(item => item.id === existingMapId)?.revision
+                } : {}) });
             planning.setMode(true);
             if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
             if (map.workspace !== selection.workspace || planning.focusWorkspace !== selection.workspace ||
@@ -479,6 +483,31 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 const widget = await openChatPanel<ChatPanelWidget>('center', panelOptions => context.container.get(WidgetManager)
                     .getOrCreateWidget<ChatPanelWidget>(CHAT_PANEL_ID, panelOptions), context.container.get(ApplicationShell), 'work');
                 await widget.selectPromptStacks();
+            }, async (handoff, links) => {
+                const planning = context.container.get(PlanningMapController);
+                const inspector = context.container.get(RoadmapInspectorModel);
+                const roadmap = context.container.get<RoadmapService>('RoadmapService');
+                if (!handoff.phase || planning.prepareWorkContext !== handoff ||
+                    planning.focusWorkspace !== handoff.workspace || inspector.projectUri !== handoff.workspace ||
+                    inspector.selectedId !== handoff.checkpointId ||
+                    planning.collection?.projectId !== handoff.planningProjectId)
+                    throw new Error('Phase or Planning owner changed. Prepare Work again.');
+                const index = inspector.gateIndex;
+                if (!index || index.projectId !== handoff.projectId ||
+                    index.phases.find(phase => phase.id === handoff.checkpointId)?.planningLock?.approvalId !==
+                        handoff.phase.lockApprovalId)
+                    throw new Error('Phase planning lock changed. Prepare Work again.');
+                const review = await roadmap.previewPhaseWork(handoff.workspace, index.projectId, index.revision,
+                    handoff.checkpointId, links);
+                if (planning.prepareWorkContext !== handoff || inspector.gateIndex?.revision !== review.revision)
+                    throw new Error('Phase Work preview changed. Prepare Work again.');
+                const accepted = await new ConfirmDialog({ title: 'Review Phase Work coverage',
+                    msg: `${review.items.map(item => `${item.title} (${item.id}) → ${item.criterionIds.join(', ')}\nAcceptance: ${item.acceptanceCriteria.join('; ')}\nValidation: ${item.validationTargets.join('; ')}`).join('\n\n')}\n\nThis records links only. Architecture approval, Work grant, Run and promotion remain separate.`,
+                    ok: 'Approve links', cancel: 'Cancel' }).open();
+                if (!accepted) return 'Phase Work links were not applied.';
+                const result = await roadmap.applyPhaseWork(handoff.workspace, review, true, 'owner');
+                inspector.setSnapshot(handoff.workspace, result as unknown as RoadmapIndex);
+                return `Linked ${review.items.length} WorkItems to locked Phase ${handoff.title}. No Work started.`;
             }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),

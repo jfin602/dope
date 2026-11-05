@@ -82,6 +82,16 @@ export class RoadmapInspectorWidget extends BaseWidget {
             for (const item of gates) coverage.append(this.element('p', `${roadmapGateLabel(item)} · ${item.qualificationStatus.replaceAll('-', ' ')}`));
             if (!gates.length) coverage.append(this.element('p', 'No accepted Gates. This Phase is Unplanned, not Green.'));
             this.content.append(objective, coverage);
+            const handoff = this.element('section');
+            handoff.append(this.element('h3', 'Prepare Work'));
+            if (phase.workLinks?.length) for (const link of phase.workLinks)
+                handoff.append(this.element('p', `${link.mapId}/${link.workItemId} · Criteria ${link.criterionIds.join(', ')} · Planning Map revision ${link.mapRevision}`));
+            const prepare = this.button('Prepare Work', () => void this.model.prepareWork());
+            prepare.id = 'dope-roadmap-prepare-work';
+            prepare.disabled = !!this.model.prepareWorkBlockedReason;
+            handoff.append(prepare, this.element('p', this.model.prepareWorkBlockedReason ??
+                'Review Planning Map, WorkItems, Criterion coverage, acceptance and validation. This does not start Work.'));
+            this.content.append(handoff);
             return;
         }
         if (!item) { this.content.append(this.element('p', 'Select a Phase or Gate on the Roadmap to inspect it.')); return; }

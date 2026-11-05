@@ -98,7 +98,8 @@ export class PlanningMapController {
         this.notify();
     }
     prepareWorkContext?: { workspace: string; projectId: string; planningProjectId: string; checkpointId: string; title: string;
-        objective: string; requirements: string[]; impactReferences: string[]; mapId?: string; mapRevision?: number };
+        objective: string; requirements: string[]; impactReferences: string[]; mapId?: string; mapRevision?: number;
+        phase?: { lockApprovalId: string; criteria: { id: string; expectedResult: string }[] } };
     setPrepareWorkContext(context: PlanningMapController['prepareWorkContext']): void {
         if (this.prepareWorkContext !== context) {
             this.scopeReview = undefined; this.stackOutline = undefined; this.stackPreview = undefined;
@@ -231,7 +232,10 @@ export class PlanningMapController {
     select(id: string): void { if (this.collection?.maps.some(map => map.id === id)) { ++this.linkedEvidenceRequest; this.preview = undefined; this.adoptionPreview = undefined; this.rebasePreview = undefined; this.stale = undefined; this.selectedMapId = id;
         this.targetApproval = undefined;
         this.approvedTargetBranches = undefined;
-        if (this.prepareWorkContext?.mapId !== id) this.prepareWorkContext = undefined;
+        if (this.prepareWorkContext?.phase && this.prepareWorkContext.mapId !== id)
+            this.setPrepareWorkContext({ ...this.prepareWorkContext, mapId: id,
+                mapRevision: this.collection.maps.find(map => map.id === id)!.revision });
+        else if (this.prepareWorkContext?.mapId !== id) this.prepareWorkContext = undefined;
         this.selectedWorkItemId = undefined; this.linkedTasks = []; this.linkedRuns = []; this.historyReferences = [];
         this.historyReferenceState = 'unavailable'; this.selectedTransformationId = undefined; this.selectedSuggestionIndex = undefined; this.suggestions = undefined; this.notify(); void this.refreshStale(); } }
     clearSelection(): void {
@@ -330,6 +334,7 @@ export class PlanningMapController {
     get selectedWorkItem(): WorkItem | undefined { return this.selected?.workItems.find(item => item.id === this.selectedWorkItemId); }
     get canLaunchWork(): boolean {
         const item = this.selectedWorkItem, map = this.selected;
+        if (this.prepareWorkContext?.phase) return false;
         const contains = (parent: string, child: string) => child === parent || child.startsWith(`${parent}/`);
         return !!(this.agent && item && map?.status === 'active' && ['ready', 'in-progress'].includes(item.status) &&
             (item.assignment === 'AI' || item.assignment === 'SHARED') && item.delegablePaths?.length &&
@@ -412,7 +417,7 @@ export class PlanningMapController {
         finally { this.launchingWork = false; this.notify(); }
     }
     private canLaunchBasis(map: PlanningMap): boolean { return !!(this.stale && !this.stale.stale && this.basisMatches(map)); }
-    requestSuggestions(): void { this.approvedSuggestionContext = undefined; if (this.prepareWorkContext) {
+    requestSuggestions(): void { this.approvedSuggestionContext = undefined; if (this.prepareWorkContext && !this.prepareWorkContext.phase) {
             this.suggestions = undefined; this.error = 'Approve the current target and request its reviewed WorkItem suggestions first';
             this.notify(); return;
         }
@@ -446,7 +451,7 @@ export class PlanningMapController {
         if (map.status !== 'draft' && map.status !== 'active') return 'Planning Map is closed for preparation';
         if (this.loading) return 'Planning Map is busy';
         if (!this.stale || this.stale.stale || !this.basisMatches(map)) return 'Physical Map basis is stale or unavailable; refresh or rebase';
-        if (this.prepareWorkContext && (this.approvedSuggestionContext !== this.prepareWorkContext ||
+        if (this.prepareWorkContext && (!this.prepareWorkContext.phase && this.approvedSuggestionContext !== this.prepareWorkContext ||
             this.prepareWorkContext.mapId !== map.id || this.prepareWorkContext.planningProjectId !== map.projectId))
             return 'Request suggestions for the approved current checkpoint target';
         if (this.suggestionMapRevision === undefined || map.revision !== this.suggestionMapRevision)

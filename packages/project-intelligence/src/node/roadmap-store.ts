@@ -14,7 +14,7 @@ import type { GateDocumentEdit, GateDocumentPatch, GateDocumentSyncPreview, Gate
 import type { RoadmapCitation, RoadmapImportPreview, RoadmapStatus } from './roadmap-import';
 import { criterionHash, evaluateGateQualification, evaluatePhaseQualification, parseRoadmapGateIndex,
     sameRoadmapSource } from './roadmap-gate-domain';
-import type { Criterion, GateEvidence, RoadmapCorrection, RoadmapGate, RoadmapGateIndex, RoadmapPhase, RoadmapSourceProof } from './roadmap-gate-domain';
+import type { Criterion, GateEvidence, RoadmapCorrection, RoadmapGate, RoadmapGateIndex, RoadmapPhase, RoadmapSourceProof, PhaseWorkLink } from './roadmap-gate-domain';
 import { checkedPublicationDestination, checkedPublicationPath, publicationHash, serializeRoadmapPublication,
     verifiedPublicationFile } from './roadmap-publication';
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from './roadmap-publication';
@@ -174,6 +174,17 @@ export interface FinishPlanningPreview {
     criteria: { id: string; expectedResult: string }[];
     source: RoadmapSourceProof;
 }
+export interface PhaseWorkReview {
+    approvalId: string; projectRoot: string; projectId: string; phaseId: string;
+    revision: number; headHash: string; expiresAt: number; planningRevision: number;
+    lockApprovalId: string; links: PhaseWorkLink[];
+    items: { id: string; title: string; acceptanceCriteria: string[]; validationTargets: string[];
+        criterionIds: string[] }[];
+}
+export interface PhaseWorkPlanningSnapshot { projectId: string; revision: number;
+    maps: { id: string; projectId: string; revision: number; status: string; basis: PhaseWorkLink['basis'];
+        transformations: { id: string }[]; workItems: { id: string; title: string; status: string;
+            transformationIds: string[]; acceptanceCriteria: string[]; validationTargets: string[] }[] }[] }
 function phasePlanningDefinition(index: RoadmapGateIndex, phaseId: string): string {
     const phase = index.phases.find(item => item.id === phaseId);
     return JSON.stringify({ phase: phase && [phase.title, phase.objective, phase.order, phase.dependencies, phase.draftAcceptance],
@@ -407,6 +418,7 @@ export class RoadmapStore {
     private readonly restoreReviews = new Map<string, RoadmapRestorePreview>();
     private readonly planningReviews = new Map<string, FinishPlanningPreview>();
     private readonly reopenReviews = new Map<string, FinishPlanningPreview>();
+    private readonly phaseWorkReviews = new Map<string, PhaseWorkReview>();
     private readonly planningConflictProbes = new Set<(root: string, projectId: string) => boolean | Promise<boolean>>();
 
     /** Chat proposal owners register their live pending state with the canonical writer. */
@@ -594,13 +606,116 @@ export class RoadmapStore {
         return next;
     }
 
+    private async checkedPhaseWork(root: string, index: RoadmapGateIndex, phaseId: string,
+        links: PhaseWorkLink[], planning: PhaseWorkPlanningSnapshot): Promise<PhaseWorkReview['items']> {
+        const phase = index.phases.find(item => item.id === phaseId);
+        if (!phase?.planningLock || phase.draftAcceptance === 'proposed')
+            throw new Error('Finish and lock Phase planning before Prepare Work');
+        if (JSON.stringify(phase.workLinks) === JSON.stringify(links))
+            throw new Error('Phase Work links are already reviewed; no change to apply');
+        if (index.pendingPublication || index.linkedDocument?.pending || index.linkedDocument?.syncIntent ||
+            autoSyncInFlight.has(root)) throw new Error('Pending Roadmap source operation requires recovery');
+        for (const probe of this.planningConflictProbes)
+            if (await probe(root, index.projectId)) throw new Error('Pending Roadmap proposal requires review');
+        if (index.linkedDocument) {
+            const linked = index.linkedDocument;
+            if (linked.projectRoot !== root || linked.projectId !== index.projectId || linked.syncState !== 'synced' ||
+                linked.lastSynced?.sourceHash !== linked.sourceHash || phase.planningLock.source.path !== linked.path ||
+                phase.planningLock.source.sha256 !== linked.sourceHash)
+                throw new Error('Linked Roadmap source changed; review Phase planning');
+            const mapped = await readGateMappedDocument(root, linked);
+            if (mapped.hash !== linked.sourceHash || mapped.diagnostics.length || structureDiagnostics(index, mapped).length)
+                throw new Error('Linked Roadmap source is stale or ambiguous');
+        }
+        if (!Array.isArray(links) || !links.length || links.length > 128 ||
+            new Set(links.map(link => `${link.planningProjectId}/${link.mapId}/${link.workItemId}`)).size !== links.length)
+            throw new Error('Select distinct WorkItems for Phase handoff');
+        if (!planning.projectId || !Number.isSafeInteger(planning.revision) || planning.revision < 0)
+            throw new Error('Planning owner is unavailable');
+        const required = new Set(phase.planningLock.criteria.map(item => item.id));
+        const covered = new Set<string>();
+        const items: PhaseWorkReview['items'] = [];
+        for (const link of links) {
+            if (link.planningProjectId !== planning.projectId || !Array.isArray(link.criterionIds) ||
+                !link.criterionIds.length || new Set(link.criterionIds).size !== link.criterionIds.length ||
+                link.criterionIds.some(id => !required.has(id)))
+                throw new Error('Foreign, duplicate or unknown Criterion ID in Work handoff');
+            if (JSON.stringify(link.criterionIds) !== JSON.stringify(phase.planningLock.criteria
+                .map(item => item.id).filter(id => link.criterionIds.includes(id))))
+                throw new Error('Work Criterion IDs must follow the locked Gate and Criterion order');
+            const map = planning.maps.find(item => item.id === link.mapId);
+            if (!map || map.projectId !== planning.projectId || map.revision !== link.mapRevision ||
+                !['draft', 'active'].includes(map.status) || JSON.stringify(map.basis) !== JSON.stringify(link.basis))
+                throw new Error('Missing, foreign or stale Planning Map link');
+            const work = map.workItems.find(item => item.id === link.workItemId);
+            if (!work || work.status !== 'ready' ||
+                !work.acceptanceCriteria.length || !work.validationTargets.length ||
+                !link.transformationIds.length ||
+                JSON.stringify([...work.transformationIds].sort()) !== JSON.stringify([...link.transformationIds].sort()) ||
+                link.transformationIds.some(id => !map.transformations.some(item => item.id === id)))
+                throw new Error('Ready WorkItem or acceptance and validation targets require review');
+            link.criterionIds.forEach(id => covered.add(id));
+            items.push({ id: work.id, title: work.title, acceptanceCriteria: [...work.acceptanceCriteria],
+                validationTargets: [...work.validationTargets], criterionIds: [...link.criterionIds] });
+        }
+        if ([...required].some(id => !covered.has(id)))
+            throw new Error(`Link every required Criterion to a WorkItem: ${[...required].filter(id => !covered.has(id)).join(', ')}`);
+        return items;
+    }
+
+    /** Review exact WorkItem coverage and targets; no task, grant, execution or adoption is created. */
+    async previewPhaseWork(root: string, projectId: string, revision: number, phaseId: string,
+        links: PhaseWorkLink[], readPlanning: () => Promise<PhaseWorkPlanningSnapshot>): Promise<PhaseWorkReview> {
+        const index = await this.read<RoadmapGateIndex>(root);
+        if (index.projectId !== projectId || index.revision !== revision) throw new Error('Stale or foreign Phase revision');
+        const planning = await readPlanning();
+        const items = await this.checkedPhaseWork(root, index, phaseId, links, planning);
+        const headHash = await this.gateIndexHash(root);
+        if (!headHash) throw new Error('Missing Roadmap source');
+        const review: PhaseWorkReview = { approvalId: randomUUID(), projectRoot: root, projectId, phaseId,
+            revision, headHash, expiresAt: Date.now() + 5 * 60_000, planningRevision: planning.revision,
+            lockApprovalId: index.phases.find(item => item.id === phaseId)!.planningLock!.approvalId,
+            links: structuredClone(links), items };
+        this.phaseWorkReviews.set(review.approvalId, structuredClone(review));
+        if (this.phaseWorkReviews.size > 32) this.phaseWorkReviews.delete(this.phaseWorkReviews.keys().next().value!);
+        return review;
+    }
+
+    async applyPhaseWork(root: string, review: PhaseWorkReview, approved: boolean, reviewerId: string,
+        readPlanning: () => Promise<PhaseWorkPlanningSnapshot>): Promise<RoadmapGateIndex> {
+        const issued = this.phaseWorkReviews.get(review.approvalId);
+        this.phaseWorkReviews.delete(review.approvalId);
+        if (!approved || !id(reviewerId) || !issued || JSON.stringify(issued) !== JSON.stringify(review) ||
+            review.projectRoot !== root || review.expiresAt < Date.now())
+            throw new Error('Explicit current Phase Work review approval required');
+        const next = await this.locked(root, async () => {
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (current.projectId !== review.projectId || current.revision !== review.revision ||
+                await this.gateIndexHash(root) !== review.headHash ||
+                current.phases.find(item => item.id === review.phaseId)?.planningLock?.approvalId !== review.lockApprovalId)
+                throw new Error('Phase Work review source changed');
+            const planning = await readPlanning();
+            if (planning.revision !== review.planningRevision ||
+                JSON.stringify(await this.checkedPhaseWork(root, current, review.phaseId, review.links, planning)) !==
+                    JSON.stringify(review.items)) throw new Error('Planning or WorkItem review changed');
+            const result = structuredClone(current);
+            result.revision++;
+            result.phases.find(item => item.id === review.phaseId)!.workLinks = structuredClone(review.links);
+            await this.replace(root, result, review.headHash, [`phase-work-review:${review.phaseId}`,
+                `phase-work-approved-by:${reviewerId}`]);
+            return result;
+        });
+        this.publish({ root, projectId: next.projectId, revision: next.revision, changedIds: [review.phaseId] });
+        return next;
+    }
+
     /** Reopening is a separate reviewed transition and cannot erase a running Phase. */
     async previewReopenPlanning(root: string, expectedProjectId: string, expectedRevision: number,
         phaseId: string): Promise<FinishPlanningPreview> {
         const current = await this.read<RoadmapGateIndex>(root);
         const phase = current.phases.find(item => item.id === phaseId);
         if (current.projectId !== expectedProjectId || current.revision !== expectedRevision ||
-            !phase?.planningLock || ['active', 'implemented'].includes(phase.implementationStatus))
+            !phase?.planningLock || phase.workLinks?.length || ['active', 'implemented'].includes(phase.implementationStatus))
             throw new Error('Stale, foreign or executing Phase planning lock');
         const headHash = await this.gateIndexHash(root);
         if (!headHash) throw new Error('Missing Roadmap planning basis');
@@ -629,7 +744,7 @@ export class RoadmapStore {
             const phase = current.phases.find(item => item.id === preview.phaseId);
             if (hash !== preview.headHash || current.projectId !== preview.projectId ||
                 current.revision !== preview.revision || !phase?.planningLock ||
-                ['active', 'implemented'].includes(phase.implementationStatus) ||
+                phase.workLinks?.length || ['active', 'implemented'].includes(phase.implementationStatus) ||
                 JSON.stringify({ requiredGateIds: phase.planningLock.requiredGateIds,
                     criteria: phase.planningLock.criteria, source: phase.planningLock.source }) !==
                 JSON.stringify({ requiredGateIds: preview.requiredGateIds, criteria: preview.criteria,
@@ -760,6 +875,9 @@ export class RoadmapStore {
                     if (JSON.stringify(following.planningLock) !== JSON.stringify(phase.planningLock) &&
                         !operationIds?.includes(`phase-reopen-planning:${phase.id}`))
                         throw new Error('Planning lock requires reviewed reopen');
+                    if (JSON.stringify(following.workLinks) !== JSON.stringify(phase.workLinks) &&
+                        !operationIds?.includes(`phase-work-review:${phase.id}`))
+                        throw new Error('Phase Work links require reviewed handoff');
                 } else if (following?.planningLock && !operationIds?.includes(`phase-finish-planning:${phase.id}`))
                     throw new Error('Planning lock requires checked Finish Planning');
             }

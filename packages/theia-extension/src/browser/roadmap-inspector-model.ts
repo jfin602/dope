@@ -13,7 +13,8 @@ export class RoadmapInspectorModel {
     private readonly openSource: (uri: string) => Promise<void>;
     private readonly openPlanning: (selection: { workspace: string; projectId: string; checkpointId: string;
         title: string; objective: string; requirements: string[]; impactReferences: string[]; mapId?: string;
-        mapRevision?: number; mapOwnerProjectId?: string; mapBasis?: PlanningBasis }) => Promise<void>;
+        mapRevision?: number; mapOwnerProjectId?: string; mapBasis?: PlanningBasis;
+        phase?: { lockApprovalId: string; criteria: { id: string; expectedResult: string }[] } }) => Promise<void>;
     private readonly listeners = new Set<() => void>();
     private serial = 0;
     private handle?: string;
@@ -60,7 +61,15 @@ export class RoadmapInspectorModel {
         return this.gateIndex?.phases.find(item => item.id === this.selectedId);
     }
     get prepareWorkBlockedReason(): string | undefined {
-        if (this.gateIndex) return 'Gate-scoped Prepare Work needs planning. The Gate-to-Planning handoff is not available yet.';
+        if (this.gateIndex) {
+            const phase = this.selectedPhase;
+            if (!phase) return 'Gate-scoped Prepare Work needs planning. Select a locked Phase to prepare Work.';
+            if (!phase.planningLock) return 'Finish and lock Phase planning before Prepare Work.';
+            if (this.busy || this.pending || this.dirty) return 'Finish or discard the pending Roadmap change first.';
+            if (this.gateIndex.linkedDocument?.syncState !== 'synced' && this.gateIndex.linkedDocument)
+                return 'Linked Roadmap source is stale or unresolved. Review and sync it first.';
+            return undefined;
+        }
         const index = this.index, item = this.selected;
         if (!index || !this.projectUri || index.projectId === 'uninitialized' || !index.revision)
             return 'Initialize and approve a canonical Roadmap before preparing work.';
@@ -81,6 +90,38 @@ export class RoadmapInspectorModel {
         return undefined;
     }
     async prepareWork(): Promise<void> {
+        if (this.gateIndex) {
+            const uri = this.projectUri, phase = this.selectedPhase, index = this.gateIndex, serial = this.serial;
+            if (!uri || !phase || this.prepareWorkBlockedReason) return;
+            this.busy = true; this.error = undefined; this.emit();
+            try {
+                const fresh = await this.service.read(uri) as unknown as RoadmapGateIndex;
+                const current = fresh.phases.find(item => item.id === phase.id);
+                if (serial !== this.serial || uri !== this.projectUri || this.selectedId !== phase.id ||
+                    fresh.projectId !== index.projectId || fresh.revision !== index.revision ||
+                    current?.planningLock?.approvalId !== phase.planningLock!.approvalId)
+                    throw new Error('Phase planning changed. Refresh and review Prepare Work.');
+                if (fresh.linkedDocument) {
+                    const sync = await this.service.previewGateDocumentSync(uri);
+                    if (sync.state !== 'unchanged' || sync.projectId !== index.projectId || sync.revision !== index.revision)
+                        throw new Error('Linked Roadmap source changed. Review and sync it first.');
+                }
+                const linked = current.workLinks ?? [];
+                const mapIds = [...new Set(linked.map(link => link.mapId))];
+                const map = mapIds.length === 1 ? linked[0] : undefined;
+                await this.openPlanning({ workspace: uri, projectId: index.projectId, checkpointId: phase.id,
+                    title: current.title, objective: current.objective,
+                    requirements: [current.objective, ...current.planningLock!.criteria.map(item => item.expectedResult)],
+                    impactReferences: current.planningLock!.requiredGateIds.map(id => `Required Gate: ${id}`),
+                    phase: { lockApprovalId: current.planningLock!.approvalId,
+                        criteria: current.planningLock!.criteria.map(item => ({ ...item })) },
+                    mapId: map?.mapId, mapRevision: map?.mapRevision,
+                    mapOwnerProjectId: map?.planningProjectId, mapBasis: map?.basis });
+            } catch (error) { if (serial === this.serial && uri === this.projectUri)
+                this.error = error instanceof Error ? error.message : String(error); }
+            finally { if (serial === this.serial && uri === this.projectUri) { this.busy = false; this.emit(); } }
+            return;
+        }
         const uri = this.projectUri, index = this.index, item = this.selected, serial = this.serial;
         if (!uri || !index || !item || this.prepareWorkBlockedReason) return;
         this.busy = true; this.error = undefined; this.emit();

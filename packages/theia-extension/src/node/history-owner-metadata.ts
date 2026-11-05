@@ -155,6 +155,22 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
                             ownerRevision: record.revision, ownerProjectId: index.projectId,
                             occurredAt: record.capturedAt, observedAt: null });
                 } else if (from === undefined && record.provenance === 'owner-write' &&
+                    record.receipt.kind === 'committed-owner-write' && operationIds?.length === 2 &&
+                    operationIds[0].startsWith('phase-work-review:') &&
+                    operationIds[1].startsWith('phase-work-approved-by:')) {
+                    const phaseId = operationIds[0].slice('phase-work-review:'.length);
+                    const snapshot = JSON.parse((await store.fetchRevision(root, index.projectId, record.revision)).snapshot) as RoadmapGateIndex;
+                    const previous = JSON.parse((await store.fetchRevision(root, index.projectId, record.revision - 1)).snapshot) as RoadmapGateIndex;
+                    const links = snapshot.phases.find(phase => phase.id === phaseId)?.workLinks;
+                    if (links?.length && JSON.stringify(links) !== JSON.stringify(previous.phases.find(phase => phase.id === phaseId)?.workLinks))
+                        result.entries.push({ ...project, kind: 'event', source: 'roadmap',
+                            sourceId: `phase-work:${index.projectId}:${record.revision}`,
+                            owner: { kind: 'editor', projectRelativePath: '.dope/roadmap.json' },
+                            title: `Phase Work links reviewed (R${record.revision})`,
+                            status: { kind: 'owner', label: `${links.length} WorkItem links` }, availability: 'available',
+                            ownerRevision: record.revision, ownerProjectId: index.projectId,
+                            occurredAt: record.capturedAt, observedAt: null });
+                } else if (from === undefined && record.provenance === 'owner-write' &&
                     record.receipt.kind === 'committed-owner-write' && operationIds?.length === 3 &&
                     operationIds[0].startsWith('phase-reopen-planning:') &&
                     operationIds[1].startsWith('planning-reopen-approval:') &&

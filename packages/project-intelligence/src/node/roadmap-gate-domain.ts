@@ -90,6 +90,10 @@ export function evaluateGateQualification(gate: RoadmapGate, currentSource = gat
     if (reasons.length) return { status: 'unknown', reasons };
     return { status: 'green', reasons: [] };
 }
+export interface PhaseWorkLink { planningProjectId: string; mapId: string; mapRevision: number;
+    basis: { architectureRevision: number; architectureFingerprint: string;
+        physicalInputFingerprint: string; physicalGeneration: number };
+    workItemId: string; transformationIds: string[]; criterionIds: string[] }
 export interface RoadmapPhase {
     id: string;
     projectId: string;
@@ -106,6 +110,8 @@ export interface RoadmapPhase {
     planningLock?: { approvalId: string; lockedBy: string; lockedAt: string; basisRevision: number;
         requiredGateIds: string[]; criteria: { id: string; expectedResult: string }[];
         source: RoadmapSourceProof };
+    /** Reviewed references into the existing Planning Map owner; no Work grant or qualification. */
+    workLinks?: PhaseWorkLink[];
     qualificationSource?: RoadmapSourceProof;
     qualificationBlockers?: string[];
     /** An exceptional disposition is recorded separately and never counts as Green. */
@@ -291,7 +297,7 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     for (const item of phases) {
         assertion(record(item) && keys(item, ['id', 'projectId', 'title', 'objective', 'order', 'dependencies',
             'implementationStatus', 'qualificationStatus', 'draftAcceptance', 'gateSetCoverage'],
-            ['qualificationSource', 'qualificationBlockers', 'exception', 'planningLock']) &&
+            ['qualificationSource', 'qualificationBlockers', 'exception', 'planningLock', 'workLinks']) &&
             identity(item, projectId) && prose(item.title, 512) && prose(item.objective, 8192) && ordered(item.order) &&
             references(item.dependencies, item.id as string) && states(item) &&
             (item.qualificationSource === undefined || source(item.qualificationSource, projectId)) &&
@@ -327,6 +333,23 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
                     identifier(c.id) && prose(c.expectedResult, 4096)) &&
                 new Set(lock.criteria.map(c => c.id)).size === lock.criteria.length &&
                 source(lock.source, projectId), 'phase planning lock');
+        }
+        if (p.workLinks !== undefined) {
+            assertion(!!p.planningLock && Array.isArray(p.workLinks) && p.workLinks.length > 0 &&
+                p.workLinks.length <= MAX_NESTED && new Set(p.workLinks.map(link =>
+                    `${link.planningProjectId}/${link.mapId}/${link.workItemId}`)).size === p.workLinks.length &&
+                p.workLinks.every(link => record(link) && keys(link, ['planningProjectId', 'mapId', 'mapRevision',
+                    'basis', 'workItemId', 'transformationIds', 'criterionIds']) &&
+                    identifier(link.planningProjectId) && identifier(link.mapId) && natural(link.mapRevision) &&
+                    identifier(link.workItemId) && record(link.basis) &&
+                    keys(link.basis, ['architectureRevision', 'architectureFingerprint', 'physicalInputFingerprint', 'physicalGeneration']) &&
+                    natural(link.basis.architectureRevision) && natural(link.basis.physicalGeneration) &&
+                    identifier(link.basis.architectureFingerprint) && identifier(link.basis.physicalInputFingerprint) &&
+                    Array.isArray(link.transformationIds) && link.transformationIds.length > 0 &&
+                    link.transformationIds.every(identifier) && new Set(link.transformationIds).size === link.transformationIds.length &&
+                    Array.isArray(link.criterionIds) && link.criterionIds.length > 0 &&
+                    link.criterionIds.every(identifier) && new Set(link.criterionIds).size === link.criterionIds.length),
+            'phase Work links');
         }
     }
     const gateOrder = new Set<string>();
@@ -421,6 +444,11 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
                 JSON.stringify(phase.planningLock.criteria) === JSON.stringify(gatesForPhase.flatMap(gate =>
                     [...gate.criteria].sort((a, b) => a.order - b.order).map(c => ({ id: c.id, expectedResult: c.expectedResult })))),
                 'phase planning lock basis');
+        }
+        if (phase.workLinks) {
+            const criterionIds = new Set(phase.planningLock?.criteria.map(item => item.id));
+            assertion(phase.workLinks.every(link => link.criterionIds.every(id => criterionIds.has(id))),
+                'phase Work criterion membership');
         }
         if (phase.qualificationStatus === 'green')
             assertion(evaluatePhaseQualification(raw as unknown as RoadmapGateIndex, phase.id,

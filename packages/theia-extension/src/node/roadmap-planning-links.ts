@@ -5,6 +5,7 @@ import type { PlannedTransformation, PlanningBasis, PlanningMap, WorkItem } from
 import type { VisualPlanningService } from '@dope/visual-planning/lib/service';
 import { sameObservation, sameSemanticBasis } from '@dope/visual-planning';
 import type { RoadmapLink } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { PhaseWorkLink } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 
 export type RoadmapPlanningRecord =
     | { owner: 'planning-map'; projectId: string; map: PlanningMap }
@@ -75,6 +76,19 @@ export class RoadmapPlanningLinks {
         const workItem = map.workItems.find(item => item.id === parts[1]);
         return workItem ? { owner: 'work-item', projectId: collection.projectId,
             mapId: map.id, mapRevision: map.revision, workItem } : undefined;
+    }
+
+    /** Resolve a reviewed Phase reference through the same current Planning owner checks. */
+    async resolvePhaseWork(root: string, link: PhaseWorkLink): Promise<Extract<RoadmapPlanningRecord,
+        { owner: 'work-item' }> | undefined> {
+        const record = await this.resolve(root, { owner: 'work-item',
+            targetId: `${link.mapId}/${link.workItemId}`, ownerProjectId: link.planningProjectId,
+            ownerRevision: link.mapRevision, basis: link.basis });
+        if (record?.owner !== 'work-item' || !['ready', 'in-progress', 'completed'].includes(record.workItem.status) ||
+            !record.workItem.acceptanceCriteria.length || !record.workItem.validationTargets.length ||
+            JSON.stringify([...record.workItem.transformationIds].sort()) !==
+                JSON.stringify([...link.transformationIds].sort())) return undefined;
+        return record;
     }
 
     /** Delegates to the native Planning Map preview. No mutation or acceptance API is exposed here. */

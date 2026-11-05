@@ -16,6 +16,7 @@ import { projectPlanningMap, projectRebaseConflict, projectReconciliationResult 
 import { affectedArchitecture, transformationsForArchitecture } from './planning-work-projection';
 import type { EditCommand } from '@dope/visual-planning/lib/editing';
 import type { PlannedNode, Resolution, WorkItem } from '@dope/visual-planning';
+import type { PhaseWorkLink } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import { reconciliationRollups } from '@dope/visual-planning/lib/reconciliation';
 import { SmapPresentationState, architectureColors, nodePalette, type NodePalette } from './smap-presentation-state';
 import './dope.css';
@@ -111,7 +112,9 @@ export class PhysicalMapWidget extends BaseWidget {
         private readonly planning: PlanningMapController, private readonly colors: SmapPresentationState,
         options?: PhysicalMapTabOptions, private readonly openWorkTask?: (taskId: string) => Promise<void>,
         private readonly linkCheckpointMap?: (context: NonNullable<PlanningMapController['prepareWorkContext']>, mapId: string) => Promise<void>,
-        private readonly openPromptStacks?: () => Promise<void>) {
+        private readonly openPromptStacks?: () => Promise<void>,
+        private readonly linkPhaseWork?: (context: NonNullable<PlanningMapController['prepareWorkContext']>,
+            links: PhaseWorkLink[]) => Promise<string>) {
         super();
         this.focusedTab = !!options;
         this.id = options ? physicalMapTabId(options) : PHYSICAL_MAP_ID;
@@ -662,7 +665,7 @@ export class PhysicalMapWidget extends BaseWidget {
             void this.planning.create(title.value.trim(), objective.value.trim()); this.draftTitle = ''; this.draftObjective = '';
         } },
             !this.planning.canCreate || this.planning.loading || !this.controller.projectMatches);
-        if (handoff && this.planning.selected && (!handoff.mapId ||
+        if (handoff && !handoff.phase && this.planning.selected && (!handoff.mapId ||
             handoff.mapId === this.planning.selected.id && handoff.mapRevision !== this.planning.selected.revision))
             button(handoff.mapId ? 'Review and relink updated map' : 'Link this map to checkpoint', async () => {
             const selected = this.planning.selected;
@@ -678,6 +681,28 @@ export class PhysicalMapWidget extends BaseWidget {
             } catch (error) { this.status.textContent = `Planning Map link denied: ${error instanceof Error ? error.message : String(error)}`; }
         }, !this.linkCheckpointMap || this.planning.loading || !!this.planning.stale?.stale || !this.planning.stale ||
             !this.controller.projectMatches || !['draft', 'active'].includes(this.planning.selected.status));
+        if (handoff?.phase && this.planning.selected && this.linkPhaseWork) button('Review Phase Work links', async () => {
+            const map = this.planning.selected, context = this.planning.prepareWorkContext;
+            if (!map || context !== handoff || !context.phase) return;
+            const links: PhaseWorkLink[] = [];
+            const linkPhaseWork = this.linkPhaseWork;
+            if (!linkPhaseWork) return;
+            for (const item of map.workItems.filter(work => work.status === 'ready')) {
+                const value = await this.ask(`Criterion IDs for ${item.title} (${item.id}), comma separated; leave blank to omit`,
+                    context.phase.criteria.map(criterion => criterion.id).join(', '));
+                if (value === undefined) return;
+                const criterionIds = value.split(',').map(id => id.trim()).filter(Boolean);
+                if (!criterionIds.length) continue;
+                links.push({ planningProjectId: map.projectId, mapId: map.id, mapRevision: map.revision,
+                    basis: map.basis, workItemId: item.id, transformationIds: [...item.transformationIds], criterionIds });
+            }
+            try {
+                this.status.textContent = await linkPhaseWork(context, links);
+                this.planning.setPrepareWorkContext(undefined);
+            } catch (error) { this.status.textContent = `Phase Work review blocked: ${error instanceof Error ? error.message : String(error)}`; }
+        }, this.planning.loading || !this.controller.projectMatches || !!this.planning.stale?.stale ||
+            !this.planning.stale || !['draft', 'active'].includes(this.planning.selected.status) ||
+            !this.planning.selected.workItems.some(item => item.status === 'ready'));
         button('Branch alternative', () => void this.planning.duplicate(), !this.planning.selected || this.planning.loading);
         const editable = !!this.planning.selected && ['draft', 'active'].includes(this.planning.selected.status) &&
             !this.planning.loading && this.controller.projectMatches;
@@ -902,8 +927,12 @@ export class PhysicalMapWidget extends BaseWidget {
         line(`Source evidence: ${sourceHashes.length ? sourceHashes.map(([path, hash]) => `${path} (${hash.slice(0, 12)})`).join('; ') : 'No source hashes recorded on this map'}`);
         if (this.planning.prepareWorkContext) {
             const context = this.planning.prepareWorkContext;
-            line(`Checkpoint: ${context.title} · ${context.checkpointId} · ${context.requirements.length} requirements · ${context.impactReferences.length} impact references`);
-            button('Request approved target WorkItems', () => void this.planning.requestApprovedSuggestions(
+            line(`${context.phase ? 'Locked Phase' : 'Checkpoint'}: ${context.title} · ${context.checkpointId} · ${context.requirements.length} requirements · ${context.impactReferences.length} impact references`);
+            if (context.phase) {
+                line('Review suggested WorkItems and their acceptance and validation targets. Phase preparation cannot launch Work. Architecture, grants and Run have separate approvals.');
+                button('Suggest WorkItems for Phase review', () => this.planning.requestSuggestions(),
+                    context.mapId !== map.id || !map.transformations.length || !this.planning.stale || this.planning.stale.stale);
+            } else button('Request approved target WorkItems', () => void this.planning.requestApprovedSuggestions(
                 this.planning.approvedTargetBranches?.context === context ? this.planning.approvedTargetBranches.ids : []),
             !this.planning.canReviewSuggestions || this.planning.approvedTargetBranches?.context !== context);
         } else button('Suggest from transformations', () => this.planning.requestSuggestions(), !map.transformations.length || !this.planning.stale || this.planning.stale.stale);
@@ -946,7 +975,7 @@ export class PhysicalMapWidget extends BaseWidget {
             if (this.planning.selectedTransformationId && item.transformationIds.includes(this.planning.selectedTransformationId)) control.classList.add('dope-work-highlight');
         }
         const bridge = this.planning.prepareWorkContext;
-        if (bridge?.mapId === map.id && bridge.mapRevision === map.revision) {
+        if (!bridge?.phase && bridge?.mapId === map.id && bridge.mapRevision === map.revision) {
             const stackHeading = document.createElement('h4'); stackHeading.textContent = 'Planning Bridge · task stack'; panel.append(stackHeading);
             line('A stack outline is a reviewable plan. Prompt files are authored only after a separate preview and approval. Opening them does not Run Work.');
             button('Review checkpoint scope', () => void this.planning.reviewScope());

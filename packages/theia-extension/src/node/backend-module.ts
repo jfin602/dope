@@ -123,7 +123,26 @@ export default new ContainerModule(bind => {
             });
             client.onDidCloseConnection(() => { off(); offDraft(); offAgent(); observer.dispose(); for (const handle of handles) actions.detach(handle);
                 dispose(); });
+            const phasePlanning = async (root: string, links: import('@dope/project-intelligence/lib/node/roadmap-gate-domain').PhaseWorkLink[]) => {
+                const service = new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex));
+                try {
+                    const resolver = new RoadmapPlanningLinks(root, service);
+                    for (const link of links) if (!await resolver.resolvePhaseWork(root, link))
+                        throw new Error(`WorkItem ${link.workItemId} has a stale or foreign Planning/Physical Map basis`);
+                    return context.container.get(PlanningStore).read(root);
+                } finally { service.dispose(); }
+            };
             const backend: RoadmapService = {
+                previewPhaseWork: async (uri, projectId, revision, phaseId, links) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    return store.previewPhaseWork(root, projectId, revision, phaseId, links,
+                        () => phasePlanning(root, links));
+                },
+                applyPhaseWork: async (uri, review, approved, reviewerId) => {
+                    const root = await context.container.get(PlanningStore).root(uri);
+                    return store.applyPhaseWork(root, review, approved, reviewerId,
+                        () => phasePlanning(root, review.links));
+                },
                 manageRoadmap: async (uri, revision, projectId, action) => {
                     const root = await context.container.get(PlanningStore).root(uri);
                     await greenfield.ensureRestored(root);
