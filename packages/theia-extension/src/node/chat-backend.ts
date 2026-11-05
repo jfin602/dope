@@ -88,6 +88,7 @@ export class ChatBackend implements ChatService {
     private disposed = false;
     private attaching = 0;
     private readonly unlisten: () => void;
+    private readonly unlistenPlanningConflicts?: () => void;
     private readonly turns = new Map<string, { token: string; abort: AbortController }>();
     private readonly generationPreparing = new Set<string>();
     private readonly generationControllers = new Map<string, { token: string; controller: RoadmapGenerationController }>();
@@ -129,6 +130,9 @@ export class ChatBackend implements ChatService {
         private readonly bridgePlanning?: VisualPlanningService & { dispose?: () => void },
         private readonly roadmapStore?: RoadmapStore) {
         this.nativeStages = roadmapStore ? new RoadmapNativeStageOwner(roadmapStore) : undefined;
+        this.unlistenPlanningConflicts = roadmapStore?.onPlanningConflict((root, projectId) =>
+            !this.disposed && (this.nativeStages?.hasPending(root, projectId) ||
+                [...this.proposals.keys()].some(chatId => this.leases.get(chatId)?.root === root)) || false);
         this.unlisten = repository.onChange((root, event) => {
             if (!this.disposed && root === this.root && this.handle)
                 client.notifyChatEvent({ ...event, projectHandle: this.handle });
@@ -2313,6 +2317,7 @@ export class ChatBackend implements ChatService {
         }
         this.leases.clear();
         this.bridgePlanning?.dispose?.();
+        this.unlistenPlanningConflicts?.();
         this.unlisten();
     }
 }

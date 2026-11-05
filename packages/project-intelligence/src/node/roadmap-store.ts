@@ -168,6 +168,22 @@ export interface RoadmapRestorePreview {
     linkedDiff?: { path: string; beforeHash: string; afterHash: string; before: string; after: string };
     warnings: string[];
 }
+export interface FinishPlanningPreview {
+    approvalId: string; projectRoot: string; projectId: string; phaseId: string; revision: number;
+    headHash: string; expiresAt: number; requiredGateIds: string[];
+    criteria: { id: string; expectedResult: string }[];
+    source: RoadmapSourceProof;
+}
+function phasePlanningDefinition(index: RoadmapGateIndex, phaseId: string): string {
+    const phase = index.phases.find(item => item.id === phaseId);
+    return JSON.stringify({ phase: phase && [phase.title, phase.objective, phase.order, phase.dependencies, phase.draftAcceptance],
+        gates: index.gates.filter(item => item.parentPhaseId === phaseId).sort((a, b) => a.order - b.order)
+            .map(item => [item.id, item.designation, item.title, item.purpose, item.order, item.dependencies,
+                item.draftAcceptance, item.criteria.map(c => [c.id, c.title, c.expectedResult, c.order])]),
+        corrections: index.corrections.filter(item => item.parent.kind === 'phase' ? item.parent.id === phaseId :
+            index.gates.find(gate => gate.id === item.parent.id)?.parentPhaseId === phaseId)
+            .map(item => [item.id, item.parent, item.criterionId, item.title, item.objective, item.order, item.draftAcceptance]) });
+}
 export type RoadmapMutation =
     | { type: 'create'; id: string; kind: RoadmapCheckpoint['kind']; title: string; objective: string; order: number; dependencies?: string[]; links?: RoadmapLink[] }
     | { type: 'update'; id: string; title: string; objective: string; order: number; dependencies: string[]; links: RoadmapLink[] };
@@ -389,6 +405,15 @@ export class RoadmapStore {
     private readonly existingLinkReviews = new Map<string, RoadmapExistingLinkPreview>();
     private readonly reconciliationReviews = new Map<string, RoadmapAutoSyncReconciliationPreview>();
     private readonly restoreReviews = new Map<string, RoadmapRestorePreview>();
+    private readonly planningReviews = new Map<string, FinishPlanningPreview>();
+    private readonly reopenReviews = new Map<string, FinishPlanningPreview>();
+    private readonly planningConflictProbes = new Set<(root: string, projectId: string) => boolean | Promise<boolean>>();
+
+    /** Chat proposal owners register their live pending state with the canonical writer. */
+    onPlanningConflict(probe: (root: string, projectId: string) => boolean | Promise<boolean>): () => void {
+        this.planningConflictProbes.add(probe);
+        return () => this.planningConflictProbes.delete(probe);
+    }
 
     onChange(listener: (change: RoadmapChange) => void): () => void {
         this.listeners.add(listener);
@@ -468,6 +493,157 @@ export class RoadmapStore {
     }
     async fetchRevision(root: string, expectedProjectId: string, revision: number): Promise<RoadmapRevisionRecord> {
         return this.archive.fetch(root, await this.canonicalBytes(root), expectedProjectId, revision);
+    }
+
+    private async checkedPlanningBasis(root: string, index: RoadmapGateIndex, phaseId: string): Promise<
+        Pick<FinishPlanningPreview, 'requiredGateIds' | 'criteria' | 'source'>> {
+        const phase = index.phases.find(item => item.id === phaseId);
+        if (!phase || phase.draftAcceptance === 'proposed') throw new Error('Missing or proposed Roadmap Phase');
+        if (phase.planningLock) throw new Error('Phase planning is already locked');
+        if (index.pendingPublication || index.linkedDocument?.pending || index.linkedDocument?.syncIntent ||
+            autoSyncInFlight.has(root)) throw new Error('Pending Roadmap source operation requires recovery');
+        for (const probe of this.planningConflictProbes)
+            if (await probe(root, index.projectId)) throw new Error('Pending Roadmap proposal requires review');
+        const owned = index.gates.filter(item => item.parentPhaseId === phaseId).sort((a, b) => a.order - b.order);
+        if (!owned.length || owned.some(item => item.draftAcceptance === 'proposed'))
+            throw new Error('Required Gate set is empty or has unresolved proposals');
+        if (index.corrections.some(item => item.draftAcceptance === 'proposed' &&
+            (item.parent.kind === 'phase' ? item.parent.id === phaseId :
+                owned.some(gate => gate.id === item.parent.id))))
+            throw new Error('Phase has unresolved correction proposals');
+        if (phase.dependencies.some(id => !index.phases.some(item => item.id === id &&
+            item.draftAcceptance !== 'proposed')) || owned.some(gate => gate.dependencies.some(id =>
+            !index.gates.some(item => item.id === id && item.draftAcceptance !== 'proposed'))))
+            throw new Error('Phase or Gate dependency is unresolved');
+        if (phase.gateSetCoverage.status !== 'approved') throw new Error('Complete Gate-set coverage approval required');
+        const requiredGateIds = owned.map(item => item.id);
+        if (JSON.stringify([...requiredGateIds].sort()) !== JSON.stringify([...phase.gateSetCoverage.requiredGateIds].sort()))
+            throw new Error('Approved Gate set changed');
+        const criteria = owned.flatMap(gate => [...gate.criteria].sort((a, b) => a.order - b.order)
+            .map(item => ({ id: item.id, expectedResult: item.expectedResult })));
+        if (!criteria.length || criteria.some(item => !item.expectedResult.trim()) ||
+            owned.some(gate => !gate.title.trim() || !gate.purpose.trim() || !gate.criteria.length ||
+                gate.criteria.some(item => !item.title.trim())))
+            throw new Error('Required Gate Criteria are incomplete');
+        const coverageSource = phase.gateSetCoverage.source;
+        if (coverageSource.projectId !== index.projectId ||
+            coverageSource.revision > index.revision || !phase.qualificationSource ||
+            !sameRoadmapSource(coverageSource, phase.qualificationSource))
+            throw new Error('Gate-set approval source is stale or foreign');
+        if (index.linkedDocument) {
+            const linked = index.linkedDocument;
+            if (linked.projectId !== index.projectId || linked.projectRoot !== root ||
+                linked.syncState !== 'synced' || linked.lastSynced?.sourceHash !== linked.sourceHash ||
+                coverageSource.path !== linked.path || coverageSource.sha256 !== linked.sourceHash)
+                throw new Error('Linked Roadmap source or coverage hash changed');
+            const mapped = await readGateMappedDocument(root, linked);
+            if (mapped.hash !== linked.sourceHash || mapped.diagnostics.length ||
+                structureDiagnostics(index, mapped).length)
+                throw new Error('Linked Roadmap source is stale or ambiguous');
+        }
+        return { requiredGateIds, criteria, source: structuredClone(coverageSource) };
+    }
+
+    /** Issue an exact review of the Phase, required Gate order, expected results and source. */
+    async previewFinishPlanning(root: string, expectedProjectId: string, expectedRevision: number,
+        phaseId: string): Promise<FinishPlanningPreview> {
+        const current = await this.read<RoadmapGateIndex>(root);
+        if (!current.revision || current.projectId !== expectedProjectId || current.revision !== expectedRevision)
+            throw new Error('Stale or foreign Roadmap planning basis');
+        const basis = await this.checkedPlanningBasis(root, current, phaseId);
+        const headHash = await this.gateIndexHash(root);
+        if (!headHash) throw new Error('Missing Roadmap planning basis');
+        const preview: FinishPlanningPreview = { approvalId: randomUUID(), projectRoot: root,
+            projectId: expectedProjectId, phaseId, revision: current.revision, headHash,
+            expiresAt: Date.now() + 5 * 60_000, ...basis };
+        this.planningReviews.set(preview.approvalId, structuredClone(preview));
+        if (this.planningReviews.size > 32) this.planningReviews.delete(this.planningReviews.keys().next().value!);
+        return preview;
+    }
+
+    /** One-use owner confirmation writes only the canonical Phase lock and one History revision. */
+    async finishPlanning(root: string, preview: FinishPlanningPreview, approved: boolean,
+        reviewerId: string): Promise<RoadmapGateIndex> {
+        if (!approved) { this.planningReviews.delete(preview.approvalId); throw new Error('Planning approval required'); }
+        const issued = this.planningReviews.get(preview.approvalId);
+        this.planningReviews.delete(preview.approvalId);
+        if (!id(reviewerId) || !issued || JSON.stringify(issued) !== JSON.stringify(preview) ||
+            preview.expiresAt < Date.now() || preview.projectRoot !== root)
+            throw new Error('Stale or unissued planning approval');
+        const next = await this.locked(root, async () => {
+            const { file } = await this.paths(root);
+            const hash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            if (hash !== preview.headHash || current.projectId !== preview.projectId ||
+                current.revision !== preview.revision) throw new Error('Stale Roadmap planning revision');
+            const basis = await this.checkedPlanningBasis(root, current, preview.phaseId);
+            if (JSON.stringify(basis) !== JSON.stringify({ requiredGateIds: preview.requiredGateIds,
+                criteria: preview.criteria, source: preview.source }))
+                throw new Error('Reviewed Gate-set basis changed');
+            const result = structuredClone(current);
+            result.revision++;
+            result.phases.find(item => item.id === preview.phaseId)!.planningLock = {
+                approvalId: preview.approvalId, lockedBy: reviewerId, lockedAt: new Date().toISOString(),
+                basisRevision: current.revision, requiredGateIds: basis.requiredGateIds,
+                criteria: basis.criteria, source: basis.source };
+            await this.replace(root, result, hash, [`phase-finish-planning:${preview.phaseId}`,
+                `planning-approval:${preview.approvalId}`]);
+            return result;
+        });
+        this.publish({ root, projectId: next.projectId, revision: next.revision, changedIds: [preview.phaseId] });
+        return next;
+    }
+
+    /** Reopening is a separate reviewed transition and cannot erase a running Phase. */
+    async previewReopenPlanning(root: string, expectedProjectId: string, expectedRevision: number,
+        phaseId: string): Promise<FinishPlanningPreview> {
+        const current = await this.read<RoadmapGateIndex>(root);
+        const phase = current.phases.find(item => item.id === phaseId);
+        if (current.projectId !== expectedProjectId || current.revision !== expectedRevision ||
+            !phase?.planningLock || ['active', 'implemented'].includes(phase.implementationStatus))
+            throw new Error('Stale, foreign or executing Phase planning lock');
+        const headHash = await this.gateIndexHash(root);
+        if (!headHash) throw new Error('Missing Roadmap planning basis');
+        const preview: FinishPlanningPreview = { approvalId: randomUUID(), projectRoot: root,
+            projectId: expectedProjectId, phaseId, revision: current.revision, headHash,
+            expiresAt: Date.now() + 5 * 60_000, requiredGateIds: [...phase.planningLock.requiredGateIds],
+            criteria: structuredClone(phase.planningLock.criteria),
+            source: { ...phase.planningLock.source } };
+        this.reopenReviews.set(preview.approvalId, structuredClone(preview));
+        if (this.reopenReviews.size > 32) this.reopenReviews.delete(this.reopenReviews.keys().next().value!);
+        return preview;
+    }
+
+    async reopenPlanning(root: string, preview: FinishPlanningPreview, approved: boolean,
+        reviewerId: string): Promise<RoadmapGateIndex> {
+        if (!approved) { this.reopenReviews.delete(preview.approvalId); throw new Error('Planning reopen approval required'); }
+        const issued = this.reopenReviews.get(preview.approvalId);
+        this.reopenReviews.delete(preview.approvalId);
+        if (!id(reviewerId) || !issued || JSON.stringify(issued) !== JSON.stringify(preview) ||
+            preview.expiresAt < Date.now() || preview.projectRoot !== root)
+            throw new Error('Stale or unissued planning reopen approval');
+        const next = await this.locked(root, async () => {
+            const { file } = await this.paths(root);
+            const hash = await this.indexHash(file);
+            const current = await this.read<RoadmapGateIndex>(root);
+            const phase = current.phases.find(item => item.id === preview.phaseId);
+            if (hash !== preview.headHash || current.projectId !== preview.projectId ||
+                current.revision !== preview.revision || !phase?.planningLock ||
+                ['active', 'implemented'].includes(phase.implementationStatus) ||
+                JSON.stringify({ requiredGateIds: phase.planningLock.requiredGateIds,
+                    criteria: phase.planningLock.criteria, source: phase.planningLock.source }) !==
+                JSON.stringify({ requiredGateIds: preview.requiredGateIds, criteria: preview.criteria,
+                    source: preview.source }))
+                throw new Error('Stale Phase planning reopen basis');
+            const result = structuredClone(current);
+            result.revision++;
+            delete result.phases.find(item => item.id === preview.phaseId)!.planningLock;
+            await this.replace(root, result, hash, [`phase-reopen-planning:${preview.phaseId}`,
+                `planning-reopen-approval:${preview.approvalId}`, `planning-reopened-by:${reviewerId}`]);
+            return result;
+        });
+        this.publish({ root, projectId: next.projectId, revision: next.revision, changedIds: [preview.phaseId] });
+        return next;
     }
 
     /** Exact retained revision compared to the current owner and checked linked source. */
@@ -573,6 +749,21 @@ export class RoadmapStore {
             throw new Error('Checkpoint Roadmap writes are retired; review and reimport into schema 2');
         const currentBytes = await this.canonicalBytes(root);
         const current = currentBytes ? parseRoadmapIndex(JSON.parse(currentBytes.toString('utf8')), root) : undefined;
+        if (current) {
+            for (const phase of current.phases) {
+                const following = next.schemaVersion === 2 ? next.phases.find(item => item.id === phase.id) : undefined;
+                if (phase.planningLock) {
+                    if (!following || phasePlanningDefinition(current, phase.id) !== phasePlanningDefinition(next as RoadmapGateIndex, phase.id))
+                        throw new Error('Locked Phase requirements require reviewed reopen or amendment');
+                    if (JSON.stringify(following.gateSetCoverage) !== JSON.stringify(phase.gateSetCoverage))
+                        throw new Error('Locked Phase Gate-set coverage cannot change silently');
+                    if (JSON.stringify(following.planningLock) !== JSON.stringify(phase.planningLock) &&
+                        !operationIds?.includes(`phase-reopen-planning:${phase.id}`))
+                        throw new Error('Planning lock requires reviewed reopen');
+                } else if (following?.planningLock && !operationIds?.includes(`phase-finish-planning:${phase.id}`))
+                    throw new Error('Planning lock requires checked Finish Planning');
+            }
+        }
         if (current?.projectId === next.projectId && current.retiredBeforeRevision !== undefined)
             next.retiredBeforeRevision = Math.max(next.retiredBeforeRevision ?? 0, current.retiredBeforeRevision);
         parseRoadmapIndex(next, root);

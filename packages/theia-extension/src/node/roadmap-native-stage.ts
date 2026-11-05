@@ -529,6 +529,11 @@ export class RoadmapNativeStageOwner {
     }
     forget(chatId: string): void { this.stages.delete(chatId); }
     get(chatId: string): NativeRoadmapStage | undefined { return this.stages.get(chatId); }
+    hasPending(root: string, projectId: string): boolean {
+        return [...this.stages.values()].some(stage => stage.context.root === root &&
+            (stage.ownerId === projectId || stage.context.projectId === projectId) &&
+            stage.operations.some(operation => operation.status === 'Pending'));
+    }
     async snapshot(context: Context): Promise<NativeStageSnapshot | undefined> {
         const index = await this.current(context);
         await this.checkedSource(index);

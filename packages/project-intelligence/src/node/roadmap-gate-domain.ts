@@ -102,6 +102,10 @@ export interface RoadmapPhase {
     draftAcceptance: RoadmapDraftAcceptance;
     gateSetCoverage: { status: 'unreviewed' } | { status: 'approved'; approvedBy: string; reviewedAt: string;
         approvedAtRevision: number; requiredGateIds: string[]; source: RoadmapSourceProof };
+    /** The reviewed planning basis is phase scoped and retained in the canonical Roadmap revision. */
+    planningLock?: { approvalId: string; lockedBy: string; lockedAt: string; basisRevision: number;
+        requiredGateIds: string[]; criteria: { id: string; expectedResult: string }[];
+        source: RoadmapSourceProof };
     qualificationSource?: RoadmapSourceProof;
     qualificationBlockers?: string[];
     /** An exceptional disposition is recorded separately and never counts as Green. */
@@ -287,7 +291,7 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
     for (const item of phases) {
         assertion(record(item) && keys(item, ['id', 'projectId', 'title', 'objective', 'order', 'dependencies',
             'implementationStatus', 'qualificationStatus', 'draftAcceptance', 'gateSetCoverage'],
-            ['qualificationSource', 'qualificationBlockers', 'exception']) &&
+            ['qualificationSource', 'qualificationBlockers', 'exception', 'planningLock']) &&
             identity(item, projectId) && prose(item.title, 512) && prose(item.objective, 8192) && ordered(item.order) &&
             references(item.dependencies, item.id as string) && states(item) &&
             (item.qualificationSource === undefined || source(item.qualificationSource, projectId)) &&
@@ -311,6 +315,19 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
             coverage.requiredGateIds.length <= MAX_ENTITIES && coverage.requiredGateIds.every(identifier) &&
             new Set(coverage.requiredGateIds).size === coverage.requiredGateIds.length &&
             source(coverage.source, projectId)), 'phase gate-set coverage');
+        if (p.planningLock) {
+            const lock = p.planningLock;
+            assertion(keys(lock, ['approvalId', 'lockedBy', 'lockedAt', 'basisRevision', 'requiredGateIds', 'criteria',
+                'source']) && identifier(lock.approvalId) && identifier(lock.lockedBy) && timestamp(lock.lockedAt) &&
+                natural(lock.basisRevision) && lock.basisRevision < (raw.revision as number) &&
+                Array.isArray(lock.requiredGateIds) && lock.requiredGateIds.length > 0 &&
+                lock.requiredGateIds.every(identifier) && new Set(lock.requiredGateIds).size === lock.requiredGateIds.length &&
+                Array.isArray(lock.criteria) && lock.criteria.length > 0 &&
+                lock.criteria.every(c => record(c) && keys(c, ['id', 'expectedResult']) &&
+                    identifier(c.id) && prose(c.expectedResult, 4096)) &&
+                new Set(lock.criteria.map(c => c.id)).size === lock.criteria.length &&
+                source(lock.source, projectId), 'phase planning lock');
+        }
     }
     const gateOrder = new Set<string>();
     const designation = new Set<string>();
@@ -394,6 +411,16 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
             assertion(phase.gateSetCoverage.requiredGateIds.every(id => (gates as RoadmapGate[])
                 .some(gate => gate.id === id && gate.parentPhaseId === phase.id && gate.draftAcceptance !== 'proposed')),
             'approved Gate set membership');
+        }
+        if (phase.planningLock) {
+            const gatesForPhase = (gates as RoadmapGate[]).filter(gate => gate.parentPhaseId === phase.id &&
+                gate.draftAcceptance !== 'proposed').sort((a, b) => a.order - b.order);
+            assertion(phase.gateSetCoverage.status === 'approved' &&
+                sameRoadmapSource(phase.planningLock.source, phase.gateSetCoverage.source) &&
+                JSON.stringify(phase.planningLock.requiredGateIds) === JSON.stringify(gatesForPhase.map(gate => gate.id)) &&
+                JSON.stringify(phase.planningLock.criteria) === JSON.stringify(gatesForPhase.flatMap(gate =>
+                    [...gate.criteria].sort((a, b) => a.order - b.order).map(c => ({ id: c.id, expectedResult: c.expectedResult })))),
+                'phase planning lock basis');
         }
         if (phase.qualificationStatus === 'green')
             assertion(evaluatePhaseQualification(raw as unknown as RoadmapGateIndex, phase.id,

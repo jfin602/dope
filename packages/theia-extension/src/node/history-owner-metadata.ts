@@ -6,6 +6,7 @@ import { ChatRepository } from '@dope/chat/lib/node/chat-repository';
 import { parsePlanningCollection } from '@dope/visual-planning/lib/node/planning-store';
 import { parseProjectMind } from '@dope/project-intelligence';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { HistoryEntry, HistoryProject, HistorySource } from '@dope/contracts/lib/history';
 
 export interface HistoryOwnerMetadata {
@@ -138,6 +139,38 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
                         status: { kind: 'owner', label: 'Reviewed restore' }, availability: 'available',
                         ownerRevision: record.revision, ownerProjectId: index.projectId,
                         occurredAt: record.capturedAt, observedAt: null });
+                } else if (from === undefined && record.provenance === 'owner-write' &&
+                    record.receipt.kind === 'committed-owner-write' && operationIds?.length === 2 &&
+                    operationIds[0].startsWith('phase-finish-planning:') &&
+                    operationIds[1].startsWith('planning-approval:')) {
+                    const phaseId = operationIds[0].slice('phase-finish-planning:'.length);
+                    const approvalId = operationIds[1].slice('planning-approval:'.length);
+                    const snapshot = JSON.parse((await store.fetchRevision(root, index.projectId, record.revision)).snapshot) as RoadmapGateIndex;
+                    if (snapshot.phases.find(phase => phase.id === phaseId)?.planningLock?.approvalId === approvalId)
+                        result.entries.push({ ...project, kind: 'event', source: 'roadmap',
+                            sourceId: `finish-planning:${index.projectId}:${record.revision}`,
+                            owner: { kind: 'editor', projectRelativePath: '.dope/roadmap.json' },
+                            title: `Phase planning locked (R${record.revision})`,
+                            status: { kind: 'owner', label: 'Reviewed Finish Planning' }, availability: 'available',
+                            ownerRevision: record.revision, ownerProjectId: index.projectId,
+                            occurredAt: record.capturedAt, observedAt: null });
+                } else if (from === undefined && record.provenance === 'owner-write' &&
+                    record.receipt.kind === 'committed-owner-write' && operationIds?.length === 3 &&
+                    operationIds[0].startsWith('phase-reopen-planning:') &&
+                    operationIds[1].startsWith('planning-reopen-approval:') &&
+                    operationIds[2].startsWith('planning-reopened-by:')) {
+                    const phaseId = operationIds[0].slice('phase-reopen-planning:'.length);
+                    const current = JSON.parse((await store.fetchRevision(root, index.projectId, record.revision)).snapshot) as RoadmapGateIndex;
+                    const before = JSON.parse((await store.fetchRevision(root, index.projectId, record.revision - 1)).snapshot) as RoadmapGateIndex;
+                    if (!current.phases.find(phase => phase.id === phaseId)?.planningLock &&
+                        before.phases.find(phase => phase.id === phaseId)?.planningLock)
+                        result.entries.push({ ...project, kind: 'event', source: 'roadmap',
+                            sourceId: `reopen-planning:${index.projectId}:${record.revision}`,
+                            owner: { kind: 'editor', projectRelativePath: '.dope/roadmap.json' },
+                            title: `Phase planning reopened (R${record.revision})`,
+                            status: { kind: 'owner', label: 'Reviewed Reopen Planning' }, availability: 'available',
+                            ownerRevision: record.revision, ownerProjectId: index.projectId,
+                            occurredAt: record.capturedAt, observedAt: null });
                 } else if (record.provenance === 'owner-write' && record.receipt.kind === 'committed-owner-write' &&
                     from === undefined && record.receipt.previousHeadRevision === undefined &&
                     operationIds?.length && new Set(operationIds).size === operationIds.length &&
