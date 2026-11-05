@@ -117,6 +117,25 @@ export async function readHistoryWorkGitMetadata(project: HistoryProject, observ
                     `Agent run: ${task.objective.slice(0, 100)}`,
                 status: historyAgentRunStatus(run), availability: 'available',
                 occurredAt: run.endedAt ?? run.startedAt ?? run.createdAt, observedAt: null });
+            // The append-only event log supplies durable transition order. Ignore message,
+            // process and file bodies: they are not qualification or safe History metadata.
+            let cursor = 0;
+            let lastStatus: string | undefined;
+            while (cursor < 1000) {
+                const page = await store.readEvents(root, id, cursor, 100);
+                for (const event of page.events) {
+                    if (event.kind !== 'status' || !event.status || event.status === lastStatus) continue;
+                    lastStatus = event.status;
+                    result.entries.push({ ...project, kind: 'event', source: 'agent',
+                        sourceId: `run:${id}:status:${String(event.sequence).padStart(6, '0')}`,
+                        owner: { kind: 'agent-run', runId: id }, title: `Agent run ${event.status}`,
+                        status: { kind: 'owner', label: `Run transition ${event.status}` },
+                        availability: 'available', occurredAt: event.at, observedAt: null });
+                }
+                cursor = page.nextSequence;
+                if (!page.hasMore) break;
+            }
+            if (cursor >= 1000) { result.truncated = true; diagnostic('agent', `Run ${id} events truncated`); }
         }
         const sequenceIds = await recordIds(root, 'sequences');
         result.truncated ||= sequenceIds.truncated;

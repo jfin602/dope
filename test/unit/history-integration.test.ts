@@ -14,6 +14,8 @@ import type { HistoryEntry, HistoryNavigableOwnerRef } from '../../packages/cont
 import type { HistorySnapshot } from '../../packages/contracts/src/history-service.js';
 import { createProjectMind } from '../../packages/project-intelligence/lib/index.js';
 import { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
+import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
+import type { RoadmapGateIndex } from '../../packages/project-intelligence/src/node/roadmap-gate-domain.js';
 import { HistoryBackend } from '../../packages/theia-extension/lib/node/history-backend.js';
 import { navigateHistory } from '../../packages/theia-extension/lib/browser/history-navigation.js';
 import { exportLegacySessions } from '../../scripts/export-legacy-development-sessions.mjs';
@@ -125,4 +127,78 @@ test('integrated History reads exact owners without mutation and restores focus 
             assert.deepEqual(await Promise.all(ownerFiles.map(file => readFile(file))), before);
         } finally { restarted.dispose(); }
     } finally { first.dispose(); await rm(root, { recursive: true, force: true }); await rm(other, { recursive: true, force: true }); }
+});
+
+test('replayed receipt and review project once after restart; run completion never implies Gate Green', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-history-receipt-'));
+    try {
+        const planning = new PlanningStore();
+        const identity = await planning.mutate(root, 0,
+            { type: 'create', id: 'plan', title: 'Plan', objective: 'Goal', basis });
+        const roadmap = new RoadmapStore();
+        const roadmapProjectId = 'roadmap-owner';
+        let index = await roadmap.saveGateIndex(root, 0, 'uninitialized', {
+            schemaVersion: 2, projectId: roadmapProjectId, projectRoot: root,
+            revision: 1, phases: [], gates: [], corrections: [] });
+        index = await roadmap.mutateGateIndex(root, index.revision, roadmapProjectId,
+            { type: 'phase.create', id: 'phase', title: 'Phase', objective: 'Deliver' });
+        index = await roadmap.mutateGateIndex(root, index.revision, roadmapProjectId,
+            { type: 'gate.create', id: 'gate', parentPhaseId: 'phase', designation: 'G1',
+                title: 'Gate', purpose: 'Check', criteria: [{ id: 'criterion', title: 'Check', expectedResult: 'Pass' }] });
+        const agents = new AgentStore();
+        await agents.createTask(root, { version: 1, id: 'task', projectId: identity.projectId, createdAt: at,
+            objective: 'Private objective', instructions: 'secret token', projectRoot: '.',
+            modelPolicy: { kind: 'follow-coding-agent' }, controls: {}, authority: { profile: 'phase-8b-project' },
+            completion: { validation: [], requireValidationPass: false }, origin: { kind: 'direct' } });
+        const run: AgentRun = { version: 1, id: 'run', taskId: 'task', projectId: identity.projectId,
+            status: 'pending', grantId: 'grant', grantRevision: 0,
+            requestedPolicy: { kind: 'follow-coding-agent' }, projectRoot: '.', createdAt: at,
+            changedFiles: [], validationResults: [] };
+        await agents.createRun(root, run);
+        const running = await agents.updateRun(root, run, { ...run, status: 'running', startedAt: at });
+        const completed = await agents.updateRun(root, running, { ...running, status: 'completed', endedAt: at });
+        await agents.appendEvent(root, { version: 1, runId: 'run', sequence: 1, at, kind: 'status',
+            status: 'completed', summary: 'secret tool output' });
+        const source = { projectId: roadmapProjectId, revision: index.revision, sha256: 'a'.repeat(64) };
+        const receipt = { eventId: 'receipt', origin: 'reviewed-observation' as const,
+            ownerId: roadmapProjectId, phaseId: 'phase', gateId: 'gate', workItemId: 'work',
+            testedHead: 'b'.repeat(40), method: 'manual', checkId: 'manual', artifactSha256: 'c'.repeat(64),
+            artifactLocation: 'private/artifact.txt', assertionSha256: 'd'.repeat(64), scope: 'check',
+            recordedAt: at, reviewerId: 'owner', reviewedAt: at };
+        index = await roadmap.mutateGateIndex(root, index.revision, roadmapProjectId,
+            { type: 'evidence.propose', gateId: 'gate', criterionId: 'criterion', id: 'receipt',
+                result: 'fail', kind: 'observation', summary: 'private source body', verifiedBy: 'owner',
+                observedAt: at, source, receipt });
+        const read = async () => {
+            const backend = new HistoryBackend();
+            try { return await backend.read((await backend.attach(pathToFileURL(root).href)).projectHandle); }
+            finally { backend.dispose(); }
+        };
+        const proposed = await read();
+        assert.equal(proposed.entries.filter(entry => entry.sourceId.startsWith('receipt:')).length, 1);
+        assert.equal(proposed.entries.find(entry => entry.sourceId.startsWith('receipt:'))?.ownerProjectId,
+            roadmapProjectId);
+        assert.equal(proposed.entries.some(entry => entry.sourceId.startsWith('gate-qualification:')), false);
+        assert.equal(proposed.entries.find(entry => entry.sourceId === 'run:run')?.status.kind, 'agent-run');
+        assert.equal(JSON.stringify(proposed).includes('secret tool output'), false);
+        assert.equal(JSON.stringify(proposed).includes('private source body'), false);
+        assert.equal(JSON.stringify(proposed).includes('private/artifact.txt'), false);
+        index = await roadmap.mutateGateIndex(root, index.revision, roadmapProjectId,
+            { type: 'evidence.approve', gateId: 'gate', criterionId: 'criterion', id: 'receipt',
+                reviewerId: 'owner', reviewedAt: at, currentSource: source });
+        const restarted = await read();
+        assert.equal(restarted.entries.filter(entry => entry.sourceId.startsWith('receipt:')).length, 2);
+        assert.equal(new Set(restarted.entries.map(entry => entry.sourceId)).size, restarted.entries.length);
+        assert.equal(restarted.entries.find(entry => entry.sourceId.startsWith('gate-qualification:'))?.title,
+            'Gate qualification: not-green');
+        assert.deepEqual((await read()).entries, restarted.entries);
+        await assert.rejects(roadmap.mutateGateIndex(root, index.revision, roadmapProjectId,
+            { type: 'evidence.approve', gateId: 'gate', criterionId: 'criterion', id: 'receipt',
+                reviewerId: 'owner', reviewedAt: at, currentSource: source }), /not awaiting review/);
+        index = await roadmap.mutateGateIndex(root, index.revision, roadmapProjectId,
+            { type: 'gate.blockers', id: 'gate', reasons: [] });
+        assert.deepEqual((await read()).entries, restarted.entries);
+        assert.equal((await agents.readRun(root, 'run'))?.status, completed.status);
+        assert.equal((await roadmap.read<RoadmapGateIndex>(root)).gates[0].qualificationStatus, 'not-green');
+    } finally { await rm(root, { recursive: true, force: true }); }
 });

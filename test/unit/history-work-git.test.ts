@@ -151,6 +151,43 @@ test('Git command timeout returns a diagnostic within the fixed bound', async ()
     }
 });
 
+test('durable run transition sequence survives restart and keeps interrupted retry distinct', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-history-run-events-'));
+    try {
+        const store = new AgentStore();
+        await store.createTask(root, task());
+        const prior = run();
+        await store.createRun(root, prior);
+        const running = await store.updateRun(root, prior, { ...prior, status: 'running', startedAt: at });
+        await store.appendEvent(root, { version: 1, runId: prior.id, sequence: 1, at,
+            kind: 'status', status: 'running', summary: 'secret startup args' });
+        const interrupted = await store.updateRun(root, running, { ...running, status: 'interrupted', endedAt: later,
+            outcome: { code: 'interrupted', summary: 'private crash details' } });
+        for (let sequence = 2; sequence <= 10; sequence++)
+            await store.appendEvent(root, { version: 1, runId: prior.id, sequence, at: later,
+                kind: 'message', summary: 'secret tool body' });
+        await store.appendEvent(root, { version: 1, runId: prior.id, sequence: 11, at: later,
+            kind: 'status', status: 'interrupted', summary: 'secret crash details' });
+        await assert.rejects(store.appendEvent(root, { version: 1, runId: prior.id, sequence: 11, at: later,
+            kind: 'status', status: 'interrupted', summary: 'replayed delivery' }), /sequence mismatch/);
+        const retry = { ...run('run-2'), createdAt: later, grantId: 'fresh-grant',
+            resumedFrom: { runId: prior.id, candidateFingerprint: 'a'.repeat(64) } };
+        await store.createRun(root, retry);
+        const first = await readHistoryWorkGitMetadata(project(root), later);
+        const again = await readHistoryWorkGitMetadata(project(root), later, new AgentStore());
+        const transitions = first.entries.filter(item => item.sourceId.startsWith('run:run-1:status:'));
+        assert.deepEqual(transitions.map(item => item.sourceId), ['run:run-1:status:000001', 'run:run-1:status:000011']);
+        assert.deepEqual(again.entries, first.entries);
+        assert.equal(first.entries.find(item => item.sourceId === 'run:run-1')?.status.kind, 'agent-run');
+        assert.equal(first.entries.find(item => item.sourceId === 'run:run-2')?.status.kind, 'agent-run');
+        assert.equal(JSON.stringify(first).includes('secret'), false);
+        assert.equal(JSON.stringify(first).includes('private crash'), false);
+        assert.equal((await readHistoryWorkGitMetadata(project(root, 'foreign'), later)).entries
+            .some(item => item.owner.kind === 'agent-run'), false);
+        assert.equal((await store.readRun(root, prior.id))?.status, interrupted.status);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('Git output beyond the fixed byte budget is rejected', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-history-git-output-'));
     const bin = join(root, 'bin');

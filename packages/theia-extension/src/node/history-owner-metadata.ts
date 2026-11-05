@@ -8,6 +8,7 @@ import { parseProjectMind } from '@dope/project-intelligence';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { HistoryEntry, HistoryProject, HistorySource } from '@dope/contracts/lib/history';
+import { projectRoadmapEvidenceRevision } from './history-roadmap-evidence';
 
 export interface HistoryOwnerMetadata {
     entries: HistoryEntry[];
@@ -128,6 +129,15 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
         if (index.revision) {
             const revisions = await store.listRevisions(root, index.projectId, undefined, MAX_ITEMS);
             for (const record of revisions.revisions) {
+                // The revision archive is the authority for actual changes. A current color,
+                // a run-complete message, or a repeated delivery creates no History event.
+                const after = JSON.parse((await store.fetchRevision(root, index.projectId, record.revision)).snapshot) as RoadmapGateIndex;
+                let before: RoadmapGateIndex | undefined;
+                if (record.revision > 1) try {
+                    before = JSON.parse((await store.fetchRevision(root,
+                        index.projectId, record.revision - 1)).snapshot) as RoadmapGateIndex;
+                } catch { /* Retired history has no preceding comparison basis. */ }
+                result.entries.push(...projectRoadmapEvidenceRevision(project, before, after, record.capturedAt));
                 const from = record.receipt.restoredFromRevision;
                 const operationIds = record.receipt.operationIds;
                 if (from !== undefined && record.receipt.previousHeadRevision === record.revision - 1 &&

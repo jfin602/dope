@@ -41,6 +41,11 @@ interface HistoryEntryBase extends HistoryProject {
     availability: HistoryAvailability;
     ownerRevision?: number;
     ownerProjectId?: string;
+    /** Safe owner references only. Never include artifact bodies or validation output. */
+    evidence?: { receiptId: string; origin: 'dope-validation' | 'reviewed-observation';
+        phaseId: string; gateId: string; criterionId: string; workItemId?: string;
+        runId?: string; artifactSha256: string; result: 'pass' | 'fail' | 'inconclusive';
+        review: 'proposed' | 'approved' | 'revoked' };
 }
 export type HistoryEntry = HistoryEntryBase & (
     /** Actual owner event time, or null when the owner has no known event time. */
