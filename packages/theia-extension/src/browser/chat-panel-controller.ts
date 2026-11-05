@@ -683,6 +683,16 @@ export class ChatPanelController {
             this.planningProposalError = `Planning proposal was not applied: ${String(error)}. Refresh the selection for the next turn.`;
         } finally { this.pending = false; this.changed(); await this.refresh(true); }
     }
+    async dismissDocumentationProposal(proposalId: string, decision: 'deny' | 'cancel'): Promise<void> {
+        const lease = this.lease;
+        if (!lease || this.pending || this.running) return;
+        this.pending = true; this.changed();
+        try {
+            await lease.connection.dismissDocumentation(lease.handle, lease.chatId, lease.token, proposalId, decision);
+        } catch (error) {
+            this.planningProposalError = `Documentation decision failed: ${String(error)}`;
+        } finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
     async reviewNativeRoadmap(ids: string[], decision: 'apply' | 'reject'): Promise<void> {
         const lease = this.lease, proposal = this.planningProposal;
         if (!lease || !proposal?.operations || this.pending || this.running ||

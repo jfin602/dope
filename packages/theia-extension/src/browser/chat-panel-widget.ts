@@ -653,6 +653,32 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     /** Saved review data is display-only; only controller.planningProposal can expose decision buttons. */
     private savedRoadmapProposalCard(message: ChatAssistantMessage): HTMLElement | undefined {
         const activity = message.planningActivity;
+        if (activity?.kind === 'documentation-proposal' && activity.documentProposal) {
+            const card = document.createElement('section');
+            card.className = 'dope-chat-plan-review dope-chat-proposal-history';
+            card.setAttribute('aria-label', 'Documentation review proposal');
+            const heading = document.createElement('strong');
+            heading.textContent = `Documentation review · ${activity.status === 'pending' ? 'Pending · no write' : activity.status}`;
+            card.append(heading);
+            for (const target of activity.documentProposal.targets) {
+                const detail = document.createElement('details');
+                const label = document.createElement('summary');
+                label.textContent = `${target.operation === 'create' ? 'Create' : 'Update'} ${target.path}`;
+                const diff = document.createElement('pre');
+                diff.textContent = target.diff;
+                detail.append(label, diff);
+                card.append(detail);
+            }
+            const note = document.createElement('p');
+            note.textContent = 'Review only. No document, Roadmap, Work, or documentation History change was applied.';
+            card.append(note);
+            if (activity.status === 'pending') {
+                card.append(this.button('Reject proposal',
+                    () => void this.controller.dismissDocumentationProposal(activity.proposalId!, 'deny'),
+                    this.controller.pending));
+            }
+            return card;
+        }
         if (!activity || !['roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication'].includes(activity.kind))
             return undefined;
         if (activity.status === 'pending' && this.controller.planningProposal?.messageId === message.id)

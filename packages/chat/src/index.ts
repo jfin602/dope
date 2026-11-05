@@ -141,16 +141,25 @@ export interface ChatRoadmapAction {
 }
 export interface ChatPlanningActivity {
     schemaVersion: 1;
-    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-publication' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'no-action' | 'error' | 'cancelled';
+    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-publication' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'documentation-proposal' | 'no-action' | 'error' | 'cancelled';
     status: 'pending' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'superseded' | 'applied' | 'failed' | 'cancelled';
     refs: ChatContextRef[];
     proposalId?: string;
     appliedRevision?: number;
     /** Bounded, inert review presentation. Saved history never grants approval authority. */
     proposal?: import('./service').ChatPlanningProposal;
+    documentProposal?: ChatDocumentationProposal;
     diagnostic?: string;
     /** Backend-verified UI guidance captured for this turn; model content remains untouched. */
     verifiedGuidance?: { capabilityId: string; version: string; text: string };
+}
+/** Inert, source-bound review bytes. A saved proposal is never an application grant. */
+export interface ChatDocumentationProposal {
+    id: string; digest: string; root: string; projectId: string; worktreeId: string;
+    ownerId: string; chatId: string; messageId: string; leaseDigest: string;
+    roadmapRevision: number; createdAt: string; expiresAt: string;
+    targets: { path: string; operation: 'create' | 'update'; before: string | null;
+        beforeHash: string | null; after: string; afterHash: string; diff: string }[];
 }
 export type ChatMessage = ChatUserMessage | ChatAssistantMessage;
 
@@ -523,10 +532,10 @@ export function parseChatRoadmapAction(value: unknown): ChatRoadmapAction {
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'Roadmap diagnostic') }) };
 }
 export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
-    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'diagnostic', 'verifiedGuidance'],
+    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'documentProposal', 'diagnostic', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
-    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'no-action',
+    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'documentation-proposal', 'no-action',
         'error', 'cancelled'] as const, 'planning activity kind');
     const status = choice(v.status, ['pending', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'superseded', 'applied',
         'failed', 'cancelled'] as const, 'planning activity status');
@@ -535,13 +544,16 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         (status === 'suggested' && v.proposalId !== undefined) ||
         (kind === 'error') !== (status === 'failed') ||
         (kind === 'cancelled' ? status !== 'cancelled' :
-            status === 'cancelled' && kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' && kind !== 'roadmap-publication') ||
+            status === 'cancelled' && kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' && kind !== 'roadmap-publication' && kind !== 'documentation-proposal') ||
         (['pending', 'denied', 'stale', 'superseded', 'applied'].includes(status) && v.proposalId === undefined) ||
         (status === 'cancelled' && kind !== 'cancelled' && v.proposalId === undefined) ||
         (['no-action', 'failed'].includes(status) && v.proposalId !== undefined) ||
         (status === 'cancelled' && kind === 'cancelled' && v.proposalId !== undefined) ||
         (status === 'applied') !== (v.appliedRevision !== undefined) ||
-        (v.verifiedGuidance !== undefined && kind !== 'no-action')) throw new Error('Invalid planning activity state');
+        (v.verifiedGuidance !== undefined && kind !== 'no-action') ||
+        (kind === 'documentation-proposal' && (v.documentProposal === undefined || v.proposalId === undefined ||
+            !['pending', 'stale', 'superseded', 'denied', 'cancelled'].includes(status))) ||
+        (kind !== 'documentation-proposal' && v.documentProposal !== undefined)) throw new Error('Invalid planning activity state');
     const guidance = v.verifiedGuidance === undefined ? undefined : record(v.verifiedGuidance,
         ['capabilityId', 'version', 'text'], ['capabilityId', 'version', 'text']);
     let proposal: import('./service').ChatPlanningProposal | undefined;
@@ -681,10 +693,44 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
                 ...(publicationDiagnostics === undefined ? {} : { diagnostics: (publicationDiagnostics as unknown[]).map((item: unknown) => string(item, 'publication diagnostic')) })
             } }) };
     }
+    let documentProposal: ChatDocumentationProposal | undefined;
+    if (v.documentProposal !== undefined) {
+        if (kind !== 'documentation-proposal' || JSON.stringify(v.documentProposal).length > 65_536)
+            throw new Error('Invalid saved documentation proposal');
+        const p = record(v.documentProposal, ['id', 'digest', 'root', 'projectId', 'worktreeId', 'ownerId',
+            'chatId', 'messageId', 'leaseDigest', 'roadmapRevision', 'createdAt', 'expiresAt', 'targets'],
+            ['id', 'digest', 'root', 'projectId', 'worktreeId', 'ownerId', 'chatId', 'messageId',
+                'leaseDigest', 'roadmapRevision', 'createdAt', 'expiresAt', 'targets']);
+        const hash = (value: unknown): string => {
+            const result = string(value, 'documentation hash');
+            if (!/^[a-f0-9]{64}$/u.test(result)) throw new Error('Invalid documentation hash');
+            return result;
+        };
+        if (p.id !== v.proposalId || !Array.isArray(p.targets) || !p.targets.length || p.targets.length > 4)
+            throw new Error('Invalid documentation targets');
+        const targets = p.targets.map((item: unknown) => {
+            const t = record(item, ['path', 'operation', 'before', 'beforeHash', 'after', 'afterHash', 'diff'],
+                ['path', 'operation', 'before', 'beforeHash', 'after', 'afterHash', 'diff']);
+            const before = t.before === null ? null : string(t.before, 'before text', false);
+            const beforeHash = t.beforeHash === null ? null : hash(t.beforeHash);
+            if ((before === null) !== (beforeHash === null) ||
+                (t.operation === 'create') !== (before === null)) throw new Error('Invalid documentation basis');
+            return { path: string(t.path, 'documentation path'),
+                operation: choice(t.operation, ['create', 'update'] as const, 'documentation operation'),
+                before, beforeHash, after: string(t.after, 'after text', false),
+                afterHash: hash(t.afterHash), diff: string(t.diff, 'documentation diff', false) };
+        });
+        documentProposal = { id: identifier(p.id), digest: hash(p.digest), root: string(p.root, 'documentation root'),
+            projectId: string(p.projectId, 'documentation project'), worktreeId: hash(p.worktreeId),
+            ownerId: string(p.ownerId, 'documentation owner'), chatId: identifier(p.chatId), messageId: identifier(p.messageId),
+            leaseDigest: hash(p.leaseDigest), roadmapRevision: count(p.roadmapRevision, 'Roadmap revision'),
+            createdAt: time(p.createdAt), expiresAt: time(p.expiresAt), targets };
+    }
     return { schemaVersion: 1, kind, status, refs: v.refs.map(parseChatContextRef),
         ...(v.proposalId === undefined ? {} : { proposalId: string(v.proposalId, 'proposal ID') }),
         ...(v.appliedRevision === undefined ? {} : { appliedRevision: count(v.appliedRevision, 'applied revision') }),
         ...(proposal === undefined ? {} : { proposal }),
+        ...(documentProposal === undefined ? {} : { documentProposal }),
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'planning diagnostic').slice(0, 2000) }),
         ...(guidance === undefined ? {} : { verifiedGuidance: {
             capabilityId: string(guidance.capabilityId, 'guidance capability'),

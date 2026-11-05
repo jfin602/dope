@@ -141,6 +141,11 @@ export interface ChatService {
         requestId: string, allowOnce: boolean): Promise<void>;
     decidePlanningProposal(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, approve: boolean): Promise<{ revision: number; changedIds: string[] } | undefined>;
+    /** Protected review staging. Proposed bytes are inert until a separate approved apply. */
+    reviewDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string, messageId: string,
+        changes: { path: string; after: string }[]): Promise<import('./index').ChatDocumentationProposal>;
+    dismissDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string, decision: 'deny' | 'cancel'): Promise<void>;
     reviewNativeRoadmap(projectHandle: string, chatId: ChatId, leaseToken: string, proposalId: string,
         operationIds: string[], decision: 'apply' | 'reject'):
         Promise<{ token: string; summary: string; preview?: ChatPlanningProposal['preview'] }>;

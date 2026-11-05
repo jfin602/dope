@@ -33,6 +33,7 @@ import { verifiedPublicationFile } from '@dope/project-intelligence/lib/node/roa
 import { RoadmapNativeStageOwner } from './roadmap-native-stage';
 import { RoadmapGenerationNativeStage } from './roadmap-generation-native-stage';
 import { typedRoadmapCounts } from './roadmap-typed-stage';
+import { prepareDocumentationReview, documentationReviewApplicability } from './documentation-review';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -95,7 +96,7 @@ export class ChatBackend implements ChatService {
     private readonly nativeStages?: RoadmapNativeStageOwner;
     private readonly roadmapPreparations = new Map<string, { token: string; abort: AbortController }>();
     /** Leases belong to this RPC connection, not to the reusable panel ID or backend PID. */
-    private readonly leases = new Map<string, { root: string; token: string }>();
+    private readonly leases = new Map<string, { root: string; token: string; ownerId: string }>();
     private readonly commandModes = new Map<string, ChatCommandMode>();
     private readonly pendingCommands = new Map<string, { preview: ChatCommandPreview; root: string;
         leaseToken: string; turn: AbortController; digest: string; sourceBasis: string;
@@ -346,7 +347,7 @@ export class ChatBackend implements ChatService {
                 if (this.disposed) throw new Error('Disposed Chat connection');
                 this.clearProposal(request.chatId);
                 this.clearGateUndo(request.chatId);
-                this.leases.set(request.chatId, { root, token: result.token });
+                this.leases.set(request.chatId, { root, token: result.token, ownerId: request.ownerId });
                 this.commandModes.set(request.chatId, 'ask');
             } catch (error) {
                 await this.repository.release(root, request.chatId, result.token).catch(() => {});
@@ -490,6 +491,45 @@ export class ChatBackend implements ChatService {
                 { ...message.planningActivity, status },
                 { proposalId: message.planningActivity.proposalId, status: 'pending' });
         }
+    }
+    async reviewDocumentation(projectHandle: string, chatId: string, leaseToken: string, messageId: string,
+        changes: { path: string; after: string }[]): Promise<import('@dope/chat').ChatDocumentationProposal> {
+        const root = this.active(projectHandle);
+        if (!this.roadmapStore || this.leases.get(chatId)?.root !== root ||
+            this.leases.get(chatId)?.token !== leaseToken || this.turns.has(chatId))
+            throw new Error('Current Chat and Roadmap ownership required for documentation review');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const at = chat?.messages.findIndex(item => item.id === messageId) ?? -1;
+        const message = at < 0 ? undefined : chat?.messages[at];
+        const user = at > 0 ? chat?.messages[at - 1] : undefined;
+        if (!message || message.role !== 'assistant' || message.execution.status !== 'complete' ||
+            message.planningActivity || !user || user.role !== 'user' ||
+            !/^(?:\/docs-review\b|(?:please\s+)?(?:review|formalize)\s+(?:the\s+)?(?:documentation|decision)\b)/iu.test(user.content.trim()))
+            throw new Error('A completed, explicit saved documentation review request is required');
+        await this.repository.renew(root, chatId, leaseToken);
+        const proposal = await prepareDocumentationReview(this.roadmapStore,
+            { root, chatId, messageId, ownerId: this.leases.get(chatId)!.ownerId, leaseToken, changes });
+        if (await documentationReviewApplicability(this.roadmapStore, proposal, root) !== 'applicable')
+            throw new Error('Documentation changed during review');
+        await this.repository.recordPlanningActivity(root, chatId, messageId, leaseToken,
+            { schemaVersion: 1, kind: 'documentation-proposal', status: 'pending',
+                refs: message.execution.sourceRefs ?? [], proposalId: proposal.id, documentProposal: proposal });
+        return proposal;
+    }
+    async dismissDocumentation(projectHandle: string, chatId: string, leaseToken: string,
+        proposalId: string, decision: 'deny' | 'cancel'): Promise<void> {
+        const root = this.active(projectHandle);
+        if (!['deny', 'cancel'].includes(decision) || this.leases.get(chatId)?.root !== root ||
+            this.leases.get(chatId)?.token !== leaseToken) throw new Error('Current Chat ownership required');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const message = chat?.messages.find(item => item.role === 'assistant' &&
+            item.planningActivity?.kind === 'documentation-proposal' &&
+            item.planningActivity.proposalId === proposalId && item.planningActivity.status === 'pending');
+        if (!message || message.role !== 'assistant' || !message.planningActivity)
+            throw new Error('Documentation proposal is unavailable or already decided');
+        await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
+            { ...message.planningActivity, status: decision === 'deny' ? 'denied' : 'cancelled' },
+            { proposalId, status: 'pending' });
     }
     /** A new owner cannot reuse an offer or a preview held only by the old connection. */
     private async retireRoadmapActions(root: string, chatId: string, leaseToken: string): Promise<void> {
