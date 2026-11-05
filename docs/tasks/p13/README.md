@@ -1,6 +1,6 @@
 # p13 — Roadmap-Controlled Development: manually gated runner
 
-**Owner-approved:** 2026-11-05 `/docs-apply + /prompt-plan + /prompt-write p13`, main branch, `0.13.0` baseline `f908c447`; subsequent explicit request adds three manual browser checkpoints. **Status:** prompt/docs only; implementation, live Chrome qualification and native owner signoff NOT RUN. **Authorities:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md), [contract](../../planning/p13/roadmap-work-lifecycle-contract.md), [plan](implementation-plan.md), [assessment](prompt-assessment.md).
+**Owner-approved:** 2026-11-05 `/docs-apply + /prompt-plan + /prompt-write p13`, main branch, `0.13.0` baseline `f908c447`; subsequent explicit request adds three manual browser checkpoints. **Status:** prompt/docs only; implementation, live Chrome qualification and native owner signoff NOT RUN. **Authorities:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md), [lifecycle contract](../../planning/p13/roadmap-work-lifecycle-contract.md), [Task-Anchored Documentation Routing](../../planning/p13/task-anchored-documentation-routing-contract.md), [plan](implementation-plan.md), [assessment](prompt-assessment.md).
 
 | Step | Target version | Responsibility | Mode |
 | --- | --- | --- | --- |
@@ -25,3 +25,5 @@ On actual synced main, inspect dirty owner work and use `npm run codex:phase:val
 **Known runner limitation:** the current runner resumes based on reachable Git commit subject + package version, not on inspected browser evidence. The human-checkpoint report and explicit owner PASS are therefore mandatory. A version commit is only a **resume marker**, never Roadmap Gate or Phase qualification. Checkpoint prompts forbid empty/forged commits and must re-run affected real Chrome tests after code repairs. No automatic self-commit, tool-only PASS, mock browser, owner-native claim from Chrome, dirty-work overwrite, reset/stash/clean or historical report rewrite. Real selected model and disposable test projects required.
 
 Preserve one schema-2 Roadmap authority; Work executes only under its reviewed grants/candidate promotion, Criterion evidence is source-bound and owner qualification remains separate from task completion. P13 docs/prompt authoring alone is not an implementation Run or a GREEN receipt.
+
+The documentation-routing contract adds forward Phase 13 implementation and qualification requirements. Existing `P*.txt` prompts and historical evidence remain immutable; assess coverage and obtain a separate reviewed correction/qualification route before any later Run if those prompts do not cover it. Do not treat this documentation approval as authorization to start the stack.

@@ -1,6 +1,6 @@
 # Phase 13 — Roadmap → Work → Evidence lifecycle contract
 
-**Approved:** 2026-11-05. **Authority:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md), [Gate semantics ADR 0040](../../decisions/0040-phase-gate-roadmap-domain.md), [Planning Bridge ADR 0038](../../decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md). **Status:** forward requirements only, not shipped or qualified.
+**Approved:** 2026-11-05. **Authority:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md), [Gate semantics ADR 0040](../../decisions/0040-phase-gate-roadmap-domain.md), [Planning Bridge ADR 0038](../../decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md). **Documentation handoff:** [Task-Anchored Documentation Routing](task-anchored-documentation-routing-contract.md), under ADR 0041. **Status:** forward requirements only, not shipped or qualified.
 
 ## 1. One project view, independent owners
 
@@ -27,6 +27,8 @@ Developer selects `Finish Planning` on the Roadmap. Preview exact Phase ID/revis
 ## 4. Prepare Work and execution
 
 From a locked Phase use existing `Prepare Work`: source-grounded impact/Physical Map, PlanningMap transformations, WorkItems with requirements, explicit dependency graph, relevant Criterion IDs, acceptance/validation targets and source references, then reviewed bounded prompt/Work candidates. Show uncovered or ambiguous Criterion mappings and prohibit launch until mandatory mappings resolve or a recorded owner decision allows an explicitly limited scope. Preserve distinct approvals: frozen Roadmap coverage, architectural plan, approved Work proposal, per-run grant/Run, candidate promotion, qualification, Phase closeout. Do not invent a “Run all” bypass.
+
+At documentation and Work handoff, follow the linked Task-Anchored Documentation Routing contract: applicable AGENTS.md instructions lead bounded, task-relevant reading; a durable projection retains the original objective, accepted plan and verification basis through execution and recovery. Documentation consultation does not change the Roadmap or Work owner or count as qualification evidence.
 
 An authorized WorkItem may serve multiple Criteria; one Criterion may need evidence from several WorkItems or manual checks. Links are ID-based and versioned, not text matching. A Work run that was not launched from the Roadmap may offer **reviewed evidence association**; it may never auto-adopt an unrelated result or award GREEN.
 
@@ -55,4 +57,3 @@ Required deterministic cases: one Phase locks while another edits; empty/incompl
 Independent manual T3 must exercise connected Chrome real Dope + local model and a disposable project, plus separate owner-native Electron evidence. Do not modify the owner's persistent game fixture. Security negatives include project/owner mismatch, grant bypass, filesystem escape, source drift, stale lease, proposal replay, external egress and History redaction. A mock/unit pass alone is not GREEN.
 
 **Out of scope:** changing `/gen-roadmap` generation orchestration, implementing general background LSKM, removing evidence/waiver approvals, automatically executing Work on lock, adopting arbitrary Chat prose as Gate evidence, replacing the single Roadmap store or existing Work/candidate authorities.
-

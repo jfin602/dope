@@ -26,6 +26,7 @@ The 2026-10-29 draft in [phase-13-scope.md](../planning/p13/phase-13-scope.md) r
 - [ADR 0046](0046-roadmap-revision-navigation-and-restore.md): restoration creates a reviewed new structural head and cannot revive obsolete qualification evidence.
 - [ADR 0047](0047-native-roadmap-authoring-and-automatic-sync.md), [ADR 0049](0049-roadmap-phase-orchestration.md), [ADR 0050](0050-roadmap-chat-polish-and-review-controls.md): existing authoring, generation, canvas review, source sync, and History rules are preserved; no greenfield redesign.
 - [ADR 0048](0048-engineering-qualification-ratings-and-progression.md): runner implementation/verification/progression receipts are distinct from product Roadmap Gate qualification; verified evidence may be linked through the same checked Criterion path, never automatically promoted.
+- [ADR 0041](0041-planning-documentation-workflow-and-applied-history.md): optional applicable document references and agent-managed safe reads remain the documentation boundary. The [Phase 13 task-anchored routing contract](../planning/p13/task-anchored-documentation-routing-contract.md) defines AGENTS.md-first use, objective/plan retention and loop protection without adding a second progress owner.
 
 ## Delivery and qualification
 
