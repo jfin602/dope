@@ -155,6 +155,7 @@ body.theia-light:not(.dope-dark) {
 .dope-roadmap-phase-card { width: 500px; min-height: 260px; gap: 14px; padding: 24px 26px; border-radius: 18px; border-left: 7px solid var(--phase-accent, var(--theia-descriptionForeground)); background: color-mix(in srgb, var(--theia-editorWidget-background, var(--theia-editor-background)) 93%, var(--phase-accent, var(--theia-descriptionForeground))); box-shadow: 0 8px 24px var(--theia-widget-shadow, transparent); cursor: default; }
 .dope-roadmap-phase-unplanned { --phase-accent: var(--theia-descriptionForeground); }
 .dope-roadmap-phase-planned { --phase-accent: var(--dope-roadmap-planned, var(--theia-editorWarning-foreground)); }
+.dope-roadmap-phase-locked { --phase-accent: var(--theia-charts-blue, var(--theia-textLink-foreground)); border-left-style: solid; }
 .dope-roadmap-phase-active { --phase-accent: var(--dope-roadmap-active, var(--theia-editorWarning-foreground)); }
 .dope-roadmap-phase-not-green, .dope-roadmap-phase-blocked { --phase-accent: var(--dope-roadmap-not-green, var(--theia-errorForeground)); }
 .dope-roadmap-phase-green { --phase-accent: var(--dope-roadmap-green, var(--theia-testing-iconPassed)); }

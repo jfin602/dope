@@ -36,7 +36,7 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
     const before = JSON.stringify(index);
     const cards = gatePhaseCards(index);
     assert.deepEqual(cards.nodes.map(item => item.id), ['phase-a', 'phase-b']);
-    assert.deepEqual(cards.nodes.map(item => item.statusLabel), ['Planned', 'Unplanned']);
+    assert.deepEqual(cards.nodes.map(item => item.statusLabel), ['Planning', 'Unplanned']);
     assert.equal(cards.nodes[0].phaseCard?.required, 1);
     assert.equal(cards.nodes[0].phaseCard?.qualified, 0);
     assert.deepEqual(cards.nodes[0].phaseCard?.gates.map(item => [item.id, item.proposed]),
@@ -55,6 +55,15 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
     assert.ok(positions.get('phase-a')!.x < positions.get('phase-b')!.x);
     assert.equal(JSON.stringify(index), before);
     assert.equal(index.linkedDocument?.sourceHash, 'a'.repeat(64));
+    const locked = structuredClone(index);
+    locked.phases[0].planningLock = { approvalId: 'review-1', lockedBy: 'owner',
+        lockedAt: '2026-11-05T00:00:00.000Z', basisRevision: 4,
+        requiredGateIds: ['gate-a'], criteria: [{ id: 'criterion-a', expectedResult: 'Visible after reload' }],
+        source: { projectId: 'project', revision: 4, sha256: 'a'.repeat(64), path: 'ROADMAP.md' } };
+    const lockedCards = gatePhaseCards(locked);
+    assert.deepEqual(lockedCards.nodes.map(item => item.statusLabel), ['Ready for Work', 'Unplanned']);
+    assert.deepEqual(lockedCards.nodes.map(item => item.phaseCard?.planningLocked), [true, false]);
+    assert.equal(index.phases[0].planningLock, undefined);
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(css, /\.dope-roadmap-phase-card \{ width: 500px/);
     assert.match(css, /\.dope-roadmap-phase-main > strong \{ font-size: 23px/);
@@ -200,7 +209,7 @@ test('Prepare Work opens the registered center Planning Map with no Chat or agen
     assert.match(frontend, /verifyPrepareWorkNavigation\(selection, map, planning\)/);
     assert.match(frontend, /if \(selection\.mapId\) planning\.select\(selection\.mapId\)/);
     assert.match(frontend, /else if \(existingMapId\) planning\.select\(existingMapId\)/);
-    assert.match(frontend, /planning\.setPrepareWorkContext\(\{ \.\.\.selection, planningProjectId \}\)/);
+    assert.match(frontend, /planning\.setPrepareWorkContext\(\{ \.\.\.selection, planningProjectId,/);
     assert.match(frontend, /planning\.setMode\(true\)/);
     assert.doesNotMatch(inspector, /openChatPanel|launchWork|AgentRuntimeService/);
 });

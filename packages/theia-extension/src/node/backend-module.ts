@@ -133,6 +133,12 @@ export default new ContainerModule(bind => {
                 } finally { service.dispose(); }
             };
             const backend: RoadmapService = {
+                previewFinishPlanning: async (uri, projectId, revision, phaseId) =>
+                    store.previewFinishPlanning(await context.container.get(PlanningStore).root(uri),
+                        projectId, revision, phaseId),
+                finishPlanning: async (uri, preview, approved, reviewerId) =>
+                    store.finishPlanning(await context.container.get(PlanningStore).root(uri),
+                        preview, approved, reviewerId),
                 previewPhaseWork: async (uri, projectId, revision, phaseId, links) => {
                     const root = await context.container.get(PlanningStore).root(uri);
                     return store.previewPhaseWork(root, projectId, revision, phaseId, links,

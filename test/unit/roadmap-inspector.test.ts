@@ -37,6 +37,47 @@ const fake = (state: { index: RoadmapIndex; pending?: ReturnType<typeof deferred
     undoToken: async () => 'undo-token'
 });
 
+test('Finish Planning review is selection and revision bound, with recoverable stale errors', async () => {
+    const phase = (id: string, order: number) => ({ id, projectId: 'project', title: id,
+        objective: 'Outcome', order, dependencies: [], implementationStatus: 'unknown' as const,
+        qualificationStatus: 'unknown' as const, draftAcceptance: 'published' as const,
+        gateSetCoverage: { status: 'unreviewed' as const } });
+    let index: RoadmapGateIndex = { schemaVersion: 2, projectId: 'project', projectRoot: '/tmp/project',
+        revision: 2, phases: [phase('first', 0), phase('second', 1)], gates: [], corrections: [] };
+    const preview = { approvalId: 'review', projectRoot: '/tmp/project', projectId: 'project', phaseId: 'first',
+        revision: 2, headHash: 'a'.repeat(64), expiresAt: Date.now() + 60_000,
+        requiredGateIds: ['gate'], criteria: [{ id: 'criterion', expectedResult: 'Observed' }],
+        source: { projectId: 'project', revision: 2, sha256: 'b'.repeat(64) } };
+    let confirmations = 0;
+    const service = { read: async () => index as unknown as RoadmapIndex,
+        previewFinishPlanning: async () => preview,
+        finishPlanning: async () => { confirmations++; throw new Error('Stale Roadmap planning revision'); }
+    } as unknown as RoadmapService;
+    const model = new RoadmapInspectorModel(service);
+    model.setSnapshot(root, index as unknown as RoadmapIndex);
+    model.select('first');
+    await model.reviewFinishPlanning();
+    assert.equal(model.planningReview?.phaseId, 'first');
+    model.select('second');
+    assert.equal(model.planningReview, undefined);
+    await model.confirmFinishPlanning();
+    assert.equal(confirmations, 0);
+    model.select('first');
+    await model.reviewFinishPlanning();
+    index = { ...index, revision: 3 };
+    model.setSnapshot(root, index as unknown as RoadmapIndex);
+    assert.equal(model.planningReview, undefined);
+    await model.reviewFinishPlanning();
+    assert.match(model.error ?? '', /Roadmap changed/);
+    assert.equal(model.planningReview, undefined);
+    preview.revision = 3;
+    await model.reviewFinishPlanning();
+    await model.confirmFinishPlanning();
+    assert.equal(confirmations, 1);
+    assert.match(model.error ?? '', /Stale Roadmap/);
+    assert.equal(model.planningReview, undefined);
+});
+
 test('Prepare Work requires a current canonical checkpoint and conveys requirements without writing', async () => {
     const state = { index: snapshot(), applied: 0, approved: false };
     const opened: unknown[] = [];

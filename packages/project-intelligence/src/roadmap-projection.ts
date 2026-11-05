@@ -31,6 +31,7 @@ export interface CheckpointNode {
         browserRequired?: boolean; segment?: string; diagnostic?: string };
     /** Read-only schema-two visual summary; no RoadmapStore field is written. */
     phaseCard?: { number: number; title: string; qualification: string; presentation: string; qualified: number; required: number;
+        planningLocked: boolean;
         gates: (RoadmapGate & { status: string; proposed: boolean })[];
         corrections: RoadmapCorrection[] };
 }

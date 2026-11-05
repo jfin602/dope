@@ -1,4 +1,4 @@
-import type { RoadmapCheckpoint, RoadmapIndex } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { RoadmapCheckpoint, RoadmapIndex, FinishPlanningPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapChange } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { PlanningAction, PlanningActionPreview, PlanningActionRequest } from '@dope/project-intelligence/lib/node/project-planning-actions';
 import type { GatePlanningAction } from '@dope/project-intelligence/lib/node/project-planning-actions';
@@ -28,6 +28,7 @@ export class RoadmapInspectorModel {
     dirty = false;
     busy = false;
     error?: string;
+    planningReview?: FinishPlanningPreview;
     undo?: { token: string; revision: number };
 
     constructor(service: RoadmapService, openSource: (uri: string) => Promise<void> = async () => {},
@@ -59,6 +60,38 @@ export class RoadmapInspectorModel {
     get selectedGate(): RoadmapGate | undefined { return this.gateIndex?.gates.find(item => item.id === this.selectedId); }
     get selectedPhase(): RoadmapGateIndex['phases'][number] | undefined {
         return this.gateIndex?.phases.find(item => item.id === this.selectedId);
+    }
+    async reviewFinishPlanning(): Promise<void> {
+        const uri = this.projectUri, index = this.gateIndex, phase = this.selectedPhase;
+        if (!uri || !index || !phase || phase.planningLock || this.busy || this.dirty || this.pending) return;
+        const serial = ++this.serial;
+        this.busy = true; this.error = undefined; this.planningReview = undefined; this.emit();
+        try {
+            const preview = await this.service.previewFinishPlanning(uri, index.projectId, index.revision, phase.id);
+            if (serial !== this.serial || uri !== this.projectUri || this.selectedId !== phase.id ||
+                this.gateIndex?.projectId !== preview.projectId || this.gateIndex.revision !== preview.revision)
+                throw new Error('Roadmap changed. Review Finish Planning again.');
+            this.planningReview = preview;
+        } catch (failure) { if (serial === this.serial) this.error = String(failure); }
+        finally { if (serial === this.serial) { this.busy = false; this.emit(); } }
+    }
+    cancelFinishPlanning(): void { this.planningReview = undefined; this.error = undefined; this.emit(); }
+    async confirmFinishPlanning(): Promise<void> {
+        const uri = this.projectUri, review = this.planningReview, index = this.gateIndex;
+        if (!uri || !review || !index || this.busy || this.selectedId !== review.phaseId) return;
+        const serial = ++this.serial;
+        this.busy = true; this.error = undefined; this.emit();
+        try {
+            if (index.projectId !== review.projectId || index.revision !== review.revision)
+                throw new Error('Roadmap changed. Review Finish Planning again.');
+            const result = await this.service.finishPlanning(uri, review, true, 'owner');
+            if (serial === this.serial && uri === this.projectUri) {
+                this.planningReview = undefined;
+                this.setSnapshot(uri, result as unknown as RoadmapIndex);
+            }
+        } catch (failure) {
+            if (serial === this.serial) { this.planningReview = undefined; this.error = String(failure); }
+        } finally { if (serial === this.serial) { this.busy = false; this.emit(); } }
     }
     get prepareWorkBlockedReason(): string | undefined {
         if (this.gateIndex) {
@@ -191,6 +224,7 @@ export class RoadmapInspectorModel {
             this.dirty = false;
             this.undo = undefined;
             this.pending = undefined;
+            this.planningReview = undefined;
             this.error = undefined;
             this.busy = false;
         }
@@ -198,6 +232,8 @@ export class RoadmapInspectorModel {
         if (index && uri) {
             if (this.index && !foreign && index.revision < this.index.revision) return;
             this.index = index;
+            if (this.planningReview && (this.planningReview.revision !== index.revision ||
+                this.planningReview.projectId !== index.projectId)) this.planningReview = undefined;
             if (this.undo && this.undo.revision !== index.revision) {
                 this.undo = undefined;
                 this.error = 'Undo is no longer available because the Roadmap changed. Review the current revision before editing again.';
@@ -220,6 +256,7 @@ export class RoadmapInspectorModel {
         this.selectedId = id;
         this.selectedPrompt = undefined;
         this.pending = undefined;
+        this.planningReview = undefined;
         this.error = undefined;
         this.busy = false;
         this.dirty = false;

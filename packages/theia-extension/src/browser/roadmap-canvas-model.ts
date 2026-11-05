@@ -14,6 +14,7 @@ export interface PhaseCardSummary {
     required: number;
     gates: (RoadmapGate & { status: string; proposed: boolean })[];
     corrections: RoadmapCorrection[];
+    planningLocked: boolean;
 }
 
 /** A color is a projection of accepted source state, never an editable qualification. */
@@ -73,11 +74,12 @@ export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly Roadmap
         const presentation = roadmapPhasePresentation(index, phase.id);
         const card: PhaseCardSummary = { number: phaseNumber ? Number(phaseNumber[1]) : number + 1, title: label,
             qualification: result.status, presentation, qualified: result.qualified, required: result.required,
-            gates, corrections };
+            gates, corrections, planningLocked: !!phase.planningLock };
         return { id: phase.id, kind: 'phase', title: phase.title, order: phase.order,
             status: presentation === 'green' ? 'green' : presentation === 'not-green' || presentation === 'blocked' ? 'not-green' :
                 presentation === 'active' ? 'active' : presentation === 'waived' ? 'waived' : 'unknown',
-            statusLabel: presentation === 'unplanned' ? 'Unplanned' : presentation === 'planned' ? 'Planned' :
+            statusLabel: phase.planningLock && presentation === 'planned' ? 'Ready for Work' :
+                presentation === 'unplanned' ? 'Unplanned' : presentation === 'planned' ? 'Planning' :
                 presentation === 'active' ? 'Active' : presentation === 'not-green' ? 'Not Green' :
                     presentation === 'blocked' ? 'Blocked' : presentation === 'stale' ? 'Requalification Required' :
                 result.status === 'stale' ? 'Requalification Required' : result.status === 'not-green' ? 'Not Green' :
@@ -108,7 +110,7 @@ export function projectGateDraftCards<T extends RoadmapProjection>(base: T, acce
             status: 'unknown', proposed: !!proposed,
         }));
         const card: PhaseCardSummary = { number: number + 1, title: phase.title, qualification: 'unplanned', presentation: 'unplanned',
-            qualified: 0, required: 0, gates, corrections: [] };
+            qualified: 0, required: 0, gates, corrections: [], planningLocked: false };
         return { id: phase.id, kind: 'phase', title: phase.title, order: number, status: 'unknown',
             statusLabel: 'Unplanned', evidence: [], readOnly: true, lane: 'path',
             draftState: proposed ? 'proposed' : 'accepted', phaseCard: card };

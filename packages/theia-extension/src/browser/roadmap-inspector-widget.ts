@@ -82,6 +82,32 @@ export class RoadmapInspectorWidget extends BaseWidget {
             for (const item of gates) coverage.append(this.element('p', `${roadmapGateLabel(item)} · ${item.qualificationStatus.replaceAll('-', ' ')}`));
             if (!gates.length) coverage.append(this.element('p', 'No accepted Gates. This Phase is Unplanned, not Green.'));
             this.content.append(objective, coverage);
+            const planning = this.element('section');
+            planning.append(this.element('h3', 'Planning'), this.element('p', phase.planningLock ?
+                `Ready for Work · locked at Roadmap revision ${phase.planningLock.basisRevision}. No Work has started from this action.` :
+                'Planning · review the required Gates and Criteria before locking this Phase.'));
+            if (!phase.planningLock && this.editable) {
+                const finish = this.button('Finish Planning', () => void this.model.reviewFinishPlanning());
+                finish.id = 'dope-roadmap-finish-planning'; finish.disabled = this.model.busy || !!this.model.planningReview;
+                planning.append(finish);
+                const review = this.model.planningReview;
+                if (review && review.phaseId === phase.id) {
+                    const details = this.element('div'); details.setAttribute('role', 'group');
+                    details.setAttribute('aria-label', 'Finish Planning review');
+                    details.append(this.element('p', `Review Phase ${phase.id} · Roadmap revision ${review.revision} · source ${review.source.path} · ${review.source.sha256}`),
+                        this.element('p', `Required Gates in order: ${review.requiredGateIds.join(', ')}`));
+                    for (const criterion of review.criteria) details.append(this.element('p',
+                        `${criterion.id}: ${criterion.expectedResult}`));
+                    const confirm = this.button('Confirm Finish Planning', () => void this.model.confirmFinishPlanning());
+                    confirm.id = 'dope-roadmap-confirm-finish-planning'; confirm.disabled = this.model.busy;
+                    details.append(confirm, this.button('Cancel review', () => this.model.cancelFinishPlanning()));
+                    planning.append(details);
+                }
+            }
+            const planningFeedback = this.element('p', this.model.error ?? (this.model.busy ? 'Checking Phase planning…' : ''));
+            planningFeedback.setAttribute('role', this.model.error ? 'alert' : 'status');
+            planning.append(planningFeedback);
+            this.content.append(planning);
             const handoff = this.element('section');
             handoff.append(this.element('h3', 'Prepare Work'));
             if (phase.workLinks?.length) for (const link of phase.workLinks)
@@ -92,6 +118,13 @@ export class RoadmapInspectorWidget extends BaseWidget {
             handoff.append(prepare, this.element('p', this.model.prepareWorkBlockedReason ??
                 'Review Planning Map, WorkItems, Criterion coverage, acceptance and validation. This does not start Work.'));
             this.content.append(handoff);
+            if (active) {
+                const replacement = this.content.querySelector<HTMLElement>(`#${active}`);
+                (replacement && !(replacement instanceof HTMLButtonElement && replacement.disabled) ? replacement :
+                    active === 'dope-roadmap-finish-planning' && this.model.planningReview ?
+                        this.content.querySelector<HTMLElement>('#dope-roadmap-confirm-finish-planning') :
+                        active === 'dope-roadmap-confirm-finish-planning' ? prepare : undefined)?.focus();
+            }
             return;
         }
         if (!item) { this.content.append(this.element('p', 'Select a Phase or Gate on the Roadmap to inspect it.')); return; }
@@ -175,7 +208,8 @@ export class RoadmapInspectorWidget extends BaseWidget {
         prepare.id = 'dope-roadmap-prepare-work'; prepare.disabled = true;
         prepare.setAttribute('aria-label', `Prepare Work for Gate ${gate.designation}: unavailable`);
         this.content.append(prepare, this.element('p', this.model.prepareWorkBlockedReason));
-        if (this.editable) this.content.append(this.element('p',
+        if (this.editable) this.content.append(this.element('p', phase?.planningLock ?
+            'Phase planning is locked. Gate and Criterion definitions are read only.' :
             'Use the pencils beside Gate and Criterion fields on the canvas to edit their definitions.'));
         const feedback = this.element('p', this.model.error ?? (this.model.busy ? 'Checking Roadmap revision…' : ''));
         feedback.setAttribute('role', this.model.error ? 'alert' : 'status');
