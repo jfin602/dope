@@ -621,6 +621,16 @@ export class PhysicalMapWidget extends BaseWidget {
             context.setAttribute('aria-label', 'Prepare Work checkpoint context');
             const heading = document.createElement('h3'); heading.textContent = `Prepare Work: ${handoff.title}`;
             context.append(heading);
+            if (handoff.phase) {
+                const basis = document.createElement('p');
+                basis.textContent = `Locked Phase ID · ${handoff.checkpointId} · planning approval ${handoff.phase.lockApprovalId}`;
+                context.append(basis);
+                for (const criterion of handoff.phase.criteria) {
+                    const line = document.createElement('p');
+                    line.textContent = `Criterion ${criterion.id} · Expected: ${criterion.expectedResult}`;
+                    context.append(line);
+                }
+            }
             for (const requirement of handoff.requirements) {
                 const line = document.createElement('p'); line.textContent = requirement; context.append(line);
             }

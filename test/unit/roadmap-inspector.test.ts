@@ -78,6 +78,27 @@ test('Finish Planning review is selection and revision bound, with recoverable s
     assert.equal(model.planningReview, undefined);
 });
 
+test('Prepare Work denies a locked Phase whose linked source changed', async () => {
+    const source = { projectId: 'project', revision: 2, path: 'ROADMAP.md', sha256: 'a'.repeat(64) };
+    const index = { schemaVersion: 2, projectId: 'project', projectRoot: '/tmp/project', revision: 3,
+        phases: [{ id: 'phase', projectId: 'project', title: 'Phase', objective: 'Deliver', order: 0,
+            dependencies: [], implementationStatus: 'unknown', qualificationStatus: 'unknown',
+            draftAcceptance: 'published', gateSetCoverage: { status: 'approved', requiredGateIds: ['gate'],
+                approvedBy: 'owner', reviewedAt: new Date().toISOString(), approvedAtRevision: 2, source },
+            planningLock: { approvalId: 'approval', lockedBy: 'owner', lockedAt: new Date().toISOString(),
+                basisRevision: 2, requiredGateIds: ['gate'], criteria: [{ id: 'criterion', expectedResult: 'Visible' }], source } }],
+        gates: [], corrections: [], linkedDocument: { projectRoot: '/tmp/project', projectId: 'project',
+            path: 'ROADMAP.md', sourceHash: 'b'.repeat(64), sections: [],
+            lastSynced: { sourceHash: 'b'.repeat(64), fields: [] }, syncState: 'synced' } } as unknown as RoadmapGateIndex;
+    let opened = false;
+    const model = new RoadmapInspectorModel({ read: async () => index as unknown as RoadmapIndex } as RoadmapService,
+        async () => {}, async () => { opened = true; });
+    model.setSnapshot(root, index as unknown as RoadmapIndex); model.select('phase');
+    assert.match(model.prepareWorkBlockedReason ?? '', /Locked Phase source changed/);
+    await model.prepareWork();
+    assert.equal(opened, false);
+});
+
 test('Prepare Work requires a current canonical checkpoint and conveys requirements without writing', async () => {
     const state = { index: snapshot(), applied: 0, approved: false };
     const opened: unknown[] = [];

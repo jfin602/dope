@@ -81,6 +81,25 @@ export class RoadmapInspectorWidget extends BaseWidget {
                 this.element('p', `${gates.length} accepted ${gates.length === 1 ? 'Gate' : 'Gates'} · complete Gate-set coverage ${phase.gateSetCoverage.status.replaceAll('-', ' ')}`));
             for (const item of gates) coverage.append(this.element('p', `${roadmapGateLabel(item)} · ${item.qualificationStatus.replaceAll('-', ' ')}`));
             if (!gates.length) coverage.append(this.element('p', 'No accepted Gates. This Phase is Unplanned, not Green.'));
+            if (!phase.planningLock && phase.gateSetCoverage.status !== 'approved' && this.editable) {
+                const reviewCoverage = this.button('Review Gate-set coverage', () => void this.model.reviewPhaseCoverage());
+                reviewCoverage.id = 'dope-roadmap-review-coverage';
+                reviewCoverage.disabled = this.model.busy || !!this.model.coverageReview;
+                coverage.append(reviewCoverage);
+                const review = this.model.coverageReview;
+                if (review?.phaseId === phase.id) {
+                    const details = this.element('div'); details.setAttribute('role', 'group');
+                    details.setAttribute('aria-label', 'Gate-set coverage review');
+                    details.append(this.element('p', `Review Phase ${review.phaseId} · Roadmap revision ${review.revision} · source ${review.source.path ?? 'Roadmap index'} · ${review.source.sha256}`),
+                        this.element('p', `Required Gates in order: ${review.requiredGateIds.join(', ')}`));
+                    for (const criterion of review.criteria) details.append(this.element('p',
+                        `${criterion.id}: ${criterion.expectedResult}`));
+                    const approve = this.button('Approve complete Gate-set coverage', () => void this.model.approvePhaseCoverage());
+                    approve.id = 'dope-roadmap-approve-coverage'; approve.disabled = this.model.busy;
+                    details.append(approve, this.button('Cancel coverage review', () => this.model.cancelPhaseCoverage()));
+                    coverage.append(details);
+                }
+            }
             this.content.append(objective, coverage);
             const planning = this.element('section');
             planning.append(this.element('h3', 'Planning'), this.element('p', phase.planningLock ?

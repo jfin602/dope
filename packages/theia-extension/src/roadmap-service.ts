@@ -1,7 +1,7 @@
 import type { RoadmapIndex, RoadmapChange, RoadmapReplacementPreview, RoadmapRestorePreview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
 import type { PhaseWorkLink } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
-import type { PhaseWorkReview, FinishPlanningPreview } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { PhaseWorkReview, FinishPlanningPreview, PhaseCoverageReview } from '@dope/project-intelligence/lib/node/roadmap-store';
 import type { RoadmapRevisionList, RoadmapRevisionRecord } from '@dope/project-intelligence/lib/node/roadmap-revision-archive';
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import type { RoadmapAutoSyncReconciliationPreview } from '@dope/project-intelligence/lib/node/roadmap-auto-sync';
@@ -22,6 +22,10 @@ export interface RoadmapClient { notifyRoadmapChanged(change: RoadmapChange): vo
 
 /** Roadmap reads and a thin RPC bridge to Dope-owned ProjectPlanningActions. */
 export interface RoadmapService {
+    previewPhaseCoverage(projectUri: string, projectId: string, revision: number,
+        phaseId: string): Promise<PhaseCoverageReview>;
+    approvePhaseCoverage(projectUri: string, review: PhaseCoverageReview, approved: boolean,
+        reviewerId: string): Promise<RoadmapGateIndex>;
     previewFinishPlanning(projectUri: string, projectId: string, revision: number,
         phaseId: string): Promise<FinishPlanningPreview>;
     finishPlanning(projectUri: string, preview: FinishPlanningPreview, approved: boolean,

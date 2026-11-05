@@ -133,6 +133,12 @@ export default new ContainerModule(bind => {
                 } finally { service.dispose(); }
             };
             const backend: RoadmapService = {
+                previewPhaseCoverage: async (uri, projectId, revision, phaseId) =>
+                    store.previewPhaseCoverage(await context.container.get(PlanningStore).root(uri),
+                        projectId, revision, phaseId),
+                approvePhaseCoverage: async (uri, review, approved, reviewerId) =>
+                    store.approvePhaseCoverage(await context.container.get(PlanningStore).root(uri),
+                        review, approved, reviewerId),
                 previewFinishPlanning: async (uri, projectId, revision, phaseId) =>
                     store.previewFinishPlanning(await context.container.get(PlanningStore).root(uri),
                         projectId, revision, phaseId),

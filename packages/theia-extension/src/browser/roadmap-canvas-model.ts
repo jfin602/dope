@@ -22,8 +22,11 @@ export function roadmapPhasePresentation(index: RoadmapGateIndex, phaseId: strin
     const phase = index.phases.find(item => item.id === phaseId);
     if (!phase) return 'unknown';
     const qualification = evaluatePhaseQualification(index, phaseId, phase.qualificationSource).status;
-    if (qualification !== 'planned') return qualification;
     const accepted = index.gates.filter(gate => gate.parentPhaseId === phaseId && gate.draftAcceptance !== 'proposed');
+    if (qualification === 'not-green' && !phase.workLinks?.length &&
+        !['active', 'implemented'].includes(phase.implementationStatus) &&
+        accepted.every(gate => gate.criteria.every(criterion => !criterion.evidence.length))) return 'planned';
+    if (qualification !== 'planned') return qualification;
     const gateStates = accepted.map(gate => evaluateGateQualification(gate, gate.qualificationSource).status);
     if (gateStates.includes('blocked')) return 'blocked';
     if (gateStates.includes('not-green')) return 'not-green';
@@ -78,7 +81,9 @@ export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly Roadmap
         return { id: phase.id, kind: 'phase', title: phase.title, order: phase.order,
             status: presentation === 'green' ? 'green' : presentation === 'not-green' || presentation === 'blocked' ? 'not-green' :
                 presentation === 'active' ? 'active' : presentation === 'waived' ? 'waived' : 'unknown',
-            statusLabel: phase.planningLock && presentation === 'planned' ? 'Ready for Work' :
+            statusLabel: phase.planningLock && !phase.workLinks?.length &&
+                !['active', 'implemented'].includes(phase.implementationStatus) ?
+                `Ready for Work${presentation === 'stale' ? ' · Source Stale' : ''}` :
                 presentation === 'unplanned' ? 'Unplanned' : presentation === 'planned' ? 'Planning' :
                 presentation === 'active' ? 'Active' : presentation === 'not-green' ? 'Not Green' :
                     presentation === 'blocked' ? 'Blocked' : presentation === 'stale' ? 'Requalification Required' :

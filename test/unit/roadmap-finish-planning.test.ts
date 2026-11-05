@@ -73,6 +73,26 @@ test('Finish Planning locks only the reviewed Phase, persists one History revisi
         await assert.rejects(store.reopenPlanning(root, reopen, true, 'reviewer'), /unissued/);
     }));
 
+test('Gate-set coverage review is source-bound, one-use and fails closed on drift', async () =>
+    fixture(async (root, store) => {
+        let index = await plan(root, store, true);
+        await assert.rejects(store.previewPhaseCoverage(root, 'foreign', index.revision, 'p1'), /foreign/);
+        const review = await store.previewPhaseCoverage(root, 'owner', index.revision, 'p1');
+        assert.deepEqual(review.requiredGateIds, ['g1']);
+        assert.deepEqual(review.criteria, [{ id: 'c1', expectedResult: 'Result observed' }]);
+        await assert.rejects(store.approvePhaseCoverage(root, { ...review, requiredGateIds: [] }, true, 'reviewer'), /unissued/);
+        assert.equal((await store.read(root)).revision, index.revision);
+        const stale = await store.previewPhaseCoverage(root, 'owner', index.revision, 'p1');
+        index = await store.mutateGateIndex(root, index.revision, 'owner',
+            { type: 'phase.edit', id: 'p2', title: 'Changed two', objective: 'Deliver two' });
+        await assert.rejects(store.approvePhaseCoverage(root, stale, true, 'reviewer'), /basis changed/);
+        const current = await store.previewPhaseCoverage(root, 'owner', index.revision, 'p1');
+        const approved = await store.approvePhaseCoverage(root, current, true, 'reviewer');
+        assert.equal(approved.phases.find(item => item.id === 'p1')?.gateSetCoverage.status, 'approved');
+        assert.equal(approved.phases.find(item => item.id === 'p2')?.gateSetCoverage.status, 'unreviewed');
+        await assert.rejects(store.approvePhaseCoverage(root, current, true, 'reviewer'), /unissued/);
+    }));
+
 test('Finish Planning rejects missing Gates, proposals, foreign and stale approvals without writes', async () =>
     fixture(async (root, store) => {
         let index = await store.mutateGateIndex(root, 1, 'owner',

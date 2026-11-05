@@ -2589,7 +2589,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                         (gateIndex.revision ? this.saveInlineField : this.createState ? this.saveDraftInlineField : undefined),
                     deleteElement: !this.history && item.draftState !== 'proposed' &&
                         !this.chatProposal && gateIndex && (gateIndex.revision || this.createState) ? this.beginDelete : undefined,
-                    beginCreate: !this.history && gateIndex?.revision && !item.draftState && !this.mutating ?
+                    beginCreate: !this.history && gateIndex?.revision && item.draftState !== 'proposed' && !this.mutating ?
                         (kind: 'gate' | 'criterion' | 'correction', parentId: string) =>
                             this.beginStructuralCreate(kind, parentId) : undefined,
                     contextPick: !this.history && this.contextPicker ? { selected: [...this.contextPicker.selected.keys()],
