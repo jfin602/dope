@@ -1,0 +1,24 @@
+TASK: Correction 13 / P8 — Manual documentation pipeline closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; no manifest, internal pin or lockfile changes.
+
+INDEPENDENT MANUAL T3
+Use real connected Codex in-app browser or another functioning connected real browser; Chrome brand not mandatory. Never auto-run with --closeout. Read BOOT.md, AGENTS.md, ADRs 0040/0041/0051, Docs/Skills contracts, c13 routing and correction plan, p13 original P4 BLOCKED report, P5-only conditional entry and P9 blocked report. Check P13 P8 current-source prerequisites, c13 P1–P7 actual implementation/tests, coherent 0.13.8, clean/known dirty basis, served Dope bundle, actual model/context and a disposable project. No fabricated PASS, project mutation without approval, Work grant bypass, automatic p13 P9 or Roadmap GREEN.
+
+COMPLETE DOCUMENTATION PIPELINE
+A. Create accepted Roadmap scope, root/nested AGENTS routing, relevant current .md/.txt, long late-section requirement, historical and circular unrelated docs. Brainstorm a needed project documentation change in saved Chat; explicitly invoke real /docs-review. Verify relevant corpus discovery, actual bounded model/broker reads, authoritative-vs-historical distinction, inspectable project/source/digest-bound proposal and exact diff, and ZERO canonical writes/History before approval.
+B. Independently review and explicitly approve exact unchanged proposal; invoke /docs-apply. Verify actual persisted approved bytes/source hashes (eligible create and update), preservation of unrelated prose, EXACTLY ONE applied-only History receipt and navigable original diff, not a model claim or command text as approval. On reload/restart, record durable proposal/application outcomes and deduplicated recovery.
+C. Confirm Work can consume the newly applied docs: a bounded approved candidate task retains objective/criteria (P1), follows applicable AGENTS root/nested scope (P2), pages only relevant current sections while avoiding circular loops (P3), and preserves verified findings through safe recovery (P4). Operate an actual coding edit and approved test/review on the disposable project. Documentation activity, prompt generation and candidate-only test are NOT Criterion/Gate GREEN. This is a bounded doc-consumption smoke; full Work evidence/qualification stays with original p13 P9.
+D. Negatives: no/rejected/stale proposal, no or changed approval, foreign root/lease, symlink/traversal/protected and Roadmap-owned document, new-file collision, partial/cancel/retry recovery, no phantom History, no-reference Chat/Work, unrelated docs, duplicate AGENTS, conflict, circular/unchanged reads and legitimate new-question deeper read, model/tool permission bypass. Differentiate real browser observation from focused tests and evidence gaps.
+
+REPORT
+Write `docs/tasks/c13-doc-routing/qualification/p8-docs-pipeline-closeout.md` with case-by-case PASS/FAIL/BLOCKED/EVIDENCE GAP, exact HEAD/diff/version/served bundle, actual model/context, proposal/approval/application/History IDs, docs path/section/hash/read events, before/after bytes, Work candidate/test evidence, negative results and measured calls/bytes/time when observable. Owner independently records PASS only when all mandatory cases pass on final source. Replay P4 seams affected by this correction; unoperated P4 obligations remain due at p13 P9. Historical P4/P9 NOT GREEN remain intact. A real-browser inventory or model text alone is not a PASS.
+
+EXIT
+P8 PASS permits the separate original p13 P9 manual Work-evidence qualification, not its automatic launch, version advancement, final Work/Phase GREEN or native Electron qualification. Hold P9 and 0.13.8 on any mandatory gap. STOP.

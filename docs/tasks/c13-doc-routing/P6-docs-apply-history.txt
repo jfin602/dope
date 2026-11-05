@@ -1,0 +1,21 @@
+TASK: Correction 13 / P6 — Implement guarded documentation apply and applied-only History
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; no manifest, internal pin or lockfile changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, Docs application/History contract, c12-docs-skills P2 historical design and verified current c13 P5 source/receipt. Inspect existing canonical documents, linked Roadmap source adapter, safe filesystem, History and recovery owners. Stop if P5's proposal service or source/approval/owner protections are absent. Keep user work, exact selected model, Ask/Allow, project grants and candidate review; no reset/stash/clean/self-commit.
+
+GOAL
+Implement/reuse ONE protected Dope-owned documentation publisher. A distinct developer approval must bind exactly one unchanged P5 reviewed proposal digest, project/root, target/source hash/absence, revision, lease and reviewed bytes. /docs-apply command text, arbitrary model tools or Ask/Allow must never supply approval. Revalidate before effect, journal intended operations, apply only approved eligible docs, verify actual retained bytes and hashes, recover safely from interruption/partial state with stable application ID, deduplicate retry and disclose uncertain effects. Never overwrite unrelated dirty content or directly mutate linked Roadmap-owned Markdown. No cross-store atomicity claim.
+
+HISTORY
+Create one navigable applied-only History entry for actually retained changes, with stable ID, before/after identifiers, original diff, paths and actor/Chat provenance when known. Review, approval-only, rejected/noop/cancelled/failed-zero proposals produce no application entry; partial retained effects are recorded truthfully with recovery needs. History reads never write/recover; no phantom Work or Roadmap progress.
+
+TEST / EXIT
+Test exact approval and source binding, create/update, concurrent editor, missing/stale/foreign/lease, symlink/traversal/protected/linked Roadmap, collision, crash before/after effect, restart/dedup and one verifiable History record; touched builds and focused Docs/History tests. Stop NOT GREEN if any unsafe write/recovery path remains; P7 requires verified P5/P6 owners. No manual commit or P7 launch. STOP.

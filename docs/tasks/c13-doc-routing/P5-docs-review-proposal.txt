@@ -1,0 +1,21 @@
+TASK: Correction 13 / P5 — Implement durable reviewed documentation proposals
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; do not change manifests, internal pins or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, docs/planning/p12/documentation-workflow-contract.md, current c13 assessment/plan and historical c12-docs-skills P1. Inspect actual main source and status, previous c13 P1–P4 effects, current Chat/Docs/Roadmap/History owners and tested source. Generic Skills exists but docs-review/docs-apply were reserved, not registered at inspected 0.13.8; verify again. Stop on unsafe source/grant/owner state. Preserve dirty owner work, previously run prompts and reports; no reset/stash/clean, self-commit, version change or Run grant.
+
+GOAL
+Implement/reuse ONE durable protected documentation REVIEW proposal owner for eligible project-local .md/.txt create/update changes, grounded in accepted saved Chat/Roadmap intent and actual current source. Include project/root/worktree/owner, exact target paths, expected absence or before-hash/source revision, bounded before/after bytes, inspectable diff, immutable proposal ID/digest, applicability and expiry/recovery. Review must change no canonical docs, linked Roadmap, applied-only History or Work state, and must never imply approval.
+
+SECURITY / INTEGRATION
+Reuse existing proposal storage, safe source adapters, Chat review UI and applicable Roadmap exclusivity; no second writer or task database. Reject symlinks/traversal, foreign root, stale source/revision/lease, changed/new-file collision, binary/generated/oversize/protected targets and direct linked Roadmap Markdown edits. Distinguish current docs from drafts/historical reports. Model assertions and skill text cannot grant writes or widen Ask/Allow.
+
+TEST / EXIT
+Test exact source-bound preview and new/update, no canonical effects/no History, stable digest/restart, rejection/cancel/replay, stale/foreign/collision/protected/path safety and linked Roadmap exclusivity; run touched-package builds and focused tests. Report exact source/version, files and verified command results. Stop BLOCKED / NOT GREEN if publication authority or proposal safety cannot be established; no empty checkpoint or automatic P6. STOP.

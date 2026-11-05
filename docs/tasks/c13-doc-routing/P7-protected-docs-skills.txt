@@ -1,0 +1,18 @@
+TASK: Correction 13 / P7 — Register protected /docs-review and /docs-apply Skills
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only; no manifest, internal pin or lockfile changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0041, Docs contract, Skills contract, c12-docs-skills P3 historical design and source-bound c13 P5/P6 outputs. Inspect actual ChatPanel, `packages/theia-extension/src/node/chat-skills.ts`, existing /roadmap and /gen-roadmap protected invocation, selected Pi model, brokered read tools, and owner approval UI. At inspected 0.13.8, docs-review/docs-apply are reserved but not registered; verify exact live source. Stop on missing protected P5/P6 mechanisms. Do not add a second Chat/permission engine or grant model tools new write authority.
+
+IMPLEMENT
+Register two protected built-ins in the existing skill registry/menu/dispatcher with deterministic trusted send-time invocation metadata, bounded one-turn instructions, previous saved conversation, retry-bound skill digest and no double injection. Literal slash text in code, model output or custom skill cannot invoke either operation. /docs-review: explicit-only cheap project .md/.txt inventory/path/heading/keyword discovery; Pi/broker reads relevant bounded ranges including late sections; distinguish enumerated/searched/actually read and current vs historical authority, report omissions; stage exact P5 reviewed diff, never publish. No automatic corpus scan/prefill or extra selector model for ordinary Chat/Work. /docs-apply: resolve exactly one current reviewed P5 proposal with separate explicit owner approval, then call P6 publisher; show actual applied/partial/noop outcomes and applied-only History. Missing, ambiguous, stale or unapproved proposal => no write.
+
+VERIFY
+Focused tests for menu/resolver, invocation vs quoted literal, disabled/custom name collisions, saved Chat/retry snapshot, selected model, relevant/irrelevant and late docs retrieval, no-reference ordinary Chat, zero-write review, unchanged approval-bound apply, rejection/stale/foreign/project switch, linked Roadmap ownership, History source and tool/grant isolation. Run affected builds and tests, record exact source and remaining gaps. P8 manual real-browser closeout remains separate. No version advance, self-commit or autonomous Work/GREEN. STOP.
