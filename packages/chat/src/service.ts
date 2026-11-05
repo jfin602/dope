@@ -146,6 +146,11 @@ export interface ChatService {
         changes: { path: string; after: string }[]): Promise<import('./index').ChatDocumentationProposal>;
     dismissDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, decision: 'deny' | 'cancel'): Promise<void>;
+    /** Developer UI approval, separate from command text and the Pi tool broker. */
+    applyDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string, proposalDigest: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }>;
+    recoverDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }>;
     reviewNativeRoadmap(projectHandle: string, chatId: ChatId, leaseToken: string, proposalId: string,
         operationIds: string[], decision: 'apply' | 'reject'):
         Promise<{ token: string; summary: string; preview?: ChatPlanningProposal['preview'] }>;

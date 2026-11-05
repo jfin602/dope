@@ -670,12 +670,22 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 card.append(detail);
             }
             const note = document.createElement('p');
-            note.textContent = 'Review only. No document, Roadmap, Work, or documentation History change was applied.';
+            note.textContent = activity.status === 'pending' ?
+                'Review only. Apply requires a separate developer decision and will recheck every source.' :
+                activity.status === 'approved' ? 'Approval recorded. Recover and verify the application outcome.' :
+                activity.status === 'applied' ? 'Approved document changes were verified. See History for the applied diff.' :
+                activity.diagnostic ?? 'This proposal was not fully applied. Check History for any verified retained changes.';
             card.append(note);
             if (activity.status === 'pending') {
+                card.append(this.button('Apply reviewed documents',
+                    () => void this.controller.applyDocumentationProposal(activity.proposalId!, activity.documentProposal!.digest),
+                    this.controller.pending));
                 card.append(this.button('Reject proposal',
                     () => void this.controller.dismissDocumentationProposal(activity.proposalId!, 'deny'),
                     this.controller.pending));
+            } else if (activity.status === 'approved') {
+                card.append(this.button('Recover application',
+                    () => void this.controller.recoverDocumentationProposal(activity.proposalId!), this.controller.pending));
             }
             return card;
         }

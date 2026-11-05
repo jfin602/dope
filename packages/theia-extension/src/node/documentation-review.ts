@@ -28,7 +28,7 @@ export interface DocumentationReviewRequest {
     changes: DocumentationReviewChange[];
 }
 
-function eligible(path: string): void {
+export function eligibleDocumentationPath(path: string): void {
     if (!path || path.length > 512 || isAbsolute(path) || path.includes('\\') || path.includes(':') ||
         /[\p{Cc}\p{Cf}]/u.test(path) || !/\.(?:md|txt)$/iu.test(path) ||
         path.split('/').some(part => !part || part === '.' || part === '..' || part.trim() !== part || part.endsWith('.')) ||
@@ -40,6 +40,7 @@ function eligible(path: string): void {
         /(?:^|\/)(?:P\d+(?:-[^/]*)?\.txt|.*(?:report|closeout|evidence)\.md)$/iu.test(path) ||
         path.toLowerCase().startsWith('docs/tasks/')) throw new Error('Documentation target is protected or ineligible');
 }
+const eligible = eligibleDocumentationPath;
 
 function textBytes(value: string, label: string): Buffer {
     if (typeof value !== 'string' || !value || /\x00/u.test(value) || /[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]/u.test(value))
@@ -58,16 +59,7 @@ function reviewDiff(path: string, before: string | null, after: string): string 
 
 /** Inspect without making a destination or its parent. Apply must repeat all checks. */
 export async function readDocumentationBasis(root: string, path: string): Promise<{ before: string | null; beforeHash: string | null }> {
-    eligible(path);
-    if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root || !(await stat(root)).isDirectory())
-        throw new Error('Documentation project root changed');
-    let parent = root;
-    for (const part of path.split('/').slice(0, -1)) {
-        parent = join(parent, part);
-        const info = await lstat(parent);
-        if (!info.isDirectory() || info.isSymbolicLink() || await realpath(parent) !== parent)
-            throw new Error('Unsafe documentation parent');
-    }
+    await checkedDocumentationParent(root, path);
     const file = join(root, path);
     let info;
     try { info = await lstat(file); }
@@ -88,6 +80,20 @@ export async function readDocumentationBasis(root: string, path: string): Promis
             /[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]/u.test(before)) throw new Error('Binary documentation source');
         return { before, beforeHash: digest(bytes) };
     } finally { await handle.close(); }
+}
+
+export async function checkedDocumentationParent(root: string, path: string): Promise<string> {
+    eligible(path);
+    if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root || !(await stat(root)).isDirectory())
+        throw new Error('Documentation project root changed');
+    let parent = root;
+    for (const part of path.split('/').slice(0, -1)) {
+        parent = join(parent, part);
+        const info = await lstat(parent);
+        if (!info.isDirectory() || info.isSymbolicLink() || await realpath(parent) !== parent)
+            throw new Error('Unsafe documentation parent');
+    }
+    return parent;
 }
 
 export async function prepareDocumentationReview(store: RoadmapStore, request: DocumentationReviewRequest): Promise<ChatDocumentationProposal> {

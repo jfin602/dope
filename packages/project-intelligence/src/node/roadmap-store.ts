@@ -499,7 +499,8 @@ export class RoadmapStore {
     }
 
     /** Runtime value is schema 2; the generic default temporarily keeps downstream checkpoint imports compiling. */
-    async read<T extends RoadmapIndex | RoadmapGateIndex = RoadmapIndex>(root: string): Promise<T> {
+    async read<T extends RoadmapIndex | RoadmapGateIndex = RoadmapIndex>(root: string,
+        options?: { scheduleAutoSync?: boolean }): Promise<T> {
         const { file } = await this.paths(root);
         if (!(await this.regular(file))) return { schemaVersion: 2, projectId: 'uninitialized', projectRoot: root,
             revision: 0, phases: [], gates: [], corrections: [] } as unknown as T;
@@ -519,7 +520,7 @@ export class RoadmapStore {
             try {
                 const index = parseRoadmapIndex(parsed, root);
                 const journal = index.linkedDocument?.syncIntent ? await readAutoSyncJournal(root) : undefined;
-                if (index.linkedDocument?.syncIntent && (!journalMatches(index, journal) ||
+                if (options?.scheduleAutoSync !== false && index.linkedDocument?.syncIntent && (!journalMatches(index, journal) ||
                     journal?.status === 'pending' || journal?.status === 'recoverable' || journal?.status === 'syncing'))
                     this.scheduleAutoSync(root);
                 return overlayAutoSync(index, journal) as T;

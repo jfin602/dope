@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import { projectHistory, proposeHistoryContinuation } from '@dope/contracts/lib/history';
-import type { HistoryFocusTarget, HistoryProject } from '@dope/contracts/lib/history';
+import type { HistoryEntry, HistoryFocusTarget, HistoryProject } from '@dope/contracts/lib/history';
 import type { HistoryService, HistorySnapshot, HistoryLocalExplanation } from '@dope/contracts/lib/history-service';
 import { buildHistoryContextPreview, HISTORY_PREVIEW_MAX_BYTES } from '@dope/contracts/lib/history-context-preview';
 import type { HistorySelection, HistoryContextPreview } from '@dope/contracts/lib/history-context-preview';
@@ -12,6 +12,9 @@ import { readHistoryOwnerMetadata } from './history-owner-metadata';
 import { readHistoryWorkGitMetadata } from './history-work-git';
 import { readHistoryFocusState, writeHistoryFocus } from './history-focus';
 import { explainHistoryLocally } from './history-local-understanding';
+import { readDocumentationApplications } from './documentation-application';
+import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { ChatRepository } from '@dope/chat/lib/node/chat-repository';
 import type { AIRoleRoutingService } from './ai-role-routing';
 import type { ModelConnectionsRegistry } from './model-connections';
 
@@ -49,18 +52,47 @@ export class HistoryBackend implements HistoryService {
         const planning = await this.planning.read(project.projectRoot);
         if (planning.projectId !== project.projectId) throw new Error('History project identity changed; reattach');
         const observedAt = new Date().toISOString();
-        const [owner, work] = await Promise.all([
-            readHistoryOwnerMetadata(project, observedAt), readHistoryWorkGitMetadata(project, observedAt)
+        const [owner, work, docsRead, roadmap] = await Promise.all([
+            readHistoryOwnerMetadata(project, observedAt), readHistoryWorkGitMetadata(project, observedAt),
+            readDocumentationApplications(project.projectRoot).then(records => ({ records, diagnostic: undefined as string | undefined }),
+                error => ({ records: [], diagnostic: `Documentation application metadata unavailable: ${String(error)}` })),
+            new RoadmapStore().read(project.projectRoot, { scheduleAutoSync: false })
         ]);
         if (this.disposed || generation !== this.generation || projectHandle !== this.handle)
             throw new Error('History project changed during read');
         if ((await this.planning.read(project.projectRoot)).projectId !== project.projectId)
             throw new Error('History project identity changed during read');
-        const entries = projectHistory([...owner.entries, ...work.entries], project);
+        const roadmapProjectId = roadmap.projectId === 'uninitialized' ?
+            `root:${createHash('sha256').update(project.projectRoot).digest('hex')}` : roadmap.projectId;
+        const chatRepository = new ChatRepository();
+        const availableChats = new Set<string>();
+        for (const chatId of new Set(docsRead.records.map(record => record.chatId))) {
+            try { if (await chatRepository.peekMetadata(project.projectRoot, chatId)) availableChats.add(chatId); }
+            catch { /* The immutable diff remains visible even if Chat metadata is unavailable. */ }
+        }
+        const docs: HistoryEntry[] = docsRead.records.filter(record => record.projectId === roadmapProjectId).map(record => {
+            const chatAvailable = availableChats.has(record.chatId);
+            return { ...project, kind: 'event', source: 'documentation', sourceId: record.id,
+                owner: { kind: 'chat', chatId: record.chatId },
+                title: `${record.effects.length} document ${record.effects.length === 1 ? 'change' : 'changes'} · ${record.status}`,
+                status: { kind: 'owner', label: record.status === 'complete' ? 'Applied documentation' : 'Partial documentation application' },
+                availability: chatAvailable ? 'available' : 'unavailable',
+                occurredAt: record.effects.every(effect => effect.appliedAt) ?
+                    record.effects.map(effect => effect.appliedAt!).sort()[0] : null, observedAt: null,
+                documentation: { applicationId: record.id,
+                    outcome: record.status === 'complete' ? 'complete' : record.status === 'uncertain' ? 'uncertain' : 'partial',
+                    chatOwnerId: record.ownerId, chatId: record.chatId, messageId: record.messageId,
+                    ...(record.model ? { model: record.model } : {}),
+                    changes: record.effects.map(effect => ({ path: effect.path, operation: effect.operation,
+                        beforeHash: effect.beforeHash, afterHash: effect.afterHash, diff: effect.diff })),
+                    ...(record.diagnostic ? { diagnostic: record.diagnostic } : {}) } };
+        });
+        const entries = projectHistory([...owner.entries, ...work.entries, ...docs], project);
         const focus = await readHistoryFocusState(project);
         if (this.disposed || generation !== this.generation || projectHandle !== this.handle)
             throw new Error('History project changed during read');
         const diagnostics = [...owner.diagnostics, ...work.diagnostics,
+            ...(docsRead.diagnostic ? [{ source: 'documentation' as const, message: docsRead.diagnostic }] : []),
             ...(focus.diagnostic ? [{ source: 'workbench' as const, message: focus.diagnostic }] : [])];
         const evidenceBasis = this.digest({ project, entries: entries.map(entry => ({ ...entry,
             observedAt: entry.kind === 'snapshot' ? null : entry.observedAt })), dirtyPaths: work.dirtyPaths, gitBasis: work.gitBasis,

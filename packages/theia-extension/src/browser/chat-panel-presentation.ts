@@ -40,11 +40,13 @@ export function planningActivityPresentation(message: ChatAssistantMessage): { l
         activity.kind === 'roadmap-gate-proposal' ? 'Roadmap change' :
         activity.kind === 'roadmap-gate-undo' ? 'Roadmap undo' :
         activity.kind === 'roadmap-publication' ? 'Roadmap Markdown' :
+        activity.kind === 'documentation-proposal' ? 'Documentation review' :
         activity.kind === 'roadmap-gate-focus' ? 'Roadmap selection' :
         activity.kind === 'roadmap-draft-proposal' ? 'Planning draft' :
         activity.kind === 'roadmap-proposal' ? 'Roadmap proposal' : 'Roadmap intent';
     const statuses: Record<typeof activity.status, string> = {
         pending: 'Pending · no write',
+        approved: 'Approved · verifying application',
         suggested: 'Suggested · review in Planning Map',
         'no-action': 'No change',
         rejected: 'Rejected · no change',

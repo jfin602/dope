@@ -671,7 +671,7 @@ export class ChatRepository {
     }
     /** The first model pass is durable only after this checked, write-once Chat mutation. */
     async recordPlanningActivity(root: string, chatId: string, messageId: string, leaseToken: string,
-        activity: ChatPlanningActivity, expected?: { proposalId: string; status: 'pending' }): Promise<void> {
+        activity: ChatPlanningActivity, expected?: { proposalId: string; status: 'pending' | 'approved' }): Promise<void> {
         await this.locked(root, async base => {
             const lease = await this.lease(base, chatId);
             if (!lease || !this.active(lease) || lease.token !== leaseToken) throw new Error('Chat ownership lease required');

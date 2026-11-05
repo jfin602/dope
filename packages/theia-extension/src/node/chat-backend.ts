@@ -34,6 +34,7 @@ import { RoadmapNativeStageOwner } from './roadmap-native-stage';
 import { RoadmapGenerationNativeStage } from './roadmap-generation-native-stage';
 import { typedRoadmapCounts } from './roadmap-typed-stage';
 import { prepareDocumentationReview, documentationReviewApplicability } from './documentation-review';
+import { applyDocumentationProposal, reconcileDocumentationApplication } from './documentation-application';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -530,6 +531,77 @@ export class ChatBackend implements ChatService {
         await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
             { ...message.planningActivity, status: decision === 'deny' ? 'denied' : 'cancelled' },
             { proposalId, status: 'pending' });
+    }
+    async applyDocumentation(projectHandle: string, chatId: string, leaseToken: string,
+        proposalId: string, proposalDigest: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }> {
+        const root = this.active(projectHandle);
+        if (!this.roadmapStore || this.leases.get(chatId)?.root !== root ||
+            this.leases.get(chatId)?.token !== leaseToken || this.turns.has(chatId))
+            throw new Error('Current Chat ownership required for documentation approval');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const message = chat?.messages.find(item => item.role === 'assistant' &&
+            item.planningActivity?.kind === 'documentation-proposal' &&
+            item.planningActivity.proposalId === proposalId && item.planningActivity.status === 'pending');
+        const activity = message?.role === 'assistant' ? message.planningActivity : undefined,
+            proposal = activity?.documentProposal;
+        if (!message || message.role !== 'assistant' || !activity || !proposal ||
+            proposal.digest !== proposalDigest || proposal.root !== root || proposal.chatId !== chatId ||
+            proposal.messageId !== message.id || proposal.ownerId !== this.leases.get(chatId)?.ownerId ||
+            proposal.leaseDigest !== createHash('sha256').update(leaseToken).digest('hex'))
+            throw new Error('Exact pending documentation proposal and approval lease required');
+        if (await documentationReviewApplicability(this.roadmapStore, proposal, root) !== 'applicable')
+            throw new Error('Documentation proposal is stale; review current source again');
+        await this.repository.renew(root, chatId, leaseToken);
+        await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
+            { ...activity, status: 'approved' }, { proposalId, status: 'pending' });
+        return this.recoverApprovedDocumentation(root, chatId, leaseToken, message.id, proposal,
+            () => applyDocumentationProposal(this.roadmapStore!, proposal, root, leaseToken,
+                message.execution.actualModel));
+    }
+    private async recoverApprovedDocumentation(root: string, chatId: string, leaseToken: string,
+        messageId: string, proposal: import('@dope/chat').ChatDocumentationProposal,
+        action: () => Promise<import('./documentation-application').DocumentationApplication | undefined>):
+        Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }> {
+        const record = await action();
+        if (!record) {
+            const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+            const message = chat?.messages.find(item => item.id === messageId);
+            const activity = message?.role === 'assistant' ? message.planningActivity : undefined;
+            if (activity?.status === 'approved' && activity.documentProposal?.digest === proposal.digest)
+                await this.repository.recordPlanningActivity(root, chatId, messageId, leaseToken,
+                    { ...activity, status: 'failed', diagnostic: 'Approved, but no application journal or file effect was created. Review current source again.' },
+                    { proposalId: proposal.id, status: 'approved' });
+            return { id: proposal.id, status: 'failed', paths: [], diagnostic: 'No application journal or file effect was created.' };
+        }
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const message = chat?.messages.find(item => item.id === messageId);
+        const activity = message?.role === 'assistant' ? message.planningActivity : undefined;
+        if (activity?.status === 'approved' && activity.documentProposal?.digest === proposal.digest)
+            await this.repository.recordPlanningActivity(root, chatId, messageId, leaseToken,
+                { ...activity, status: record.status === 'complete' ? 'applied' :
+                    record.status === 'failed' ? 'failed' : 'approved',
+                    diagnostic: record.diagnostic ?? (record.status === 'complete' ?
+                        `Applied ${record.effects.length} reviewed document change(s).` :
+                        `Application ${record.status}; ${record.effects.length} verified retained change(s).`) },
+                { proposalId: proposal.id, status: 'approved' });
+        return { id: record.id, status: record.status, paths: record.effects.map(effect => effect.path),
+            ...(record.diagnostic ? { diagnostic: record.diagnostic } : {}) };
+    }
+    async recoverDocumentation(projectHandle: string, chatId: string, leaseToken: string,
+        proposalId: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }> {
+        const root = this.active(projectHandle);
+        if (this.leases.get(chatId)?.root !== root || this.leases.get(chatId)?.token !== leaseToken || this.turns.has(chatId))
+            throw new Error('Current Chat ownership required for documentation recovery');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const message = chat?.messages.find(item => item.role === 'assistant' &&
+            item.planningActivity?.kind === 'documentation-proposal' &&
+            item.planningActivity.proposalId === proposalId && item.planningActivity.status === 'approved');
+        const proposal = message?.role === 'assistant' ? message.planningActivity?.documentProposal : undefined;
+        if (!message || !proposal || proposal.root !== root || proposal.chatId !== chatId)
+            throw new Error('Approved documentation proposal unavailable');
+        await this.repository.renew(root, chatId, leaseToken);
+        return this.recoverApprovedDocumentation(root, chatId, leaseToken, message.id, proposal,
+            () => reconcileDocumentationApplication(root, proposalId, proposal.digest));
     }
     /** A new owner cannot reuse an offer or a preview held only by the old connection. */
     private async retireRoadmapActions(root: string, chatId: string, leaseToken: string): Promise<void> {

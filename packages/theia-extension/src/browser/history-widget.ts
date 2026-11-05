@@ -17,7 +17,7 @@ function boundedHistoryRead<T>(work: Promise<T>, stage: string): Promise<T> {
     });
 }
 const sourceNames = { chat: 'Chat', planning: 'Planning', 'project-mind': 'Project Mind', roadmap: 'Roadmap',
-    agent: 'Work', git: 'Git', workbench: 'Workbench' } as const;
+    documentation: 'Documentation', agent: 'Work', git: 'Git', workbench: 'Workbench' } as const;
 export function historyTimeLabel(entry: HistoryEntry): string {
     if (entry.kind === 'snapshot') return `Current snapshot · observed ${entry.observedAt}`;
     return entry.occurredAt ? `Event · ${entry.occurredAt}` : 'Event · time unknown';
@@ -210,6 +210,31 @@ export class HistoryWidget extends BaseWidget {
                     } else selected.delete(key);
                 };
                 row.append(pick, name, meta);
+                if (entry.documentation) {
+                    const evidence = document.createElement('details');
+                    const summary = document.createElement('summary'); summary.textContent = 'Original applied diff and source hashes';
+                    evidence.append(summary);
+                    const provenance = document.createElement('p');
+                    provenance.textContent = `Application ${entry.documentation.applicationId} · Chat owner ${entry.documentation.chatOwnerId} · Chat ${entry.documentation.chatId} / ${entry.documentation.messageId}`;
+                    evidence.append(provenance);
+                    if (entry.documentation.model) {
+                        const model = document.createElement('p');
+                        model.textContent = `Review model ${entry.documentation.model.modelLabel} · ${entry.documentation.model.providerId} · ${entry.documentation.model.connectionId}/${entry.documentation.model.modelId}`;
+                        evidence.append(model);
+                    }
+                    for (const change of entry.documentation.changes) {
+                        const title = document.createElement('strong'); title.textContent = `${change.operation} ${change.path}`;
+                        const hashes = document.createElement('small');
+                        hashes.textContent = `${change.beforeHash ?? 'absent'} → ${change.afterHash}`;
+                        const diff = document.createElement('pre'); diff.textContent = change.diff;
+                        evidence.append(title, hashes, diff);
+                    }
+                    if (entry.documentation.diagnostic) {
+                        const diagnostic = document.createElement('p'); diagnostic.textContent = entry.documentation.diagnostic;
+                        evidence.append(diagnostic);
+                    }
+                    row.append(evidence);
+                }
                 if (entry.availability === 'available' && entry.owner.kind !== 'git-dirty' && entry.owner.kind !== 'git-commit') {
                     const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Open';
                     button.setAttribute('aria-label', `Open ${entry.title} in its owner view`);

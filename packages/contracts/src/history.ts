@@ -17,7 +17,7 @@ export type HistoryOwnerRef =
     | { kind: 'editor'; projectRelativePath: string };
 export type HistoryNavigableOwnerRef = Exclude<HistoryOwnerRef, { kind: 'git-dirty' }>;
 
-export type HistorySource = 'chat' | 'planning' | 'project-mind' | 'roadmap' | 'agent' | 'git' | 'workbench';
+export type HistorySource = 'chat' | 'planning' | 'project-mind' | 'roadmap' | 'documentation' | 'agent' | 'git' | 'workbench';
 export type HistoryAvailability = 'available' | 'missing' | 'stale' | 'unavailable';
 
 /** These facts are independent: a passed validation does not imply promotion. */
@@ -41,6 +41,12 @@ interface HistoryEntryBase extends HistoryProject {
     availability: HistoryAvailability;
     ownerRevision?: number;
     ownerProjectId?: string;
+    /** Immutable reviewed diff evidence from a verified documentation application, never current file content. */
+    documentation?: { applicationId: string; outcome: 'complete' | 'partial' | 'uncertain';
+        chatOwnerId: string; chatId: string; messageId: string;
+        model?: { connectionId: string; modelId: string; providerId: string; modelLabel: string };
+        changes: { path: string; operation: 'create' | 'update'; beforeHash: string | null;
+            afterHash: string; diff: string }[]; diagnostic?: string };
     /** Safe owner references only. Never include artifact bodies or validation output. */
     evidence?: { receiptId: string; origin: 'dope-validation' | 'reviewed-observation';
         phaseId: string; gateId: string; criterionId: string; workItemId?: string;

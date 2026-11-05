@@ -125,7 +125,7 @@ export async function readHistoryOwnerMetadata(project: HistoryProject, observed
     } catch (error) { diagnostic('project-mind', error); }
     try {
         const store = new RoadmapStore();
-        const index = await store.read(root);
+        const index = await store.read(root, { scheduleAutoSync: false });
         if (index.revision) {
             const revisions = await store.listRevisions(root, index.projectId, undefined, MAX_ITEMS);
             for (const record of revisions.revisions) {

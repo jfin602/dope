@@ -142,7 +142,7 @@ export interface ChatRoadmapAction {
 export interface ChatPlanningActivity {
     schemaVersion: 1;
     kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-publication' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'documentation-proposal' | 'no-action' | 'error' | 'cancelled';
-    status: 'pending' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'superseded' | 'applied' | 'failed' | 'cancelled';
+    status: 'pending' | 'approved' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'superseded' | 'applied' | 'failed' | 'cancelled';
     refs: ChatContextRef[];
     proposalId?: string;
     appliedRevision?: number;
@@ -537,22 +537,22 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
     const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'documentation-proposal', 'no-action',
         'error', 'cancelled'] as const, 'planning activity kind');
-    const status = choice(v.status, ['pending', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'superseded', 'applied',
+    const status = choice(v.status, ['pending', 'approved', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'superseded', 'applied',
         'failed', 'cancelled'] as const, 'planning activity status');
     if ((kind === 'no-action') !== (status === 'no-action') ||
         (kind === 'bridge-proposal') !== (status === 'suggested') ||
         (status === 'suggested' && v.proposalId !== undefined) ||
-        (kind === 'error') !== (status === 'failed') ||
+        (kind === 'error' ? status !== 'failed' : status === 'failed' && kind !== 'documentation-proposal') ||
         (kind === 'cancelled' ? status !== 'cancelled' :
             status === 'cancelled' && kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' && kind !== 'roadmap-publication' && kind !== 'documentation-proposal') ||
-        (['pending', 'denied', 'stale', 'superseded', 'applied'].includes(status) && v.proposalId === undefined) ||
+        (['pending', 'approved', 'denied', 'stale', 'superseded', 'applied'].includes(status) && v.proposalId === undefined) ||
         (status === 'cancelled' && kind !== 'cancelled' && v.proposalId === undefined) ||
-        (['no-action', 'failed'].includes(status) && v.proposalId !== undefined) ||
+        (['no-action', 'failed'].includes(status) && v.proposalId !== undefined && kind !== 'documentation-proposal') ||
         (status === 'cancelled' && kind === 'cancelled' && v.proposalId !== undefined) ||
-        (status === 'applied') !== (v.appliedRevision !== undefined) ||
+        (kind !== 'documentation-proposal' ? (status === 'applied') !== (v.appliedRevision !== undefined) : v.appliedRevision !== undefined) ||
         (v.verifiedGuidance !== undefined && kind !== 'no-action') ||
         (kind === 'documentation-proposal' && (v.documentProposal === undefined || v.proposalId === undefined ||
-            !['pending', 'stale', 'superseded', 'denied', 'cancelled'].includes(status))) ||
+            !['pending', 'approved', 'applied', 'failed', 'stale', 'superseded', 'denied', 'cancelled'].includes(status))) ||
         (kind !== 'documentation-proposal' && v.documentProposal !== undefined)) throw new Error('Invalid planning activity state');
     const guidance = v.verifiedGuidance === undefined ? undefined : record(v.verifiedGuidance,
         ['capabilityId', 'version', 'text'], ['capabilityId', 'version', 'text']);

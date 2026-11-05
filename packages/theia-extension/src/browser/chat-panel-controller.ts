@@ -693,6 +693,28 @@ export class ChatPanelController {
             this.planningProposalError = `Documentation decision failed: ${String(error)}`;
         } finally { this.pending = false; this.changed(); await this.refresh(true); }
     }
+    async applyDocumentationProposal(proposalId: string, digest: string): Promise<void> {
+        const lease = this.lease;
+        if (!lease || this.pending || this.running) return;
+        this.pending = true; this.changed();
+        try {
+            const result = await lease.connection.applyDocumentation(lease.handle, lease.chatId, lease.token,
+                proposalId, digest);
+            this.planningProposalError = `Documentation ${result.status}: ${result.paths.length} verified file(s).${result.diagnostic ? ` ${result.diagnostic}` : ''}`;
+        } catch (error) {
+            this.planningProposalError = `Documentation application needs review or recovery: ${String(error)}`;
+        } finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
+    async recoverDocumentationProposal(proposalId: string): Promise<void> {
+        const lease = this.lease;
+        if (!lease || this.pending || this.running) return;
+        this.pending = true; this.changed();
+        try {
+            const result = await lease.connection.recoverDocumentation(lease.handle, lease.chatId, lease.token, proposalId);
+            this.planningProposalError = `Documentation ${result.status}: ${result.paths.length} verified file(s).${result.diagnostic ? ` ${result.diagnostic}` : ''}`;
+        } catch (error) { this.planningProposalError = `Documentation recovery unresolved: ${String(error)}`;
+        } finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
     async reviewNativeRoadmap(ids: string[], decision: 'apply' | 'reject'): Promise<void> {
         const lease = this.lease, proposal = this.planningProposal;
         if (!lease || !proposal?.operations || this.pending || this.running ||
