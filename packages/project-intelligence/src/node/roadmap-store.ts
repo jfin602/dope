@@ -225,7 +225,8 @@ export type RoadmapGateMutation =
     | { type: 'correction.delete'; id: string }
     | { type: 'evidence.propose'; gateId: string; criterionId: string; id: string;
         result: GateEvidence['result']; kind: GateEvidence['kind']; summary: string; verifiedBy: string;
-        observedAt: string; source?: RoadmapSourceProof; observedAction?: string }
+        observedAt: string; source?: RoadmapSourceProof; observedAction?: string;
+        receipt?: GateEvidence['receipt'] }
     | { type: 'evidence.approve'; gateId: string; criterionId: string; id: string;
         reviewerId: string; reviewedAt: string; currentSource?: RoadmapSourceProof }
     | { type: 'evidence.revoke'; gateId: string; criterionId: string; id: string;
@@ -1397,6 +1398,7 @@ export class RoadmapStore {
                         summary: operation.summary, verifiedBy: operation.verifiedBy,
                         observedAt: operation.observedAt, ...(operation.source && { source: operation.source }),
                         ...(operation.observedAction && { observedAction: operation.observedAction }),
+                        ...(operation.receipt && { receipt: operation.receipt }),
                         criterionHash: criterionHash(target), review: { status: 'proposed' } });
                     break;
                 }

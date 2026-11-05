@@ -25,6 +25,13 @@ export interface GateEvidence {
     criterionHash: string;
     review: { status: 'proposed' } | { status: 'approved' | 'revoked'; reviewerId: string; reviewedAt: string };
     validation?: { status: 'stale'; reason: string };
+    /** Checked Dope intake provenance; a proposal alone is never qualification. */
+    receipt?: { eventId: string; origin: 'dope-validation' | 'reviewed-observation';
+        ownerId: string; workOwnerId?: string; phaseId: string; gateId: string; workItemId?: string;
+        taskId?: string; runId?: string; grantId?: string; testedHead: string;
+        candidateFingerprint?: string; method: string; artifactSha256: string;
+        artifactLocation: string; assertionSha256: string; scope: string; recordedAt: string;
+        reviewerId: string; reviewedAt: string };
 }
 export const criterionHash = (criterion: Pick<Criterion, 'title' | 'expectedResult'>): string =>
     createHash('sha256').update(JSON.stringify([criterion.title, criterion.expectedResult])).digest('hex');
@@ -226,6 +233,7 @@ const identifier = (v: unknown): v is string => typeof v === 'string' && v.lengt
 const prose = (v: unknown, max: number): v is string => typeof v === 'string' && v.trim().length > 0 && v.length <= max && !/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(v);
 const natural = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0;
 const hash = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
+const gitHead = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{40}$/.test(v);
 const timestamp = (v: unknown): v is string => typeof v === 'string' &&
     /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(v) && !Number.isNaN(Date.parse(v));
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -387,7 +395,7 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
             for (const candidateEvidence of criterion.evidence) {
                 assertion(record(candidateEvidence) && keys(candidateEvidence, ['id', 'projectId', 'criterionId', 'result',
                     'kind', 'summary', 'verifiedBy', 'observedAt', 'criterionHash', 'review'],
-                    ['source', 'observedAction', 'validation']) && identity(candidateEvidence, projectId) &&
+                    ['source', 'observedAction', 'validation', 'receipt']) && identity(candidateEvidence, projectId) &&
                     candidateEvidence.criterionId === criterion.id && member(candidateEvidence.result, ['pass', 'fail', 'inconclusive']) &&
                     member(candidateEvidence.kind, ['test', 'observation', 'artifact', 'manual-check', 'approval']) &&
                     prose(candidateEvidence.summary, 4096) && identifier(candidateEvidence.verifiedBy) &&
@@ -400,6 +408,34 @@ export function parseRoadmapGateIndex(value: unknown, projectRoot: string, proje
                         keys(candidateEvidence.review, ['status', 'reviewerId', 'reviewedAt']) &&
                         identifier(candidateEvidence.review.reviewerId) &&
                         timestamp(candidateEvidence.review.reviewedAt)) &&
+                    (candidateEvidence.receipt === undefined || record(candidateEvidence.receipt) &&
+                        keys(candidateEvidence.receipt, ['eventId', 'origin', 'ownerId', 'phaseId', 'gateId',
+                            'testedHead', 'method', 'artifactSha256', 'artifactLocation', 'assertionSha256', 'scope', 'recordedAt',
+                            'reviewerId', 'reviewedAt'], ['workOwnerId', 'workItemId', 'taskId', 'runId', 'grantId', 'candidateFingerprint']) &&
+                        candidateEvidence.receipt.eventId === candidateEvidence.id &&
+                        member(candidateEvidence.receipt.origin, ['dope-validation', 'reviewed-observation']) &&
+                        candidateEvidence.receipt.ownerId === projectId &&
+                        candidateEvidence.receipt.phaseId === gate.parentPhaseId &&
+                        candidateEvidence.receipt.gateId === gate.id &&
+                        (candidateEvidence.receipt.origin !== 'dope-validation' ||
+                            identifier(candidateEvidence.receipt.workOwnerId) &&
+                            identifier(candidateEvidence.receipt.workItemId) &&
+                            identifier(candidateEvidence.receipt.taskId) &&
+                            identifier(candidateEvidence.receipt.runId) &&
+                            identifier(candidateEvidence.receipt.grantId) &&
+                            hash(candidateEvidence.receipt.candidateFingerprint)) &&
+                        (candidateEvidence.receipt.workItemId === undefined || identifier(candidateEvidence.receipt.workItemId)) &&
+                        (candidateEvidence.receipt.workOwnerId === undefined || identifier(candidateEvidence.receipt.workOwnerId)) &&
+                        (candidateEvidence.receipt.taskId === undefined || identifier(candidateEvidence.receipt.taskId)) &&
+                        (candidateEvidence.receipt.runId === undefined || identifier(candidateEvidence.receipt.runId)) &&
+                        (candidateEvidence.receipt.grantId === undefined || identifier(candidateEvidence.receipt.grantId)) &&
+                        gitHead(candidateEvidence.receipt.testedHead) &&
+                        (candidateEvidence.receipt.candidateFingerprint === undefined || hash(candidateEvidence.receipt.candidateFingerprint)) &&
+                        prose(candidateEvidence.receipt.method, 256) && hash(candidateEvidence.receipt.artifactSha256) &&
+                        prose(candidateEvidence.receipt.artifactLocation, 512) && hash(candidateEvidence.receipt.assertionSha256) &&
+                        prose(candidateEvidence.receipt.scope, 1024) &&
+                        timestamp(candidateEvidence.receipt.recordedAt) && identifier(candidateEvidence.receipt.reviewerId) &&
+                        timestamp(candidateEvidence.receipt.reviewedAt)) &&
                     (candidateEvidence.validation === undefined || record(candidateEvidence.validation) &&
                         keys(candidateEvidence.validation, ['status', 'reason']) &&
                         candidateEvidence.validation.status === 'stale' && prose(candidateEvidence.validation.reason, 1024)),
