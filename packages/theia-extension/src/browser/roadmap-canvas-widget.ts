@@ -31,7 +31,7 @@ import { roadmapEdgeStatus, roadmapStatusMark } from './roadmap-status-style';
 import { NextPhaseLoader, ProposedChange, ProposedCriterionRow, ProposedGateCard, ProposedPhaseNode,
     ProposedFieldDiff, ProposalControlTab, hasStructuralProposalChange,
     type ProposalChange, type ProposedFieldSave } from './roadmap-proposal-cards';
-import { proposalEntityOperations, proposalReviewScope } from './roadmap-proposal-selection';
+import { proposalEntityOperations, proposalPendingChanges, proposalReviewScope } from './roadmap-proposal-selection';
 import { readRoadmapViewport, roadmapGestures, roadmapInitialCamera, roadmapInitialTarget, roadmapKeyboardAction, roadmapKeyboardCamera, roadmapUserViewportEvent,
     roadmapViewportKey, roadmapLegacyViewportKey, roadmapViewportSnapshot, roadmapProposalCamera,
     type RoadmapViewportState } from './roadmap-viewport';
@@ -42,16 +42,20 @@ type RoadmapReplacementState = { uri: string; projectId: string; revision: numbe
 type InlineKind = 'phase' | 'gate' | 'criterion' | 'correction';
 type InlineFieldName = 'title' | 'objective' | 'purpose' | 'expectedResult';
 type InlineSave = (kind: InlineKind, id: string, field: InlineFieldName, value: string) => Promise<void>;
+type InlineDelete = (kind: InlineKind, id: string, label: string) => void;
 type StructuralCreateAction = Extract<RoadmapGateMutation, { type: 'phase.create' | 'gate.create' |
     'criterion.add' | 'correction.attach' }>;
+type StructuralDeleteAction = Extract<RoadmapGateMutation, { type: 'phase.delete' | 'gate.delete' |
+    'criterion.remove' | 'correction.delete' }>;
 type NativeProposalBridge = (uri: string, chatId: string, proposalId: string, ids: string[],
     decision: 'apply' | 'reject') => Promise<{ proposal?: ChatPlanningProposal; error?: string }>;
 type NativeProposalEditBridge = (uri: string, chatId: string, proposalId: string, operationId: string,
     entityId: string, field: 'title' | 'objective' | 'purpose' | 'expectedResult', value: string) =>
     Promise<ChatPlanningProposal>;
 
-function InlineRoadmapField({ kind, id, field, value, label, multiline, save, patch, provisional }: { kind: InlineKind; id: string;
+function InlineRoadmapField({ kind, id, field, value, label, multiline, save, remove, patch, provisional }: { kind: InlineKind; id: string;
     field: InlineFieldName; value: string; label: string; multiline?: boolean; save?: InlineSave;
+    remove?: InlineDelete;
     patch?: ProposalChange & { operationIds?: string[] }; provisional?: boolean }): React.ReactElement {
     const [editing, setEditing] = React.useState(false);
     const [draft, setDraft] = React.useState(value);
@@ -92,6 +96,11 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save, pa
                 event.preventDefault();
                 setDraft(value); setError(undefined); setEditing(true);
             } }, React.createElement('span', { className: codicon('edit'), 'aria-hidden': true })),
+        field === 'title' && remove && !patch && React.createElement('button', { type: 'button',
+            className: 'dope-roadmap-delete', title: `Delete ${kind} ${value}`,
+            'aria-label': `Delete ${kind} ${value}`, tabIndex: editing ? -1 : 0,
+            onClick: event => { event.preventDefault(); remove(kind, id, value); } },
+        React.createElement('span', { className: codicon('trash'), 'aria-hidden': true })),
         editing && save && !patch && React.createElement('span', { className: 'dope-roadmap-field-editor' },
             multiline ? React.createElement('textarea', { ref: input, value: draft, rows: 1,
                 'aria-label': label, disabled: busy, onChange: event => setDraft(event.target.value),
@@ -117,7 +126,7 @@ function InlineRoadmapField({ kind, id, field, value, label, multiline, save, pa
 function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean; relation: string; omitted: number; detail: RoadmapDetail;
     historical?: boolean;
     proposalAutoExpand?: boolean;
-    phaseObjective?: string; correctionObjectives?: Record<string, string>; editField?: InlineSave;
+    phaseObjective?: string; correctionObjectives?: Record<string, string>; editField?: InlineSave; deleteElement?: InlineDelete;
     beginCreate?: (kind: 'gate' | 'criterion' | 'correction', parentId: string) => void;
     proposalChanges?: ProposalChange[]; proposalSource?: boolean;
     proposalSteps?: NonNullable<ChatPlanningProposal['preview']>['steps'];
@@ -187,7 +196,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     operationIds: structuralOperationIds(criterion.id) }),
                 React.createElement('summary', null, React.createElement(InlineRoadmapField, {
                     kind: 'criterion', id: criterion.id, field: 'title',
-                    value: criterion.title, label: 'Criterion requirement', save: data.editField,
+                    value: criterion.title, label: 'Criterion requirement', save: data.editField, remove: data.deleteElement,
                     patch: patchFor(criterion.id, 'title'), provisional: data.proposalProvisional })),
                 pick('criterion', criterion.id, `Criterion · ${criterion.title}`),
                 React.createElement(InlineRoadmapField, { kind: 'criterion', id: criterion.id,
@@ -229,7 +238,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
             React.createElement('span', { className: 'dope-roadmap-status' },
                 `${data.historical ? 'As-of ' : ''}${item.statusLabel}`)),
         React.createElement(InlineRoadmapField, { kind: 'phase', id: item.id, field: 'title', value: item.title,
-            label: 'Phase title', save: data.editField, patch: patchFor(item.id, 'title'),
+            label: 'Phase title', save: data.editField, remove: data.deleteElement, patch: patchFor(item.id, 'title'),
             provisional: data.proposalProvisional }),
         React.createElement(InlineRoadmapField, { kind: 'phase', id: item.id, field: 'objective',
             value: data.phaseObjective ?? '', label: 'Phase objective', multiline: true, save: data.editField,
@@ -299,7 +308,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     React.createElement('span', { className: 'dope-roadmap-gate-title' },
                         `${gate.designation} · `,
                         React.createElement(InlineRoadmapField, { kind: 'gate', id: gate.id, field: 'title',
-                            value: gate.title, label: 'Gate title', save: data.editField,
+                            value: gate.title, label: 'Gate title', save: data.editField, remove: data.deleteElement,
                             patch: patchFor(gate.id, 'title'), provisional: data.proposalProvisional })),
                     React.createElement('span', { className: 'dope-roadmap-gate-qualifier' },
                         gate.proposed ? 'Proposed / Not accepted' :
@@ -349,7 +358,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                                 provisional: data.proposalProvisional,
                                 operationIds: structuralOperationIds(correction.id) }),
                             React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
-                                field: 'title', value: correction.title, label: 'Correction title', save: data.editField,
+                                field: 'title', value: correction.title, label: 'Correction title', save: data.editField, remove: data.deleteElement,
                                 patch: patchFor(correction.id, 'title'), provisional: data.proposalProvisional }),
                             React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
                                 field: 'objective', value: data.correctionObjectives?.[correction.id] ?? '',
@@ -388,7 +397,7 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     React.createElement('small', { className: 'dope-roadmap-correction-status' },
                         `Phase correction · ${correction.qualificationStatus}`),
                     React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
-                        field: 'title', value: correction.title, label: 'Correction title', save: data.editField,
+                        field: 'title', value: correction.title, label: 'Correction title', save: data.editField, remove: data.deleteElement,
                         patch: patchFor(correction.id, 'title'), provisional: data.proposalProvisional }),
                     React.createElement(InlineRoadmapField, { kind: 'correction', id: correction.id,
                         field: 'objective', value: data.correctionObjectives?.[correction.id] ?? '',
@@ -666,6 +675,110 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (handle) await this.service.detach(handle);
             this.mutating = false;
         }
+    };
+
+    private readonly saveDraftInlineField: InlineSave = async (kind, id, field, value) => {
+        const state = this.createState, index = this.inspector.gateIndex;
+        if (!state || !index || index.revision || this.history || this.mutating || this.proposedDraft || state.busy)
+            throw new Error('Roadmap draft editor is unavailable');
+        const phase = state.draft.phases.find(item => item.id === id || item.gates?.some(gate =>
+            gate.id === id || gate.criteria.some(criterion => criterion.id === id)));
+        const gate = phase?.gates?.find(item => item.id === id || item.criteria.some(criterion => criterion.id === id));
+        let action: GreenfieldEdit;
+        if (kind === 'phase' && phase?.id === id && (field === 'title' || field === 'objective'))
+            action = { type: 'edit-phase', phaseId: id, [field]: value };
+        else if (kind === 'gate' && phase && gate?.id === id && (field === 'title' || field === 'purpose'))
+            action = { type: 'edit-gate', phaseId: phase.id, gateId: id, [field]: value };
+        else if (kind === 'criterion' && phase && gate && (field === 'title' || field === 'expectedResult'))
+            action = { type: 'edit-criterion', phaseId: phase.id, gateId: gate.id, criterionId: id, [field]: value };
+        else throw new Error('Roadmap draft field changed; refresh and review');
+        this.mutating = true;
+        try {
+            const draft = await this.service.editDraft(state.handle, state.draft.revision, action);
+            if (this.createState !== state || this.inspector.gateIndex?.revision !== 0)
+                throw new Error('Roadmap draft changed while saving');
+            state.draft = draft; state.preview = undefined; state.editPreview = undefined;
+            this.projection = this.projectIndex(index as unknown as RoadmapIndex); this.render();
+        } finally { this.mutating = false; }
+    };
+
+    private readonly beginDelete: InlineDelete = (kind, id, label) => {
+        const index = this.inspector.gateIndex, uri = this.projectUri, draft = this.createState;
+        if (!index || !uri || this.history || this.mutating || this.proposedDraft || this.chatProposal) return;
+        let action: StructuralDeleteAction | GreenfieldEdit;
+        let sourceId = id;
+        let impact = '';
+        if (!index.revision && draft) {
+            const phase = draft.draft.phases.find(item => item.id === id || item.gates?.some(gate =>
+                gate.id === id || gate.criteria.some(criterion => criterion.id === id)));
+            const gate = phase?.gates?.find(item => item.id === id || item.criteria.some(criterion => criterion.id === id));
+            if (kind === 'phase' && phase?.id === id) action = { type: 'delete-phase', phaseId: id };
+            else if (kind === 'gate' && phase && gate?.id === id) {
+                action = { type: 'delete-gate', phaseId: phase.id, gateId: id };
+                impact = ` Its ${gate.criteria.length} criteria will be removed and later Gates renumbered.`;
+            } else if (kind === 'criterion' && phase && gate) {
+                action = { type: 'delete-criterion', phaseId: phase.id, gateId: gate.id, criterionId: id };
+                sourceId = gate.id;
+            } else return;
+        } else if (index.revision) {
+            const gate = index.gates.find(item => item.id === id);
+            const parent = index.gates.find(item => item.criteria.some(criterion => criterion.id === id));
+            if (kind === 'phase' && index.phases.some(item => item.id === id)) action = { type: 'phase.delete', id };
+            else if (kind === 'gate' && gate) {
+                action = { type: 'gate.delete', id };
+                impact = ` Its ${gate.criteria.length} criteria will be removed and later Gates renumbered.`;
+            } else if (kind === 'criterion' && parent) {
+                action = { type: 'criterion.remove', gateId: parent.id, id }; sourceId = parent.id;
+            } else if (kind === 'correction' && index.corrections.some(item => item.id === id))
+                action = { type: 'correction.delete', id };
+            else return;
+        } else return;
+        const panel = this.structuralPanel, serial = ++this.structuralSerial;
+        void this.clearStructuralReview();
+        panel.replaceChildren(); panel.hidden = false;
+        panel.setAttribute('aria-label', 'Create Roadmap element');
+        panel.setAttribute('aria-label', `Delete ${kind}`);
+        const heading = document.createElement('h3'); heading.textContent = `Delete ${kind}`;
+        const message = document.createElement('p'); message.setAttribute('role', 'status');
+        message.textContent = `Delete ${kind} “${label}”?${impact} ` +
+            (index.revision ? 'This creates a new Roadmap revision.' : 'This updates the accepted draft.');
+        const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = `Delete ${kind}`;
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel';
+        cancel.onclick = () => { ++this.structuralSerial; panel.hidden = true; panel.replaceChildren(); };
+        apply.onclick = () => { void (async () => {
+            if (this.mutating || serial !== this.structuralSerial) return;
+            this.mutating = true; apply.disabled = true; message.textContent = 'Checking Roadmap owner and dependencies…';
+            let handle: string | undefined;
+            try {
+                if (this.projectUri !== uri || this.inspector.gateIndex?.revision !== index.revision)
+                    throw new Error('Roadmap changed; open Delete again');
+                if (!index.revision && draft && 'type' in action && action.type.startsWith('delete-')) {
+                    if (this.createState !== draft || draft.busy) throw new Error('Roadmap draft changed');
+                    const preview = await this.service.previewDraftEdit(draft.handle, draft.draft.revision, action as GreenfieldEdit);
+                    if (serial !== this.structuralSerial || this.createState !== draft) return;
+                    const updated = await this.service.applyDraftEdit(draft.handle, preview, true);
+                    draft.draft = updated; draft.preview = undefined; draft.editPreview = undefined;
+                    this.projection = this.projectIndex(index as unknown as RoadmapIndex); this.render();
+                } else {
+                    const attached = await this.service.attach(uri); handle = attached.projectHandle;
+                    if (attached.snapshot.projectId !== index.projectId || attached.snapshot.revision !== index.revision)
+                        throw new Error('Roadmap revision changed; open Delete again');
+                    const request: PlanningActionRequest = { projectHandle: handle, ownerId: index.projectId,
+                        expectedRevision: index.revision, actions: [action as StructuralDeleteAction],
+                        ...(index.linkedDocument ? { sourceHashes: { [sourceId]: index.linkedDocument.sourceHash } } : {}) };
+                    const preview = await this.service.preview(request);
+                    if (serial !== this.structuralSerial || this.projectUri !== uri || !preview.changedIds.length)
+                        throw new Error('Roadmap changed during delete review');
+                    await this.service.apply(request, preview.token, true);
+                    await this.refresh();
+                }
+                panel.hidden = true; panel.replaceChildren();
+            } catch (error) { if (serial === this.structuralSerial) {
+                message.textContent = `Deletion was not applied: ${String(error)}`; apply.disabled = false;
+            } } finally { if (handle) await this.service.detach(handle).catch(() => undefined);
+                this.mutating = false; }
+        })(); };
+        panel.append(heading, message, apply, cancel); apply.focus();
     };
 
     private async clearStructuralReview(): Promise<void> {
@@ -2413,7 +2526,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
         const proposal = this.history ? undefined : this.chatProposal?.proposal;
         const liveSnapshot = this.history || proposal ? undefined : this.liveStage?.snapshot;
         const isolated = !!liveSnapshot?.isolated || proposal?.action.type === 'native-generation-replacement';
-        const changes = proposal?.preview?.entities ?? liveSnapshot?.preview.entities ?? [];
+        const changes = proposal?.operations ? proposalPendingChanges(proposal) :
+            proposal?.preview?.entities ?? liveSnapshot?.preview.entities ?? [];
         const gateIndex = this.history?.index ?? this.inspector.gateIndex;
         const proposalPhase = (change: ProposalChange): string | undefined => {
             const value = change.after ?? change.before;
@@ -2453,10 +2567,14 @@ export class RoadmapCanvasWidget extends BaseWidget {
             return {
                 id: item.id, type: 'checkpoint', position,
                 data: { item, selected: item.id === this.selectedId, selectedGateId: this.selectedId,
-                    phaseObjective: gateIndex?.phases.find(phase => phase.id === item.id)?.objective,
+                    phaseObjective: gateIndex?.phases.find(phase => phase.id === item.id)?.objective ??
+                        this.createState?.draft.phases.find(phase => phase.id === item.id)?.objective,
                     correctionObjectives: Object.fromEntries((gateIndex?.corrections ?? []).map(correction =>
                         [correction.id, correction.objective])),
-                    editField: !this.history && gateIndex && !item.draftState ? this.saveInlineField : undefined,
+                    editField: !this.history && item.draftState !== 'proposed' && gateIndex &&
+                        (gateIndex.revision ? this.saveInlineField : this.createState ? this.saveDraftInlineField : undefined),
+                    deleteElement: !this.history && item.draftState !== 'proposed' &&
+                        !this.chatProposal && gateIndex && (gateIndex.revision || this.createState) ? this.beginDelete : undefined,
                     beginCreate: !this.history && gateIndex?.revision && !item.draftState && !this.mutating ?
                         (kind: 'gate' | 'criterion' | 'correction', parentId: string) =>
                             this.beginStructuralCreate(kind, parentId) : undefined,

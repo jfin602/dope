@@ -39,6 +39,28 @@ test('a capped draft sequence is provisional until approved and checks each proj
     assert.equal(drafts.read(handle).phases.length, 2);
 }));
 
+test('reviewed draft Gate deletion removes its criteria and closes the numbering gap', async () => fixture(async root => {
+    const drafts = new RoadmapGreenfield(new RoadmapStore());
+    const { handle } = await drafts.begin(root);
+    let draft = drafts.edit(handle, 0, { type: 'create-phase', title: 'Setup' });
+    const phaseId = draft.phases[0].id;
+    for (const title of ['Repository', 'CI', 'Docs'])
+        draft = drafts.edit(handle, draft.revision, { type: 'create-gate', phaseId, title, purpose: `Verify ${title}` });
+    const gateId = draft.phases[0].gates![1].id;
+    draft = drafts.edit(handle, draft.revision, { type: 'add-criterion', phaseId, gateId,
+        title: 'Build passes', expectedResult: 'A passing result' });
+    const action = { type: 'delete-gate' as const, phaseId, gateId };
+    assert.throws(() => drafts.edit(handle, draft.revision, action), /reviewed preview/);
+    const preview = drafts.previewEdit(handle, draft.revision, action);
+    assert.deepEqual(preview.after.phases[0].gates?.map(gate => [gate.designation, gate.title]),
+        [['G1', 'Repository'], ['G2', 'Docs']]);
+    assert.equal(drafts.read(handle).phases[0].gates?.length, 3);
+    const accepted = await drafts.applyEdit(handle, preview, true);
+    assert.deepEqual(accepted.phases[0].gates?.map(gate => [gate.designation, gate.title]),
+        [['G1', 'Repository'], ['G2', 'Docs']]);
+    assert.equal((await new RoadmapStore().read(root)).revision, 0);
+}));
+
 test('cancellation and duplicate headings cannot publish a Roadmap', async () => fixture(async root => {
     const store = new RoadmapStore();
     const greenfield = new RoadmapGreenfield(store);

@@ -100,6 +100,7 @@ export class RoadmapNativeStageOwner {
         const entities = [
             ...index.phases.filter(item => !ids || ids.has(item.id)).map(item => ({ kind: 'phase', value: { id: item.id, title: item.title,
                 objective: item.objective, order: item.order, dependencies: item.dependencies,
+                gateIds: index.gates.filter(gate => gate.parentPhaseId === item.id).map(gate => gate.id),
                 implementationStatus: item.implementationStatus, qualificationStatus: item.qualificationStatus } })),
             ...index.gates.filter(item => !ids || ids.has(item.id)).map(item => ({ kind: 'gate', value: { id: item.id, parentPhaseId: item.parentPhaseId,
                 designation: item.designation, title: item.title, purpose: item.purpose, order: item.order,

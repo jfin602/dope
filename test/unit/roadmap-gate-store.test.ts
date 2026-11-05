@@ -168,6 +168,27 @@ test('typed Phase, Gate, criterion and correction mutations persist across store
     await act({ type: 'phase.delete', id: 'p1' });
 }));
 
+test('canonical Gate deletion renumbers later sibling designations and orders', async () => fixture(async root => {
+    const store = new RoadmapStore();
+    await store.saveGateIndex(root, 0, 'uninitialized', {
+        schemaVersion: 2, projectId: 'owner-1', projectRoot: root, revision: 1,
+        phases: [], gates: [], corrections: [],
+    });
+    let revision = 1;
+    await store.mutateGateIndex(root, revision++, 'owner-1',
+        { type: 'phase.create', id: 'phase', title: 'Setup', objective: 'Ready' });
+    for (let number = 1; number <= 4; number++)
+        await store.mutateGateIndex(root, revision++, 'owner-1', {
+            type: 'gate.create', id: `gate-${number}`, parentPhaseId: 'phase', designation: `G${number}`,
+            title: `Gate ${number}`, purpose: 'Verify setup', criteria: [{ id: `criterion-${number}`,
+                title: 'Check', expectedResult: 'Pass' }],
+        });
+    const result = await store.mutateGateIndex(root, revision, 'owner-1', { type: 'gate.delete', id: 'gate-2' });
+    assert.deepEqual(result.gates.map(gate => [gate.id, gate.designation, gate.order]),
+        [['gate-1', 'G1', 0], ['gate-3', 'G2', 1], ['gate-4', 'G3', 2]]);
+    assert.deepEqual((await new RoadmapStore().read(root)).gates, result.gates);
+}));
+
 test('invalid mutations leave index bytes intact; linked edits commit with separate source outcome', async () => fixture(async (root, file) => {
     const markdown = '# Owner roadmap\n';
     await writeFile(join(root, 'ROADMAP.md'), markdown);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ChatPlanningProposal } from '../../packages/chat/src/service.ts';
-import { proposalEntityOperations, proposalReviewScope } from '../../packages/theia-extension/lib/browser/roadmap-proposal-selection.js';
+import { proposalEntityOperations, proposalPendingChanges, proposalReviewScope } from '../../packages/theia-extension/lib/browser/roadmap-proposal-selection.js';
 
 function fixture(): ChatPlanningProposal {
     const operations: NonNullable<ChatPlanningProposal['operations']> = [];
@@ -39,6 +39,23 @@ test('applied operations cannot be reselected and unrelated phases remain indepe
     assert.deepEqual(proposalEntityOperations(proposal, 'criterion-1'), []);
     assert.deepEqual(proposalEntityOperations(proposal, 'phase-1', true), ['op-p1']);
     assert.deepEqual(proposalEntityOperations(proposal, 'phase-5', true), ['op-p5', 'op-g5']);
+});
+
+test('decided creations leave the preview when the accepted Roadmap gains the same entities', () => {
+    const proposal = fixture();
+    proposal.operations![0].status = 'Applied';
+    proposal.operations![1].status = 'Applied';
+    assert.deepEqual(proposalPendingChanges(proposal).map(change => change.id),
+        proposal.preview!.entities.slice(3).map(change => change.id));
+    assert.deepEqual(proposalPendingChanges(proposal).filter(change => change.after?.kind === 'gate')
+        .map(change => change.id), ['gate-2', 'gate-3', 'gate-4', 'gate-5']);
+});
+
+test('a pending Gate remains visible under a previously accepted Phase', () => {
+    const proposal = fixture();
+    proposal.operations![0].status = 'Applied';
+    assert.deepEqual(proposalPendingChanges(proposal).map(change => change.id).slice(0, 2),
+        ['gate-1', 'criterion-1']);
 });
 
 test('a separately staged Criterion selects only its own operation', () => {

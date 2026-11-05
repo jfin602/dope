@@ -29,11 +29,14 @@ export type GreenfieldEdit =
     | { type: 'create-phase'; title: string; objective?: string }
     | { type: 'create-gate'; phaseId: string; title: string; purpose: string }
     | { type: 'edit-gate'; phaseId: string; gateId: string; title?: string; purpose?: string }
+    | { type: 'delete-gate'; phaseId: string; gateId: string }
     | { type: 'add-criterion'; phaseId: string; gateId: string; title: string; expectedResult: string }
     | { type: 'edit-criterion'; phaseId: string; gateId: string; criterionId: string;
         title?: string; expectedResult?: string }
+    | { type: 'delete-criterion'; phaseId: string; gateId: string; criterionId: string }
     | { type: 'create-checkpoint'; phaseId: string; title: string; objective?: string }
     | { type: 'edit-phase'; phaseId: string; title?: string; objective?: string }
+    | { type: 'delete-phase'; phaseId: string }
     | { type: 'edit-checkpoint'; phaseId: string; checkpointId: string; title?: string; objective?: string }
     | { type: 'reorder-phase'; phaseId: string; order: number }
     | { type: 'reorder-checkpoint'; phaseId: string; checkpointId: string; order: number }
@@ -503,9 +506,12 @@ export class RoadmapGreenfield {
             'create-phase': ['type', 'title'], 'create-checkpoint': ['type', 'phaseId', 'title'],
             'create-gate': ['type', 'phaseId', 'title', 'purpose'],
             'edit-gate': ['type', 'phaseId', 'gateId'],
+            'delete-gate': ['type', 'phaseId', 'gateId'],
             'add-criterion': ['type', 'phaseId', 'gateId', 'title', 'expectedResult'],
             'edit-criterion': ['type', 'phaseId', 'gateId', 'criterionId'],
+            'delete-criterion': ['type', 'phaseId', 'gateId', 'criterionId'],
             'edit-phase': ['type', 'phaseId'], 'edit-checkpoint': ['type', 'phaseId', 'checkpointId'],
+            'delete-phase': ['type', 'phaseId'],
             'reorder-phase': ['type', 'phaseId', 'order'],
             'reorder-checkpoint': ['type', 'phaseId', 'checkpointId', 'order'],
             'split-checkpoint': ['type', 'phaseId', 'checkpointId', 'title'],
@@ -552,6 +558,15 @@ export class RoadmapGreenfield {
                 if (action.purpose !== undefined) gate.purpose = action.purpose;
                 break;
             }
+            case 'delete-gate': {
+                const gates = phase!.gates;
+                if (!gates?.some(item => item.id === action.gateId)) throw new Error('Unknown Greenfield Gate');
+                if (next.phases.some(item => item.gates?.some(gate => gate.id !== action.gateId &&
+                    gate.dependencies?.includes(action.gateId)))) throw new Error('Gate still has dependents');
+                phase!.gates = gates.filter(item => item.id !== action.gateId);
+                phase!.gates.forEach((gate, index) => { gate.designation = `G${index + 1}`; });
+                break;
+            }
             case 'add-criterion': {
                 const gate = phase!.gates?.find(item => item.id === action.gateId);
                 if (!gate || !action.expectedResult.trim() || gate.criteria.length >= 128)
@@ -568,6 +583,13 @@ export class RoadmapGreenfield {
                 if (action.expectedResult !== undefined) criterion.expectedResult = action.expectedResult;
                 break;
             }
+            case 'delete-criterion': {
+                const gate = phase!.gates?.find(item => item.id === action.gateId);
+                if (!gate?.criteria.some(item => item.id === action.criterionId))
+                    throw new Error('Unknown Greenfield criterion');
+                gate.criteria = gate.criteria.filter(item => item.id !== action.criterionId);
+                break;
+            }
             case 'create-checkpoint':
                 if (next.phases.reduce((count, item) => count + item.checkpoints.length, 0) >= 256)
                     throw new Error('Greenfield checkpoint limit');
@@ -577,6 +599,12 @@ export class RoadmapGreenfield {
                 if (action.title === undefined && action.objective === undefined) throw new Error('Empty greenfield edit');
                 if (action.title !== undefined) phase!.title = action.title;
                 if (action.objective !== undefined) phase!.objective = action.objective;
+                break;
+            case 'delete-phase':
+                if (phase!.gates?.length || phase!.checkpoints.length || next.phases.some(item =>
+                    item.parentId === phase!.id || item.checkpoints.some(checkpoint => checkpoint.dependencies?.includes(phase!.id))))
+                    throw new Error('Phase still has owned or dependent definitions');
+                next.phases = next.phases.filter(item => item.id !== phase!.id);
                 break;
             case 'edit-checkpoint': {
                 if (action.title === undefined && action.objective === undefined) throw new Error('Empty greenfield edit');
@@ -655,7 +683,8 @@ export class RoadmapGreenfield {
     }
 
     edit(handle: string, expectedRevision: number, action: GreenfieldEdit): GreenfieldDraft {
-        if (['split-checkpoint', 'move-checkpoint', 'add-dependency', 'remove-dependency',
+        if (['delete-phase', 'delete-gate', 'delete-criterion',
+            'split-checkpoint', 'move-checkpoint', 'add-dependency', 'remove-dependency',
             'create-correction', 'attach-correction'].includes(action?.type))
             throw new Error('Graph restructuring requires a reviewed preview and approval');
         const next = this.project(handle, expectedRevision, action);

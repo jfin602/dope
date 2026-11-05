@@ -935,8 +935,9 @@ export class RoadmapStore {
                     candidate.gates = candidate.gates.filter(entry => entry.id !== item.id);
                     candidate.gates.filter(entry => entry.parentPhaseId === item.parentPhaseId)
                         .sort((a, b) => a.order - b.order).forEach((entry, order) => {
-                            if (entry.order !== order) owned(entry.id);
+                            if (entry.order !== order || entry.designation !== `G${order + 1}`) owned(entry.id);
                             entry.order = order;
+                            entry.designation = `G${order + 1}`;
                         });
                     break;
                 }

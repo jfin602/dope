@@ -1,5 +1,10 @@
 import type { ChatPlanningProposal } from '@dope/chat/lib/service';
 
+/** A decided operation remains in the saved proposal preview, but its entity now belongs to the accepted Roadmap. */
+export function proposalPendingChanges(proposal: ChatPlanningProposal): NonNullable<ChatPlanningProposal['preview']>['entities'] {
+    return (proposal.preview?.entities ?? []).filter(entity => proposalEntityOperations(proposal, entity.id).length > 0);
+}
+
 /** Resolve visible entities to pending server operations. A gate.create owns its embedded Criteria. */
 export function proposalEntityOperations(proposal: ChatPlanningProposal, entityId: string,
     descendants = false): string[] {

@@ -101,6 +101,12 @@ test('pending edit refuses changed linked source, project, turn and expired stag
         assert.deepEqual(selectedRead.entries.map(entry => [entry.kind, entry.value.id]),
             [['gate', index.gates[0].id]]);
         assert.equal(selectedRead.nextOffset, null);
+        const phaseRead = await owner.read(context, { version: 1, ids: [index.phases[0].id] }) as
+            { entries: { kind: string; value: { id: string; gateIds: string[] } }[]; nextOffset: number | null };
+        assert.deepEqual(phaseRead.entries.map(entry => [entry.kind, entry.value.id, entry.value.gateIds]),
+            [['phase', index.phases[0].id, index.gates.filter(gate => gate.parentPhaseId === index.phases[0].id)
+                .map(gate => gate.id)]]);
+        assert.equal(phaseRead.nextOffset, null);
         const staged = await owner.stage(context, { version: 1, expectedRevision: index.revision,
             expectedSourceHash: index.linkedDocument!.sourceHash, expectedStage: 1, done: true,
             actions: [{ type: 'gate.edit', id: index.gates[0].id, title: 'Proposed Gate',

@@ -67,10 +67,11 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
         settings.context.allowedSources = ['editor', 'saved-chat'];
         settings.context.savedChatSearch = true;
         assert.equal(await panel.mutate({ type: 'set-settings', chatId: id, settings }), true);
+        panel.turnModel = { connectionId: 'one', modelId: 'chat' };
         panel.draft = 'First question';
-        assert.equal(await panel.runTurn(settings.modelPolicy.model), true, panel.error);
+        assert.equal(await panel.runTurn(panel.turnModel), true, panel.error);
         assert.equal(pendingObserved, true);
-        assert.equal(panel.turnModel, undefined);
+        assert.deepEqual(panel.turnModel, { connectionId: 'one', modelId: 'chat' });
         assert.equal(panel.draft, '');
         assert.equal(panel.chat!.messages[1].role, 'assistant');
         const first = panel.chat!.messages[1];
@@ -97,10 +98,11 @@ test('composer lifecycle saves pending before runtime, streams, keeps provenance
         assert.equal(failed.execution.status, 'failed');
         assert.equal(failed.execution.selectedModel.connectionId, 'two');
         assert.equal(failed.execution.failure, 'Conversation failed');
-        assert.equal(panel.turnModel, undefined);
+        assert.deepEqual(panel.turnModel, { connectionId: 'two', modelId: 'chat' });
         assert.equal(panel.chat!.settings.modelPolicy.type === 'exact' ? panel.chat!.settings.modelPolicy.model.connectionId : undefined, 'one');
         assert.deepEqual(calls, ['one', 'two']);
         assert.equal(await panel.runTurn(settings.defaultModel, failed.id), true);
+        assert.deepEqual(panel.turnModel, { connectionId: 'two', modelId: 'chat' });
         assert.deepEqual(calls, ['one', 'two', 'one']);
         assert.equal(panel.chat!.messages.at(-2)?.id, failed.id);
         assert.equal(panel.chat!.messages.at(-1)?.role, 'assistant');

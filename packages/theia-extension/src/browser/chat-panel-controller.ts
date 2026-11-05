@@ -609,7 +609,6 @@ export class ChatPanelController {
             this.draft = roadmapSkill ? '/roadmap ' : '';
             if (roadmapSkill) this.autoRoadmapPrefix = false;
         }
-        this.turnModel = undefined;
         this.changed();
         try {
             const context = await this.turnContext();
