@@ -1,11 +1,11 @@
-TASK: Phase 13 / P4 — Ingest verified Work evidence with Criterion provenance
+TASK: Phase 13 / P5 — Ingest verified Work evidence with Criterion provenance
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 
 VERSIONING
-The assigned project version is `0.13.4`.
+The assigned project version is `0.13.5`.
 
 AUTHORITY AND PREFLIGHT
 Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0038/0040/0046/0047/0048/0049/0050/0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/implementation-plan.md and previous verified prompt effects. Check actual local main HEAD/branch/diff, currently assigned package versions, linked-source identity, project/root and owner grants. The `0.13.0` baseline exists; this prompt may advance to its target only with actual authorized implementation. A deliberate owner Run of `p13` authorizes its implementation steps, not grants to project Work or autonomous Roadmap qualification. Never reset/stash/clean, self-commit, force-push, bypass Ask/Allow, rewrite historical tests/evidence, change model default, or modify user's persistent project.
@@ -16,11 +16,14 @@ Introduce the narrowest Dope-owned verified evidence-receipt intake/association 
 MINIMUM IMPLEMENTATION BOUNDARY
 Inspect agent-core execution/transcript, pi-work-execution, agent-execution-runtime, phase-focus-evidence, roadmap qualification and Work candidate-review. Reject plain AI assertions, untrusted tool text, exit-zero-without-assertion, foreign IDs, missing source identity and candidate-only tests not applicable to accepted code. Separate evidence collection from GREEN disposition.
 
+CHECKPOINT A ENTRY
+Require actual owner-reviewed, source-applicable browser PASS report at docs/tasks/p13/qualification/checkpoint-a.md and matching coherent 0.13.4 resume marker, not commit alone; otherwise STOP.
+
 FOCUSED VERIFICATION
 Narrow agent-run/evidence and roadmap qualification tests: valid receipt, forged reference, no grant, wrong project, duplicate ID, partial/fail result, missing provenance, candidate prior to reviewed promotion, transcript secret redaction and human observation review. Ensure no status flips on intake alone.
 
 NON-GOALS
-P5 evaluator and dashboard.
+P6 evaluator and dashboard.
 
 EXIT
 Report exact source and version basis, affected files, commands/results, unresolved cases and next dependency. Keep ordinary implementation and focused validation <=8-minute target/15-minute hard stop; stop with truthful PARTIAL/NOT GREEN rather than skip required safety. Preserve separate T2/T3 qualification. STOP.

@@ -1,23 +1,27 @@
-# p13 — Roadmap-Controlled Development
+# p13 — Roadmap-Controlled Development: manually gated runner
 
-**Owner authorization:** 2026-11-05 `/docs-apply + /prompt-plan + /prompt-write p13`, with **coherent `0.13.0` baseline** committed `f908c447`. **Status:** assessment/plan/prompts **AUTHORED ONLY**; **NOT RUN, IMPLEMENTED OR QUALIFIED**. **Decision:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md). **Detailed contract:** [Phase 13 lifecycle](../../planning/p13/roadmap-work-lifecycle-contract.md). **Baseline:** [p13 baseline](../../planning/p13/baseline.md). **Planning:** [assessment](prompt-assessment.md) and [implementation plan](implementation-plan.md).
+**Owner-approved:** 2026-11-05 `/docs-apply + /prompt-plan + /prompt-write p13`, main branch, `0.13.0` baseline `f908c447`; subsequent explicit request adds three manual browser checkpoints. **Status:** prompt/docs only; implementation, live Chrome qualification and native owner signoff NOT RUN. **Authorities:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md), [contract](../../planning/p13/roadmap-work-lifecycle-contract.md), [plan](implementation-plan.md), [assessment](prompt-assessment.md).
 
-The Roadmap is the main entry and monitoring surface; Work executes under its own approvals; source-bound verified Criterion receipts drive existing Gate qualification; distinct owner approval closes the Phase. Do not create another progress checklist, equate Work task success with Gate GREEN, alter `/gen-roadmap` generation, or revive historical failures as Green. Previously reserved LSKM scope is preserved but **deferred unassigned**, not `p13`.
-
-| Order | File | Purpose | Tier |
+| Step | Target version | Responsibility | Mode |
 | --- | --- | --- | --- |
-| P1 | [Planning lock authority](P1-phase-planning-lock.txt) | Coverage/revision-checked Finish Planning state, no run | T1 |
-| P2 | [Work basis links](P2-work-handoff-links.txt) | Reuse Prepare Work, bind approved Phase/Gate/Criteria to WorkItems | T1/T2 |
-| P3 | [Roadmap lock UI](P3-roadmap-planning-controls.txt) | Planning/Ready states and read-only structural controls | T1 UI |
-| P4 | [Verified receipt links](P4-work-evidence-receipts.txt) | Checkable Work evidence source and Criterion association | T2 |
-| P5 | [Qualification projection](P5-evidence-qualification-projection.txt) | Derived criterion/gate/phase eligibility from valid evidence | T2 |
-| P6 | [Amendments and stale evidence](P6-amendment-invalidation.txt) | Source/requirements drift and affected-only requalification | T2 |
-| P7 | [Run and History recovery](P7-evidence-history-recovery.txt) | Durable evidence/Work status, restart, replay and cancel | T2 |
-| P8 | [Monitoring canvas](P8-roadmap-work-monitoring.txt) | Gate-linked Work activity/evidence/next action on Roadmap | T1 UI |
-| P9 | [Integrated security qualification](P9-integration-security.txt) | End-to-end cross-owner invariants and focused aggregate | T2 |
-| P10 | [Manual Phase 13 closeout](P10-phase-closeout.txt) | Independent connected Chrome and owner-native real-use evidence | T3 manual |
+| [P1](P1-phase-planning-lock.txt) | 0.13.1 | Phase planning lock and Gate-set coverage | Runner |
+| [P2](P2-work-handoff-links.txt) | 0.13.2 | Reviewed Prepare Work and WorkItem links | Runner |
+| [P3](P3-roadmap-planning-controls.txt) | 0.13.3 | Planning/Ready canvas and hidden editors | Runner |
+| [P4 checkpoint A](P4-browser-checkpoint-a.txt) | 0.13.4 | **Real Chrome lock/handoff test, repair, owner PASS** | **Manual STOP** |
+| [P5](P5-work-evidence-receipts.txt) | 0.13.5 | Source-bound Work/Criterion receipts | Runner |
+| [P6](P6-evidence-qualification-projection.txt) | 0.13.6 | Derived qualification from evidence | Runner |
+| [P7](P7-amendment-invalidation.txt) | 0.13.7 | Amendments and evidence freshness | Runner |
+| [P8](P8-evidence-history-recovery.txt) | 0.13.8 | History/restart and replay safety | Runner |
+| [P9 checkpoint B](P9-browser-checkpoint-b.txt) | 0.13.9 | **Real Chrome evidence/qualification test, repair, owner PASS** | **Manual STOP** |
+| [P10](P10-roadmap-work-monitoring.txt) | 0.13.10 | Live Roadmap Work monitor | Runner |
+| [P11](P11-integration-security.txt) | 0.13.11 | Source and security integration T2 | Runner |
+| [P12 checkpoint C](P12-browser-checkpoint-c.txt) | 0.13.12 | **Real Chrome full Roadmap monitoring test, repair, owner PASS** | **Manual STOP** |
+| [P13 closeout](P13-phase-closeout.txt) | 0.13.13 | Native Electron and final owner closeout | **Manual final** |
 
-**Runner compatibility:** exact folder `docs/tasks/p13`, contiguous `P1`–`P10`, target versions `0.13.1` through `0.13.10`, one final closeout. First validate on the owner's actual checkout: `npm run codex:phase:validate -- p13`. Deliberate later `npm run codex:phase -- p13` authorizes the runnable implementation sequence, subject to real local source/dirty-state and security checks. The final P10 is a **manual gate**, not automatic browser simulation; do not use `--closeout` to auto-claim it. Documentation creation does not itself authorize execution.
+## How to stop, test, repair and restart
 
-**Nonnegotiable:** read BOOT/AGENTS/workflow/ADRs 0038/0040/0046–0051, exact contract and current source; preserve owner's dirty files; never reset/stash/clean, self-commit, force-push, auto-promote candidate, bypass Work grant/Ask-Allow or model-switch, rewrite historical P12 evidence, or falsely present a task commit as GREEN. Real actual-source verification is mandatory before a later Run. Ordinary P1–P8 target <=8 minutes; hard stop 15 minutes each; P9 integration and P10 manual may take longer for their explicit evidence purpose. Report each gate independently, pause on insufficient evidence, do not auto-close Phase 13.
+On actual synced main, inspect dirty owner work and use `npm run codex:phase:validate -- p13` first. On later deliberate owner Run use `npm run codex:phase -- p13`, **without `--closeout`**. The runner automatically works P1–P3 and deliberately stops at browser-required **P4**. The owner manually runs P4 with real Dope/Codex Browser, reviews/fixes/retests mandatory cases and writes a dated, source-backed `qualification/checkpoint-a.md`; **only after independent owner PASS** make a reviewed version-advance Git commit with exact subject `0.13.4`, real report and 13 coherent manifest versions/20 internal pins. Then invoke the **same** normal runner command again; it resumes P5. Repeat at **P9** (`checkpoint-b.md`, subject `0.13.9`) and **P12** (`checkpoint-c.md`, subject `0.13.12`). At any FAIL/BLOCKED: do not commit its target version; repeating the runner will stop at that same gate until resolved. P13 remains separate manual/native final disposition.
 
+**Known runner limitation:** the current runner resumes based on reachable Git commit subject + package version, not on inspected browser evidence. The human-checkpoint report and explicit owner PASS are therefore mandatory. A version commit is only a **resume marker**, never Roadmap Gate or Phase qualification. Checkpoint prompts forbid empty/forged commits and must re-run affected real Chrome tests after code repairs. No automatic self-commit, tool-only PASS, mock browser, owner-native claim from Chrome, dirty-work overwrite, reset/stash/clean or historical report rewrite. Real selected model and disposable test projects required.
+
+Preserve one schema-2 Roadmap authority; Work executes only under its reviewed grants/candidate promotion, Criterion evidence is source-bound and owner qualification remains separate from task completion. P13 docs/prompt authoring alone is not an implementation Run or a GREEN receipt.

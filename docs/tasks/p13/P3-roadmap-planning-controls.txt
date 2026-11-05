@@ -17,7 +17,7 @@ MINIMUM IMPLEMENTATION BOUNDARY
 Inspect roadmap-canvas-widget/model, roadmap-status-style, roadmap inspector and existing proposal tabs. Preserve approved inline yellow dashed preview on staged changes; accepted locked Phase remains solid. Theme semantic colors distinct from Dope accent, other themes, keyboard, focus, narrow zoom and reduced motion. No new UI-only lock state.
 
 FOCUSED VERIFICATION
-Focus roadmap-canvas/roadmap-status-truth/roadmap-inspector tests for one locked Phase alongside editable Phase; inaccessible pencil via keyboard/command and backend denies regardless; stale review errors recover. Manual real browser qualification deferred to P10.
+Focus roadmap-canvas/roadmap-status-truth/roadmap-inspector tests for one locked Phase alongside editable Phase; inaccessible pencil via keyboard/command and backend denies regardless; stale review errors recover. Manual connected-browser lock/handoff qualification is mandatory at checkpoint A/P4, before evidence work may begin.
 
 NON-GOALS
 Work execution monitor, source status evaluator, changing /gen-roadmap.

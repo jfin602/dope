@@ -20,7 +20,7 @@ FOCUSED VERIFICATION
 Add/extend narrow Roadmap Gate-set/qualification/store tests: successful single-Phase lock, second Phase still editable, absent/empty required Gates, incomplete Criteria, unapproved coverage, unresolved proposals, source hash mismatch, foreign owner, stale revision, double submit and exact History effect. Build only touched packages. No auto-lock on import/generation.
 
 NON-GOALS
-P2 Work links; P3 canvas; P4 evidence evaluator.
+P2 Work links; P3 canvas; P5 evidence evaluator.
 
 EXIT
 Report exact source and version basis, affected files, commands/results, unresolved cases and next dependency. Keep ordinary implementation and focused validation <=8-minute target/15-minute hard stop; stop with truthful PARTIAL/NOT GREEN rather than skip required safety. Preserve separate T2/T3 qualification. STOP.

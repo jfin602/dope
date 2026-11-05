@@ -1,29 +1,15 @@
-# /prompt-plan — p13 Roadmap-Controlled Development
+# /prompt-plan — Phase 13 with manual Chrome checkpoints
 
-**Owner direction:** 2026-11-05. **Status:** plan and prompt authoring only, no implementation/qualification. **Baseline:** `0.13.0` committed `f908c447`. **Authority:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md), [contract](../../planning/p13/roadmap-work-lifecycle-contract.md), [assessment](prompt-assessment.md). **Execution folder:** `p13`. Former LSKM Phase 13 reservation deferred unassigned.
+**Owner-approved:** 2026-11-05. **Baseline:** `0.13.0` committed `f908c447`. **Status:** source review, docs and prompts authored only; implementation NOT RUN. **Authority:** [ADR 0051](../../decisions/0051-roadmap-work-evidence-lifecycle.md) and [lifecycle contract](../../planning/p13/roadmap-work-lifecycle-contract.md).
 
-| Prompt | Target version | Smallest coherent change | Primary evidence |
-| --- | --- | --- | --- |
-| P1 | 0.13.1 | Durable Phase coverage lock/revision validation, without Work execution | Gate-set approval, project/source/lease rejects, other Phase editable |
-| P2 | 0.13.2 | Exact locked-Phase → current Planning Bridge/WorkItem links and reviewed Prepare Work | ID basis, one-to-many links, stale/foreign/no-grant rejects |
-| P3 | 0.13.3 | Canvas Planning/Ready labels, Finish Planning and locked editing affordances | status projection and keyboard/narrow/theme focused UI tests |
-| P4 | 0.13.4 | Immutable validated Work/criterion evidence receipt association | source/candidate/trust checks, no naive exit-zero GREEN |
-| P5 | 0.13.5 | Existing qualification owner consumes verified receipts; derived Gate/Phase eligibility | incomplete/failed/waived/unknown and passing cases |
-| P6 | 0.13.6 | Reviewable post-lock amendments, affected-only stale/evidence invalidation | source drift and irrelevant-change discriminators |
-| P7 | 0.13.7 | Restart-safe Work events, evidence/History navigation and receipt deduplication | interrupted/replayed/rejected run and immutable-history tests |
-| P8 | 0.13.8 | Roadmap live Work/evidence monitoring with direct Work/History detail links | truthful UI counts, no competing status, no focus steal |
-| P9 | 0.13.9 | Integration and security regression, precise dependency/authority proof | cross-owner end-to-end + negative matrix, source/build |
-| P10 | 0.13.10 | Manual real browser + owner-native Phase 13 closeout | actual chosen model/run, promoted source, evidence, owner decision |
+**Tranche A — P1–P4:** P1 durable Phase planning lock/coverage, P2 reviewed Phase/Gate/Criteria → WorkItem links and Prepare Work, P3 canvas Planning/Ready/hidden controls, **P4 manually operated real browser lock/handoff qualification**. Stop and repair until verified owner PASS; checked report and versioned `0.13.4` Git resume marker.
 
-## Sequencing and dependency safety
+**Tranche B — P5–P9:** P5 provenance-checked Work/Criterion receipt intake, P6 existing evidence-driven qualification owner, P7 reviewed amendment and stale evidence, P8 restart/History idempotency; **P9 manually operated real browser Work/evidence qualification**. Stop/fix/retest until owner PASS; report and `0.13.9` resume marker.
 
-P1's lock receipt supplies P2/P3 authority. P2's typed basis is needed before P4 association. P4 receipts are not statuses; P5 alone calls existing qualification boundary. P6 protects changed requirements/source; P7 durable replay/History; P8 renders reconciled facts; P9 verifies actual integration. P10 is manual and must not be fabricated by runner/test mocks. A later source repair invalidates only affected evidence and requires targeted requalification on final source.
+**Tranche C — P10–P12:** P10 source-backed Roadmap Work monitor, P11 T2 integrated cross-owner security/source checks, **P12 manually operated real browser end-to-end Roadmap monitoring**. Stop/fix/retest until owner PASS; report and `0.13.12` marker.
 
-## Universal preflight
+**P13:** only final manual native Electron and exact-source owner closeout; no automatic browser/native emulation or self-qualification. Assigned target `0.13.13` is prospective until final owner disposition. Previously scheduled LSKM remains deferred unassigned.
 
-Before each P*, read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0038/0040/0046/0047/0048/0049/0050/0051, the contract, actual current HEAD/tree/version and previous prompt effects. Verify tracked/dirty files without reset, stash or clean. Do not rerun/publish the historical generation stacks. Preserve Ask/Allow, source leases, candidate review and explicit execution grants. Do not self-commit, merge, release, rewrite earlier evidence or automatically move to next Phase on commit presence.
+**Runner boundary:** The existing `codex:phase` parser accepts contiguous `P1–P13` with targets `0.13.1–0.13.13` and one final closeout. An implementation prompt marked `- Browser required: yes.` stops before agent execution. The runner **does not automatically recognize a manually tested PASS**; it only advances after an owner-approved version-coherent, reachable Git subject `0.13.N` commit. Manual reports at `docs/tasks/p13/qualification/checkpoint-[a|b|c].md` must contain real source/test/browser observations and owner PASS before this commit. Failed/blocked checkpoint cannot commit its target version; do not use a fake/empty marker. On restart run `npm run codex:phase -- p13` without `--closeout`. Since runner does not inspect the manual report, the human must independently enforce the evidence gate; next implementation prompt also checks applicable prior report.
 
-## Prompt efficiency audit
-
-P1/P2 backend ownership separate from P3 UI; P4 immutable receipt intake separate from P5 qualification evaluator and P6 invalidation; P7 records/projections separate from P8 UI; P9 T2 source/security and P10 T3 human GUI. Ordinary prompts target <=8 minutes with hard 15-minute stop, inspect concrete existing source/tests, build only necessary packages and run one narrow test group each. P9/P10 hold expensive aggregate/browser/native coverage. No redundant per-prompt full builds, speculative performance claims or unqualified GREEN. Keep exactly one final manual P10 closeout.
-
+**Efficiency:** P1–P3 then P4 UI; P5 receipt, P6 evaluator, P7 staleness, P8 History then P9 real evidence; P10 UI/P11 T2 integration then P12 real end-to-end; P13 separate owner native. Ordinary coding prompts target <=8 minutes with hard 15-minute stop. T2 source/security and manually operated browser/native checks are scoped separately, with real validation rather than unnecessary repeated aggregates. Preserve owner dirty state, exact selected model, source leases, Work grants, existing History, failed original evidence and no parallel progress store. Documentation authoring and Git marker commits never themselves establish product GREEN.

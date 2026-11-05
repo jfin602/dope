@@ -1,26 +1,26 @@
-TASK: Phase 13 / P5 — Derive Criterion and Gate qualification from current receipts
+TASK: Phase 13 / P7 — Review locked Phase amendments and requalify affected evidence
 
 MODEL / REASONING / USAGE
 - Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 
 VERSIONING
-The assigned project version is `0.13.5`.
+The assigned project version is `0.13.7`.
 
 AUTHORITY AND PREFLIGHT
 Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0038/0040/0046/0047/0048/0049/0050/0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/implementation-plan.md and previous verified prompt effects. Check actual local main HEAD/branch/diff, currently assigned package versions, linked-source identity, project/root and owner grants. The `0.13.0` baseline exists; this prompt may advance to its target only with actual authorized implementation. A deliberate owner Run of `p13` authorizes its implementation steps, not grants to project Work or autonomous Roadmap qualification. Never reset/stash/clean, self-commit, force-push, bypass Ask/Allow, rewrite historical tests/evidence, change model default, or modify user's persistent project.
 
 OBJECTIVE
-Connect P4 checked receipts to the existing ADR 0040 Criterion/Gate qualification boundary. Deterministically reconcile required tests and current approved evidence; derive Gate pass eligibility and Phase qualification eligibility only after Gate-set coverage approval, all mandatory Gate results and no blocking conditions. Work task completion/runner commit cannot directly mark GREEN. Owner Phase closeout stays distinct.
+Implement scoped source- and requirements-drift handling for Phase revisions after Work starts. Require owner review for amendment, capture old/new identities, affected required Criteria/Gates and WorkItem basis, invalidate only impacted current qualification, and require fresh Work preparation/grants where applicable. Reopen before execution is explicit. Preserve immutable prior receipts and historical status rather than restoring stale GREEN.
 
 MINIMUM IMPLEMENTATION BOUNDARY
-Inspect roadmap-gate-qualification and roadmap-phase-qualification, phase-focus-evidence, coverage approvals and waiver contract. Preserve UNKNOWN/Not Green/Blocked/Stale and existing reviewer authority. One Criterion may need multiple actual checks; do not auto-waive; do not treat zero Gates as 100%.
+Inspect roadmap revision/restore and linked Markdown reconciliation, Planning Bridge rebase and current Work grant/candidate validation owners. Source-drift fail closed; clarify external doc sync conflict vs accepted canonical state. Irrelevant camera/format-only change must not invalidate unrelated evidence. No destructive undo/rewind.
 
 FOCUSED VERIFICATION
-Gate/Phase qualification unit integration: full current PASS, one pending/missing/FAIL, stale source, waived Gate, no Gate-set approval, unapproved evidence, task-run complete with no assertion, independent Gate progress, and explicit owner closeout guards. Use typed source evidence not text summaries.
+Source change at tested file, expectation change, Gate-set edit, restored older structure as new head, stale grant, unrelated Phase change, UI-only change, manual evidence, source conflict/retry. Assert no stale GREEN and no overwrite of earlier receipt/history.
 
 NON-GOALS
-P6 source drift/reopen and P8 UI.
+P8 run recovery and P10 presentation.
 
 EXIT
 Report exact source and version basis, affected files, commands/results, unresolved cases and next dependency. Keep ordinary implementation and focused validation <=8-minute target/15-minute hard stop; stop with truthful PARTIAL/NOT GREEN rather than skip required safety. Preserve separate T2/T3 qualification. STOP.
