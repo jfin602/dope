@@ -77,6 +77,8 @@ export interface AgentRun {
     validationResults: ValidationResult[]; changeSummary?: ChangeSummary;
     validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
     candidateFingerprint?: string;
+    /** Checked owner projection captured at Start. It conveys no authority of its own. */
+    taskContract?: TaskContractSnapshot;
     resumedFrom?: { runId: string; candidateFingerprint: string };
     candidateReview?: CandidateReview;
     reviewDecision?: CandidateReviewDecision;
@@ -84,6 +86,15 @@ export interface AgentRun {
     recovery?: { adapterId: string; handle: string }; outcome?: { code: 'authority-denied' | 'provider-error' |
         'validation-failed' | 'capacity-exhausted' | 'cancelled' | 'interrupted' | 'other'; summary: string };
     capacityRetries?: number;
+}
+export interface TaskContractSnapshot {
+    taskId: string; taskHash: string; objective: string; instructionsHash: string;
+    acceptance: string[] | 'unknown'; validation: ValidationTarget[];
+    planning: { projectId: string; mapId: string; mapRevision: number; workItemId: string;
+        workItemHash: string } | 'unknown';
+    roadmap: { projectId: string; phaseId: string; approvalId: string; sourceRevision: number;
+        sourceHash: string; links: { gateId: string; criterionId: string; expectedResult: string }[] } | 'unknown';
+    grant: { id: string; revision: number; acceptedAt: string; permissionsHash: string }; sourceHead: string;
 }
 export interface AgentRunEvent {
     version: typeof AGENT_SCHEMA_VERSION; runId: string; sequence: number; at: string;
@@ -345,14 +356,49 @@ export function parseAuthorityDecision(value: unknown): AuthorityDecision {
 export const RUN_STATUSES = freeze(['pending', 'running', 'blocked', 'cancelling',
     'cancelled', 'failed', 'completed', 'interrupted'] as const);
 export function parseAgentRunStatus(value: unknown): AgentRunStatus { return select(value, RUN_STATUSES); }
+function parseTaskContract(value: unknown): TaskContractSnapshot {
+    const x = record(value, ['taskId', 'taskHash', 'objective', 'instructionsHash', 'acceptance',
+        'validation', 'planning', 'roadmap', 'grant', 'sourceHead']);
+    const grant = record(x.grant, ['id', 'revision', 'acceptedAt', 'permissionsHash']);
+    const planning = x.planning === 'unknown' ? 'unknown' as const : (() => {
+        const p = record(x.planning, ['projectId', 'mapId', 'mapRevision', 'workItemId', 'workItemHash']);
+        return { projectId: id(p.projectId), mapId: id(p.mapId), mapRevision: integer(p.mapRevision),
+            workItemId: id(p.workItemId), workItemHash: hash(p.workItemHash) };
+    })();
+    const roadmap = x.roadmap === 'unknown' ? 'unknown' as const : (() => {
+        const r = record(x.roadmap, ['projectId', 'phaseId', 'approvalId', 'sourceRevision', 'sourceHash', 'links']);
+        return { projectId: id(r.projectId), phaseId: id(r.phaseId), approvalId: id(r.approvalId),
+            sourceRevision: integer(r.sourceRevision), sourceHash: hash(r.sourceHash),
+            links: array(r.links, 128, item => {
+                const link = record(item, ['gateId', 'criterionId', 'expectedResult']);
+                return { gateId: id(link.gateId), criterionId: id(link.criterionId),
+                    expectedResult: bounded(link.expectedResult, 4096) };
+            }) };
+    })();
+    return freeze({ taskId: id(x.taskId), taskHash: hash(x.taskHash), objective: bounded(x.objective, 1000),
+        instructionsHash: hash(x.instructionsHash),
+        acceptance: x.acceptance === 'unknown' ? 'unknown' : array(x.acceptance, 128, item => bounded(item, 4096)),
+        validation: array(x.validation, 12, item => {
+            const v = record(item, ['kind', 'label', 'command']);
+            return { kind: select(v.kind, ['test', 'build', 'typecheck'] as const), label: bounded(v.label, 160),
+                ...(v.command === undefined ? {} : { command: bounded(v.command, 160) }) };
+        }), planning, roadmap,
+        grant: { id: id(grant.id), revision: integer(grant.revision), acceptedAt: timestamp(grant.acceptedAt),
+            permissionsHash: hash(grant.permissionsHash) },
+        sourceHead: id(x.sourceHead) });
+}
 export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
+    const taskContract = x.taskContract === undefined ? undefined : parseTaskContract(x.taskContract);
+    if (taskContract && (taskContract.taskId !== x.taskId || taskContract.grant.id !== x.grantId ||
+        taskContract.grant.revision !== x.grantRevision || taskContract.sourceHead !== basis?.head))
+        throw new Error('Task Contract does not match run basis');
     const recovery = x.recovery === undefined ? undefined : record(x.recovery, ['adapterId', 'handle']);
     const outcome = x.outcome === undefined ? undefined : record(x.outcome, ['code', 'summary']);
     const executionWorkspace = x.executionWorkspace === undefined ? undefined : record(x.executionWorkspace, ['id', 'basisHead']);
@@ -414,6 +460,7 @@ export function parseAgentRun(value: unknown): AgentRun {
         grantId: id(x.grantId), grantRevision: integer(x.grantRevision),
         requestedPolicy: parseAgentModelPolicy(x.requestedPolicy), projectRoot: '.',
         ...(x.projectId === undefined ? {} : { projectId: id(x.projectId) }),
+        ...(taskContract === undefined ? {} : { taskContract }),
         createdAt: timestamp(x.createdAt), ...(startedAt ? { startedAt } : {}), ...(endedAt ? { endedAt } : {}),
         ...(executionWorkspace === undefined ? {} : { executionWorkspace: {
             id: id(executionWorkspace.id), basisHead: id(executionWorkspace.basisHead) } }),

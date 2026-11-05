@@ -16,6 +16,10 @@ import { futureFeatureRoleRequest } from '@dope/ai';
 import type { SoftwareMapIndex } from '@dope/code-analysis/lib/node/software-map-index';
 import { appliedMapImpact } from './agent-map-impact';
 import { providerSetup } from './provider-setup';
+import { projectWorkTaskContract } from './work-task-contract';
+import type { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
+import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import { createHash } from 'node:crypto';
 
 interface Active {
     root: string; run?: AgentRun; task?: AgentTask; handle?: AgentExecutionHandle; workspace?: ExecutionWorkspace; grant?: ExecutionGrant;
@@ -74,7 +78,9 @@ export class AgentExecutionRuntime {
         private readonly capacityRetryDelayMs = 20_000,
         private readonly validationRunner = new CandidateValidationRunner(),
         private readonly mapIndex?: Pick<SoftwareMapIndex, 'status' | 'snapshot'>,
-        private readonly localSandboxPreflight: () => Promise<LocalSandboxPreflight> = preflightLocalToolSandbox) {}
+        private readonly localSandboxPreflight: () => Promise<LocalSandboxPreflight> = preflightLocalToolSandbox,
+        private readonly planning?: Pick<PlanningStore, 'read'>,
+        private readonly roadmap?: Pick<RoadmapStore, 'read'>) {}
 
     localWorkspace(request: AgentExecutionRequest): ExecutionWorkspace {
         const active = this.active.get(request.projectRoot);
@@ -471,6 +477,11 @@ export class AgentExecutionRuntime {
             run.authorityDecision || run.appliedFiles?.length)
             return unavailable('Run is not a stopped, unpromoted candidate');
         const task = await this.store.readTask(root, run.taskId);
+        if (run.taskContract && (!task || run.taskContract.taskHash !==
+            createHash('sha256').update(JSON.stringify(task)).digest('hex') ||
+            run.taskContract.objective !== task.objective ||
+            run.taskContract.instructionsHash !== createHash('sha256').update(task.instructions).digest('hex')))
+            return unavailable('Stored Task Contract no longer matches accepted task');
         if (!task || !['direct', 'work-item'].includes(task.origin.kind) ||
             !run.basis?.head || !run.basis.clean || !run.executionWorkspace ||
             !run.candidateDelta?.effects.length || !run.candidateFingerprint || !run.provenance)
@@ -591,6 +602,8 @@ export class AgentExecutionRuntime {
                 if (!sequence || acceptedDirty.head !== basis.head) throw new Error('Dirty basis requires matching sequence HEAD');
                 await assertDirtyBasis(root, acceptedDirty);
             } else if (!basis.clean) throw new Error('Phase 8B requires a clean project worktree');
+            const taskContract = await projectWorkTaskContract(root, task, grant, basis.head,
+                this.planning, this.roadmap);
             if (resume) {
                 if (!sourceRun?.candidateDelta || !sourceRun.candidateFingerprint)
                     throw new Error('Original candidate evidence missing');
@@ -617,6 +630,7 @@ export class AgentExecutionRuntime {
                 status: 'pending', grantId: grant.id, grantRevision: grant.revision,
                 requestedPolicy: task.modelPolicy, projectRoot: '.', ...(task.projectId ? { projectId: task.projectId } : {}),
                 createdAt: now, basis, executionWorkspace: { id: active.workspace.id, basisHead: active.workspace.head },
+                taskContract,
                 changedFiles: [], validationResults: [],
                 ...(resume ? { resumedFrom: { runId: resume.runId, candidateFingerprint: resume.expectedFingerprint } } : {}) };
             active.run = await this.store.createRun(root, pending);

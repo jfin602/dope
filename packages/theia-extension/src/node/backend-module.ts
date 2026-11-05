@@ -90,7 +90,8 @@ export default new ContainerModule(bind => {
             context.container.get(AIRoleRoutingService), inventory,
             new Map<string, AgentExecutionAdapter>([
                 ['codex', context.container.get(CodexAgentExecutionAdapter)], ['local', local]]),
-            undefined, undefined, context.container.get(SoftwareMapIndex));
+            undefined, undefined, context.container.get(SoftwareMapIndex), undefined,
+            context.container.get(PlanningStore), context.container.get(RoadmapStore));
         return runtime;
     }).inSingletonScope();
     bind(BackendApplicationContribution).toDynamicValue(context => ({
