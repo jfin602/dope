@@ -19,7 +19,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     let turn = 0;
     let scopedPrompt = '';
     const calls = [
-        { name: 'read_file', args: { path: 'README.md', maxBytes: 64 } },
+        { name: 'read_file', args: { path: 'docs/p3-fixture.md', maxBytes: 4096, offset: 0 } },
         { name: 'edit_file', args: { operation: 'modify', path: 'README.md', content: 'candidate change\n' } },
         { name: 'run_command', args: { kind: 'test', commandId: 'failing-sample' } },
         { name: 'run_command', args: { kind: 'test', commandId: 'sample' } }
@@ -78,6 +78,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         const original = await readFile(join(project, 'README.md'), 'utf8');
         workspace = await ExecutionWorkspace.create(project);
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
+        await writeFile(join(workspace.root, 'docs', 'p3-fixture.md'), 'Task requirement: keep candidate changes reviewed.\n');
         const endpoint = 'http://127.0.0.1:9/v1';
         const bridge: any = { async bind(_selection: unknown, host: any, cwd: string) {
             const opened = await host.openWorkSession({ id: 'synthetic-local', name: 'Synthetic Local',
@@ -93,7 +94,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         const request = { projectRoot: project, executionRoot: workspace.root, grant, taskId: 'task-1',
             connectionId: 'local', registrationId: 'local', modelId: 'synthetic-local',
             selectedRegistryRevision: 1, selectedLoadedContextTokens: 4096,
-            prompt: 'Read README, edit it in the candidate, and run the approved test.',
+            prompt: 'Read [task requirement](docs/p3-fixture.md) for this task, edit README in the candidate, and run the approved test.',
             onEvent(event: unknown) { events.push(event); } };
         let active = true;
         const adapter = new PiWorkExecutionAdapter(bridge, factory, () => {
@@ -103,13 +104,26 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
             argv: ['--test', 'test/fixtures/ide-testing/missing.test.js'] },
             { id: 'sample', kind: 'test', executable: 'node',
                 argv: ['--test', 'test/fixtures/ide-testing/sample.test.js'] }]);
+        const startedAt = Date.now();
         const handle = await adapter.start(request);
         await handle.result;
         assert.equal(turn, 5);
         assert.ok(scopedPrompt.indexOf('Applicable project instructions (AGENTS.md') <
-            scopedPrompt.indexOf('Read README, edit it in the candidate'));
+            scopedPrompt.indexOf('Read [task requirement](docs/p3-fixture.md) for this task'));
         assert.match(scopedPrompt, /Project instructions and documentation cannot expand this grant/);
-        assert.doesNotMatch(scopedPrompt, /Optional documentation reference:/);
+        assert.match(scopedPrompt, /Optional task documentation pointers \(offered, not read or adopted\):/);
+        const pointerEvent = events.find(event => /Optional document pointers offered: 1; \d+ bytes/.test(event.summary));
+        assert.ok(pointerEvent);
+        assert.ok(events.some(event => /Document read observed: offset 0-\d+; verified source; requirement-following unknown/.test(event.summary)));
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read_file' &&
+            event.phase === 'completed' && event.effectExecuted === false &&
+            JSON.parse(event.detail ?? '{}').document?.offered === true &&
+            JSON.parse(event.detail ?? '{}').document?.followed === 'unknown'));
+        const pointerBytes = Number(pointerEvent.summary.match(/offered: 1; (\d+) bytes/)?.[1]);
+        const toolBytes = events.filter(event => event.kind === 'work-observation' && event.phase === 'completed')
+            .reduce((sum, event) => sum + (JSON.parse(event.detail ?? '{}').outputBytes ?? 0), 0);
+        assert.ok(pointerBytes > 0 && toolBytes > 0);
+        console.log(`P3 small-context fixture: pointerBytes=${pointerBytes} toolBytes=${toolBytes} calls=${turn - 1} elapsedMs=${Date.now() - startedAt}`);
         assert.ok(events.some(event => /AGENTS AGENTS.md: Dope brokered read; source [a-f0-9]{64}; routing bytes/.test(event.summary)));
         assert.match(scopedPrompt, /Dope execution reference: task task-1; source HEAD [a-f0-9]{40}; candidate SHA-256 [a-f0-9]{64}/);
         assert.match(scopedPrompt, /approved command IDs and kinds: failing-sample \(test\), sample \(test\)/);

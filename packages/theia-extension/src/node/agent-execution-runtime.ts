@@ -311,7 +311,8 @@ export class AgentExecutionRuntime {
             .test(observedSummary) ||
             /^Context compacted \((?:threshold|overflow|manual) trigger; estimated context \d+ → (?:\d+|unavailable) tokens; \d+ summary bytes; \d+ ms(?:; \d+ provider reported summarization tokens)?\)$/u
                 .test(observedSummary) ||
-            /^Context compaction failed \((?:threshold|overflow|manual)\)$/u.test(observedSummary)) ?
+            /^Context compaction failed \((?:threshold|overflow|manual)\)$/u.test(observedSummary) ||
+            /^Optional document pointers offered: [1-4]; \d{1,5} bytes; no document body read$/u.test(observedSummary)) ?
             observedSummary : undefined;
         const summary = piSummary ?? (observation.kind === 'agent-message' ? 'Agent message received' :
             observation.kind === 'command-started' ? 'Project command started' :
