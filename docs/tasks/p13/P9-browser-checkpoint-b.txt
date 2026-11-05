@@ -8,13 +8,13 @@ VERSIONING
 The assigned project version is `0.13.9`.
 
 MANDATORY MANUAL BROWSER GATE
-This is an independently operated browser checkpoint, NOT an automatic coding step or final Phase closeout. The current `codex:phase` runner stops here with `BROWSER_EXECUTION_REQUIRED`. The owner runs this exact prompt manually in connected Codex Browser against genuine Dope/Chrome, makes/reviews targeted fixes and repeats affected checks. A model narrative, mock or unit test is not proof of live UI behavior. P13 remains final owner-native Electron closeout.
+This is an independently operated browser checkpoint, NOT an automatic coding step or final Phase closeout. The current `codex:phase` runner stops here with `BROWSER_EXECUTION_REQUIRED`. The owner runs this exact prompt manually against genuine Dope in the connected Codex in-app browser or connected Chrome, makes/reviews targeted fixes and repeats affected checks. A model narrative, mock or unit test is not proof of live UI behavior. P13 remains final owner-native Electron closeout. Discharge the named P4 live obligations in the P5 conditional entry decision before claiming this checkpoint PASS.
 
 PREFLIGHT AND AUTHORITY
 Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, and actual preceding P* source/commit receipts. Verify selected model/context, actual main HEAD/dirty state, Dope backend/bundle/source identity, saved project/owner/source locks and actual grants. Never reset/stash/clean, overwrite owner work, self-approve, switch providers silently, bypass reviewed candidate promotion or use the owner's persistent tower-defense project. Use a disposable real test project.
 
 LIVE TEST OBJECTIVE
-In disposable real Dope Chrome project launch separately authorized Work from a locked Phase; observe real AgentRun and validator output tied by stable WorkItem/Run/Criterion IDs to source-bound immutable evidence. Review candidate promotion and verify a current accepted-source assertion can qualify only its actual supported Criterion. Modify one relevant requirement/source and test affected-only staleness; inspect History after reconnect/restart.
+In a disposable real Dope project in the connected Codex browser, launch separately authorized Work from a locked Phase; observe real AgentRun and validator output tied by stable WorkItem/Run/Criterion IDs to source-bound immutable evidence. Review candidate promotion and verify a current accepted-source assertion can qualify only its actual supported Criterion. Modify one relevant requirement/source and test affected-only staleness; inspect History after reconnect/restart.
 
 OPERATED PASS/FAIL MATRIX
 1. Run evidence/provenance visible in existing Gate evidence and Work/History, with source basis.

@@ -17,7 +17,7 @@ MINIMUM IMPLEMENTATION BOUNDARY
 Cross-check Work owner, Roadmap service, source hashes, candidate review, provenance, History, restart, markdown sync and UI projection with existing test harness. Do not modify generation controller, historical prompt files or persistent owner game. No mock-only success claim for browser/native.
 
 FOCUSED VERIFICATION
-Required negatives: missing coverage, unlinked WorkItem, wrong owner/project/root, stale revision, double-submit, no grant, source changed after test, unaccepted candidate, fake/partial validation, waiver, interruption/replay, historical restore, markdown conflict and evidence leakage. Build changed packages in correct order; focused suites plus one justified aggregate/typecheck, record exact counts/sha/diff. Real Chrome checkpoint C/P12 must pass before the separate final native/owner P13 closeout.
+Required negatives: missing coverage, unlinked WorkItem, wrong owner/project/root, stale revision, double-submit, no grant, source changed after test, unaccepted candidate, fake/partial validation, waiver, interruption/replay, historical restore, markdown conflict and evidence leakage. Build changed packages in correct order; focused suites plus one justified aggregate/typecheck, record exact counts/sha/diff. Real connected Codex browser checkpoint C/P12 must pass before the separate final native/owner P13 closeout.
 
 NON-GOALS
 No auto-run/manual GUI substitute, do not declare Phase 13 GREEN.
