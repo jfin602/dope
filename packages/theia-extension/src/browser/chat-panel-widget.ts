@@ -18,7 +18,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
@@ -656,28 +656,78 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (activity?.kind === 'documentation-proposal' && activity.documentProposal) {
             const card = document.createElement('section');
             card.className = 'dope-chat-plan-review dope-chat-proposal-history';
+            card.dataset.status = activity.status;
             card.setAttribute('aria-label', 'Documentation review proposal');
             const heading = document.createElement('strong');
-            heading.textContent = `Documentation review · ${activity.status === 'pending' ? 'Pending · no write' : activity.status}`;
+            heading.textContent = `Documentation review · ${activity.status === 'pending' ? 'Pending · no write' :
+                activity.status === 'applied' ? 'Applied' : activity.status}`;
             card.append(heading);
             for (const target of activity.documentProposal.targets) {
                 const detail = document.createElement('details');
                 const label = document.createElement('summary');
                 label.textContent = `${target.operation === 'create' ? 'Create' : 'Update'} ${target.path}`;
                 const diff = document.createElement('pre');
-                diff.textContent = target.diff;
+                diff.className = 'dope-chat-documentation-diff';
+                for (const line of target.diff.split('\n')) {
+                    const row = document.createElement('span');
+                    row.dataset.kind = documentationDiffLineKind(line);
+                    row.textContent = line;
+                    diff.append(row, document.createTextNode('\n'));
+                }
                 detail.append(label, diff);
                 card.append(detail);
+            }
+            if (activity.documentationDiscovery) {
+                const discovery = activity.documentationDiscovery;
+                const section = document.createElement('details');
+                section.className = 'dope-chat-documentation-discovery';
+                const title = document.createElement('summary');
+                title.textContent = 'Documentation Discovery';
+                section.append(title);
+                const counts = document.createElement('p');
+                counts.textContent = `Detected documentation files: ${discovery.detected ?? 'Unavailable'} · Files read: ${discovery.reads.length}`;
+                section.append(counts);
+                if (discovery.omitted.length) {
+                    const warning = document.createElement('p');
+                    warning.textContent = `Inventory limits: ${discovery.omitted.join('; ')}`;
+                    section.append(warning);
+                }
+                const table = document.createElement('table');
+                const header = document.createElement('tr');
+                for (const label of ['File', 'Reads']) {
+                    const cell = document.createElement('th'); cell.textContent = label; header.append(cell);
+                }
+                table.append(header);
+                const error = document.createElement('p');
+                error.setAttribute('role', 'status');
+                for (const read of discovery.reads) {
+                    const row = document.createElement('tr');
+                    const file = document.createElement('td');
+                    const link = document.createElement('a');
+                    link.href = '#'; link.textContent = read.path;
+                    link.onclick = event => {
+                        event.preventDefault();
+                        void this.openDocumentationDiscoveryFile(activity.documentProposal!.root, read.path, error);
+                    };
+                    file.append(link);
+                    const count = document.createElement('td'); count.textContent = String(read.count);
+                    row.append(file, count); table.append(row);
+                }
+                if (!discovery.reads.length) {
+                    const empty = document.createElement('p'); empty.textContent = 'No successful document reads.';
+                    section.append(empty);
+                } else section.append(table);
+                section.append(error);
+                card.append(section);
             }
             const note = document.createElement('p');
             note.textContent = activity.status === 'pending' ?
                 'Review only. Apply requires a separate developer decision and will recheck every source.' :
                 activity.status === 'approved' ? 'Approval recorded. Recover and verify the application outcome.' :
-                activity.status === 'applied' ? 'Approved document changes were verified. See History for the applied diff.' :
                 activity.status === 'denied' ? 'You rejected this documentation proposal. No document was changed.' :
                 activity.status === 'stale' ? 'This unapproved proposal is stale. No document was changed by it. Review current source again.' :
                 activity.diagnostic ?? 'This proposal was not fully applied. Check History for any verified retained changes.';
-            card.append(note);
+            if (activity.status !== 'applied') card.append(note);
             if (activity.status === 'pending') {
                 card.append(this.button('Apply reviewed documents',
                     () => void this.controller.applyDocumentationProposal(activity.proposalId!, activity.documentProposal!.digest),
@@ -791,6 +841,29 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         card.append(details);
         return card;
+    }
+
+    private async openDocumentationDiscoveryFile(root: string, path: string, error: HTMLElement): Promise<void> {
+        error.textContent = '';
+        const workspace = this.panel.workspace;
+        const target = workspace && documentationDiscoveryFileUri(workspace, root, path);
+        if (!target || !this.editors || !this.files) {
+            error.textContent = 'This file cannot be opened from the current project.'; return;
+        }
+        try {
+            const base = new URI(workspace!);
+            let part = base;
+            for (const segment of path.split('/')) {
+                part = part.resolve(segment);
+                const stat = await this.files.resolve(part);
+                if (stat.isSymbolicLink) throw new Error('Unsafe linked path');
+            }
+            const stat = await this.files.resolve(new URI(target));
+            if (stat.isDirectory) throw new Error('Path is a directory');
+            await this.editors.open(new URI(target), { mode: 'activate', preview: false });
+        } catch {
+            error.textContent = 'File unavailable or unsafe to open. The proposal is unchanged.';
+        }
     }
     private roadmapActionCard(message: ChatAssistantMessage): HTMLElement | undefined {
         const action = message.roadmapAction, state = this.controller;
@@ -2791,7 +2864,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             } else if (message.role === 'assistant') {
                 const activity = planningActivityPresentation(message);
                 const outcome = message.execution.status === 'failed' ? undefined : planningOutcome(message);
-                if (outcome && !isInlineRoadmapProposal(message)) {
+                const docsFinal = message.execution.status === 'complete' &&
+                    message.planningActivity?.kind === 'documentation-proposal';
+                if (docsFinal) {
+                    const response = document.createElement('div');
+                    response.style.whiteSpace = 'pre-wrap';
+                    response.textContent = body;
+                    content.append(response);
+                }
+                if (outcome && !docsFinal && !isInlineRoadmapProposal(message)) {
                     if (message.planningActivity?.kind === 'no-action' &&
                         message.planningActivity.status === 'no-action') {
                         content.append(renderUntrustedMessageMarkdown(this.markdown, outcome.summary));
@@ -2808,7 +2889,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         content.append(explanation);
                     }
                 }
-                if (activity && !isInlineRoadmapProposal(message)) {
+                if (activity && !docsFinal && !isInlineRoadmapProposal(message)) {
                     const planAnswer = implementationPlanAnswer(message);
                     if (planAnswer) content.append(renderUntrustedMessageMarkdown(this.markdown, planAnswer));
                     const details = document.createElement('details');
@@ -2845,7 +2926,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         raw.textContent = body;
                         content.append(raw);
                     }
-                } else if (message.execution.status === 'complete' && !isInlineRoadmapProposal(message) &&
+                } else if (message.execution.status === 'complete' && !docsFinal && !isInlineRoadmapProposal(message) &&
                     !(message.planningActivity?.kind === 'no-action' && outcome))
                     content.append(renderUntrustedMessageMarkdown(this.markdown, body));
                 else if (message.execution.status === 'cancelled') {

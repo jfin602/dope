@@ -33,7 +33,11 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
             const late = JSON.parse(await request.projectTools!.execute('read_file',
                 { path: 'docs/policy.md', offset: page.nextOffset, maxBytes: 4096 })) as { text: string };
             assert.match(late.text, /## Late policy\nold/);
+            const notes = JSON.parse(await request.projectTools!.execute('read_file',
+                { path: 'docs/notes.md', offset: 0, maxBytes: 4096 })) as { text: string };
+            assert.equal(notes.text, '# Notes\n');
             yield { type: 'complete' as const, text: JSON.stringify({
+                final_response: 'I prepared the policy update and a new validation note. The proposal is ready for your review; no files have changed yet.',
                 report: 'Current policy needs the approved new wording.',
                 changes: [{ path: 'docs/policy.md', replace: { before: '## Late policy\nold\n',
                     after: '## Late policy\nnew\n' } },
@@ -50,6 +54,8 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
     try {
         await mkdir(join(root, 'docs'));
         await writeFile(join(root, 'docs', 'policy.md'), before);
+        await writeFile(join(root, 'docs', 'search-only.txt'), 'Policy search match, never read.\n');
+        await writeFile(join(root, 'docs', 'notes.md'), '# Notes\n');
         const { projectHandle } = await backend.attach(pathToFileURL(root).href);
         const chatId = randomUUID();
         await backend.mutate({ projectHandle, expectedRevision: 0,
@@ -74,8 +80,12 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
         assert.equal(review?.role === 'assistant' && review.planningActivity?.status, 'pending');
         assert.equal(messages.at(-2)?.role === 'user' && messages.at(-2)?.skill?.name, 'docs-review');
         assert.equal(await readFile(join(root, 'docs', 'policy.md'), 'utf8'), before);
-        assert.match(review?.role === 'assistant' ? review.content : '', /1 actually read through the broker/);
-        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.length, 2);
+        assert.equal(review?.role === 'assistant' ? review.content : '',
+            'I prepared the policy update and a new validation note. The proposal is ready for your review; no files have changed yet.');
+        assert.deepEqual(review?.role === 'assistant' ? review.planningActivity?.documentationDiscovery?.reads : [],
+            [{ path: 'docs/notes.md', count: 1 }, { path: 'docs/policy.md', count: 2 }]);
+        assert.equal(review?.role === 'assistant' ? review.planningActivity?.documentationDiscovery?.detected : undefined, 3);
+        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.length, 3);
         assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.[1].endOffset, Buffer.byteLength(before));
         assert.equal(seen.some(turnMessages => turnMessages.some(text => text.includes('Dope skill /docs-review'))), true);
         assert.equal(seen.some(turnMessages => turnMessages.some(text =>

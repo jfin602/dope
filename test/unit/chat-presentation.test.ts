@@ -2,9 +2,35 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
+
+test('documentation discovery links stay within the exact saved workspace', () => {
+    const workspace = 'file:///tmp/project/';
+    assert.equal(documentationDiscoveryFileUri(workspace, '/tmp/project', 'docs/rules.md'),
+        'file:///tmp/project/docs/rules.md');
+    for (const path of ['../outside.md', '/tmp/outside.md', 'docs/../outside.md',
+        'docs\\outside.md', '.hidden.md', 'docs/%2e%2e/outside.md'])
+        assert.equal(documentationDiscoveryFileUri(workspace, '/tmp/project', path), undefined);
+    assert.equal(documentationDiscoveryFileUri('file:///tmp/other/', '/tmp/project', 'docs/rules.md'), undefined);
+});
+
+test('documentation diff colors distinguish changes from file headers', () => {
+    assert.deepEqual(['--- a/docs/rules.md', '+++ b/docs/rules.md', '@@ -1 +1 @@',
+        '-old rule', '+new rule', ' unchanged', '+++content', '---content'].map(documentationDiffLineKind),
+    ['header', 'header', 'hunk', 'removed', 'added', 'context', 'added', 'removed']);
+});
+
+test('documentation card keeps applied result in the card without a completion notice', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const controller = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-controller.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    assert.match(widget, /if \(activity\.status !== 'applied'\) card\.append\(note\)/);
+    assert.match(widget, /row\.dataset\.kind = documentationDiffLineKind\(line\)/);
+    assert.match(controller, /planningProposalError = result\.status === 'complete' \? undefined/g);
+    assert.match(css, /documentation-discovery :is\(th, td\):last-child \{[^}]*white-space: nowrap/);
+});
 
 test('native Roadmap card states keep saved terminal and inactive pending proposals inert', async () => {
     assert.deepEqual(['pending', 'applied', 'denied', 'failed', 'cancelled', 'stale', 'superseded', 'rejected']
@@ -176,7 +202,7 @@ test('Roadmap proposal presentation stays in the originating response and automa
     const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
     const canvas = await readFile(new URL('../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-    assert.match(widget, /if \(activity && !isInlineRoadmapProposal\(message\)\)/);
+    assert.match(widget, /if \(activity && !docsFinal && !isInlineRoadmapProposal\(message\)\)/);
     assert.match(widget, /if \(savedProposal\) item\.append\(savedProposal\)/);
     assert.match(widget, /return this\.roadmapProposalReviewCard\(this\.controller\.planningProposal\)/);
     assert.match(widget, /diagnostic\.textContent = activity\.diagnostic;\s*card\.append\(diagnostic\)/);
@@ -417,7 +443,7 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
     assert.match(widget, /navigator\.clipboard\?\.writeText\(text\)/);
     assert.match(widget, /copyChatText\(body\)/);
     assert.match(widget, /summary\.textContent = outcome\.summary/);
-    assert.match(widget, /if \(outcome && !isInlineRoadmapProposal\(message\)\) \{/);
+    assert.match(widget, /if \(outcome && !docsFinal && !isInlineRoadmapProposal\(message\)\) \{/);
     assert.doesNotMatch(widget, /body\.replace\(\/\\s\+\/g, ' '\)\.slice\(0, 160\)/);
     assert.match(widget, /this\.openPlanningActivities\.add\(message\.id\)/);
     assert.match(widget, /if \(activity\.alert\) item\.classList\.add\('dope-chat-message-alert'\)/);

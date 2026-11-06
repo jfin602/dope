@@ -700,7 +700,8 @@ export class ChatPanelController {
         try {
             const result = await lease.connection.applyDocumentation(lease.handle, lease.chatId, lease.token,
                 proposalId, digest);
-            this.planningProposalError = `Documentation ${result.status}: ${result.paths.length} verified file(s).${result.diagnostic ? ` ${result.diagnostic}` : ''}`;
+            this.planningProposalError = result.status === 'complete' ? undefined :
+                `Documentation ${result.status}: ${result.paths.length} verified file(s).${result.diagnostic ? ` ${result.diagnostic}` : ''}`;
         } catch (error) {
             this.planningProposalError = `Documentation application needs review or recovery: ${String(error)}`;
         } finally { this.pending = false; this.changed(); await this.refresh(true); }
@@ -711,7 +712,8 @@ export class ChatPanelController {
         this.pending = true; this.changed();
         try {
             const result = await lease.connection.recoverDocumentation(lease.handle, lease.chatId, lease.token, proposalId);
-            this.planningProposalError = `Documentation ${result.status}: ${result.paths.length} verified file(s).${result.diagnostic ? ` ${result.diagnostic}` : ''}`;
+            this.planningProposalError = result.status === 'complete' ? undefined :
+                `Documentation ${result.status}: ${result.paths.length} verified file(s).${result.diagnostic ? ` ${result.diagnostic}` : ''}`;
         } catch (error) { this.planningProposalError = `Documentation recovery unresolved: ${String(error)}`;
         } finally { this.pending = false; this.changed(); await this.refresh(true); }
     }

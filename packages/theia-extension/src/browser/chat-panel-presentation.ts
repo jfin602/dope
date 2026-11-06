@@ -309,6 +309,28 @@ export function documentationReviewDisplayText(message: ChatAssistantMessage): s
     return message.content.replace(/\n\nA source-bound documentation diff is ready for separate review and approval\. No document was changed\.$/u, '');
 }
 
+export function documentationDiffLineKind(line: string): 'added' | 'removed' | 'hunk' | 'header' | 'context' {
+    if (/^(?:\+\+\+ b\/|--- a\/|\+\+\+ \/dev\/null|--- \/dev\/null|diff |index )/u.test(line))
+        return 'header';
+    if (line.startsWith('@@')) return 'hunk';
+    if (line.startsWith('+')) return 'added';
+    if (line.startsWith('-')) return 'removed';
+    return 'context';
+}
+
+/** Reject paths that could escape or be reinterpreted before asking Theia to open a file. */
+export function documentationDiscoveryFileUri(workspace: string, proposalRoot: string, path: string): string | undefined {
+    try {
+        const root = new URL(workspace);
+        if (root.protocol !== 'file:' || decodeURIComponent(root.pathname).replace(/\/$/u, '') !== proposalRoot ||
+            !/^(?!\/)(?!.*[\\%])(?!.*[\x00-\x1f])[^?#]+\.(?:md|txt)$/iu.test(path) ||
+            path.split('/').some(segment => !segment || segment === '.' || segment === '..' || segment.startsWith('.')))
+            return undefined;
+        const target = new URL(path.split('/').map(encodeURIComponent).join('/'), workspace.endsWith('/') ? workspace : `${workspace}/`);
+        return decodeURIComponent(target.pathname).startsWith(`${proposalRoot}/`) ? target.toString() : undefined;
+    } catch { return undefined; }
+}
+
 export const CHAT_PANEL_ID = 'dope-chat-panel';
 export const chatAreas = { left: 'left', right: 'right', center: 'main', bottom: 'bottom' } as const;
 export type ChatArea = keyof typeof chatAreas;

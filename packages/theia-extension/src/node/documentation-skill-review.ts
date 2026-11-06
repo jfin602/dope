@@ -7,6 +7,7 @@ export interface DocumentationReadPage { path: string; offset: number; endOffset
     fileBytes: number; sourceHash: string; text: string }
 
 export interface DocumentationSkillReview {
+    final_response: string;
     report: string;
     changes: DocumentationSkillChange[];
 }
@@ -29,7 +30,7 @@ function singleReviewObject(output: string): unknown {
             try {
                 const candidate: unknown = JSON.parse(output.slice(start, index + 1));
                 if (candidate && typeof candidate === 'object' && !Array.isArray(candidate) &&
-                    'report' in candidate && 'changes' in candidate) candidates.push(candidate);
+                    'final_response' in candidate && 'report' in candidate && 'changes' in candidate) candidates.push(candidate);
             } catch { /* Malformed wrapper text is not a proposal. */ }
             start = -1;
         }
@@ -44,7 +45,9 @@ export function parseDocumentationSkillReview(output: string, readPaths: readonl
     const value = singleReviewObject(output);
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid documentation review');
     const record = value as Record<string, unknown>;
-    if (Object.keys(record).sort().join(',') !== 'changes,report' ||
+    if (Object.keys(record).sort().join(',') !== 'changes,final_response,report' ||
+        typeof record.final_response !== 'string' || !record.final_response.trim() ||
+        record.final_response.length > 16_000 ||
         typeof record.report !== 'string' || !record.report.trim() || record.report.length > 4000 ||
         !Array.isArray(record.changes) || record.changes.length > 4)
         throw new Error('Invalid documentation review structure');
@@ -63,7 +66,7 @@ export function parseDocumentationSkillReview(output: string, readPaths: readonl
         throw new Error('Invalid documentation change');
     });
     if (changes.length && !readPaths.length) throw new Error('Review needs an actual brokered document read');
-    return { report: record.report.trim(), changes };
+    return { final_response: record.final_response, report: record.report.trim(), changes };
 }
 
 /** A small exact replacement keeps untouched bytes out of model output and within the saved proposal. */

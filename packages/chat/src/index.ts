@@ -149,6 +149,9 @@ export interface ChatPlanningActivity {
     /** Bounded, inert review presentation. Saved history never grants approval authority. */
     proposal?: import('./service').ChatPlanningProposal;
     documentProposal?: ChatDocumentationProposal;
+    /** Broker-owned inventory and successful range reads; never model-authored. */
+    documentationDiscovery?: { detected: number | null; omitted: string[];
+        reads: { path: string; count: number }[] };
     diagnostic?: string;
     /** Backend-verified UI guidance captured for this turn; model content remains untouched. */
     verifiedGuidance?: { capabilityId: string; version: string; text: string };
@@ -532,7 +535,7 @@ export function parseChatRoadmapAction(value: unknown): ChatRoadmapAction {
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'Roadmap diagnostic') }) };
 }
 export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
-    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'documentProposal', 'diagnostic', 'verifiedGuidance'],
+    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'documentProposal', 'documentationDiscovery', 'diagnostic', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
     const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'documentation-proposal', 'no-action',
@@ -726,11 +729,31 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             leaseDigest: hash(p.leaseDigest), roadmapRevision: count(p.roadmapRevision, 'Roadmap revision'),
             createdAt: time(p.createdAt), expiresAt: time(p.expiresAt), targets };
     }
+    let documentationDiscovery: ChatPlanningActivity['documentationDiscovery'];
+    if (v.documentationDiscovery !== undefined) {
+        if (kind !== 'documentation-proposal') throw new Error('Invalid documentation discovery');
+        const d = record(v.documentationDiscovery, ['detected', 'omitted', 'reads'], ['detected', 'omitted', 'reads']);
+        if (d.detected !== null && (!Number.isSafeInteger(d.detected) || (d.detected as number) < 0) ||
+            !Array.isArray(d.omitted) || d.omitted.length > 30 || !Array.isArray(d.reads) || d.reads.length > 16)
+            throw new Error('Invalid documentation discovery');
+        const reads = d.reads.map(item => {
+            const r = record(item, ['path', 'count'], ['path', 'count']);
+            const path = string(r.path, 'documentation read path');
+            if (!/^(?!\/)(?!.*(?:^|\/)\.\.?\/)[^\\\x00-\x1f]+\.(?:md|txt)$/iu.test(path) ||
+                !Number.isSafeInteger(r.count) || (r.count as number) < 1) throw new Error('Invalid documentation read');
+            return { path, count: r.count as number };
+        });
+        if (new Set(reads.map(item => item.path)).size !== reads.length)
+            throw new Error('Duplicate documentation read');
+        documentationDiscovery = { detected: d.detected as number | null,
+            omitted: d.omitted.map(item => string(item, 'documentation omission').slice(0, 300)), reads };
+    }
     return { schemaVersion: 1, kind, status, refs: v.refs.map(parseChatContextRef),
         ...(v.proposalId === undefined ? {} : { proposalId: string(v.proposalId, 'proposal ID') }),
         ...(v.appliedRevision === undefined ? {} : { appliedRevision: count(v.appliedRevision, 'applied revision') }),
         ...(proposal === undefined ? {} : { proposal }),
         ...(documentProposal === undefined ? {} : { documentProposal }),
+        ...(documentationDiscovery === undefined ? {} : { documentationDiscovery }),
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'planning diagnostic').slice(0, 2000) }),
         ...(guidance === undefined ? {} : { verifiedGuidance: {
             capabilityId: string(guidance.capabilityId, 'guidance capability'),

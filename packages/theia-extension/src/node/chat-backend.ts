@@ -37,7 +37,7 @@ import { prepareDocumentationReview, documentationReviewApplicability,
     renewDocumentationReviewLease } from './documentation-review';
 import { applyDocumentationProposal, reconcileDocumentationApplication } from './documentation-application';
 import { discoverDocumentation } from './documentation-discovery';
-import { documentationCoverage, materializeDocumentationChanges, parseDocumentationSkillReview,
+import { materializeDocumentationChanges, parseDocumentationSkillReview,
     requireCompleteDocumentationReview, type DocumentationReadPage } from './documentation-skill-review';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
@@ -1606,13 +1606,13 @@ export class ChatBackend implements ChatService {
             `${discovery.searched} searched. Candidate paths and heading matches (search is not a model read): ` +
             JSON.stringify(discovery.candidates) + `\nOmissions: ${JSON.stringify(discovery.omitted)}. ` +
             'Use brokered read_file pages (maxBytes 1..4096). Read offset 0 first; later offsets are pinned to that sourceHash in this turn, even if you omit expectedSourceHash. Read indicated late sections. ' +
-            'Return exactly one JSON object with exactly two TOP-LEVEL properties: "report" (findings only) and "changes" (an array of proposed operations). ' +
+            'Return exactly one JSON object with exactly three TOP-LEVEL properties: "final_response" (your natural-language message to the user), "report" (findings only), and "changes" (an array of proposed operations). ' +
             'The changes array must be a sibling of report, never prose or JSON embedded inside the report string. ' +
-            'For example: {"report":"Read the current rule; append the requested sentence.","changes":[{"path":"docs/current/rules.md","replace":{"before":"exact unique source text you read","after":"that text plus the new sentence"}}]}. ' +
+            'For example: {"final_response":"I prepared the requested update for your review.","report":"Read the current rule; append the requested sentence.","changes":[{"path":"docs/current/rules.md","replace":{"before":"exact unique source text you read","after":"that text plus the new sentence"}}]}. ' +
             'For a create use {"path":"eligible relative .md/.txt path","after":"complete proposed UTF-8 file bytes"}. ' +
             'For a small update use the example replace shape; Dope preserves all other bytes. Do not include markdown fences, source text or operations in report. ' +
             'Include every requested create and update in one review. Use [] and report an incomplete review when a required source is missing or unread. ' +
-            'At most four changes. Do not claim searched files were read.' : '';
+            'At most four changes. Do not claim searched files were read. Write final_response as a natural, helpful coding assistant: briefly explain what you prepared and why in 2–4 conversational sentences for simple tasks, expanding when useful; distinguish proposals from applied changes and omit Discovery or proposal metadata.' : '';
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}` : undefined;
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const helpTurn = !roadmapSkill && !docsReview && !docsApply && !!selectDopeCapabilityHelp(content);
@@ -2293,12 +2293,11 @@ export class ChatBackend implements ChatService {
                     let documentActivity: ChatPlanningActivity | undefined;
                     if (docsReview) {
                         const readPaths = sourceRefs.filter(ref => ref.kind === 'file').map(ref => ref.id);
-                        const coverage = documentationCoverage(discovery!, readPaths);
                         try {
                             if (event.finishReason === 'length') throw new Error('Model output was truncated');
                             const review = parseDocumentationSkillReview(output, readPaths);
                             requireCompleteDocumentationReview(content, discovery!, review.changes, documentationPages);
-                            output = `${review.report}\n\n${coverage}`;
+                            output = review.final_response;
                             if (review.changes.length) {
                                 const changes = await materializeDocumentationChanges(root, review.changes, documentationPages);
                                 const proposal = await prepareDocumentationReview(this.roadmapStore!, {
@@ -2312,11 +2311,16 @@ export class ChatBackend implements ChatService {
                                     throw new Error('Documentation source changed during review');
                                 documentActivity = { schemaVersion: 1, kind: 'documentation-proposal', status: 'pending',
                                     refs: [...preview.refs, ...sourceRefs], proposalId: proposal.id,
-                                    documentProposal: proposal };
-                            } else output += '\n\nNo documentation change was proposed or applied.';
+                                    documentProposal: proposal,
+                                    documentationDiscovery: { detected: discovery!.enumerated,
+                                        omitted: discovery!.omitted,
+                                        reads: [...new Map(readPaths.map(path => [path,
+                                            { path, count: readPaths.filter(read => read === path).length }])).values()]
+                                            .sort((a, b) => a.path.localeCompare(b.path)) } };
+                            }
                         } catch (error) {
                             output = `Documentation review could not stage a proposal: ${String(error).slice(0, 300)}. ` +
-                                `No document was changed.\n\n${coverage}`;
+                                'No document was changed.';
                         }
                     }
                     const finishAssistant = async (planningActivity?: ChatPlanningActivity) => {

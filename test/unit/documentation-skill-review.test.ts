@@ -12,7 +12,7 @@ test('incomplete create-only review cannot claim a requested current-document up
     const discovery = { enumerated: 2, searched: 2, omitted: [], candidates: [
         { path: 'docs/history/old-scoring.md', line: 1, heading: '# Archived', historical: true, score: 12 },
         { path: 'docs/current/scoring.md', line: 1, heading: '# Scoring', historical: false, score: 9 }] };
-    const output = JSON.stringify({ report: 'Both documents are updated.', changes: [
+    const output = JSON.stringify({ final_response: 'I prepared the requested review.', report: 'Both documents are updated.', changes: [
         { path: 'docs/current/validation.txt', after: 'new\n' }] });
     const review = parseDocumentationSkillReview(output, ['docs/current/scoring.md']);
     assert.throws(() => requireCompleteDocumentationReview(
@@ -62,25 +62,35 @@ test('named root update is checked instead of an unrelated discovered document',
 });
 
 test('one wrapped review object is accepted; competing or malformed objects are not', () => {
-    const valid = JSON.stringify({ report: 'Both targets are covered.', changes: [
+    const valid = JSON.stringify({ final_response: 'I prepared the requested review.', report: 'Both targets are covered.', changes: [
         { path: 'docs/current/scoring.md', replace: { before: 'old', after: 'new' } },
         { path: 'docs/current/validation.txt', after: 'case\n' }] });
     assert.equal(parseDocumentationSkillReview(`Here is the review:\n\`\`\`json\n${valid}\n\`\`\`\nDone.`,
         ['docs/current/scoring.md']).changes.length, 2);
+    assert.equal(parseDocumentationSkillReview(valid, ['docs/current/scoring.md']).final_response,
+        'I prepared the requested review.');
+    const conversational = 'I prepared the update from the current rule. It keeps the original context intact. ' +
+        'You can review the proposed diff before applying anything.';
+    assert.equal(parseDocumentationSkillReview(JSON.stringify({ final_response: conversational,
+        report: 'Reviewed current rule.', changes: [] }), []).final_response, conversational);
+    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ report: 'x', changes: [] }), []),
+        /Invalid documentation review structure/);
+    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ final_response: '', report: 'x', changes: [] }), []),
+        /Invalid documentation review structure/);
     assert.throws(() => parseDocumentationSkillReview(`${valid}\n${valid}`,
         ['docs/current/scoring.md']), /exactly one valid JSON object/);
-    assert.throws(() => parseDocumentationSkillReview('{"report":"broken","changes":[]', []),
+    assert.throws(() => parseDocumentationSkillReview('{"final_response":"Review ready.","report":"broken","changes":[]', []),
         /exactly one valid JSON object/);
 });
 
 test('a change embedded in report prose cannot cross the review boundary', () => {
     // Captured from the 2026-11-06 connected-browser failure after a real brokered read.
-    const failed = JSON.stringify({ report: 'Read docs/current/rules.md. Changes:[{"path":"docs/current/rules.md",' +
+    const failed = JSON.stringify({ final_response: 'I prepared the requested review.', report: 'Read docs/current/rules.md. Changes:[{"path":"docs/current/rules.md",' +
         '"replace":{"before":"A fraction such as 42.8 truncates to 42 before clamping.",' +
         '"after":"A fraction such as 42.8 truncates to 42 before clamping.\\nThe bounds are inclusive."}}]' });
     assert.throws(() => parseDocumentationSkillReview(failed, ['docs/current/rules.md']),
         /Invalid documentation review structure/);
-    const valid = JSON.stringify({ report: 'Read the current rule; append the requested sentence.', changes: [
+    const valid = JSON.stringify({ final_response: 'I prepared the requested review.', report: 'Read the current rule; append the requested sentence.', changes: [
         { path: 'docs/current/rules.md', replace: {
             before: 'A fraction such as 42.8 truncates to 42 before clamping.',
             after: 'A fraction such as 42.8 truncates to 42 before clamping.\nThe bounds are inclusive.' } }] });
@@ -88,10 +98,10 @@ test('a change embedded in report prose cannot cross the review boundary', () =>
         [{ path: 'docs/current/rules.md', replace: {
             before: 'A fraction such as 42.8 truncates to 42 before clamping.',
             after: 'A fraction such as 42.8 truncates to 42 before clamping.\nThe bounds are inclusive.' } }]);
-    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ report: 'Read the rule.', changes: {
+    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ final_response: 'I prepared the requested review.', report: 'Read the rule.', changes: {
         path: 'docs/current/rules.md', replace: { before: 'old', after: 'new' } } }),
     ['docs/current/rules.md']), /Invalid documentation review structure/);
-    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ report: 'Read the rule.', changes: [
+    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ final_response: 'I prepared the requested review.', report: 'Read the rule.', changes: [
         { path: 'docs/current/rules.md', replace: { before: 'old', after: 'new' }, after: 'new' }] }),
     ['docs/current/rules.md']), /Invalid documentation change/);
 });

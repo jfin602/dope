@@ -27,11 +27,11 @@ test('explicit Docs discovery ranks current relevant and late headings without b
 });
 
 test('review output is bounded proposal data and requires actual brokered reads for changes', () => {
-    const output = JSON.stringify({ report: 'Current requirement needs a clarification.',
+    const output = JSON.stringify({ final_response: 'I prepared the requested review.', report: 'Current requirement needs a clarification.',
         changes: [{ path: 'docs/current.md', after: '# Current\nclarified\n' }] });
     assert.equal(parseDocumentationSkillReview(output, ['docs/current.md']).changes.length, 1);
     assert.throws(() => parseDocumentationSkillReview(output, []), /brokered document read/);
     assert.throws(() => parseDocumentationSkillReview('Here is a patch', ['docs/current.md']), /JSON/);
-    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ report: 'x', changes: [], apply: true }), []),
+    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ final_response: 'I prepared the requested review.', report: 'x', changes: [], apply: true }), []),
         /structure/);
 });
