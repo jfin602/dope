@@ -36,7 +36,8 @@ import { typedRoadmapCounts } from './roadmap-typed-stage';
 import { prepareDocumentationReview, documentationReviewApplicability } from './documentation-review';
 import { applyDocumentationProposal, reconcileDocumentationApplication } from './documentation-application';
 import { discoverDocumentation } from './documentation-discovery';
-import { documentationCoverage, parseDocumentationSkillReview } from './documentation-skill-review';
+import { documentationCoverage, materializeDocumentationChanges, parseDocumentationSkillReview,
+    requireCompleteDocumentationReview, type DocumentationReadPage } from './documentation-skill-review';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -1581,10 +1582,12 @@ export class ChatBackend implements ChatService {
         const discoveryPrompt = discovery ? `\nVerified local discovery: ${discovery.enumerated} documents enumerated, ` +
             `${discovery.searched} searched. Candidate paths and heading matches (search is not a model read): ` +
             JSON.stringify(discovery.candidates) + `\nOmissions: ${JSON.stringify(discovery.omitted)}. ` +
-            'Use brokered read_file pages with sourceHash and offsets to inspect relevant ranges, including late sections. ' +
+            'Use brokered read_file pages (maxBytes 1..4096). Read offset 0 first; later offsets are pinned to that sourceHash in this turn, even if you omit expectedSourceHash. Read indicated late sections. ' +
             'Return only JSON {"report":"source-grounded findings, current versus historical authority, uncertainties",' +
             '"changes":[{"path":"eligible relative .md/.txt path","after":"complete proposed UTF-8 file bytes"}]}. ' +
-            'Use [] when there is no justified change. At most four changes. Do not claim searched files were read.' : '';
+            'For a small update to a long file, use {"path":"...","replace":{"before":"exact unique source text you read","after":"replacement text"}} instead; Dope preserves all other bytes. ' +
+            'Include every requested create and update in one review. Use [] and report an incomplete review when a required source is missing or unread. ' +
+            'At most four changes. Do not claim searched files were read.' : '';
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}` : undefined;
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
         const helpTurn = !roadmapSkill && !docsReview && !docsApply && !!selectDopeCapabilityHelp(content);
@@ -1763,6 +1766,8 @@ export class ChatBackend implements ChatService {
         const sourceRefs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> = [];
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
         let toolBytes = 0;
+        const documentationPages: DocumentationReadPage[] = [];
+        const documentationHashes = new Map<string, string>();
         const noProjectTools = !!publicationIntent || docsApply || forbidsProjectTools(content);
         // This closure belongs to one authorized Chat execution. A later read may inspect
         // staged operations, but cannot silently rebase its original source preconditions.
@@ -2025,7 +2030,8 @@ export class ChatBackend implements ChatService {
                             (typeof record.expectedSourceHash !== 'string' ||
                             !/^[a-f0-9]{64}$/u.test(record.expectedSourceHash)) ?
                             ['INVALID_SOURCE_IDENTITY', 'Use the sourceHash returned by the first page.'] :
-                            (record.offset as number ?? 0) > 0 && !record.expectedSourceHash ?
+                            (record.offset as number ?? 0) > 0 && !record.expectedSourceHash &&
+                            !(docsReview && documentationHashes.has(record.path as string)) ?
                             ['SOURCE_IDENTITY_REQUIRED', 'Start with offset 0 to obtain sourceHash, then retry the later range.'] : undefined;
                         if (invalid) {
                             toolEvents.push({ name: toolName, status: 'failed', truncated: false,
@@ -2038,13 +2044,18 @@ export class ChatBackend implements ChatService {
                         const page = await this.grounder!.readFileRange(root, record.path as string,
                             record.offset === undefined ? 0 : record.offset as number,
                             record.maxBytes === undefined ? 4096 : record.maxBytes as number,
-                            record.expectedSourceHash as string | undefined);
+                            (record.expectedSourceHash as string | undefined) ??
+                                (docsReview ? documentationHashes.get(record.path as string) : undefined));
                         if (signal?.aborted || this.active(request.projectHandle) !== root)
                             throw new Error('Project discovery cancelled');
                         const payload = JSON.stringify(page);
                         const payloadBytes = Buffer.byteLength(payload, 'utf8');
                         if (payloadBytes > 8000 || payloadBytes > remaining) throw new Error('Project discovery output limit reached');
                         toolBytes += payloadBytes;
+                        if (docsReview) {
+                            documentationHashes.set(page.path, page.sourceHash);
+                            documentationPages.push(page);
+                        }
                         sourceRefs.push({ schemaVersion: 1, kind: 'file', id: page.path, label: page.path,
                             origin: 'tool', projectId: createHash('sha256').update(root).digest('hex'),
                             includedBytes: Buffer.byteLength(page.text, 'utf8'),
@@ -2261,12 +2272,14 @@ export class ChatBackend implements ChatService {
                         try {
                             if (event.finishReason === 'length') throw new Error('Model output was truncated');
                             const review = parseDocumentationSkillReview(output, readPaths);
+                            requireCompleteDocumentationReview(content, discovery!, review.changes, documentationPages);
                             output = `${review.report}\n\n${coverage}`;
                             if (review.changes.length) {
+                                const changes = await materializeDocumentationChanges(root, review.changes, documentationPages);
                                 const proposal = await prepareDocumentationReview(this.roadmapStore!, {
                                     root, chatId: key, messageId: assistant.id,
                                     ownerId: this.leases.get(key)!.ownerId, leaseToken: request.leaseToken,
-                                    changes: review.changes });
+                                    changes });
                                 if (proposal.targets.some(target => target.operation === 'update' &&
                                     !readPaths.includes(target.path)))
                                     throw new Error('An updated target was not read through the broker');

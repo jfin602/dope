@@ -674,6 +674,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 'Review only. Apply requires a separate developer decision and will recheck every source.' :
                 activity.status === 'approved' ? 'Approval recorded. Recover and verify the application outcome.' :
                 activity.status === 'applied' ? 'Approved document changes were verified. See History for the applied diff.' :
+                activity.status === 'denied' ? 'You rejected this documentation proposal. No document was changed.' :
                 activity.diagnostic ?? 'This proposal was not fully applied. Check History for any verified retained changes.';
             card.append(note);
             if (activity.status === 'pending') {

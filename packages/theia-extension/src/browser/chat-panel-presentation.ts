@@ -200,6 +200,13 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                 questions: raw.questions };
         } catch { return { summary: 'Bridge suggestion is unavailable for review. Nothing was written.', questions: [] }; }
     }
+    if (activity.kind === 'documentation-proposal') return {
+        summary: activity.status === 'denied' ? 'You rejected the documentation proposal. No document was changed.' :
+            activity.status === 'pending' ? 'A documentation diff is ready for review. No document was changed.' :
+            activity.status === 'applied' ? 'The reviewed documentation changes were applied and verified.' :
+            `Documentation review: ${activity.status}. Check the saved proposal for its verified outcome.`,
+        questions: activity.status === 'denied' ? ['What should change in the next review?'] : [],
+    };
     const ref = activity.refs.find(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap');
     const target = ref ? ref.kind === 'roadmap' ? ref.label : `checkpoint ${ref.label}` :
         activity.kind.startsWith('roadmap-draft') ? 'Roadmap draft' : 'Roadmap';

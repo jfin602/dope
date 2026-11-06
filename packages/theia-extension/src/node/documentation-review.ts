@@ -9,7 +9,8 @@ import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store'
 const digest = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const maxFile = 16_384;
-const maxSet = 12_000;
+// Count both sides of a reviewed update; a single eligible 16 KiB document must fit.
+const maxSet = 40_000;
 
 async function worktreeIdentity(root: string): Promise<string> {
     const directory = await stat(root);
@@ -52,9 +53,16 @@ function textBytes(value: string, label: string): Buffer {
 }
 
 function reviewDiff(path: string, before: string | null, after: string): string {
-    return `--- a/${path}\n+++ b/${path}\n` +
-        `@@ reviewed full text @@\n${(before ?? '').split('\n').map(line => `-${line}`).join('\n')}\n` +
-        `${after.split('\n').map(line => `+${line}`).join('\n')}\n`;
+    const oldLines = (before ?? '').split('\n'), newLines = after.split('\n');
+    let start = 0;
+    while (start < oldLines.length && start < newLines.length && oldLines[start] === newLines[start]) start++;
+    let oldEnd = oldLines.length, newEnd = newLines.length;
+    while (oldEnd > start && newEnd > start && oldLines[oldEnd - 1] === newLines[newEnd - 1]) {
+        oldEnd--; newEnd--;
+    }
+    return `--- a/${path}\n+++ b/${path}\n@@ line ${start + 1} @@\n` +
+        oldLines.slice(start, oldEnd).map(line => `-${line}\n`).join('') +
+        newLines.slice(start, newEnd).map(line => `+${line}\n`).join('');
 }
 
 /** Inspect without making a destination or its parent. Apply must repeat all checks. */

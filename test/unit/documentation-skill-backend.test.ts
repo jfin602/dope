@@ -31,12 +31,13 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
                 text: string; sourceHash: string; nextOffset: number };
             assert.equal(page.text.includes('## Late policy'), false);
             const late = JSON.parse(await request.projectTools!.execute('read_file',
-                { path: 'docs/policy.md', offset: page.nextOffset, maxBytes: 4096,
-                    expectedSourceHash: page.sourceHash })) as { text: string };
+                { path: 'docs/policy.md', offset: page.nextOffset, maxBytes: 4096 })) as { text: string };
             assert.match(late.text, /## Late policy\nold/);
             yield { type: 'complete' as const, text: JSON.stringify({
                 report: 'Current policy needs the approved new wording.',
-                changes: [{ path: 'docs/policy.md', after }] }),
+                changes: [{ path: 'docs/policy.md', replace: { before: '## Late policy\nold\n',
+                    after: '## Late policy\nnew\n' } },
+                { path: 'docs/new.txt', after: 'Validation cases\n' }] }),
             actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
         } else yield { type: 'complete' as const, text: 'A literal command example is inert.',
             actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
@@ -62,12 +63,14 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
         await turn('Explain the literal command `/docs-review` in a code sample.');
         assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-2)?.role === 'user' &&
             (await backend.get(projectHandle, chatId))!.messages.at(-2)?.skill, undefined);
-        await turn('/docs-review clarify policy');
+        await turn('/docs-review update docs/policy.md at its late section and create docs/new.txt');
         let messages = (await backend.get(projectHandle, chatId))!.messages;
         const review = messages.at(-1);
         assert.equal(review?.role, 'assistant');
         const proposal = review?.role === 'assistant' ? review.planningActivity?.documentProposal : undefined;
         assert.ok(proposal);
+        assert.deepEqual(proposal.targets.map(target => [target.path, target.operation]),
+            [['docs/policy.md', 'update'], ['docs/new.txt', 'create']]);
         assert.equal(review?.role === 'assistant' && review.planningActivity?.status, 'pending');
         assert.equal(messages.at(-2)?.role === 'user' && messages.at(-2)?.skill?.name, 'docs-review');
         assert.equal(await readFile(join(root, 'docs', 'policy.md'), 'utf8'), before);
@@ -87,8 +90,10 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
         const applied = await backend.applyDocumentation(projectHandle, chatId, lease.token, proposal.id, proposal.digest);
         assert.equal(applied.status, 'complete');
         assert.equal(await readFile(join(root, 'docs', 'policy.md'), 'utf8'), after);
+        assert.equal(await readFile(join(root, 'docs', 'new.txt'), 'utf8'), 'Validation cases\n');
         assert.equal((await history.read(attached.projectHandle)).entries.filter(entry => entry.source === 'documentation').length, 1);
         await assert.rejects(turn('/docs-apply'), /exactly one current reviewed/i);
         history.dispose();
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
+        maxRetries: 5, retryDelay: 50 }); }
 });

@@ -62,7 +62,7 @@ export async function discoverDocumentation(root: string, objective: string): Pr
                 if (info.size > bytes.length) omitted.push(`Search truncated: ${path}`);
                 const text = bytes.toString('utf8');
                 const lines = text.split(/\r?\n/u);
-                const historical = /^(?:docs\/tasks\/|docs\/planning\/.*(?:archive|qualification)|.*(?:report|closeout|evidence)\.md$)/iu.test(path);
+                const historical = /^(?:docs\/(?:history|archive|archives|tasks)\/|docs\/planning\/.*(?:archive|qualification)|.*(?:report|closeout|evidence)\.md$)/iu.test(path);
                 let best = { score: words.filter(word => path.toLowerCase().includes(word)).length * 5,
                     line: 1, heading: lines.find(line => /^#{1,6}\s/u.test(line))?.slice(0, 160) ?? '' };
                 for (let i = 0; i < lines.length; i++) {

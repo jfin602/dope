@@ -56,7 +56,10 @@ test('Finish Planning locks only the reviewed Phase, persists one History revisi
             ['phase-finish-planning:p1', `planning-approval:${preview.approvalId}`]);
         const history = async () => (await readHistoryOwnerMetadata({ projectId: 'workbench', projectRoot: root },
             new Date().toISOString())).entries.filter(item => item.source === 'roadmap');
-        assert.deepEqual((await history()).map(item => item.title),
+        const titles = (await history()).map(item => item.title);
+        assert.ok(titles.includes('Phase Gate coverage reviewed'));
+        assert.ok(titles.includes('Phase qualification: not-green'));
+        assert.deepEqual(titles.filter(title => title.startsWith('Phase planning ')),
             [`Phase planning locked (R${locked.revision})`]);
         await assert.rejects(store.finishPlanning(root, preview, true, 'reviewer'), /unissued/);
         await assert.rejects(store.mutateGateIndex(root, locked.revision, 'owner',
@@ -68,7 +71,7 @@ test('Finish Planning locks only the reviewed Phase, persists one History revisi
         const reopen = await store.previewReopenPlanning(root, 'owner', other.revision, 'p1');
         const reopened = await store.reopenPlanning(root, reopen, true, 'reviewer');
         assert.equal(reopened.phases.find(p => p.id === 'p1')?.planningLock, undefined);
-        assert.deepEqual((await history()).map(item => item.title),
+        assert.deepEqual((await history()).map(item => item.title).filter(title => title.startsWith('Phase planning ')),
             [`Phase planning reopened (R${reopened.revision})`, `Phase planning locked (R${locked.revision})`]);
         await assert.rejects(store.reopenPlanning(root, reopen, true, 'reviewer'), /unissued/);
     }));
