@@ -1,0 +1,28 @@
+# ADR 0052 — User-controlled Chat generation-limit continuation
+
+**Decision:** 2026-11-06, owner-approved forward design. **Status:** ACCEPTED FOR AUTHORING; NOT IMPLEMENTED OR QUALIFIED. **Version:** 0.13.8 unchanged. **Implementation route:** [c13-output-limit](../tasks/c13-output-limit/README.md). **Detailed contract:** [Chat output-limit continuation](../planning/p13/chat-output-limit-continuation-contract.md).
+
+## Evidence and problem
+
+The read-only FireLaunch/VegaLaunch mature-repository comprehension qualification on Dope 0.13.8 / `079f9a8` returned **NOT GREEN, 10/100**. Using local `openai/gpt-oss-20b`, 16,384-token model context, and a 2,048-token generation allowance, the turn ran for 3m32s, read first-page excerpts from `AGENTS.md` and `README.md`, then terminated `finishReason=length`. Provider final text was present and 2,041 final tokens were reported, but Dope saved an empty failed answer. The 627/8,192 Chat context preview was not proof of full Pi input-context occupancy. A generation ceiling is not a context overflow. The narrow document discovery is a separate, still-unqualified retrieval/comprehension problem.
+
+Current `packages/pi-runtime/worker.mjs` buffers Chat final text until a successful stop, `pi-conversation-runtime.ts` rejects length, and `chat-backend.ts` persists empty assistant content on failure. Existing bounded `read_file` ranges, source-hash continuation, Pi compaction, activity provenance, cancellation and brokered tool authority must remain intact.
+
+## Decision
+
+1. **A length stop is a recoverable pause, not automatically an error.** Preserve the exact available provider text, reported token usage and typed reasoning/provisional/tool activity. Never label an incomplete generation as a completed assistant answer.
+2. **One logical Chat execution:** add a typed paused-output-limit state to the existing Chat ownership/execution lifecycle. Keep the same Chat, assistant ID, execution ID, project/root, selected model and eligible brokered tool context. A continuation must append once, not restart the user's request or replay prior tool effects. A stopped partial answer remains inspectable and explicitly incomplete; no partial or failed text enters completed-answer context, titles, search or clean-copy by accident.
+3. **Composer choice:** show a compact, accessible, nonmodal notice immediately above the existing composer: “Generation limit reached. Stop generating?” with **Stop** and **Continue generating**. Keep the transcript scrollable, existing draft/layout, theme behavior and keyboard affordances; do not add another Chat surface.
+4. **Per-Chat policy:** **Ask each time** (default), **Allow each time** (bounded automatic continuation), **Cancel each time** (stop at the boundary and retain incomplete output). Persist the policy through reload and project switch; migrate older Chat settings to Ask. Snapshot the effective policy for the active execution so mid-turn settings changes cannot silently replace an owner decision.
+5. **Capacity and answer economy are distinct:** output ceiling governs how long a provider segment may generate, not how much context the model has and not an obligation to consume the whole ceiling. Encourage concise ordinary final replies (around 1,000 tokens or less and typically under 2,000) without forbidding genuinely requested detailed answers, limiting investigation or adding mandatory summarizer model calls. Do not simply raise every model's cap to conceal the failure.
+6. **Bounded and honest recovery:** allow a limited number of automatic continuations and bounded cumulative provider output; repeated limits, lost session, cancellation, provider change, stale authority or restart have deterministic, inspectable outcomes. If same-session continuation is impossible after restart, mark interrupted/incomplete; do not silently regenerate and call it a continuation. Continue only within the model's measured declared limits and the existing permission/approval boundaries.
+7. **No privilege widening:** a continuation does not reauthorize `run_command`, change Commands Ask/Allow, grant Work access, mutate accepted Roadmap or use `/docs-apply`; ordinary checked tool calls continue through Dope's existing broker, source and owner checks. Preserve exact safe tool-order evidence and source provenance.
+8. **Separate qualification:** implementation checks and targeted integration are headless; the **last** correction prompt is a manual connected Codex-browser closeout. Re-run the identical FireLaunch comprehension prompt against unchanged repository documentation, grade against the original 10/100 baseline, and keep document coverage separate from output survival. No product GREEN, version change or P13 advancement by docs/prompts alone.
+
+## Relationship to prior authority
+
+This decision **amends ADR 0042's failure presentation**, not its protection against unclassified activity being committed as a final answer: incomplete text may be displayed and durably retained as *explicitly partial*, but cannot masquerade as a successfully completed response. Keep ADR 0042 clean-copy, privacy, history and reasoning provenance rules. It does not revise ADR 0041 documentation application, ADR 0051 Roadmap/Work evidence ownership, or previous NOT GREEN evidence.
+
+## Execution boundary
+
+[`c13-output-limit`](../tasks/c13-output-limit/README.md) contains assessment, plan and a runner-compatible correction stack. Only a separate deliberate owner Run authorizes implementation. The normal runner must stop before its final manual real-browser closeout. Do not modify, clone or duplicate the ~2.2 GB `/home/jfin/dev/firelaunch` repository as part of authoring or tests.
