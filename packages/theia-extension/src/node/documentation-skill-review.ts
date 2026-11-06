@@ -92,18 +92,29 @@ export function requireCompleteDocumentationReview(objective: string, discovery:
     const created = /\bcreat(?:e|ing)\b/iu.test(requested);
     const updated = /\bupdat(?:e|ing)\b/iu.test(requested);
     const required = new Set<string>();
-    if (created) for (const path of paths) if (!/\b(?:history|archiv|unrelated)\b/iu.test(path)) required.add(path);
+    // Collect every named create target, including lists, before source citations begin.
+    // A path after "from", "containing", or "read" is evidence, not another target.
+    const createClauses = [...requested.matchAll(/\bcreat(?:e|ing)\b([\s\S]*?)(?=\b(?:from|based\s+on|using|containing|with|read|consult|reference|per|updat(?:e|ing)|creat(?:e|ing))\b|;|\.(?=\s)|$)/giu)]
+        .map(match => match[1]);
+    const explicitCreates = createClauses.flatMap(clause =>
+        [...clause.matchAll(/(?:^|[\s`'"(])([\w-]+(?:\/[\w.-]+)*\.(?:md|txt))\b/giu)]
+            .map(match => match[1]).filter(path => path.includes('/')));
+    if (created) explicitCreates.forEach(path => required.add(path));
     if (updated) {
         const explicitUpdates = [...requested.matchAll(/\bupdat(?:e|ing)\s+(?:the\s+)?([\w-]+(?:\/[\w.-]+)*\.(?:md|txt))\b/giu)]
             .map(match => match[1]);
         if (explicitUpdates.some(path => !discovery.candidates.some(item => item.path === path && !item.historical)))
             throw new Error('Incomplete review: requested update source not discovered');
-        const namedCurrent = paths.filter(path => discovery.candidates.some(item => item.path === path && !item.historical));
-        if (namedCurrent.length) namedCurrent.forEach(path => required.add(path));
+        if (explicitUpdates.length) explicitUpdates.forEach(path => required.add(path));
         else {
-            const candidate = discovery.candidates.find(item => !item.historical &&
-                !required.has(item.path) && item.score > 0);
-            if (candidate) required.add(candidate.path);
+            const namedCurrent = paths.filter(path => !explicitCreates.includes(path) &&
+                discovery.candidates.some(item => item.path === path && !item.historical));
+            if (namedCurrent.length) namedCurrent.forEach(path => required.add(path));
+            else {
+                const candidate = discovery.candidates.find(item => !item.historical &&
+                    !required.has(item.path) && item.score > 0);
+                if (candidate) required.add(candidate.path);
+            }
         }
     }
     for (const path of required) if (!changes.some(change => change.path === path))

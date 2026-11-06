@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
-import { documentationReviewApplicability, prepareDocumentationReview } from '../../packages/theia-extension/lib/node/documentation-review.js';
+import { documentationReviewApplicability, prepareDocumentationReview,
+    renewDocumentationReviewLease } from '../../packages/theia-extension/lib/node/documentation-review.js';
 import { parsePlanningActivity } from '../../packages/chat/lib/index.js';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
 
@@ -67,6 +68,26 @@ test('review rejects collision, symlink, protected, unsafe, oversized and foreig
         assert.equal(await documentationReviewApplicability(store, proposal, root), 'stale');
         assert.equal(await documentationReviewApplicability(store, proposal, '/tmp'), 'expired');
         assert.equal(await documentationReviewApplicability(store, { ...proposal, expiresAt: '2000-01-01T00:00:00.000Z' }, root), 'expired');
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('lease renewal retains reviewed bytes only for the same owner and current source', async () => {
+    const { root, store, request } = await fixture();
+    try {
+        await writeFile(join(root, 'docs/current.md'), 'before\n');
+        const proposal = await prepareDocumentationReview(store, request([
+            { path: 'docs/current.md', after: 'before\nThe bounds are inclusive.\n' }]));
+        const renewed = await renewDocumentationReviewLease(store, proposal, root, 'panel-a', 'new-lease');
+        assert.equal(renewed.id, proposal.id);
+        assert.notEqual(renewed.digest, proposal.digest);
+        assert.deepEqual(renewed.targets, proposal.targets);
+        assert.equal(await documentationReviewApplicability(store, renewed, root), 'applicable');
+        assert.equal(await readFile(join(root, 'docs/current.md'), 'utf8'), 'before\n');
+        await assert.rejects(renewDocumentationReviewLease(store, proposal, root,
+            'foreign-panel', 'foreign-lease'), /owner or source changed/);
+        await writeFile(join(root, 'docs/current.md'), 'concurrent edit\n');
+        await assert.rejects(renewDocumentationReviewLease(store, proposal, root,
+            'panel-a', 'later-lease'), /owner or source changed/);
     } finally { await rm(root, { recursive: true, force: true }); }
 });
 

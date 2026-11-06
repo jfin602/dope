@@ -200,13 +200,26 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
                 questions: raw.questions };
         } catch { return { summary: 'Bridge suggestion is unavailable for review. Nothing was written.', questions: [] }; }
     }
-    if (activity.kind === 'documentation-proposal') return {
-        summary: activity.status === 'denied' ? 'You rejected the documentation proposal. No document was changed.' :
-            activity.status === 'pending' ? 'A documentation diff is ready for review. No document was changed.' :
-            activity.status === 'applied' ? 'The reviewed documentation changes were applied and verified.' :
+    if (activity.kind === 'documentation-proposal') {
+        const targets = activity.documentProposal?.targets ?? [];
+        const one = targets[0];
+        const added = one?.diff.split('\n').filter(line => line.startsWith('+') && !line.startsWith('+++')) ?? [];
+        const removed = one?.diff.split('\n').filter(line => line.startsWith('-') && !line.startsWith('---')) ?? [];
+        const detail = targets.length === 1 && one ?
+            one.operation === 'update' && added.length === 1 && !removed.length && added[0].slice(1).trim() ?
+                `Update ${one.path}: add “${added[0].slice(1).trim().slice(0, 160)}”` :
+                `${one.operation === 'create' ? 'Create' : 'Update'} ${one.path}` :
+            targets.length ? `${targets.length} document changes: ${targets.map(target =>
+                `${target.operation} ${target.path}`).join('; ')}` : 'Documentation review';
+        const sentence = `${detail}${detail.endsWith('”') ? '' : '.'}`;
+        return {
+        summary: activity.status === 'denied' ? `${sentence} Rejected; no document was changed.` :
+            activity.status === 'pending' ? `${sentence} No document was changed.` :
+            activity.status === 'applied' ? `${sentence} Applied and verified.` :
             `Documentation review: ${activity.status}. Check the saved proposal for its verified outcome.`,
         questions: activity.status === 'denied' ? ['What should change in the next review?'] : [],
-    };
+        };
+    }
     const ref = activity.refs.find(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap');
     const target = ref ? ref.kind === 'roadmap' ? ref.label : `checkpoint ${ref.label}` :
         activity.kind.startsWith('roadmap-draft') ? 'Roadmap draft' : 'Roadmap';
@@ -288,6 +301,12 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
         summary: `The local planning turn failed before an approved change could be applied.`,
         questions: ['Would you like to check the error and current source before retrying?'],
     };
+}
+
+/** Older saved Docs turns retain the original notice, which is stale after approval. */
+export function documentationReviewDisplayText(message: ChatAssistantMessage): string {
+    if (message.planningActivity?.kind !== 'documentation-proposal') return message.content;
+    return message.content.replace(/\n\nA source-bound documentation diff is ready for separate review and approval\. No document was changed\.$/u, '');
 }
 
 export const CHAT_PANEL_ID = 'dope-chat-panel';

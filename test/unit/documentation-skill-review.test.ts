@@ -34,6 +34,33 @@ test('incomplete create-only review cannot claim a requested current-document up
     /requested update source not discovered/);
 });
 
+test('create target is distinct from the current document cited as its source', () => {
+    const discovery = { enumerated: 1, searched: 1, omitted: [], candidates: [
+        { path: 'docs/current/rules.md', line: 1, heading: '# Rules', historical: false, score: 10 }] };
+    const objective = '/docs-review Create docs/current/r2-check.txt from docs/current/rules.md';
+    assert.doesNotThrow(() => requireCompleteDocumentationReview(objective, discovery,
+        [{ path: 'docs/current/r2-check.txt' }], [{ path: 'docs/current/rules.md', offset: 0,
+            endOffset: 100, fileBytes: 100, sourceHash: 'a'.repeat(64), text: '# Rules' }]));
+    assert.throws(() => requireCompleteDocumentationReview(objective, discovery, [], []),
+        /required target omitted: docs\/current\/r2-check.txt/);
+    assert.throws(() => requireCompleteDocumentationReview(
+        '/docs-review create docs/current/one.txt and docs/current/two.txt from docs/current/rules.md',
+        discovery, [{ path: 'docs/current/one.txt' }], []),
+    /required target omitted: docs\/current\/two.txt/);
+});
+
+test('named root update is checked instead of an unrelated discovered document', () => {
+    const discovery = { enumerated: 2, searched: 2, omitted: [], candidates: [
+        { path: 'AGENTS.md', line: 1, heading: '# Instructions', historical: false, score: 5 },
+        { path: 'docs/current/rules.md', line: 1, heading: '# Rules', historical: false, score: 10 }] };
+    const objective = '/docs-review Update AGENTS.md after reading docs/current/rules.md';
+    assert.doesNotThrow(() => requireCompleteDocumentationReview(objective, discovery,
+        [{ path: 'AGENTS.md' }], [{ path: 'AGENTS.md', offset: 0, endOffset: 12,
+            fileBytes: 12, sourceHash: 'a'.repeat(64), text: '# Instructions' }]));
+    assert.throws(() => requireCompleteDocumentationReview(objective, discovery,
+        [{ path: 'docs/current/rules.md' }], []), /required target omitted: AGENTS\.md/);
+});
+
 test('one wrapped review object is accepted; competing or malformed objects are not', () => {
     const valid = JSON.stringify({ report: 'Both targets are covered.', changes: [
         { path: 'docs/current/scoring.md', replace: { before: 'old', after: 'new' } },
@@ -44,6 +71,29 @@ test('one wrapped review object is accepted; competing or malformed objects are 
         ['docs/current/scoring.md']), /exactly one valid JSON object/);
     assert.throws(() => parseDocumentationSkillReview('{"report":"broken","changes":[]', []),
         /exactly one valid JSON object/);
+});
+
+test('a change embedded in report prose cannot cross the review boundary', () => {
+    // Captured from the 2026-11-06 connected-browser failure after a real brokered read.
+    const failed = JSON.stringify({ report: 'Read docs/current/rules.md. Changes:[{"path":"docs/current/rules.md",' +
+        '"replace":{"before":"A fraction such as 42.8 truncates to 42 before clamping.",' +
+        '"after":"A fraction such as 42.8 truncates to 42 before clamping.\\nThe bounds are inclusive."}}]' });
+    assert.throws(() => parseDocumentationSkillReview(failed, ['docs/current/rules.md']),
+        /Invalid documentation review structure/);
+    const valid = JSON.stringify({ report: 'Read the current rule; append the requested sentence.', changes: [
+        { path: 'docs/current/rules.md', replace: {
+            before: 'A fraction such as 42.8 truncates to 42 before clamping.',
+            after: 'A fraction such as 42.8 truncates to 42 before clamping.\nThe bounds are inclusive.' } }] });
+    assert.deepEqual(parseDocumentationSkillReview(valid, ['docs/current/rules.md']).changes,
+        [{ path: 'docs/current/rules.md', replace: {
+            before: 'A fraction such as 42.8 truncates to 42 before clamping.',
+            after: 'A fraction such as 42.8 truncates to 42 before clamping.\nThe bounds are inclusive.' } }]);
+    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ report: 'Read the rule.', changes: {
+        path: 'docs/current/rules.md', replace: { before: 'old', after: 'new' } } }),
+    ['docs/current/rules.md']), /Invalid documentation review structure/);
+    assert.throws(() => parseDocumentationSkillReview(JSON.stringify({ report: 'Read the rule.', changes: [
+        { path: 'docs/current/rules.md', replace: { before: 'old', after: 'new' }, after: 'new' }] }),
+    ['docs/current/rules.md']), /Invalid documentation change/);
 });
 
 test('late exact replacement preserves a long source and stages one create plus update', async () => {

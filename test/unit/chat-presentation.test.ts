@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -24,6 +24,19 @@ test('native Roadmap card states keep saved terminal and inactive pending propos
     assert.match(frontend, /await widget\.presentChatProposal\(projectUri, chatId, proposal\);[\s\S]*?if \(activate\) await context\.container\.get\(CommandRegistry\)\.executeCommand\('dope\.roadmap\.open'\)/);
     assert.match(canvas, /index\.linkedDocument\?\.sourceHash !== proposal\.sourceHash/);
     assert.match(canvas, /private async reviewProposal\(ids: string\[\], decision: 'apply' \| 'reject'/);
+});
+
+test('pending documentation heading summarizes the saved reviewed change', () => {
+    const message = { content: 'Model report', planningActivity: { kind: 'documentation-proposal',
+        status: 'pending', documentProposal: { targets: [{ path: 'docs/current/rules.md',
+            operation: 'update', diff: '--- a/docs/current/rules.md\n+++ b/docs/current/rules.md\n@@ line 6 @@\n+The bounds are inclusive.\n' }] } } } as ChatAssistantMessage;
+    assert.equal(planningOutcome(message)?.summary,
+        'Update docs/current/rules.md: add “The bounds are inclusive.” No document was changed.');
+    const applied = { ...message, content: 'Read the rule.\n\nA source-bound documentation diff is ready for separate review and approval. No document was changed.',
+        planningActivity: { ...message.planningActivity, status: 'applied' } } as ChatAssistantMessage;
+    assert.equal(planningOutcome(applied)?.summary,
+        'Update docs/current/rules.md: add “The bounds are inclusive.” Applied and verified.');
+    assert.equal(documentationReviewDisplayText(applied), 'Read the rule.');
 });
 
 test('saved and live diagnostic activity retains full content in the existing viewer', () => {

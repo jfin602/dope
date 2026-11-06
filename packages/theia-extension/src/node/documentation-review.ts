@@ -179,3 +179,18 @@ export async function documentationReviewApplicability(store: RoadmapStore, prop
     }
     return 'applicable';
 }
+
+/** Rotate only the approval lease of an unchanged, still-applicable pending review. */
+export async function renewDocumentationReviewLease(store: RoadmapStore, proposal: ChatDocumentationProposal,
+    root: string, ownerId: string, leaseToken: string): Promise<ChatDocumentationProposal> {
+    if (proposal.root !== root || proposal.ownerId !== ownerId ||
+        await documentationReviewApplicability(store, proposal, root) !== 'applicable')
+        throw new Error('Documentation review owner or source changed');
+    const leaseDigest = digest(leaseToken);
+    const next = { ...proposal, leaseDigest };
+    return { ...next, digest: digest(JSON.stringify({ id: next.id, root: next.root,
+        projectId: next.projectId, worktreeId: next.worktreeId, ownerId: next.ownerId,
+        chatId: next.chatId, messageId: next.messageId, leaseDigest,
+        revision: next.roadmapRevision, targets: next.targets, createdAt: next.createdAt,
+        expiresAt: next.expiresAt })) };
+}

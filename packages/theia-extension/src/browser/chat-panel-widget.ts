@@ -18,7 +18,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
@@ -675,6 +675,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 activity.status === 'approved' ? 'Approval recorded. Recover and verify the application outcome.' :
                 activity.status === 'applied' ? 'Approved document changes were verified. See History for the applied diff.' :
                 activity.status === 'denied' ? 'You rejected this documentation proposal. No document was changed.' :
+                activity.status === 'stale' ? 'This unapproved proposal is stale. No document was changed by it. Review current source again.' :
                 activity.diagnostic ?? 'This proposal was not fully applied. Check History for any verified retained changes.';
             card.append(note);
             if (activity.status === 'pending') {
@@ -2784,7 +2785,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (message.role === 'user') item.dataset.color = chat.color;
             const content = document.createElement('div');
             content.className = 'dope-chat-message-content';
-            const body = message.content;
+            const body = message.role === 'assistant' ? documentationReviewDisplayText(message) : message.content;
             if (message.role === 'assistant' && message.execution.status === 'pending' && !body) {
                 if (!(state.running && message.id === activeAssistant?.id)) content.textContent = 'Working...';
             } else if (message.role === 'assistant') {

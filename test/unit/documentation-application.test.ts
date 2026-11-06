@@ -191,10 +191,24 @@ test('Chat backend requires a distinct exact developer approval and consumes it 
         await assert.rejects(backend.applyDocumentation(projectHandle, chatId, 'wrong', proposal.id, proposal.digest), /ownership/i);
         await assert.rejects(backend.applyDocumentation(projectHandle, chatId, lease.token, proposal.id, digest('wrong')), /Exact/i);
         assert.equal((await readDocumentationApplications(f.root)).length, 0);
-        const result = await backend.applyDocumentation(projectHandle, chatId, lease.token, proposal.id, proposal.digest);
+        await backend.release(projectHandle, chatId, lease.token);
+        const reclaimed = await backend.claim({ projectHandle, chatId, ownerId: 'developer-panel' });
+        if (!reclaimed.acquired) throw new Error('Same owner could not reclaim Chat');
+        const pending = (await backend.get(projectHandle, chatId))!.messages.find(message => message.id === messageId);
+        const renewed = pending?.role === 'assistant' ? pending.planningActivity?.documentProposal : undefined;
+        assert.ok(renewed);
+        assert.equal(pending?.role === 'assistant' && pending.planningActivity?.status, 'pending');
+        assert.equal(renewed.id, proposal.id);
+        assert.notEqual(renewed.digest, proposal.digest);
+        assert.deepEqual(renewed.targets, proposal.targets);
+        assert.equal((await readDocumentationApplications(f.root)).length, 0);
+        await assert.rejects(backend.applyDocumentation(projectHandle, chatId, reclaimed.token,
+            proposal.id, proposal.digest), /Exact/i);
+        const result = await backend.applyDocumentation(projectHandle, chatId, reclaimed.token,
+            renewed.id, renewed.digest);
         assert.equal(result.status, 'complete');
         assert.equal(await readFile(join(f.root, 'docs', 'decision.md'), 'utf8'), '# Decision\n');
-        await assert.rejects(backend.applyDocumentation(projectHandle, chatId, lease.token, proposal.id, proposal.digest), /Exact/i);
+        await assert.rejects(backend.applyDocumentation(projectHandle, chatId, reclaimed.token, renewed.id, renewed.digest), /Exact/i);
         assert.equal((await readDocumentationApplications(f.root)).length, 1);
         const saved = (await repository.read(f.root)).chats[0].messages.find(message => message.id === messageId);
         assert.equal(saved?.role === 'assistant' && saved.planningActivity?.status, 'applied');
