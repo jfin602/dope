@@ -1,4 +1,4 @@
-import { safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatPlanningActivity } from '@dope/chat';
+import { safeChatToolPath, sanitizeChatDiagnosticText, type Chat, type ChatAssistantMessage, type ChatPlanningActivity } from '@dope/chat';
 
 /** Only the current live Ask turn may offer a decision; saved pauses are inert. */
 export function outputLimitDecisionTarget(chat: Chat | undefined, running: boolean):
@@ -468,7 +468,8 @@ export function chatDiagnosticCopyText(chat: Pick<Chat, 'id' | 'messages'>,
     const visibleTimeline = (message: ChatAssistantMessage) => activityTimeline(activityFor(message)?.events ?? [], message,
         message.execution.status === 'complete' || stream?.chatId === chat.id && stream.messageId === message.id &&
         stream.executionId === message.execution.id && !!stream.content);
-    if (!selected.some(message => visibleTimeline(message).length)) return undefined;
+    if (!selected.some(message => visibleTimeline(message).length ||
+        message.execution.status !== 'complete' && !!message.answerPartial?.text)) return undefined;
     const assistantText = (message: ChatAssistantMessage): string => {
         const activity = activityFor(message);
         const lines = [`Assistant [message ${message.id}; execution ${message.execution.id}; ${message.execution.status}]:`];
@@ -499,6 +500,8 @@ export function chatDiagnosticCopyText(chat: Pick<Chat, 'id' | 'messages'>,
             lines.push('[Generation interrupted; recent activity may not have reached storage]');
         if (activity && 'issue' in activity && activity.issue === 'provider-truncated')
             lines.push('[Provider stopped at its output limit; reasoning may be incomplete]');
+        if (message.execution.status !== 'complete' && message.answerPartial?.text)
+            lines.push(`Incomplete answer (not committed):\n${sanitizeChatDiagnosticText(message.answerPartial.text)}`);
         const final = chatResponseCopyText(message);
         lines.push(final ? `Final response:\n${final}` : 'No final response');
         return lines.reduce((copy, line) => copy ?

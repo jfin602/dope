@@ -50,6 +50,26 @@ test('output-limit notice uses current Ask execution and checked action identity
     assert.equal(calls.length, 1);
 });
 
+test('partial-only diagnostic copy is labeled and never enters clean copy', () => {
+    const partial = { role: 'assistant', id: 'answer', content: '', execution: {
+        id: 'execution', status: 'stopped-incomplete' }, answerPartial: {
+        text: 'Verified first half.', cursor: 20, segments: [{ number: 1 }] } } as
+        ChatCollection['chats'][number]['messages'][number];
+    const chat = { id: 'chat', messages: [partial] } as unknown as ChatCollection['chats'][number];
+    assert.equal(chatResponseCopyText(partial as Extract<typeof partial, { role: 'assistant' }>), '');
+    const diagnostic = chatDiagnosticCopyText(chat, { messageId: 'answer' })!;
+    assert.match(diagnostic, /Incomplete answer \(not committed\):\nVerified first half\./);
+    assert.match(diagnostic, /No final response/);
+    assert.equal((diagnostic.match(/Verified first half\./g) ?? []).length, 1);
+    const sensitive = { ...partial, answerPartial: { ...partial.answerPartial,
+        text: 'api_key=veryprivate', cursor: 19 } };
+    const redacted = chatDiagnosticCopyText({ ...chat, messages: [sensitive] }, { messageId: 'answer' })!;
+    assert.match(redacted, /Incomplete answer \(not committed\):\n\[redacted\]/);
+    assert.doesNotMatch(redacted, /veryprivate/);
+    const thinkingOnly = { ...partial, answerPartial: { ...partial.answerPartial, text: '', cursor: 0 } };
+    assert.equal(chatDiagnosticCopyText({ ...chat, messages: [thinkingOnly] }, { messageId: 'answer' }), undefined);
+});
+
 test('output-limit controls stay above the fixed composer with accessible narrow layout', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');

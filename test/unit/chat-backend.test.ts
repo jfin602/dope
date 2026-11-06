@@ -19,7 +19,7 @@ test('explicit current-turn tool opt-out is narrow and distinct from read-only c
 });
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
-import { planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatDiagnosticCopyText, chatResponseCopyText, planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import type { ChatEvent } from '../../packages/chat/lib/service.js';
@@ -96,6 +96,10 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         assert.equal(first.execution.toolEvents?.[0]?.name, 'read_file');
         assert.equal(first.execution.toolEvents?.[0]?.status, 'completed');
         assert.equal(first.execution.sourceRefs?.[0]?.id, 'README.md');
+        assert.equal(first.execution.sourceRefs?.[0]?.sourceHash,
+            createHash('sha256').update('Verified source for this turn.').digest('hex'));
+        assert.equal(first.execution.toolEvents?.length, 1);
+        assert.equal(chatResponseCopyText(first), '');
         assert.ok(first.activity?.events.some(event => event.kind === 'tool'));
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Second question' }), /active/);
@@ -117,6 +121,7 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         assert.equal(completed.content, 'Part 1 complete');
         assert.equal(completed.execution.status, 'complete');
         assert.equal(completed.answerPartial, undefined);
+        assert.equal(chatResponseCopyText(completed), 'Part 1 complete');
         assert.equal(generated, 1);
         assert.equal(resumed, 1);
         assert.equal(reads, 1, 'continuation did not replay the original broker call');
@@ -131,6 +136,11 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         assert.equal(incomplete.content, '');
         assert.equal(incomplete.execution.status, 'stopped-incomplete');
         assert.equal(incomplete.answerPartial?.text, 'Part 2');
+        assert.equal(chatResponseCopyText(incomplete), '');
+        const diagnostic = chatDiagnosticCopyText((await backend.get(projectHandle, chatId))!,
+            { messageId: incomplete.id })!;
+        assert.match(diagnostic, /Incomplete answer \(not committed\):\nPart 2/);
+        assert.equal((diagnostic.match(/Part 2/g) ?? []).length, 1);
         assert.ok(incomplete.activity?.events.some(event => event.kind === 'tool'));
         assert.equal(stopped, 1);
         assert.equal(resumed, 1);

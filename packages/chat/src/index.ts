@@ -1,6 +1,6 @@
 import { parseRoutingProvenance, type RoutingProvenance } from '@dope/ai';
 import { parseExecutionActivity, type ChatExecutionActivity } from './activity';
-export { ChatActivityRecorder, parseExecutionActivity, safeChatToolPath } from './activity';
+export { ChatActivityRecorder, parseExecutionActivity, safeChatToolPath, sanitizeChatDiagnosticText } from './activity';
 export type { ChatActivityEvent, ChatActivityKind, ChatExecutionActivity } from './activity';
 
 /** Project Chat identity belongs to Dope; neither storage paths nor runtime IDs define it. */
