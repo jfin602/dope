@@ -300,6 +300,156 @@ test('Pi returns exact incomplete final text and provider usage at an output len
   }
 });
 
+test('Pi resumes bounded length segments in the retained session without repeating prior answer or tools', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-resume-'));
+  const frame = (content, reason, modelId = 'offline-fixture') =>
+    `data: ${JSON.stringify({ id: 'resume-fixture', object: 'chat.completion.chunk', created: 1,
+      model: modelId, choices: [{ index: 0, delta: { role: 'assistant', ...(content ? { content } : {}) },
+        finish_reason: null }] })}\n\n` +
+    `data: ${JSON.stringify({ id: 'resume-fixture', object: 'chat.completion.chunk', created: 1,
+      model: modelId, choices: [{ index: 0, delta: {}, finish_reason: reason }],
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } })}\n\ndata: [DONE]\n\n`;
+  try {
+    for (const replies of [
+      [['Part.', 'length'], ['Part. Next.', 'length'], ['Next. Done.', 'stop']],
+      [['', 'length'], ['Answer.', 'stop']]
+    ]) {
+      const requests = [];
+      globalThis.fetch = async (_url, options) => {
+        requests.push(JSON.parse(options.body));
+        const [content, reason] = replies[requests.length - 1];
+        return new Response(frame(content, reason), { headers: { 'content-type': 'text/event-stream' } });
+      };
+      await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
+      let result = await dispatch({ type: 'turn', id: 91, maxOutputTokens: 128,
+        messages: [{ role: 'user', content: 'Original request.' }] });
+      assert.equal(result.finishReason, 'length');
+      for (let index = 2; index <= replies.length; index++) {
+        await assert.rejects(dispatch({ type: 'resume', id: 91, segmentIndex: index + 1,
+          maxOutputTokens: 128 }), /unavailable or stale/);
+        result = await dispatch({ type: 'resume', id: 91, segmentIndex: index, maxOutputTokens: 128 });
+        assert.equal(result.segmentIndex, index);
+        assert.equal(requests[index - 1].messages.filter(item => item.role === 'user').length, index);
+        assert.equal(JSON.stringify(requests[index - 1].messages).match(/Original request\./gu)?.length, 1);
+      }
+      assert.equal(result.finishReason, 'stop');
+      assert.equal(result.text, replies.length === 3 ? 'Part. Next. Done.' : 'Answer.');
+      assert.equal(result.usage.totalTokens, replies.length * 15);
+      assert.equal(result.usageSegments.length, replies.length);
+      assert.ok(result.usageSegments.every(segment => segment.totalTokens === 15));
+      await assert.rejects(dispatch({ type: 'resume', id: 91, segmentIndex: replies.length + 1,
+        maxOutputTokens: 128 }), /unavailable or stale/);
+      await dispatch({ type: 'close' });
+    }
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi continuation retains one brokered tool result and rejects stale or cancelled resumes', async () => {
+  const originalFetch = globalThis.fetch, originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-resume-tool-'));
+  const requests = [], tools = [];
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          tools.push(record.tool);
+          queueMicrotask(() => void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: 'completed', output: 'checked once' } }));
+          return true;
+        }
+      } catch { /* normal output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async (_url, options) => {
+      requests.push(JSON.parse(options.body));
+      const n = requests.length;
+      const chunks = n === 1 ? [
+        { delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-once', type: 'function',
+          function: { name: 'read_file', arguments: '{"path":"README.md"}' } }] }, finish_reason: null },
+        { delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { delta: { role: 'assistant', content: n === 2 ? 'First.' : 'Second.' }, finish_reason: null },
+        { delta: {}, finish_reason: n === 2 ? 'length' : 'stop' }
+      ];
+      return new Response(chunks.map(choice => `data: ${JSON.stringify({ id: 'tool-fixture',
+        object: 'chat.completion.chunk', created: 1, model: 'offline-fixture',
+        choices: [{ index: 0, ...choice }] })}\n\n`).join('') + 'data: [DONE]\n\n',
+      { headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
+    const first = await dispatch({ type: 'turn', id: 101, maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Read once.' }] });
+    assert.equal(first.finishReason, 'length');
+    assert.equal(tools.length, 1);
+    await assert.rejects(dispatch({ type: 'resume', id: 102, segmentIndex: 2,
+      maxOutputTokens: 128 }), /unavailable or stale/);
+    await assert.rejects(dispatch({ type: 'resume', id: 101, segmentIndex: 2,
+      maxOutputTokens: 128, cancelled: true }), /unavailable or stale/);
+    const answer = await dispatch({ type: 'resume', id: 101, segmentIndex: 2, maxOutputTokens: 128 });
+    assert.equal(answer.text, 'First.Second.');
+    assert.equal(tools.length, 1);
+    assert.equal(requests.length, 3);
+    assert.equal(requests[2].messages.filter(item => item.role === 'tool').length, 1);
+    await dispatch({ type: 'close' });
+    await assert.rejects(dispatch({ type: 'resume', id: 101, segmentIndex: 3,
+      maxOutputTokens: 128 }), /unavailable or stale/);
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi rejects compaction, cancellation, and model drift during a resumed segment', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-resume-stop-'));
+  const response = (reason, modelId = 'offline-fixture') => new Response(
+    `data: ${JSON.stringify({ model: modelId, choices: [{ delta: { role: 'assistant', content: 'Text.' },
+      finish_reason: null }] })}\n\n` +
+    `data: ${JSON.stringify({ model: modelId, choices: [{ delta: {}, finish_reason: reason }] })}\n\ndata: [DONE]\n\n`,
+    { headers: { 'content-type': 'text/event-stream' } });
+  try {
+    for (const failure of ['compaction', 'cancel', 'drift']) {
+      let calls = 0, release;
+      globalThis.fetch = async () => {
+        calls++;
+        if (calls === 1) return response('length');
+        if (failure === 'drift') return response('stop', 'different-model');
+        return new Promise(resolve => { release = () => resolve(response('stop')); });
+      };
+      await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
+      await dispatch({ type: 'turn', id: 111, maxOutputTokens: 128,
+        messages: [{ role: 'user', content: 'Continue.' }] });
+      const controller = new AbortController();
+      const resumed = dispatch({ type: 'resume', id: 111, segmentIndex: 2,
+        maxOutputTokens: 128, signal: controller.signal });
+      if (failure !== 'drift') {
+        for (let i = 0; !release && i < 100; i++) await new Promise(resolve => setTimeout(resolve, 1));
+        assert.ok(release);
+        if (failure === 'compaction') assert.deepEqual(beforeNativeCompaction({ willRetry: false }), { cancel: true });
+        else controller.abort();
+        release();
+      }
+      await assert.rejects(resumed, failure === 'compaction' ? /cannot be compacted safely/ :
+        failure === 'cancel' ? /continuation cancelled/ : /model drift/);
+      await assert.rejects(dispatch({ type: 'resume', id: 111, segmentIndex: 2,
+        maxOutputTokens: 128 }), /unavailable or stale/);
+      await dispatch({ type: 'close' });
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('Pi keeps provider interruption and context overflow separate from output length', async () => {
   const originalFetch = globalThis.fetch;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-length-error-'));

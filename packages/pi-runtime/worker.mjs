@@ -23,6 +23,8 @@ let workRequestId;
 let nextToolId = 0;
 let activeRequest = false;
 let sessionConsumed = false;
+let pausedChatTurn;
+let resumeInProgress = false;
 let chatRepeat = undefined;
 let chatLoopStopped = false;
 let chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
@@ -101,7 +103,41 @@ function normalized(value) {
     Object.keys(value).sort().map(key => [key, normalized(value[key])]));
   return value;
 }
+function continuationControl(text, segmentIndex) {
+  const tail = Buffer.from(text, 'utf8').subarray(-4096).toString('utf8').replace(/^\uFFFD/u, '');
+  return `DOPE INTERNAL CONTINUATION CONTROL (segment ${segmentIndex}). Continue the incomplete final answer in this same session. Do not repeat any completed tool call or earlier answer text. The exact answer so far has SHA-256 ${hash(text)} and ends with the following quoted text:\n${JSON.stringify(tail)}\nStart immediately after that text. This control grants no new tool or source authority.`;
+}
+function novelAnswer(previous, next) {
+  if (!previous || !next) return next;
+  const prefix = new Array(next.length).fill(0);
+  for (let index = 1, matched = 0; index < next.length; index++) {
+    while (matched > 0 && next[index] !== next[matched]) matched = prefix[matched - 1];
+    if (next[index] === next[matched]) matched++;
+    prefix[index] = matched;
+  }
+  let matched = 0;
+  const suffix = previous.slice(-next.length);
+  for (let index = 0; index < suffix.length; index++) {
+    const character = suffix[index];
+    while (matched > 0 && character !== next[matched]) matched = prefix[matched - 1];
+    if (character === next[matched]) matched++;
+    if (matched === next.length) {
+      if (index === suffix.length - 1) return '';
+      matched = prefix[matched - 1];
+    }
+  }
+  return next.slice(matched);
+}
+function combinedUsage(segments) {
+  const fields = ['inputTokens', 'outputTokens', 'reasoningTokens', 'totalTokens'];
+  const usage = Object.fromEntries(fields.filter(field => segments.every(segment =>
+    Number.isSafeInteger(segment[field]))).map(field => [field,
+    segments.reduce((total, segment) => total + segment[field], 0)]));
+  return { ...usage, tokenMeasurement: segments.every(segment => segment.tokenMeasurement === 'provider-reported') ?
+    'provider-reported' : 'unavailable' };
+}
 function beforeNativeCompaction(event) {
+  if (resumeInProgress) { compactionRejected = true; return { cancel: true }; }
   // Pi's overflow recovery retries the interrupted turn. A Work tool may already
   // have changed the candidate, so the only safe response is to stop the run.
   if (event.willRetry) { compactionRejected = true; return { cancel: true }; }
@@ -370,6 +406,8 @@ async function dispose() {
   session?.dispose();
   session = undefined;
   sessionConsumed = false;
+  pausedChatTurn = undefined;
+  resumeInProgress = false;
   chatRepeat = undefined;
   chatLoopStopped = false;
   chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
@@ -460,16 +498,37 @@ export async function dispatch(message) {
       if (!assistant || assistant.stopReason === 'error') throw new Error('Local Pi completion failed');
       return { text: assistant.content.filter(item => item.type === 'text').map(item => item.text).join('') };
     }
+    case 'resume':
     case 'turn': {
+      const resuming = message.type === 'resume';
+      const paused = pausedChatTurn;
+      if (resuming) {
+        if (!paused || !session || paused.session !== session || !chatToolsMode ||
+            roadmapToolsMode || roadmapGenerationMode || workMode ||
+            !Number.isSafeInteger(paused.id) || message.id !== paused.id ||
+            message.segmentIndex !== paused.segmentIndex + 1 ||
+            !Number.isSafeInteger(message.maxOutputTokens) || message.maxOutputTokens < 1 ||
+            message.maxOutputTokens > session.model.maxTokens ||
+            session.model.id !== paused.modelId || session.model.provider !== paused.provider ||
+            session.messages.at(-1) !== paused.lastAssistant ||
+            paused.lastAssistant.stopReason !== 'length' ||
+            typeof session.prompt !== 'function' || !Array.isArray(session.messages) ||
+            message.cancelled === true || message.signal?.aborted)
+          throw new Error('Pi same-session continuation unavailable or stale');
+        if (paused.segmentIndex >= 4 || paused.usage.outputTokens > 8192)
+          throw new Error('Pi continuation segment budget exceeded');
+        // Consume the resume decision before any asynchronous work so retries cannot replay effects.
+        pausedChatTurn = undefined;
+      } else if (pausedChatTurn) throw new Error('Pi output-limit turn requires a decision');
       compactionRecord = undefined;
       compactionRejected = false;
       compactionPending = undefined;
-      if (workMode || !session || !Array.isArray(message.messages) || !message.messages.length ||
+      if (workMode || !session || (!resuming && (!Array.isArray(message.messages) || !message.messages.length ||
           sessionConsumed ||
           message.messages.at(-1)?.role !== 'user' ||
           message.messages.some(item => !['system', 'user', 'assistant'].includes(item?.role) ||
             typeof item.content !== 'string') ||
-          Buffer.byteLength(JSON.stringify(message.messages), 'utf8') > 512 * 1024 ||
+          Buffer.byteLength(JSON.stringify(message.messages), 'utf8') > 512 * 1024)) ||
           !Number.isSafeInteger(message.maxOutputTokens) || message.maxOutputTokens < 1 ||
           message.maxOutputTokens > session.model.maxTokens)
         throw new Error('Invalid bounded Pi turn');
@@ -480,27 +539,30 @@ export async function dispatch(message) {
         roadmapStartedAt = performance.now();
         roadmapTrace('pi-worker-turn-start');
       }
-      chatRepeat = undefined;
-      chatLoopStopped = false;
-      chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
-      rejectedRoadmapStages = new Map();
+      if (!resuming) {
+        chatRepeat = undefined;
+        chatLoopStopped = false;
+        chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
+        rejectedRoadmapStages = new Map();
+      }
       const zeroUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
         totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
-      const systems = message.messages.filter(item => item.role === 'system').map(item => item.content).join('\n\n');
+      const systems = resuming ? '' : message.messages.filter(item => item.role === 'system').map(item => item.content).join('\n\n');
       if (systems) session.sessionManager.appendMessage({ role: 'system', content: systems, timestamp: Date.now() });
-      for (const item of message.messages.slice(0, -1).filter(item => item.role !== 'system')) {
+      for (const item of (resuming ? [] : message.messages.slice(0, -1)).filter(item => item.role !== 'system')) {
         session.sessionManager.appendMessage(item.role === 'user' ?
           { role: 'user', content: item.content, timestamp: Date.now() } :
           { role: 'assistant', content: [{ type: 'text', text: item.content }],
             api: 'openai-completions', provider: 'dope-local', model: session.model.id,
             usage: zeroUsage, stopReason: 'stop', timestamp: Date.now() });
       }
-      session.refreshContext();
+      if (!resuming) session.refreshContext();
       session.agent.state.model = { ...session.model, maxTokens: message.maxOutputTokens };
       let attemptedTool = false;
-      let toolCount = 0;
+      let toolCount = resuming ? paused.toolCount : 0;
       let reportedInput = 0, reportedOutput = 0, reportedTotal = 0, reportedReasoning = 0;
       let usageUnknown = false;
+      let modelDrift = false;
       let outputLimitCompactionSuppressed = false;
       let lengthContextOverflow = false;
       let firstProviderOutput = false;
@@ -508,6 +570,12 @@ export async function dispatch(message) {
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
         nativeCompactionOutcome(event);
+        if (event.type === 'turn_end' && event.message?.role === 'assistant' &&
+            ((event.message.responseModel ?? event.message.model) !== session.model.id ||
+              event.message.provider !== session.model.provider)) {
+          modelDrift = true;
+          void session.abort();
+        }
         if (!roadmapGenerationMode && !roadmapToolsMode && event.type === 'turn_end' &&
             event.message?.role === 'assistant' && event.message.stopReason === 'length') {
           const usage = event.message.usage;
@@ -534,7 +602,7 @@ export async function dispatch(message) {
           roadmapTrace('tool-call-start', { toolName: event.toolName });
         if (roadmapGenerationMode && event.type === 'tool_execution_end')
           roadmapTrace('tool-call-complete', { toolName: event.toolName, isError: event.isError === true });
-        if (roadmapGenerationMode && event.type === 'turn_end' && event.message?.role === 'assistant') {
+        if (chatToolsMode && event.type === 'turn_end' && event.message?.role === 'assistant') {
           const usage = event.message.usage;
           if (Number.isSafeInteger(usage?.totalTokens) && usage.totalTokens > 0) {
             reportedInput += Number.isSafeInteger(usage.input) ? usage.input : 0;
@@ -578,13 +646,19 @@ export async function dispatch(message) {
         }
       });
       try {
-        await session.prompt(message.messages.at(-1).content, { expandPromptTemplates: false });
+        if (resuming) resumeInProgress = true;
+        if (resuming) session.settingsManager.setCompactionEnabled(false);
+        await session.prompt(resuming ? continuationControl(paused.text, message.segmentIndex) :
+          message.messages.at(-1).content, { expandPromptTemplates: false });
+        if (resuming && message.signal?.aborted) throw new Error('Pi continuation cancelled');
         trace('session-prompt-returned', { toolCount });
       } catch (error) {
         if (chatLoopStopped) throw new Error(chatLoopReason);
+        if (modelDrift) throw new Error('Pi continuation model drift');
         throw error;
       } finally {
-        if (outputLimitCompactionSuppressed) session.settingsManager.setCompactionEnabled(true);
+        resumeInProgress = false;
+        if (outputLimitCompactionSuppressed || resuming) session.settingsManager.setCompactionEnabled(true);
         roadmapTrace('pi-worker-turn-end', { providerOutputSeen: firstProviderOutput,
           lastProviderOutputElapsedMs: lastProviderOutputAt ?
             Math.round(lastProviderOutputAt - roadmapStartedAt) : undefined });
@@ -592,6 +666,7 @@ export async function dispatch(message) {
         roadmapGenerationId = undefined;
       }
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
+      if (modelDrift) throw new Error('Pi continuation model drift');
       if (chatLoopStopped) throw new Error(chatLoopReason);
       if (lengthContextOverflow) throw new Error('Pi context overflow at length stop; shorten the turn');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
@@ -600,21 +675,38 @@ export async function dispatch(message) {
             assistant.content.some(item => item.type === 'toolCall')))
         throw new Error('Local Pi completion failed or attempted a tool call');
       const text = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
-      if (Buffer.byteLength(text, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
-      if (chatToolsMode && assistant.stopReason === 'stop' && text)
-        message.emit?.({ type: 'delta', text });
-      return { text, modelId: assistant.responseModel ?? assistant.model,
+      const modelId = assistant.responseModel ?? assistant.model;
+      if (modelId !== session.model.id || assistant.provider !== session.model.provider ||
+          (resuming && modelId !== paused.modelId))
+        throw new Error('Pi continuation model drift');
+      const novelText = resuming ? novelAnswer(paused.text, text) : text;
+      const accumulatedText = resuming ? paused.text + novelText : text;
+      if (Buffer.byteLength(accumulatedText, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
+      if (chatToolsMode && assistant.stopReason === 'stop' && novelText)
+        message.emit?.({ type: 'delta', text: novelText });
+      const measuredTurn = chatToolsMode;
+      const segmentUsage = { inputTokens: measuredTurn ? usageUnknown || !reportedTotal ? undefined : reportedInput :
+          assistant.usage?.totalTokens ? assistant.usage.input : undefined,
+        outputTokens: measuredTurn ? usageUnknown || !reportedTotal ? undefined : reportedOutput :
+          assistant.usage?.totalTokens ? assistant.usage.output : undefined,
+        ...((measuredTurn ? reportedReasoning : assistant.usage?.reasoning) > 0 ?
+          { reasoningTokens: measuredTurn ? reportedReasoning : assistant.usage.reasoning } : {}),
+        totalTokens: measuredTurn ? usageUnknown || !reportedTotal ? undefined :
+          reportedTotal :
+          assistant.usage?.totalTokens || undefined,
+        tokenMeasurement: measuredTurn ? usageUnknown || !reportedTotal ? 'unavailable' :
+          'provider-reported' : assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' };
+      const segments = resuming ? [...paused.segments, segmentUsage] : [segmentUsage];
+      const usage = resuming ? combinedUsage(segments) : segmentUsage;
+      if (assistant.stopReason === 'length' && chatToolsMode && !roadmapToolsMode && !roadmapGenerationMode)
+        pausedChatTurn = { session, id: message.id, segmentIndex: resuming ? message.segmentIndex : 1,
+          modelId, provider: session.model.provider, text: accumulatedText, usage, toolCount,
+          segments, lastAssistant: assistant };
+      return { text: accumulatedText, ...(resuming ? { novelText, segmentIndex: message.segmentIndex } :
+        { segmentIndex: 1 }), modelId,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
-        usage: { inputTokens: roadmapGenerationMode ? reportedInput : assistant.usage?.totalTokens ? assistant.usage.input : undefined,
-          outputTokens: roadmapGenerationMode ? reportedOutput : assistant.usage?.totalTokens ? assistant.usage.output : undefined,
-          // Pi normalizes an absent OpenAI reasoning breakdown to zero. Only a
-          // positive count proves that the provider actually reported one.
-          ...((roadmapGenerationMode ? reportedReasoning : assistant.usage?.reasoning) > 0 ?
-            { reasoningTokens: roadmapGenerationMode ? reportedReasoning : assistant.usage.reasoning } : {}),
-          totalTokens: roadmapGenerationMode ? usageUnknown || !reportedTotal ? undefined : reportedTotal :
-            assistant.usage?.totalTokens || undefined,
-          tokenMeasurement: roadmapGenerationMode ? usageUnknown || !reportedTotal ? 'unavailable' :
-            'provider-reported' : assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' },
+        usage, ...(chatToolsMode && !roadmapToolsMode && !roadmapGenerationMode ?
+          { segmentUsage, usageSegments: segments } : {}),
         ...(compactionRecord ? { compaction: compactionRecord } : {}) };
     }
     case 'work': {
