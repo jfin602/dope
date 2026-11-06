@@ -579,6 +579,7 @@ export async function dispatch(message) {
       let lengthContextOverflow = false;
       let firstProviderOutput = false;
       let lastProviderOutputAt = 0;
+      let streamedAnswer = '';
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
         nativeCompactionOutcome(event);
@@ -633,9 +634,18 @@ export async function dispatch(message) {
           trace(event.type, { toolName: event.toolName,
             stopReason: event.message?.role === 'assistant' ? event.message.stopReason : undefined,
             isError: event.isError });
-        if (!chatToolsMode && !resuming && event.type === 'message_update' &&
-            event.assistantMessageEvent?.type === 'text_delta')
+        if (!resuming && !roadmapToolsMode && !roadmapGenerationMode &&
+            event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta' &&
+            typeof event.assistantMessageEvent.delta === 'string' && event.assistantMessageEvent.delta) {
+          streamedAnswer += event.assistantMessageEvent.delta;
           message.emit?.({ type: 'delta', text: event.assistantMessageEvent.delta });
+        }
+        // A tool call means the current assistant message was not the final answer.
+        // Clear that transient preview before the broker executes the tool.
+        if (chatToolsMode && !resuming && event.type === 'tool_execution_start' && streamedAnswer) {
+          streamedAnswer = '';
+          message.emit?.({ type: 'reset' });
+        }
         if (resuming && event.type === 'message_update' &&
             event.assistantMessageEvent?.type === 'text_delta' &&
             typeof event.assistantMessageEvent.delta === 'string' &&
@@ -699,8 +709,17 @@ export async function dispatch(message) {
       const novelText = resuming ? novelAnswer(paused.text, text) : text;
       const accumulatedText = resuming ? paused.text + novelText : text;
       if (Buffer.byteLength(accumulatedText, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
-      if ((chatToolsMode || resuming) && assistant.stopReason === 'stop' && novelText)
+      if (resuming && assistant.stopReason === 'stop' && novelText)
         message.emit?.({ type: 'delta', text: novelText });
+      else if (!resuming && !roadmapToolsMode && !roadmapGenerationMode &&
+          assistant.stopReason === 'stop' && text !== streamedAnswer) {
+        if (!text.startsWith(streamedAnswer)) {
+          message.emit?.({ type: 'reset' });
+          streamedAnswer = '';
+        }
+        if (text.slice(streamedAnswer.length))
+          message.emit?.({ type: 'delta', text: text.slice(streamedAnswer.length) });
+      }
       const measuredTurn = chatToolsMode;
       const segmentUsage = { inputTokens: measuredTurn ? usageUnknown || !reportedTotal ? undefined : reportedInput :
           assistant.usage?.totalTokens ? assistant.usage.input : undefined,

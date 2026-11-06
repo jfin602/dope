@@ -2,9 +2,43 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { LiveAnswerUpdateBatcher, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
+
+test('live continuation displays only text beyond the saved partial', () => {
+    const message = { answerPartial: { text: 'First section. ', cursor: 15 } } as ChatAssistantMessage;
+    assert.equal(liveAnswerSource(message, 'First section. '), '');
+    assert.equal(liveAnswerSource(message, 'First section. Second section.'), 'Second section.');
+    assert.equal(liveAnswerSource(message, 'Second section.'), 'Second section.');
+    assert.equal(liveAnswerSource(undefined, 'First section.'), 'First section.');
+});
+
+test('final answer paints batch incoming deltas without holding their state', async () => {
+    let paints = 0;
+    const batcher = new LiveAnswerUpdateBatcher(() => { paints++; }, 70);
+    batcher.request(); batcher.request(); batcher.request();
+    assert.equal(paints, 0);
+    await new Promise(resolve => setTimeout(resolve, 95));
+    assert.equal(paints, 1);
+    batcher.request(); batcher.cancel();
+    await new Promise(resolve => setTimeout(resolve, 95));
+    assert.equal(paints, 1);
+});
+
+test('partial Markdown retains ordered fences and safe code rendering as text arrives', () => {
+    const chunks = ['Before **bold**.\n\n```ts\n', 'const value = 1;\n', '```\n\nAfter.'];
+    let accumulated = '';
+    for (const chunk of chunks) {
+        accumulated += chunk;
+        const html = renderUntrustedMessageHtml(accumulated);
+        assert.match(html, /Before <strong>bold<\/strong>/);
+        assert.match(html, /<pre><code>/);
+        assert.doesNotMatch(html, /<script|<img\b/i);
+    }
+    assert.match(renderUntrustedMessageHtml(accumulated), /const value = 1;/);
+    assert.match(renderUntrustedMessageHtml(accumulated), /After\./);
+});
 
 test('documentation discovery links stay within the exact saved workspace', () => {
     const workspace = 'file:///tmp/project/';
@@ -418,7 +452,11 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
     assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, body\)/);
     assert.doesNotMatch(widget, /summary\.textContent = `Context ·/);
     assert.match(widget, /state\.stream\.executionId === message\.execution\.id/);
-    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, state\.stream\.content\)/);
+    assert.match(widget, /new LiveAnswerUpdateBatcher/);
+    assert.match(widget, /updateLiveStreamAnswer\(\)/);
+    assert.match(widget, /renderLiveAnswer\(source/);
+    assert.match(widget, /fadeInNewAnswerText\(rendered, previous/);
+    assert.match(widget, /state\.chat\?\.settings\.reasoningDisplay\?\.mode/);
     assert.match(markdown, /messageMarkdown\.renderer\.rules\.image =/);
     assert.match(markdown, /safeChatLink\(link\.getAttribute\('href'\)!, document\.baseURI\)/);
     assert.match(markdown, /link\.removeAttribute\('href'\)/);

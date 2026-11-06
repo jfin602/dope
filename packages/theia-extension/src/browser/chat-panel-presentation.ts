@@ -1,5 +1,25 @@
 import { safeChatToolPath, sanitizeChatDiagnosticText, type Chat, type ChatAssistantMessage, type ChatPlanningActivity } from '@dope/chat';
 
+/** A live continuation shows only text beyond the already displayed saved partial. */
+export function liveAnswerSource(message: ChatAssistantMessage | undefined, content: string): string {
+    const partial = message?.answerPartial?.text;
+    return partial && content.startsWith(partial) ? content.slice(partial.length) : content;
+}
+
+/** Batch rendering only; provider events and Chat state continue without a timer. */
+export class LiveAnswerUpdateBatcher {
+    private timer?: ReturnType<typeof setTimeout>;
+    constructor(private readonly paint: () => void, private readonly delayMs = 75) {}
+    request(): void {
+        if (this.timer) return;
+        this.timer = setTimeout(() => { this.timer = undefined; this.paint(); }, this.delayMs);
+    }
+    cancel(): void {
+        if (this.timer) clearTimeout(this.timer);
+        this.timer = undefined;
+    }
+}
+
 /** Only the current live Ask turn may offer a decision; saved pauses are inert. */
 export function outputLimitDecisionTarget(chat: Chat | undefined, running: boolean):
     { messageId: string; executionId: string; segment: number; cursor: number } | undefined {

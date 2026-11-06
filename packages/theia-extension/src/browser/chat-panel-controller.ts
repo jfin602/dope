@@ -127,7 +127,7 @@ export class ChatPanelController {
     private readonly planningListener?: { dispose(): void };
     private planningGeneration = 0;
 
-    constructor(private readonly connect: () => ChatConnection, private readonly changed: (kind?: 'activity') => void,
+    constructor(private readonly connect: () => ChatConnection, private readonly changed: (kind?: 'activity' | 'answer') => void,
         private readonly owners = new ChatOpenOwners(), private readonly panelId: string = crypto.randomUUID(),
         private readonly focus = () => {}, private readonly planning?: ChatPlanningSelection,
         private readonly onRoadmapStage?: (event: Extract<ChatEvent, { kind: 'roadmap-stage' }>, workspace: string) => void) {
@@ -265,7 +265,16 @@ export class ChatPanelController {
                     this.stream = { chatId: event.chatId, messageId: event.messageId, executionId: event.executionId,
                         content: (current?.content ?? '') + event.delta, sequence: event.sequence,
                         activitySequence: current?.activitySequence ?? 0, events: current?.events ?? [] };
-                    this.changed();
+                    this.changed('answer');
+                    return;
+                }
+                if (event.kind === 'assistant-reset') {
+                    if (!this.running || event.chatId !== this.chatId) return;
+                    const current = this.stream;
+                    if (!current || current.messageId !== event.messageId ||
+                        current.executionId !== event.executionId || event.sequence !== current.sequence + 1) return;
+                    this.stream = { ...current, content: '', sequence: event.sequence };
+                    this.changed('answer');
                     return;
                 }
                 if (event.kind === 'assistant-activity') {

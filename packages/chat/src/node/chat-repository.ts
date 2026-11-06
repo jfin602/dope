@@ -852,6 +852,20 @@ export class ChatRepository {
         this.emit(root, { revision: snapshot.revision, kind: 'assistant-delta', chatId,
             messageId, executionId, sequence, delta });
     }
+    async publishReset(root: string, chatId: string, messageId: string, executionId: string,
+        sequence: number, token: string): Promise<void> {
+        const { base, exists } = await this.paths(root);
+        if (!exists || !Number.isSafeInteger(sequence) || sequence < 0)
+            throw new Error('Invalid Chat reset');
+        const lease = await this.lease(base, uuid(chatId));
+        if (!lease || !this.active(lease) || lease.token !== token) throw new Error('Chat ownership lease required');
+        const snapshot = await this.read(root);
+        const message = snapshot.chats.find(chat => chat.id === chatId)?.messages.find(item => item.id === messageId);
+        if (!message || message.role !== 'assistant' || message.execution.id !== executionId ||
+            message.execution.status !== 'streaming') throw new Error('Assistant execution is not streaming');
+        this.emit(root, { revision: snapshot.revision, kind: 'assistant-reset', chatId,
+            messageId, executionId, sequence });
+    }
     async search(root: string, query: string, limit: number, excludeChatId?: string): Promise<ChatSearchHit[]> {
         const needle = query.trim().toLocaleLowerCase('en-US');
         if (!needle || needle.length > 200 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50)

@@ -972,9 +972,10 @@ body.theia-light:not(.dope-dark) {
 .dope-work-message .dope-chat-message-content table { margin: 1em 0; }
 .dope-work-message .dope-chat-message-content th { background: var(--theia-input-background); }
 .dope-message-code { position: relative; max-width: 100%; margin: 1em 0; }
-.dope-message-code-header { display: flex; align-items: center; justify-content: space-between; min-height: 28px; padding: 2px 5px 2px 8px; border: 1px solid var(--theia-widget-border); border-bottom: 0; border-radius: 5px 5px 0 0; background: var(--theia-textCodeBlock-background, var(--theia-input-background)); }
+.dope-message-code-header { position: relative; display: flex; align-items: center; min-height: 28px; padding: 2px 32px 2px 8px; border: 1px solid var(--theia-widget-border); border-bottom: 0; border-radius: 5px 5px 0 0; background: var(--theia-textCodeBlock-background, var(--theia-input-background)); }
 .dope-message-code-language { color: var(--theia-descriptionForeground); font: 11px var(--theia-code-font-family, monospace); }
-.dope-message-code .dope-message-code-copy { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 94px; margin-left: auto; padding: 2px 5px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--theia-descriptionForeground); font: 11px var(--theia-ui-font-family); white-space: nowrap; cursor: pointer; }
+.dope-message-code .dope-message-code-copy { position: absolute; top: 3px; right: 3px; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--theia-descriptionForeground); cursor: pointer; }
+.dope-message-code-feedback { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .dope-message-code .dope-message-code-copy:hover { border-color: var(--theia-widget-border); background: var(--theia-button-secondaryHoverBackground); color: var(--theia-foreground); }
 .dope-message-code .dope-message-code-copy:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: 1px; }
 .dope-chat-message-content .dope-message-code pre { margin: 0; white-space: pre; overflow: auto; tab-size: 4; }
@@ -1167,9 +1168,10 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-stream-prose p { white-space: pre-wrap; }
 .dope-chat-reasoning-chunk { animation: none; }
 .dope-chat-reasoning-chunk.dope-chat-reasoning-fade { animation: dope-chat-reasoning-in 180ms ease-out both; }
+.dope-chat-answer-fade { animation: dope-chat-reasoning-in 180ms ease-out both; }
 @keyframes dope-chat-reasoning-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-    .dope-chat-reasoning-chunk.dope-chat-reasoning-fade { animation: none; }
+    .dope-chat-reasoning-chunk.dope-chat-reasoning-fade, .dope-chat-answer-fade { animation: none; }
 }
 .dope-chat-reasoning-generating { display: inline-block; width: 5px; height: 5px; margin: 5px 2px;
     border-radius: 50%; background: var(--theia-descriptionForeground); opacity: .65; }

@@ -53,6 +53,7 @@ export function renderUntrustedMessageMarkdown(_markdown: MarkdownRenderer, text
         icon.className = 'codicon codicon-copy';
         icon.setAttribute('aria-hidden', 'true');
         const label = document.createElement('span');
+        label.className = 'dope-message-code-feedback';
         label.setAttribute('role', 'status');
         label.setAttribute('aria-live', 'polite');
         label.textContent = 'Copy';

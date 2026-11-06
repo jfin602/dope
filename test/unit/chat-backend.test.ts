@@ -26,6 +26,96 @@ import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
 const id = () => randomUUID();
+test('final deltas reach Chat before completion and tool resets replace transient text', async () => {
+    const root = await folder(), repository = new ChatRepository(), events: ChatEvent[] = [];
+    let release!: () => void;
+    const waiting = new Promise<void>(resolve => { release = resolve; });
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192,
+                maxInputTokens: 8192 } }] }] }),
+    async *generate() {
+        yield { type: 'activity' as const, kind: 'thinking' as const, text: 'Consider the source.' };
+        yield { type: 'delta' as const, text: 'Checking ' };
+        await waiting;
+        yield { type: 'reset' as const };
+        yield { type: 'delta' as const, text: 'Final **answer** ' };
+        yield { type: 'delta' as const, text: 'with code.\n\n```ts\nconst x = 1;\n```' };
+        yield { type: 'complete' as const,
+            text: 'Final **answer** with code.\n\n```ts\nconst x = 1;\n```',
+            actualModelId: 'q4', finishReason: 'stop',
+            usage: { tokenMeasurement: 'provider-reported' as const, inputTokens: 10,
+                outputTokens: 20, totalTokens: 30 } };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Question' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 8192 }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent: event => events.push(event) },
+        models as never, composer as never);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        const turn = backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Question' });
+        for (let attempt = 0; !events.some(event => event.kind === 'assistant-delta') && attempt < 200; attempt++)
+            await new Promise(resolve => setTimeout(resolve, 5));
+        assert.equal(events.find(event => event.kind === 'assistant-delta')?.delta, 'Checking ');
+        assert.equal((await backend.get(projectHandle, chatId))?.messages.at(-1)?.content, '');
+        release();
+        await turn;
+        const visible = events.filter(event => event.kind === 'assistant-delta' || event.kind === 'assistant-reset');
+        assert.deepEqual(visible.map(event => event.kind === 'assistant-reset' ? 'reset' : event.delta),
+            ['Checking ', 'reset', 'Final **answer** ', 'with code.\n\n```ts\nconst x = 1;\n```']);
+        const saved = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
+        assert.equal(saved.role, 'assistant');
+        assert.equal(saved.execution.status, 'complete');
+        assert.equal(saved.content, 'Final **answer** with code.\n\n```ts\nconst x = 1;\n```');
+    } finally { release(); backend.dispose(); await rm(root, { recursive: true, force: true,
+        maxRetries: 10, retryDelay: 25 }); }
+});
+test('cancelling after a live final delta does not save a completed answer', async () => {
+    const root = await folder(), repository = new ChatRepository(), events: ChatEvent[] = [];
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192,
+                maxInputTokens: 8192 } }] }] }),
+    async *generate(_selection: unknown, request: { signal: AbortSignal }) {
+        yield { type: 'delta' as const, text: 'Visible before cancel' };
+        await new Promise<void>((_resolve, reject) => {
+            const cancel = () => reject(new ModelRuntimeFailure('Conversation cancelled', 'cancelled'));
+            if (request.signal.aborted) cancel();
+            else request.signal.addEventListener('abort', cancel, { once: true });
+        });
+        yield { type: 'complete' as const, text: 'Should never complete', actualModelId: 'q4',
+            finishReason: 'stop' as const, usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Question' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 8192 }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent: event => events.push(event) },
+        models as never, composer as never);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        const turn = backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Question' });
+        void turn.catch(() => undefined);
+        for (let attempt = 0; !events.some(event => event.kind === 'assistant-delta') && attempt < 200; attempt++)
+            await new Promise(resolve => setTimeout(resolve, 5));
+        assert.equal(events.find(event => event.kind === 'assistant-delta')?.delta, 'Visible before cancel');
+        await backend.cancelTurn(projectHandle, chatId, lease.token);
+        await assert.rejects(turn, /cancelled/);
+        const saved = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
+        assert.equal(saved.role, 'assistant');
+        assert.equal(saved.execution.status, 'cancelled');
+        assert.equal(saved.content, '');
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
+        maxRetries: 10, retryDelay: 25 }); }
+});
 test('output-limit choices retain one execution, reject stale owners, and keep stopped text incomplete', async () => {
     const root = await folder(), repository = new ChatRepository();
     await writeFile(join(root, 'README.md'), 'Verified source for this turn.');

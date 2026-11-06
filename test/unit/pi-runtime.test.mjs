@@ -412,7 +412,7 @@ test('Pi returns exact incomplete final text and provider usage at an output len
       assert.equal(events.filter(event => event.kind === 'thinking').map(event => event.text).join(''),
         fixture.thinking ?? '', fixture.name);
       assert.equal(events.filter(event => event.type === 'delta').map(event => event.text).join(''),
-        fixture.mode === 'chat-tools' && fixture.reason === 'length' ? '' : fixture.answer, fixture.name);
+        fixture.answer, fixture.name);
       await dispatch({ type: 'close' });
     }
   } finally {
@@ -829,6 +829,7 @@ test('Pi Chat discovers a project without attachments through only brokered read
   const originalWrite = process.stdout.write;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-discovery-'));
   const calls = [];
+  const streamed = [];
   let turn = 0;
   try {
     await mkdir(join(cwd, 'src'));
@@ -886,11 +887,17 @@ test('Pi Chat discovers a project without attachments through only brokered read
     const opened = await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
     assert.deepEqual(opened.tools.sort(), ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text']);
     const answer = await dispatch({ type: 'turn', id: 19, maxOutputTokens: 128,
-      messages: [{ role: 'user', content: 'inspect this project' }] });
+      messages: [{ role: 'user', content: 'inspect this project' }],
+      emit: event => streamed.push(event) });
     assert.match(answer.text, /src\/index.html/);
     assert.match(answer.text, /^The command completed\./);
     assert.doesNotMatch(answer.text, /answer is already visible/);
     assert.deepEqual(calls.map(call => call.name), ['list_files', 'search_paths', 'read_file', 'run_command']);
+    assert.deepEqual(streamed, [
+      { type: 'delta', text: 'The answer is already visible, but I am checking a command.' },
+      { type: 'reset' },
+      { type: 'delta', text: 'The command completed. This fixture has package.json and src/index.html.' }
+    ]);
     assert.equal(turn, 5);
   } finally {
     process.stdout.write = originalWrite;

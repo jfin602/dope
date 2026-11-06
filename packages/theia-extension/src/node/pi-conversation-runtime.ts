@@ -61,7 +61,9 @@ export class PiConversationLease implements ConversationContinuation {
                 this.signal, this.onTool)) {
                 if (this.state === 'closed' || this.signal?.aborted)
                     throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
-                if (event.type === 'delta' || event.type === 'activity') { yield event; continue; }
+                if (event.type === 'delta' || event.type === 'activity' || event.type === 'reset') {
+                    yield event; continue;
+                }
                 this.accept(event.result);
                 if (event.type === 'paused') {
                     this.state = 'paused';
@@ -173,7 +175,9 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
         } : undefined;
         for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool,
             request.projectTools?.generationId)) {
-            if (event.type === 'delta' || event.type === 'activity') { yield event; continue; }
+            if (event.type === 'delta' || event.type === 'activity' || event.type === 'reset') {
+                yield event; continue;
+            }
             const result = event.result;
             if (result.modelId !== selection.modelId)
                 throw new ModelRuntimeFailure('Local server answered with a different model; reselect the loaded model in AI Center',

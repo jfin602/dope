@@ -24,6 +24,7 @@ export interface PiTurnResult { text: string; novelText?: string; segmentIndex: 
     finishReason: 'stop' | 'length'; outputCeilingTokens?: number; usage: PiTokenUsage; segmentUsage?: PiTokenUsage;
     usageSegments?: PiTokenUsage[]; compaction?: PiContextRecord }
 export type PiTurnEvent = { type: 'delta'; text: string } |
+    { type: 'reset' } |
     { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } |
     { type: 'complete' | 'paused'; result: PiTurnResult };
 const validUsage = (usage: PiTokenUsage | undefined): usage is PiTokenUsage =>
@@ -47,7 +48,7 @@ const consistentUsage = (result: PiTurnResult): boolean => {
 };
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
     lastWorkSequence?: number;
-    onEvent?: (event: { type: 'delta'; text: string } |
+    onEvent?: (event: { type: 'delta'; text: string } | { type: 'reset' } |
         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent) => void;
     onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
 
@@ -184,7 +185,7 @@ export class PiRuntimeHost {
     private async *streamSegment(record: Record<string, unknown>, id: number, signal?: AbortSignal,
         onTool?: NonNullable<Pending['onTool']>): AsyncIterable<PiTurnEvent> {
         if (signal?.aborted) throw new Error('Pi turn cancelled');
-        const queue: ({ type: 'delta'; text: string } |
+        const queue: ({ type: 'delta'; text: string } | { type: 'reset' } |
             { type: 'activity'; kind: 'thinking' | 'provisional'; text: string })[] = [];
         let queueBytes = 0;
         let wake: (() => void) | undefined;
@@ -195,8 +196,9 @@ export class PiRuntimeHost {
         const onAbort = () => this.dispose();
         signal?.addEventListener('abort', onAbort, { once: true });
         const task = this.request<PiTurnResult>(record, event => {
-            if (event.type !== 'delta' && event.type !== 'activity') throw new Error('Invalid Pi Chat stream event');
-            const bytes = Buffer.byteLength(event.text, 'utf8');
+            if (event.type !== 'delta' && event.type !== 'activity' && event.type !== 'reset')
+                throw new Error('Invalid Pi Chat stream event');
+            const bytes = event.type === 'reset' ? 0 : Buffer.byteLength(event.text, 'utf8');
             if (bytes > 8192 || queue.length >= 8192 || queueBytes + bytes > 16 * 1024 * 1024)
                 throw new Error('Pi Chat stream backpressure limit exceeded');
             queueBytes += bytes; queue.push(event); notify();
@@ -207,7 +209,7 @@ export class PiRuntimeHost {
                 if (signal?.aborted) throw new Error('Pi turn cancelled');
                 if (queue.length) {
                     const next = queue.shift()!;
-                    queueBytes -= Buffer.byteLength(next.text, 'utf8');
+                    queueBytes -= next.type === 'reset' ? 0 : Buffer.byteLength(next.text, 'utf8');
                     yield next; continue;
                 }
                 await new Promise<void>(resolve => { wake = resolve; });
@@ -272,7 +274,7 @@ export class PiRuntimeHost {
             this.stdout = this.stdout.slice(newline + 1);
             try {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
-                    event?: { type: 'delta'; text: string } |
+                    event?: { type: 'delta'; text: string } | { type: 'reset' } |
                         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent;
                     tool?: { id: number; name: string; arguments: unknown } };
                 const pending = this.pending.get(record.id);
@@ -333,7 +335,8 @@ export class PiRuntimeHost {
                                 event.summaryBytes !== undefined || event.summarizationTokensReported !== undefined))
                             throw new Error('Invalid Pi Work event');
                         pending.lastWorkSequence = event.sequence;
-                    } else if ((record.event.type !== 'delta' &&
+                    } else if (record.event.type === 'reset' ?
+                        Object.keys(record.event).length !== 1 : (record.event.type !== 'delta' &&
                         !(record.event.type === 'activity' &&
                             ['thinking', 'provisional'].includes(record.event.kind))) ||
                         typeof record.event.text !== 'string' || Buffer.byteLength(record.event.text, 'utf8') > 8192)

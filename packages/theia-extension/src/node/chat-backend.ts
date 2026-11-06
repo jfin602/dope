@@ -2240,7 +2240,8 @@ export class ChatBackend implements ChatService {
             })() : nativeRoadmap ? generate() : localRoadmap ? (async function* (backend: ChatBackend) {
                 const guardedGenerate = async function* (retryInstruction?: string) {
                     if (!following) await backend.verifyLoadedCapacity(selectedModel!, budget!, planningOutput);
-                    yield* generate(retryInstruction);
+                    for await (const event of generate(retryInstruction))
+                        if (event.type !== 'reset') yield event;
                 };
                 const requestedRevision = !draft && requestsRoadmapOwnerRevision(content) ?
                     preview.refs.find(ref => ref.kind === 'roadmap-checkpoint')?.ownerRevision : undefined;
@@ -2363,6 +2364,12 @@ export class ChatBackend implements ChatService {
                         throw new ModelRuntimeFailure('Local answer stopped incomplete', 'incomplete-answer');
                     if (event.type === 'activity') {
                         recordActivity(event.kind, event.text);
+                        continue;
+                    }
+                    if (event.type === 'reset') {
+                        output = '';
+                        await this.repository.publishReset(root, key, assistant!.id, assistant!.execution.id,
+                            sequence++, request.leaseToken);
                         continue;
                     }
                     if (event.type === 'delta') {
@@ -2620,7 +2627,8 @@ export class ChatBackend implements ChatService {
                 signal: AbortSignal.timeout(10_000),
             })) {
                 if (event.type === 'delta') response += event.text;
-                else { response = event.text; break; }
+                else if (event.type === 'reset') response = '';
+                else if (event.type === 'complete') { response = event.text; break; }
                 if (response.length > 240) throw new Error('Title response too long');
             }
             title = suggestedChatTitle(response.replace(/[\r\n]+/g, ' ').replace(/^['"\s]+|['"\s]+$/g, ''));

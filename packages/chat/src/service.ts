@@ -111,6 +111,8 @@ export type ChatEvent =
     /** Transient visible output; persistence happens at turn lifecycle boundaries. */
     | { projectHandle: string; revision: number; kind: 'assistant-delta'; chatId: ChatId;
         messageId: string; executionId: string; sequence: number; delta: string }
+    | { projectHandle: string; revision: number; kind: 'assistant-reset'; chatId: ChatId;
+        messageId: string; executionId: string; sequence: number }
     | { projectHandle: string; kind: 'assistant-activity'; chatId: ChatId;
         messageId: string; executionId: string; sequence: number; activityKind: ChatActivityKind; text: string }
     | { projectHandle: string; kind: 'command-pending'; chatId: ChatId; preview: ChatCommandPreview }

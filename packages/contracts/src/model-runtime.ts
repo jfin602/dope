@@ -106,6 +106,7 @@ export interface ConversationContinuation {
 }
 export type ConversationEvent =
     | { type: 'delta'; text: string }
+    | { type: 'reset' }
     | { type: 'activity'; kind: 'thinking' | 'provisional' | 'answer'; text: string }
     | { type: 'paused'; text: string; novelText: string; segmentIndex: number;
         usage: ConversationUsage; segmentUsage: ConversationUsage; outputCeilingTokens?: number; finishReason: 'length';

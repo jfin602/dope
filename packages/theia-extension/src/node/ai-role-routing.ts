@@ -10,7 +10,7 @@ import type { ModelConnectionsRegistry } from './model-connections';
 
 type Complete = Extract<ConversationEvent, { type: 'complete' }>;
 type Paused = Extract<ConversationEvent, { type: 'paused' }>;
-export type RoutedConversationEvent = ((Extract<ConversationEvent, { type: 'delta' | 'activity' }>) & { target: AIRoleTarget }) |
+export type RoutedConversationEvent = ((Extract<ConversationEvent, { type: 'delta' | 'activity' | 'reset' }>) & { target: AIRoleTarget }) |
     ((Complete | Paused) & { routingProvenance: RoutingProvenance });
 export interface RoleConversationRequest {
     roleId: AIRoleId;
@@ -122,6 +122,8 @@ export class AIRoleRoutingService {
                     request.localOnly ? { localOnly: true } : undefined)) {
                     if (event.type === 'delta' || event.type === 'activity') {
                         if (event.text.length) { meaningfulOutput = true; yield { ...event, target }; }
+                    } else if (event.type === 'reset') {
+                        yield { ...event, target };
                     } else if (event.type === 'complete' || event.type === 'paused') {
                         meaningfulOutput = true;
                         const actualTarget = { connectionId: target.connectionId,
