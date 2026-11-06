@@ -1,0 +1,21 @@
+TASK: Correction 13 / P7 — Accessible output-limit controls above Chat composer
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+PREFLIGHT
+Require P5/P6 checked backend/controller events. Inspect `packages/theia-extension/src/browser/chat-panel-controller.ts`, `chat-panel-widget.ts`, `chat-panel-presentation.ts` and actual stylesheet/theme tokens. Read ADR 0016, ADR 0037 and `docs/ui/chat-panel-visual-contract.md`. Retain the single ChatPanel and fixed composer.
+
+IMPLEMENT — ONE OWNER
+When Ask policy pauses, show a compact nonmodal notice immediately **above** the composer: “Generation limit reached. Stop generating?” with real **Stop** and **Continue generating** buttons. Wire them to checked backend actions using current execution identity; don't use decorative/inert controls. Display retained answer text with an explicit “Incomplete” marker, and show reasoning-only pause without inventing a final answer. Preserve textarea draft, scroll-follow preference, response/order, toolbar controls, keyboard focus/Escape, narrow docks, reduced motion, theme overrides and accessibility labels. Never show stale controls after completion, project switch, stop or canceled session. Use central semantic `--theia-*` / `--dope-*` tokens, not local literal palettes; never overlap composer text.
+
+VERIFY — T1
+Build touched extension output and run `node --test test/unit/chat-panel.test.ts` with targeted controller/widget/presentation tests for button semantics, pending/expired/finished state, settings sheet, keyboard/narrow layout structure and disabled action. Actual browser visual and live model evidence is **P10 only**; no Codex/browser here.
+
+GENERAL BOUNDARIES
+Follow docs/workflow.md, ADR 0052 and the Phase 13 output-limit contract. Keep FireLaunch untouched; no repository copy, browser qualification, extra model-summarization pass or speculative context-reading rewrite. Preserve current P12/P13 historical NOT GREEN and existing source/owner/permission contracts. Report exact changed files, tests run, any blockers and scoped result. Do not claim product GREEN, self-commit, auto-run the next prompt or advance version. STOP.

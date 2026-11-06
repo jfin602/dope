@@ -1,0 +1,21 @@
+TASK: Correction 13 / P10 — Manual connected Codex browser closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+MANUAL T3 ONLY — NOT IN ORDINARY RUNNER
+This is the final and ONLY browser-required prompt in `c13-output-limit`. The normal `npm run codex:phase -- c13-output-limit` must stop before P10; never use `--closeout` as part of the implementation run. Read BOOT.md, AGENTS.md, workflow, ADR 0042/0052, output-limit contract, stack assessment/plan, P1–P9 actual results, previous `c13-doc-routing` and FireLaunch baseline. Check exact product HEAD/dirty basis, unchanged 0.13.8, served Dope build, selected local GPT-OSS 20B and loaded 16,384 context (or explicitly record different actual settings). Use the connected Codex in-app browser. Do not claim screenshots, real model behavior or T3 PASS from unit tests or a browser inventory.
+
+REAL DOPE MANUAL MATRIX
+A. Test per-Chat Ask/Allow/Cancel settings UI, saved/reopen/restart/old settings, policy snapshot, separate Commands Ask/Allow, focus/keyboard/narrow pane/theme/reduced motion; verify compact Stop/Continue notice stays immediately above composer and does not disturb drafts or scroll.
+B. Trigger real output-limit mid-reasoning and during final text. Verify same Chat/execution identity, visible labeled partial, accurate stop reason/limits, tool/source proof, Stop persistence, Continue append-once within same retained Pi session, automatic bounded Allow, repeated cap behavior, cancellation, model/project switch and restart-to-interrupted truth. Never substitute fresh prompt rerun or fabricated continued response. Watch actual elapsed time and token/tool metrics; no automatic provider/tool loops.
+C. Re-run the original FireLaunch documentation comprehension request **verbatim** against existing `/home/jfin/dev/firelaunch` without hints, attachments or preloaded project facts. Do not clone, duplicate, archive or modify FireLaunch source/docs or run installs/build/migrations/formatters there. Record any Dope-owned `.dope` session state separately; never hide workspace mutations. Use the original grading categories and 10/100 NOT GREEN baseline. Independently verify available report claims against read-only FireLaunch docs, keeping retrieval coverage and comprehension apart from output survival.
+D. Negatives: tool/grant replay, unauthorized command execution, wrong-project owner decisions, stale continuation, bounded auto loops, partial text entering future answer context/clean copy, false Roadmap GREEN, absent provider reasoning detail, sessions lost on restart. Preserve existing P12/P13 historical failed gates.
+
+REPORT AND MANUAL STOP
+Save `docs/tasks/c13-output-limit/qualification/p10-output-limit-closeout.md` with source/served SHA, test model/context, chosen policies, per-case PASS/FAIL/BLOCKED/EVIDENCE GAP, concrete screenshots/event traces/usage/time, exact FireLaunch prompt and scored comparison, before/after Git changes, and owner-reviewed verdict GREEN/PARTIAL/NOT GREEN/BLOCKED. Recheck changed seams after any bounded repair on a fresh served source. No browser claim without real observation. A passing 10/100 score improvement alone is not enough; all mandatory safety/continuation cases must pass. No version, Phase 13 or Work/Gate qualification advances from this correction automatically. STOP.

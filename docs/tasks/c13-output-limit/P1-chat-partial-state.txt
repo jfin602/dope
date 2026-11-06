@@ -1,0 +1,21 @@
+TASK: Correction 13 / P1 — Typed Chat partial-output lifecycle and persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0042/0052, the output-limit contract and the c13 assessment/plan. Inspect actual `packages/chat/src/index.ts`, `service.ts`, `node/chat-repository.ts` and their tests; verify existing compiled-`lib` consumers and real 0.13.8 source.
+
+IMPLEMENT — ONE OWNER
+Extend existing saved Chat execution/status schema, parser and write-once repository mutations to represent `paused-output-limit`, `stopped-incomplete` and interruption truthfully. Persist a separately typed, bounded answer-partial buffer and append cursor, selected model/policy snapshot and segment/provenance metadata as necessary. Only successfully completed output may populate canonical `assistant.content`. Stale/mismatched execution/project/lease, duplicate and out-of-order updates must fail closed. Older saved Chat records and prior terminal status invariants must continue parsing. Do not introduce a shadow Chat or new second persistence database.
+
+VERIFY — T1
+Build changed `@dope/chat` output before source-vs-`lib` tests. Run focused `node --test test/unit/chat.test.ts test/unit/chat-repository.test.ts`; add tests for old records, partial append idempotence, immutability, concurrent decisions, Stop not equal Complete, clean copy/context exclusion and crash recovery representation. No UI, model inference or browser. P2 depends on stable shapes; P5 consumes repository mutations.
+
+GENERAL BOUNDARIES
+Follow docs/workflow.md, ADR 0052 and the Phase 13 output-limit contract. Keep FireLaunch untouched; no repository copy, browser qualification, extra model-summarization pass or speculative context-reading rewrite. Preserve current P12/P13 historical NOT GREEN and existing source/owner/permission contracts. Report exact changed files, tests run, any blockers and scoped result. Do not claim product GREEN, self-commit, auto-run the next prompt or advance version. STOP.

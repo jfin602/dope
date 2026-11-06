@@ -1,0 +1,21 @@
+TASK: Correction 13 / P4 — Pi host and adapter pause/resume/stop protocol
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+PREFLIGHT
+Inspect P2/P3 real worker API, `packages/theia-extension/src/node/pi-runtime-host.ts`, `pi-conversation-runtime.ts`, `pi-model-bridge.ts`, `packages/contracts/src/model-runtime.ts`; check actual `streamTurn` generator, host factory release, request timeouts and backpressure. Preserve the exact selected model and Pi isolation.
+
+IMPLEMENT — ONE OWNER
+Introduce typed `paused`/continuation/stop events or equivalent checked IPC over the existing supervised worker. Keep a length-paused host alive only while the same logical Chat execution owns it; **do not** run `factory.release` until resolved, expired or explicitly canceled. Expose safe append-only segments, terminal stop/completion, timeout and provider-error outcomes to the backend with clear original vs continued stop reasons and accurate usage. Protect against stale/duplicate commands and indefinitely retained workers; bound idle lifetime, request buffering and aggregate output without weakening the model's per-segment cap. No false “complete” event at length, no second Pi session or silent restart.
+
+VERIFY — T1
+Rebuild only changed contracts/extension packages in dependency order before compiled-`lib` tests. Extend focused Pi host/adapter tests (use `test/unit/pi-runtime.test.mjs` and smallest affected contract tests) covering pause/resume/stop, disposed/expired host, provider error, byte backpressure and cancellation races. T2 cross-backend integration is P9; no browser.
+
+GENERAL BOUNDARIES
+Follow docs/workflow.md, ADR 0052 and the Phase 13 output-limit contract. Keep FireLaunch untouched; no repository copy, browser qualification, extra model-summarization pass or speculative context-reading rewrite. Preserve current P12/P13 historical NOT GREEN and existing source/owner/permission contracts. Report exact changed files, tests run, any blockers and scoped result. Do not claim product GREEN, self-commit, auto-run the next prompt or advance version. STOP.

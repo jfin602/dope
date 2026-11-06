@@ -1,0 +1,21 @@
+TASK: Correction 13 / P6 — Persistent Ask Allow Cancel generation-limit policy
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+PREFLIGHT
+Read P1/P5 delivered domain/backend APIs and current `ChatSettings` default/parser, repository update mutation, widget settings binding and auto policy owner. The existing Commands Ask/Allow pertains to command permissions and MUST NOT be repurposed for output continuation.
+
+IMPLEMENT — ONE OWNER
+Add per-Chat generation-limit setting with exact choices `ask`, `allow`, `cancel`; default Ask for new and legacy saved Chats. Persist across project switching/reopen and snapshot effective policy at Send. Ask pauses awaiting explicit owner action; Allow resumes without user input only within a documented/tested conservative segment and cumulative output limit, then leaves a truthful incomplete decision at safety ceiling; Cancel stops and retains bounded incomplete output immediately. One policy setting must not create new model, grant, user turn or tool execution authority. Handle changes while running and invalid saved values deterministically.
+
+VERIFY — T1
+Build only the changed `@dope/chat` and extension outputs needed by affected `lib` tests, then `node --test test/unit/chat.test.ts test/unit/chat-repository.test.ts test/unit/chat-backend.test.ts` restricted to the smallest directly touched cases where feasible. Test all three choices, default migration, persistence, snapshot, auto-cap, canceled/failed path and noninterference with Commands Ask/Allow. UI visualization is P7; no browser.
+
+GENERAL BOUNDARIES
+Follow docs/workflow.md, ADR 0052 and the Phase 13 output-limit contract. Keep FireLaunch untouched; no repository copy, browser qualification, extra model-summarization pass or speculative context-reading rewrite. Preserve current P12/P13 historical NOT GREEN and existing source/owner/permission contracts. Report exact changed files, tests run, any blockers and scoped result. Do not claim product GREEN, self-commit, auto-run the next prompt or advance version. STOP.

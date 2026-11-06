@@ -1,0 +1,21 @@
+TASK: Correction 13 / P2 — Pi worker length and partial-answer capture
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+PREFLIGHT
+Inspect `packages/pi-runtime/worker.mjs`, bundled Pi 1.4.0, `test/unit/pi-runtime.test.mjs` SSE fixtures, actual text/thinking/stop events and output-token reporting. Read P1 persistence contract and existing reasoning/compaction guards; confirm actual source, not assumptions.
+
+IMPLEMENT — ONE OWNER
+At a provider `length` stop, capture and return the exact available final-answer text and stop reason/usage, even when text is empty or reasoning-only. Never promote this partial to a complete response, truncate it invisibly, invent reasoning or drop type/provenance. Preserve existing successful `stop`, tool and native Roadmap paths; do not yet introduce pause owner/UI or new tool permissions. Keep bounded sanitization and ensure provider errors remain errors. Explicitly distinguish output cap from context overflow.
+
+VERIFY — T1
+Use offline fake-SSE cases in `test/unit/pi-runtime.test.mjs` for final-text length, reasoning-only length, zero-text length, ordinary completion, interrupted provider and unknown token accounting. Run `npm run check:pi-runtime` and only the directly affected fixture; if its extension-`lib` imports are stale after touched host changes, rebuild that output first. Never run browser or a live LM Studio model here.
+
+GENERAL BOUNDARIES
+Follow docs/workflow.md, ADR 0052 and the Phase 13 output-limit contract. Keep FireLaunch untouched; no repository copy, browser qualification, extra model-summarization pass or speculative context-reading rewrite. Preserve current P12/P13 historical NOT GREEN and existing source/owner/permission contracts. Report exact changed files, tests run, any blockers and scoped result. Do not claim product GREEN, self-commit, auto-run the next prompt or advance version. STOP.

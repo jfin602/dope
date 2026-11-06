@@ -1,0 +1,21 @@
+TASK: Correction 13 / P3 — Same-session Pi segment continuation without tool replay
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+PREFLIGHT
+Read P2 result. Inspect Pi 1.4.0 `session.prompt`, `session.messages`, model event and tool behavior in the actual bundle; inspect `sessionConsumed`, worker request dispatch, `chatRepeat` and compaction guard. Reproduce a two-segment length fixture before changing authorization paths.
+
+IMPLEMENT — ONE OWNER
+Add a bounded worker-internal continuation operation for a length-paused **same Pi session**. Resume with a safe continuation control anchored to the existing transcript and exact generated text; do not reissue the original user prompt or any completed broker/tool call. Accumulate only novel final-answer bytes, preserve reasoning/tool classification, segment identity, stable selected model and provider-reported usage. Keep 16-tool-call existing boundary and ordinary authorization for genuinely new tool calls; reject duplicate resumes, stale session, unexpected stop reason, unsupported native continuation and cancellation. On missing native continuation capability, fail explicitly rather than approximate a new execution.
+
+VERIFY — T1
+Offline tests: first `length` + successful second segment, two consecutive length stops, zero final on first segment, tool call already executed exactly once, compaction/cancel mid-resume, model drift rejected. Use `npm run check:pi-runtime` and `node --test test/unit/pi-runtime.test.mjs`; keep within <=8-minute focused scope or STOP with a follow-on split recommendation. No host/UI work and no browser.
+
+GENERAL BOUNDARIES
+Follow docs/workflow.md, ADR 0052 and the Phase 13 output-limit contract. Keep FireLaunch untouched; no repository copy, browser qualification, extra model-summarization pass or speculative context-reading rewrite. Preserve current P12/P13 historical NOT GREEN and existing source/owner/permission contracts. Report exact changed files, tests run, any blockers and scoped result. Do not claim product GREEN, self-commit, auto-run the next prompt or advance version. STOP.

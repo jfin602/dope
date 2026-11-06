@@ -1,0 +1,26 @@
+TASK: Correction 13 / P9 — Headless continuation integration and regression gate
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+PREFLIGHT
+Read P1–P8 implementation receipts, actual changed file list, source HEAD/dirty basis, 0.13.8 version and targeted test coverage. Inspect compiled `lib` dependencies and `package.json` script nesting before executing commands. Do not presuppose earlier runner checkmarks mean passing evidence.
+
+IMPLEMENT — T2 INTEGRATION ONLY
+Connect/reconcile already authored boundaries; repair only reproducible cross-component bugs discovered by this headless matrix. Do not introduce a new Chat engine or redesign document retrieval. Test with an offline fake model/worker (no live browser):
+- length while reasoning-only, while final text is present and at zero text;
+- Ask -> Pause -> Continue -> successfully committed complete answer; Stop -> incomplete retained; Allow -> bounded resumes; Cancel -> incomplete stop;
+- second/third limits, cumulative safety cap, duplicate events, repeated/stale clicks, project/model switch, lost worker, restart/interruption, timeouts/cancellation races;
+- exact append-once final text, single tool execution per real call and brokered source hashes, saved tool transcript, provenance, context isolation, clean and diagnostic copy;
+- accepted Roadmap edit/Docs proposal/Work grants remain protected, no partial answer silently accepted, old Chat load/cancel unchanged.
+
+VERIFY
+Build only affected chat/contracts/extension outputs in dependency order. Run one deliberate set of targeted tests, e.g. `node --test test/unit/chat.test.ts test/unit/chat-repository.test.ts test/unit/chat-backend.test.ts test/unit/chat-panel.test.ts test/unit/pi-runtime.test.mjs` plus newly added focused integration cases; avoid nested `npm test` or duplicate aggregates. Log source/test counts, skipped and failing cases and measured CPU/tool cost when available. If a safety case fails, stop with NOT GREEN and do not imply P10 readiness. No browser, real FireLaunch test or package/version changes.
+
+GENERAL BOUNDARIES
+Follow docs/workflow.md, ADR 0052 and the Phase 13 output-limit contract. Keep FireLaunch untouched; no repository copy, browser qualification, extra model-summarization pass or speculative context-reading rewrite. Preserve current P12/P13 historical NOT GREEN and existing source/owner/permission contracts. Report exact changed files, tests run, any blockers and scoped result. Do not claim product GREEN, self-commit, auto-run the next prompt or advance version. STOP.

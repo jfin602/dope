@@ -1,0 +1,21 @@
+TASK: Correction 13 / P5 — Chat backend continuation owner and persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.8`.
+- Correction scope only. No manifest, version pin or lockfile change.
+
+PREFLIGHT
+Require P1–P4 applicable implementation and passing focused tests. Inspect current `packages/theia-extension/src/node/chat-backend.ts`, `packages/chat/src/service.ts`, Chat repository leases, `model-runtime.ts`, source/tool evidence recorder, navigation/cancel events and test harness. Confirm accepted Roadmap/Docs and Work do not share this continuation authority.
+
+IMPLEMENT — ONE OWNER
+Route typed pause, checked Stop and Continue requests through existing Chat backend ownership: exact root, chat ID, assistant/execution ID, lease, selected/actual model and source basis. Persist bounded partial answer and verified tool/usage segments without converting them to complete content; allow continuation on the same owned worker until successful stop. Stop must retain incomplete text; cancel/provider failure retains truthful diagnostics. Reject stale/duplicate/cross-project decisions; on project switch, restart, lost worker or expired lease end safely as interrupted/incomplete rather than silently regenerate. Keep no duplicated broker effects or shadow callback owner. A new user turn cannot treat paused text as completed context.
+
+VERIFY — T2 (narrow authority gate)
+Build changed packages in actual dependency order; execute focused `node --test test/unit/chat-backend.test.ts test/unit/chat-repository.test.ts` plus any newly added owner/lease tests. Assert full run identity, context exclusion, safe command approval, tool receipts, failure/Stop semantics, no false Roadmap/Docs proposal on partial output and exact idempotent persisted transitions. P6/P7 depend on this control contract. No browser.
+
+GENERAL BOUNDARIES
+Follow docs/workflow.md, ADR 0052 and the Phase 13 output-limit contract. Keep FireLaunch untouched; no repository copy, browser qualification, extra model-summarization pass or speculative context-reading rewrite. Preserve current P12/P13 historical NOT GREEN and existing source/owner/permission contracts. Report exact changed files, tests run, any blockers and scoped result. Do not claim product GREEN, self-commit, auto-run the next prompt or advance version. STOP.
