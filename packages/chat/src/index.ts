@@ -63,6 +63,7 @@ export interface ChatContextPolicy {
 export interface ChatSettings {
     schemaVersion: 1;
     modelPolicy: ChatModelPolicy;
+    outputLimitPolicy: ChatOutputLimitPolicy;
     reasoningControls?: Record<string, string>;
     reasoningDisplay?: { mode: 'paragraphs' | 'short-chunks' | 'live-tokens'; fadeIn: boolean };
     context: ChatContextPolicy;
@@ -356,7 +357,7 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     return ref;
 }
 export function parseChatSettings(value: unknown): ChatSettings {
-    const v = record(value, ['schemaVersion', 'modelPolicy', 'defaultModel', 'reasoningControls', 'reasoningDisplay', 'context'], ['schemaVersion', 'context']);
+    const v = record(value, ['schemaVersion', 'modelPolicy', 'defaultModel', 'outputLimitPolicy', 'reasoningControls', 'reasoningDisplay', 'context'], ['schemaVersion', 'context']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported Chat settings schema');
     if (v.modelPolicy !== undefined && v.defaultModel !== undefined) throw new Error('Ambiguous Chat model policy');
     const c = record(v.context, ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources'],
@@ -365,6 +366,7 @@ export function parseChatSettings(value: unknown): ChatSettings {
     const legacySources = c.allowedSources.map(source => choice(source, contextKinds, 'context source'));
     if (new Set(legacySources).size !== legacySources.length) throw new Error('Duplicate context source');
     const settings: ChatSettings = { schemaVersion: 1,
+        outputLimitPolicy: v.outputLimitPolicy === undefined ? 'ask' : choice(v.outputLimitPolicy, outputPolicies, 'output limit policy'),
         modelPolicy: v.modelPolicy === undefined ? v.defaultModel === undefined ? { type: 'follow-interactive' } :
             { type: 'exact', model: parseChatModelSelection(v.defaultModel) } : parseChatModelPolicy(v.modelPolicy), context: {
         maxInputTokens: count(c.maxInputTokens, 'input budget', true),

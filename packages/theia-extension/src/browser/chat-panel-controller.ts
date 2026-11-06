@@ -489,7 +489,8 @@ export class ChatPanelController {
     }
 
     async mutate(operation: ChatOperation): Promise<boolean> {
-        if (!this.connection || !this.handle || !this.snapshot || this.pending || this.running || this.disposed) return false;
+        if (!this.connection || !this.handle || !this.snapshot || this.pending ||
+            this.running && operation.type !== 'set-settings' || this.disposed) return false;
         const generation = this.generation, connection = this.connection, handle = this.handle;
         const request = ++this.request;
         this.pending = true;

@@ -2361,6 +2361,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             }
         }
         const conversation = section('Conversation');
+        const outputLimit = document.createElement('select');
+        outputLimit.append(new Option('Ask each time', 'ask'), new Option('Allow each time', 'allow'),
+            new Option('Cancel each time', 'cancel'));
+        outputLimit.value = draft.outputLimitPolicy;
+        outputLimit.onchange = () => { draft.outputLimitPolicy = outputLimit.value as ChatSettings['outputLimitPolicy']; };
+        field(conversation, 'At generation limit', outputLimit);
         const history = document.createElement('input'); history.type = 'checkbox';
         history.checked = draft.context.history === 'recent';
         history.onchange = () => { draft.context.history = history.checked ? 'recent' : 'none'; };
@@ -2401,7 +2407,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (saved && this.settingsChatId === chatId) {
                 this.closeChatSettings();
             }
-        }); }, this.controller.running);
+        }); }, this.controller.pending);
         save.className = 'dope-chat-settings-save';
         actions.append(save);
         form.append(actions);

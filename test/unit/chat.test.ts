@@ -40,6 +40,7 @@ test('versioned Chat round trips with explicit execution and context provenance'
   const chat = sampleChat();
   const normalized = structuredClone(chat);
   normalized.settings.context.allowedSources = [...MANUAL_CHAT_CONTEXT_SOURCES];
+  normalized.settings.outputLimitPolicy = 'ask';
   assert.deepEqual(parseChat(JSON.parse(JSON.stringify(chat))), normalized);
   assert.deepEqual(parseChatCollection({ schemaVersion: 1, revision: 3,
     folders: [{ schemaVersion: 1, path: 'Research', createdAt: now },
@@ -47,6 +48,16 @@ test('versioned Chat round trips with explicit execution and context provenance'
   const moved = parseChat({ ...chat, folderPath: 'Research', title: 'New name' });
   assert.equal(moved.id, chat.id);
   assert.deepEqual(moved.messages[1], chat.messages[1]);
+});
+
+test('generation limit settings migrate to Ask and reject invalid saved choices', () => {
+  const legacy = sampleChat();
+  assert.equal(parseChat(legacy).settings.outputLimitPolicy, 'ask');
+  for (const policy of ['ask', 'allow', 'cancel'] as const)
+    assert.equal(parseChat({ ...legacy, settings: { ...legacy.settings, outputLimitPolicy: policy } })
+      .settings.outputLimitPolicy, policy);
+  assert.throws(() => parseChat({ ...legacy, settings: { ...legacy.settings,
+    outputLimitPolicy: 'forever' } }), /output limit policy/);
 });
 
 test('Chat retains only validated Pi compaction identities', () => {

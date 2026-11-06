@@ -10,7 +10,7 @@ import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '.
 import { parseExecutionActivity, type ChatActivityEvent, type ChatExecutionActivity } from '../activity';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
-const DEFAULT_SETTINGS = { schemaVersion: 1 as const, modelPolicy: { type: 'follow-interactive' as const }, context: { maxInputTokens: 8192, reservedOutputTokens: 1024,
+const DEFAULT_SETTINGS = { schemaVersion: 1 as const, modelPolicy: { type: 'follow-interactive' as const }, outputLimitPolicy: 'ask' as const, context: { maxInputTokens: 8192, reservedOutputTokens: 1024,
     history: 'recent' as const, savedChatSearch: false,
     allowedSources: [...MANUAL_CHAT_CONTEXT_SOURCES] } };
 const interrupted = 'Interrupted before completion';

@@ -79,6 +79,12 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'First question' });
         void firstTurn.catch(() => undefined);
         const first = await paused();
+        assert.equal(first.execution.outputLimitPolicy, 'ask');
+        const changing = await backend.read(projectHandle);
+        await backend.mutate({ projectHandle, expectedRevision: changing.revision,
+            operation: { type: 'set-settings', chatId, settings: {
+                ...changing.chats[0].settings, outputLimitPolicy: 'allow' } }, leaseToken: lease.token });
+        assert.equal((await backend.get(projectHandle, chatId))?.settings.outputLimitPolicy, 'allow');
         assert.equal(first.content, '');
         assert.equal(first.answerPartial?.text, 'Part 1');
         assert.equal(first.answerPartial?.segments.length, 1);
@@ -97,6 +103,10 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         await assert.rejects(backend.decideOutputLimit(projectHandle, chatId, lease.token, first.id,
             first.execution.id, 1, first.answerPartial!.cursor, 'continue'), /foreign/);
         await firstTurn;
+        const restore = await backend.read(projectHandle);
+        await backend.mutate({ projectHandle, expectedRevision: restore.revision,
+            operation: { type: 'set-settings', chatId, settings: {
+                ...restore.chats[0].settings, outputLimitPolicy: 'ask' } }, leaseToken: lease.token });
         const completed = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
         assert.equal(completed.role, 'assistant');
         assert.equal(completed.content, 'Part 1 complete');
@@ -155,6 +165,55 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         await rm(root, { recursive: true, force: true });
     }
 });
+
+test('Allow caps segments and cumulative tokens; Cancel retains first segment without resuming', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    let generated = 0, resumed = 0, stopped = 0;
+    const paused = (segment: number): Extract<import('../../packages/contracts/lib/model-runtime.js').ConversationEvent,
+        { type: 'paused' }> => ({ type: 'paused', segmentIndex: segment,
+        text: 'part'.repeat(segment), novelText: 'part', finishReason: 'length', actualModelId: 'q4',
+        usage: { tokenMeasurement: 'provider-reported', outputTokens: segment * (generated === 3 ? 5000 : 10) },
+        segmentUsage: { tokenMeasurement: 'provider-reported', outputTokens: generated === 3 ? 5000 : 10 },
+        continuation: { async *resume() { resumed++; yield paused(segment + 1); },
+            async stop() { stopped++; return { type: 'stopped-incomplete', text: 'part'.repeat(segment),
+                segmentIndex: segment, usage: { tokenMeasurement: 'provider-reported', outputTokens: segment * 10 },
+                originalFinishReason: 'length', finishReason: 'owner-stop', actualModelId: 'q4' }; },
+            dispose() {} } });
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192,
+                maxInputTokens: 8192 } }] }] }),
+    async *generate() { generated++; yield paused(1); } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Question' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 8192 }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+        for (const [policy, expectedSegments] of [['allow', 3], ['cancel', 1], ['allow', 2]] as const) {
+            const chatId = id();
+            let state = await backend.mutate({ projectHandle, expectedRevision: (await backend.read(projectHandle)).revision,
+                operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Policy' } });
+            state = await backend.mutate({ projectHandle, expectedRevision: state.revision,
+                operation: { type: 'set-settings', chatId, settings: {
+                    ...state.chats.find(chat => chat.id === chatId)!.settings, outputLimitPolicy: policy } } });
+            const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+            if (!lease.acquired) throw new Error('Lease missing');
+            await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Question' });
+            const message = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
+            assert.equal(message.role, 'assistant');
+            if (message.role !== 'assistant') throw new Error('Assistant missing');
+            assert.equal(message.execution.outputLimitPolicy, policy);
+            assert.equal(message.execution.status, 'stopped-incomplete');
+            assert.equal(message.answerPartial?.segments.length, expectedSegments);
+            assert.equal(message.content, '');
+            await backend.release(projectHandle, chatId, lease.token);
+        }
+        assert.equal(generated, 3);
+        assert.equal(resumed, 3);
+        assert.equal(stopped, 3);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
 test('Chat command approval is lease and turn scoped, one use, redacted, and sandboxed', async () => {
     const root = await folder(), repository = new ChatRepository();
     await mkdir(join(root, '.git'));
@@ -189,6 +248,10 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
         const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
         await backend.mutate({ projectHandle, expectedRevision: 0,
             operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const policyState = await backend.read(projectHandle);
+        await backend.mutate({ projectHandle, expectedRevision: policyState.revision,
+            operation: { type: 'set-settings', chatId, settings: {
+                ...policyState.chats[0].settings, outputLimitPolicy: 'allow' } } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel-a' });
         if (!lease.acquired) throw new Error('Lease missing');
         const turn = (content: string) => backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,

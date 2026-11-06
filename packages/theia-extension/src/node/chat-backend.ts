@@ -2161,6 +2161,7 @@ export class ChatBackend implements ChatService {
             const now = new Date().toISOString();
             assistant = { schemaVersion: 1, id: randomUUID(), role: 'assistant', createdAt: now, content: '',
                 execution: { schemaVersion: 1, id: randomUUID(), status: 'pending',
+                    outputLimitPolicy: chat.settings.outputLimitPolicy,
                     selectedModel: { ...selectedModel }, resolutionSource: following ? 'role-policy' :
                         request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
                     startedAt: now } };
@@ -2255,6 +2256,7 @@ export class ChatBackend implements ChatService {
             let partialText = '';
             let partialCursor = 0;
             let partialSegments = 0;
+            let cumulativeOutputTokens = 0;
             while (true) {
                 let resumedEvents: AsyncIterable<ConversationEvent> | undefined;
                 for await (const event of events) {
@@ -2297,8 +2299,16 @@ export class ChatBackend implements ChatService {
                         }
                         partialText = event.text;
                         partialSegments = event.segmentIndex;
+                        // Provider usage can be absent; the byte bound remains authoritative in that case.
+                        cumulativeOutputTokens += event.segmentUsage.outputTokens ?? 0;
                         await flushActivity();
-                        const decisionWait = new Promise<'stop' | 'continue'>((resolve, reject) => {
+                        const automaticDecision = chat.settings.outputLimitPolicy === 'cancel' ? 'stop' :
+                            chat.settings.outputLimitPolicy === 'allow' ?
+                                // At most two automatic resumes (three segments), 8k reported tokens
+                                // and 48 KiB of retained answer text within the repository's 64 KiB bound.
+                                event.segmentIndex >= 3 || cumulativeOutputTokens >= 8192 || partialCursor >= 49_152 ?
+                                    'stop' : 'continue' : undefined;
+                        const decisionWait = automaticDecision ?? new Promise<'stop' | 'continue'>((resolve, reject) => {
                             let timer: ReturnType<typeof setTimeout>;
                             const cleanup = () => { clearTimeout(timer); abort.signal.removeEventListener('abort', onAbort); };
                             const settle = (choice: 'stop' | 'continue') => { cleanup(); resolve(choice); };
@@ -2330,6 +2340,7 @@ export class ChatBackend implements ChatService {
                             pending.sourceBasis = this.outputLimitSourceBasis(
                                 (await this.repository.read(root)).chats.find(chat => chat.id === key)?.messages ?? [], assistant!.id);
                         const decision = await decisionWait;
+                        if (abort.signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
                         await this.repository.renew(root, key, request.leaseToken);
                         if (decision === 'stop') {
                             await event.continuation.stop();

@@ -17,6 +17,19 @@ const model = { connectionId: 'local', modelId: 'model' };
 const provenance = { schemaVersion: 1 as const, ...model, providerId: 'test', modelLabel: 'Test' };
 const emptyAnalysis = { projects: [], nodes: [], relationships: [], evidence: [], status: { completeness: 'complete' as const, errors: [] } };
 
+test('generation limit policy persists across repository reopen', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    assert.equal(state.chats[0].settings.outputLimitPolicy, 'ask');
+    state = await repo.mutate(root, state.revision, { type: 'set-settings', chatId,
+      settings: { ...state.chats[0].settings, outputLimitPolicy: 'allow' } });
+    assert.equal((await new ChatRepository().read(root)).chats[0].settings.outputLimitPolicy, 'allow');
+    await assert.rejects(repo.mutate(root, state.revision, { type: 'set-settings', chatId,
+      settings: { ...state.chats[0].settings, outputLimitPolicy: 'invalid' as never } }), /output limit policy/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('partial output is append-once, lease-bound, and remains noncanonical through stop and recovery', async () => {
   const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id(), executionId = id();
   try {
