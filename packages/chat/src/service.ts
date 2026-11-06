@@ -28,9 +28,13 @@ export type ChatOperation =
         segment: number; cursor: number; delta: string }
     | { type: 'pause-output-limit'; chatId: ChatId; messageId: string; executionId: string;
         segment: number; cursor: number; finishReason: string; tokenUsage?: ChatExecution['tokenUsage'];
-        sourceRefs?: ChatExecution['sourceRefs']; toolEvents?: ChatExecution['toolEvents'] }
+        sourceRefs?: ChatExecution['sourceRefs']; toolEvents?: ChatExecution['toolEvents'];
+        routingProvenance?: RoutingProvenance; activity?: ChatExecutionActivity }
     | { type: 'resume-output-limit'; chatId: ChatId; messageId: string; executionId: string; cursor: number }
     | { type: 'stop-incomplete'; chatId: ChatId; messageId: string; executionId: string; cursor: number }
+    | { type: 'interrupt-output-limit'; chatId: ChatId; messageId: string; executionId: string;
+        cursor: number; failure: string; sourceRefs?: ChatExecution['sourceRefs'];
+        toolEvents?: ChatExecution['toolEvents']; activity?: ChatExecutionActivity }
     | { type: 'record-assistant-activity'; chatId: ChatId; messageId: string; activity: ChatExecutionActivity }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
         content: string; activity?: ChatExecutionActivity; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;
@@ -143,6 +147,9 @@ export interface ChatService {
     release(projectHandle: string, chatId: ChatId, token: string): Promise<void>;
     publishDelta(request: ChatDeltaRequest): Promise<void>;
     runTurn(request: ChatTurnRequest): Promise<ChatTurnResult>;
+    decideOutputLimit(projectHandle: string, chatId: ChatId, leaseToken: string,
+        messageId: string, executionId: string, segment: number, cursor: number,
+        decision: 'stop' | 'continue'): Promise<void>;
     setCommandMode(projectHandle: string, chatId: ChatId, leaseToken: string, mode: ChatCommandMode): Promise<void>;
     decideCommand(projectHandle: string, chatId: ChatId, leaseToken: string,
         requestId: string, allowOnce: boolean): Promise<void>;

@@ -513,7 +513,8 @@ export class ChatRepository {
                 if (this.active(lease)) throw new Error('Cannot delete an open Chat');
             }
             if (['append-user', 'begin-assistant', 'start-assistant', 'append-answer-partial', 'pause-output-limit',
-                'resume-output-limit', 'stop-incomplete', 'record-assistant-activity', 'finish-assistant'].includes(operation.type)) {
+                'resume-output-limit', 'stop-incomplete', 'interrupt-output-limit',
+                'record-assistant-activity', 'finish-assistant'].includes(operation.type)) {
                 const chatId = (operation as Extract<ChatOperation, { chatId: string }>).chatId;
                 const lease = await this.lease(base, chatId);
                 if (!lease || !this.active(lease) || lease.token !== leaseToken) throw new Error('Chat ownership lease required');
@@ -580,6 +581,9 @@ export class ChatRepository {
                 case 'append-user': {
                     const message = parseChatMessage(operation.message);
                     if (message.role !== 'user') throw new Error('Expected user message');
+                    if (chats[index]?.messages.some(item => item.role === 'assistant' &&
+                        ['pending', 'streaming', 'paused-output-limit'].includes(item.execution.status)))
+                        throw new Error('Resolve the active Chat execution before another user message');
                     update(c => ({ ...c, lastInteractedAt: now, messages: [...c.messages, message] })); break;
                 }
                 case 'revise-user-context': update(c => {
@@ -598,6 +602,9 @@ export class ChatRepository {
                     const message = parseChatMessage(operation.message);
                     if (message.role !== 'assistant' || message.execution.status !== 'pending' || message.lockedRoadmapPlan)
                         throw new Error('Expected pending assistant without locked plan');
+                    if (chats[index]?.messages.some(item => item.role === 'assistant' &&
+                        ['pending', 'streaming', 'paused-output-limit'].includes(item.execution.status)))
+                        throw new Error('Chat execution already active');
                     update(c => ({ ...c, lastInteractedAt: now, messages: [...c.messages, message] })); break;
                 }
                 case 'start-assistant': update(c => {
@@ -615,7 +622,8 @@ export class ChatRepository {
                 case 'append-answer-partial':
                 case 'pause-output-limit':
                 case 'resume-output-limit':
-                case 'stop-incomplete': update(c => {
+                case 'stop-incomplete':
+                case 'interrupt-output-limit': update(c => {
                     const at = c.messages.findIndex(m => m.id === operation.messageId);
                     const message = c.messages[at];
                     if (!message || message.role !== 'assistant' || message.execution.id !== operation.executionId ||
@@ -626,20 +634,26 @@ export class ChatRepository {
                     const messages = [...c.messages];
                     if (operation.type === 'append-answer-partial') {
                         if (message.execution.status !== 'streaming' || operation.segment !== partial.segments.length + 1 ||
-                            !operation.delta || new TextEncoder().encode(operation.delta).length > 65_536)
+                            !operation.delta || new TextEncoder().encode(operation.delta).length > 65_536 ||
+                            partial.cursor + new TextEncoder().encode(operation.delta).length > 65_536)
                             throw new Error('Stale or invalid Chat answer append');
                         messages[at] = parseChatMessage({ ...message, answerPartial: { ...partial,
                             text: partial.text + operation.delta, cursor: partial.cursor + new TextEncoder().encode(operation.delta).length } });
                     } else if (operation.type === 'pause-output-limit') {
                         if (message.execution.status !== 'streaming' || operation.segment !== partial.segments.length + 1 ||
                             operation.finishReason !== 'length') throw new Error('Stale Chat output-limit pause');
+                        if (message.activity && operation.activity &&
+                            JSON.stringify(operation.activity.events.slice(0, message.activity.events.length)) !==
+                                JSON.stringify(message.activity.events)) throw new Error('Stale Chat activity');
                         messages[at] = parseChatMessage({ ...message, answerPartial: { ...partial,
                             segments: [...partial.segments, { number: operation.segment,
                                 start: partial.segments.at(-1)?.end ?? 0, end: partial.cursor,
                                 finishReason: operation.finishReason,
                                 ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}) }] },
+                            ...(operation.activity ? { activity: operation.activity } : {}),
                             execution: { ...message.execution, status: 'paused-output-limit', finishReason: 'length',
                                 ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}),
+                                ...(operation.routingProvenance ? { routingProvenance: operation.routingProvenance } : {}),
                                 ...(operation.sourceRefs ? { sourceRefs: operation.sourceRefs } : {}),
                                 ...(operation.toolEvents ? { toolEvents: operation.toolEvents } : {}) } });
                     } else if (operation.type === 'resume-output-limit') {
@@ -647,9 +661,21 @@ export class ChatRepository {
                         messages[at] = parseChatMessage({ ...message, execution: { ...message.execution,
                             status: 'streaming', finishReason: undefined } });
                     } else {
-                        if (message.execution.status !== 'paused-output-limit') throw new Error('Chat output is not paused');
+                        if (operation.type === 'stop-incomplete' && message.execution.status !== 'paused-output-limit' ||
+                            operation.type === 'interrupt-output-limit' &&
+                            !['paused-output-limit', 'streaming'].includes(message.execution.status))
+                            throw new Error(operation.type === 'stop-incomplete' ?
+                                'Chat output is not paused' : 'Chat output is not active');
+                        if (operation.type === 'interrupt-output-limit' && message.activity && operation.activity &&
+                            JSON.stringify(operation.activity.events.slice(0, message.activity.events.length)) !==
+                                JSON.stringify(message.activity.events)) throw new Error('Stale Chat activity');
                         messages[at] = parseChatMessage({ ...message, execution: { ...message.execution,
-                            status: 'stopped-incomplete', finishedAt: now } });
+                            status: operation.type === 'stop-incomplete' ? 'stopped-incomplete' : 'interrupted', finishedAt: now,
+                            ...(operation.type === 'interrupt-output-limit' ? { failure: operation.failure.slice(0, 1000),
+                                ...(operation.sourceRefs ? { sourceRefs: operation.sourceRefs } : {}),
+                                ...(operation.toolEvents ? { toolEvents: operation.toolEvents } : {}) } : {}) },
+                            ...(operation.type === 'interrupt-output-limit' && operation.activity ?
+                                { activity: operation.activity } : {}) });
                     }
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;

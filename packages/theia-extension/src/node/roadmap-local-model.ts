@@ -89,6 +89,11 @@ export async function localPlanningJson<T extends { type: string; text: string; 
                 streamedBytes += Buffer.byteLength(event.text, 'utf8');
                 if (streamedBytes > maxOutputBytes) fail('Local planning output exceeds the reserved size');
             } else if (event.type === 'complete') complete = event;
+            else if (event.type === 'paused') {
+                const paused = event as T & { continuation?: { dispose(): void } };
+                paused.continuation?.dispose();
+                fail('Local planning output reached the generation limit before validation', '', 'incomplete-answer');
+            }
             else if (event.type === 'activity') {
                 const kind = (event as T & { kind?: string }).kind;
                 if (kind === 'thinking' || kind === 'provisional' || kind === 'answer' || kind === 'tool')

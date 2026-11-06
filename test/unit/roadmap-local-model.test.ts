@@ -6,6 +6,15 @@ import { allowsPlainGateAnswer, localPlanningJson, requestsRoadmapOwnerRevision,
 const noAction = '{"type":"no-action","message":"More project context is required"}';
 const complete = (text: string) => ({ type: 'complete' as const, text });
 
+test('partial Roadmap JSON cannot stage an action and releases its paused worker', async () => {
+    let disposed = 0;
+    await assert.rejects(localPlanningJson(async function* () {
+        yield { type: 'paused' as const, text: '{"type":"roadmap-gate-proposal"',
+            continuation: { dispose() { disposed++; } } };
+    }, new AbortController().signal, 4096, 'gate'), /generation limit before validation/);
+    assert.equal(disposed, 1);
+});
+
 test('strict Planning buffers JSON while forwarding genuine activity before validation', async () => {
     const seen: string[] = [];
     const output = JSON.stringify({ type: 'no-action', message: 'The Gate remains unchanged.' });
@@ -274,6 +283,7 @@ async function withChat(run: (backend: ChatBackend, projectHandle: string, chatI
     const backend = new ChatBackend(new ChatRepository(), { notifyChatEvent() {} }, models as never,
         { compose: async () => ({ messages: [{ role: 'user', content: 'Plan' }], refs: [], diagnostics: [],
             usedTokens: 1, budgetTokens: 1 }) } as never, routing as never);
+    let owned: { projectHandle: string; chatId: string; token: string } | undefined;
     try {
         const { projectHandle } = await backend.attach(pathToFileURL(root).href);
         const chatId = randomUUID();
@@ -281,8 +291,13 @@ async function withChat(run: (backend: ChatBackend, projectHandle: string, chatI
             operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Short planning' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!lease.acquired) throw new Error('Missing lease');
+        owned = { projectHandle, chatId, token: lease.token };
         await run(backend, projectHandle, chatId, lease.token);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally {
+        if (owned) await backend.release(owned.projectHandle, owned.chatId, owned.token).catch(() => undefined);
+        backend.dispose();
+        await rm(root, { recursive: true, force: true });
+    }
 }
 
 test('local Roadmap turn fails before transport when loaded capacity is unknown', async () => {

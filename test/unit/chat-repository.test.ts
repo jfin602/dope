@@ -48,6 +48,9 @@ test('partial output is append-once, lease-bound, and remains noncanonical throu
       assert.equal(paused.execution.status, 'paused-output-limit');
       assert.equal(paused.execution.outputLimitPolicy, 'ask');
     }
+    await assert.rejects(repo.mutate(root, state.revision, { type: 'append-user', chatId, message: {
+      schemaVersion: 1, id: id(), role: 'user', createdAt: new Date().toISOString(),
+      content: 'A new question', contextRefs: [] } }, lease.token), /active Chat execution/);
     const stop = { type: 'stop-incomplete' as const, chatId, messageId, executionId, cursor };
     const decisions = await Promise.allSettled([
       repo.mutate(root, state.revision, stop, lease.token),

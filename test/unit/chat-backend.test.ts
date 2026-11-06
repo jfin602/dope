@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend, forbidsProjectTools } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { ModelRuntimeFailure } from '../../packages/contracts/lib/model-runtime.js';
 
 test('explicit current-turn tool opt-out is narrow and distinct from read-only constraints', () => {
     assert.equal(forbidsProjectTools('What is 1+1? Do not call tools or modify files.'), true);
@@ -25,6 +26,135 @@ import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
 const id = () => randomUUID();
+test('output-limit choices retain one execution, reject stale owners, and keep stopped text incomplete', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    await writeFile(join(root, 'README.md'), 'Verified source for this turn.');
+    let generated = 0, resumed = 0, stopped = 0, reads = 0;
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192,
+                maxInputTokens: 8192 } }] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        generated++;
+        reads++;
+        assert.match(await request.projectTools!.execute('read_file', { path: 'README.md' }), /Verified source/);
+        const text = `Part ${generated}`;
+        const continuation = { async *resume() {
+            resumed++;
+            if (generated === 4) throw new ModelRuntimeFailure('Local Pi continuation failed or expired',
+                'connection-unavailable');
+            yield { type: 'complete' as const, text: `${text} complete`, actualModelId: 'q4',
+                finishReason: 'stop', usage: { tokenMeasurement: 'provider-reported' as const,
+                    inputTokens: 12, outputTokens: 8, totalTokens: 20 } };
+        }, async stop() { stopped++; return { type: 'stopped-incomplete' as const, text,
+            segmentIndex: 1, usage: { tokenMeasurement: 'provider-reported' as const, outputTokens: 3 },
+            originalFinishReason: 'length' as const, finishReason: 'owner-stop' as const, actualModelId: 'q4' }; },
+        dispose() {} };
+        yield { type: 'paused' as const, text, novelText: text, segmentIndex: 1,
+            usage: { tokenMeasurement: 'provider-reported' as const, outputTokens: 3 },
+            segmentUsage: { tokenMeasurement: 'provider-reported' as const, outputTokens: 3 },
+            finishReason: 'length' as const, actualModelId: 'q4', continuation };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Question' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 8192 }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
+        undefined, new ChatProjectGrounder({} as never));
+    let owned: { projectHandle: string; chatId: string; token: string } | undefined;
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Owned turn' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        owned = { projectHandle, chatId, token: lease.token };
+        const paused = async () => {
+            for (let i = 0; i < 200; i++) {
+                const message = (await backend.get(projectHandle, chatId))?.messages.at(-1);
+                if (message?.role === 'assistant' && message.execution.status === 'paused-output-limit') return message;
+                await new Promise(resolve => setTimeout(resolve, 5));
+            }
+            throw new Error('Chat did not pause');
+        };
+        const firstTurn = backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'First question' });
+        void firstTurn.catch(() => undefined);
+        const first = await paused();
+        assert.equal(first.content, '');
+        assert.equal(first.answerPartial?.text, 'Part 1');
+        assert.equal(first.answerPartial?.segments.length, 1);
+        assert.equal(first.execution.toolEvents?.[0]?.name, 'read_file');
+        assert.equal(first.execution.toolEvents?.[0]?.status, 'completed');
+        assert.equal(first.execution.sourceRefs?.[0]?.id, 'README.md');
+        assert.ok(first.activity?.events.some(event => event.kind === 'tool'));
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Second question' }), /active/);
+        await assert.rejects(backend.decideOutputLimit(projectHandle, chatId, id(), first.id,
+            first.execution.id, 1, first.answerPartial!.cursor, 'continue'), /foreign/);
+        await assert.rejects(backend.decideOutputLimit(projectHandle, chatId, lease.token, first.id,
+            first.execution.id, 1, first.answerPartial!.cursor + 1, 'continue'), /foreign/);
+        await backend.decideOutputLimit(projectHandle, chatId, lease.token, first.id,
+            first.execution.id, 1, first.answerPartial!.cursor, 'continue');
+        await assert.rejects(backend.decideOutputLimit(projectHandle, chatId, lease.token, first.id,
+            first.execution.id, 1, first.answerPartial!.cursor, 'continue'), /foreign/);
+        await firstTurn;
+        const completed = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
+        assert.equal(completed.role, 'assistant');
+        assert.equal(completed.content, 'Part 1 complete');
+        assert.equal(completed.execution.status, 'complete');
+        assert.equal(completed.answerPartial, undefined);
+        assert.equal(generated, 1);
+        assert.equal(resumed, 1);
+        assert.equal(reads, 1, 'continuation did not replay the original broker call');
+        const secondTurn = backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Second question' });
+        void secondTurn.catch(() => undefined);
+        const second = await paused();
+        await backend.decideOutputLimit(projectHandle, chatId, lease.token, second.id,
+            second.execution.id, 1, second.answerPartial!.cursor, 'stop');
+        await secondTurn;
+        const incomplete = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
+        assert.equal(incomplete.content, '');
+        assert.equal(incomplete.execution.status, 'stopped-incomplete');
+        assert.equal(incomplete.answerPartial?.text, 'Part 2');
+        assert.ok(incomplete.activity?.events.some(event => event.kind === 'tool'));
+        assert.equal(stopped, 1);
+        assert.equal(resumed, 1);
+        const cancelledTurn = backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Cancel this question' });
+        void cancelledTurn.catch(() => undefined);
+        const third = await paused();
+        await backend.cancelTurn(projectHandle, chatId, lease.token);
+        await assert.rejects(cancelledTurn, /cancelled/);
+        const interrupted = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
+        assert.equal(interrupted.id, third.id);
+        assert.equal(interrupted.execution.status, 'interrupted');
+        assert.equal(interrupted.content, '');
+        assert.equal(interrupted.answerPartial?.text, 'Part 3');
+        assert.equal(generated, 3);
+        assert.equal(resumed, 1);
+        const context = await new ChatContextComposer({} as never, {} as never, {} as never, repository)
+            .compose(root, (await backend.get(projectHandle, chatId))!, 'A new question', [],
+                { conversationalText: true, streaming: true, contextWindowTokens: 8192, maxInputTokens: 8192 });
+        assert.ok(context.messages.some(message => message.content === 'Part 1 complete'));
+        assert.equal(context.messages.some(message => /Part [23]/.test(message.content)), false,
+            'incomplete answer text never enters a new model context');
+        const failedTurn = backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Provider failure' });
+        void failedTurn.catch(() => undefined);
+        const fourth = await paused();
+        await backend.decideOutputLimit(projectHandle, chatId, lease.token, fourth.id,
+            fourth.execution.id, 1, fourth.answerPartial!.cursor, 'continue');
+        await assert.rejects(failedTurn, /continuation failed or expired/);
+        const failed = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
+        assert.equal(failed.execution.status, 'interrupted');
+        assert.equal(failed.execution.failure, 'Local Pi continuation failed or expired');
+        assert.equal(failed.answerPartial?.text, 'Part 4');
+    } finally {
+        if (owned) await backend.release(owned.projectHandle, owned.chatId, owned.token).catch(() => undefined);
+        backend.dispose();
+        await rm(root, { recursive: true, force: true });
+    }
+});
 test('Chat command approval is lease and turn scoped, one use, redacted, and sandboxed', async () => {
     const root = await folder(), repository = new ChatRepository();
     await mkdir(join(root, '.git'));

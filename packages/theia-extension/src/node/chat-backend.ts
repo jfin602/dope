@@ -5,7 +5,7 @@ import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, Chat
 import type { ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import { changeChatSkill, generationChatSkillSnapshot, isBoundDocumentationSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
-import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
+import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatModelSelection, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import { ModelRuntimeFailure, type ConversationEvent, type ConversationMessage, type ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
@@ -96,6 +96,10 @@ export class ChatBackend implements ChatService {
     private readonly unlisten: () => void;
     private readonly unlistenPlanningConflicts?: () => void;
     private readonly turns = new Map<string, { token: string; abort: AbortController }>();
+    private readonly pendingOutputLimits = new Map<string, { root: string; leaseToken: string;
+        messageId: string; executionId: string; segment: number; cursor: number;
+        selectedModel: ChatModelSelection; actualModel: ChatModelProvenance; sourceBasis?: string;
+        resolve: (decision: 'stop' | 'continue') => void }>();
     private readonly generationPreparing = new Set<string>();
     private readonly generationControllers = new Map<string, { token: string; controller: RoadmapGenerationController }>();
     private readonly nativeStages?: RoadmapNativeStageOwner;
@@ -1545,6 +1549,9 @@ export class ChatBackend implements ChatService {
         const snapshot = await this.repository.read(root);
         const chat = snapshot.chats.find(item => item.id === request.chatId);
         if (!chat) throw new Error('Chat not found');
+        if (chat.messages.some(message => message.role === 'assistant' &&
+            ['pending', 'streaming', 'paused-output-limit'].includes(message.execution.status)))
+            throw new Error('Resolve the active Chat execution before sending another turn');
         // Saved offers remain inert; a saved answer never becomes Roadmap mutation authority.
         await this.repository.renew(root, request.chatId, request.leaseToken);
         const retryIndex = request.retryMessageId ? chat.messages.findIndex(item => item.id === request.retryMessageId) : -1;
@@ -1741,6 +1748,10 @@ export class ChatBackend implements ChatService {
         const key = request.chatId;
         const abort = new AbortController();
         this.turns.set(key, { token: request.leaseToken, abort });
+        const leaseHeartbeat = setInterval(() => {
+            void this.repository.renew(root, key, request.leaseToken).catch(() => abort.abort());
+        }, 20_000);
+        leaseHeartbeat.unref?.();
         const mutate = async (operation: ChatOperation) => {
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
@@ -1753,6 +1764,7 @@ export class ChatBackend implements ChatService {
             throw new Error('Chat mutation conflict');
         };
         let assistant: ChatAssistantMessage | undefined;
+        let liveContinuation: Extract<ConversationEvent, { type: 'paused' }>['continuation'] | undefined;
         let activity: ChatActivityRecorder | undefined;
         let activitySequence = 0;
         let activityCount = 0;
@@ -2215,7 +2227,7 @@ export class ChatBackend implements ChatService {
                 localRoadmap ? { localOnly: true } : undefined);
             // The current protected command is already a complete typed intent. No model output
             // can add authority or improve the owner-issued publication preview.
-            const events = docsApply ? (async function* (): AsyncGenerator<ConversationEvent> {
+            let events: AsyncIterable<ConversationEvent> = docsApply ? (async function* (): AsyncGenerator<ConversationEvent> {
                 yield { type: 'complete', text: 'One current reviewed documentation proposal is available.',
                     usage: { tokenMeasurement: 'unavailable' }, finishReason: 'deterministic-intent' };
             })() : publicationIntent ? (async function* (): AsyncGenerator<ConversationEvent> {
@@ -2240,200 +2252,289 @@ export class ChatBackend implements ChatService {
                 tracePlanning('validated', key, assistant!.id);
                 yield complete;
             })(this) : generate();
-            for await (const event of events) {
-                // P5 owns the persisted Chat lease. Until it attaches the live continuation,
-                // a pause must never enter this completed-answer publication path.
-                if (event.type === 'paused') {
-                    event.continuation.dispose();
-                    throw new ModelRuntimeFailure('Local answer reached the generation limit; continuation is unavailable for this Chat execution',
-                        'incomplete-answer');
-                }
-                if (event.type === 'stopped-incomplete')
-                    throw new ModelRuntimeFailure('Local answer stopped incomplete', 'incomplete-answer');
-                if (event.type === 'activity') {
-                    recordActivity(event.kind, event.text);
-                    continue;
-                }
-                if (event.type === 'delta') {
-                    if (following && sequence === 0) {
-                        const routed = (event as Extract<RoutedConversationEvent, { type: 'delta' }>).target;
-                        const usedConnection = (await this.models.list()).connections.find(item => item.id === routed.connectionId);
-                        const usedModel = usedConnection?.models.find(item => item.id === routed.modelId);
-                        actual = { schemaVersion: 1, ...routed, providerId: usedConnection?.providerId ?? connection.providerId,
-                            modelLabel: usedModel?.label ?? model.label };
-                        await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
-                    }
-                    output += event.text;
-                    recordActivity('provisional', event.text);
-                    await this.repository.publishDelta(root, key, assistant.id, assistant.execution.id,
-                        sequence++, event.text, request.leaseToken);
-                } else {
-                    output = event.text;
-                    if (localMode === 'gate' && !roadmapSkill) {
-                        try {
-                            const value = JSON.parse(output) as { type?: string };
-                            if (value.type === 'roadmap-gate-proposal' || value.type === 'roadmap-gate-undo')
-                                output = JSON.stringify({ type: 'no-action',
-                                    message: 'No Roadmap change was made. Use /roadmap to prepare a reviewed change.' });
-                        } catch { /* Ordinary read-only prose remains unchanged. */ }
-                    }
-                    if (localRoadmap) this.planningProgress(key, assistant.id, 'validating');
-                    if (event.provenance) actual = { schemaVersion: 1, ...event.provenance };
-                    else if (event.actualModelId) actual = { ...actual, modelId: event.actualModelId };
-                    if (following && !publicationIntent) {
-                        const route = (event as Extract<RoutedConversationEvent, { type: 'complete' }>).routingProvenance;
-                        routingProvenance = route;
-                        actual = { schemaVersion: 1, connectionId: route.actualTarget.connectionId,
-                            modelId: route.actualTarget.modelId, providerId: route.executionLabels.provider,
-                            modelLabel: route.executionLabels.model };
-                        if (sequence === 0) await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id,
-                            actualModel: actual, routingProvenance });
-                    } else if (!publicationIntent) {
-                        routingProvenance = exactRoutingProvenance(request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
+            let partialText = '';
+            let partialCursor = 0;
+            let partialSegments = 0;
+            while (true) {
+                let resumedEvents: AsyncIterable<ConversationEvent> | undefined;
+                for await (const event of events) {
+                    if (event.type === 'paused') {
+                        liveContinuation = event.continuation;
+                        if (docsReview) throw new ModelRuntimeFailure(
+                            'Documentation review reached the generation limit before validation', 'incomplete-answer');
+                        if (abort.signal.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+                        if (following) {
+                            const route = (event as Extract<RoutedConversationEvent, { type: 'paused' }>).routingProvenance;
+                            if (!route) throw new ModelRuntimeFailure('Chat continuation has no routing provenance', 'incomplete-answer');
+                            const routed = { schemaVersion: 1 as const, connectionId: route.actualTarget.connectionId,
+                                modelId: route.actualTarget.modelId, providerId: route.executionLabels.provider,
+                                modelLabel: route.executionLabels.model };
+                            if (sequence === 0) {
+                                await mutate({ type: 'start-assistant', chatId: key, messageId: assistant!.id,
+                                    actualModel: routed, routingProvenance: route });
+                                actual = routed;
+                                routingProvenance = route;
+                            } else if (actual.connectionId !== routed.connectionId || actual.modelId !== routed.modelId)
+                                throw new ModelRuntimeFailure('Chat continuation changed routed model', 'incomplete-answer');
+                        }
+                        if (event.segmentIndex !== partialSegments + 1 || !event.text.startsWith(partialText) ||
+                            event.novelText !== event.text.slice(partialText.length) ||
+                            event.actualModelId !== actual.modelId ||
+                            !this.turns.has(key) || this.leases.get(key)?.token !== request.leaseToken)
+                            throw new ModelRuntimeFailure('Chat continuation identity changed', 'incomplete-answer');
+                        if (!following && !routingProvenance) routingProvenance = exactRoutingProvenance(
+                            request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
                             { connectionId: actual.connectionId, modelId: actual.modelId }, requestHard,
                             { connection: connection.label ?? connection.id, provider: actual.providerId,
                                 model: actual.modelLabel });
-                    }
-                    if (abort.signal.aborted)
-                        throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
-                    await flushActivity();
-                    if (publicationIntent) output = 'Roadmap Markdown request received. Check the verified result below before any decision.';
-                    if (docsApply) output = 'One current reviewed documentation proposal is available. Inspect its saved diff and use Apply reviewed documents on that proposal card for a separate owner approval. No file was changed by this command.';
-                    let documentActivity: ChatPlanningActivity | undefined;
-                    if (docsReview) {
-                        const readPaths = sourceRefs.filter(ref => ref.kind === 'file').map(ref => ref.id);
-                        try {
-                            if (event.finishReason === 'length') throw new Error('Model output was truncated');
-                            const review = parseDocumentationSkillReview(output, readPaths);
-                            requireCompleteDocumentationReview(content, discovery!, review.changes, documentationPages);
-                            output = review.final_response;
-                            if (review.changes.length) {
-                                const changes = await materializeDocumentationChanges(root, review.changes, documentationPages);
-                                const proposal = await prepareDocumentationReview(this.roadmapStore!, {
-                                    root, chatId: key, messageId: assistant.id,
-                                    ownerId: this.leases.get(key)!.ownerId, leaseToken: request.leaseToken,
-                                    changes });
-                                if (proposal.targets.some(target => target.operation === 'update' &&
-                                    !readPaths.includes(target.path)))
-                                    throw new Error('An updated target was not read through the broker');
-                                if (await documentationReviewApplicability(this.roadmapStore!, proposal, root) !== 'applicable')
-                                    throw new Error('Documentation source changed during review');
-                                documentActivity = { schemaVersion: 1, kind: 'documentation-proposal', status: 'pending',
-                                    refs: [...preview.refs, ...sourceRefs], proposalId: proposal.id,
-                                    documentProposal: proposal,
-                                    documentationDiscovery: { detected: discovery!.enumerated,
-                                        omitted: discovery!.omitted,
-                                        reads: [...new Map(readPaths.map(path => [path,
-                                            { path, count: readPaths.filter(read => read === path).length }])).values()]
-                                            .sort((a, b) => a.path.localeCompare(b.path)) } };
-                            }
-                        } catch (error) {
-                            output = `Documentation review could not stage a proposal: ${String(error).slice(0, 300)}. ` +
-                                'No document was changed.';
+                        await this.repository.renew(root, key, request.leaseToken);
+                        const novel = event.novelText;
+                        if (novel) {
+                            await mutate({ type: 'append-answer-partial', chatId: key, messageId: assistant!.id,
+                                executionId: assistant!.execution.id, segment: event.segmentIndex,
+                                cursor: partialCursor, delta: novel });
+                            partialCursor += Buffer.byteLength(novel, 'utf8');
                         }
-                    }
-                    const finishAssistant = async (planningActivity?: ChatPlanningActivity) => {
-                        const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant!.id,
-                        outcome: 'complete', content: output,
-                        ...(planningActivity ? { planningActivity } : {}),
-                        activity: activity?.snapshot(event.finishReason === 'length' && !publicationIntent ?
-                            'provider-truncated' : undefined),
-                        ...(publicationIntent ? {} : { actualModel: actual, routingProvenance }),
-                        contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
-                        tokenUsage: event.usage, ...(event.compaction ? { compaction: event.compaction } : {}),
-                        ...(event.finishReason ? { finishReason: event.finishReason } : {}),
-                        ...(toolEvents.length ? { sourceRefs, toolEvents } : {}) });
-                        void this.repository.removeActivityLog(root, key, assistant!.id, assistant!.execution.id)
-                        .catch(() => undefined);
-                        const titledChat = completed.chats.find(item => item.id === key);
-                        const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
-                        const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;
-                        if (!roadmapTurn && titledChat?.titleSource === 'placeholder' && preceding?.role === 'user' &&
-                            !titledChat.messages.slice(0, index).some(message =>
-                                message.role === 'assistant' && message.execution.status === 'complete'))
-                            void this.automaticTitle(root, key, preceding, assistant!.id, output, actual);
-                    };
-                    await finishAssistant(documentActivity);
-                    if (abort.signal.aborted && !localRoadmap) return preview;
-                    const proposalRefs = [...preview.refs, ...sourceRefs];
-                    const result = docsReview || docsApply ? {} : nativeRoadmap ? await (async () => {
-                        const stage = this.nativeStages?.get(key);
-                        if (!stage) return {};
-                        if (!stage.done) return { proposalError: 'Roadmap draft incomplete: final staged batch did not mark done' };
+                        partialText = event.text;
+                        partialSegments = event.segmentIndex;
+                        await flushActivity();
+                        const decisionWait = new Promise<'stop' | 'continue'>((resolve, reject) => {
+                            let timer: ReturnType<typeof setTimeout>;
+                            const cleanup = () => { clearTimeout(timer); abort.signal.removeEventListener('abort', onAbort); };
+                            const settle = (choice: 'stop' | 'continue') => { cleanup(); resolve(choice); };
+                            const pending = { root, leaseToken: request.leaseToken, messageId: assistant!.id,
+                                executionId: assistant!.execution.id, segment: event.segmentIndex,
+                                cursor: partialCursor, selectedModel: { ...selectedModel! },
+                                actualModel: { ...actual }, resolve: settle };
+                            const onAbort = () => { cleanup(); this.pendingOutputLimits.delete(key);
+                                reject(new ModelRuntimeFailure('Conversation cancelled', 'cancelled')); };
+                            if (abort.signal.aborted) { onAbort(); return; }
+                            timer = setTimeout(() => { cleanup(); this.pendingOutputLimits.delete(key);
+                                reject(new ModelRuntimeFailure('Local Pi continuation expired', 'connection-unavailable')); }, 120_000);
+                            this.pendingOutputLimits.set(key, pending);
+                            abort.signal.addEventListener('abort', onAbort, { once: true });
+                        });
                         try {
-                            const context = { root, projectId: stage.context.projectId, chatId: key,
-                                turnId: assistant.id, lease: request.leaseToken };
-                            const { before, after } = await this.nativeStages!.complete(context);
-                            const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
-                                ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
-                            const prior = new Map(entities(before).map(item => [item.id, item]));
-                            const next = new Map(entities(after).map(item => [item.id, item]));
-                            const changedIds = [...new Set([...prior.keys(), ...next.keys()])].filter(id =>
-                                JSON.stringify(prior.get(id)) !== JSON.stringify(next.get(id)));
-                            const presentation = roadmapProposalPreview(before, after,
-                                stage.operations.map(item => item.action), changedIds);
-                            const proposal: ChatPlanningProposal = { id: stage.id, chatId: key,
-                                messageId: assistant.id, ownerId: before.projectId, revision: before.revision,
-                                generation: stage.generation,
-                                counts: typedRoadmapCounts(after),
-                                sourceHash: before.linkedDocument?.sourceHash, changedIds,
-                                action: { type: 'native-stage-preview', id: before.projectId },
-                                operations: stage.operations.map(item => ({ id: item.id, type: item.action.type,
-                                    targetId: 'id' in item.action ? item.action.id ?? before.projectId :
-                                        'gateId' in item.action ? item.action.gateId : before.projectId,
-                                    targetIds: roadmapActionTargets(item.action),
-                                    status: item.status })),
-                                summary: `${stage.strategy === 'phase-only' ? 'Phase-only' : 'Full'} staged draft: ` +
-                                    `${typedRoadmapCounts(after).phases} Phases, ${typedRoadmapCounts(after).gates} Gates, ` +
-                                    `${typedRoadmapCounts(after).criteria} Criteria; ${stage.operations.length} operations, ` +
-                                    `${changedIds.length} changed entities. Validated preview; no Roadmap change applied.` +
-                                    '',
-                                preview: presentation };
-                            if (Buffer.byteLength(JSON.stringify(proposal), 'utf8') > 60_000)
-                                return { proposalError: 'Roadmap preview exceeds the saved proposal limit; reduce the draft' };
-                            this.proposals.set(key, { id: stage.id, messageId: assistant.id,
-                                leaseToken: request.leaseToken, changedIds, nativeStageId: stage.id });
-                            return { proposal };
-                        } catch (error) { return { proposalError: `Roadmap stage rejected: ${String(error)}` }; }
-                    })() : helpTurn || bridge ? {} : publicationIntent ? await this.publicationProposal(root,
-                        key, assistant.id, request.leaseToken, proposalRefs, publicationIntent) :
-                        await this.proposal(root, key, assistant.id, request.leaseToken, output, proposalRefs, draft);
-                    if (nativeRoadmap && result.proposalError && this.nativeStages?.get(key)) {
-                        try { this.client.notifyChatEvent({ projectHandle: request.projectHandle, kind: 'roadmap-stage',
-                            chatId: key, messageId: assistant.id, snapshot: null, reason: 'failed' }); }
-                        catch { /* A disconnected observer cannot change the denied turn. */ }
-                        this.nativeStages.forget(key);
+                            await mutate({ type: 'pause-output-limit', chatId: key, messageId: assistant!.id,
+                                executionId: assistant!.execution.id, segment: event.segmentIndex, cursor: partialCursor,
+                                finishReason: 'length', tokenUsage: event.usage, sourceRefs, toolEvents,
+                            activity: activity?.snapshot(),
+                                ...(routingProvenance ? { routingProvenance } : {}) });
+                        } catch (error) {
+                            const pending = this.pendingOutputLimits.get(key);
+                            if (pending?.messageId === assistant!.id) { this.pendingOutputLimits.delete(key); pending.resolve('stop'); }
+                            throw error;
+                        }
+                        const pending = this.pendingOutputLimits.get(key);
+                        if (pending?.messageId === assistant!.id && !pending.sourceBasis)
+                            pending.sourceBasis = this.outputLimitSourceBasis(
+                                (await this.repository.read(root)).chats.find(chat => chat.id === key)?.messages ?? [], assistant!.id);
+                        const decision = await decisionWait;
+                        await this.repository.renew(root, key, request.leaseToken);
+                        if (decision === 'stop') {
+                            await event.continuation.stop();
+                            await mutate({ type: 'stop-incomplete', chatId: key, messageId: assistant!.id,
+                                executionId: assistant!.execution.id, cursor: partialCursor });
+                        void this.repository.removeActivityLog(root, key, assistant!.id, assistant!.execution.id)
+                            .catch(() => undefined);
+                            return preview;
+                        }
+                        await mutate({ type: 'resume-output-limit', chatId: key, messageId: assistant!.id,
+                            executionId: assistant!.execution.id, cursor: partialCursor });
+                        resumedEvents = event.continuation.resume();
+                        break;
                     }
-                    if (nativeRoadmap && (result.proposal || result.proposalError)) {
-                        await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
-                            { schemaVersion: 1, kind: 'roadmap-gate-proposal', refs: proposalRefs,
-                                status: result.proposal ? 'pending' : 'rejected',
-                                ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
-                                ...(result.proposal ? { proposalId: result.proposal.id, proposal: result.proposal } : {}) });
+                    if (event.type === 'stopped-incomplete')
+                        throw new ModelRuntimeFailure('Local answer stopped incomplete', 'incomplete-answer');
+                    if (event.type === 'activity') {
+                        recordActivity(event.kind, event.text);
+                        continue;
                     }
-                    if (localRoadmap && !nativeRoadmap || publicationIntent) {
-                        const kind: ChatPlanningActivity['kind'] = publicationIntent ? 'roadmap-publication' :
-                            (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
-                        await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
-                            { schemaVersion: 1, kind, refs: proposalRefs,
-                                status: kind === 'no-action' || kind === 'roadmap-gate-focus' &&
+                    if (event.type === 'delta') {
+                        if (following && sequence === 0) {
+                            const routed = (event as Extract<RoutedConversationEvent, { type: 'delta' }>).target;
+                            const usedConnection = (await this.models.list()).connections.find(item => item.id === routed.connectionId);
+                            const usedModel = usedConnection?.models.find(item => item.id === routed.modelId);
+                            actual = { schemaVersion: 1, ...routed, providerId: usedConnection?.providerId ?? connection.providerId,
+                                modelLabel: usedModel?.label ?? model.label };
+                            await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id, actualModel: actual });
+                        }
+                        output += event.text;
+                        recordActivity('provisional', event.text);
+                        await this.repository.publishDelta(root, key, assistant.id, assistant.execution.id,
+                            sequence++, event.text, request.leaseToken);
+                    } else {
+                        output = event.text;
+                        if (partialSegments && !output.startsWith(partialText))
+                            throw new ModelRuntimeFailure('Completed answer differs from saved continuation', 'incomplete-answer');
+                        if (localMode === 'gate' && !roadmapSkill) {
+                            try {
+                                const value = JSON.parse(output) as { type?: string };
+                                if (value.type === 'roadmap-gate-proposal' || value.type === 'roadmap-gate-undo')
+                                    output = JSON.stringify({ type: 'no-action',
+                                        message: 'No Roadmap change was made. Use /roadmap to prepare a reviewed change.' });
+                            } catch { /* Ordinary read-only prose remains unchanged. */ }
+                        }
+                        if (localRoadmap) this.planningProgress(key, assistant.id, 'validating');
+                        if (event.provenance) actual = { schemaVersion: 1, ...event.provenance };
+                        else if (event.actualModelId) actual = { ...actual, modelId: event.actualModelId };
+                        if (following && !publicationIntent) {
+                            const route = (event as Extract<RoutedConversationEvent, { type: 'complete' }>).routingProvenance;
+                            routingProvenance = route;
+                            actual = { schemaVersion: 1, connectionId: route.actualTarget.connectionId,
+                                modelId: route.actualTarget.modelId, providerId: route.executionLabels.provider,
+                                modelLabel: route.executionLabels.model };
+                            if (sequence === 0) await mutate({ type: 'start-assistant', chatId: key, messageId: assistant.id,
+                                actualModel: actual, routingProvenance });
+                        } else if (!publicationIntent) {
+                            routingProvenance = exactRoutingProvenance(request.selectedModel ? 'explicit-turn' : 'chat-exact-default',
+                                { connectionId: actual.connectionId, modelId: actual.modelId }, requestHard,
+                                { connection: connection.label ?? connection.id, provider: actual.providerId,
+                                    model: actual.modelLabel });
+                        }
+                        if (abort.signal.aborted)
+                            throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+                        await flushActivity();
+                        if (publicationIntent) output = 'Roadmap Markdown request received. Check the verified result below before any decision.';
+                        if (docsApply) output = 'One current reviewed documentation proposal is available. Inspect its saved diff and use Apply reviewed documents on that proposal card for a separate owner approval. No file was changed by this command.';
+                        let documentActivity: ChatPlanningActivity | undefined;
+                        if (docsReview) {
+                            const readPaths = sourceRefs.filter(ref => ref.kind === 'file').map(ref => ref.id);
+                            try {
+                                if (event.finishReason === 'length') throw new Error('Model output was truncated');
+                                const review = parseDocumentationSkillReview(output, readPaths);
+                                requireCompleteDocumentationReview(content, discovery!, review.changes, documentationPages);
+                                output = review.final_response;
+                                if (review.changes.length) {
+                                    const changes = await materializeDocumentationChanges(root, review.changes, documentationPages);
+                                    const proposal = await prepareDocumentationReview(this.roadmapStore!, {
+                                        root, chatId: key, messageId: assistant.id,
+                                        ownerId: this.leases.get(key)!.ownerId, leaseToken: request.leaseToken,
+                                        changes });
+                                    if (proposal.targets.some(target => target.operation === 'update' &&
+                                        !readPaths.includes(target.path)))
+                                        throw new Error('An updated target was not read through the broker');
+                                    if (await documentationReviewApplicability(this.roadmapStore!, proposal, root) !== 'applicable')
+                                        throw new Error('Documentation source changed during review');
+                                    documentActivity = { schemaVersion: 1, kind: 'documentation-proposal', status: 'pending',
+                                        refs: [...preview.refs, ...sourceRefs], proposalId: proposal.id,
+                                        documentProposal: proposal,
+                                        documentationDiscovery: { detected: discovery!.enumerated,
+                                            omitted: discovery!.omitted,
+                                            reads: [...new Map(readPaths.map(path => [path,
+                                                { path, count: readPaths.filter(read => read === path).length }])).values()]
+                                                .sort((a, b) => a.path.localeCompare(b.path)) } };
+                                }
+                            } catch (error) {
+                                output = `Documentation review could not stage a proposal: ${String(error).slice(0, 300)}. ` +
+                                    'No document was changed.';
+                            }
+                        }
+                        const finishAssistant = async (planningActivity?: ChatPlanningActivity) => {
+                            const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant!.id,
+                            outcome: 'complete', content: output,
+                            ...(planningActivity ? { planningActivity } : {}),
+                            activity: activity?.snapshot(event.finishReason === 'length' && !publicationIntent ?
+                                'provider-truncated' : undefined),
+                            ...(publicationIntent ? {} : { actualModel: actual, routingProvenance }),
+                            contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
+                            tokenUsage: event.usage, ...(event.compaction ? { compaction: event.compaction } : {}),
+                            ...(event.finishReason ? { finishReason: event.finishReason } : {}),
+                            ...(toolEvents.length ? { sourceRefs, toolEvents } : {}) });
+                            void this.repository.removeActivityLog(root, key, assistant!.id, assistant!.execution.id)
+                            .catch(() => undefined);
+                            const titledChat = completed.chats.find(item => item.id === key);
+                            const index = titledChat?.messages.findIndex(message => message.id === assistant!.id) ?? -1;
+                            const preceding = index > 0 ? titledChat!.messages[index - 1] : undefined;
+                            if (!roadmapTurn && titledChat?.titleSource === 'placeholder' && preceding?.role === 'user' &&
+                                !titledChat.messages.slice(0, index).some(message =>
+                                    message.role === 'assistant' && message.execution.status === 'complete'))
+                                void this.automaticTitle(root, key, preceding, assistant!.id, output, actual);
+                        };
+                        await finishAssistant(documentActivity);
+                        if (abort.signal.aborted && !localRoadmap) return preview;
+                        const proposalRefs = [...preview.refs, ...sourceRefs];
+                        const result = docsReview || docsApply ? {} : nativeRoadmap ? await (async () => {
+                            const stage = this.nativeStages?.get(key);
+                            if (!stage) return {};
+                            if (!stage.done) return { proposalError: 'Roadmap draft incomplete: final staged batch did not mark done' };
+                            try {
+                                const context = { root, projectId: stage.context.projectId, chatId: key,
+                                    turnId: assistant.id, lease: request.leaseToken };
+                                const { before, after } = await this.nativeStages!.complete(context);
+                                const entities = (index: RoadmapGateIndex) => [...index.phases, ...index.gates,
+                                    ...index.corrections, ...index.gates.flatMap(gate => gate.criteria)];
+                                const prior = new Map(entities(before).map(item => [item.id, item]));
+                                const next = new Map(entities(after).map(item => [item.id, item]));
+                                const changedIds = [...new Set([...prior.keys(), ...next.keys()])].filter(id =>
+                                    JSON.stringify(prior.get(id)) !== JSON.stringify(next.get(id)));
+                                const presentation = roadmapProposalPreview(before, after,
+                                    stage.operations.map(item => item.action), changedIds);
+                                const proposal: ChatPlanningProposal = { id: stage.id, chatId: key,
+                                    messageId: assistant.id, ownerId: before.projectId, revision: before.revision,
+                                    generation: stage.generation,
+                                    counts: typedRoadmapCounts(after),
+                                    sourceHash: before.linkedDocument?.sourceHash, changedIds,
+                                    action: { type: 'native-stage-preview', id: before.projectId },
+                                    operations: stage.operations.map(item => ({ id: item.id, type: item.action.type,
+                                        targetId: 'id' in item.action ? item.action.id ?? before.projectId :
+                                            'gateId' in item.action ? item.action.gateId : before.projectId,
+                                        targetIds: roadmapActionTargets(item.action),
+                                        status: item.status })),
+                                    summary: `${stage.strategy === 'phase-only' ? 'Phase-only' : 'Full'} staged draft: ` +
+                                        `${typedRoadmapCounts(after).phases} Phases, ${typedRoadmapCounts(after).gates} Gates, ` +
+                                        `${typedRoadmapCounts(after).criteria} Criteria; ${stage.operations.length} operations, ` +
+                                        `${changedIds.length} changed entities. Validated preview; no Roadmap change applied.` +
+                                        '',
+                                    preview: presentation };
+                                if (Buffer.byteLength(JSON.stringify(proposal), 'utf8') > 60_000)
+                                    return { proposalError: 'Roadmap preview exceeds the saved proposal limit; reduce the draft' };
+                                this.proposals.set(key, { id: stage.id, messageId: assistant.id,
+                                    leaseToken: request.leaseToken, changedIds, nativeStageId: stage.id });
+                                return { proposal };
+                            } catch (error) { return { proposalError: `Roadmap stage rejected: ${String(error)}` }; }
+                        })() : helpTurn || bridge ? {} : publicationIntent ? await this.publicationProposal(root,
+                            key, assistant.id, request.leaseToken, proposalRefs, publicationIntent) :
+                            await this.proposal(root, key, assistant.id, request.leaseToken, output, proposalRefs, draft);
+                        if (nativeRoadmap && result.proposalError && this.nativeStages?.get(key)) {
+                            try { this.client.notifyChatEvent({ projectHandle: request.projectHandle, kind: 'roadmap-stage',
+                                chatId: key, messageId: assistant.id, snapshot: null, reason: 'failed' }); }
+                            catch { /* A disconnected observer cannot change the denied turn. */ }
+                            this.nativeStages.forget(key);
+                        }
+                        if (nativeRoadmap && (result.proposal || result.proposalError)) {
+                            await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
+                                { schemaVersion: 1, kind: 'roadmap-gate-proposal', refs: proposalRefs,
+                                    status: result.proposal ? 'pending' : 'rejected',
+                                    ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
+                                    ...(result.proposal ? { proposalId: result.proposal.id, proposal: result.proposal } : {}) });
+                        }
+                        if (localRoadmap && !nativeRoadmap || publicationIntent) {
+                            const kind: ChatPlanningActivity['kind'] = publicationIntent ? 'roadmap-publication' :
+                                (JSON.parse(output) as { type: ChatPlanningActivity['kind'] }).type;
+                            await this.repository.recordPlanningActivity(root, key, assistant.id, request.leaseToken,
+                                { schemaVersion: 1, kind, refs: proposalRefs,
+                                    status: kind === 'no-action' || kind === 'roadmap-gate-focus' &&
+                                        'roadmapFocus' in result && result.roadmapFocus ?
+                                        'no-action' : bridge && kind === 'bridge-proposal' ? 'suggested' :
+                                        result.proposal ? 'pending' : 'rejected',
+                                    ...(helpTurn && kind === 'no-action' && composed.verifiedGuidance ?
+                                        { verifiedGuidance: composed.verifiedGuidance } : {}),
+                                    ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
+                                    ...(result.proposal ? { proposalId: result.proposal.id,
+                                        ...(['roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication'].includes(kind) ?
+                                            { proposal: result.proposal } : {}) } : {}) });
+                            tracePlanning('result-recorded', key, assistant.id,
+                                kind === 'no-action' || kind === 'roadmap-gate-focus' &&
                                     'roadmapFocus' in result && result.roadmapFocus ?
                                     'no-action' : bridge && kind === 'bridge-proposal' ? 'suggested' :
-                                    result.proposal ? 'pending' : 'rejected',
-                                ...(helpTurn && kind === 'no-action' && composed.verifiedGuidance ?
-                                    { verifiedGuidance: composed.verifiedGuidance } : {}),
-                                ...(result.proposalError ? { diagnostic: result.proposalError.slice(0, 2000) } : {}),
-                                ...(result.proposal ? { proposalId: result.proposal.id,
-                                    ...(['roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication'].includes(kind) ?
-                                        { proposal: result.proposal } : {}) } : {}) });
-                        tracePlanning('result-recorded', key, assistant.id,
-                            kind === 'no-action' || kind === 'roadmap-gate-focus' &&
-                                'roadmapFocus' in result && result.roadmapFocus ?
-                                'no-action' : bridge && kind === 'bridge-proposal' ? 'suggested' :
-                                result.proposal ? 'pending' : 'rejected');
+                                    result.proposal ? 'pending' : 'rejected');
+                        }
+                        return { ...preview, ...result };
                     }
-                    return { ...preview, ...result };
                 }
+                if (resumedEvents) { events = resumedEvents; continue; }
+                break;
             }
             throw new Error('Model stream ended without completion');
         } catch (error) {
@@ -2457,7 +2558,14 @@ export class ChatBackend implements ChatService {
                 const diagnostic = undefined;
                 const failure = diagnostic && !cancelled ? `${baseFailure}. ${diagnostic}`.slice(0, 1000) : baseFailure;
                 try { await flushActivity(); } catch { /* Final mutation below still carries the captured snapshot. */ }
-                try { await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant.id,
+                const saved = (await this.repository.read(root)).chats.find(chat => chat.id === key)
+                    ?.messages.find(message => message.id === assistant!.id);
+                try { await mutate(saved?.role === 'assistant' && saved.answerPartial ?
+                    { type: 'interrupt-output-limit', chatId: key, messageId: assistant.id,
+                        executionId: assistant.execution.id, cursor: saved.answerPartial.cursor,
+                        failure: cancelled ? 'Conversation cancelled' : failure, sourceRefs, toolEvents,
+                        activity: activity?.snapshot() } :
+                    { type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: '', activity: activity?.snapshot(),
                     contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                     ...(toolEvents.length ? { sourceRefs, toolEvents } : {}),
@@ -2474,6 +2582,9 @@ export class ChatBackend implements ChatService {
             }
             throw error;
         } finally {
+            liveContinuation?.dispose();
+            clearInterval(leaseHeartbeat);
+            this.pendingOutputLimits.delete(key);
             if (activityTimer) clearTimeout(activityTimer);
             if (this.turns.get(key)?.abort === abort) this.turns.delete(key);
             if (this.pendingCancel.get(key) === request.leaseToken) this.pendingCancel.delete(key);
@@ -2511,6 +2622,47 @@ export class ChatBackend implements ChatService {
                 } catch (error) { if (!String(error).includes('Stale Chat revision')) return; }
             }
         } catch { /* A title never changes the answer outcome. */ }
+    }
+    private outputLimitSourceBasis(messages: Chat['messages'], messageId: string): string {
+        const at = messages.findIndex(message => message.id === messageId);
+        const saved = at >= 0 ? messages[at] : undefined;
+        const user = at > 0 ? messages[at - 1] : undefined;
+        return createHash('sha256').update(JSON.stringify({
+            refs: user?.role === 'user' ? user.contextRefs : [],
+            sourceRefs: saved?.role === 'assistant' ? saved.execution.sourceRefs ?? [] : [],
+            toolEvents: saved?.role === 'assistant' ? saved.execution.toolEvents ?? [] : []
+        })).digest('hex');
+    }
+    async decideOutputLimit(projectHandle: string, chatId: string, leaseToken: string,
+        messageId: string, executionId: string, segment: number, cursor: number,
+        decision: 'stop' | 'continue'): Promise<void> {
+        const root = this.active(projectHandle);
+        if (decision !== 'stop' && decision !== 'continue') throw new Error('Invalid output-limit decision');
+        const pending = this.pendingOutputLimits.get(chatId);
+        if (!pending || pending.root !== root || pending.leaseToken !== leaseToken ||
+            pending.messageId !== messageId || pending.executionId !== executionId ||
+            pending.segment !== segment || pending.cursor !== cursor ||
+            this.leases.get(chatId)?.root !== root || this.leases.get(chatId)?.token !== leaseToken ||
+            this.turns.get(chatId)?.token !== leaseToken || this.turns.get(chatId)?.abort.signal.aborted)
+            throw new Error('Stale or foreign Chat output-limit decision');
+        await this.repository.renew(root, chatId, leaseToken);
+        const messages = (await this.repository.read(root)).chats.find(chat => chat.id === chatId)?.messages;
+        const at = messages?.findIndex(message => message.id === messageId) ?? -1;
+        const saved = at >= 0 ? messages![at] : undefined;
+        const sourceBasis = this.outputLimitSourceBasis(messages ?? [], messageId);
+        if (this.pendingOutputLimits.get(chatId) !== pending || saved?.role !== 'assistant' ||
+            saved.execution.id !== executionId || saved.execution.status !== 'paused-output-limit' ||
+            saved.answerPartial?.cursor !== cursor || saved.answerPartial.segments.length !== segment ||
+            saved.execution.selectedModel.connectionId !== pending.selectedModel.connectionId ||
+            saved.execution.selectedModel.modelId !== pending.selectedModel.modelId ||
+            saved.execution.actualModel?.connectionId !== pending.actualModel.connectionId ||
+            saved.execution.actualModel?.modelId !== pending.actualModel.modelId ||
+            saved.execution.actualModel?.providerId !== pending.actualModel.providerId ||
+            pending.sourceBasis !== undefined && sourceBasis !== pending.sourceBasis)
+            throw new Error('Stale Chat output-limit decision');
+        pending.sourceBasis ??= sourceBasis;
+        this.pendingOutputLimits.delete(chatId);
+        pending.resolve(decision);
     }
     async cancelTurn(projectHandle: string, chatId: string, leaseToken: string): Promise<void> {
         const root = this.active(projectHandle);
