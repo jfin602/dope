@@ -372,6 +372,7 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
         assert.deepEqual(result.refs, preview.refs);
         assert.equal(sent[0]?.role, 'system');
         assert.match(sent[0].content, /Pi read_file/);
+        assert.equal(sent.some(message => /100–250 output tokens/.test(message.content)), false);
         assert.ok(sent.some(message => /Checked read-only Roadmap opportunity.*revision zero/s.test(message.content)));
         assert.ok(sent.some(message => /fresh \/gen-roadmap command/.test(message.content)));
         assert.equal(sent.some(message => /implementation-plan|pixi\.js: absent/.test(message.content)), false);
@@ -385,6 +386,38 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
         assert.equal(saved[1].execution?.contextUsage?.usedTokens, result.usedTokens);
         assert.equal(saved[1].planningActivity, undefined);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('ordinary Chat dispatches soft brevity guidance without changing its output budget', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    const requests: { messages: { role: string; content: string }[]; maxOutputTokens?: number }[] = [];
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [{ id: 'q4', label: 'Q4', usable: true, capabilities: {
+            conversationalText: true, streaming: true, contextWindowTokens: 8192, maxInputTokens: 8192 } }] }] }),
+    async *generate(_selection: unknown, request: { messages: { role: string; content: string }[];
+        maxOutputTokens?: number }) {
+        requests.push(request);
+        yield { type: 'complete' as const, text: '4', actualModelId: 'q4',
+            finishReason: 'stop', usage: { tokenMeasurement: 'provider-reported' as const,
+                inputTokens: 10, outputTokens: 1, totalTokens: 11 } };
+    } };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        new ChatContextComposer({} as never, {} as never, {} as never, repository));
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        const preview = await backend.previewContext({ projectHandle, chatId,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'What is 2 + 2?', context: [] });
+        const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'What is 2 + 2?' });
+        const sent = requests.find(request => request.messages.at(-1)?.content === 'What is 2 + 2?');
+        assert.equal(sent?.messages.filter(message => /100–250 output tokens/.test(message.content)).length, 1);
+        assert.equal(sent?.maxOutputTokens, 1024);
+        assert.equal(preview.usedTokens, result.usedTokens);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 
 test('ordinary Chat opportunity suppresses duplicate or unverifiable offers without model inference', async () => {

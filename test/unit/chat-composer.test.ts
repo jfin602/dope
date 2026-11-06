@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
+import puppeteer from 'puppeteer';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
@@ -224,17 +226,91 @@ test('a retained Roadmap skill token is not a sendable message until the user ad
     assert.equal(hasSendableChatDraft('Ordinary question'), true);
 });
 
-test('composer textarea keeps the same height for short and long drafts', () => {
+test('composer textarea follows its content height as drafts grow and shrink', () => {
     let contentHeight = 28;
     const input = { style: { height: '' }, get scrollHeight() { return contentHeight; } } as HTMLTextAreaElement;
     resizeChatInput(input);
-    assert.equal(input.style.height, '7em');
+    assert.equal(input.style.height, 'max(7em, 28px)');
     contentHeight = 120;
     resizeChatInput(input);
-    assert.equal(input.style.height, '7em');
+    assert.equal(input.style.height, 'max(7em, 120px)');
     contentHeight = 28;
     resizeChatInput(input);
-    assert.equal(input.style.height, '7em');
+    assert.equal(input.style.height, 'max(7em, 28px)');
+});
+
+test('composer keeps a separate footer while growing, scrolling and resizing', async t => {
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    const systemChrome = process.env.CHROME_BIN ?? '/usr/bin/google-chrome';
+    const browserPath = existsSync(systemChrome) ? systemChrome : await puppeteer.executablePath();
+    if (!existsSync(browserPath)) { t.skip('Chrome is unavailable'); return; }
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'], executablePath: browserPath });
+    try {
+        const page = await browser.newPage();
+        await page.setContent(`<style>${css}</style><div class="dope-chat-panel" style="width: 600px; height: 720px">
+            <div class="dope-chat-content dope-chat-content-conversation"><div class="dope-chat-shell">
+                <div class="dope-chat-transcript-region"></div>
+                <div class="dope-chat-composer"><div class="dope-chat-input-wrap">
+                    <div class="dope-chat-input-mirror" hidden></div><textarea rows="1"></textarea></div>
+                    <div class="dope-chat-composer-toolbar"><button class="dope-chat-composer-more">+</button>
+                    <label class="dope-chat-model-picker"><select><option>Model</option></select></label>
+                    <label class="dope-chat-command-mode"><select><option>Ask</option></select></label>
+                    <button class="dope-chat-composer-submit">Send</button></div></div>
+            </div></div></div>`);
+        await page.evaluate(() => {
+            const input = document.querySelector('textarea')!;
+            const shell = document.querySelector('.dope-chat-shell')!;
+            const resize = () => { input.style.height = 'auto'; input.style.height = `max(7em, ${input.scrollHeight}px)`; };
+            input.addEventListener('input', resize);
+            new ResizeObserver(resize).observe(shell);
+            resize();
+        });
+        const measure = async () => page.evaluate(() => {
+            const panel = document.querySelector('.dope-chat-panel')!.getBoundingClientRect();
+            const composer = document.querySelector('.dope-chat-composer')!.getBoundingClientRect();
+            const input = document.querySelector('textarea')!;
+            const toolbar = document.querySelector('.dope-chat-composer-toolbar')!.getBoundingClientRect();
+            return { panelHeight: panel.height, composerHeight: composer.height, inputHeight: input.clientHeight,
+                scrollHeight: input.scrollHeight, inputBottom: input.getBoundingClientRect().bottom, toolbarTop: toolbar.top,
+                toolbarBottom: toolbar.bottom, composerBottom: composer.bottom };
+        });
+        const setDraft = async (value: string) => page.$eval('textarea', (element, text) => {
+            const input = element as HTMLTextAreaElement;
+            input.value = text; input.dispatchEvent(new Event('input', { bubbles: true }));
+        }, value);
+        const short = await measure();
+        await setDraft('First line\nSecond line\nThird line\nFourth line\nFifth line\nSixth line\nSeventh line\nEighth line');
+        const multiline = await measure();
+        await setDraft(Array.from({ length: 100 }, (_, i) => `Pasted prompt line ${i}`).join('\n'));
+        const long = await measure();
+        assert.ok(multiline.composerHeight > short.composerHeight, 'multiline draft grows the composer');
+        assert.ok(multiline.scrollHeight <= multiline.inputHeight, 'text does not scroll before the height limit');
+        assert.ok(long.composerHeight <= long.panelHeight * .33 + 1, 'composer stays within one-third of panel height');
+        assert.ok(long.scrollHeight > long.inputHeight, 'long draft scrolls inside the textarea');
+        assert.equal(long.composerBottom, short.composerBottom, 'composer grows upward');
+        assert.equal(long.toolbarBottom, short.toolbarBottom, 'control row remains anchored at the bottom');
+        for (const size of [long, multiline, short]) {
+            assert.ok(size.inputBottom <= size.toolbarTop, 'text entry ends above the control row');
+            assert.ok(size.toolbarBottom <= size.composerBottom, 'control row stays inside the composer');
+        }
+        await page.$eval('.dope-chat-panel', element => { (element as HTMLElement).style.height = '540px';
+            (element as HTMLElement).style.width = '320px'; });
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        const narrow = await measure();
+        assert.ok(narrow.composerHeight <= narrow.panelHeight * .33 + 1);
+        assert.ok(narrow.inputBottom <= narrow.toolbarTop);
+        assert.ok(narrow.scrollHeight > narrow.inputHeight);
+        await setDraft('Short again');
+        const deleted = await measure();
+        assert.ok(deleted.composerHeight < narrow.composerHeight, 'deleting text shrinks the composer');
+        assert.ok(deleted.scrollHeight <= deleted.inputHeight);
+        await page.$eval('.dope-chat-panel', element => { (element as HTMLElement).style.height = '360px'; });
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        const compactPanel = await measure();
+        assert.ok(compactPanel.composerHeight <= compactPanel.panelHeight * .33 + 1);
+        assert.ok(compactPanel.inputBottom <= compactPanel.toolbarTop);
+        assert.ok(compactPanel.toolbarBottom <= compactPanel.composerBottom);
+    } finally { await browser.close(); }
 });
 
 test('composer keeps actions in the popover and only controls on the footer', async () => {
@@ -254,9 +330,9 @@ test('composer keeps actions in the popover and only controls on the footer', as
     assert.match(source, /if \(!shouldSendChatInput\(event\)\) return;[\s\S]*?submit\(\)/);
     assert.match(source, /modelSelector\.onchange = \(\) => \{[\s\S]*?state\.turnModel = [^;]+;/);
     assert.match(css, /\.dope-chat-composer \{[^}]*max-width: 940px/);
-    assert.match(css, /\.dope-chat-composer textarea \{[^}]*height: 7em;[^}]*resize: none;/);
-    assert.match(css, /\.dope-chat-composer-toolbar \{[^}]*position: absolute;[^}]*bottom: 10px;/);
-    assert.match(css, /\.dope-chat-composer \.dope-chat-input-wrap textarea \{[^}]*padding: 2px 2px 40px;/);
+    assert.match(css, /\.dope-chat-composer textarea \{[^}]*resize: none;/);
+    assert.match(css, /\.dope-chat-composer-toolbar \{[^}]*display: flex;[^}]*flex: none;/);
+    assert.match(css, /\.dope-chat-composer \.dope-chat-input-wrap textarea \{[^}]*min-height: 0;[^}]*padding: 2px;/);
 });
 
 test('unavailable selection never routes to another connected model', async () => {

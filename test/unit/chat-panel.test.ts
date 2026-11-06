@@ -50,6 +50,25 @@ test('output-limit notice uses current Ask execution and checked action identity
     assert.equal(calls.length, 1);
 });
 
+test('a live paused answer keeps its stream cursor for the same-session continuation', async () => {
+    const message = { role: 'assistant', id: 'answer', content: '', execution: {
+        id: 'execution', status: 'paused-output-limit', outputLimitPolicy: 'ask' },
+    answerPartial: { text: '1\n2\n', cursor: 4, segments: [{ number: 1 }] } };
+    const chat = { id: 'chat', messages: [message] } as unknown as ChatCollection['chats'][number];
+    const snapshot = { revision: 2, chats: [chat] } as ChatCollection;
+    const controller = new ChatPanelController(() => { throw new Error('unused'); }, () => {});
+    const stream = { chatId: 'chat', messageId: 'answer', executionId: 'execution',
+        content: '1\n2\n', sequence: 9, activitySequence: 3, events: [] };
+    Object.assign(controller, { workspace: 'project', chatId: 'chat', handle: 'handle',
+        snapshot: { revision: 1, chats: [] }, stream, running: true,
+        connection: { read: async () => snapshot },
+        lease: { workspace: 'project', chatId: 'chat', handle: 'handle', token: 'lease' } });
+    await controller.refresh();
+    assert.equal(controller.stream, stream);
+    assert.deepEqual(controller.outputLimitDecisionTarget,
+        { messageId: 'answer', executionId: 'execution', segment: 1, cursor: 4 });
+});
+
 test('partial-only diagnostic copy is labeled and never enters clean copy', () => {
     const partial = { role: 'assistant', id: 'answer', content: '', execution: {
         id: 'execution', status: 'stopped-incomplete' }, answerPartial: {

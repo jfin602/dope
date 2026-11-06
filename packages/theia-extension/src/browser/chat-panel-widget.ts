@@ -81,6 +81,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     readonly workController?: WorkSelectionController;
     readonly directController?: AgentRunController;
     private composingWork = false;
+    private composerResizeObserver?: ResizeObserver;
     private toolbarState = '';
     get canBackToChats(): boolean { return this.panel.mode === 'chat' && this.controller.mode === 'chat'; }
     backToChats(): void { if (this.canBackToChats) this.controller.select(undefined); }
@@ -255,6 +256,24 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private spacePanPressed = false;
     private cancelScrollAnimation?: () => void;
     private scrollAnimationUntil = 0;
+    private transcriptTouchChatId?: string;
+    private transcriptTouchActive = false;
+    private transcriptTouchMoved = false;
+    private transcriptTouchSettleTimer?: ReturnType<typeof setTimeout>;
+    private transcriptRenderPending = false;
+
+    /** Replacing the scroll node during a native swipe cancels touch momentum. */
+    private settleTranscriptTouch(): void {
+        if (this.transcriptTouchSettleTimer) clearTimeout(this.transcriptTouchSettleTimer);
+        this.transcriptTouchSettleTimer = setTimeout(() => {
+            this.transcriptTouchSettleTimer = undefined;
+            this.transcriptTouchChatId = undefined;
+            if (this.transcriptRenderPending) {
+                this.transcriptRenderPending = false;
+                this.render();
+            }
+        }, 160);
+    }
 
     constructor(connect: () => ChatConnection, private readonly workspaces: WorkspaceService,
         private readonly shell: ApplicationShell, owners: ChatOpenOwners, workOwners: WorkOpenOwners,
@@ -293,7 +312,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.id !== workLauncherIds.left && this.id !== workLauncherIds.right;
         this.addClass('dope-chat-panel');
         this.controller = new ChatPanelController(connect, kind => {
-            if (kind === 'activity' && this.updateLiveStreamActivity()) return;
+            if (kind === 'activity' && !this.transcriptTouchActive && !this.transcriptTouchSettleTimer &&
+                this.updateLiveStreamActivity()) return;
             this.render();
         }, owners, this.id,
             () => { void this.shell.activateWidget(this.id); }, planningSelection, (event, workspace) => {
@@ -2639,6 +2659,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private render(): void {
         const state = this.controller;
+        if (this.transcriptTouchChatId && (this.transcriptTouchChatId !== state.chatId ||
+            this.panel.mode !== 'chat' || state.mode !== 'chat')) {
+            if (this.transcriptTouchSettleTimer) clearTimeout(this.transcriptTouchSettleTimer);
+            this.transcriptTouchSettleTimer = undefined;
+            this.transcriptTouchChatId = undefined;
+            this.transcriptTouchActive = false;
+            this.transcriptTouchMoved = false;
+            this.transcriptRenderPending = false;
+        }
+        if (this.transcriptTouchChatId === state.chatId &&
+            (this.transcriptTouchActive || this.transcriptTouchSettleTimer) &&
+            this.panel.mode === 'chat' && state.mode === 'chat') {
+            this.transcriptRenderPending = true;
+            return;
+        }
         this.syncViewedProposal();
         this.syncAutoRoadmapPreview();
         const toolbarState = `${this.canBackToChats}:${this.canCopyTranscript}:${this.canOpenChatSettings}:${this.isChatSettingsOpen}`;
@@ -2716,6 +2751,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 else void this.aiCenter?.openFromChat(this.id);
             }));
         }
+        this.composerResizeObserver?.disconnect();
+        this.composerResizeObserver = undefined;
         this.content.replaceChildren();
         this.stopElapsedTicker();
         if (this.panel.mode === 'work') {
@@ -2831,9 +2868,31 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll';
         scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'Chat conversation');
         scroll.onscroll = () => {
+            if (!this.transcriptTouchActive && this.transcriptTouchSettleTimer) this.settleTranscriptTouch();
             if (performance.now() < this.scrollAnimationUntil) return;
             this.scrollFollow.scrolled(scroll.scrollTop, scroll.scrollHeight, scroll.clientHeight);
             latest.hidden = !this.scrollFollow.latestBelow;
+        };
+        scroll.ontouchstart = () => {
+            if (this.transcriptTouchSettleTimer) clearTimeout(this.transcriptTouchSettleTimer);
+            this.transcriptTouchSettleTimer = undefined;
+            this.transcriptTouchChatId = state.chatId;
+            this.transcriptTouchActive = true;
+            this.transcriptTouchMoved = false;
+            this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0;
+        };
+        scroll.ontouchmove = () => { this.transcriptTouchMoved = true; };
+        scroll.ontouchend = scroll.ontouchcancel = event => {
+            if (event.touches.length) return;
+            this.transcriptTouchActive = false;
+            if (this.transcriptTouchMoved) this.settleTranscriptTouch();
+            else {
+                this.transcriptTouchChatId = undefined;
+                if (this.transcriptRenderPending) {
+                    this.transcriptRenderPending = false;
+                    this.render();
+                }
+            }
         };
         scroll.onwheel = event => { if (event.deltaY < 0) { this.cancelScrollAnimation?.(); this.scrollAnimationUntil = 0; } };
         scroll.onpointerdown = event => {
@@ -2940,11 +2999,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     content.classList.add('dope-chat-final-answer');
                     const note = document.createElement('p'); note.textContent = 'No final response'; content.append(note);
                 }
-                if (['paused-output-limit', 'stopped-incomplete', 'interrupted'].includes(message.execution.status) &&
+                if (['streaming', 'paused-output-limit', 'stopped-incomplete', 'interrupted'].includes(message.execution.status) &&
                     message.answerPartial) {
                     const marker = document.createElement('strong');
                     marker.className = 'dope-chat-incomplete-marker';
-                    marker.textContent = 'Incomplete';
+                    marker.textContent = message.execution.status === 'streaming' ? 'Incomplete · continuing' : 'Incomplete';
                     content.append(marker);
                     if (message.answerPartial.text) {
                         const partial = renderUntrustedMessageMarkdown(this.markdown, message.answerPartial.text);
@@ -2958,7 +3017,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     title: message.skill.title ?? current?.title,
                     description: message.skill.description ?? current?.description });
             } else content.textContent = body;
-            if (message.role === 'assistant' && message.execution.status !== 'paused-output-limit' &&
+            if (message.role === 'assistant' && !message.answerPartial &&
                 state.running && message.id === activeAssistant?.id &&
                 state.stream?.messageId === message.id && state.stream.executionId === message.execution.id &&
                 state.stream.content) {
@@ -3036,6 +3095,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     message.execution.status === 'complete' && chatResponseCopyText(message) ||
                     active && state.stream?.content) content.classList.add('dope-chat-final-answer');
                 item.append(content);
+                // A retained partial can be long. Keep the live continuation after it so
+                // new provisional text remains in view when the transcript follows latest.
+                if (message.execution.status === 'streaming' && message.answerPartial) {
+                    const liveActivity = item.querySelector('.dope-chat-stream-activity');
+                    if (liveActivity) item.append(liveActivity);
+                }
                 const savedProposal = this.savedRoadmapProposalCard(message);
                 if (savedProposal) item.append(savedProposal);
                 const action = savedProposal ? undefined : this.roadmapActionCard(message);
@@ -3067,7 +3132,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     }
                 }
                 item.append(meta);
-            } else {
+            } else if (['complete', 'stopped-incomplete', 'failed', 'cancelled', 'interrupted'].includes(message.execution.status)) {
                 const execution = message.execution;
                 if (['failed', 'cancelled', 'interrupted'].includes(execution.status))
                     item.classList.add('dope-chat-message-alert');
@@ -3574,6 +3639,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.content.append(shell);
         this.updateLiveStageNotice();
         resizeChatInput(input);
+        this.composerResizeObserver = new ResizeObserver(() => resizeChatInput(input));
+        this.composerResizeObserver.observe(shell);
         scroll.scrollTop = this.scrollFollow.restore(scrollTop, scroll.scrollHeight, scroll.clientHeight);
         if (this.dragPointerId !== undefined && this.dragChatId === state.chatId) {
             scroll.scrollTop = scrollTop;
@@ -3604,6 +3671,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             void this.clearRoadmapProposal?.(viewed.uri, viewed.chatId, viewed.id, false, []).catch(() => {});
         }
         this.copyMenu.close(false);
+        this.composerResizeObserver?.disconnect();
         this.liveReasoning = undefined;
         this.stopElapsedTicker();
         this.endTranscriptDrag();
@@ -3611,6 +3679,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         document.removeEventListener('keyup', this.spacePanKeyUp);
         window.removeEventListener('blur', this.spacePanBlur);
         this.cancelScrollAnimation?.();
+        if (this.transcriptTouchSettleTimer) clearTimeout(this.transcriptTouchSettleTimer);
         ++this.workspaceRequest;
         ++this.modelsRequest;
         this.rootsListener.dispose();

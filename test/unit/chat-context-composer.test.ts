@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import type { Chat } from '../../packages/chat/lib/index.js';
-import { ChatContextComposer, GROUNDED_CHAT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { ChatContextComposer, GROUNDED_CHAT_INSTRUCTION, ORDINARY_CHAT_RESPONSE_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { createSnapshot } from '../../packages/software-map/lib/index.js';
 import type { ProjectMindStore } from '../../packages/project-intelligence/lib/node/project-mind-store.js';
@@ -24,11 +24,47 @@ const chat = (): Chat => ({ schemaVersion: 1, id: id(), revision: 0, folderPath:
 test('ordinary Chat distinguishes factual recall from requested advice and preserves source truth', () => {
   assert.match(GROUNDED_CHAT_INSTRUCTION, /For a direct factual or conversation-recall question, answer the requested fact directly/);
   assert.match(GROUNDED_CHAT_INSTRUCTION, /do not add an unsolicited design, implementation plan, or claimed project inspection/);
-  assert.match(GROUNDED_CHAT_INSTRUCTION, /100–170 words is a soft preference for advice requests, never a cap/);
   assert.match(GROUNDED_CHAT_INSTRUCTION, /Give more detail when the request or safety requires it/);
   assert.match(GROUNDED_CHAT_INSTRUCTION, /When the user asks for a practical approach, give one recommendation.*initial deliverable/);
   assert.match(GROUNDED_CHAT_INSTRUCTION, /never imply an unobserved file was inspected/);
   assert.doesNotMatch(GROUNDED_CHAT_INSTRUCTION, /PixiJS|tower defense|strict JSON|truncate/);
+});
+
+test('ordinary Chat adds one adaptive soft response instruction for local and hosted turns', async () => {
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const capabilities = { ...model, contextWindowTokens: 4096, maxInputTokens: 4096 };
+  for (const piMode of [false, true]) {
+    const result = await composer.compose('/fixture/project', chat(), 'What happened?', [],
+      capabilities, undefined, false, false, undefined, piMode, false, false, true);
+    assert.equal(result.messages.filter(item => item.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION).length, 1);
+    assert.equal(result.messages.at(-1)?.content, 'What happened?');
+    assert.ok(result.usedTokens <= result.budgetTokens);
+  }
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /question first and directly/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /soft final-answer targets: simple questions 100–250 output tokens/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /normal conversation 250–600/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /technical explanations 400–900/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /complex planning 800–1,500/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /not caps.*Preserve correctness and completeness/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /explicitly requests depth, substantial code, detailed plans, or comprehensive analysis/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /Avoid restating the request, repetitive summaries, excessive formatting, and unnecessary examples/);
+});
+
+test('specialized Chat prompt paths do not receive ordinary response guidance', async () => {
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const capabilities = { ...model, contextWindowTokens: 4096, maxInputTokens: 4096 };
+  const cases = [
+    { strictHelpJson: true }, { bridgeMode: true }, { roadmapOpportunity: 'Roadmap workflow' },
+    { roadmapSkill: true }, { nativeRoadmap: true }
+  ];
+  for (const item of cases) {
+    const result = await composer.compose('/fixture/project', chat(), 'Question', [], capabilities,
+      undefined, item.strictHelpJson, item.bridgeMode, item.roadmapOpportunity,
+      false, item.roadmapSkill, item.nativeRoadmap, true);
+    assert.ok(!result.messages.some(message => message.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION));
+  }
 });
 
 test('Pi Chat retains project discovery, source truth, and read-only authority in the budgeted message', async () => {

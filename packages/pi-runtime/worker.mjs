@@ -636,6 +636,11 @@ export async function dispatch(message) {
         if (!chatToolsMode && !resuming && event.type === 'message_update' &&
             event.assistantMessageEvent?.type === 'text_delta')
           message.emit?.({ type: 'delta', text: event.assistantMessageEvent.delta });
+        if (resuming && event.type === 'message_update' &&
+            event.assistantMessageEvent?.type === 'text_delta' &&
+            typeof event.assistantMessageEvent.delta === 'string' &&
+            event.assistantMessageEvent.delta.length)
+          message.emit?.({ type: 'activity', kind: 'provisional', text: event.assistantMessageEvent.delta });
         if (event.type === 'message_update' &&
             event.assistantMessageEvent?.type === 'thinking_delta' &&
             typeof event.assistantMessageEvent.delta === 'string')

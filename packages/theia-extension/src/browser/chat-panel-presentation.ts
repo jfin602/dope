@@ -383,7 +383,8 @@ export function hasSendableChatDraft(value: string): boolean {
     return !!value.trim() && !/^\/roadmap\s*$/u.test(value);
 }
 export function resizeChatInput(input: HTMLTextAreaElement): void {
-    input.style.height = '7em';
+    input.style.height = 'auto';
+    input.style.height = `max(7em, ${input.scrollHeight}px)`;
 }
 /** Presentation-only follow state; a new Chat starts at the latest turn. */
 export class ChatScrollFollow {

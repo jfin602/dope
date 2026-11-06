@@ -517,10 +517,16 @@ test('Pi no-tool Chat continues in the same session with only novel final text',
     const first = await dispatch({ type: 'turn', id: 601, maxOutputTokens: 128,
       messages: [{ role: 'user', content: 'Answer.' }] });
     assert.equal(first.finishReason, 'length');
-    const second = await dispatch({ type: 'resume', id: 601, segmentIndex: 2, maxOutputTokens: 128 });
+    const events = [];
+    const second = await dispatch({ type: 'resume', id: 601, segmentIndex: 2,
+      maxOutputTokens: 128, emit: event => events.push(event) });
     assert.equal(second.finishReason, 'stop');
     assert.equal(second.text, 'Part. Done.');
     assert.equal(second.novelText, ' Done.');
+    assert.equal(events.filter(event => event.kind === 'provisional').map(event => event.text).join(''),
+      ' Done.', 'continued text is visible as provisional activity before final validation');
+    assert.equal(events.filter(event => event.type === 'delta').map(event => event.text).join(''),
+      ' Done.', 'only verified novel text is emitted as an answer delta');
     assert.equal(requests.length, 2);
     assert.equal(JSON.stringify(requests[1].messages).match(/Answer\./gu)?.length, 1);
   } finally {

@@ -306,7 +306,9 @@ export class ChatPanelController {
                     return;
                 }
                 this.eventRevision = Math.max(this.eventRevision, event.revision);
-                if (!this.pending && !this.running && this.handle && event.revision > (this.snapshot?.revision ?? -1)) void this.refresh();
+                // A running turn can persist a generation-limit pause while its runTurn RPC
+                // remains open. The panel must observe that revision to offer Stop/Continue.
+                if (!this.pending && this.handle && event.revision > (this.snapshot?.revision ?? -1)) void this.refresh();
             } });
             const attached = await connection.attach(workspace);
             if (this.disposed || generation !== this.generation) return;
@@ -487,7 +489,7 @@ export class ChatPanelController {
             if (this.stream && !snapshot.chats.find(chat => chat.id === this.chatId)?.messages.some(message =>
                 message.id === this.stream?.messageId && message.role === 'assistant' &&
                 message.execution.id === this.stream.executionId &&
-                ['pending', 'streaming'].includes(message.execution.status)))
+                ['pending', 'streaming', 'paused-output-limit'].includes(message.execution.status)))
                 this.stream = undefined;
             if (this.chatId && !snapshot.chats.some(chat => chat.id === this.chatId)) void this.select(undefined);
             if (!retainError) this.error = '';

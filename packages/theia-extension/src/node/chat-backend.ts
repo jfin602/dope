@@ -242,14 +242,14 @@ export class ChatBackend implements ChatService {
         model: ConversationModelCapabilities, budget?: ReturnType<typeof roadmapLocalBudget>,
         draft?: { text: string }, grounding?: GroundingResult, bridgeMode = false,
         opportunity?: string, piMode = false, roadmapSkill = false,
-        roadmapPromptMode: 'ordinary' | 'native-roadmap-edit' = 'ordinary') {
+        roadmapPromptMode: 'ordinary' | 'native-roadmap-edit' = 'ordinary', ordinaryChat = false) {
         const nativeRoadmap = roadmapPromptMode !== 'ordinary';
         const capabilities = planningComposerCapabilities(model, budget, draft);
         let inputTokens = capabilities.maxInputTokens;
         for (let attempt = 0; attempt < 4; attempt++) {
             const composed = await this.composer!.compose(root, chat, content, context,
                 inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding,
-                !!budget, bridgeMode, opportunity, piMode, roadmapSkill, nativeRoadmap);
+                !!budget, bridgeMode, opportunity, piMode, roadmapSkill, nativeRoadmap, ordinaryChat);
             if (!budget) return composed;
             const messages = this.withDraft(composed.messages, draft);
             const bytes = Buffer.byteLength(JSON.stringify(messages), 'utf8');
@@ -330,11 +330,13 @@ export class ChatBackend implements ChatService {
             draft;
         const turnPrompt = nativeCandidate ? planningPrompt : skillInstruction ?
             { text: planningPrompt ? `${planningPrompt.text}\n\n${skillInstruction}` : skillInstruction } : planningPrompt;
+        const ordinaryChat = !skill && !helpTurn && !draft && !opportunity &&
+            !selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap');
         const composed = await this.composeTurn(root, chat, request.content, selections,
             model.capabilities, budget, turnPrompt,
             connection?.providerId === 'local' ? undefined : await this.grounder?.ground(root, request.content),
             false, opportunity, connection?.providerId === 'local', roadmapSkill,
-            nativeCandidate ? 'native-roadmap-edit' : 'ordinary');
+            nativeCandidate ? 'native-roadmap-edit' : 'ordinary', ordinaryChat);
         if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
             chat.settings.context.reservedOutputTokens);
         if (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
@@ -1702,10 +1704,11 @@ export class ChatBackend implements ChatService {
         const roadmapPromptMode = nativeCandidate ? 'native-roadmap-edit' as const : 'ordinary' as const;
         const turnPrompt = nativeCandidate ? planningPrompt : skillInstruction ?
             { text: planningPrompt ? `${planningPrompt.text}\n\n${skillInstruction}` : skillInstruction } : planningPrompt;
+        const ordinaryChat = !roadmapTurn && !docsReview && !docsApply && !skill && !opportunity;
         const composed = await this.composeTurn(root, contextChat, content, selections,
             model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local', roadmapSkill,
-            roadmapPromptMode);
+            roadmapPromptMode, ordinaryChat);
         if (bridge) composed.refs.push(bridge.reference);
         if (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
@@ -2206,7 +2209,7 @@ export class ChatBackend implements ChatService {
                         resolvedConnection?.providerId === 'local' ? undefined :
                             grounding ?? await this.grounder?.ground(root, content),
                         !!bridge, opportunity, resolvedConnection?.providerId === 'local', roadmapSkill,
-                        roadmapPromptMode);
+                        roadmapPromptMode, ordinaryChat);
                     if (bridge) next.refs.push(bridge.reference);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');
