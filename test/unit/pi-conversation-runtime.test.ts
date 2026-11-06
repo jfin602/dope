@@ -13,7 +13,9 @@ function fixture(result = { text: 'safe answer', modelId: 'fixture-model', finis
         async *streamTurn(messages: unknown, limit: number, signal?: AbortSignal) {
             calls.push({ messages, limit, signal });
             yield { type: 'delta', text: result.text };
-            yield { type: 'complete', ...result };
+            yield { type: result.finishReason === 'length' ? 'paused' : 'complete',
+                result: { ...result, segmentIndex: 1, segmentUsage: result.usage,
+                    usageSegments: [result.usage] } };
         } };
     const factory = { create: () => host, release: () => {} };
     return { calls, factory };
@@ -42,8 +44,8 @@ test('Pi Chat passes brokered project tools through the exact local session', as
     const host = { start: async () => ({}), async *streamTurn(_messages: unknown, _limit: number,
         _signal?: AbortSignal, onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown>) {
         observed.push(await onTool!({ id: 1, name: 'read_file', arguments: { path: 'src/index.html' } }));
-        yield { type: 'complete', text: 'The page has a heading.', modelId: 'fixture-model', finishReason: 'stop',
-            usage: { tokenMeasurement: 'unavailable' } };
+        yield { type: 'complete', result: { text: 'The page has a heading.', modelId: 'fixture-model',
+            segmentIndex: 1, finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' } } };
     } };
     const events = [];
     for await (const event of piConversation(selection, { messages: [{ role: 'user', content: 'inspect this project' }],
@@ -79,19 +81,19 @@ test('Pi stops on changed model, insufficient context and cancellation', async (
     }, /cancelled/);
 });
 
-test('Pi length stop exposes bounded provider usage without output text', async () => {
+test('Pi length stop exposes bounded partial text and provider usage without completion', async () => {
     const partial = fixture({ text: 'unfinished private answer', modelId: 'fixture-model', finishReason: 'length',
         usage: { tokenMeasurement: 'provider-reported', inputTokens: 40, outputTokens: 2002,
             reasoningTokens: 1800, totalTokens: 2042 } });
-    await assert.rejects(async () => {
-        for await (const _event of piConversation(selection,
-            { messages: [{ role: 'user', content: 'Plan' }], maxOutputTokens: 2048 },
-            bridge as never, partial.factory as never)) { /* no completed answer */ }
-    }, error => {
-        assert.match(String(error), /finishReason=length.*reasoningTokens=1800.*finalTokens=202.*totalTokens=2042/);
-        assert.doesNotMatch(String(error), /unfinished private answer/);
-        return true;
-    });
+    const events = [];
+    for await (const event of piConversation(selection,
+        { messages: [{ role: 'user', content: 'Plan' }], maxOutputTokens: 2048 },
+        bridge as never, partial.factory as never)) events.push(event);
+    assert.equal(events.at(-1)?.type, 'paused');
+    assert.equal(events.at(-1)?.text, 'unfinished private answer');
+    assert.equal(events.at(-1)?.usage.outputTokens, 2002);
+    assert.equal(events.some(event => event.type === 'complete'), false);
+    events.at(-1)?.continuation.dispose();
 });
 
 test('active Pi cancellation stops the worker turn and preserves cancelled status', async () => {

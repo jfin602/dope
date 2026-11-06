@@ -93,8 +93,8 @@ test('eligible Local Chat uses Pi by default and never falls back to direct Loca
     const store = { async read() { return snapshot; }, onChange() { return () => {}; } };
     const host = { start: async () => ({}), async *streamTurn() {
         piCalls++;
-        yield { type: 'complete', text: 'Pi answer', modelId: 'chat', finishReason: 'stop',
-            usage: { tokenMeasurement: 'unavailable' } };
+        yield { type: 'complete', result: { text: 'Pi answer', modelId: 'chat', segmentIndex: 1,
+            finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' } } };
     } };
     const registry = new ModelConnectionsRegistry(undefined, store as never, undefined,
         () => ({ bridge: { bind: async () => ({ contextWindowTokens: 8192, maxOutputTokens: 2048 }) } as never,

@@ -20,6 +20,31 @@ export interface PiContextRecord { originalSha256: string; compactedSha256: stri
 export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; totalTokens?: number;
     reasoningTokens?: number;
     tokenMeasurement: 'provider-reported' | 'unavailable' }
+export interface PiTurnResult { text: string; novelText?: string; segmentIndex: number; modelId: string;
+    finishReason: 'stop' | 'length'; usage: PiTokenUsage; segmentUsage?: PiTokenUsage;
+    usageSegments?: PiTokenUsage[]; compaction?: PiContextRecord }
+export type PiTurnEvent = { type: 'delta'; text: string } |
+    { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } |
+    { type: 'complete' | 'paused'; result: PiTurnResult };
+const validUsage = (usage: PiTokenUsage | undefined): usage is PiTokenUsage =>
+    !!usage && ['provider-reported', 'unavailable'].includes(usage.tokenMeasurement) &&
+    ['inputTokens', 'outputTokens', 'totalTokens', 'reasoningTokens'].every(key => {
+        const value = usage[key as keyof PiTokenUsage];
+        return value === undefined || typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+    }) && (usage.reasoningTokens === undefined || usage.outputTokens === undefined ||
+        usage.reasoningTokens <= usage.outputTokens);
+const consistentUsage = (result: PiTurnResult): boolean => {
+    const segments = result.usageSegments;
+    if (!segments) return true;
+    if (result.segmentUsage && JSON.stringify(result.segmentUsage) !== JSON.stringify(segments.at(-1))) return false;
+    if (segments.some(segment => segment.tokenMeasurement !== 'provider-reported'))
+        return result.usage.tokenMeasurement === 'unavailable';
+    if (result.usage.tokenMeasurement !== 'provider-reported') return false;
+    return (['inputTokens', 'outputTokens', 'totalTokens', 'reasoningTokens'] as const).every(key => {
+        if (segments.some(segment => segment[key] === undefined)) return result.usage[key] === undefined;
+        return result.usage[key] === segments.reduce((sum, segment) => sum + (segment[key] ?? 0), 0);
+    });
+};
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
     lastWorkSequence?: number;
     onEvent?: (event: { type: 'delta'; text: string } |
@@ -46,6 +71,7 @@ export class PiRuntimeHost {
     private nextId = 0;
     private stdout = '';
     private readonly pending = new Map<number, Pending>();
+    private paused?: { id: number; segmentIndex: number; maxOutputTokens: number };
 
     constructor(private readonly workerPath = resolvePiWorkerPath(),
         private readonly executable = process.execPath) {}
@@ -124,30 +150,57 @@ export class PiRuntimeHost {
 
     async *streamTurn(messages: readonly { role: 'system' | 'user' | 'assistant'; content: string }[],
         maxOutputTokens: number, signal?: AbortSignal,
-        onTool?: NonNullable<Pending['onTool']>, generationId?: string): AsyncIterable<
-        { type: 'delta'; text: string } | { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } |
-        { type: 'complete'; text: string; modelId: string;
-            finishReason: string; usage: PiTokenUsage; compaction?: PiContextRecord }> {
+        onTool?: NonNullable<Pending['onTool']>, generationId?: string): AsyncIterable<PiTurnEvent> {
+        if (this.paused) throw new Error('Pi turn is awaiting a continuation decision');
+        const id = ++this.nextId;
+        yield* this.streamSegment({ type: 'turn', messages, maxOutputTokens,
+            ...(generationId ? { generationId } : {}) }, id, signal, onTool);
+    }
+
+    async *resumeTurn(segmentIndex: number, signal?: AbortSignal,
+        onTool?: NonNullable<Pending['onTool']>): AsyncIterable<PiTurnEvent> {
+        const paused = this.paused;
+        if (!paused || segmentIndex !== paused.segmentIndex + 1)
+            throw new Error('Pi continuation unavailable or stale');
+        this.paused = undefined; // Claim before the first await: duplicate resumes cannot replay tools.
+        yield* this.streamSegment({ type: 'resume', segmentIndex,
+            maxOutputTokens: paused.maxOutputTokens }, paused.id, signal, onTool);
+    }
+
+    async stopTurn(segmentIndex: number): Promise<{ stopped: true; segmentIndex: number }> {
+        const paused = this.paused;
+        if (!paused || paused.segmentIndex !== segmentIndex)
+            throw new Error('Pi continuation unavailable or stale');
+        this.paused = undefined;
+        try {
+            const result = await this.request<{ stopped: true; segmentIndex: number }>(
+                { type: 'stop', segmentIndex }, undefined, undefined, paused.id);
+            if (result?.stopped !== true || result.segmentIndex !== segmentIndex)
+                throw new Error('Invalid Pi stop result');
+            return result;
+        } finally { this.dispose(); }
+    }
+
+    private async *streamSegment(record: Record<string, unknown>, id: number, signal?: AbortSignal,
+        onTool?: NonNullable<Pending['onTool']>): AsyncIterable<PiTurnEvent> {
         if (signal?.aborted) throw new Error('Pi turn cancelled');
         const queue: ({ type: 'delta'; text: string } |
             { type: 'activity'; kind: 'thinking' | 'provisional'; text: string })[] = [];
         let queueBytes = 0;
         let wake: (() => void) | undefined;
         let settled = false;
-        let result: { text: string; modelId: string; finishReason: string;
-            usage: PiTokenUsage; compaction?: PiContextRecord } | undefined;
+        let result: PiTurnResult | undefined;
         let failure: unknown;
         const notify = () => { wake?.(); wake = undefined; };
         const onAbort = () => this.dispose();
         signal?.addEventListener('abort', onAbort, { once: true });
-        const task = this.request<typeof result>({ type: 'turn', messages, maxOutputTokens,
-            ...(generationId ? { generationId } : {}) }, event => {
+        const task = this.request<PiTurnResult>(record, event => {
             if (event.type !== 'delta' && event.type !== 'activity') throw new Error('Invalid Pi Chat stream event');
             const bytes = Buffer.byteLength(event.text, 'utf8');
             if (bytes > 8192 || queue.length >= 8192 || queueBytes + bytes > 16 * 1024 * 1024)
                 throw new Error('Pi Chat stream backpressure limit exceeded');
             queueBytes += bytes; queue.push(event); notify();
-        }, onTool).then(value => { result = value; }, error => { failure = error; })
+        }, onTool, id).then(value => { result = value; }, error => { failure = error; })
             .finally(() => { settled = true; notify(); });
         try {
             while (!settled || queue.length) {
@@ -163,15 +216,32 @@ export class PiRuntimeHost {
             if (signal?.aborted) throw new Error('Pi turn cancelled');
             if (failure) throw failure;
             if (!result) throw new Error('Pi turn ended without completion');
-            yield { type: 'complete', ...result };
+            if (result.segmentIndex !== (record.type === 'resume' ? record.segmentIndex : 1) ||
+                !['length', 'stop'].includes(result.finishReason) ||
+                !Number.isSafeInteger(result.segmentIndex) || result.segmentIndex < 1 ||
+                typeof result.text !== 'string' || Buffer.byteLength(result.text, 'utf8') > 65536 ||
+                typeof result.modelId !== 'string' || !validUsage(result.usage) ||
+                (result.segmentUsage !== undefined && !validUsage(result.segmentUsage)) ||
+                (result.usageSegments !== undefined && (!Array.isArray(result.usageSegments) ||
+                    result.usageSegments.length !== result.segmentIndex || result.usageSegments.length > 4 ||
+                    !result.usageSegments.every(validUsage))) ||
+                !consistentUsage(result) ||
+                (result.segmentUsage?.outputTokens !== undefined &&
+                    result.segmentUsage.outputTokens > Number(record.maxOutputTokens)) ||
+                (record.type === 'resume' && typeof result.novelText !== 'string'))
+                throw new Error('Invalid Pi turn result');
+            if (result.finishReason === 'length') this.paused = { id, segmentIndex: result.segmentIndex,
+                maxOutputTokens: Number(record.maxOutputTokens) };
+            yield { type: result.finishReason === 'length' ? 'paused' : 'complete', result };
         } finally { signal?.removeEventListener('abort', onAbort); }
     }
 
     private request<T>(record: Record<string, unknown>, onEvent?: Pending['onEvent'],
-        onTool?: Pending['onTool']): Promise<T> {
+        onTool?: Pending['onTool'], requestId?: number): Promise<T> {
         const child = this.child;
         if (!child || child.exitCode !== null || child.killed) return Promise.reject(new Error('Pi worker unavailable'));
-        const id = ++this.nextId;
+        const id = requestId ?? ++this.nextId;
+        if (this.pending.has(id)) return Promise.reject(new Error('Pi worker request already active'));
         const line = `${JSON.stringify({ ...record, id })}\n`;
         if (Buffer.byteLength(line, 'utf8') > 600_000 || child.stdin.writableLength > 600_000)
             return Promise.reject(new Error('Pi worker request exceeds bounded input capacity'));
@@ -181,7 +251,7 @@ export class PiRuntimeHost {
                 reject(new Error('Pi worker response timed out'));
                 this.dispose();
             }, record.type === 'work' ? 1_800_000 :
-                ['complete', 'turn'].includes(String(record.type)) ? 900_000 : 10_000);
+                ['complete', 'turn', 'resume'].includes(String(record.type)) ? 900_000 : 10_000);
             this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent, onTool });
             child.stdin.write(line, error => {
                 if (error) this.fail(error);
@@ -283,6 +353,7 @@ export class PiRuntimeHost {
     }
 
     private fail(error: Error): void {
+        this.paused = undefined;
         for (const pending of this.pending.values()) {
             clearTimeout(pending.timer);
             pending.reject(error);

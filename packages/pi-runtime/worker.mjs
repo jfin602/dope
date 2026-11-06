@@ -486,6 +486,14 @@ export async function dispatch(message) {
     case 'close':
       await dispose();
       return { closed: true };
+    case 'stop': {
+      if (!pausedChatTurn || !session || pausedChatTurn.session !== session ||
+          message.id !== pausedChatTurn.id || message.segmentIndex !== pausedChatTurn.segmentIndex)
+        throw new Error('Pi continuation unavailable or stale');
+      const segmentIndex = pausedChatTurn.segmentIndex;
+      await dispose();
+      return { stopped: true, segmentIndex };
+    }
     case 'complete': {
       if (!session) throw new Error('Pi session unavailable');
       if (sessionConsumed) throw new Error('Pi session turn already consumed');
@@ -503,7 +511,7 @@ export async function dispatch(message) {
       const resuming = message.type === 'resume';
       const paused = pausedChatTurn;
       if (resuming) {
-        if (!paused || !session || paused.session !== session || !chatToolsMode ||
+        if (!paused || !session || paused.session !== session ||
             roadmapToolsMode || roadmapGenerationMode || workMode ||
             !Number.isSafeInteger(paused.id) || message.id !== paused.id ||
             message.segmentIndex !== paused.segmentIndex + 1 ||
@@ -621,7 +629,7 @@ export async function dispatch(message) {
           trace(event.type, { toolName: event.toolName,
             stopReason: event.message?.role === 'assistant' ? event.message.stopReason : undefined,
             isError: event.isError });
-        if (!chatToolsMode && event.type === 'message_update' &&
+        if (!chatToolsMode && !resuming && event.type === 'message_update' &&
             event.assistantMessageEvent?.type === 'text_delta')
           message.emit?.({ type: 'delta', text: event.assistantMessageEvent.delta });
         if (event.type === 'message_update' &&
@@ -682,7 +690,7 @@ export async function dispatch(message) {
       const novelText = resuming ? novelAnswer(paused.text, text) : text;
       const accumulatedText = resuming ? paused.text + novelText : text;
       if (Buffer.byteLength(accumulatedText, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
-      if (chatToolsMode && assistant.stopReason === 'stop' && novelText)
+      if ((chatToolsMode || resuming) && assistant.stopReason === 'stop' && novelText)
         message.emit?.({ type: 'delta', text: novelText });
       const measuredTurn = chatToolsMode;
       const segmentUsage = { inputTokens: measuredTurn ? usageUnknown || !reportedTotal ? undefined : reportedInput :
@@ -698,14 +706,14 @@ export async function dispatch(message) {
           'provider-reported' : assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' };
       const segments = resuming ? [...paused.segments, segmentUsage] : [segmentUsage];
       const usage = resuming ? combinedUsage(segments) : segmentUsage;
-      if (assistant.stopReason === 'length' && chatToolsMode && !roadmapToolsMode && !roadmapGenerationMode)
+      if (assistant.stopReason === 'length' && !roadmapToolsMode && !roadmapGenerationMode)
         pausedChatTurn = { session, id: message.id, segmentIndex: resuming ? message.segmentIndex : 1,
           modelId, provider: session.model.provider, text: accumulatedText, usage, toolCount,
           segments, lastAssistant: assistant };
       return { text: accumulatedText, ...(resuming ? { novelText, segmentIndex: message.segmentIndex } :
         { segmentIndex: 1 }), modelId,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
-        usage, ...(chatToolsMode && !roadmapToolsMode && !roadmapGenerationMode ?
+        usage, ...(!roadmapToolsMode && !roadmapGenerationMode ?
           { segmentUsage, usageSegments: segments } : {}),
         ...(compactionRecord ? { compaction: compactionRecord } : {}) };
     }
@@ -846,7 +854,7 @@ async function accept(line) {
   } catch (error) {
     const safe = /cannot be compacted safely/.test(String(error?.message)) ?
       'Pi context cannot be compacted safely; shorten the task or select a larger loaded Local model' :
-      ['open', 'complete', 'turn', 'work'].includes(message?.type) ?
+      ['open', 'complete', 'turn', 'resume', 'work'].includes(message?.type) ?
       'Local Pi session failed; check the selected AI Center model and local server' :
       String(error?.message ?? error);
     process.stdout.write(`${JSON.stringify({ id, ok: false, error: safe })}\n`);

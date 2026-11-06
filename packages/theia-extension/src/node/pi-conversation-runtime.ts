@@ -1,14 +1,130 @@
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import { createHash } from 'node:crypto';
-import type { ConversationEvent, ConversationRequest, ModelSelection } from '@dope/contracts/lib/model-runtime';
+import type { ConversationContinuation, ConversationEvent, ConversationRequest, ModelSelection } from '@dope/contracts/lib/model-runtime';
 import type { PiModelBridge } from './pi-model-bridge';
-import type { PiRuntimeFactory } from './pi-runtime-host';
+import type { PiRuntimeFactory, PiRuntimeHost, PiTurnResult } from './pi-runtime-host';
+
+type ToolHandler = (call: { id: number; name: string; arguments: unknown }) => Promise<unknown>;
+const MAX_AGGREGATE_BYTES = 65536;
+
+/** The only owner of a paused worker. A decision consumes its current segment exactly once. */
+export class PiConversationLease implements ConversationContinuation {
+    private state: 'paused' | 'running' | 'closed' = 'paused';
+    private timer?: NodeJS.Timeout;
+    private expired = false;
+    private readonly onAbort = () => this.dispose();
+    private result: PiTurnResult;
+
+    constructor(private readonly host: PiRuntimeHost, private readonly factory: PiRuntimeFactory,
+        private readonly modelId: string, private readonly onTool: ToolHandler | undefined,
+        private readonly signal: AbortSignal | undefined, initial: PiTurnResult,
+        private readonly idleMs = 120_000) {
+        this.result = initial;
+        signal?.addEventListener('abort', this.onAbort, { once: true });
+        if (signal?.aborted) this.dispose();
+        else this.arm();
+    }
+
+    private arm(ms = this.idleMs): void {
+        this.timer = setTimeout(() => { this.expired = true; this.dispose(); }, ms);
+        this.timer.unref?.();
+    }
+
+    private clear(): void {
+        if (this.timer) clearTimeout(this.timer);
+        this.timer = undefined;
+    }
+
+    private accept(result: PiTurnResult): void {
+        if (result.modelId !== this.modelId || result.segmentIndex !== this.result.segmentIndex + 1 ||
+            typeof result.novelText !== 'string' || result.text !== this.result.text + result.novelText ||
+            Buffer.byteLength(result.text, 'utf8') > MAX_AGGREGATE_BYTES ||
+            !Array.isArray(result.usageSegments) || result.usageSegments.length !== result.segmentIndex)
+            throw new ModelRuntimeFailure('Local Pi continuation changed model or answer', 'incomplete-answer');
+        this.result = result;
+    }
+
+    resume(): AsyncIterable<ConversationEvent> {
+        if (this.expired)
+            throw new ModelRuntimeFailure('Pi continuation expired', 'connection-unavailable');
+        if (this.state !== 'paused' || this.signal?.aborted)
+            throw new ModelRuntimeFailure('Pi continuation unavailable or stale', 'incomplete-answer');
+        this.state = 'running';
+        this.clear();
+        this.arm(900_000);
+        return this.run();
+    }
+
+    private async *run(): AsyncIterable<ConversationEvent> {
+        try {
+            for await (const event of this.host.resumeTurn(this.result.segmentIndex + 1,
+                this.signal, this.onTool)) {
+                if (this.state === 'closed' || this.signal?.aborted)
+                    throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+                if (event.type === 'delta' || event.type === 'activity') { yield event; continue; }
+                this.accept(event.result);
+                if (event.type === 'paused') {
+                    this.state = 'paused';
+                    this.arm();
+                    yield this.pausedEvent();
+                } else {
+                    const result = this.result;
+                    this.dispose();
+                    yield { type: 'complete', text: result.text, usage: result.usage,
+                        segmentUsage: result.segmentUsage, segmentIndex: result.segmentIndex,
+                        originalFinishReason: 'length', finishReason: 'stop', actualModelId: result.modelId };
+                }
+            }
+        } catch (error) {
+            this.dispose();
+            if (this.signal?.aborted)
+                throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+            if (error instanceof ModelRuntimeFailure) throw error;
+            throw new ModelRuntimeFailure('Local Pi continuation failed or expired', 'connection-unavailable');
+        } finally {
+            if (this.state === 'running') this.dispose();
+        }
+    }
+
+    pausedEvent(): Extract<ConversationEvent, { type: 'paused' }> {
+        const result = this.result;
+        return { type: 'paused', text: result.text, novelText: result.novelText ?? result.text,
+            segmentIndex: result.segmentIndex, usage: result.usage,
+            segmentUsage: result.segmentUsage ?? result.usage, finishReason: 'length',
+            actualModelId: result.modelId, continuation: this };
+    }
+
+    async stop(): Promise<Extract<ConversationEvent, { type: 'stopped-incomplete' }>> {
+        if (this.expired)
+            throw new ModelRuntimeFailure('Pi continuation expired', 'connection-unavailable');
+        if (this.state !== 'paused' || this.signal?.aborted)
+            throw new ModelRuntimeFailure('Pi continuation unavailable or stale', 'incomplete-answer');
+        this.state = 'running';
+        this.clear();
+        const result = this.result;
+        try {
+            await this.host.stopTurn(result.segmentIndex);
+            return { type: 'stopped-incomplete', text: result.text, segmentIndex: result.segmentIndex,
+                usage: result.usage, originalFinishReason: 'length', finishReason: 'owner-stop',
+                actualModelId: result.modelId };
+        } finally { this.dispose(); }
+    }
+
+    dispose(): void {
+        if (this.state === 'closed') return;
+        this.state = 'closed';
+        this.clear();
+        this.signal?.removeEventListener('abort', this.onAbort);
+        this.factory.release(this.host);
+    }
+}
 
 /** One Dope-owned turn, reconstructed from saved Chat context. Pi never owns the transcript. */
 export async function* piConversation(selection: ModelSelection, request: Omit<ConversationRequest, 'modelId'>,
     bridge: PiModelBridge, factory: PiRuntimeFactory): AsyncIterable<ConversationEvent> {
     if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
     let host: ReturnType<PiRuntimeFactory['create']> | undefined;
+    let retained = false;
     try {
         try { host = factory.create(); }
         catch {
@@ -56,29 +172,24 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
         for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool,
             request.projectTools?.generationId)) {
             if (event.type === 'delta' || event.type === 'activity') { yield event; continue; }
-            if (event.modelId !== selection.modelId)
+            const result = event.result;
+            if (result.modelId !== selection.modelId)
                 throw new ModelRuntimeFailure('Local server answered with a different model; reselect the loaded model in AI Center',
                     'model-unavailable');
-            if (event.finishReason !== 'stop') {
-                const reported = event.usage?.tokenMeasurement === 'provider-reported';
-                const output = reported && Number.isSafeInteger(event.usage.outputTokens) ? event.usage.outputTokens : undefined;
-                const reasoning = reported && Number.isSafeInteger(event.usage.reasoningTokens) ?
-                    event.usage.reasoningTokens : undefined;
-                const final = output !== undefined && reasoning !== undefined && output >= reasoning ?
-                    output - reasoning : 'unavailable';
-                const finish = event.finishReason === 'length' ? 'length' : 'other';
-                throw new ModelRuntimeFailure('Local answer did not complete; shorten the request or use a larger model. ' +
-                    `finishReason=${finish}, providerFinalText=${event.text ? 'present' : 'absent'}, ` +
-                    `reasoningTokens=${reasoning ?? 'unavailable'}, ` +
-                    `finalTokens=${final}, totalTokens=${reported ? event.usage.totalTokens ?? 'unavailable' : 'unavailable'}, ` +
-                    `requestedOutputTokens=${maxOutputTokens}, measuredContextTokens=${binding.contextWindowTokens}`,
-                'incomplete-answer');
+            if (event.type === 'paused') {
+                if (request.projectTools?.roadmapTools || request.projectTools?.roadmapGeneration)
+                    throw new ModelRuntimeFailure('Structured Roadmap generation did not complete', 'incomplete-answer');
+                const lease = new PiConversationLease(host, factory, selection.modelId, onTool,
+                    request.signal, result);
+                retained = true;
+                yield lease.pausedEvent();
+                return;
             }
-            yield { type: 'complete', text: event.text, usage: event.usage,
-                ...(event.compaction ? { compaction: { canonicalContextSha256:
+            yield { type: 'complete', text: result.text, usage: result.usage,
+                ...(result.compaction ? { compaction: { canonicalContextSha256:
                     createHash('sha256').update(JSON.stringify(request.messages)).digest('hex'),
-                    ...event.compaction } } : {}),
-                finishReason: event.finishReason, actualModelId: event.modelId };
+                    ...result.compaction } } : {}),
+                finishReason: result.finishReason, actualModelId: result.modelId };
         }
     } catch (error) {
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
@@ -92,6 +203,6 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
         throw new ModelRuntimeFailure('Local Pi session failed; check the selected model and Local server in AI Center',
             'connection-unavailable');
     } finally {
-        if (host) factory.release(host);
+        if (host && !retained) factory.release(host);
     }
 }

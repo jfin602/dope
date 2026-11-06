@@ -2241,6 +2241,15 @@ export class ChatBackend implements ChatService {
                 yield complete;
             })(this) : generate();
             for await (const event of events) {
+                // P5 owns the persisted Chat lease. Until it attaches the live continuation,
+                // a pause must never enter this completed-answer publication path.
+                if (event.type === 'paused') {
+                    event.continuation.dispose();
+                    throw new ModelRuntimeFailure('Local answer reached the generation limit; continuation is unavailable for this Chat execution',
+                        'incomplete-answer');
+                }
+                if (event.type === 'stopped-incomplete')
+                    throw new ModelRuntimeFailure('Local answer stopped incomplete', 'incomplete-answer');
                 if (event.type === 'activity') {
                     recordActivity(event.kind, event.text);
                     continue;

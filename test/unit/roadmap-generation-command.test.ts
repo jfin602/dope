@@ -134,9 +134,9 @@ test('Chat command brokers serial typed Pi Phases into one saved review proposal
                     const finish = await onTool({ id: 4, name: 'roadmap_finish',
                         arguments: { version: 1, unresolved: ['Remaining mechanics require owner review'] } });
                     assert.equal(JSON.parse(finish.output).status, 'review-ready');
-                    yield { type: 'complete', text: '', modelId: 'q4', finishReason: 'stop',
-                        usage: { inputTokens: 20, outputTokens: 20, totalTokens: 40,
-                            tokenMeasurement: 'provider-reported' } };
+                    yield { type: 'complete', result: { text: '', modelId: 'q4', segmentIndex: 1,
+                        finishReason: 'stop', usage: { inputTokens: 20, outputTokens: 20, totalTokens: 40,
+                            tokenMeasurement: 'provider-reported' } } };
                 } }), release: () => undefined
         } as never);
     } };

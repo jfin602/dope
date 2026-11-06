@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent,
   ROADMAP_ACTION_FIELDS, roadmapActionSchema } from '../../packages/pi-runtime/worker.mjs';
-import { resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
+import { PiRuntimeHost, resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
+import { PiConversationLease } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 import { runChatInvestigationCommand } from '../../packages/theia-extension/lib/node/chat-command-broker.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapNativeStageOwner, NATIVE_ROADMAP_ACTION_FIELDS } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
@@ -16,6 +17,124 @@ test('Pi worker resolves from the bundled browser backend and extension developm
   assert.equal(resolvePiWorkerPath(join(root, 'packages/theia-extension/lib/node'), undefined), expected);
   assert.equal(resolvePiWorkerPath(join(root, 'apps/browser/lib/backend'), undefined), expected);
   assert.equal(resolvePiWorkerPath(join(root, 'apps/electron/lib/backend'), undefined), expected);
+});
+
+async function protocolFixture(mode) {
+  const host = new PiRuntimeHost('/unused');
+  const calls = [];
+  let pausedId, index = 0;
+  const segment = (n, reason) => ({ text: n === 1 ? 'Part.' : 'Part. Done.',
+    ...(n > 1 ? { novelText: ' Done.' } : {}), segmentIndex: n,
+    modelId: 'offline-fixture', finishReason: reason,
+    segmentUsage: { inputTokens: 10, outputTokens: 5, totalTokens: 15,
+      tokenMeasurement: 'provider-reported' },
+    usageSegments: Array.from({ length: n }, () => ({ inputTokens: 10,
+      outputTokens: 5, totalTokens: 15, tokenMeasurement: 'provider-reported' })),
+    usage: { inputTokens: 10 * n, outputTokens: 5 * n,
+      totalTokens: 15 * n, tokenMeasurement: 'provider-reported' } });
+  const send = (id, record) => host.acceptOutput(JSON.stringify({ id, ...record }) + '\n');
+  host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+    stdin: { writableLength: 0, write(line, callback) {
+      const message = JSON.parse(line);
+      calls.push(message);
+      queueMicrotask(() => {
+        if (message.type === 'turn') {
+          pausedId = message.id; index = 1;
+          if (mode === 'backpressure') {
+            for (let n = 0; n < 2300 && !host.child?.killed; n++)
+              send(message.id, { event: { type: 'delta', text: 'x'.repeat(8192) } });
+          } else send(message.id, { ok: true, data: segment(1, 'length') });
+        } else if (message.type === 'resume') {
+          if (message.id !== pausedId || message.segmentIndex !== index + 1)
+            send(message.id, { ok: false, error: 'Pi continuation unavailable or stale' });
+          else if (mode === 'provider-error') send(message.id, { ok: false, error: 'Provider failed' });
+          else if (mode !== 'hang') { index++; send(message.id, { ok: true, data: segment(index, 'stop') }); }
+        } else if (message.type === 'stop') send(message.id,
+          message.id === pausedId && message.segmentIndex === index ?
+            { ok: true, data: { stopped: true, segmentIndex: index } } :
+            { ok: false, error: 'Pi continuation unavailable or stale' });
+      });
+      callback?.();
+      return true;
+    } } };
+  return { host, calls, cleanup: async () => {} };
+}
+
+test('Pi host and adapter retain one worker across pause, resume, and checked stop', async () => {
+  const fixture = await protocolFixture('normal');
+  const { host } = fixture;
+  const factory = { release: value => value.dispose() };
+  try {
+    const first = await Array.fromAsync(host.streamTurn([{ role: 'user', content: 'Answer.' }], 128));
+    assert.equal(first.at(-1).type, 'paused');
+    const lease = new PiConversationLease(host, factory, 'offline-fixture', undefined,
+      undefined, first.at(-1).result, 1000);
+    const continued = lease.resume();
+    assert.throws(() => lease.resume(), /unavailable or stale/);
+    await assert.rejects(lease.stop(), /unavailable or stale/);
+    const final = await Array.fromAsync(continued);
+    assert.equal(final.at(-1).type, 'complete');
+    assert.equal(final.at(-1).text, 'Part. Done.');
+    assert.equal(final.at(-1).segmentIndex, 2);
+    assert.equal(final.at(-1).usage.totalTokens, 30);
+    await assert.rejects(lease.stop(), /unavailable or stale/);
+  } finally { host.dispose(); await fixture.cleanup(); }
+
+  const stoppedFixture = await protocolFixture('normal');
+  const stoppedHost = stoppedFixture.host;
+  try {
+    const first = await Array.fromAsync(stoppedHost.streamTurn([{ role: 'user', content: 'Answer.' }], 128));
+    const lease = new PiConversationLease(stoppedHost, factory, 'offline-fixture', undefined,
+      undefined, first.at(-1).result, 1000);
+    const stopped = await lease.stop();
+    assert.equal(stopped.type, 'stopped-incomplete');
+    assert.equal(stopped.originalFinishReason, 'length');
+    assert.equal(stopped.text, 'Part.');
+    await assert.rejects(lease.stop(), /unavailable or stale/);
+  } finally { stoppedHost.dispose(); await stoppedFixture.cleanup(); }
+});
+
+test('Pi continuation expires, rejects disposed workers and provider errors, and cancellation wins a resume race', async () => {
+  for (const mode of ['normal', 'disposed', 'provider-error', 'hang']) {
+    const fixture = await protocolFixture(mode);
+    const { host } = fixture;
+    const controller = new AbortController();
+    try {
+      const first = await Array.fromAsync(host.streamTurn([{ role: 'user', content: 'Answer.' }], 128));
+      const lease = new PiConversationLease(host, { release: value => value.dispose() },
+        'offline-fixture', undefined, controller.signal, first.at(-1).result,
+        mode === 'normal' ? 10 : 1000);
+      if (mode === 'normal') {
+        await new Promise(resolve => setTimeout(resolve, 30));
+        assert.throws(() => lease.resume(), /expired/);
+      } else if (mode === 'disposed') {
+        host.dispose();
+        await assert.rejects(Array.fromAsync(lease.resume()), /failed or expired/);
+      } else if (mode === 'provider-error') {
+        await assert.rejects(Array.fromAsync(lease.resume()), /failed or expired/);
+        assert.throws(() => lease.resume(), /unavailable or stale/);
+      } else {
+        const pending = Array.fromAsync(lease.resume());
+        await new Promise(resolve => setTimeout(resolve, 20));
+        controller.abort();
+        await assert.rejects(pending, /cancelled|disposed/);
+        assert.throws(() => lease.resume(), /unavailable or stale/);
+      }
+    } finally { host.dispose(); await fixture.cleanup(); }
+  }
+});
+
+test('Pi host closes a worker when unread stream frames exceed byte backpressure', async () => {
+  const fixture = await protocolFixture('backpressure');
+  const { host } = fixture;
+  try {
+    const stream = host.streamTurn([{ role: 'user', content: 'Flood.' }], 128)[Symbol.asyncIterator]();
+    assert.equal((await stream.next()).value.type, 'delta');
+    await new Promise(resolve => setTimeout(resolve, 200));
+    await assert.rejects(host.openNoToolSession({ baseUrl: 'http://127.0.0.1:9/v1' }, '/tmp'),
+      /unavailable/);
+    await stream.return();
+  } finally { host.dispose(); await fixture.cleanup(); }
 });
 
 const model = {
@@ -342,6 +461,65 @@ test('Pi resumes bounded length segments in the retained session without repeati
         maxOutputTokens: 128 }), /unavailable or stale/);
       await dispatch({ type: 'close' });
     }
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi worker stop consumes the exact paused segment without a new model request', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-worker-stop-'));
+  let requests = 0;
+  try {
+    globalThis.fetch = async () => {
+      requests++;
+      return new Response('data: {"model":"offline-fixture","choices":[{"delta":{"role":"assistant","content":"Partial."},"finish_reason":null}]}\n\n' +
+        'data: {"model":"offline-fixture","choices":[{"delta":{},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n',
+      { headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
+    const first = await dispatch({ type: 'turn', id: 501, maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Answer.' }] });
+    assert.equal(first.finishReason, 'length');
+    await assert.rejects(dispatch({ type: 'stop', id: 502, segmentIndex: 1 }), /unavailable or stale/);
+    assert.deepEqual(await dispatch({ type: 'stop', id: 501, segmentIndex: 1 }),
+      { stopped: true, segmentIndex: 1 });
+    await assert.rejects(dispatch({ type: 'resume', id: 501, segmentIndex: 2,
+      maxOutputTokens: 128 }), /unavailable or stale/);
+    assert.equal(requests, 1);
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi no-tool Chat continues in the same session with only novel final text', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-no-tool-resume-'));
+  const requests = [];
+  try {
+    globalThis.fetch = async (_url, options) => {
+      requests.push(JSON.parse(options.body));
+      const first = requests.length === 1;
+      return new Response(`data: ${JSON.stringify({ model: 'offline-fixture', choices: [{
+        delta: { role: 'assistant', content: first ? 'Part.' : ' Done.' }, finish_reason: null }] })}\n\n` +
+        `data: ${JSON.stringify({ model: 'offline-fixture', choices: [{ delta: {},
+          finish_reason: first ? 'length' : 'stop' }] })}\n\ndata: [DONE]\n\n`,
+      { headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', cwd, model });
+    const first = await dispatch({ type: 'turn', id: 601, maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Answer.' }] });
+    assert.equal(first.finishReason, 'length');
+    const second = await dispatch({ type: 'resume', id: 601, segmentIndex: 2, maxOutputTokens: 128 });
+    assert.equal(second.finishReason, 'stop');
+    assert.equal(second.text, 'Part. Done.');
+    assert.equal(second.novelText, ' Done.');
+    assert.equal(requests.length, 2);
+    assert.equal(JSON.stringify(requests[1].messages).match(/Answer\./gu)?.length, 1);
   } finally {
     await dispatch({ type: 'close' });
     globalThis.fetch = originalFetch;

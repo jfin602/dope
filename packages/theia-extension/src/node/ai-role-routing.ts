@@ -9,8 +9,9 @@ import type { AIInventoryController } from './ai-registry-backend';
 import type { ModelConnectionsRegistry } from './model-connections';
 
 type Complete = Extract<ConversationEvent, { type: 'complete' }>;
+type Paused = Extract<ConversationEvent, { type: 'paused' }>;
 export type RoutedConversationEvent = ((Extract<ConversationEvent, { type: 'delta' | 'activity' }>) & { target: AIRoleTarget }) |
-    (Complete & { routingProvenance: RoutingProvenance });
+    ((Complete | Paused) & { routingProvenance: RoutingProvenance });
 export interface RoleConversationRequest {
     roleId: AIRoleId;
     requestHard: AIRoleHardConstraints;
@@ -121,21 +122,24 @@ export class AIRoleRoutingService {
                     request.localOnly ? { localOnly: true } : undefined)) {
                     if (event.type === 'delta' || event.type === 'activity') {
                         if (event.text.length) { meaningfulOutput = true; yield { ...event, target }; }
-                    } else {
+                    } else if (event.type === 'complete' || event.type === 'paused') {
                         meaningfulOutput = true;
                         const actualTarget = { connectionId: target.connectionId,
-                            modelId: event.provenance?.modelId ?? event.actualModelId ?? target.modelId };
+                            modelId: (event.type === 'complete' ? event.provenance?.modelId : undefined) ??
+                                event.actualModelId ?? target.modelId };
                         const connection = inventory.connections.find(item => item.id === target.connectionId)!;
                         const provenance = parseRoutingProvenance({ version: AI_ROLE_POLICY_VERSION,
                             source: 'role-policy', requestedRole: resolution.roleId,
                             policyRevision: resolution.policyRevision, effectiveHard: candidate.effectiveHard,
                             preferredTarget: resolution.preferredTarget, actualTarget,
                             executionLabels: { connection: connection.alias,
-                                provider: event.provenance?.providerId ?? connection.config.type,
-                                model: event.provenance?.modelLabel ?? model.label },
+                                provider: (event.type === 'complete' ? event.provenance?.providerId : undefined) ?? connection.config.type,
+                                model: (event.type === 'complete' ? event.provenance?.modelLabel : undefined) ?? model.label },
                             attempts: [...attempts, { target: actualTarget, outcome: 'selected' }] });
                         yield { ...event, routingProvenance: provenance };
                         return;
+                    } else {
+                        throw new ModelRuntimeFailure('Incomplete model output', 'incomplete-answer');
                     }
                 }
                 throw new ModelRuntimeFailure('Incomplete model output', 'nonretryable-provider');

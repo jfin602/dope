@@ -98,10 +98,23 @@ export interface ConversationUsage {
     reasoningTokens?: number;
     tokenMeasurement: ModelGenerationUsage['tokenMeasurement'];
 }
+/** Backend-only live continuation lease. It is never persisted or sent to a provider. */
+export interface ConversationContinuation {
+    resume(): AsyncIterable<ConversationEvent>;
+    stop(): Promise<Extract<ConversationEvent, { type: 'stopped-incomplete' }>>;
+    dispose(): void;
+}
 export type ConversationEvent =
     | { type: 'delta'; text: string }
     | { type: 'activity'; kind: 'thinking' | 'provisional' | 'answer'; text: string }
+    | { type: 'paused'; text: string; novelText: string; segmentIndex: number;
+        usage: ConversationUsage; segmentUsage: ConversationUsage; finishReason: 'length';
+        actualModelId: string; continuation: ConversationContinuation }
+    | { type: 'stopped-incomplete'; text: string; segmentIndex: number;
+        usage: ConversationUsage; originalFinishReason: 'length'; finishReason: 'owner-stop';
+        actualModelId: string }
     | { type: 'complete'; text: string; usage: ConversationUsage; finishReason?: string;
+        segmentIndex?: number; segmentUsage?: ConversationUsage; originalFinishReason?: 'length';
         /** Ephemeral Pi context projection; the saved Dope messages remain canonical. */
         compaction?: { canonicalContextSha256: string; originalSha256: string;
             compactedSha256: string; tokensBefore: number };
