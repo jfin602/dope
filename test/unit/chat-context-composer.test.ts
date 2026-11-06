@@ -41,14 +41,22 @@ test('ordinary Chat adds one adaptive soft response instruction for local and ho
     assert.equal(result.messages.at(-1)?.content, 'What happened?');
     assert.ok(result.usedTokens <= result.budgetTokens);
   }
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /question first and directly/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /soft final-answer targets: simple questions 100–250 output tokens/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /normal conversation 250–600/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /technical explanations 400–900/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /complex planning 800–1,500/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /not caps.*Preserve correctness and completeness/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /explicitly requests depth, substantial code, detailed plans, or comprehensive analysis/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /Avoid restating the request, repetitive summaries, excessive formatting, and unnecessary examples/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /Answer directly/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /Cover requested facts once/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /read AGENTS\/README plus current-state and architecture\/module docs/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /cite only read docs and label inferences/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /No hard length cap/);
+});
+
+test('ordinary Chat guidance favors compact sidebar summaries without suppressing requested detail', () => {
+  const instruction = ORDINARY_CHAT_RESPONSE_INSTRUCTION;
+  assert.match(instruction, /brief headings, concise paragraphs and short lists/);
+  assert.match(instruction, /Do not use a Markdown table in a report unless the user explicitly requests one/);
+  assert.match(instruction, /For naturally tabular short values, compact tables are fine/);
+  assert.match(instruction, /cells must not contain prose, lists or HTML breaks/);
+  assert.match(instruction, /Follow explicit user format exactly, including column and paragraph counts/);
+  assert.match(instruction, /Cover requested facts once/);
+  assert.match(instruction, /cite only read docs and label inferences/);
 });
 
 test('specialized Chat prompt paths do not receive ordinary response guidance', async () => {
@@ -56,7 +64,7 @@ test('specialized Chat prompt paths do not receive ordinary response guidance', 
     {} as SoftwareMapIndex, {} as ChatRepository);
   const capabilities = { ...model, contextWindowTokens: 4096, maxInputTokens: 4096 };
   const cases = [
-    { strictHelpJson: true }, { bridgeMode: true }, { roadmapOpportunity: 'Roadmap workflow' },
+    { strictHelpJson: true }, { bridgeMode: true },
     { roadmapSkill: true }, { nativeRoadmap: true }
   ];
   for (const item of cases) {
@@ -65,6 +73,10 @@ test('specialized Chat prompt paths do not receive ordinary response guidance', 
       false, item.roadmapSkill, item.nativeRoadmap, true);
     assert.ok(!result.messages.some(message => message.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION));
   }
+  const opportunity = await composer.compose('/fixture/project', chat(), 'Question', [], capabilities,
+    undefined, false, false, 'Roadmap workflow', false, false, false, true);
+  assert.equal(opportunity.messages.filter(message =>
+    message.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION).length, 1);
 });
 
 test('Pi Chat retains project discovery, source truth, and read-only authority in the budgeted message', async () => {
