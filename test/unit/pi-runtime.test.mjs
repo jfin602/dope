@@ -244,6 +244,91 @@ test('bundled Pi completes a synthetic prompt through the exact Local model', as
   }
 });
 
+test('Pi returns exact incomplete final text and provider usage at an output length stop', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-length-'));
+  const cases = [
+    { name: 'final text', mode: 'chat-tools', answer: ' First line.\nSecond line ', reason: 'length',
+      usage: { prompt_tokens: 120, completion_tokens: 48, total_tokens: 168 },
+      expected: { inputTokens: 120, outputTokens: 48, totalTokens: 168, tokenMeasurement: 'provider-reported' } },
+    { name: 'reasoning only', answer: '', thinking: 'Still checking.', reason: 'length',
+      usage: { prompt_tokens: 80, completion_tokens: 32, total_tokens: 112,
+        completion_tokens_details: { reasoning_tokens: 32 } },
+      expected: { inputTokens: 80, outputTokens: 32, reasoningTokens: 32,
+        totalTokens: 112, tokenMeasurement: 'provider-reported' } },
+    { name: 'zero text and unknown usage', answer: '', reason: 'length',
+      expected: { inputTokens: undefined, outputTokens: undefined, totalTokens: undefined,
+        tokenMeasurement: 'unavailable' } },
+    { name: 'ordinary completion', answer: 'Complete.', reason: 'stop',
+      usage: { prompt_tokens: 60, completion_tokens: 5, total_tokens: 65 },
+      expected: { inputTokens: 60, outputTokens: 5, totalTokens: 65,
+        tokenMeasurement: 'provider-reported' } }
+  ];
+  try {
+    for (const fixture of cases) {
+      const events = [];
+      let requests = 0;
+      globalThis.fetch = async () => {
+        requests++;
+        const chunks = [];
+        const frame = (delta, finish_reason = null, usage) => `data: ${JSON.stringify({
+          id: 'length-fixture', object: 'chat.completion.chunk', created: 1, model: 'offline-fixture',
+          choices: [{ index: 0, delta, finish_reason }], ...(usage ? { usage } : {}) })}\n\n`;
+        if (fixture.thinking) chunks.push(frame({ role: 'assistant', reasoning_content: fixture.thinking }));
+        if (fixture.answer) chunks.push(frame({ role: 'assistant', content: fixture.answer }));
+        chunks.push(frame({}, fixture.reason, fixture.usage), 'data: [DONE]\n\n');
+        return new Response(chunks.join(''), { status: 200,
+          headers: { 'content-type': 'text/event-stream' } });
+      };
+      await dispatch({ type: 'open', cwd, model, ...(fixture.mode ? { mode: fixture.mode } : {}) });
+      const answer = await dispatch({ type: 'turn', maxOutputTokens: 128,
+        messages: [{ role: 'user', content: fixture.name }], emit: event => events.push(event) });
+      assert.equal(answer.text, fixture.answer, fixture.name);
+      assert.equal(answer.finishReason, fixture.reason, fixture.name);
+      assert.deepEqual(answer.usage, fixture.expected, fixture.name);
+      assert.equal(requests, 1, fixture.name);
+      assert.equal(events.filter(event => event.kind === 'thinking').map(event => event.text).join(''),
+        fixture.thinking ?? '', fixture.name);
+      assert.equal(events.filter(event => event.type === 'delta').map(event => event.text).join(''),
+        fixture.mode === 'chat-tools' && fixture.reason === 'length' ? '' : fixture.answer, fixture.name);
+      await dispatch({ type: 'close' });
+    }
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi keeps provider interruption and context overflow separate from output length', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-length-error-'));
+  try {
+    globalThis.fetch = async () => new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(
+          'data: {"choices":[{"delta":{"content":"unfinished"},"finish_reason":null}]}\n\n'));
+        controller.error(new Error('provider connection interrupted'));
+      }
+    }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    await dispatch({ type: 'open', cwd, model });
+    await assert.rejects(dispatch({ type: 'turn', maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Interrupt.' }] }), /Local Pi completion failed/);
+    await dispatch({ type: 'close' });
+
+    globalThis.fetch = async () => new Response(
+      'data: {"choices":[{"delta":{},"finish_reason":"length"}],"usage":{"prompt_tokens":4060,"completion_tokens":0}}\n\ndata: [DONE]\n\n',
+      { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    await dispatch({ type: 'open', cwd, model });
+    await assert.rejects(dispatch({ type: 'turn', maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Context full.' }] }), /Pi context overflow at length stop/);
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('verified Qwen3.5 emits exposed thinking separately from final text', async () => {
   const originalFetch = globalThis.fetch;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-thinking-'));

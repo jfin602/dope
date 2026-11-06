@@ -501,11 +501,25 @@ export async function dispatch(message) {
       let toolCount = 0;
       let reportedInput = 0, reportedOutput = 0, reportedTotal = 0, reportedReasoning = 0;
       let usageUnknown = false;
+      let outputLimitCompactionSuppressed = false;
+      let lengthContextOverflow = false;
       let firstProviderOutput = false;
       let lastProviderOutputAt = 0;
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
         nativeCompactionOutcome(event);
+        if (!roadmapGenerationMode && !roadmapToolsMode && event.type === 'turn_end' &&
+            event.message?.role === 'assistant' && event.message.stopReason === 'length') {
+          const usage = event.message.usage;
+          // Pi 1.4.0 otherwise treats a length stop below the model's original
+          // maximum as recoverable and may omit the partial before retrying it.
+          // A zero-output response with reported input filling the context is
+          // instead Pi's context-overflow case and fails explicitly below.
+          lengthContextOverflow = usage?.totalTokens > 0 && usage.output === 0 &&
+            usage.input + usage.cacheRead >= session.model.contextWindow * 0.99;
+          session.settingsManager.setCompactionEnabled(false);
+          outputLimitCompactionSuppressed = true;
+        }
         if (roadmapGenerationMode && event.type === 'message_update' &&
             ['thinking_delta', 'text_delta', 'toolcall_delta'].includes(event.assistantMessageEvent?.type) &&
             typeof event.assistantMessageEvent.delta === 'string' &&
@@ -570,6 +584,7 @@ export async function dispatch(message) {
         if (chatLoopStopped) throw new Error(chatLoopReason);
         throw error;
       } finally {
+        if (outputLimitCompactionSuppressed) session.settingsManager.setCompactionEnabled(true);
         roadmapTrace('pi-worker-turn-end', { providerOutputSeen: firstProviderOutput,
           lastProviderOutputElapsedMs: lastProviderOutputAt ?
             Math.round(lastProviderOutputAt - roadmapStartedAt) : undefined });
@@ -578,9 +593,10 @@ export async function dispatch(message) {
       }
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
       if (chatLoopStopped) throw new Error(chatLoopReason);
+      if (lengthContextOverflow) throw new Error('Pi context overflow at length stop; shorten the turn');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
       if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
-          (assistant.stopReason === 'toolUse' ||
+          (!['stop', 'length'].includes(assistant.stopReason) ||
             assistant.content.some(item => item.type === 'toolCall')))
         throw new Error('Local Pi completion failed or attempted a tool call');
       const text = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
@@ -589,14 +605,14 @@ export async function dispatch(message) {
         message.emit?.({ type: 'delta', text });
       return { text, modelId: assistant.responseModel ?? assistant.model,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
-        usage: { inputTokens: roadmapGenerationMode ? reportedInput : assistant.usage?.input,
-          outputTokens: roadmapGenerationMode ? reportedOutput : assistant.usage?.output,
+        usage: { inputTokens: roadmapGenerationMode ? reportedInput : assistant.usage?.totalTokens ? assistant.usage.input : undefined,
+          outputTokens: roadmapGenerationMode ? reportedOutput : assistant.usage?.totalTokens ? assistant.usage.output : undefined,
           // Pi normalizes an absent OpenAI reasoning breakdown to zero. Only a
           // positive count proves that the provider actually reported one.
           ...((roadmapGenerationMode ? reportedReasoning : assistant.usage?.reasoning) > 0 ?
             { reasoningTokens: roadmapGenerationMode ? reportedReasoning : assistant.usage.reasoning } : {}),
           totalTokens: roadmapGenerationMode ? usageUnknown || !reportedTotal ? undefined : reportedTotal :
-            assistant.usage?.totalTokens,
+            assistant.usage?.totalTokens || undefined,
           tokenMeasurement: roadmapGenerationMode ? usageUnknown || !reportedTotal ? 'unavailable' :
             'provider-reported' : assistant.usage?.totalTokens ? 'provider-reported' : 'unavailable' },
         ...(compactionRecord ? { compaction: compactionRecord } : {}) };
