@@ -8,11 +8,64 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatOpenOwners, ChatPanelController, chatTree } from '../../packages/theia-extension/lib/browser/chat-panel-controller.js';
-import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { CHAT_PANEL_ID, ChatScrollFollow, ChatTranscriptDrag, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatAreas, chatLauncherIds, chatLauncherOptions, chatPanelOptions, chatPanelWidgetId, openChatPanel, outputLimitDecisionTarget, planningOutcome, resolveChatModel } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { ChatActivityRecorder } from '../../packages/chat/lib/index.js';
 import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
+
+test('output-limit notice uses current Ask execution and checked action identity', async () => {
+    const message = { role: 'assistant', id: 'answer', content: '', execution: {
+        id: 'execution', status: 'paused-output-limit', outputLimitPolicy: 'ask' },
+    answerPartial: { text: 'Partial', cursor: 7, segments: [{ number: 1 }] } };
+    const chat = { id: 'chat', messages: [message] } as unknown as ChatCollection['chats'][number];
+    const expected = { messageId: 'answer', executionId: 'execution', segment: 1, cursor: 7 };
+    assert.deepEqual(outputLimitDecisionTarget(chat, true), expected);
+    assert.equal(outputLimitDecisionTarget(chat, false), undefined);
+    message.execution.status = 'complete';
+    assert.equal(outputLimitDecisionTarget(chat, true), undefined);
+    message.execution.status = 'paused-output-limit';
+    message.execution.outputLimitPolicy = 'allow';
+    assert.equal(outputLimitDecisionTarget(chat, true), undefined);
+    message.execution.outputLimitPolicy = 'ask';
+    chat.messages.push({ role: 'user' } as ChatCollection['chats'][number]['messages'][number]);
+    assert.equal(outputLimitDecisionTarget(chat, true), undefined);
+    chat.messages.pop();
+
+    const calls: unknown[][] = [];
+    let release!: () => void;
+    const waiting = new Promise<void>(resolve => { release = resolve; });
+    const connection = { decideOutputLimit: (...args: unknown[]) => { calls.push(args); return waiting; } };
+    const controller = new ChatPanelController(() => { throw new Error('unused'); }, () => {});
+    Object.assign(controller, { workspace: 'project', chatId: 'chat', snapshot: { chats: [chat] },
+        running: true, lease: { workspace: 'project', chatId: 'chat', handle: 'handle', token: 'lease', connection } });
+    const decision = controller.decideOutputLimit('continue');
+    assert.equal(controller.outputLimitDecisionPending, true);
+    assert.equal(await controller.decideOutputLimit('stop'), false);
+    assert.deepEqual(calls, [['handle', 'chat', 'lease', 'answer', 'execution', 1, 7, 'continue']]);
+    release();
+    assert.equal(await decision, true);
+    assert.equal(controller.outputLimitDecisionTarget, undefined, 'accepted decision cannot be clicked again');
+    assert.equal(await controller.decideOutputLimit('continue'), false);
+    assert.equal(calls.length, 1);
+});
+
+test('output-limit controls stay above the fixed composer with accessible narrow layout', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    const notice = widget.indexOf("const outputLimit = state.outputLimitDecisionTarget;");
+    const composer = widget.indexOf("const composer = document.createElement('div'); composer.className = 'dope-chat-composer';", notice);
+    assert.ok(notice >= 0 && composer > notice);
+    assert.match(widget.slice(notice, composer), /role', 'status'/);
+    assert.match(widget.slice(notice, composer), /state\.decideOutputLimit\('stop'\)/);
+    assert.match(widget.slice(notice, composer), /state\.decideOutputLimit\('continue'\)/);
+    assert.match(widget.slice(notice, composer), /state\.outputLimitDecisionPending/g);
+    assert.match(widget, /field\(conversation, 'At generation limit', outputLimit\)/);
+    assert.match(css, /\.dope-chat-output-limit-notice \{[^}]*flex-wrap: wrap/);
+    assert.match(css, /\.dope-chat-output-limit-actions \{[^}]*flex-wrap: wrap/);
+    assert.match(css, /\.dope-chat-panel \.dope-chat-output-limit-actions button:focus-visible/);
+    assert.doesNotMatch(css.match(/\.dope-chat-output-limit-notice \{[^}]*\}/)?.[0] ?? '', /#[\da-f]{3,8}\b/i);
+});
 
 async function until(ready: () => boolean): Promise<void> {
     for (let i = 0; i < 100; i++) { if (ready()) return; await new Promise(resolve => setTimeout(resolve, 10)); }

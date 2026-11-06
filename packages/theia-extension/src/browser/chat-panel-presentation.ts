@@ -1,5 +1,16 @@
 import { safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatPlanningActivity } from '@dope/chat';
 
+/** Only the current live Ask turn may offer a decision; saved pauses are inert. */
+export function outputLimitDecisionTarget(chat: Chat | undefined, running: boolean):
+    { messageId: string; executionId: string; segment: number; cursor: number } | undefined {
+    if (!running || !chat) return undefined;
+    const message = chat.messages.at(-1);
+    if (message?.role !== 'assistant' || message.execution.status !== 'paused-output-limit' ||
+        message.execution.outputLimitPolicy !== 'ask' || !message.answerPartial?.segments.length) return undefined;
+    return { messageId: message.id, executionId: message.execution.id,
+        segment: message.answerPartial.segments.length, cursor: message.answerPartial.cursor };
+}
+
 /** Presentation only. A saved pending activity without its live lease is inert. */
 export function nativeRoadmapCardStatus(status: ChatPlanningActivity['status'], active: boolean):
     'Ready' | 'Applied' | 'Rejected' | 'Failed' | 'Cancelled' | 'Stale' {

@@ -6,7 +6,7 @@ import type { ChatClient, ChatEvent, ChatOperation, ChatService, ChatContextSele
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import type { ChatModelSelection } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
-import { hasSendableChatDraft, isDraftPlanningAction } from './chat-panel-presentation';
+import { hasSendableChatDraft, isDraftPlanningAction, outputLimitDecisionTarget } from './chat-panel-presentation';
 
 export type ChatConnection = ChatService & { setClient(client: ChatClient | undefined): void; dispose(): void };
 export type ChatMode = 'select-chat' | 'chat';
@@ -92,6 +92,14 @@ export class ChatPanelController {
     toolProgress?: { messageId: string; events: { name: NonNullable<import('@dope/chat').ChatExecution['toolEvents']>[number]['name'];
         status: 'running' | 'completed' | 'failed' | 'denied'; truncated?: boolean; detail?: string; target?: string }[] };
     running = false;
+    outputLimitDecisionPending = false;
+    private outputLimitDecisionOwner?: object;
+    private outputLimitDecided?: string;
+    get outputLimitDecisionTarget(): ReturnType<typeof outputLimitDecisionTarget> {
+        const target = outputLimitDecisionTarget(this.chat, this.running), lease = this.lease;
+        return target && lease && lease.chatId === this.chatId && lease.workspace === this.workspace &&
+            this.outputLimitDecided !== JSON.stringify(target) ? target : undefined;
+    }
     runStartedAt?: string;
     stream: { chatId: string; messageId: string; executionId: string; content: string; sequence: number;
         activitySequence: number; events: ChatActivityEvent[] } | undefined;
@@ -184,6 +192,8 @@ export class ChatPanelController {
         this.handle = undefined;
         this.loading = !!workspace;
         this.pending = false;
+        this.outputLimitDecisionPending = false; this.outputLimitDecisionOwner = undefined;
+        this.outputLimitDecided = undefined;
         this.error = '';
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
         this.lastContext = undefined; this.planningProposal = undefined;
@@ -371,6 +381,8 @@ export class ChatPanelController {
         }
         if (chatId === this.chatId && this.mode === 'chat' && this.lease) return true;
         this.chatId = undefined; this.mode = 'select-chat'; this.error = '';
+        this.outputLimitDecisionPending = false; this.outputLimitDecisionOwner = undefined;
+        this.outputLimitDecided = undefined;
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
         this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapStage = undefined; this.roadmapStageError = undefined;
@@ -597,6 +609,7 @@ export class ChatPanelController {
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
         this.running = true; this.runStartedAt = new Date().toISOString();
+        this.outputLimitDecided = undefined;
         this.error = ''; this.stream = undefined; this.planningProgress = undefined;
         this.toolProgress = undefined;
         this.roadmapStage = undefined; this.roadmapStageError = undefined;
@@ -855,8 +868,39 @@ export class ChatPanelController {
     }
     async cancel(): Promise<void> {
         const lease = this.lease;
-        if (lease && this.running)
+        if (lease && this.running) {
+            const target = this.outputLimitDecisionTarget;
+            if (target) { this.outputLimitDecided = JSON.stringify(target); this.changed(); }
             await lease.connection.cancelTurn(lease.handle, lease.chatId, lease.token).catch(() => {});
+        }
+    }
+    async decideOutputLimit(decision: 'stop' | 'continue'): Promise<boolean> {
+        const lease = this.lease;
+        const target = this.outputLimitDecisionTarget;
+        if (!lease || !target || this.outputLimitDecisionPending || this.disposed ||
+            lease.chatId !== this.chatId || lease.workspace !== this.workspace) return false;
+        const owner = {};
+        this.outputLimitDecisionOwner = owner;
+        this.outputLimitDecisionPending = true;
+        this.changed();
+        try {
+            await lease.connection.decideOutputLimit(lease.handle, lease.chatId, lease.token,
+                target.messageId, target.executionId, target.segment, target.cursor, decision);
+            if (this.lease === lease) this.outputLimitDecided = JSON.stringify(target);
+            return true;
+        } catch (error) {
+            if (this.lease === lease && !this.disposed) {
+                this.error = `Generation-limit decision unavailable: ${String(error)}`;
+                await this.refresh(true);
+            }
+            return false;
+        } finally {
+            if (this.outputLimitDecisionOwner === owner) {
+                this.outputLimitDecisionOwner = undefined;
+                this.outputLimitDecisionPending = false;
+                if (!this.disposed) this.changed();
+            }
+        }
     }
     async newFolder(parent: ChatFolderPath, name: string): Promise<boolean> {
         try { return this.mutate({ type: 'create-folder', path: joinChatFolderPath(parent, name) }); }

@@ -1988,7 +1988,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private appendReasoningActivity(item: HTMLElement, messageId: string | undefined,
         diagnostic: ReturnType<typeof chatStreamingActivityPresentation>, active: boolean,
-        startedAt: string, endedAt?: string, outcome: 'Working...' | 'Finished' | 'Canceled' | 'Error' = 'Working...'): void {
+        startedAt: string, endedAt?: string, outcome: 'Working...' | 'Finished' | 'Canceled' | 'Error' |
+            'Paused at generation limit' | 'Incomplete' = 'Working...'): void {
         const details = document.createElement('details');
         details.className = 'dope-chat-stream-activity';
         details.open = messageId ? this.activityExpansion.get(messageId) ?? active : active;
@@ -2855,7 +2856,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         transcript.className = 'dope-chat-transcript';
         const lastUserIndex = chat.messages.map(message => message.role).lastIndexOf('user');
         const activeAssistant = [...chat.messages.slice(lastUserIndex + 1)].reverse().find(message =>
-            message.role === 'assistant' && ['pending', 'streaming'].includes(message.execution.status));
+            message.role === 'assistant' && ['pending', 'streaming', 'paused-output-limit'].includes(message.execution.status));
         for (const message of chat.messages) {
             const item = document.createElement('li');
             item.className = `dope-chat-message dope-chat-message-${message.role}`;
@@ -2939,13 +2940,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     content.classList.add('dope-chat-final-answer');
                     const note = document.createElement('p'); note.textContent = 'No final response'; content.append(note);
                 }
+                if (['paused-output-limit', 'stopped-incomplete', 'interrupted'].includes(message.execution.status) &&
+                    message.answerPartial) {
+                    const marker = document.createElement('strong');
+                    marker.className = 'dope-chat-incomplete-marker';
+                    marker.textContent = 'Incomplete';
+                    content.append(marker);
+                    if (message.answerPartial.text) {
+                        const partial = renderUntrustedMessageMarkdown(this.markdown, message.answerPartial.text);
+                        partial.className = 'dope-chat-partial-answer';
+                        content.append(partial);
+                    }
+                }
             } else if (message.role === 'user' && message.skill) {
                 const current = this.skills?.find(skill => skill.id === message.skill?.id);
                 appendSkillText(content, body, { name: message.skill.name,
                     title: message.skill.title ?? current?.title,
                     description: message.skill.description ?? current?.description });
             } else content.textContent = body;
-            if (message.role === 'assistant' && state.running && message.id === activeAssistant?.id &&
+            if (message.role === 'assistant' && message.execution.status !== 'paused-output-limit' &&
+                state.running && message.id === activeAssistant?.id &&
                 state.stream?.messageId === message.id && state.stream.executionId === message.execution.id &&
                 state.stream.content) {
                 content.replaceChildren(renderUntrustedMessageMarkdown(this.markdown, state.stream.content));
@@ -2996,8 +3010,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     this.appendReasoningActivity(item, message.id, diagnostic, active,
                         message.execution.startedAt, message.execution.finishedAt,
                         message.execution.status === 'complete' ? 'Finished' :
-                            message.execution.status === 'cancelled' ? 'Canceled' :
-                                ['failed', 'interrupted'].includes(message.execution.status) ? 'Error' : 'Working...');
+                        message.execution.status === 'paused-output-limit' ? 'Paused at generation limit' :
+                        message.execution.status === 'stopped-incomplete' ? 'Incomplete' :
+                        message.execution.status === 'cancelled' ? 'Canceled' :
+                        ['failed', 'interrupted'].includes(message.execution.status) ? 'Error' : 'Working...');
                 if (message.execution.finishReason === 'length') {
                     const providerLimit = document.createElement('span');
                     providerLimit.className = 'dope-chat-stream-note';
@@ -3180,6 +3196,32 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         region.append(scroll, latest);
         if (!this.settingsOpen) shell.append(header);
         shell.append(region);
+        const outputLimit = state.outputLimitDecisionTarget;
+        if (outputLimit) {
+            const notice = document.createElement('div');
+            notice.className = 'dope-chat-output-limit-notice';
+            notice.setAttribute('role', 'status');
+            notice.setAttribute('aria-label', 'Generation limit reached');
+            const prompt = document.createElement('span');
+            prompt.textContent = 'Generation limit reached. Stop generating?';
+            const actions = document.createElement('div');
+            actions.className = 'dope-chat-output-limit-actions';
+            const stop = this.button('Stop', () => { void state.decideOutputLimit('stop'); },
+                state.outputLimitDecisionPending);
+            stop.setAttribute('aria-label', 'Stop generating');
+            const resume = this.button('Continue generating', () => { void state.decideOutputLimit('continue'); },
+                state.outputLimitDecisionPending);
+            resume.setAttribute('aria-label', 'Continue generating');
+            notice.onkeydown = event => {
+                if (event.key === 'Escape') {
+                    event.preventDefault(); event.stopPropagation();
+                    shell.querySelector<HTMLTextAreaElement>('.dope-chat-composer textarea')?.focus();
+                }
+            };
+            actions.append(stop, resume);
+            notice.append(prompt, actions);
+            shell.append(notice);
+        }
         const composer = document.createElement('div'); composer.className = 'dope-chat-composer';
         const input = document.createElement('textarea'); input.rows = 1; input.placeholder = 'Message';
         input.setAttribute('aria-label', 'Message'); input.value = state.draft;
