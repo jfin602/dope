@@ -9,7 +9,16 @@ export type ChatFolderPath = string; // Root is ''. Other paths use slash-separa
 export type ChatTitleSource = 'placeholder' | 'automatic' | 'developer';
 export const CHAT_COLORS = ['blue', 'cyan', 'teal', 'green', 'yellow', 'orange', 'red', 'pink', 'purple', 'indigo'] as const;
 export type ChatColor = typeof CHAT_COLORS[number];
-export type AssistantStatus = 'pending' | 'streaming' | 'complete' | 'failed' | 'cancelled';
+export type AssistantStatus = 'pending' | 'streaming' | 'paused-output-limit' | 'complete' | 'stopped-incomplete' | 'failed' | 'cancelled' | 'interrupted';
+export type ChatOutputLimitPolicy = 'ask' | 'allow' | 'cancel';
+/** Noncanonical answer bytes. Cursor counts UTF-8 bytes, not JavaScript code units. */
+export interface ChatAnswerPartial {
+    schemaVersion: 1;
+    text: string;
+    cursor: number;
+    segments: { number: number; start: number; end: number; finishReason: string;
+        tokenUsage?: ChatExecution['tokenUsage'] }[];
+}
 export type ChatContextKind = 'editor' | 'selection' | 'file' | 'project-mind' | 'architecture' |
     'physical-map' | 'flow' | 'planning-map' | 'work-item' | 'roadmap-checkpoint' | 'roadmap' | 'saved-chat' | 'directory' | 'path-search' | 'text-search' | 'project-orientation' | 'grounding-status';
 /** Sources a person can explicitly attach. Saved Chat also requires savedChatSearch. */
@@ -64,6 +73,7 @@ export interface ChatExecution {
     id: string;
     status: AssistantStatus;
     selectedModel: ChatModelSelection; // Snapshotted at Send; never rewritten by settings.
+    outputLimitPolicy?: ChatOutputLimitPolicy; // Snapshot for this execution; older records omit it.
     resolutionSource?: 'explicit-turn' | 'chat-exact-default' | 'role-policy';
     actualModel?: ChatModelProvenance; // Set when a runtime starts, then immutable.
     routingProvenance?: RoutingProvenance;
@@ -103,6 +113,7 @@ export interface ChatAssistantMessage {
     content: string; // Only successfully completed final answer is conversational content.
     execution: ChatExecution;
     activity?: ChatExecutionActivity; // Isolated diagnostics; never prompt context or search content.
+    answerPartial?: ChatAnswerPartial; // Inspectable incomplete answer, never conversational content.
     planningActivity?: ChatPlanningActivity; // Backend-verified projection; content remains the exact model output.
     roadmapAction?: ChatRoadmapAction;
     lockedRoadmapPlan?: ChatLockedRoadmapPlan; // Inert evidence, never an approval or proposal.
@@ -195,7 +206,31 @@ export interface ChatCollection {
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const contextKinds: readonly ChatContextKind[] = ['editor', 'selection', 'file', 'project-mind', 'architecture',
     'physical-map', 'flow', 'planning-map', 'work-item', 'roadmap-checkpoint', 'roadmap', 'saved-chat', 'directory', 'path-search', 'text-search', 'project-orientation', 'grounding-status'];
-const statuses: readonly AssistantStatus[] = ['pending', 'streaming', 'complete', 'failed', 'cancelled'];
+const statuses: readonly AssistantStatus[] = ['pending', 'streaming', 'paused-output-limit', 'complete', 'stopped-incomplete', 'failed', 'cancelled', 'interrupted'];
+const outputPolicies: readonly ChatOutputLimitPolicy[] = ['ask', 'allow', 'cancel'];
+const partialBytes = (text: string): number => new TextEncoder().encode(text).length;
+export function parseChatAnswerPartial(value: unknown): ChatAnswerPartial {
+    const v = record(value, ['schemaVersion', 'text', 'cursor', 'segments'], ['schemaVersion', 'text', 'cursor', 'segments']);
+    if (v.schemaVersion !== 1 || typeof v.text !== 'string' || !Array.isArray(v.segments) || v.segments.length > 32 ||
+        partialBytes(v.text) > 131_072 || v.cursor !== partialBytes(v.text)) throw new Error('Invalid Chat answer partial');
+    let end = 0;
+    const segments = v.segments.map((item, index) => {
+        const s = record(item, ['number', 'start', 'end', 'finishReason', 'tokenUsage'], ['number', 'start', 'end', 'finishReason']);
+        if (s.number !== index + 1 || s.start !== end || !Number.isSafeInteger(s.start) || !Number.isSafeInteger(s.end) ||
+            (s.end as number) < end || (s.end as number) > (v.cursor as number)) throw new Error('Invalid Chat answer segment');
+        end = s.end as number;
+        return { number: s.number as number, start: s.start as number, end,
+            finishReason: (() => { const reason = string(s.finishReason, 'segment finish reason');
+                if (reason.length > 80) throw new Error('Invalid Chat segment finish reason');
+                return reason; })(),
+            ...(s.tokenUsage === undefined ? {} : { tokenUsage: parseExecution({ schemaVersion: 1,
+                id: '00000000-0000-4000-8000-000000000000', status: 'pending',
+                selectedModel: { connectionId: 'partial', modelId: 'partial' }, startedAt: '2026-01-01T00:00:00.000Z',
+                tokenUsage: s.tokenUsage }).tokenUsage }) };
+    });
+    if (end > (v.cursor as number)) throw new Error('Invalid Chat answer cursor');
+    return { schemaVersion: 1, text: v.text, cursor: v.cursor as number, segments };
+}
 
 export function parseChatColor(value: unknown): ChatColor { return choice(value, CHAT_COLORS, 'Chat color'); }
 
@@ -360,11 +395,12 @@ export function availableChatContextTokens(policy: ChatContextPolicy, modelWindo
 }
 
 function parseExecution(value: unknown): ChatExecution {
-    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
+    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'outputLimitPolicy', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported execution schema');
     const execution: ChatExecution = { schemaVersion: 1, id: identifier(v.id), status: choice(v.status, statuses, 'assistant status'),
         selectedModel: parseChatModelSelection(v.selectedModel), startedAt: time(v.startedAt) };
+    if (v.outputLimitPolicy !== undefined) execution.outputLimitPolicy = choice(v.outputLimitPolicy, outputPolicies, 'output limit policy');
     if (v.actualModel !== undefined) execution.actualModel = parseModelProvenance(v.actualModel);
     if (v.resolutionSource !== undefined) execution.resolutionSource = choice(v.resolutionSource,
         ['explicit-turn', 'chat-exact-default', 'role-policy'] as const, 'resolution source');
@@ -447,20 +483,20 @@ function parseExecution(value: unknown): ChatExecution {
         (execution.routingProvenance.actualTarget.connectionId !== execution.actualModel.connectionId ||
             execution.routingProvenance.actualTarget.modelId !== execution.actualModel.modelId))
         throw new Error('Routing provenance differs from actual model');
-    if (['complete', 'failed', 'cancelled'].includes(execution.status) !== Boolean(execution.finishedAt) ||
+    if (['complete', 'stopped-incomplete', 'failed', 'cancelled', 'interrupted'].includes(execution.status) !== Boolean(execution.finishedAt) ||
         (execution.status === 'failed') !== Boolean(execution.failure) ||
-        (['streaming', 'complete'].includes(execution.status) && !execution.actualModel) ||
+        (['streaming', 'paused-output-limit', 'complete', 'stopped-incomplete'].includes(execution.status) && !execution.actualModel) ||
         (execution.finishedAt && Date.parse(execution.finishedAt) < Date.parse(execution.startedAt)))
         throw new Error('Invalid execution lifecycle');
     return execution;
 }
 export function parseChatMessage(value: unknown): ChatMessage {
-    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'execution', 'activity', 'planningActivity', 'roadmapAction', 'lockedRoadmapPlan'],
+    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'execution', 'activity', 'answerPartial', 'planningActivity', 'roadmapAction', 'lockedRoadmapPlan'],
         ['schemaVersion', 'id', 'role', 'createdAt', 'content']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported message schema');
     const base = { schemaVersion: 1 as const, id: identifier(v.id), createdAt: time(v.createdAt), content: string(v.content, 'message content', false) };
     if (v.role === 'user') {
-        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || v.lockedRoadmapPlan !== undefined || !base.content.trim()) throw new Error('Invalid user message');
+        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.answerPartial !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || v.lockedRoadmapPlan !== undefined || !base.content.trim()) throw new Error('Invalid user message');
         const skill = v.skill === undefined ? undefined : (() => {
             const s = record(v.skill, ['id', 'name', 'title', 'description', 'body', 'version', 'digest'],
                 ['id', 'name', 'body', 'version', 'digest']);
@@ -479,6 +515,9 @@ export function parseChatMessage(value: unknown): ChatMessage {
         const execution = parseExecution(v.execution);
         const activity = v.activity === undefined ? undefined : parseExecutionActivity(v.activity,
             (v.activity as ChatExecutionActivity).chatId, base.id, execution.id);
+        const answerPartial = v.answerPartial === undefined ? undefined : parseChatAnswerPartial(v.answerPartial);
+        if ((answerPartial || ['paused-output-limit', 'stopped-incomplete', 'interrupted'].includes(execution.status)) && base.content ||
+            answerPartial && execution.status === 'pending') throw new Error('Incomplete assistant cannot commit content');
         const planningActivity = v.planningActivity === undefined ? undefined : parsePlanningActivity(v.planningActivity);
         const roadmapAction = v.roadmapAction === undefined ? undefined : parseChatRoadmapAction(v.roadmapAction);
         const lockedRoadmapPlan = v.lockedRoadmapPlan === undefined ? undefined : parseChatLockedRoadmapPlan(v.lockedRoadmapPlan);
@@ -490,6 +529,7 @@ export function parseChatMessage(value: unknown): ChatMessage {
             planningActivity.kind === 'cancelled' ? execution.status !== 'cancelled' : execution.status !== 'complete'))
             throw new Error('Planning activity differs from execution outcome');
         return { ...base, role: 'assistant', execution, ...(activity ? { activity } : {}),
+            ...(answerPartial ? { answerPartial } : {}),
             ...(planningActivity ? { planningActivity } : {}),
             ...(roadmapAction ? { roadmapAction } : {}),
             ...(lockedRoadmapPlan ? { lockedRoadmapPlan } : {}) };

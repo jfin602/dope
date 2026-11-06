@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   CHAT_COLORS, MANUAL_CHAT_CONTEXT_SOURCES, assignedChatColor, availableChatContextTokens, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath,
   parseChat, parseChatCollection, parseChatColor, parseChatFolderPath, suggestedChatTitle, withAutomaticChatTitle,
+  parseChatAnswerPartial,
 } from '../../packages/chat/lib/index.js';
 import type { Chat, ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -104,6 +105,25 @@ test('all assistant lifecycle statuses are represented without invented completi
   assert.throws(() => parseChat({ ...chat, messages: [chat.messages[0], {
     ...assistant, execution: { ...assistant.execution, status: 'complete', finishedAt: undefined },
   }] }));
+});
+
+test('bounded partial answers stay separate from canonical content and old records still parse', () => {
+  const chat = sampleChat(), assistant = chat.messages[1] as ChatAssistantMessage;
+  assert.equal((parseChat(chat).messages[1] as ChatAssistantMessage).answerPartial, undefined);
+  const partial = parseChatAnswerPartial({ schemaVersion: 1, text: 'First', cursor: 5,
+    segments: [{ number: 1, start: 0, end: 5, finishReason: 'length' }] });
+  for (const status of ['paused-output-limit', 'stopped-incomplete', 'interrupted'] as const) {
+    const saved = parseChat({ ...chat, messages: [chat.messages[0], { ...assistant, content: '', answerPartial: partial,
+      execution: { ...assistant.execution, status, outputLimitPolicy: 'ask', finishReason: 'length',
+        finishedAt: status === 'paused-output-limit' ? undefined : later } }] });
+    const message = saved.messages[1] as ChatAssistantMessage;
+    assert.equal(message.content, '');
+    assert.equal(message.answerPartial?.text, 'First');
+    assert.equal(message.execution.outputLimitPolicy, 'ask');
+  }
+  assert.throws(() => parseChatAnswerPartial({ ...partial, cursor: 4 }), /partial/);
+  assert.throws(() => parseChatAnswerPartial({ ...partial, segments: [{ ...partial.segments[0], number: 2 }] }), /segment/);
+  assert.throws(() => parseChat({ ...chat, messages: [chat.messages[0], { ...assistant, answerPartial: partial }] }), /Incomplete assistant/);
 });
 
 test('folder paths reject traversal and preserve segment boundaries', () => {

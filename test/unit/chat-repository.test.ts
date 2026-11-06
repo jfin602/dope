@@ -17,6 +17,111 @@ const model = { connectionId: 'local', modelId: 'model' };
 const provenance = { schemaVersion: 1 as const, ...model, providerId: 'test', modelLabel: 'Test' };
 const emptyAnalysis = { projects: [], nodes: [], relationships: [], evidence: [], status: { completeness: 'complete' as const, errors: [] } };
 
+test('partial output is append-once, lease-bound, and remains noncanonical through stop and recovery', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id(), executionId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'partial-owner');
+    if (!lease.acquired) throw new Error('Chat claim missing');
+    state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId, message: {
+      schemaVersion: 1, id: messageId, role: 'assistant', createdAt: state.chats[0].updatedAt, content: '',
+      execution: { schemaVersion: 1, id: executionId, status: 'pending', selectedModel: model,
+        startedAt: state.chats[0].updatedAt } } }, lease.token);
+    state = await repo.mutate(root, state.revision, { type: 'start-assistant', chatId, messageId,
+      actualModel: provenance, outputLimitPolicy: 'ask' }, lease.token);
+    const append = { type: 'append-answer-partial' as const, chatId, messageId, executionId,
+      segment: 1, cursor: 0, delta: 'Draft 🔥' };
+    await assert.rejects(repo.mutate(root, state.revision, append, 'wrong-lease'), /lease/);
+    await assert.rejects(repo.mutate(root, state.revision, { ...append, executionId: id() }, lease.token), /cursor or execution/);
+    state = await repo.mutate(root, state.revision, append, lease.token);
+    const cursor = Buffer.byteLength(append.delta);
+    await assert.rejects(repo.mutate(root, state.revision, append, lease.token), /cursor or execution/);
+    await assert.rejects(repo.mutate(root, state.revision, { ...append, cursor, segment: 2 }, lease.token), /append/);
+    assert.deepEqual(await repo.search(root, 'Draft', 5), []);
+    state = await repo.mutate(root, state.revision, { type: 'pause-output-limit', chatId, messageId,
+      executionId, segment: 1, cursor, finishReason: 'length' }, lease.token);
+    const paused = state.chats[0].messages[0];
+    assert.equal(paused.role, 'assistant');
+    if (paused.role === 'assistant') {
+      assert.equal(paused.content, '');
+      assert.equal(paused.answerPartial?.text, 'Draft 🔥');
+      assert.equal(paused.execution.status, 'paused-output-limit');
+      assert.equal(paused.execution.outputLimitPolicy, 'ask');
+    }
+    const stop = { type: 'stop-incomplete' as const, chatId, messageId, executionId, cursor };
+    const decisions = await Promise.allSettled([
+      repo.mutate(root, state.revision, stop, lease.token),
+      new ChatRepository().mutate(root, state.revision,
+        { type: 'resume-output-limit', chatId, messageId, executionId, cursor }, lease.token)]);
+    assert.equal(decisions.filter(result => result.status === 'fulfilled').length, 1);
+    state = await repo.read(root);
+    const current = state.chats[0].messages[0];
+    if (current.role !== 'assistant') throw new Error('Assistant missing');
+    if (current.execution.status === 'streaming') {
+      state = await repo.mutate(root, state.revision, { type: 'pause-output-limit', chatId, messageId,
+        executionId, segment: 2, cursor, finishReason: 'length' }, lease.token);
+      state = await repo.mutate(root, state.revision, stop, lease.token);
+    }
+    await assert.rejects(repo.mutate(root, state.revision, stop, lease.token), /not paused/);
+    const stopped = state.chats[0].messages[0];
+    if (stopped.role !== 'assistant') throw new Error('Assistant missing');
+    assert.equal(stopped.execution.status, 'stopped-incomplete');
+    assert.equal(stopped.content, '');
+    assert.equal(stopped.answerPartial?.text, 'Draft 🔥');
+    await repo.release(root, chatId, lease.token);
+    const reopened = (await new ChatRepository().read(root)).chats[0].messages[0];
+    if (reopened.role !== 'assistant') throw new Error('Assistant missing');
+    assert.equal(reopened.execution.status, 'stopped-incomplete');
+    assert.equal(reopened.answerPartial?.text, 'Draft 🔥');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('completed continuation commits one answer; abandoned pause recovers as interrupted', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'owner');
+    if (!lease.acquired) throw new Error('Chat claim missing');
+    for (const complete of [true, false]) {
+      const messageId = id(), executionId = id();
+      state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId, message: {
+        schemaVersion: 1, id: messageId, role: 'assistant', createdAt: state.chats[0].updatedAt, content: '',
+        execution: { schemaVersion: 1, id: executionId, status: 'pending', selectedModel: model,
+          startedAt: state.chats[0].updatedAt } } }, lease.token);
+      state = await repo.mutate(root, state.revision,
+        { type: 'start-assistant', chatId, messageId, actualModel: provenance }, lease.token);
+      state = await repo.mutate(root, state.revision,
+        { type: 'append-answer-partial', chatId, messageId, executionId, segment: 1, cursor: 0, delta: 'Half' }, lease.token);
+      state = await repo.mutate(root, state.revision,
+        { type: 'pause-output-limit', chatId, messageId, executionId, segment: 1, cursor: 4, finishReason: 'length' }, lease.token);
+      if (complete) {
+        state = await repo.mutate(root, state.revision,
+          { type: 'resume-output-limit', chatId, messageId, executionId, cursor: 4 }, lease.token);
+        await assert.rejects(repo.mutate(root, state.revision,
+          { type: 'finish-assistant', chatId, messageId, outcome: 'complete', content: 'Different' }, lease.token), /differs/);
+        await assert.rejects(repo.mutate(root, state.revision,
+          { type: 'finish-assistant', chatId, messageId, outcome: 'complete', content: 'Half done',
+            finishReason: 'length' }, lease.token), /Output limit/);
+        state = await repo.mutate(root, state.revision,
+          { type: 'finish-assistant', chatId, messageId, outcome: 'complete', content: 'Half done' }, lease.token);
+        const done = state.chats[0].messages.at(-1);
+        if (done?.role !== 'assistant') throw new Error('Assistant missing');
+        assert.equal(done.content, 'Half done');
+        assert.equal(done.answerPartial, undefined);
+      }
+    }
+    await repo.release(root, chatId, lease.token);
+    const recovered = await new ChatRepository().read(root);
+    const interrupted = recovered.chats[0].messages.at(-1);
+    if (interrupted?.role !== 'assistant') throw new Error('Assistant missing');
+    assert.equal(interrupted.execution.status, 'interrupted');
+    assert.equal(interrupted.content, '');
+    assert.equal(interrupted.answerPartial?.text, 'Half');
+    assert.deepEqual((await repo.search(root, 'Half', 5)).map(hit => hit.messageId),
+      [recovered.chats[0].messages[0].id]);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('historical locked Roadmap text remains readable and inert after generator removal', () => {
   const messageId = id(), executionId = id();
   const text = 'Phase 1 — Historical planning only. '.repeat(10);

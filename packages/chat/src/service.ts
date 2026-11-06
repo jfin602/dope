@@ -1,5 +1,5 @@
 import type { Chat, ChatCollection, ChatColor, ChatContextKind, ChatContextRef, ChatFolderPath, ChatId, ChatMessage,
-    ChatExecution, ChatModelProvenance, ChatModelSelection, ChatPlanningActivity, ChatSettings } from './index';
+    ChatExecution, ChatModelProvenance, ChatModelSelection, ChatPlanningActivity, ChatSettings, ChatOutputLimitPolicy } from './index';
 import type { RoutingProvenance } from '@dope/ai';
 import type { ChatExecutionActivity, ChatActivityKind } from './activity';
 
@@ -23,7 +23,14 @@ export type ChatOperation =
         contextRefs: ChatContextRef[] }
     | { type: 'begin-assistant'; chatId: ChatId; message: ChatMessage & { role: 'assistant' } }
     | { type: 'start-assistant'; chatId: ChatId; messageId: string; actualModel: ChatModelProvenance;
-        routingProvenance?: RoutingProvenance }
+        routingProvenance?: RoutingProvenance; outputLimitPolicy?: ChatOutputLimitPolicy }
+    | { type: 'append-answer-partial'; chatId: ChatId; messageId: string; executionId: string;
+        segment: number; cursor: number; delta: string }
+    | { type: 'pause-output-limit'; chatId: ChatId; messageId: string; executionId: string;
+        segment: number; cursor: number; finishReason: string; tokenUsage?: ChatExecution['tokenUsage'];
+        sourceRefs?: ChatExecution['sourceRefs']; toolEvents?: ChatExecution['toolEvents'] }
+    | { type: 'resume-output-limit'; chatId: ChatId; messageId: string; executionId: string; cursor: number }
+    | { type: 'stop-incomplete'; chatId: ChatId; messageId: string; executionId: string; cursor: number }
     | { type: 'record-assistant-activity'; chatId: ChatId; messageId: string; activity: ChatExecutionActivity }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
         content: string; activity?: ChatExecutionActivity; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;

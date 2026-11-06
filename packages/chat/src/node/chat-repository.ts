@@ -468,11 +468,13 @@ export class ChatRepository {
             const active = this.active(await this.lease(base, chat.id));
             const messages = await Promise.all(chat.messages.map(async message => {
                 if (active) return message;
-                if (message.role !== 'assistant' || !['pending', 'streaming'].includes(message.execution.status)) return message;
+                if (message.role !== 'assistant' || !['pending', 'streaming', 'paused-output-limit'].includes(message.execution.status)) return message;
                 changed = true;
                 const logged = await this.activityFromLog(base, chat.id, message.id, message.execution.id);
-                return { ...message, ...(logged ? { activity: logged } : {}), content: '', execution: { ...message.execution, status: 'failed' as const,
-                    finishedAt: now, failure: interrupted } };
+                return { ...message, ...(logged ? { activity: logged } : {}), content: '', execution: {
+                    ...message.execution, status: message.answerPartial || message.execution.status === 'paused-output-limit' ?
+                        'interrupted' as const : 'failed' as const, finishedAt: now,
+                    ...(message.answerPartial || message.execution.status === 'paused-output-limit' ? {} : { failure: interrupted }) } };
             }));
             const wasInterrupted = messages.some((message, i) => message !== chat.messages[i]);
             if (legacyIds.has(chat.id)) changed = true;
@@ -483,7 +485,7 @@ export class ChatRepository {
         const next = parseChatCollection({ ...current, revision: current.revision + 1, chats });
         await this.write(root, next);
         for (const chat of current.chats) for (const message of chat.messages)
-            if (message.role === 'assistant' && ['pending', 'streaming'].includes(message.execution.status) &&
+            if (message.role === 'assistant' && ['pending', 'streaming', 'paused-output-limit'].includes(message.execution.status) &&
                 !this.active(await this.lease(base, chat.id)))
                 await rm(this.activityFile(base, chat.id, message.id, message.execution.id), { force: true });
         this.emit(root, { revision: next.revision, kind: 'changed' });
@@ -494,7 +496,7 @@ export class ChatRepository {
         const current = await this.raw(root, legacyIds);
         if (legacyIds.size) return this.locked(root, base => this.recover(root, base));
         const active = current.chats.filter(chat => chat.messages.some(m => m.role === 'assistant' &&
-            ['pending', 'streaming'].includes(m.execution.status)));
+            ['pending', 'streaming', 'paused-output-limit'].includes(m.execution.status)));
         if (!active.length) return current;
         const { base } = await this.paths(root);
         if ((await Promise.all(active.map(chat => this.lease(base, chat.id)))).every(lease => this.active(lease)))
@@ -510,7 +512,8 @@ export class ChatRepository {
                 const lease = await this.lease(base, uuid(operation.chatId));
                 if (this.active(lease)) throw new Error('Cannot delete an open Chat');
             }
-            if (['append-user', 'begin-assistant', 'start-assistant', 'record-assistant-activity', 'finish-assistant'].includes(operation.type)) {
+            if (['append-user', 'begin-assistant', 'start-assistant', 'append-answer-partial', 'pause-output-limit',
+                'resume-output-limit', 'stop-incomplete', 'record-assistant-activity', 'finish-assistant'].includes(operation.type)) {
                 const chatId = (operation as Extract<ChatOperation, { chatId: string }>).chatId;
                 const lease = await this.lease(base, chatId);
                 if (!lease || !this.active(lease) || lease.token !== leaseToken) throw new Error('Chat ownership lease required');
@@ -605,7 +608,49 @@ export class ChatRepository {
                     const messages = [...c.messages];
                     messages[at] = parseChatMessage({ ...message, execution: {
                         ...message.execution, status: 'streaming', actualModel: operation.actualModel,
+                        ...(operation.outputLimitPolicy ? { outputLimitPolicy: operation.outputLimitPolicy } : {}),
                         ...(operation.routingProvenance ? { routingProvenance: operation.routingProvenance } : {}) } });
+                    return { ...c, lastInteractedAt: now, messages };
+                }); break;
+                case 'append-answer-partial':
+                case 'pause-output-limit':
+                case 'resume-output-limit':
+                case 'stop-incomplete': update(c => {
+                    const at = c.messages.findIndex(m => m.id === operation.messageId);
+                    const message = c.messages[at];
+                    if (!message || message.role !== 'assistant' || message.execution.id !== operation.executionId ||
+                        message.answerPartial?.cursor !== undefined && message.answerPartial.cursor !== operation.cursor ||
+                        !message.answerPartial && operation.cursor !== 0)
+                        throw new Error('Stale Chat answer cursor or execution');
+                    const partial = message.answerPartial ?? { schemaVersion: 1 as const, text: '', cursor: 0, segments: [] };
+                    const messages = [...c.messages];
+                    if (operation.type === 'append-answer-partial') {
+                        if (message.execution.status !== 'streaming' || operation.segment !== partial.segments.length + 1 ||
+                            !operation.delta || new TextEncoder().encode(operation.delta).length > 65_536)
+                            throw new Error('Stale or invalid Chat answer append');
+                        messages[at] = parseChatMessage({ ...message, answerPartial: { ...partial,
+                            text: partial.text + operation.delta, cursor: partial.cursor + new TextEncoder().encode(operation.delta).length } });
+                    } else if (operation.type === 'pause-output-limit') {
+                        if (message.execution.status !== 'streaming' || operation.segment !== partial.segments.length + 1 ||
+                            operation.finishReason !== 'length') throw new Error('Stale Chat output-limit pause');
+                        messages[at] = parseChatMessage({ ...message, answerPartial: { ...partial,
+                            segments: [...partial.segments, { number: operation.segment,
+                                start: partial.segments.at(-1)?.end ?? 0, end: partial.cursor,
+                                finishReason: operation.finishReason,
+                                ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}) }] },
+                            execution: { ...message.execution, status: 'paused-output-limit', finishReason: 'length',
+                                ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}),
+                                ...(operation.sourceRefs ? { sourceRefs: operation.sourceRefs } : {}),
+                                ...(operation.toolEvents ? { toolEvents: operation.toolEvents } : {}) } });
+                    } else if (operation.type === 'resume-output-limit') {
+                        if (message.execution.status !== 'paused-output-limit') throw new Error('Chat output is not paused');
+                        messages[at] = parseChatMessage({ ...message, execution: { ...message.execution,
+                            status: 'streaming', finishReason: undefined } });
+                    } else {
+                        if (message.execution.status !== 'paused-output-limit') throw new Error('Chat output is not paused');
+                        messages[at] = parseChatMessage({ ...message, execution: { ...message.execution,
+                            status: 'stopped-incomplete', finishedAt: now } });
+                    }
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;
                 case 'record-assistant-activity': update(c => {
@@ -637,12 +682,20 @@ export class ChatRepository {
                     const messages = [...c.messages];
                     if (operation.outcome !== 'complete' && operation.content)
                         throw new Error('Failed assistant cannot commit conversational content');
+                    if (operation.outcome === 'complete' && operation.finishReason === 'length')
+                        throw new Error('Output limit cannot complete an assistant answer');
+                    if (message.answerPartial && operation.outcome === 'complete' &&
+                        !operation.content.startsWith(message.answerPartial.text))
+                        throw new Error('Completed answer differs from saved partial');
                     if (message.activity && operation.activity &&
                         (operation.activity.events.length < message.activity.events.length ||
                             JSON.stringify(operation.activity.events.slice(0, message.activity.events.length)) !==
                                 JSON.stringify(message.activity.events)))
                         throw new Error('Stale or out-of-order Chat activity');
+                    // A successful stop promotes only the verified final output. Incomplete
+                    // bytes are diagnostic state and must not survive as a second answer.
                     messages[at] = parseChatMessage({ ...message, content: operation.content,
+                        ...(operation.outcome === 'complete' ? { answerPartial: undefined } : {}),
                         ...(operation.planningActivity ? { planningActivity: operation.planningActivity } : {}),
                         ...(operation.activity ? { activity: operation.activity } : {}), execution: {
                         ...message.execution, status: operation.outcome, actualModel: operation.actualModel ?? message.execution.actualModel,
