@@ -17,6 +17,7 @@ export interface ChatAnswerPartial {
     text: string;
     cursor: number;
     segments: { number: number; start: number; end: number; finishReason: string;
+        outputCeilingTokens?: number;
         tokenUsage?: ChatExecution['tokenUsage'] }[];
 }
 export type ChatContextKind = 'editor' | 'selection' | 'file' | 'project-mind' | 'architecture' |
@@ -216,11 +217,14 @@ export function parseChatAnswerPartial(value: unknown): ChatAnswerPartial {
         partialBytes(v.text) > 131_072 || v.cursor !== partialBytes(v.text)) throw new Error('Invalid Chat answer partial');
     let end = 0;
     const segments = v.segments.map((item, index) => {
-        const s = record(item, ['number', 'start', 'end', 'finishReason', 'tokenUsage'], ['number', 'start', 'end', 'finishReason']);
+        const s = record(item, ['number', 'start', 'end', 'finishReason', 'outputCeilingTokens', 'tokenUsage'], ['number', 'start', 'end', 'finishReason']);
         if (s.number !== index + 1 || s.start !== end || !Number.isSafeInteger(s.start) || !Number.isSafeInteger(s.end) ||
             (s.end as number) < end || (s.end as number) > (v.cursor as number)) throw new Error('Invalid Chat answer segment');
         end = s.end as number;
+        if (s.outputCeilingTokens !== undefined && (!Number.isSafeInteger(s.outputCeilingTokens) ||
+            (s.outputCeilingTokens as number) < 1)) throw new Error('Invalid Chat output ceiling');
         return { number: s.number as number, start: s.start as number, end,
+            ...(s.outputCeilingTokens === undefined ? {} : { outputCeilingTokens: s.outputCeilingTokens as number }),
             finishReason: (() => { const reason = string(s.finishReason, 'segment finish reason');
                 if (reason.length > 80) throw new Error('Invalid Chat segment finish reason');
                 return reason; })(),

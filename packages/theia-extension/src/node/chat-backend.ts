@@ -2327,7 +2327,8 @@ export class ChatBackend implements ChatService {
                         try {
                             await mutate({ type: 'pause-output-limit', chatId: key, messageId: assistant!.id,
                                 executionId: assistant!.execution.id, segment: event.segmentIndex, cursor: partialCursor,
-                                finishReason: 'length', tokenUsage: event.usage, sourceRefs, toolEvents,
+                                finishReason: 'length', outputCeilingTokens: event.outputCeilingTokens,
+                                tokenUsage: event.usage, segmentUsage: event.segmentUsage, sourceRefs, toolEvents,
                             activity: activity?.snapshot(),
                                 ...(routingProvenance ? { routingProvenance } : {}) });
                         } catch (error) {

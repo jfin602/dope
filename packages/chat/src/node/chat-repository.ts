@@ -649,7 +649,9 @@ export class ChatRepository {
                             segments: [...partial.segments, { number: operation.segment,
                                 start: partial.segments.at(-1)?.end ?? 0, end: partial.cursor,
                                 finishReason: operation.finishReason,
-                                ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}) }] },
+                                ...(operation.outputCeilingTokens ? { outputCeilingTokens: operation.outputCeilingTokens } : {}),
+                                ...((operation.segmentUsage ?? operation.tokenUsage) ?
+                                    { tokenUsage: operation.segmentUsage ?? operation.tokenUsage } : {}) }] },
                             ...(operation.activity ? { activity: operation.activity } : {}),
                             execution: { ...message.execution, status: 'paused-output-limit', finishReason: 'length',
                                 ...(operation.tokenUsage ? { tokenUsage: operation.tokenUsage } : {}),

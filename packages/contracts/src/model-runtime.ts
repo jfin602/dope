@@ -108,7 +108,7 @@ export type ConversationEvent =
     | { type: 'delta'; text: string }
     | { type: 'activity'; kind: 'thinking' | 'provisional' | 'answer'; text: string }
     | { type: 'paused'; text: string; novelText: string; segmentIndex: number;
-        usage: ConversationUsage; segmentUsage: ConversationUsage; finishReason: 'length';
+        usage: ConversationUsage; segmentUsage: ConversationUsage; outputCeilingTokens?: number; finishReason: 'length';
         actualModelId: string; continuation: ConversationContinuation }
     | { type: 'stopped-incomplete'; text: string; segmentIndex: number;
         usage: ConversationUsage; originalFinishReason: 'length'; finishReason: 'owner-stop';

@@ -67,6 +67,7 @@ test('Pi host and adapter retain one worker across pause, resume, and checked st
   try {
     const first = await Array.fromAsync(host.streamTurn([{ role: 'user', content: 'Answer.' }], 128));
     assert.equal(first.at(-1).type, 'paused');
+    assert.equal(first.at(-1).result.outputCeilingTokens, 128);
     const lease = new PiConversationLease(host, factory, 'offline-fixture', undefined,
       undefined, first.at(-1).result, 1000);
     const continued = lease.resume();
@@ -206,6 +207,8 @@ test('Pi Roadmap schema agrees with native stage fields and relays two typed rev
     ];
     globalThis.fetch = async (_url, options) => {
       const body = JSON.parse(options.body);
+      assert.doesNotMatch(JSON.stringify(body.messages.filter(item => item.role === 'system')),
+        /generally 1,000 tokens/);
       const schema = body.tools.find(item => item.function.name === 'roadmap_stage')?.function.parameters;
       assert.equal(schema.properties.actions.items.anyOf.length, 19);
       assert.equal(schema.additionalProperties, false);
@@ -774,6 +777,8 @@ test('Pi no-tool turn streams from Dope context without exposing tools or projec
       assert.ok(!body.tools?.length);
       assert.ok(body.messages.some(item => item.role === 'system' &&
         JSON.stringify(item).includes('Dope context')));
+      assert.match(JSON.stringify(body.messages.filter(item => item.role === 'system')),
+        /generally 1,000 tokens.*Follow requests for detailed output/);
       assert.ok(body.messages.some(item => item.role === 'assistant' &&
         JSON.stringify(item).includes('previous answer')));
       assert.deepEqual(body.messages.filter(item => item.role === 'user' || item.role === 'assistant')

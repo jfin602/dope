@@ -51,7 +51,8 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
             originalFinishReason: 'length' as const, finishReason: 'owner-stop' as const, actualModelId: 'q4' }; },
         dispose() {} };
         yield { type: 'paused' as const, text, novelText: text, segmentIndex: 1,
-            usage: { tokenMeasurement: 'provider-reported' as const, outputTokens: 3 },
+            outputCeilingTokens: 2048,
+            usage: { tokenMeasurement: 'provider-reported' as const, outputTokens: 9 },
             segmentUsage: { tokenMeasurement: 'provider-reported' as const, outputTokens: 3 },
             finishReason: 'length' as const, actualModelId: 'q4', continuation };
     } };
@@ -88,6 +89,10 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         assert.equal(first.content, '');
         assert.equal(first.answerPartial?.text, 'Part 1');
         assert.equal(first.answerPartial?.segments.length, 1);
+        assert.equal(first.answerPartial?.segments[0].outputCeilingTokens, 2048);
+        assert.equal(first.answerPartial?.segments[0].finishReason, 'length');
+        assert.equal(first.answerPartial?.segments[0].tokenUsage?.outputTokens, 3);
+        assert.equal(first.execution.tokenUsage?.outputTokens, 9);
         assert.equal(first.execution.toolEvents?.[0]?.name, 'read_file');
         assert.equal(first.execution.toolEvents?.[0]?.status, 'completed');
         assert.equal(first.execution.sourceRefs?.[0]?.id, 'README.md');

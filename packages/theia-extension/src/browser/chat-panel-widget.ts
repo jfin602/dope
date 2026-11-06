@@ -3017,7 +3017,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (message.execution.finishReason === 'length') {
                     const providerLimit = document.createElement('span');
                     providerLimit.className = 'dope-chat-stream-note';
-                    providerLimit.textContent = 'Provider reported an output length limit; only delivered activity is available.';
+                    const segment = message.answerPartial?.segments.at(-1);
+                    const ceiling = segment?.outputCeilingTokens;
+                    const output = segment?.tokenUsage?.tokenMeasurement === 'provider-reported' ?
+                        segment.tokenUsage.outputTokens : undefined;
+                    providerLimit.textContent = `Provider reported an output length limit${ceiling ?
+                        ` at a ${ceiling.toLocaleString()} token segment ceiling` : ''}${output === undefined ? '' :
+                        ` · ${output.toLocaleString()} provider-reported output tokens`}. The answer remains incomplete.`;
                     item.append(providerLimit);
                 }
                 if (!diagnostic && message.execution.tokenUsage?.reasoningTokens !== undefined) {

@@ -90,7 +90,9 @@ export class PiConversationLease implements ConversationContinuation {
         const result = this.result;
         return { type: 'paused', text: result.text, novelText: result.novelText ?? result.text,
             segmentIndex: result.segmentIndex, usage: result.usage,
-            segmentUsage: result.segmentUsage ?? result.usage, finishReason: 'length',
+            segmentUsage: result.segmentUsage ?? result.usage,
+            ...(result.outputCeilingTokens ? { outputCeilingTokens: result.outputCeilingTokens } : {}),
+            finishReason: 'length',
             actualModelId: result.modelId, continuation: this };
     }
 

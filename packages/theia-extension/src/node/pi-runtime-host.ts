@@ -21,7 +21,7 @@ export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; tot
     reasoningTokens?: number;
     tokenMeasurement: 'provider-reported' | 'unavailable' }
 export interface PiTurnResult { text: string; novelText?: string; segmentIndex: number; modelId: string;
-    finishReason: 'stop' | 'length'; usage: PiTokenUsage; segmentUsage?: PiTokenUsage;
+    finishReason: 'stop' | 'length'; outputCeilingTokens?: number; usage: PiTokenUsage; segmentUsage?: PiTokenUsage;
     usageSegments?: PiTokenUsage[]; compaction?: PiContextRecord }
 export type PiTurnEvent = { type: 'delta'; text: string } |
     { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } |
@@ -232,7 +232,8 @@ export class PiRuntimeHost {
                 throw new Error('Invalid Pi turn result');
             if (result.finishReason === 'length') this.paused = { id, segmentIndex: result.segmentIndex,
                 maxOutputTokens: Number(record.maxOutputTokens) };
-            yield { type: result.finishReason === 'length' ? 'paused' : 'complete', result };
+            yield { type: result.finishReason === 'length' ? 'paused' : 'complete',
+                result: { ...result, outputCeilingTokens: Number(record.maxOutputTokens) } };
         } finally { signal?.removeEventListener('abort', onAbort); }
     }
 

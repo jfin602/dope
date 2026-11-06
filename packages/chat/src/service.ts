@@ -27,7 +27,8 @@ export type ChatOperation =
     | { type: 'append-answer-partial'; chatId: ChatId; messageId: string; executionId: string;
         segment: number; cursor: number; delta: string }
     | { type: 'pause-output-limit'; chatId: ChatId; messageId: string; executionId: string;
-        segment: number; cursor: number; finishReason: string; tokenUsage?: ChatExecution['tokenUsage'];
+        segment: number; cursor: number; finishReason: string; outputCeilingTokens?: number;
+        tokenUsage?: ChatExecution['tokenUsage']; segmentUsage?: ChatExecution['tokenUsage'];
         sourceRefs?: ChatExecution['sourceRefs']; toolEvents?: ChatExecution['toolEvents'];
         routingProvenance?: RoutingProvenance; activity?: ChatExecutionActivity }
     | { type: 'resume-output-limit'; chatId: ChatId; messageId: string; executionId: string; cursor: number }

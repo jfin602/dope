@@ -360,9 +360,13 @@ const emptyResources = Object.freeze({
   getPrompts: () => ({ prompts: [], diagnostics: [] }),
   getThemes: () => ({ themes: [], diagnostics: [] }),
   getAgentsFiles: () => ({ agentsFiles: [] }),
-  getSystemPrompt: () => chatToolsMode ?
-    `You are an assistant operating under Dope authority. Use project tools when evidence is needed. After a tool result, decide whether another tool is needed; when you can answer, give the final answer without a tool call. Do not combine a final answer with a tool call. ${compactionProvenance}` :
-    `You are an assistant operating under Dope authority. ${compactionProvenance}`,
+  getSystemPrompt: () => {
+    const answerGuidance = !workMode && !roadmapToolsMode && !roadmapGenerationMode ?
+      'For ordinary Chat, investigate as needed, then aim for a concise final answer, generally 1,000 tokens or less and usually under 2,000. Follow requests for detailed output; these are answer targets, not a limit on research or reasoning.' : '';
+    return chatToolsMode ?
+      `You are an assistant operating under Dope authority. Use project tools when evidence is needed. After a tool result, decide whether another tool is needed; when you can answer, give the final answer without a tool call. Do not combine a final answer with a tool call. ${answerGuidance} ${compactionProvenance}` :
+      `You are an assistant operating under Dope authority. ${answerGuidance} ${compactionProvenance}`;
+  },
   getSystemPromptSource: () => undefined,
   getAppendSystemPrompt: () => [],
   getAppendSystemPromptSources: () => [],
