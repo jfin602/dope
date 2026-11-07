@@ -621,7 +621,7 @@ export class ChatContextComposer {
                 // Earlier command output can carry a different schema or tool grammar.
                 // Keep ordinary discussion as task context, but never replay an old skill contract.
                 if (specializedTurn && exchange.user.role === 'user' &&
-                    (exchange.user.skill || /^\/(?:roadmap|docs-review|docs-apply|gen-roadmap)(?=\s|$)/u.test(exchange.user.content)))
+                    (exchange.user.skill || /^\/(?:roadmap|docs-review|gen-roadmap)(?=\s|$)/u.test(exchange.user.content)))
                     continue;
                 const cost = tokens(exchange.user.content) + tokens(exchange.assistant.content);
                 if (cost > remaining) {

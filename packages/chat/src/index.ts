@@ -174,6 +174,12 @@ export interface ChatDocumentationProposal {
     id: string; digest: string; root: string; projectId: string; worktreeId: string;
     ownerId: string; chatId: string; messageId: string; leaseDigest: string;
     roadmapRevision: number; createdAt: string; expiresAt: string;
+    proposalRevision?: number;
+    reviewIntent?: string;
+    /** Absent on historical proposals, which remain readable but cannot be applied. */
+    dependencySnapshotVersion?: 1;
+    /** Immutable broker-read file identities. Empty only for a direct review without source reads. */
+    dependencies: { path: string; contentHash: string; dev: number; ino: number }[];
     targets: { path: string; operation: 'create' | 'update'; before: string | null;
         beforeHash: string | null; after: string; afterHash: string; diff: string }[];
 }
@@ -748,7 +754,8 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         if (kind !== 'documentation-proposal' || JSON.stringify(v.documentProposal).length > 65_536)
             throw new Error('Invalid saved documentation proposal');
         const p = record(v.documentProposal, ['id', 'digest', 'root', 'projectId', 'worktreeId', 'ownerId',
-            'chatId', 'messageId', 'leaseDigest', 'roadmapRevision', 'createdAt', 'expiresAt', 'targets'],
+            'chatId', 'messageId', 'leaseDigest', 'roadmapRevision', 'createdAt', 'expiresAt', 'targets',
+            'dependencies', 'dependencySnapshotVersion', 'proposalRevision', 'reviewIntent'],
             ['id', 'digest', 'root', 'projectId', 'worktreeId', 'ownerId', 'chatId', 'messageId',
                 'leaseDigest', 'roadmapRevision', 'createdAt', 'expiresAt', 'targets']);
         const hash = (value: unknown): string => {
@@ -756,8 +763,23 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             if (!/^[a-f0-9]{64}$/u.test(result)) throw new Error('Invalid documentation hash');
             return result;
         };
-        if (p.id !== v.proposalId || !Array.isArray(p.targets) || !p.targets.length || p.targets.length > 4)
+        if (p.id !== v.proposalId || !Array.isArray(p.targets) || !p.targets.length || p.targets.length > 4 ||
+            (p.dependencies !== undefined && (!Array.isArray(p.dependencies) || p.dependencies.length > 16)) ||
+            (p.dependencySnapshotVersion !== undefined && p.dependencySnapshotVersion !== 1) ||
+            (p.proposalRevision !== undefined && (!Number.isSafeInteger(p.proposalRevision) ||
+                (p.proposalRevision as number) < 1)) ||
+            (p.reviewIntent !== undefined && (typeof p.reviewIntent !== 'string' || p.reviewIntent.length > 4000)))
             throw new Error('Invalid documentation targets');
+        const dependencies = (p.dependencies ?? [] as unknown[]).map((item: unknown) => {
+            const d = record(item, ['path', 'contentHash', 'dev', 'ino'], ['path', 'contentHash', 'dev', 'ino']);
+            if (!Number.isSafeInteger(d.dev) || (d.dev as number) < 0 ||
+                !Number.isSafeInteger(d.ino) || (d.ino as number) < 0)
+                throw new Error('Invalid documentation dependency identity');
+            return { path: string(d.path, 'documentation dependency path'), contentHash: hash(d.contentHash),
+                dev: d.dev as number, ino: d.ino as number };
+        });
+        if (new Set(dependencies.map(item => item.path)).size !== dependencies.length)
+            throw new Error('Duplicate documentation dependency');
         const targets = p.targets.map((item: unknown) => {
             const t = record(item, ['path', 'operation', 'before', 'beforeHash', 'after', 'afterHash', 'diff'],
                 ['path', 'operation', 'before', 'beforeHash', 'after', 'afterHash', 'diff']);
@@ -774,7 +796,10 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             projectId: string(p.projectId, 'documentation project'), worktreeId: hash(p.worktreeId),
             ownerId: string(p.ownerId, 'documentation owner'), chatId: identifier(p.chatId), messageId: identifier(p.messageId),
             leaseDigest: hash(p.leaseDigest), roadmapRevision: count(p.roadmapRevision, 'Roadmap revision'),
-            createdAt: time(p.createdAt), expiresAt: time(p.expiresAt), targets };
+            createdAt: time(p.createdAt), expiresAt: time(p.expiresAt), targets, dependencies,
+            ...(p.proposalRevision === undefined ? {} : { proposalRevision: p.proposalRevision as number }),
+            ...(p.reviewIntent === undefined ? {} : { reviewIntent: p.reviewIntent as string }),
+            ...(p.dependencySnapshotVersion === 1 ? { dependencySnapshotVersion: 1 as const } : {}) };
     }
     let documentationDiscovery: ChatPlanningActivity['documentationDiscovery'];
     if (v.documentationDiscovery !== undefined) {

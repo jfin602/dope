@@ -1,10 +1,11 @@
 import type { DocumentationDiscovery } from './documentation-discovery';
 import { readDocumentationBasis } from './documentation-review';
+import type { ChatDocumentationProposal } from '@dope/chat';
 
 export type DocumentationSkillChange = { path: string; after: string } |
-    { path: string; replace: { before: string; after: string } };
+    { path: string; replace: { before: string; after: string } } | { path: string; remove: true };
 export interface DocumentationReadPage { path: string; offset: number; endOffset: number;
-    fileBytes: number; sourceHash: string; text: string }
+    fileBytes: number; sourceHash: string; fullHash?: string; text: string }
 
 export interface DocumentationSkillReview {
     final_response: string;
@@ -40,7 +41,7 @@ function singleReviewObject(output: string): unknown {
 }
 
 /** Model output is proposal data only; brokered file reads remain the evidence of inspection. */
-export function parseDocumentationSkillReview(output: string, readPaths: readonly string[]): DocumentationSkillReview {
+export function parseDocumentationSkillReview(output: string, readPaths: readonly string[], revision = false): DocumentationSkillReview {
     if (Buffer.byteLength(output, 'utf8') > 60_000) throw new Error('Documentation review output exceeds limit');
     const value = singleReviewObject(output);
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid documentation review');
@@ -57,6 +58,8 @@ export function parseDocumentationSkillReview(output: string, readPaths: readonl
             throw new Error('Invalid documentation change');
         if (Object.keys(change).sort().join(',') === 'after,path' && typeof change.after === 'string')
             return { path: change.path, after: change.after };
+        if (revision && Object.keys(change).sort().join(',') === 'path,remove' && change.remove === true)
+            return { path: change.path, remove: true as const };
         if (Object.keys(change).sort().join(',') === 'path,replace' && change.replace &&
             typeof change.replace === 'object' && !Array.isArray(change.replace) &&
             Object.keys(change.replace).sort().join(',') === 'after,before' &&
@@ -65,7 +68,7 @@ export function parseDocumentationSkillReview(output: string, readPaths: readonl
             return { path: change.path, replace: change.replace as { before: string; after: string } };
         throw new Error('Invalid documentation change');
     });
-    if (changes.length && !readPaths.length) throw new Error('Review needs an actual brokered document read');
+    if (changes.length && !readPaths.length && !revision) throw new Error('Review needs an actual brokered document read');
     return { final_response: record.final_response, report: record.report.trim(), changes };
 }
 
@@ -74,6 +77,7 @@ export async function materializeDocumentationChanges(root: string, changes: rea
     pages: readonly DocumentationReadPage[]): Promise<{ path: string; after: string }[]> {
     const result: { path: string; after: string }[] = [];
     for (const change of changes) {
+        if ('remove' in change) throw new Error('Removal only applies to an existing proposal revision');
         if ('after' in change) { result.push(change); continue; }
         const basis = await readDocumentationBasis(root, change.path);
         if (basis.before === null) throw new Error(`Incomplete review: update source missing: ${change.path}`);
@@ -84,6 +88,43 @@ export async function materializeDocumentationChanges(root: string, changes: rea
         result.push({ path: change.path, after: basis.before.replace(before, after) });
     }
     return result;
+}
+
+/** Revision operations edit the saved candidate; omitted targets retain their exact proposed bytes. */
+export async function materializeDocumentationRevision(root: string, prior: ChatDocumentationProposal,
+    changes: readonly DocumentationSkillChange[], pages: readonly DocumentationReadPage[]):
+    Promise<{ path: string; after: string }[]> {
+    if (!changes.length || new Set(changes.map(item => item.path)).size !== changes.length)
+        throw new Error('Revision needs distinct changes to the selected proposal');
+    const next = new Map(prior.targets.map(target => [target.path, target.after]));
+    for (const change of changes) {
+        const proposed = next.get(change.path);
+        if ('remove' in change) {
+            if (proposed === undefined) throw new Error(`Cannot remove a file outside the selected proposal: ${change.path}`);
+            next.delete(change.path);
+        } else if ('replace' in change) {
+            if (proposed === undefined) {
+                const [materialized] = await materializeDocumentationChanges(root, [change], pages);
+                next.set(change.path, materialized.after);
+            } else {
+                if (proposed.split(change.replace.before).length !== 2)
+                    throw new Error(`Proposed excerpt is not unique: ${change.path}`);
+                next.set(change.path, proposed.replace(change.replace.before, change.replace.after));
+            }
+        } else next.set(change.path, change.after);
+    }
+    if (!next.size) throw new Error('Revision must retain at least one proposed file');
+    if (next.size === prior.targets.length && [...next].every(([path, after]) =>
+        prior.targets.some(target => target.path === path && target.after === after)))
+        throw new Error('Revision made no change to the selected proposal');
+    for (const [path] of next) {
+        if (!prior.targets.some(target => target.path === path)) {
+            const basis = await readDocumentationBasis(root, path);
+            if (basis.before !== null && !pages.some(page => page.path === path))
+                throw new Error(`New update target was not read through the broker: ${path}`);
+        }
+    }
+    return [...next].map(([path, after]) => ({ path, after }));
 }
 
 /** Fail closed when the requested create/update set or a named late source was not inspected. */

@@ -23,7 +23,7 @@ export interface GroundingDiagnostic { kind: 'unavailable' | 'omitted' | 'trunca
 export interface GroundingBlock { text: string; ref: ChatContextRef }
 export interface GroundingResult { blocks: GroundingBlock[]; diagnostics: GroundingDiagnostic[] }
 export interface FileRangeResult { path: string; offset: number; endOffset: number; nextOffset: number | null;
-    fileBytes: number; text: string; truncated: boolean; sourceHash: string }
+    fileBytes: number; text: string; truncated: boolean; sourceHash: string; fullHash: string }
 export type InvestigationQuery = { kind: 'paths' | 'text'; query: string } |
     { kind: 'read' | 'directory'; path: string } | { kind: 'architecture' | 'physical-map'; query: string };
 export interface InvestigationRequest { queries: InvestigationQuery[]; projectId?: string; signal?: AbortSignal }
@@ -169,8 +169,9 @@ export class ChatProjectGrounder {
                 if (part.includes(0)) throw new Error('Binary project file unavailable');
                 hash.update(part); position += bytesRead;
             }
+            const fullHash = hash.digest('hex');
             const sourceHash = createHash('sha256').update(canonical).update('\0').update(path)
-                .update('\0').update(hash.digest()).digest('hex');
+                .update('\0').update(Buffer.from(fullHash, 'hex')).digest('hex');
             if (expectedSourceHash && expectedSourceHash !== sourceHash)
                 throw new Error('Stale file continuation');
             if (offset && offset < opened.size) {
@@ -208,7 +209,7 @@ export class ChatProjectGrounder {
                 after.ctimeMs !== opened.ctimeMs) throw new Error('Project file changed during read');
             const endOffset = offset + length;
             return { path, offset, endOffset, nextOffset: endOffset < opened.size ? endOffset : null,
-                fileBytes: opened.size, text, truncated: endOffset < opened.size, sourceHash };
+                fileBytes: opened.size, text, truncated: endOffset < opened.size, sourceHash, fullHash };
         } finally { await handle.close(); }
     }
     async listDirectory(root: string, path = ''): Promise<GroundingResult> {

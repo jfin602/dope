@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { link, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -12,7 +12,6 @@ import { applyDocumentationProposal, readDocumentationApplications,
 import { HistoryBackend } from '../../packages/theia-extension/lib/node/history-backend.js';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
-import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-skills.js';
 
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 async function fixture() {
@@ -76,6 +75,92 @@ test('stale, collision, foreign root, symlink and linked Roadmap source make zer
         const linked = { read: async () => ({ ...index,
             linkedDocument: { path: 'docs/other.md', syncState: 'synced' } }) } as unknown as RoadmapStore;
         await assert.rejects(applyDocumentationProposal(linked, reviewed, f.root, f.leaseToken), /stale/i);
+    } finally { await rm(f.root, { recursive: true, force: true }); }
+});
+
+test('broker-read grounding source is immutable across review, reload and multi-file apply', async () => {
+    const f = await fixture();
+    try {
+        const source = join(f.root, 'docs', 'current.md');
+        const guidance = join(f.root, 'docs', 'guidance.md');
+        await writeFile(source, 'source v1\n');
+        await writeFile(guidance, 'project rule v1\n');
+        const deps = async () => [
+            { path: 'docs/current.md', contentHash: digest(await readFile(source, 'utf8')) },
+            { path: 'docs/guidance.md', contentHash: digest(await readFile(guidance, 'utf8')) }];
+        const make = async () => prepareDocumentationReview(f.store, {
+            root: f.root, chatId: randomUUID(), messageId: randomUUID(), ownerId: 'developer-panel',
+            leaseToken: f.leaseToken, changes: [
+                { path: 'docs/one.md', after: 'one\n' }, { path: 'docs/two.md', after: 'two\n' }],
+            dependencies: await deps() });
+        const original = await make();
+        assert.equal(original.dependencies.length, 2);
+        assert.equal(original.dependencies[0].contentHash, digest('source v1\n'));
+        await writeFile(source, 'source v2\n');
+        const recoveredOriginal = JSON.parse(JSON.stringify(original)) as typeof original;
+        await assert.rejects(applyDocumentationProposal(new RoadmapStore(), recoveredOriginal, f.root, f.leaseToken),
+            /Grounding source changed: docs\/current\.md/);
+        assert.deepEqual(await readDocumentationApplications(f.root), []);
+        assert.deepEqual(await readdir(join(f.root, 'docs')).then(files => files.sort()),
+            ['current.md', 'guidance.md']);
+        assert.equal(digest(await readFile(source, 'utf8')), digest('source v2\n'));
+        const history = new HistoryBackend();
+        const { projectHandle } = await history.attach(pathToFileURL(f.root).toString());
+        assert.equal((await history.read(projectHandle)).entries.filter(item => item.source === 'documentation').length, 0);
+        history.dispose();
+        const guidanceStale = await make();
+        await writeFile(guidance, 'project rule v2\n');
+        await assert.rejects(applyDocumentationProposal(f.store, guidanceStale, f.root, f.leaseToken),
+            /Grounding source changed: docs\/guidance\.md/);
+        assert.deepEqual(await readDocumentationApplications(f.root), []);
+        const fresh = await make();
+        const reloaded = JSON.parse(JSON.stringify(fresh)) as typeof fresh;
+        assert.equal((await applyDocumentationProposal(new RoadmapStore(), reloaded, f.root, f.leaseToken)).status, 'complete');
+        assert.equal(await readFile(join(f.root, 'docs', 'one.md'), 'utf8'), 'one\n');
+        assert.equal(await readFile(join(f.root, 'docs', 'two.md'), 'utf8'), 'two\n');
+    } finally { await rm(f.root, { recursive: true, force: true }); }
+});
+
+test('removed, replaced, changed instructions and missing dependency snapshot fail closed', async () => {
+    const f = await fixture();
+    try {
+        const source = join(f.root, 'docs', 'current.md');
+        await writeFile(source, 'same bytes');
+        const request = () => prepareDocumentationReview(f.store, { root: f.root,
+            chatId: randomUUID(), messageId: randomUUID(), ownerId: 'developer-panel',
+            leaseToken: f.leaseToken, changes: [{ path: 'docs/output.md', after: 'output' }],
+            dependencies: [{ path: 'docs/current.md', contentHash: digest('same bytes') }] });
+        const removed = await request();
+        await rm(source);
+        await assert.rejects(applyDocumentationProposal(f.store, removed, f.root, f.leaseToken), /Grounding source unavailable/);
+        await writeFile(source, 'same bytes');
+        const replaced = await request();
+        await rename(source, join(f.root, 'docs', 'old.md'));
+        await writeFile(source, 'same bytes');
+        await assert.rejects(applyDocumentationProposal(f.store, replaced, f.root, f.leaseToken), /Grounding source changed/);
+        const malformed = { ...replaced, dependencies: undefined } as unknown as typeof replaced;
+        await assert.rejects(applyDocumentationProposal(f.store, malformed, f.root, f.leaseToken), /snapshot is missing/i);
+        assert.deepEqual(await readDocumentationApplications(f.root), []);
+        await assert.rejects(readFile(join(f.root, 'docs', 'output.md')), /ENOENT/);
+    } finally { await rm(f.root, { recursive: true, force: true }); }
+});
+
+test('concurrent publication attempts cannot bypass the one project application lock', async () => {
+    const f = await fixture();
+    try {
+        await writeFile(join(f.root, 'docs', 'current.md'), 'basis');
+        const make = () => prepareDocumentationReview(f.store, { root: f.root,
+            chatId: randomUUID(), messageId: randomUUID(), ownerId: 'developer-panel',
+            leaseToken: f.leaseToken, changes: [{ path: 'docs/output.md', after: 'approved' }],
+            dependencies: [{ path: 'docs/current.md', contentHash: digest('basis') }] });
+        const first = await make(), second = await make();
+        const outcomes = await Promise.allSettled([
+            applyDocumentationProposal(f.store, first, f.root, f.leaseToken),
+            applyDocumentationProposal(f.store, second, f.root, f.leaseToken)]);
+        assert.equal(outcomes.filter(item => item.status === 'fulfilled').length, 1);
+        assert.equal(outcomes.filter(item => item.status === 'rejected').length, 1);
+        assert.equal(await readFile(join(f.root, 'docs', 'output.md'), 'utf8'), 'approved');
+        assert.equal((await readDocumentationApplications(f.root)).length, 1);
     } finally { await rm(f.root, { recursive: true, force: true }); }
 });
 
@@ -174,8 +259,7 @@ test('Chat backend requires a distinct exact developer approval and consumes it 
         if (!lease.acquired) throw new Error('Chat lease unavailable');
         state = await repository.mutate(f.root, state.revision, { type: 'append-user', chatId,
             message: { schemaVersion: 1, id: userId, role: 'user', createdAt: new Date().toISOString(),
-                content: '/docs-review the decision', contextRefs: [],
-                skill: await resolveChatSkill('/docs-review the decision') } }, lease.token);
+                content: 'Review the documentation decision', contextRefs: [] } }, lease.token);
         const startedAt = new Date().toISOString();
         state = await repository.mutate(f.root, state.revision, { type: 'begin-assistant', chatId,
             message: { schemaVersion: 1, id: messageId, role: 'assistant', content: '', createdAt: startedAt,

@@ -4,7 +4,8 @@ import { link, lstat, mkdir, open, readdir, realpath, rename, rm, stat } from 'n
 import { isAbsolute, join, resolve } from 'node:path';
 import type { ChatDocumentationProposal } from '@dope/chat';
 import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
-import { checkedDocumentationParent, documentationReviewApplicability, readDocumentationBasis } from './documentation-review';
+import { checkedDocumentationParent, documentationReviewApplicability, documentationDependencyConflict,
+    readDocumentationBasis } from './documentation-review';
 
 const hash = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex');
 const missing = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
@@ -276,7 +277,8 @@ export async function applyDocumentationProposal(store: RoadmapStore, proposal: 
             return reconcileLocked(existing);
         }
         if (await documentationReviewApplicability(store, proposal, root) !== 'applicable')
-            throw new Error('Reviewed documentation source or owner is stale');
+            throw new Error(await documentationDependencyConflict(proposal, root) ??
+                'Reviewed documentation source or owner is stale');
         // Reserve every side name before journaling: an existing side file is never adopted as ours.
         for (const target of proposal.targets) {
             if (await fileIdentity(sidePath(root, target.path, proposal.id, 'stage')) ||
@@ -292,6 +294,10 @@ export async function applyDocumentationProposal(store: RoadmapStore, proposal: 
         await saveRecord(record, true);
         try {
             for (const target of proposal.targets) {
+                // The journal and staging work can take time; repeat the bounded source check
+                // before each effect while the Dope publication lock is held.
+                const conflict = await documentationDependencyConflict(proposal, root, record.effects);
+                if (conflict) throw new Error(conflict);
                 const index = await store.read(root);
                 if (index.projectRoot !== root || index.revision !== proposal.roadmapRevision ||
                     (index.projectId === 'uninitialized' ? `root:${hash(root)}` : index.projectId) !== proposal.projectId ||

@@ -27,6 +27,68 @@ export interface DocumentationReviewChange { path: string; after: string }
 export interface DocumentationReviewRequest {
     root: string; chatId: string; messageId: string; ownerId: string; leaseToken: string;
     changes: DocumentationReviewChange[];
+    /** Hashes taken from successful broker reads, never recomputed as the proposal basis. */
+    dependencies?: { path: string; contentHash: string }[];
+    revisionOf?: ChatDocumentationProposal;
+    reviewIntent?: string;
+}
+
+function proposalDigest(proposal: Omit<ChatDocumentationProposal, 'digest'>): string {
+    const { id, root, projectId, worktreeId, ownerId, chatId, messageId, leaseDigest,
+        roadmapRevision: revision, targets, dependencies, dependencySnapshotVersion, createdAt, expiresAt,
+        proposalRevision, reviewIntent } = proposal;
+    return digest(JSON.stringify({ id, root, projectId, worktreeId, ownerId, chatId, messageId,
+        leaseDigest, revision, targets, dependencies, dependencySnapshotVersion, createdAt, expiresAt,
+        ...(proposalRevision === undefined ? {} : { proposalRevision }),
+        ...(reviewIntent === undefined ? {} : { reviewIntent }) }));
+}
+
+/** Re-read a bounded source through a no-follow descriptor and retain its physical identity. */
+async function readGroundingBasis(root: string, path: string): Promise<{ contentHash: string; dev: number; ino: number }> {
+    if (!path || path.length > 512 || isAbsolute(path) || path.includes('\\') || path.includes(':') ||
+        /[\p{Cc}\p{Cf}]/u.test(path) || path.split('/').some(part => !part || part === '.' || part === '..' ||
+            part.startsWith('.') || ['node_modules', 'dist', 'build', 'out', 'lib', 'coverage', 'generated',
+                'vendor', '.next', '.cache'].includes(part))) throw new Error(`Unsafe grounding dependency: ${path}`);
+    if (!isAbsolute(root) || resolve(root) !== root || await realpath(root) !== root) throw new Error('Project root changed');
+    let cursor = root;
+    for (const part of path.split('/').slice(0, -1)) {
+        cursor = join(cursor, part);
+        const parent = await lstat(cursor);
+        if (!parent.isDirectory() || parent.isSymbolicLink() || await realpath(cursor) !== cursor)
+            throw new Error(`Grounding dependency parent changed: ${path}`);
+    }
+    const file = join(root, path);
+    const before = await lstat(file);
+    if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || before.size > 8 * 1024 * 1024)
+        throw new Error(`Grounding dependency unavailable: ${path}`);
+    const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+        const opened = await handle.stat();
+        if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino || opened.size !== before.size)
+            throw new Error(`Grounding dependency changed: ${path}`);
+        const bytes = await handle.readFile();
+        const after = await handle.stat(), atPath = await lstat(file);
+        if (bytes.length !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs ||
+            atPath.dev !== opened.dev || atPath.ino !== opened.ino)
+            throw new Error(`Grounding dependency changed: ${path}`);
+        return { contentHash: digest(bytes), dev: opened.dev, ino: opened.ino };
+    } finally { await handle.close(); }
+}
+
+export async function documentationDependencyConflict(proposal: ChatDocumentationProposal, root: string,
+    applied: readonly { path: string; afterHash: string }[] = []): Promise<string | undefined> {
+    if (proposal.dependencySnapshotVersion !== 1 || !Array.isArray(proposal.dependencies))
+        return 'Grounding dependency snapshot is missing';
+    for (const dependency of proposal.dependencies) {
+        try {
+            const current = await readGroundingBasis(root, dependency.path);
+            const ownEffect = applied.find(effect => effect.path === dependency.path);
+            if (ownEffect && current.contentHash === ownEffect.afterHash) continue;
+            if (current.contentHash !== dependency.contentHash || current.dev !== dependency.dev || current.ino !== dependency.ino)
+                return `Grounding source changed: ${dependency.path}`;
+        } catch { return `Grounding source unavailable or replaced: ${dependency.path}`; }
+    }
+    return undefined;
 }
 
 export function eligibleDocumentationPath(path: string): void {
@@ -106,6 +168,11 @@ export async function checkedDocumentationParent(root: string, path: string): Pr
 
 export async function prepareDocumentationReview(store: RoadmapStore, request: DocumentationReviewRequest): Promise<ChatDocumentationProposal> {
     const { root, chatId, messageId, ownerId, leaseToken, changes } = request;
+    const prior = request.revisionOf;
+    if (prior && (prior.root !== root || prior.chatId !== chatId || prior.ownerId !== ownerId ||
+        prior.messageId !== messageId || prior.leaseDigest !== digest(leaseToken) ||
+        await documentationReviewApplicability(store, prior, root) !== 'applicable'))
+        throw new Error('Selected documentation proposal is stale or belongs to another owner');
     if (typeof ownerId !== 'string' || !ownerId.trim() || ownerId.length > 128 || /[\p{Cc}\p{Cf}]/u.test(ownerId))
         throw new Error('Current documentation owner is invalid');
     if (!Array.isArray(changes) || !changes.length || changes.length > 4 ||
@@ -115,6 +182,24 @@ export async function prepareDocumentationReview(store: RoadmapStore, request: D
     const index = await store.read<RoadmapGateIndex>(root);
     if (index.projectRoot !== root || (index.linkedDocument && index.linkedDocument.syncState !== 'synced'))
         throw new Error('Roadmap source is not ready for documentation review');
+    if (request.dependencies !== undefined && (!Array.isArray(request.dependencies) ||
+        request.dependencies.length > 16 || !request.dependencies.length ||
+        new Set(request.dependencies.map(item => item.path)).size !== request.dependencies.length))
+        throw new Error('Invalid grounding dependency snapshot');
+    const dependencies: ChatDocumentationProposal['dependencies'] = [...prior?.dependencies ?? []];
+    for (const source of request.dependencies ?? []) {
+        if (!source || typeof source.path !== 'string' || !/^[a-f0-9]{64}$/u.test(source.contentHash))
+            throw new Error('Invalid grounding dependency snapshot');
+        const current = await readGroundingBasis(root, source.path);
+        if (current.contentHash !== source.contentHash)
+            throw new Error(`Grounding dependency changed during review: ${source.path}`);
+        const existing = dependencies.find(item => item.path === source.path);
+        if (existing && (existing.contentHash !== current.contentHash || existing.dev !== current.dev ||
+            existing.ino !== current.ino)) throw new Error(`Grounding dependency changed during revision: ${source.path}`);
+        if (!existing) dependencies.push({ path: source.path, ...current });
+    }
+    if (dependencies.length > 16) throw new Error('Grounding dependency snapshot exceeds limit');
+    dependencies.sort((a, b) => a.path.localeCompare(b.path));
     const targets: ChatDocumentationProposal['targets'] = [];
     let bytes = 0;
     for (const change of changes) {
@@ -133,26 +218,27 @@ export async function prepareDocumentationReview(store: RoadmapStore, request: D
     const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
     const projectId = index.projectId === 'uninitialized' ? `root:${digest(root)}` : index.projectId;
     const worktreeId = await worktreeIdentity(root);
-    const id = randomUUID();
+    const id = prior?.id ?? randomUUID();
     const leaseDigest = digest(leaseToken);
     const revision = index.revision;
-    const proposalDigest = digest(JSON.stringify({ id, root, projectId, worktreeId, ownerId, chatId, messageId,
-        leaseDigest, revision, targets, createdAt, expiresAt }));
-    return { id, digest: proposalDigest, root, projectId, worktreeId, ownerId, chatId, messageId,
-        leaseDigest, roadmapRevision: revision, createdAt, expiresAt, targets };
+    const proposed: Omit<ChatDocumentationProposal, 'digest'> = { id, root, projectId, worktreeId,
+        ownerId, chatId, messageId, leaseDigest, roadmapRevision: revision, createdAt, expiresAt,
+        proposalRevision: (prior?.proposalRevision ?? 1) + (prior ? 1 : 0),
+        reviewIntent: prior?.reviewIntent ?? request.reviewIntent?.slice(0, 4000),
+        targets, dependencies, dependencySnapshotVersion: 1 };
+    return { ...proposed, digest: proposalDigest(proposed) };
 }
 
 export async function documentationReviewApplicability(store: RoadmapStore, proposal: ChatDocumentationProposal,
     root: string): Promise<'applicable' | 'expired' | 'stale'> {
     if (root !== proposal.root || Date.now() >= Date.parse(proposal.expiresAt)) return 'expired';
-    const expectedDigest = digest(JSON.stringify({ id: proposal.id, root: proposal.root,
-        projectId: proposal.projectId, worktreeId: proposal.worktreeId, ownerId: proposal.ownerId,
-        chatId: proposal.chatId, messageId: proposal.messageId, leaseDigest: proposal.leaseDigest,
-        revision: proposal.roadmapRevision, targets: proposal.targets, createdAt: proposal.createdAt,
-        expiresAt: proposal.expiresAt }));
+    const expectedDigest = proposalDigest(proposal);
     if (expectedDigest !== proposal.digest) return 'stale';
     if (await worktreeIdentity(root) !== proposal.worktreeId) return 'stale';
-    if (!proposal.targets.length || proposal.targets.length > 4 ||
+    if (proposal.dependencySnapshotVersion !== 1 || !Array.isArray(proposal.dependencies) ||
+        proposal.dependencies.length > 16 ||
+        new Set(proposal.dependencies.map(item => item.path)).size !== proposal.dependencies.length ||
+        !proposal.targets.length || proposal.targets.length > 4 ||
         new Set(proposal.targets.map(target => target.path)).size !== proposal.targets.length) return 'stale';
     let size = 0;
     try {
@@ -177,6 +263,7 @@ export async function documentationReviewApplicability(store: RoadmapStore, prop
         const basis = await readDocumentationBasis(root, target.path);
         if (basis.beforeHash !== target.beforeHash) return 'stale';
     }
+    if (await documentationDependencyConflict(proposal, root)) return 'stale';
     return 'applicable';
 }
 
@@ -188,9 +275,5 @@ export async function renewDocumentationReviewLease(store: RoadmapStore, proposa
         throw new Error('Documentation review owner or source changed');
     const leaseDigest = digest(leaseToken);
     const next = { ...proposal, leaseDigest };
-    return { ...next, digest: digest(JSON.stringify({ id: next.id, root: next.root,
-        projectId: next.projectId, worktreeId: next.worktreeId, ownerId: next.ownerId,
-        chatId: next.chatId, messageId: next.messageId, leaseDigest,
-        revision: next.roadmapRevision, targets: next.targets, createdAt: next.createdAt,
-        expiresAt: next.expiresAt })) };
+    return { ...next, digest: proposalDigest(next) };
 }

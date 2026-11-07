@@ -75,6 +75,8 @@ export class ChatPanelController {
     pending = false;
     error = '';
     draft = '';
+    documentationRevision?: { proposalId: string; revision: number; digest: string };
+    previousDocumentationDraft?: string;
     private autoRoadmapPrefix = false;
     context: ChatContextSelection[] = [];
     lastContext?: ChatContextPreview;
@@ -196,6 +198,7 @@ export class ChatPanelController {
         this.outputLimitDecided = undefined;
         this.error = '';
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
+        this.documentationRevision = undefined; this.previousDocumentationDraft = undefined;
         this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapStage = undefined; this.roadmapStageError = undefined;
         this.endedRoadmapTurnId = undefined;
@@ -398,6 +401,7 @@ export class ChatPanelController {
         this.outputLimitDecisionPending = false; this.outputLimitDecisionOwner = undefined;
         this.outputLimitDecided = undefined;
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
+        this.documentationRevision = undefined; this.previousDocumentationDraft = undefined;
         this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapStage = undefined; this.roadmapStageError = undefined;
         this.endedRoadmapTurnId = undefined;
@@ -646,6 +650,8 @@ export class ChatPanelController {
                 throw new Error('Chat changed while resolving planning selection');
             const request = { projectHandle: lease.handle, chatId: lease.chatId, leaseToken: lease.token,
                 ...(model ? { selectedModel: model } : {}), context,
+                ...(this.documentationRevision && !retryMessageId ?
+                    { documentationRevision: this.documentationRevision } : {}),
                 ...(bridgeProposal ? { bridgeProposal } : {}),
                 ...(retryMessageId ? { retryMessageId } : { content }) };
             let result;
@@ -667,6 +673,7 @@ export class ChatPanelController {
             this.planningProposalErrorMessageId = result.proposalError ? result.proposal?.messageId : undefined;
             completed = true;
             this.context = [];
+            if (!retryMessageId) this.documentationRevision = undefined;
             this.autoRoadmapPrefix = false;
             return true;
         } catch (error) {
@@ -802,6 +809,28 @@ export class ChatPanelController {
     setDraft(value: string): void {
         if (this.autoRoadmapPrefix && !/^\/roadmap(?=\s|$)/.test(value)) this.autoRoadmapPrefix = false;
         this.draft = value;
+    }
+    prepareDocumentationRevision(proposalId: string, digest: string): boolean {
+        if (!this.lease || this.running || this.pending) return false;
+        const message = this.chat?.messages.find(item => item.role === 'assistant' &&
+            item.planningActivity?.kind === 'documentation-proposal' &&
+            item.planningActivity.proposalId === proposalId &&
+            item.planningActivity.documentProposal?.digest === digest &&
+            item.planningActivity.status === 'pending');
+        const proposal = message?.role === 'assistant' ? message.planningActivity?.documentProposal : undefined;
+        if (!proposal || proposal.chatId !== this.chatId) return false;
+        if (this.draft.trim() && !this.documentationRevision && this.previousDocumentationDraft === undefined)
+            this.previousDocumentationDraft = this.draft;
+        this.documentationRevision = { proposalId, revision: proposal.proposalRevision ?? 1, digest };
+        this.draft = '/docs-review ';
+        this.changed();
+        return true;
+    }
+    restoreDocumentationDraft(): void {
+        this.documentationRevision = undefined;
+        if (this.previousDocumentationDraft !== undefined) this.draft = this.previousDocumentationDraft;
+        this.previousDocumentationDraft = undefined;
+        this.changed();
     }
     prefillRoadmapGeneration(): void {
         this.setDraft('/gen-roadmap ');

@@ -33,12 +33,12 @@ import { verifiedPublicationFile } from '@dope/project-intelligence/lib/node/roa
 import { RoadmapNativeStageOwner } from './roadmap-native-stage';
 import { RoadmapGenerationNativeStage } from './roadmap-generation-native-stage';
 import { typedRoadmapCounts } from './roadmap-typed-stage';
-import { prepareDocumentationReview, documentationReviewApplicability,
+import { prepareDocumentationReview, documentationReviewApplicability, documentationDependencyConflict,
     renewDocumentationReviewLease } from './documentation-review';
 import { applyDocumentationProposal, reconcileDocumentationApplication } from './documentation-application';
 import { discoverDocumentation, documentationReviewObjective } from './documentation-discovery';
 import { materializeDocumentationChanges, parseDocumentationSkillReview,
-    requireCompleteDocumentationReview, type DocumentationReadPage } from './documentation-skill-review';
+    requireCompleteDocumentationReview, materializeDocumentationRevision, type DocumentationReadPage } from './documentation-skill-review';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -546,8 +546,17 @@ export class ChatBackend implements ChatService {
                 /^\/docs-review(?=\s|$)/u.test(user.content) && isBoundDocumentationSkill(user.skill, 'docs-review')))
             throw new Error('A completed, explicit saved documentation review request is required');
         await this.repository.renew(root, chatId, leaseToken);
+        const refs = (message.execution.sourceRefs ?? []).filter(ref => ref.kind === 'file');
+        const dependencies = [...new Map(refs.map(ref => {
+            if (!ref.sourceHash || ref.sourceHash !== ref.contentHash)
+                throw new Error(`Grounding dependency identity unavailable: ${ref.id}`);
+            return [ref.id, { path: ref.id, contentHash: ref.contentHash }] as const;
+        })).values()];
+        if (/^\/docs-review(?=\s|$)/u.test(user.content) && !dependencies.length)
+            throw new Error('Review needs broker-read grounding dependencies');
         const proposal = await prepareDocumentationReview(this.roadmapStore,
-            { root, chatId, messageId, ownerId: this.leases.get(chatId)!.ownerId, leaseToken, changes });
+            { root, chatId, messageId, ownerId: this.leases.get(chatId)!.ownerId, leaseToken, changes,
+                ...(dependencies.length ? { dependencies } : {}) });
         if (await documentationReviewApplicability(this.roadmapStore, proposal, root) !== 'applicable')
             throw new Error('Documentation changed during review');
         await this.repository.recordPlanningActivity(root, chatId, messageId, leaseToken,
@@ -587,8 +596,14 @@ export class ChatBackend implements ChatService {
             proposal.messageId !== message.id || proposal.ownerId !== this.leases.get(chatId)?.ownerId ||
             proposal.leaseDigest !== createHash('sha256').update(leaseToken).digest('hex'))
             throw new Error('Exact pending documentation proposal and approval lease required');
-        if (await documentationReviewApplicability(this.roadmapStore, proposal, root) !== 'applicable')
-            throw new Error('Documentation proposal is stale; review current source again');
+        if (await documentationReviewApplicability(this.roadmapStore, proposal, root) !== 'applicable') {
+            const reason = await documentationDependencyConflict(proposal, root) ??
+                'Documentation target, Roadmap, or proposal changed';
+            await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
+                { ...activity, status: 'stale', diagnostic: `${reason}. Regenerate and review current source.` },
+                { proposalId, status: 'pending' });
+            throw new Error(`${reason}. Regenerate and review current source.`);
+        }
         await this.repository.renew(root, chatId, leaseToken);
         await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
             { ...activity, status: 'approved' }, { proposalId, status: 'pending' });
@@ -600,7 +615,18 @@ export class ChatBackend implements ChatService {
         messageId: string, proposal: import('@dope/chat').ChatDocumentationProposal,
         action: () => Promise<import('./documentation-application').DocumentationApplication | undefined>):
         Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }> {
-        const record = await action();
+        let record: import('./documentation-application').DocumentationApplication | undefined;
+        try { record = await action(); }
+        catch (error) {
+            const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+            const message = chat?.messages.find(item => item.id === messageId);
+            const activity = message?.role === 'assistant' ? message.planningActivity : undefined;
+            if (activity?.status === 'approved' && activity.documentProposal?.digest === proposal.digest)
+                await this.repository.recordPlanningActivity(root, chatId, messageId, leaseToken,
+                    { ...activity, status: 'failed', diagnostic: `${String(error).slice(0, 300)}. Regenerate and review current source.` },
+                    { proposalId: proposal.id, status: 'approved' });
+            throw error;
+        }
         if (!record) {
             const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
             const message = chat?.messages.find(item => item.id === messageId);
@@ -1577,23 +1603,26 @@ export class ChatBackend implements ChatService {
         if (skill && createHash('sha256').update(skill.body).digest('hex') !== skill.digest)
             throw new Error('Saved skill instructions changed; start a fresh turn');
         const docsReview = isBoundDocumentationSkill(skill, 'docs-review');
-        const docsApply = isBoundDocumentationSkill(skill, 'docs-apply');
-        if ((skill?.name === 'docs-review' && !docsReview) ||
-            (skill?.name === 'docs-apply' && !docsApply))
+        if (skill?.name === 'docs-review' && !docsReview)
             throw new Error('Saved protected documentation skill identity changed; start a fresh turn');
-        if (docsApply) {
-            if (!this.roadmapStore) throw new Error('Documentation publisher unavailable');
-            const pending = chat.messages.filter(message => message.role === 'assistant' &&
-                message.planningActivity?.kind === 'documentation-proposal' &&
-                message.planningActivity.status === 'pending' && message.planningActivity.documentProposal);
-            if (pending.length !== 1) throw new Error('Select exactly one current reviewed documentation proposal');
-            const proposal = (pending[0] as ChatAssistantMessage).planningActivity!.documentProposal!;
-            if (proposal.ownerId !== this.leases.get(request.chatId)?.ownerId ||
-                proposal.leaseDigest !== createHash('sha256').update(request.leaseToken).digest('hex') ||
-                await documentationReviewApplicability(this.roadmapStore, proposal, root) !== 'applicable')
-                throw new Error('Reviewed documentation proposal is stale or belongs to another owner');
-        }
-        await this.retirePending(root, request.chatId, request.leaseToken, 'superseded', docsApply);
+        if (request.documentationRevision && (!docsReview || retryIndex >= 0))
+            throw new Error('Proposal revision requires a fresh /docs-review turn');
+        const revisionTarget = request.documentationRevision;
+        const revisionMessage = revisionTarget ? chat.messages.find(message => message.role === 'assistant' &&
+            message.planningActivity?.kind === 'documentation-proposal' &&
+            message.planningActivity.proposalId === revisionTarget.proposalId) as ChatAssistantMessage | undefined : undefined;
+        const revisionActivity = revisionMessage?.planningActivity;
+        const revisionProposal = revisionActivity?.documentProposal;
+        if (revisionTarget && (!this.roadmapStore || !revisionMessage || !revisionProposal ||
+            revisionActivity?.status !== 'pending' || revisionProposal.digest !== revisionTarget.digest ||
+            (revisionProposal.proposalRevision ?? 1) !== revisionTarget.revision ||
+            revisionProposal.root !== root || revisionProposal.chatId !== request.chatId ||
+            revisionProposal.messageId !== revisionMessage.id ||
+            revisionProposal.ownerId !== this.leases.get(request.chatId)?.ownerId ||
+            revisionProposal.leaseDigest !== createHash('sha256').update(request.leaseToken).digest('hex') ||
+            await documentationReviewApplicability(this.roadmapStore, revisionProposal, root) !== 'applicable'))
+            throw new Error('Selected documentation proposal is missing or stale. Its last valid revision remains available.');
+        await this.retirePending(root, request.chatId, request.leaseToken, 'superseded', !!revisionProposal);
         this.clearProposal(request.chatId);
         const roadmapSkill = isBoundRoadmapSkill(skill);
         const publicationIntent = roadmapSkill && retryIndex < 0 ? roadmapPublicationIntent(content) : undefined;
@@ -1623,10 +1652,21 @@ export class ChatBackend implements ChatService {
             'Final output MUST be one valid JSON object, no fences or surrounding prose, with exactly these sibling keys: ' +
             '{"final_response":"I prepared the changes for your review.","report":"Source-grounded findings only.","changes":[{"path":"docs/current/rules.md","replace":{"before":"exact observed excerpt","after":"exact replacement excerpt"}},{"path":"docs/current/new.txt","after":"complete new file text"}]}. ' +
             'Use a JSON array for changes (maximum four). Escape newlines inside JSON strings. Do not put changes in report or add keys. If a required source is unreadable or incomplete, use changes:[] and explain the gap. Do not claim searched files were read or any file was applied.' : '';
-        const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}` : undefined;
+        const revisionPrompt = revisionProposal ? `\nThis is revision ${revisionTarget!.revision + 1} of the selected pending documentation proposal. ` +
+            'The saved proposal below is the authoritative starting point. Preserve every unrelated proposed target. ' +
+            'Return only requested delta operations in changes. To discard a proposed target use {"path":"...","remove":true}; ' +
+            'to modify its proposed content use after or replace against its current proposed text. ' +
+            'Do not write files. Selected proposal context: ' + JSON.stringify({ id: revisionProposal.id,
+                revision: revisionTarget!.revision, reviewIntent: revisionProposal.reviewIntent,
+                targets: revisionProposal.targets.map(({ path, operation, before, beforeHash, after, afterHash }) =>
+                    ({ path, operation, before, beforeHash, after, afterHash })),
+                dependencies: revisionProposal.dependencies, roadmapRevision: revisionProposal.roadmapRevision,
+                projectId: revisionProposal.projectId, worktreeId: revisionProposal.worktreeId }) +
+            `\nOwner's new revision instructions: ${content}` : '';
+        const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` : undefined;
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
-        const helpTurn = !roadmapSkill && !docsReview && !docsApply && !!selectDopeCapabilityHelp(content);
-        const draft = helpTurn || docsReview || docsApply || roadmapSkill && !greenfieldSkill ? undefined :
+        const helpTurn = !roadmapSkill && !docsReview && !!selectDopeCapabilityHelp(content);
+        const draft = helpTurn || docsReview || roadmapSkill && !greenfieldSkill ? undefined :
             await this.draftContext(root, request.chatId, request.planningSteps);
         const bridgeSelection = request.bridgeProposal;
         if (bridgeSelection && (helpTurn || draft || request.planningSteps || !this.bridgePlanning ||
@@ -1635,9 +1675,9 @@ export class ChatBackend implements ChatService {
                 item.ownerRevision === bridgeSelection.roadmapRevision).length !== 1))
             throw new Error('Bridge proposal requires one current selected checkpoint and a Planning owner');
         const bridge = bridgeSelection ? await BridgeLocalProposal.prepare(this.bridgePlanning!, root, bridgeSelection) : undefined;
-        const roadmapTurn = !docsReview && !docsApply && (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') ||
+        const roadmapTurn = !docsReview && (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') ||
             !!draft || helpTurn || !!bridge);
-        const opportunity = docsReview || docsApply ? undefined : await this.roadmapOpportunity(root, content, !roadmapTurn &&
+        const opportunity = docsReview ? undefined : await this.roadmapOpportunity(root, content, !roadmapTurn &&
             !selections.some(item => item.kind === 'planning-map'));
         if (request.planningSteps !== undefined && (![2, 3].includes(request.planningSteps) ||
             !roadmapTurn || helpTurn || !draft &&
@@ -1705,7 +1745,7 @@ export class ChatBackend implements ChatService {
         const roadmapPromptMode = nativeCandidate ? 'native-roadmap-edit' as const : 'ordinary' as const;
         const turnPrompt = nativeCandidate ? planningPrompt : skillInstruction ?
             { text: planningPrompt ? `${planningPrompt.text}\n\n${skillInstruction}` : skillInstruction } : planningPrompt;
-        const ordinaryChat = !roadmapTurn && !docsReview && !docsApply && !skill;
+        const ordinaryChat = !roadmapTurn && !docsReview && !skill;
         const composed = await this.composeTurn(root, contextChat, content, selections,
             model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local', roadmapSkill,
@@ -1720,7 +1760,7 @@ export class ChatBackend implements ChatService {
                     composed.refs.some(item => item.kind === 'roadmap') ? 'gate' : 'unlinked';
         const nativeRoadmap = !initialNative && localRoadmap && roadmapSkill && localMode === 'gate' && !greenfieldSkill &&
             !!this.nativeStages && !!this.grounder;
-        const retainStreamedAnswer = !localRoadmap && !nativeRoadmap && !docsReview && !docsApply && !publicationIntent;
+        const retainStreamedAnswer = !localRoadmap && !nativeRoadmap && !docsReview && !publicationIntent;
         if (roadmapSkill && !publicationIntent && !greenfieldSkill && localMode === 'gate' &&
             !nativeRoadmap)
             throw new Error('Protected native Roadmap tools are unavailable; no proposal was staged');
@@ -1826,7 +1866,7 @@ export class ChatBackend implements ChatService {
         let toolBytes = 0;
         const documentationPages: DocumentationReadPage[] = [];
         const documentationHashes = new Map<string, string>();
-        const noProjectTools = !!publicationIntent || docsApply || forbidsProjectTools(content);
+        const noProjectTools = !!publicationIntent || forbidsProjectTools(content);
         // This closure belongs to one authorized Chat execution. A later read may inspect
         // staged operations, but cannot silently rebase its original source preconditions.
         let stagingBasis: { root: string; projectId: string; ownerId: string; chatId: string;
@@ -2249,10 +2289,7 @@ export class ChatBackend implements ChatService {
                 localRoadmap ? { localOnly: true } : undefined);
             // The current protected command is already a complete typed intent. No model output
             // can add authority or improve the owner-issued publication preview.
-            let events: AsyncIterable<ConversationEvent> = docsApply ? (async function* (): AsyncGenerator<ConversationEvent> {
-                yield { type: 'complete', text: 'One current reviewed documentation proposal is available.',
-                    usage: { tokenMeasurement: 'unavailable' }, finishReason: 'deterministic-intent' };
-            })() : publicationIntent ? (async function* (): AsyncGenerator<ConversationEvent> {
+            let events: AsyncIterable<ConversationEvent> = publicationIntent ? (async function* (): AsyncGenerator<ConversationEvent> {
                 yield { type: 'complete', text: 'Roadmap Markdown request received.',
                     usage: { tokenMeasurement: 'unavailable' }, finishReason: 'deterministic-intent' };
             })() : nativeRoadmap ? generate() : localRoadmap ? (async function* (backend: ChatBackend) {
@@ -2449,34 +2486,57 @@ export class ChatBackend implements ChatService {
                             throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
                         await flushActivity();
                         if (publicationIntent) output = 'Roadmap Markdown request received. Check the verified result below before any decision.';
-                        if (docsApply) output = 'One current reviewed documentation proposal is available. Inspect its saved diff and use Apply reviewed documents on that proposal card for a separate owner approval. No file was changed by this command.';
                         let documentActivity: ChatPlanningActivity | undefined;
+                        let revisionActivityToCommit: ChatPlanningActivity | undefined;
                         if (docsReview) {
                             const readPaths = sourceRefs.filter(ref => ref.kind === 'file').map(ref => ref.id);
                             try {
                                 if (event.finishReason === 'length') throw new Error('Model output was truncated');
-                                const review = parseDocumentationSkillReview(output, readPaths);
-                                requireCompleteDocumentationReview(content, discovery!, review.changes, documentationPages);
+                                const review = parseDocumentationSkillReview(output, readPaths, !!revisionProposal);
+                                if (revisionProposal && !review.changes.length)
+                                    throw new Error('Revision response contained no proposal changes');
+                                if (!revisionProposal)
+                                    requireCompleteDocumentationReview(content, discovery!, review.changes, documentationPages);
                                 output = review.final_response;
                                 if (review.changes.length) {
-                                    const changes = await materializeDocumentationChanges(root, review.changes, documentationPages);
+                                    const changes = revisionProposal ?
+                                        await materializeDocumentationRevision(root, revisionProposal, review.changes, documentationPages) :
+                                        await materializeDocumentationChanges(root, review.changes, documentationPages);
+                                    const dependencies = [...new Map(sourceRefs.filter(ref => ref.kind === 'file').map(ref => {
+                                        const page = documentationPages.find(item => item.path === ref.id);
+                                        const contentHash = page?.fullHash ??
+                                            (ref.sourceHash === ref.contentHash ? ref.contentHash : undefined);
+                                        if (!contentHash || !ref.sourceHash)
+                                            throw new Error(`Grounding dependency identity unavailable: ${ref.id}`);
+                                        return [ref.id, { path: ref.id, contentHash }] as const;
+                                    })).values()];
+                                    if (!dependencies.length && !revisionProposal)
+                                        throw new Error('Review needs broker-read grounding dependencies');
                                     const proposal = await prepareDocumentationReview(this.roadmapStore!, {
-                                        root, chatId: key, messageId: assistant.id,
+                                        root, chatId: key, messageId: revisionProposal?.messageId ?? assistant.id,
                                         ownerId: this.leases.get(key)!.ownerId, leaseToken: request.leaseToken,
-                                        changes });
+                                        changes, ...(dependencies.length ? { dependencies } : {}),
+                                        ...(revisionProposal ? { revisionOf: revisionProposal } : { reviewIntent: reviewObjective }) });
                                     if (proposal.targets.some(target => target.operation === 'update' &&
-                                        !readPaths.includes(target.path)))
+                                        !readPaths.includes(target.path) &&
+                                        !revisionProposal?.targets.some(prior => prior.path === target.path)))
                                         throw new Error('An updated target was not read through the broker');
                                     if (await documentationReviewApplicability(this.roadmapStore!, proposal, root) !== 'applicable')
                                         throw new Error('Documentation source changed during review');
-                                    documentActivity = { schemaVersion: 1, kind: 'documentation-proposal', status: 'pending',
+                                    const priorDiscovery = revisionActivity?.documentationDiscovery;
+                                    const readCounts = new Map((priorDiscovery?.reads ?? []).map(item =>
+                                        [item.path, item.count] as const));
+                                    for (const path of readPaths) readCounts.set(path, (readCounts.get(path) ?? 0) + 1);
+                                    const nextActivity: ChatPlanningActivity = { schemaVersion: 1,
+                                        kind: 'documentation-proposal', status: 'pending',
                                         refs: [...preview.refs, ...sourceRefs], proposalId: proposal.id,
                                         documentProposal: proposal,
                                         documentationDiscovery: { detected: discovery!.enumerated,
-                                            omitted: discovery!.omitted,
-                                            reads: [...new Map(readPaths.map(path => [path,
-                                                { path, count: readPaths.filter(read => read === path).length }])).values()]
+                                            omitted: [...new Set([...priorDiscovery?.omitted ?? [], ...discovery!.omitted])].slice(0, 30),
+                                            reads: [...readCounts].map(([path, count]) => ({ path, count }))
                                                 .sort((a, b) => a.path.localeCompare(b.path)) } };
+                                    if (revisionProposal) revisionActivityToCommit = nextActivity;
+                                    else documentActivity = nextActivity;
                                 }
                             } catch (error) {
                                 output = `Documentation review could not stage a proposal: ${String(error).slice(0, 300)}. ` +
@@ -2505,9 +2565,21 @@ export class ChatBackend implements ChatService {
                                 void this.automaticTitle(root, key, preceding, assistant!.id, output, actual);
                         };
                         await finishAssistant(documentActivity);
+                        let revisionCommitError: string | undefined;
+                        if (revisionActivityToCommit && revisionProposal && !abort.signal.aborted) {
+                            try {
+                                await this.repository.recordPlanningActivity(root, key, revisionProposal.messageId,
+                                    request.leaseToken, revisionActivityToCommit,
+                                    { proposalId: revisionProposal.id, status: 'pending', digest: revisionProposal.digest });
+                            } catch (error) {
+                                revisionCommitError = `Documentation revision was not accepted: ${String(error)}. ` +
+                                    'The last valid proposal remains available.';
+                            }
+                        }
                         if (abort.signal.aborted && !localRoadmap) return preview;
                         const proposalRefs = [...preview.refs, ...sourceRefs];
-                        const result = docsReview || docsApply ? {} : nativeRoadmap ? await (async () => {
+                        const result = docsReview ? revisionCommitError ? { proposalError: revisionCommitError } : {} :
+                            nativeRoadmap ? await (async () => {
                             const stage = this.nativeStages?.get(key);
                             if (!stage) return {};
                             if (!stage.done) return { proposalError: 'Roadmap draft incomplete: final staged batch did not mark done' };

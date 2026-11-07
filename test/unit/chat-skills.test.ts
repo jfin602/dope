@@ -36,11 +36,10 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.equal(isBoundRoadmapSkill({ ...(await resolveChatSkill('/roadmap'))!, body: 'forged' }), false);
         assert.equal(isBoundRoadmapSkill({ ...(await resolveChatSkill('/roadmap'))!, version: 1 }), false);
         const review = await resolveChatSkill('/docs-review update requirements');
-        const apply = await resolveChatSkill('/docs-apply');
         assert.equal(isBoundDocumentationSkill(review, 'docs-review'), true);
-        assert.equal(isBoundDocumentationSkill(apply, 'docs-apply'), true);
+        await assert.rejects(resolveChatSkill('/docs-apply'), /Unknown skill/);
         assert.equal(isBoundDocumentationSkill({ ...review!, body: 'forged' }, 'docs-review'), false);
-        assert.equal(isBoundDocumentationSkill(review, 'docs-apply'), false);
+        assert.equal((await listChatSkills()).some(skill => skill.name === 'docs-apply'), false);
         assert.equal(await resolveChatSkill('`/docs-review` is an example'), undefined);
         await assert.rejects(changeChatSkill({ type: 'delete', id: roadmap.id }));
         await assert.rejects(changeChatSkill({ type: 'add', name: 'roadmap', description: 'collision', body: 'body' }));
@@ -77,7 +76,7 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.equal(skillCommand('literal /test-skill'), undefined);
         assert.equal(skillCommand('/test-skill arguments'), 'test-skill');
         await changeChatSkill({ type: 'delete', id: custom.id });
-        assert.equal((await listChatSkills()).length, 5);
+        assert.equal((await listChatSkills()).length, 4);
     } finally {
         if (previous === undefined) delete process.env.XDG_CONFIG_HOME;
         else process.env.XDG_CONFIG_HOME = previous;

@@ -698,9 +698,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             card.dataset.status = activity.status;
             card.setAttribute('aria-label', 'Documentation review proposal');
             const heading = document.createElement('strong');
-            heading.textContent = `Documentation review · ${activity.status === 'pending' ? 'Pending · no write' :
+            heading.textContent = `Documentation review${(activity.documentProposal.proposalRevision ?? 1) > 1 ?
+                ` · Revision ${activity.documentProposal.proposalRevision}` : ''} · ${activity.status === 'pending' ? 'Pending · no write' :
                 activity.status === 'applied' ? 'Applied' : activity.status}`;
             card.append(heading);
+            const summary = document.createElement('p');
+            summary.textContent = `${activity.documentProposal.targets.length} proposed file change(s)`;
+            card.append(summary);
             for (const target of activity.documentProposal.targets) {
                 const detail = document.createElement('details');
                 const label = document.createElement('summary');
@@ -768,12 +772,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 activity.diagnostic ?? 'This proposal was not fully applied. Check History for any verified retained changes.';
             if (activity.status !== 'applied') card.append(note);
             if (activity.status === 'pending') {
-                card.append(this.button('Apply reviewed documents',
+                card.append(this.button('Accept',
                     () => void this.controller.applyDocumentationProposal(activity.proposalId!, activity.documentProposal!.digest),
                     this.controller.pending));
-                card.append(this.button('Reject proposal',
+                card.append(this.button('Reject',
                     () => void this.controller.dismissDocumentationProposal(activity.proposalId!, 'deny'),
                     this.controller.pending));
+                card.append(this.button('Revise Proposal', () => {
+                    if (this.controller.prepareDocumentationRevision(activity.proposalId!, activity.documentProposal!.digest))
+                        queueMicrotask(() => this.content.querySelector<HTMLTextAreaElement>('.dope-chat-composer textarea')?.focus());
+                }, this.controller.pending || this.controller.running));
             } else if (activity.status === 'approved') {
                 card.append(this.button('Recover application',
                     () => void this.controller.recoverDocumentationProposal(activity.proposalId!), this.controller.pending));
@@ -3682,9 +3690,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             progress.textContent = 'Validating local planning result…';
             responseNotices.append(progress);
         }
-        if (state.context.length) {
+        if (state.context.length || state.documentationRevision) {
             const selectedContext = document.createElement('ul');
             selectedContext.className = 'dope-chat-selected-context';
+            if (state.documentationRevision) {
+                const row = document.createElement('li');
+                const label = document.createElement('span');
+                label.textContent = `Documentation proposal · Revision ${state.documentationRevision.revision}`;
+                const remove = this.button('×', () => state.restoreDocumentationDraft());
+                remove.setAttribute('aria-label', 'Remove documentation proposal revision target');
+                row.append(label, remove); selectedContext.append(row);
+            }
             state.context.forEach((item, index) => {
                 const row = document.createElement('li');
                 const label = document.createElement('span');
@@ -3699,6 +3715,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 selectedContext.append(row);
             });
             composer.prepend(selectedContext);
+        }
+        if (state.previousDocumentationDraft !== undefined && !state.documentationRevision) {
+            const restore = this.button('Restore previous draft', () => state.restoreDocumentationDraft());
+            composer.prepend(restore);
         }
         if (state.planningProposal && !state.planningProposal.preview)
             responseNotices.append(this.roadmapProposalReviewCard(state.planningProposal));

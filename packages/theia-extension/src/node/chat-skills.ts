@@ -23,10 +23,7 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     description: 'Inspect relevant project documents and prepare a reviewed, source-bound diff.',
     body: 'Use the supplied bounded documentation discovery and brokered read_file ranges to inspect relevant current and historical sources, including late sections when indicated. Distinguish enumerated, searched and actually read files, disclose omissions, and do not claim to have inspected unread text. Return the requested structured review with at most four eligible .md/.txt changes. This turn can only stage a proposal; it never publishes files or records applied History.',
     enabled: true, provenance: 'builtin', version: 1 },
-{ id: 'builtin:docs-apply', name: 'docs-apply', title: 'Apply reviewed documents',
-    description: 'Find one current reviewed proposal and request a separate owner Apply decision.',
-    body: 'This command does not approve or publish files. Refer only to the one current pending reviewed documentation proposal supplied by Dope. Ask the developer to inspect its saved diff and use Apply reviewed documents on that card. Do not call tools, invent a patch, or claim an application or History entry.',
-    enabled: true, provenance: 'builtin', version: 1 }];
+];
 let serial = Promise.resolve();
 
 export function validateSkill(name: string, description: string, body: string, title = name): void {
@@ -138,7 +135,7 @@ export function isBoundRoadmapSkill(skill: ChatSkillSnapshot | undefined): boole
 
 /** Protected Docs operations require the exact built-in send-time snapshot. */
 export function isBoundDocumentationSkill(skill: ChatSkillSnapshot | undefined,
-    name: 'docs-review' | 'docs-apply'): boolean {
+    name: 'docs-review'): boolean {
     const builtIn = builtins.find(item => item.id === `builtin:${name}`);
     return !!builtIn && !!skill && skill.id === builtIn.id && skill.name === name &&
         skill.version === builtIn.version && skill.body === builtIn.body &&

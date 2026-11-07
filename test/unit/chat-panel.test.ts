@@ -14,6 +14,26 @@ import type { ChatCollection } from '../../packages/chat/lib/index.js';
 import type { ChatClient } from '../../packages/chat/lib/service.js';
 import type { ChatConnection } from '../../packages/theia-extension/src/browser/chat-panel-controller.js';
 
+test('Revise Proposal selects one pending card in the composer and preserves an unsent draft', () => {
+    let changes = 0;
+    const controller = new ChatPanelController(() => { throw new Error('unused'); }, () => { changes++; });
+    const proposal = { id: 'proposal', digest: 'digest', chatId: 'chat', proposalRevision: 2 };
+    const chat = { id: 'chat', messages: [{ role: 'assistant', id: 'answer', planningActivity: {
+        kind: 'documentation-proposal', status: 'pending', proposalId: 'proposal', documentProposal: proposal } }] };
+    Object.assign(controller, { workspace: 'project', chatId: 'chat', snapshot: { chats: [chat] },
+        draft: 'Unsent notes', lease: { workspace: 'project', chatId: 'chat' } });
+    assert.equal(controller.prepareDocumentationRevision('proposal', 'digest'), true);
+    assert.deepEqual(controller.documentationRevision,
+        { proposalId: 'proposal', revision: 2, digest: 'digest' });
+    assert.equal(controller.draft, '/docs-review ');
+    assert.equal(controller.previousDocumentationDraft, 'Unsent notes');
+    assert.equal(changes, 1, 'selection only refreshes the composer; it never submits a turn');
+    controller.restoreDocumentationDraft();
+    assert.equal(controller.draft, 'Unsent notes');
+    assert.equal(controller.documentationRevision, undefined);
+    assert.equal(controller.prepareDocumentationRevision('proposal', 'stale'), false);
+});
+
 test('output-limit notice uses current Ask execution and checked action identity', async () => {
     const message = { role: 'assistant', id: 'answer', content: '', execution: {
         id: 'execution', status: 'paused-output-limit', outputLimitPolicy: 'ask' },

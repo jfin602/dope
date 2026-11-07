@@ -55,6 +55,8 @@ export interface ChatDeltaRequest { projectHandle: string; chatId: ChatId; messa
 export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseToken: string;
     selectedModel?: ChatModelSelection; hostedProjectDataAuthorized?: boolean;
     content?: string; retryMessageId?: string; context?: ChatContextSelection[];
+    /** Card-selected pending candidate. Resolved against the current saved Chat, never trusted as proposal bytes. */
+    documentationRevision?: { proposalId: string; revision: number; digest: string };
     /** Explicit, capped opt-in for an atomic preview of small unlinked Roadmap edits. */
     planningSteps?: 2 | 3;
     /** Explicit selected-checkpoint, local-only Bridge suggestion; never a write grant. */
