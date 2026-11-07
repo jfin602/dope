@@ -1,5 +1,7 @@
 # P13 P9 — browser checkpoint B, 2026-11-05
 
+> **2026-11-07 current entry status: UNBLOCKED / READY for the original manual P9 checkpoint.** The owner [accepted c13 documentation-routing P8 as OWNER GREEN for progression](../../c13-doc-routing/qualification/p8-owner-acceptance-2026-11-07.md) despite its preserved technical gaps. The BLOCKED / NOT GREEN P9 attempt below is dated history; P9 itself has not passed or received a `0.13.9` marker.
+
 **Disposition: BLOCKED / NOT GREEN. No owner-reviewed PASS.** The required `c13-doc-routing` P1–P5 correction and its manual browser closeout have not been completed on this source. The separate correction is an explicit entry gate before P9 in `docs/tasks/p13/README.md` and `docs/tasks/c13-doc-routing/README.md`. P9's live matrix was therefore not operated. The connected browser inventory also failed before exposing a tab. This report is a truthful stop record, not a browser qualification receipt.
 
 ## Exact source and preflight

@@ -1,5 +1,7 @@
 # C13 P8 — manual documentation pipeline closeout, 2026-11-05
 
+> **2026-11-07 owner disposition:** [P8 is OWNER GREEN / owner accepted for P9 progression](p8-owner-acceptance-2026-11-07.md). The historical technical findings and PARTIAL / NOT GREEN verification below remain unchanged; the owner explicitly accepted the outstanding gaps for this entry decision.
+
 **Disposition: FAIL / NOT GREEN; P9 held at `0.13.8`.** This was a real connected Codex in-app browser exercise, not a browser inventory or model narrative. The first `/docs-review` staged only a new-file diff and omitted the requested current-document update. Its only successful broker read ended at byte 4096, while the required late section begins at byte 15084. The proposal was rejected. A targeted second review could not page the file or produce the required JSON. No Docs application, Work run, candidate, Criterion qualification, product Gate GREEN, version change or owner Phase completion occurred. No owner-reviewed P8 PASS exists.
 
 ## Exact source and operating basis

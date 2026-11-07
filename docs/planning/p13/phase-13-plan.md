@@ -1,5 +1,7 @@
 # Phase 13 — Roadmap-Controlled Development
 
+> **2026-11-07 current progression:** Original p13 P1–P8 implementation commits reached coherent `0.13.8`. [Correction P8 is OWNER GREEN / owner accepted](../../tasks/c13-doc-routing/qualification/p8-owner-acceptance-2026-11-07.md) for entry to original p13 P9 despite recorded PARTIAL / NOT GREEN technical evidence. P9 is UNBLOCKED and ready for its original manual browser checkpoint. P9/P12, correction F1 and P13 remain separate unqualified gates; Phase 13 is not complete. The older design-only status below is a dated baseline.
+
 **Owner-approved direction:** 2026-11-05. **Status:** DESIGN APPROVED; `0.13.0` baseline established, implementation NOT RUN or QUALIFIED. **Contract:** [Roadmap Work lifecycle](roadmap-work-lifecycle-contract.md). **Delivery stack:** [p13](../../tasks/p13/README.md). **Historical reservation:** [LSKM deferred scope](phase-13-scope.md) remains preserved but is no longer the assigned Phase 13 implementation scope.
 
 ## Goal
