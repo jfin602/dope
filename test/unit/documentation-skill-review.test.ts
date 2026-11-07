@@ -7,6 +7,7 @@ import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadm
 import { materializeDocumentationChanges, parseDocumentationSkillReview,
     requireCompleteDocumentationReview } from '../../packages/theia-extension/lib/node/documentation-skill-review.js';
 import { prepareDocumentationReview } from '../../packages/theia-extension/lib/node/documentation-review.js';
+import { discoverDocumentation, documentationReviewObjective } from '../../packages/theia-extension/lib/node/documentation-discovery.js';
 
 test('incomplete create-only review cannot claim a requested current-document update', () => {
     const discovery = { enumerated: 2, searched: 2, omitted: [], candidates: [
@@ -131,5 +132,70 @@ test('late exact replacement preserves a long source and stages one create plus 
         await assert.rejects(materializeDocumentationChanges(root, [
             { path: 'docs/scoring.md', replace: { before: 'old rule', after: 'new rule' } }], []),
         /not uniquely observed/);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('discovery points to multiple relevant sections including a late requirement without reading bodies into Chat', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-doc-sections-'));
+    try {
+        await mkdir(join(root, 'docs'));
+        const before = '# Current scoring\n## Input rule\nTruncate finite numeric scores.\n' +
+            'background notes\n'.repeat(900) +
+            '## Validation rule\nValidate negative and fractional scores.\n' +
+            'more background\n'.repeat(300) +
+            '## Late scoring acceptance\nClamp to inclusive bounds after truncation.\n';
+        await writeFile(join(root, 'docs', 'scoring.md'), before);
+        const discovery = await discoverDocumentation(root,
+            '/docs-review update docs/scoring.md: scoring input, validation and late acceptance');
+        const candidate = discovery.candidates.find(item => item.path === 'docs/scoring.md');
+        assert.ok(candidate);
+        assert.deepEqual(candidate.sections?.map(section => section.heading), [
+            '# Current scoring', '## Input rule', '## Validation rule', '## Late scoring acceptance']);
+        const late = candidate.sections?.at(-1);
+        assert.ok(late && late.offset > 4096);
+        assert.equal(Buffer.from(before).subarray(late.offset).toString('utf8').startsWith('## Late scoring acceptance'), true);
+        assert.equal(JSON.stringify(discovery).includes('Clamp to inclusive bounds'), false);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('review discovery keeps the live request, original task and acceptance criteria', () => {
+    const objective = documentationReviewObjective(
+        '/docs-review update docs/current/scoring.md and create docs/current/validation.txt', [
+            'Unrelated older conversation about deployment.',
+            'Original task: implement score clamping. Acceptance: negative, fractional and high inputs must pass.',
+            'Please check the current scoring contract before changing source.'
+        ]);
+    assert.ok(objective.startsWith('/docs-review update'));
+    assert.match(objective, /Original task: implement score clamping/);
+    assert.match(objective, /Acceptance: negative, fractional and high inputs/);
+});
+
+test('malformed or fabricated updates stay rejected while an exact observed update is reviewable', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-doc-valid-update-'));
+    try {
+        await mkdir(join(root, 'docs'));
+        const before = '# Rule\nKeep this instruction.\n## Acceptance\nOld criterion.\n';
+        await writeFile(join(root, 'docs', 'rule.md'), before);
+        const page = { path: 'docs/rule.md', offset: 0, endOffset: Buffer.byteLength(before),
+            fileBytes: Buffer.byteLength(before), sourceHash: 'c'.repeat(64), text: before };
+        const valid = parseDocumentationSkillReview(JSON.stringify({
+            final_response: 'Review both proposed documentation changes.',
+            report: 'The current acceptance criterion was read.',
+            changes: [{ path: 'docs/rule.md', replace: { before: 'Old criterion.', after: 'New criterion.' } },
+                { path: 'docs/cases.txt', after: 'One accepted case.\n' }]
+        }), ['docs/rule.md']);
+        const changes = await materializeDocumentationChanges(root, valid.changes, [page]);
+        const proposal = await prepareDocumentationReview(new RoadmapStore(), {
+            root, chatId: 'chat', messageId: 'message', ownerId: 'owner', leaseToken: 'lease', changes });
+        assert.equal(proposal.targets.length, 2);
+        assert.equal(proposal.targets[0].after, before.replace('Old criterion.', 'New criterion.'));
+        assert.equal(await readFile(join(root, 'docs', 'rule.md'), 'utf8'), before);
+        assert.throws(() => parseDocumentationSkillReview(JSON.stringify({
+            final_response: 'Ready', report: 'Found it', changes: [{ path: 'docs/rule.md',
+                replace: { before: 'Old criterion.', after: 'New criterion.' }, extra: true }]
+        }), ['docs/rule.md']), /Invalid documentation change/);
+        await assert.rejects(materializeDocumentationChanges(root, [
+            { path: 'docs/rule.md', replace: { before: 'unobserved placeholder', after: 'fabricated' } }
+        ], [page]), /not uniquely observed/);
     } finally { await rm(root, { recursive: true, force: true }); }
 });

@@ -14,7 +14,13 @@ export interface DocumentationDiscovery {
     enumerated: number;
     searched: number;
     omitted: string[];
-    candidates: { path: string; line: number; heading: string; historical: boolean; score: number }[];
+    candidates: { path: string; line: number; heading: string; historical: boolean; score: number;
+        sections?: { line: number; offset: number; heading: string; score: number }[] }[];
+}
+
+/** Keep the current request and its nearest task context ahead of older Chat vocabulary. */
+export function documentationReviewObjective(current: string, previousUserMessages: readonly string[]): string {
+    return [current, ...previousUserMessages.slice(-8).reverse()].join('\n').slice(0, 4000);
 }
 
 /** Explicit /docs-review only: bounded local inventory/search, never document-body prefill. */
@@ -61,18 +67,34 @@ export async function discoverDocumentation(root: string, objective: string): Pr
                 searched++;
                 if (info.size > bytes.length) omitted.push(`Search truncated: ${path}`);
                 const text = bytes.toString('utf8');
-                const lines = text.split(/\r?\n/u);
+                const rawLines = text.split('\n');
+                const lines = rawLines.map(line => line.replace(/\r$/u, ''));
                 const historical = /^(?:docs\/(?:history|archive|archives|tasks)\/|docs\/planning\/.*(?:archive|qualification)|.*(?:report|closeout|evidence)\.md$)/iu.test(path);
                 let best = { score: words.filter(word => path.toLowerCase().includes(word)).length * 5,
                     line: 1, heading: lines.find(line => /^#{1,6}\s/u.test(line))?.slice(0, 160) ?? '' };
+                const sections: { line: number; offset: number; heading: string; score: number }[] = [];
+                let offset = 0;
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
                     const score = words.filter(word => line.toLowerCase().includes(word)).length *
                         (/^#{1,6}\s/u.test(line) ? 3 : 1);
+                    if (/^#{1,6}\s/u.test(line)) sections.push({ line: i + 1, offset,
+                        heading: line.slice(0, 160), score: 0 });
+                    if (sections.length) sections[sections.length - 1].score =
+                        Math.max(sections[sections.length - 1].score, score);
                     if (score > best.score) best = { score, line: i + 1, heading: line.slice(0, 160) };
+                    offset += Buffer.byteLength(rawLines[i], 'utf8') + (i < rawLines.length - 1 ? 1 : 0);
                 }
-                if (best.score > 0) candidates.push({ path, line: best.line, heading: best.heading,
-                    historical, score: best.score });
+                if (best.score > 0) {
+                    // Search metadata is a bounded navigation map, not document text or proof of a model read.
+                    const ranked = [...sections].sort((a, b) => b.score - a.score || a.offset - b.offset)
+                        .slice(0, 4);
+                    const last = sections.at(-1);
+                    if (last && info.size > 4096 && !ranked.includes(last)) ranked.push(last);
+                    ranked.sort((a, b) => a.offset - b.offset);
+                    candidates.push({ path, line: best.line, heading: best.heading,
+                        historical, score: best.score, sections: ranked });
+                }
             } catch { omitted.push(`Search skipped: ${path}`); }
         }
     }

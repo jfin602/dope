@@ -89,7 +89,7 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
         assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.[1].endOffset, Buffer.byteLength(before));
         assert.equal(seen.some(turnMessages => turnMessages.some(text => text.includes('Dope skill /docs-review'))), true);
         assert.equal(seen.some(turnMessages => turnMessages.some(text =>
-            text.includes('The changes array must be a sibling of report'))), true);
+            text.includes('with exactly these sibling keys'))), true);
         const history = new HistoryBackend();
         const attached = await history.attach(pathToFileURL(root).href);
         assert.equal((await history.read(attached.projectHandle)).entries.some(entry => entry.source === 'documentation'), false);
