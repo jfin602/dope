@@ -161,6 +161,8 @@ Five product stages map to nine **derived** workflow states: Captured, Brainstor
 
 Refer to [ADR 0038](decisions/0038-planning-bridge-and-idea-to-implementation-workflow.md) and [PB1–PB8 plan](planning/planning-bridge/plan.md). Phase 11 current scope/qualification and inactive Phase 12 stay unchanged.
 
+> **2026-11-07 NATIVE DOPE FORWARD RECOVERY:** The /prompt-ass → /prompt-plan → /prompt-write authoring specification below also governs the proposed protected in-Dope Chat commands. Each stage retains saved Chat/project context; assessment and plan are reviewable drafts. /prompt-write creates an uncommitted stack proposal; the proposal card Accept / Reject / Revise proposal owns guarded exact publication or revision. There is no user-facing /prompt-apply and no automatic Work Run, grant, candidate acceptance or Roadmap GREEN. See [native authoring contract](planning/p13/native-prompt-stack-authoring-contract.md) and [Phase 13 recovery](tasks/p13/recovery/README.md). This is documentation/prompt authoring, not proof these features are shipped or qualified; historical manual/CLI prompt stacks remain intact.
+
 ## Implementation planning workflow
 
 /prompt-ass -> /prompt-plan -> /prompt-write <folder>
