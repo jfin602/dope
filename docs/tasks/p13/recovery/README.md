@@ -21,6 +21,10 @@ The original P4/P9 qualification material includes Planning Map/architecture han
 
 Existing prompt-stack machinery was authored around ready Planning Map WorkItems and publication approvals. R3 must remove the **backend** coupling in the Roadmap route, not simply hide legacy tabs. Where it can use an internal WorkItem for execution, that item must arise from the approved prompt source rather than a manual architecture graph.
 
+## Mandatory final commit and push
+
+Each standalone R1/R3/R2/R4 prompt now explicitly requires, **at the end of its own task**, a scoped Git commit and push of safely verified repairs/tests and a truthful evidence report. On PARTIAL/FAIL, commit report-only or independently verified safe changes where possible; do not stage broken product changes or unrelated owner work. Use explicit path/hunk staging, inspect the staged diff, run final checks and avoid force-push/reset/rebase. Report SHA, branch and push outcome. R4 may use the exact `0.13.12` marker **only after P9 and P12 independently PASS and the owner approves**; otherwise keep `0.13.11` and commit a descriptive partial/failure record.
+
 ## Release boundaries
 
 No unauthorized local-model/provider switches, implicit Work grants, automatic stack execution, candidate acceptance or Roadmap Gate GREEN. Never reset/stash/clean or damage owner repositories; no forced pushes. Each recovery prompt appends its own source-bound report under `docs/tasks/p13/recovery/qualification/` and may commit only narrowly verified work. R4 appends separate authoritative P9/P12 technical matrices. **Do not create `0.13.12` or resume the original phase runner unless owner-reviewed technical checkpoints genuinely pass.** Phase 14 may optionally enrich the new workflow with Software Map intelligence, without making it authoritative.
