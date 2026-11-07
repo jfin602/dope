@@ -9,7 +9,7 @@ export function liveAnswerSource(message: ChatAssistantMessage | undefined, cont
 /** Batch rendering only; provider events and Chat state continue without a timer. */
 export class LiveAnswerUpdateBatcher {
     private timer?: ReturnType<typeof setTimeout>;
-    constructor(private readonly paint: () => void, private readonly delayMs = 75) {}
+    constructor(private readonly paint: () => void, private readonly delayMs = 260) {}
     request(): void {
         if (this.timer) return;
         this.timer = setTimeout(() => { this.timer = undefined; this.paint(); }, this.delayMs);
@@ -18,6 +18,36 @@ export class LiveAnswerUpdateBatcher {
         if (this.timer) clearTimeout(this.timer);
         this.timer = undefined;
     }
+}
+
+/** Keep provider tokens immediate in state while revealing short, stable display chunks. */
+export class LiveAnswerRevealBuffer {
+    private key = '';
+    private target = '';
+    private visible = '';
+
+    update(key: string, text: string): void {
+        if (this.key !== key || !text.startsWith(this.visible)) {
+            this.key = key;
+            this.visible = '';
+        }
+        this.target = text;
+    }
+
+    advance(): string {
+        const pending = this.target.slice(this.visible.length);
+        if (!pending) return this.visible;
+        const candidate = pending.slice(0, 96);
+        let boundary = 0;
+        for (const match of candidate.matchAll(/\s+/gu)) boundary = match.index + match[0].length;
+        if (boundary >= 8) this.visible += candidate.slice(0, boundary);
+        else if (candidate.length >= 24 || /[.!?]\s*$/u.test(candidate)) this.visible += candidate;
+        return this.visible;
+    }
+
+    current(): string { return this.visible; }
+    pending(): boolean { return this.visible.length < this.target.length; }
+    reset(): void { this.key = ''; this.target = ''; this.visible = ''; }
 }
 
 /** Only the current live Ask turn may offer a decision; saved pauses are inert. */

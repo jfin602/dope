@@ -21,7 +21,8 @@ export interface PiTokenUsage { inputTokens?: number; outputTokens?: number; tot
     reasoningTokens?: number;
     tokenMeasurement: 'provider-reported' | 'unavailable' }
 export interface PiTurnResult { text: string; novelText?: string; segmentIndex: number; modelId: string;
-    finishReason: 'stop' | 'length'; outputCeilingTokens?: number; usage: PiTokenUsage; segmentUsage?: PiTokenUsage;
+    finishReason: 'stop' | 'length'; outputCeilingTokens?: number; lastCallOutputTokens?: number;
+    usage: PiTokenUsage; segmentUsage?: PiTokenUsage;
     usageSegments?: PiTokenUsage[]; compaction?: PiContextRecord }
 export type PiTurnEvent = { type: 'delta'; text: string } |
     { type: 'reset' } |
@@ -228,7 +229,12 @@ export class PiRuntimeHost {
                     result.usageSegments.length !== result.segmentIndex || result.usageSegments.length > 4 ||
                     !result.usageSegments.every(validUsage))) ||
                 !consistentUsage(result) ||
-                (result.segmentUsage?.outputTokens !== undefined &&
+                (result.lastCallOutputTokens !== undefined &&
+                    (!Number.isSafeInteger(result.lastCallOutputTokens) || result.lastCallOutputTokens < 0 ||
+                        result.lastCallOutputTokens > Number(record.maxOutputTokens) ||
+                        result.segmentUsage?.outputTokens !== undefined &&
+                        result.lastCallOutputTokens > result.segmentUsage.outputTokens)) ||
+                (result.lastCallOutputTokens === undefined && result.segmentUsage?.outputTokens !== undefined &&
                     result.segmentUsage.outputTokens > Number(record.maxOutputTokens)) ||
                 (record.type === 'resume' && typeof result.novelText !== 'string'))
                 throw new Error('Invalid Pi turn result');

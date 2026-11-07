@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { LiveAnswerUpdateBatcher, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -12,6 +12,22 @@ test('live continuation displays only text beyond the saved partial', () => {
     assert.equal(liveAnswerSource(message, 'First section. Second section.'), 'Second section.');
     assert.equal(liveAnswerSource(message, 'Second section.'), 'Second section.');
     assert.equal(liveAnswerSource(undefined, 'First section.'), 'First section.');
+});
+
+test('live answer reveals bounded word chunks while retaining all incoming text', () => {
+    const reveal = new LiveAnswerRevealBuffer();
+    reveal.update('turn-a', 'Hello wo');
+    assert.equal(reveal.advance(), '');
+    reveal.update('turn-a', 'Hello world. This is a longer sentence with several words.');
+    const first = reveal.advance();
+    assert.ok(first.length >= 8 && first.length <= 96);
+    assert.match(first, /\s$/);
+    assert.equal(reveal.pending(), true);
+    reveal.update('turn-b', 'A fresh answer starts here. ');
+    assert.equal(reveal.current(), '');
+    assert.equal(reveal.advance(), 'A fresh answer starts here. ');
+    reveal.reset();
+    assert.equal(reveal.current(), '');
 });
 
 test('final answer paints batch incoming deltas without holding their state', async () => {
@@ -38,6 +54,15 @@ test('partial Markdown retains ordered fences and safe code rendering as text ar
     }
     assert.match(renderUntrustedMessageHtml(accumulated), /const value = 1;/);
     assert.match(renderUntrustedMessageHtml(accumulated), /After\./);
+});
+
+test('requested tables retain their columns and scroll within a narrow Chat panel', async () => {
+    const html = renderUntrustedMessageHtml('| Language | Strength | Tradeoff |\n| --- | --- | --- |\n| Rust | Safety | Compile time |');
+    assert.equal((html.match(/<th>/g) ?? []).length, 3);
+    assert.equal((html.match(/<td>/g) ?? []).length, 3);
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    assert.match(css, /\.dope-chat-panel \.dope-chat-message-content table \{[^}]*max-content;[^}]*overflow-x: auto/);
+    assert.match(css, /\.dope-chat-panel \.dope-chat-message-content th, \.dope-chat-panel \.dope-chat-message-content td \{[^}]*min-width:/);
 });
 
 test('documentation discovery links stay within the exact saved workspace', () => {

@@ -361,11 +361,9 @@ const emptyResources = Object.freeze({
   getThemes: () => ({ themes: [], diagnostics: [] }),
   getAgentsFiles: () => ({ agentsFiles: [] }),
   getSystemPrompt: () => {
-    const answerGuidance = !workMode && !roadmapToolsMode && !roadmapGenerationMode ?
-      'For ordinary Chat, investigate as needed, then aim for a concise final answer, generally 1,000 tokens or less and usually under 2,000. Follow requests for detailed output; these are answer targets, not a limit on research or reasoning.' : '';
     return chatToolsMode ?
-      `You are an assistant operating under Dope authority. Use project tools when evidence is needed. After a tool result, decide whether another tool is needed; when you can answer, give the final answer without a tool call. Do not combine a final answer with a tool call. ${answerGuidance} ${compactionProvenance}` :
-      `You are an assistant operating under Dope authority. ${answerGuidance} ${compactionProvenance}`;
+      `You are an assistant operating under Dope authority. Use project tools when evidence is needed. After a tool result, decide whether another tool is needed; when you can answer, give the final answer without a tool call. Do not combine a final answer with a tool call. ${compactionProvenance}` :
+      `You are an assistant operating under Dope authority. ${compactionProvenance}`;
   },
   getSystemPromptSource: () => undefined,
   getAppendSystemPrompt: () => [],
@@ -573,6 +571,7 @@ export async function dispatch(message) {
       let attemptedTool = false;
       let toolCount = resuming ? paused.toolCount : 0;
       let reportedInput = 0, reportedOutput = 0, reportedTotal = 0, reportedReasoning = 0;
+      let lastCallOutputTokens;
       let usageUnknown = false;
       let modelDrift = false;
       let outputLimitCompactionSuppressed = false;
@@ -617,6 +616,8 @@ export async function dispatch(message) {
           roadmapTrace('tool-call-complete', { toolName: event.toolName, isError: event.isError === true });
         if (chatToolsMode && event.type === 'turn_end' && event.message?.role === 'assistant') {
           const usage = event.message.usage;
+          lastCallOutputTokens = Number.isSafeInteger(usage?.output) && usage.output >= 0 ?
+            usage.output : undefined;
           if (Number.isSafeInteger(usage?.totalTokens) && usage.totalTokens > 0) {
             reportedInput += Number.isSafeInteger(usage.input) ? usage.input : 0;
             reportedOutput += Number.isSafeInteger(usage.output) ? usage.output : 0;
@@ -741,6 +742,7 @@ export async function dispatch(message) {
       return { text: accumulatedText, ...(resuming ? { novelText, segmentIndex: message.segmentIndex } :
         { segmentIndex: 1 }), modelId,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',
+        ...(lastCallOutputTokens !== undefined ? { lastCallOutputTokens } : {}),
         usage, ...(!roadmapToolsMode && !roadmapGenerationMode ?
           { segmentUsage, usageSegments: segments } : {}),
         ...(compactionRecord ? { compaction: compactionRecord } : {}) };

@@ -102,7 +102,7 @@ export class ChatPanelController {
     }
     runStartedAt?: string;
     stream: { chatId: string; messageId: string; executionId: string; content: string; sequence: number;
-        activitySequence: number; events: ChatActivityEvent[] } | undefined;
+        answerStartedAt?: string; activitySequence: number; events: ChatActivityEvent[] } | undefined;
     planningProgress?: { messageId: string; stage: 'waiting' | 'validating' };
     roadmapStage?: Extract<ChatEvent, { kind: 'roadmap-stage' }>['snapshot'];
     roadmapStageError?: string;
@@ -264,6 +264,8 @@ export class ChatPanelController {
                     if (!current && event.sequence !== 0) return;
                     this.stream = { chatId: event.chatId, messageId: event.messageId, executionId: event.executionId,
                         content: (current?.content ?? '') + event.delta, sequence: event.sequence,
+                        answerStartedAt: current?.answerStartedAt ??
+                            (event.delta ? new Date().toISOString() : undefined),
                         activitySequence: current?.activitySequence ?? 0, events: current?.events ?? [] };
                     this.changed('answer');
                     return;
@@ -273,7 +275,7 @@ export class ChatPanelController {
                     const current = this.stream;
                     if (!current || current.messageId !== event.messageId ||
                         current.executionId !== event.executionId || event.sequence !== current.sequence + 1) return;
-                    this.stream = { ...current, content: '', sequence: event.sequence };
+                    this.stream = { ...current, content: '', answerStartedAt: undefined, sequence: event.sequence };
                     this.changed('answer');
                     return;
                 }
@@ -287,6 +289,7 @@ export class ChatPanelController {
                     events.push({ sequence: event.sequence, kind: event.activityKind, text: event.text });
                     this.stream = { chatId: event.chatId, messageId: event.messageId, executionId: event.executionId,
                         content: current?.content ?? '', sequence: current?.sequence ?? -1,
+                        answerStartedAt: current?.answerStartedAt,
                         activitySequence: event.sequence, events };
                     this.changed('activity'); return;
                 }

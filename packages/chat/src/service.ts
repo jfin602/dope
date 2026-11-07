@@ -26,6 +26,8 @@ export type ChatOperation =
         routingProvenance?: RoutingProvenance; outputLimitPolicy?: ChatOutputLimitPolicy }
     | { type: 'append-answer-partial'; chatId: ChatId; messageId: string; executionId: string;
         segment: number; cursor: number; delta: string }
+    | { type: 'reset-answer-partial'; chatId: ChatId; messageId: string; executionId: string;
+        cursor: number }
     | { type: 'pause-output-limit'; chatId: ChatId; messageId: string; executionId: string;
         segment: number; cursor: number; finishReason: string; outputCeilingTokens?: number;
         tokenUsage?: ChatExecution['tokenUsage']; segmentUsage?: ChatExecution['tokenUsage'];
@@ -34,7 +36,7 @@ export type ChatOperation =
     | { type: 'resume-output-limit'; chatId: ChatId; messageId: string; executionId: string; cursor: number }
     | { type: 'stop-incomplete'; chatId: ChatId; messageId: string; executionId: string; cursor: number }
     | { type: 'interrupt-output-limit'; chatId: ChatId; messageId: string; executionId: string;
-        cursor: number; failure: string; sourceRefs?: ChatExecution['sourceRefs'];
+        cursor: number; failure: string; cancelled?: boolean; sourceRefs?: ChatExecution['sourceRefs'];
         toolEvents?: ChatExecution['toolEvents']; activity?: ChatExecutionActivity }
     | { type: 'record-assistant-activity'; chatId: ChatId; messageId: string; activity: ChatExecutionActivity }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';

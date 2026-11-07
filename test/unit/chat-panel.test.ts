@@ -69,6 +69,38 @@ test('a live paused answer keeps its stream cursor for the same-session continua
         { messageId: 'answer', executionId: 'execution', segment: 1, cursor: 4 });
 });
 
+test('Working ends on the first final delta and its timestamp survives activity updates', async () => {
+    let client: ChatClient | undefined;
+    const connection = { setClient(value: ChatClient | undefined) { client = value; }, dispose() {},
+        attach: async () => ({ projectHandle: 'project', snapshot: {
+            schemaVersion: 1, revision: 0, folders: [], chats: [] } }) } as unknown as ChatConnection;
+    const controller = new ChatPanelController(() => connection, () => {});
+    try {
+        await controller.attach('project');
+        Object.assign(controller, { mode: 'chat', chatId: 'chat', running: true,
+            runStartedAt: '2026-11-06T12:00:00.000Z' });
+        const event = { projectHandle: 'project', chatId: 'chat', messageId: 'answer',
+            executionId: 'execution' };
+        client!.notifyChatEvent({ ...event, kind: 'assistant-activity', sequence: 1,
+            activityKind: 'thinking', text: 'Checking sources' });
+        assert.equal(controller.stream?.answerStartedAt, undefined);
+        client!.notifyChatEvent({ ...event, kind: 'assistant-delta', sequence: 0, delta: 'Answer' });
+        const started = controller.stream?.answerStartedAt;
+        assert.ok(started);
+        client!.notifyChatEvent({ ...event, kind: 'assistant-delta', sequence: 1, delta: ' continues' });
+        client!.notifyChatEvent({ ...event, kind: 'assistant-activity', sequence: 2,
+            activityKind: 'thinking', text: 'More activity' });
+        assert.equal(controller.stream?.answerStartedAt, started);
+        client!.notifyChatEvent({ ...event, kind: 'assistant-reset', sequence: 2 });
+        assert.equal(controller.stream?.answerStartedAt, undefined, 'a tool reset retracts provisional text');
+        client!.notifyChatEvent({ ...event, kind: 'assistant-delta', sequence: 3, delta: 'Final answer' });
+        assert.ok(controller.stream?.answerStartedAt);
+    } finally { controller.dispose(); }
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    assert.match(widget, /label\.textContent = 'Answering'/);
+    assert.match(widget, /delete clock\.dataset\.running/);
+});
+
 test('partial-only diagnostic copy is labeled and never enters clean copy', () => {
     const partial = { role: 'assistant', id: 'answer', content: '', execution: {
         id: 'execution', status: 'stopped-incomplete' }, answerPartial: {

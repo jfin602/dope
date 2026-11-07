@@ -188,7 +188,7 @@ export class ChatBackend implements ChatService {
     }
 
     private async roadmapOpportunity(root: string, content: string, ordinary: boolean): Promise<string | undefined> {
-        if (!ordinary || !/\b(?:roadmap|milestone|plan|planning|start|begin|build|create|design|architecture)\b/i.test(content))
+        if (!ordinary || !/\b(?:roadmap|milestone|plan|planning|start|begin|build|create|design)\b/i.test(content))
             return undefined;
         if (!this.greenfield) return 'Roadmap opportunity: the current project owner could not be checked. Do not claim the Roadmap is absent or offer to create a draft; suggest checking Roadmap first.';
         try {
@@ -1704,7 +1704,7 @@ export class ChatBackend implements ChatService {
         const roadmapPromptMode = nativeCandidate ? 'native-roadmap-edit' as const : 'ordinary' as const;
         const turnPrompt = nativeCandidate ? planningPrompt : skillInstruction ?
             { text: planningPrompt ? `${planningPrompt.text}\n\n${skillInstruction}` : skillInstruction } : planningPrompt;
-        const ordinaryChat = !roadmapTurn && !docsReview && !docsApply && !skill && !opportunity;
+        const ordinaryChat = !roadmapTurn && !docsReview && !docsApply && !skill;
         const composed = await this.composeTurn(root, contextChat, content, selections,
             model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local', roadmapSkill,
@@ -1719,6 +1719,7 @@ export class ChatBackend implements ChatService {
                     composed.refs.some(item => item.kind === 'roadmap') ? 'gate' : 'unlinked';
         const nativeRoadmap = !initialNative && localRoadmap && roadmapSkill && localMode === 'gate' && !greenfieldSkill &&
             !!this.nativeStages && !!this.grounder;
+        const retainStreamedAnswer = !localRoadmap && !nativeRoadmap && !docsReview && !docsApply && !publicationIntent;
         if (roadmapSkill && !publicationIntent && !greenfieldSkill && localMode === 'gate' &&
             !nativeRoadmap)
             throw new Error('Protected native Roadmap tools are unavailable; no proposal was staged');
@@ -1800,6 +1801,22 @@ export class ChatBackend implements ChatService {
         };
         const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
         let output = '';
+        let partialCursor = 0;
+        let partialSegments = 0;
+        let persistedPartial = '';
+        let lastPartialWrite = 0;
+        const persistOutputPartial = async (text: string) => {
+            if (!retainStreamedAnswer || !assistant || text === persistedPartial) return;
+            if (!text.startsWith(persistedPartial)) throw new Error('Streamed answer differs from saved partial');
+            const delta = text.slice(persistedPartial.length);
+            if (!delta) return;
+            await mutate({ type: 'append-answer-partial', chatId: key, messageId: assistant.id,
+                executionId: assistant.execution.id, segment: partialSegments + 1,
+                cursor: partialCursor, delta });
+            persistedPartial = text;
+            partialCursor += Buffer.byteLength(delta, 'utf8');
+            lastPartialWrite = Date.now();
+        };
         let actual: ChatModelProvenance = { schemaVersion: 1, connectionId: connection.id,
             modelId: model.id, providerId: connection.providerId, modelLabel: model.label };
         let routingProvenance: RoutingProvenance | undefined;
@@ -2258,8 +2275,6 @@ export class ChatBackend implements ChatService {
                 yield complete;
             })(this) : generate();
             let partialText = '';
-            let partialCursor = 0;
-            let partialSegments = 0;
             let cumulativeOutputTokens = 0;
             while (true) {
                 let resumedEvents: AsyncIterable<ConversationEvent> | undefined;
@@ -2295,12 +2310,14 @@ export class ChatBackend implements ChatService {
                                 model: actual.modelLabel });
                         await this.repository.renew(root, key, request.leaseToken);
                         const novel = event.novelText;
-                        if (novel) {
+                        if (retainStreamedAnswer) await persistOutputPartial(event.text);
+                        else if (novel) {
                             await mutate({ type: 'append-answer-partial', chatId: key, messageId: assistant!.id,
                                 executionId: assistant!.execution.id, segment: event.segmentIndex,
                                 cursor: partialCursor, delta: novel });
                             partialCursor += Buffer.byteLength(novel, 'utf8');
                         }
+                        persistedPartial = event.text;
                         partialText = event.text;
                         partialSegments = event.segmentIndex;
                         // Provider usage can be absent; the byte bound remains authoritative in that case.
@@ -2368,6 +2385,12 @@ export class ChatBackend implements ChatService {
                     }
                     if (event.type === 'reset') {
                         output = '';
+                        if (retainStreamedAnswer && partialCursor && !partialSegments) {
+                            await mutate({ type: 'reset-answer-partial', chatId: key, messageId: assistant!.id,
+                                executionId: assistant!.execution.id, cursor: partialCursor });
+                            partialCursor = 0;
+                            persistedPartial = '';
+                        }
                         await this.repository.publishReset(root, key, assistant!.id, assistant!.execution.id,
                             sequence++, request.leaseToken);
                         continue;
@@ -2385,10 +2408,14 @@ export class ChatBackend implements ChatService {
                         recordActivity('provisional', event.text);
                         await this.repository.publishDelta(root, key, assistant.id, assistant.execution.id,
                             sequence++, event.text, request.leaseToken);
+                        if (retainStreamedAnswer && output && (Buffer.byteLength(output, 'utf8') - partialCursor >= 1024 ||
+                            Date.now() - lastPartialWrite >= 3000)) await persistOutputPartial(output);
                     } else {
                         output = event.text;
                         if (partialSegments && !output.startsWith(partialText))
                             throw new ModelRuntimeFailure('Completed answer differs from saved continuation', 'incomplete-answer');
+                        if (retainStreamedAnswer && persistedPartial && output.startsWith(persistedPartial))
+                            await persistOutputPartial(output);
                         if (localMode === 'gate' && !roadmapSkill) {
                             try {
                                 const value = JSON.parse(output) as { type?: string };
@@ -2579,13 +2606,15 @@ export class ChatBackend implements ChatService {
                         error.message : 'Conversation failed';
                 const diagnostic = undefined;
                 const failure = diagnostic && !cancelled ? `${baseFailure}. ${diagnostic}`.slice(0, 1000) : baseFailure;
+                if (retainStreamedAnswer && output && output.startsWith(persistedPartial))
+                    try { await persistOutputPartial(output); } catch { /* Storage failure is reported below. */ }
                 try { await flushActivity(); } catch { /* Final mutation below still carries the captured snapshot. */ }
                 const saved = (await this.repository.read(root)).chats.find(chat => chat.id === key)
                     ?.messages.find(message => message.id === assistant!.id);
                 try { await mutate(saved?.role === 'assistant' && saved.answerPartial ?
                     { type: 'interrupt-output-limit', chatId: key, messageId: assistant.id,
                         executionId: assistant.execution.id, cursor: saved.answerPartial.cursor,
-                        failure: cancelled ? 'Conversation cancelled' : failure, sourceRefs, toolEvents,
+                        failure: cancelled ? 'Conversation cancelled' : failure, cancelled, sourceRefs, toolEvents,
                         activity: activity?.snapshot() } :
                     { type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: '', activity: activity?.snapshot(),

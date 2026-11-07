@@ -43,6 +43,14 @@ async function protocolFixture(mode) {
           if (mode === 'backpressure') {
             for (let n = 0; n < 2300 && !host.child?.killed; n++)
               send(message.id, { event: { type: 'delta', text: 'x'.repeat(8192) } });
+          } else if (mode === 'aggregate-length' || mode === 'over-limit-call') {
+            const result = segment(1, 'length');
+            result.segmentUsage = { inputTokens: 1200, outputTokens: 2085,
+              totalTokens: 3285, tokenMeasurement: 'provider-reported' };
+            result.usageSegments = [result.segmentUsage];
+            result.usage = result.segmentUsage;
+            result.lastCallOutputTokens = mode === 'aggregate-length' ? 2048 : 2049;
+            send(message.id, { ok: true, data: result });
           } else send(message.id, { ok: true, data: segment(1, 'length') });
         } else if (message.type === 'resume') {
           if (message.id !== pausedId || message.segmentIndex !== index + 1)
@@ -59,6 +67,22 @@ async function protocolFixture(mode) {
     } } };
   return { host, calls, cleanup: async () => {} };
 }
+
+test('Pi host checks the final provider call against its limit, not aggregate tool-turn output', async () => {
+  for (const [mode, accepted] of [['aggregate-length', true], ['over-limit-call', false]]) {
+    const fixture = await protocolFixture(mode);
+    try {
+      const pending = Array.fromAsync(fixture.host.streamTurn(
+        [{ role: 'user', content: 'Answer.' }], 2048));
+      if (accepted) {
+        const events = await pending;
+        assert.equal(events.at(-1).type, 'paused');
+        assert.equal(events.at(-1).result.segmentUsage.outputTokens, 2085);
+        assert.equal(events.at(-1).result.lastCallOutputTokens, 2048);
+      } else await assert.rejects(pending, /Invalid Pi turn result/);
+    } finally { fixture.host.dispose(); await fixture.cleanup(); }
+  }
+});
 
 test('Pi host and adapter retain one worker across pause, resume, and checked stop', async () => {
   const fixture = await protocolFixture('normal');
@@ -783,8 +807,8 @@ test('Pi no-tool turn streams from Dope context without exposing tools or projec
       assert.ok(!body.tools?.length);
       assert.ok(body.messages.some(item => item.role === 'system' &&
         JSON.stringify(item).includes('Dope context')));
-      assert.match(JSON.stringify(body.messages.filter(item => item.role === 'system')),
-        /generally 1,000 tokens.*Follow requests for detailed output/);
+      assert.doesNotMatch(JSON.stringify(body.messages.filter(item => item.role === 'system')),
+        /generally 1,000 tokens/);
       assert.ok(body.messages.some(item => item.role === 'assistant' &&
         JSON.stringify(item).includes('previous answer')));
       assert.deepEqual(body.messages.filter(item => item.role === 'user' || item.role === 'assistant')

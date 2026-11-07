@@ -38,25 +38,30 @@ test('ordinary Chat adds one adaptive soft response instruction for local and ho
     const result = await composer.compose('/fixture/project', chat(), 'What happened?', [],
       capabilities, undefined, false, false, undefined, piMode, false, false, true);
     assert.equal(result.messages.filter(item => item.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION).length, 1);
+    assert.equal(result.messages.find(item => item.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION)?.role, 'system');
     assert.equal(result.messages.at(-1)?.content, 'What happened?');
     assert.ok(result.usedTokens <= result.budgetTokens);
   }
   assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /Answer directly/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /Cover requested facts once/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /cover facts once/);
   assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /read AGENTS\/README plus current-state and architecture\/module docs/);
-  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /cite only read docs and label inferences/);
+  assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /Cite only read docs; label inferences/);
   assert.match(ORDINARY_CHAT_RESPONSE_INSTRUCTION, /No hard length cap/);
 });
 
-test('ordinary Chat guidance favors compact sidebar summaries without suppressing requested detail', () => {
+test('ordinary Chat guidance defaults to compact prose and obeys explicit table shape and depth', () => {
   const instruction = ORDINARY_CHAT_RESPONSE_INSTRUCTION;
-  assert.match(instruction, /brief headings, concise paragraphs and short lists/);
-  assert.match(instruction, /Do not use a Markdown table in a report unless the user explicitly requests one/);
-  assert.match(instruction, /For naturally tabular short values, compact tables are fine/);
-  assert.match(instruction, /cells must not contain prose, lists or HTML breaks/);
-  assert.match(instruction, /Follow explicit user format exactly, including column and paragraph counts/);
-  assert.match(instruction, /Cover requested facts once/);
-  assert.match(instruction, /cite only read docs and label inferences/);
+  assert.match(instruction, /Do not use Markdown tables in ordinary Chat by default/);
+  assert.match(instruction, /short headed paragraphs and compact lists even for comprehensive, multi-topic reports/);
+  assert.match(instruction, /requested topics are not table rows/);
+  assert.match(instruction, /only when explicitly requested or required by a specialized task’s explicit output contract/);
+  assert.match(instruction, /exact header names and column count; add no columns/);
+  assert.match(instruction, /For brief answers, give only requested points in one short sentence each/);
+  assert.match(instruction, /requested depth/);
+  assert.match(instruction, /Consolidate overlap/);
+  assert.match(instruction, /avoid exhaustive simple summaries/);
+  assert.match(instruction, /stop when adequately answered while preserving factual completeness/);
+  assert.match(instruction, /Cite only read docs; label inferences/);
 });
 
 test('specialized Chat prompt paths do not receive ordinary response guidance', async () => {

@@ -62,7 +62,13 @@ test('final deltas reach Chat before completion and tool resets replace transien
         for (let attempt = 0; !events.some(event => event.kind === 'assistant-delta') && attempt < 200; attempt++)
             await new Promise(resolve => setTimeout(resolve, 5));
         assert.equal(events.find(event => event.kind === 'assistant-delta')?.delta, 'Checking ');
-        assert.equal((await backend.get(projectHandle, chatId))?.messages.at(-1)?.content, '');
+        let pending = (await backend.get(projectHandle, chatId))?.messages.at(-1);
+        for (let attempt = 0; pending?.role === 'assistant' && !pending.answerPartial && attempt < 100; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 5));
+            pending = (await backend.get(projectHandle, chatId))?.messages.at(-1);
+        }
+        assert.equal(pending?.content, '');
+        assert.equal(pending?.role === 'assistant' && pending.answerPartial?.text, 'Checking ');
         release();
         await turn;
         const visible = events.filter(event => event.kind === 'assistant-delta' || event.kind === 'assistant-reset');
@@ -72,6 +78,7 @@ test('final deltas reach Chat before completion and tool resets replace transien
         assert.equal(saved.role, 'assistant');
         assert.equal(saved.execution.status, 'complete');
         assert.equal(saved.content, 'Final **answer** with code.\n\n```ts\nconst x = 1;\n```');
+        assert.equal(saved.answerPartial, undefined);
     } finally { release(); backend.dispose(); await rm(root, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
 });
@@ -113,6 +120,44 @@ test('cancelling after a live final delta does not save a completed answer', asy
         assert.equal(saved.role, 'assistant');
         assert.equal(saved.execution.status, 'cancelled');
         assert.equal(saved.content, '');
+        assert.equal(saved.answerPartial?.text, 'Visible before cancel');
+        assert.equal(chatResponseCopyText(saved), '');
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
+        maxRetries: 10, retryDelay: 25 }); }
+});
+test('a failed streamed answer remains inspectable after reload without becoming a final answer', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    await writeFile(join(root, 'README.md'), 'Verified project purpose.');
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192,
+                maxInputTokens: 8192 } }] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        await request.projectTools!.execute('read_file', { path: 'README.md' });
+        yield { type: 'delta' as const, text: 'Verified project purpose. ' };
+        yield { type: 'delta' as const, text: 'This answer is unfinished.' };
+        throw new ModelRuntimeFailure('Local model disconnected', 'connection-unavailable');
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Question' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 8192 }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
+        undefined, new ChatProjectGrounder({} as never));
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Question' }), /disconnected/);
+        const saved = (await new ChatRepository().read(root)).chats[0].messages.at(-1)!;
+        assert.equal(saved.role, 'assistant');
+        assert.equal(saved.execution.status, 'interrupted');
+        assert.equal(saved.content, '');
+        assert.equal(saved.answerPartial?.text, 'Verified project purpose. This answer is unfinished.');
+        assert.equal(saved.execution.toolEvents?.[0]?.name, 'read_file');
+        assert.equal(saved.execution.sourceRefs?.[0]?.id, 'README.md');
+        assert.equal(chatResponseCopyText(saved), '');
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
 });
@@ -242,7 +287,7 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         await assert.rejects(cancelledTurn, /cancelled/);
         const interrupted = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
         assert.equal(interrupted.id, third.id);
-        assert.equal(interrupted.execution.status, 'interrupted');
+        assert.equal(interrupted.execution.status, 'cancelled');
         assert.equal(interrupted.content, '');
         assert.equal(interrupted.answerPartial?.text, 'Part 3');
         assert.equal(generated, 3);
@@ -462,7 +507,7 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
         assert.deepEqual(result.refs, preview.refs);
         assert.equal(sent[0]?.role, 'system');
         assert.match(sent[0].content, /Pi read_file/);
-        assert.equal(sent.some(message => /100–250 output tokens/.test(message.content)), false);
+        assert.equal(sent.some(message => /Do not use Markdown tables in ordinary Chat by default/.test(message.content)), true);
         assert.ok(sent.some(message => /Checked read-only Roadmap opportunity.*revision zero/s.test(message.content)));
         assert.ok(sent.some(message => /fresh \/gen-roadmap command/.test(message.content)));
         assert.equal(sent.some(message => /implementation-plan|pixi\.js: absent/.test(message.content)), false);
@@ -478,7 +523,7 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-test('ordinary Chat dispatches soft brevity guidance without changing its output budget', async () => {
+test('ordinary Chat dispatches formatting guidance without changing its output budget', async () => {
     const root = await folder(), repository = new ChatRepository();
     const requests: { messages: { role: string; content: string }[]; maxOutputTokens?: number }[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
@@ -504,9 +549,23 @@ test('ordinary Chat dispatches soft brevity guidance without changing its output
         const result = await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'What is 2 + 2?' });
         const sent = requests.find(request => request.messages.at(-1)?.content === 'What is 2 + 2?');
-        assert.equal(sent?.messages.filter(message => /100–250 output tokens/.test(message.content)).length, 1);
+        const format = sent?.messages.filter(message => message.role === 'system' &&
+            /Do not use Markdown tables in ordinary Chat by default/.test(message.content));
+        assert.equal(format?.length, 1);
+        assert.match(format![0].content, /exact header names and column count/);
+        assert.match(format![0].content, /comprehensive, multi-topic report/);
+        assert.match(format![0].content, /stop when adequately answered/);
         assert.equal(sent?.maxOutputTokens, 1024);
         assert.equal(preview.usedTokens, result.usedTokens);
+        const reportPrompt = "Read this project's documentation and develop an understanding of the project. " +
+            'Start with AGENTS.md if present, and independently discover the documentation relevant to understanding ' +
+            'the system. Produce a comprehensive report explaining what this project is, its major components, ' +
+            'and its documented development state. Return the report in the conversation.';
+        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: reportPrompt });
+        const report = requests.find(request => request.messages.at(-1)?.content === reportPrompt);
+        assert.equal(report?.messages.filter(message => message.role === 'system' &&
+            /Do not use Markdown tables in ordinary Chat by default/.test(message.content)).length, 1);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 

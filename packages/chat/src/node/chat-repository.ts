@@ -512,7 +512,7 @@ export class ChatRepository {
                 const lease = await this.lease(base, uuid(operation.chatId));
                 if (this.active(lease)) throw new Error('Cannot delete an open Chat');
             }
-            if (['append-user', 'begin-assistant', 'start-assistant', 'append-answer-partial', 'pause-output-limit',
+            if (['append-user', 'begin-assistant', 'start-assistant', 'append-answer-partial', 'reset-answer-partial', 'pause-output-limit',
                 'resume-output-limit', 'stop-incomplete', 'interrupt-output-limit',
                 'record-assistant-activity', 'finish-assistant'].includes(operation.type)) {
                 const chatId = (operation as Extract<ChatOperation, { chatId: string }>).chatId;
@@ -620,6 +620,7 @@ export class ChatRepository {
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;
                 case 'append-answer-partial':
+                case 'reset-answer-partial':
                 case 'pause-output-limit':
                 case 'resume-output-limit':
                 case 'stop-incomplete':
@@ -632,7 +633,11 @@ export class ChatRepository {
                         throw new Error('Stale Chat answer cursor or execution');
                     const partial = message.answerPartial ?? { schemaVersion: 1 as const, text: '', cursor: 0, segments: [] };
                     const messages = [...c.messages];
-                    if (operation.type === 'append-answer-partial') {
+                    if (operation.type === 'reset-answer-partial') {
+                        if (message.execution.status !== 'streaming' || partial.segments.length)
+                            throw new Error('Stale Chat answer reset');
+                        messages[at] = parseChatMessage({ ...message, answerPartial: undefined });
+                    } else if (operation.type === 'append-answer-partial') {
                         if (message.execution.status !== 'streaming' || operation.segment !== partial.segments.length + 1 ||
                             !operation.delta || new TextEncoder().encode(operation.delta).length > 65_536 ||
                             partial.cursor + new TextEncoder().encode(operation.delta).length > 65_536)
@@ -672,8 +677,11 @@ export class ChatRepository {
                             JSON.stringify(operation.activity.events.slice(0, message.activity.events.length)) !==
                                 JSON.stringify(message.activity.events)) throw new Error('Stale Chat activity');
                         messages[at] = parseChatMessage({ ...message, execution: { ...message.execution,
-                            status: operation.type === 'stop-incomplete' ? 'stopped-incomplete' : 'interrupted', finishedAt: now,
-                            ...(operation.type === 'interrupt-output-limit' ? { failure: operation.failure.slice(0, 1000),
+                            status: operation.type === 'stop-incomplete' ? 'stopped-incomplete' :
+                                operation.type === 'interrupt-output-limit' && operation.cancelled ?
+                                    'cancelled' : 'interrupted', finishedAt: now,
+                            ...(operation.type === 'interrupt-output-limit' ? {
+                                ...(!operation.cancelled ? { failure: operation.failure.slice(0, 1000) } : {}),
                                 ...(operation.sourceRefs ? { sourceRefs: operation.sourceRefs } : {}),
                                 ...(operation.toolEvents ? { toolEvents: operation.toolEvents } : {}) } : {}) },
                             ...(operation.type === 'interrupt-output-limit' && operation.activity ?
