@@ -16,8 +16,10 @@ Extend center Roadmap Phase/Gate/Criterion cards with truthful derived labels Pl
 MINIMUM IMPLEMENTATION BOUNDARY
 Inspect roadmap-canvas, status-style, inspector, planning-work-projection, work transcript and history nav. Derive from canonical P1–P8 results; do not cache authoritatively in browser. Honor Dope accent isolation, theme tokens, narrow viewport, keyboard and reduced motion, provisional construction tabs, background updates.
 
-CHECKPOINT B ENTRY
-Require actual owner-reviewed, source-applicable browser PASS report at docs/tasks/p13/qualification/checkpoint-b.md and matching coherent 0.13.9 resume marker, not commit alone; otherwise STOP.
+CHECKPOINT B ENTRY — OWNER-AUTHORIZED PROGRESSION EXCEPTION (2026-11-07)
+The P9 browser checkpoint was genuinely operated but remains PARTIAL / NOT GREEN; do not relabel it as a live PASS. The owner explicitly authorized continuing the original P13 implementation prompts despite its outstanding evidence, as recorded in docs/tasks/p13/README.md and the append-only owner decision in docs/tasks/p13/qualification/checkpoint-b.md. The exact-subject 0.13.9 marker and coherent package manifests/internal pins exist for runner progression only. Verify this owner decision, reachable marker, source/branch and version coherence; together they satisfy this P10 entry condition INSTEAD OF the ordinary checkpoint B PASS requirement. Do not stop solely because the checkpoint B report remains PARTIAL. Do not claim Work evidence, Roadmap Gate GREEN, P9 technical PASS, or final Phase 13 qualification from this exception. Carry missing P4/P9 cases to later independent qualification; P12 remains a mandatory manual checkpoint and P13 native closeout remains separate.
+
+Execute the actual P10 monitor implementation and focused tests. Advance the assigned 13 package manifest versions and 20 internal @dope/* pins coherently to 0.13.10 as part of real implementation; leave changes uncommitted for the runner-owned exact-subject 0.13.10 commit. Stop only on a genuine P10 implementation, safety or verification blocker, with specific evidence.
 
 FOCUSED VERIFICATION
 Focused roadmap-canvas, roadmap-status-truth, agent-run-ui and history-navigation tests: two Phases in different states; failed/paused Work does not show Complete; fake percentages rejected; unknown/stale labels persist across reload; click-through stable IDs; disabled edit after lock. Real Roadmap-monitor browser qualification is at checkpoint C/P12; final native owner closeout is P13.
