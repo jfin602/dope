@@ -1,25 +1,28 @@
-TASK: Phase 13 / R1 — Diagnose and repair local Work first-file read authority failure
+TASK: Phase 13 / R1 — Repair local Work first-file read authority (independent of legacy planning)
 
 MODEL / MODE
 - Recommended Codex: GPT-6 Sol High.
-- Manual recovery prompt, not a codex:phase implementation slot.
-- Live connected Codex browser required for final verification; source diagnosis and focused tests first.
-- Product version stays 0.13.11 during recovery. No 0.13.12 marker, P9/P12 technical GREEN, or P13 closeout.
+- Standalone manual recovery, not a codex:phase step.
+- Source diagnosis + focused tests first; real connected Codex browser required for live result.
+- Stay at product 0.13.11 during recovery. No 0.13.12 marker or P9/P12/P13 GREEN.
 
-AUTHORITY / INPUTS
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/qualification/checkpoint-c.md and checkpoint-b.md, and the current source around Pi local Work tool calls, broker reads, grants, source-hash validation and safe transcript projection. Check actual HEAD, dirty state, branch, built/served app and local model before acting. Preserve all existing uncommitted/owner work and historical reports. Use only the existing disposable fixture or another explicitly authorized disposable project; never touch the owner's tower-defense project.
+AUTHORITATIVE DIRECTION
+The owner-selected Phase 13 workflow is Roadmap Planning → reviewed Prompt Stack Creation → authorized Work → evidence-backed Roadmap qualification. Software Map synthesis, the legacy Planning Map architecture/transformations UI, and manual System/Subsystem creation are NOT prerequisites for Roadmap-driven Work. Phase 14 will address optional Software Map reintegration. R3 owns the handoff decoupling; do not solve R1 by restoring legacy architecture setup.
 
-CONFIRMED FAILURE TO REPRODUCE
-In the P12 fixture, owner-authorized local openai/gpt-oss-20b (observed 16,384 context) launched Task work-4e414d39defc9eff4b5892609b4daf4d and Run 5fd0ad56-9ed7-41b4-bec0-549e78337474 with grant e1a18ee7-a96c-4665-b58c-98c5dfa5bca4. list_files src succeeded; the first read_file src/slug.js at offset 0 returned Authority denied. The request included expectedSourceHash, but no preceding returned source hash was visible in the safe transcript. Zero files changed; validation did not run; there was no candidate or evidence receipt. The exact supplied hash and rejecting authority check were not established. Do NOT assume the model or broker is wrong without tracing the actual denial.
+PREFLIGHT / EVIDENCE
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/qualification/checkpoint-b.md and checkpoint-c.md, and docs/tasks/p13/recovery/README.md. Inspect actual Work/Pi adapter, broker read guards, tool schema, source-hash identity, project/root/grants and safe tool transcript. Check local HEAD, dirty state, model, served bundle identity and existing owner approvals. Protect unrelated work and the real tower-defense project.
 
-REPAIR SCOPE
-1. Trace model-facing read_file tool schema and Pi adapter, invocation argument parsing, source snapshots/hash provenance, broker authorization, project/owner/root/lease/grant checks, pagination, and error/result projection. Correlate the failed Run with a precise safe denial category and validator branch. Protect raw content, secrets and security-sensitive internal data from user-visible diagnostics.
-2. Determine whether the initial expectedSourceHash was legitimately populated from a trusted source, hallucinated/incorrectly supplied by the model, or mismatched by an adapter. Verify semantics on first page and subsequent reads: a valid authorized first read should succeed without inventing a previous-page hash; reads that claim invalid expected hashes or stale source must continue to fail closed.
-3. Apply the narrowest supported correction: tool contract/guidance, argument adapter, or broker validation as evidence warrants. Never globally strip expectedSourceHash, bypass source pinning, widen grants, disable the authority check or silently change the model/provider. Expose a safe, actionable denial category in Work/diagnostics without leaking protected data.
-4. Add deterministic regressions for legitimate first read, malformed/wrong expected hash, stale file, offset/page continuation, wrong root/project/grant, and model call round-trip. Preserve history and retry safety.
+REPRODUCE THE EXACT FAILURE
+Checkpoint C's owner-approved local openai/gpt-oss-20b, observed context 16,384, launched Task work-4e414d39defc9eff4b5892609b4daf4d, Run 5fd0ad56-9ed7-41b4-bec0-549e78337474, grant e1a18ee7-a96c-4665-b58c-98c5dfa5bca4. list_files src succeeded; first read_file src/slug.js at offset 0 was authority-denied with model-supplied expectedSourceHash, with no prior returned source hash visible. No file change, test, candidate or receipt. Root cause unproven.
 
-LIVE QUALIFICATION
-After focused tests/build, run an explicitly owner-authorized real local Work retry in the disposable slug project. Confirm source read, implementation edit in src/slug.js only, actual npm test execution and the expected validation outcome. Continue through candidate review only with explicit owner approval; never self-accept. Verify before/after source hashes, Run/task/grant IDs, selected model, safe tool trace, and that the previous failed Run stays historically failed. A successful run is not by itself Criterion/Gate GREEN.
+TASK
+1. Trace full model-facing read schema → Pi tool args → authorization broker → source-hash/page checks → safe result/transcript, including which validator branch denied the request. Establish whether initial expectedSourceHash had trusted provenance, was invented by the model, or was altered by an adapter. Never guess the cause or imply an unauthorized file read took place.
+2. Make a legitimate owner-granted first read work without a fabricated prior-page source hash. Preserve strict rejection of explicitly wrong/stale hashes, changed source, foreign roots, unauthorized grants, malformed paths and invalid subsequent pages. Do not strip all hashes, bypass authority, widen grants or silently switch providers.
+3. Provide an actionable, redacted denial category in the existing Work diagnostics without exposing sensitive arguments/content. Add regression tests for initial/page-continuation reads, explicit wrong and stale hashes, adapter round-trip, and project/root/permission denials.
+4. Verify Work's read/edit/test ability as a standalone authorized Work task or via an already-approved prompt source. Do NOT require a Software Map or legacy Planning Map/WorkItem preparation in this R1 proof; R3 will establish the new Roadmap stack entry.
 
-REPAIR BUDGET / EXIT
-Up to 3 diagnosis → narrow repair → focused verification → affected live retest cycles. Stop with FAIL / NOT GREEN if still blocked, or PASS only when first-file read and representative Work source/test execution are directly observed. Append an R1 entry under docs/tasks/p13/recovery/qualification/ (create if needed) with root cause, relevant code, tests, model/served bundle, browser evidence and residual gaps. Report any owner actions required. Keep P9/P12 NOT GREEN and P13 not authorized. Do not modify original P9/P12 prompt bytes or runner prefix/version logic. Commit/push only the scoped, verified fix and report to the current tracked branch without force or unrelated staging; leave a failed or unsafe change uncommitted and report accurately.
+LIVE EVIDENCE
+On an explicitly owner-authorized disposable slug project, run GPT-OSS Work against src/slug.js and test/slug.test.js. Observe successful brokered read, real src/slug.js edit, actual npm test outcome and truthful held candidate (if produced). Inspect grant, task/run IDs, before/after source hashes, safe tool traces and historical failed run. Candidate acceptance still requires a distinct owner decision; a successful Work run does not itself qualify any Gate. Do not fabricate a successful run if a new denial occurs.
+
+REPAIR / DISPOSITION
+Up to 3 narrow diagnose → repair → tests/build → affected real-browser retest cycles. Record what was directly observed, source and code revisions, tests/commands, cause, denial category and remaining gaps under docs/tasks/p13/recovery/qualification/; distinguish first-read PASS from the full Roadmap pipeline. Only safe, verified scoped code/report may be committed and pushed to tracked branch without force or unrelated changes. Keep version 0.13.11, P9 NOT GREEN and P12 NOT GREEN; do not change the original checkpoint reports or runner mechanics except append-only evidence. Hand off to R3 for new prompt-stack routing.
