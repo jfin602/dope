@@ -9,8 +9,9 @@ export function liveAnswerSource(message: ChatAssistantMessage | undefined, cont
 /** Batch rendering only; provider events and Chat state continue without a timer. */
 export class LiveAnswerUpdateBatcher {
     private timer?: ReturnType<typeof setTimeout>;
-    constructor(private readonly paint: () => void, private readonly delayMs = 260) {}
-    request(): void {
+    constructor(private readonly paint: () => void, private readonly delayMs = 250) {}
+    request(immediate = false): void {
+        if (immediate) { this.cancel(); this.paint(); return; }
         if (this.timer) return;
         this.timer = setTimeout(() => { this.timer = undefined; this.paint(); }, this.delayMs);
     }
@@ -37,17 +38,33 @@ export class LiveAnswerRevealBuffer {
     advance(): string {
         const pending = this.target.slice(this.visible.length);
         if (!pending) return this.visible;
-        const candidate = pending.slice(0, 96);
+        // A short normal chunk is readable; a growing backlog is consumed in
+        // proportion to its size so display never falls arbitrarily far behind.
+        const limit = pending.length > 4096 ? pending.length :
+            pending.length > 192 ? Math.ceil(pending.length / 2) : 96;
+        const candidate = pending.slice(0, limit);
         let boundary = 0;
-        for (const match of candidate.matchAll(/\s+/gu)) boundary = match.index + match[0].length;
-        if (boundary >= 8) this.visible += candidate.slice(0, boundary);
-        else if (candidate.length >= 24 || /[.!?]\s*$/u.test(candidate)) this.visible += candidate;
+        for (const match of candidate.matchAll(/[\s]+|[.,!?;:](?=\s|$)/gu))
+            if (match.index + match[0].length >= 4) boundary = match.index + match[0].length;
+        let length = boundary || (this.visible && candidate.length < 8 ? 0 : candidate.length);
+        if (pending.length <= 2048) length = safeMarkdownRevealLength(candidate.slice(0, length));
+        this.visible += candidate.slice(0, length);
         return this.visible;
     }
 
     current(): string { return this.visible; }
     pending(): boolean { return this.visible.length < this.target.length; }
     reset(): void { this.key = ''; this.target = ''; this.visible = ''; }
+}
+
+/** Hold only unfinished Markdown markers at the tail of a live chunk. */
+function safeMarkdownRevealLength(text: string): number {
+    const line = text.lastIndexOf('\n') + 1;
+    const tail = text.slice(line);
+    if (/^\s*(?:#{1,6}|[-+*]|\d+[.)]|>)\s*$/u.test(tail)) return line;
+    if (/^\s*```[^\n]*$/u.test(tail)) return line;
+    const link = /\[[^\]\n]*\](?:\([^\)\n]*)?$|\[[^\]\n]*$/u.exec(text);
+    return link?.index ?? text.length;
 }
 
 /** Only the current live Ask turn may offer a decision; saved pauses are inert. */

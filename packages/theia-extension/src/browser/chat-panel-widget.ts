@@ -324,7 +324,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (kind === 'activity' && !this.transcriptTouchActive && !this.transcriptTouchSettleTimer &&
                 this.updateLiveStreamActivity()) return;
             if (kind === 'answer' && !this.transcriptTouchActive && !this.transcriptTouchSettleTimer) {
-                this.answerBatcher.request(); return;
+                const stream = this.controller.stream;
+                if (stream?.content) {
+                    const saved = this.controller.chat?.messages.find(message => message.id === stream.messageId);
+                    const partial = saved?.role === 'assistant' ? saved : undefined;
+                    const key = `${stream.chatId}:${stream.messageId}:${stream.executionId}:${partial?.answerPartial?.cursor ?? 0}`;
+                    this.liveAnswerReveal.update(key, liveAnswerSource(partial, stream.content));
+                }
+                this.answerBatcher.request(!this.liveAnswerVisible && !!stream?.content); return;
             }
             this.render();
         }, owners, this.id,
@@ -2208,7 +2215,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (revealed && this.scrollFollow.following && details.open) scroll.scrollTop = scroll.scrollHeight;
         return true;
     }
-    private renderLiveAnswer(source: string, key: string, advance = false): HTMLElement {
+    private renderLiveAnswer(source: string, key: string, advance = this.liveAnswerVisible?.key !== key): HTMLElement {
         this.liveAnswerReveal.update(key, source);
         const visible = advance ? this.liveAnswerReveal.advance() : this.liveAnswerReveal.current();
         const rendered = renderUntrustedMessageMarkdown(this.markdown, visible);
@@ -2251,7 +2258,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const activity = item.querySelector<HTMLDetailsElement>('.dope-chat-stream-activity');
             if (activity) activity.open = false;
         }
-        if (this.scrollFollow.following) scroll.scrollTop = scroll.scrollHeight;
+        if (this.scrollFollow.following && !this.transcriptDrag.dragging) {
+            this.cancelScrollAnimation?.();
+            this.scrollAnimationUntil = performance.now() + 180;
+            this.animateLatest(scroll);
+        }
         return true;
     }
     private stopElapsedTicker(): void {

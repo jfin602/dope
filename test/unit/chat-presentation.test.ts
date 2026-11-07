@@ -17,11 +17,14 @@ test('live continuation displays only text beyond the saved partial', () => {
 test('live answer reveals bounded word chunks while retaining all incoming text', () => {
     const reveal = new LiveAnswerRevealBuffer();
     reveal.update('turn-a', 'Hello wo');
-    assert.equal(reveal.advance(), '');
-    reveal.update('turn-a', 'Hello world. This is a longer sentence with several words.');
+    assert.equal(reveal.advance(), 'Hello ');
+    assert.equal(reveal.advance(), 'Hello ');
+    const full = 'Hello world. This is a longer sentence with several words. ' +
+        'More words continue here so the next chunk remains buffered for a later reveal.';
+    reveal.update('turn-a', full);
     const first = reveal.advance();
-    assert.ok(first.length >= 8 && first.length <= 96);
-    assert.match(first, /\s$/);
+    assert.ok(first.startsWith('Hello wo'));
+    assert.ok(first.length < full.length);
     assert.equal(reveal.pending(), true);
     reveal.update('turn-b', 'A fresh answer starts here. ');
     assert.equal(reveal.current(), '');
@@ -30,16 +33,45 @@ test('live answer reveals bounded word chunks while retaining all incoming text'
     assert.equal(reveal.current(), '');
 });
 
+test('live answer catches up under load and holds unfinished Markdown tails', () => {
+    const reveal = new LiveAnswerRevealBuffer();
+    reveal.update('markdown', '# ');
+    assert.equal(reveal.advance(), '');
+    reveal.update('markdown', '# Heading\n- ');
+    assert.equal(reveal.advance(), '# Heading\n');
+    reveal.update('markdown', '# Heading\n- item\nSee [the');
+    assert.equal(reveal.advance(), '# Heading\n- item\nSee ');
+    reveal.update('markdown', '# Heading\n- item\nSee [the docs](https://example.com)\n```ts');
+    assert.equal(reveal.advance(), '# Heading\n- item\nSee [the docs](https://example.com)\n');
+    reveal.update('markdown', '# Heading\n- item\nSee [the docs](https://example.com)\n```ts\nconst x = 1;\n');
+    const snapshots: string[] = [];
+    while (reveal.pending()) {
+        const next = reveal.advance();
+        assert.ok(next.length > (snapshots.at(-1)?.length ?? 0));
+        snapshots.push(next);
+    }
+    assert.equal(snapshots.at(-1), '# Heading\n- item\nSee [the docs](https://example.com)\n```ts\nconst x = 1;\n');
+    assert.ok(snapshots.every(text => !text.endsWith('[the') && !text.endsWith('```ts')));
+    const fast = new LiveAnswerRevealBuffer();
+    fast.update('fast', 'word '.repeat(1200));
+    assert.ok(fast.advance().length > 96);
+    let ticks = 1;
+    while (fast.pending()) { fast.advance(); ticks++; }
+    assert.ok(ticks <= 2);
+    assert.equal(fast.current(), 'word '.repeat(1200));
+});
+
 test('final answer paints batch incoming deltas without holding their state', async () => {
     let paints = 0;
     const batcher = new LiveAnswerUpdateBatcher(() => { paints++; }, 70);
-    batcher.request(); batcher.request(); batcher.request();
-    assert.equal(paints, 0);
-    await new Promise(resolve => setTimeout(resolve, 95));
+    batcher.request(true);
     assert.equal(paints, 1);
+    batcher.request(); batcher.request(); batcher.request();
+    await new Promise(resolve => setTimeout(resolve, 95));
+    assert.equal(paints, 2);
     batcher.request(); batcher.cancel();
     await new Promise(resolve => setTimeout(resolve, 95));
-    assert.equal(paints, 1);
+    assert.equal(paints, 2);
 });
 
 test('partial Markdown retains ordered fences and safe code rendering as text arrives', () => {
