@@ -7,6 +7,7 @@ import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service
 import { StorageService } from '@theia/core/lib/browser/storage-service';
 import type { CheckpointNode } from '@dope/project-intelligence/lib/roadmap-projection';
 import type { RoadmapGateIndex } from '@dope/project-intelligence/lib/node/roadmap-gate-domain';
+import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { RoadmapPublicationPreview, RoadmapExistingLinkPreview } from '@dope/project-intelligence/lib/node/roadmap-publication';
 import type { GateDocumentSyncPreview, GateDocumentRelinkPreview } from '@dope/project-intelligence/lib/node/roadmap-gate-document';
 import { projectRoadmapTasks, selectPhaseFocus, type TaskRoadmapProjection } from '@dope/project-intelligence/lib/roadmap-task-projection';
@@ -22,6 +23,7 @@ import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPr
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { ChatEvent, ChatPlanningProposal, ChatContextSelection, ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
+    type RoadmapWorkRun,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { roadmapHistoryTarget } from './roadmap-history-navigation';
@@ -135,6 +137,8 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
     proposalSave?: ProposedFieldSave;
     proposalSourceChanges?: { before: string; after: string }[];
     selectedGateId?: string; select: (id: string) => void; selectGate: (gateId: string, phaseId: string) => void;
+    openRun?: (runId: string) => void;
+    openWork?: () => void;
     contextPick?: { selected: readonly string[]; toggle: (kind: NonNullable<ChatContextSelection['elementKind']>, id: string) => void };
     activate: (id: string) => void;
     reveal: (id: string, element: HTMLButtonElement) => void } }): React.ReactElement {
@@ -208,7 +212,14 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
                     patch: patchFor(criterion.id, 'expectedResult'), provisional: data.proposalProvisional }),
                 React.createElement('p', null, criterion.evidence.length ?
                     criterion.evidence.map(evidence => `${evidence.result} (${evidence.review.status}${evidence.validation ? ', stale' : ''}): ${evidence.summary}`).join('; ') :
-                    'No evidence recorded.')) }));
+                    'No evidence recorded.'),
+                ...criterion.evidence.filter(evidence => !!evidence.receipt).map(evidence =>
+                    React.createElement('p', { key: evidence.id, className: 'dope-roadmap-evidence-provenance' },
+                        `Receipt ${evidence.receipt!.eventId} · ${evidence.receipt!.origin} · source revision ${evidence.source?.revision ?? 'unknown'} · check ${evidence.receipt!.checkId ?? 'unspecified'}`,
+                        !data.historical && evidence.receipt?.runId && data.openRun &&
+                            React.createElement('button', { type: 'button', className: 'nodrag nopan',
+                                onClick: event => { event.stopPropagation(); data.openRun?.(evidence.receipt!.runId!); } },
+                            `Open run ${evidence.receipt.runId}`)))) }));
         const additions = (data.proposalChanges ?? []).filter(change => change.action === 'create' &&
             change.after?.kind === 'criterion' && change.after.parentId === gate.id).map(change => ({
             id: change.id, order: change.after?.order ?? accepted.length,
@@ -255,6 +266,20 @@ function RoadmapNode({ data }: { data: { item: CheckpointNode; selected: boolean
         React.createElement('span', { className: 'dope-roadmap-phase-divider', 'aria-hidden': true }),
         React.createElement('span', { className: 'dope-roadmap-phase-count' },
             card.required ? `${card.qualified} of ${card.required} gates qualified` : 'No accepted gates · Unplanned'),
+        card.monitor && React.createElement('div', { className: 'dope-roadmap-monitor', 'aria-label': 'Phase Work and evidence monitor' },
+            ...card.monitor.warnings.map(warning => React.createElement('p', { key: warning, role: 'status' }, warning)),
+            card.monitor.requirementGap && React.createElement('p', null, `Requirement gap: ${card.monitor.requirementGap}`),
+            React.createElement('p', null, `Latest evidence: ${card.monitor.latestResult ?? 'Unknown · no reviewed result recorded'}`),
+            React.createElement('p', null, `Run activity: ${card.monitor.runIds.length ?
+                `${card.monitor.runIds.length} linked run${card.monitor.runIds.length === 1 ? '' : 's'}` : 'Unknown · no linked run observed'}`),
+            React.createElement('p', null, `Next: ${card.monitor.nextAction}`),
+            !data.historical && card.monitor.workItemIds.length > 0 && data.openWork &&
+                React.createElement('button', { type: 'button', className: 'nodrag nopan',
+                    onClick: event => { event.stopPropagation(); data.openWork?.(); } },
+                `Open Work · ${card.monitor.workItemIds.length} linked item${card.monitor.workItemIds.length === 1 ? '' : 's'}`),
+            !data.historical && card.monitor.runIds.map(id => React.createElement('button', { key: id, type: 'button',
+                className: 'nodrag nopan', onClick: event => { event.stopPropagation(); data.openRun?.(id); } },
+                `Open run ${id}`))),
         !card.planningLocked && data.beginCreate && React.createElement('div', { className: 'dope-roadmap-inline-actions dope-roadmap-create-actions nodrag nopan' },
             React.createElement('button', { type: 'button', 'aria-label': `Add Gate to ${item.title}`,
                 onClick: event => { event.stopPropagation(); data.beginCreate?.('gate', item.id); } },
@@ -612,6 +637,8 @@ export class RoadmapCanvasWidget extends BaseWidget {
     private readonly rootsListener;
     private readonly modelListener;
     private request = 0;
+    private workRuns: RoadmapWorkRun[] = [];
+    private workMonitorSerial = 0;
     private importSerial = 0;
     private replacementSerial = 0;
     private syncPreview?: RoadmapSyncPreview;
@@ -915,7 +942,9 @@ export class RoadmapCanvasWidget extends BaseWidget {
         private readonly openLinkedDocument?: (workspace: string, path: string) => Promise<void>,
         private readonly nativeProposalBridge?: NativeProposalBridge,
         private readonly nativeProposalEditBridge?: NativeProposalEditBridge,
-        private readonly readActiveStage?: (uri: string) => Promise<ChatRoadmapStageSnapshot | undefined>) {
+        private readonly readActiveStage?: (uri: string) => Promise<ChatRoadmapStageSnapshot | undefined>,
+        private readonly openRun?: (workspace: string, runId: string) => Promise<void>,
+        private readonly agentRuntime?: AgentRuntimeService) {
         super();
         this.id = ROADMAP_CANVAS_ID;
         this.title.label = this.title.caption = 'Roadmap';
@@ -1594,7 +1623,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             }
             const tasks = taskResult.tasks;
             this.taskDiscoveryError = taskResult.error;
-            if (switched) { this.poolQuery = ''; this.poolFilter.value = ''; }
+            if (switched) { this.poolQuery = ''; this.poolFilter.value = ''; this.workRuns = []; }
             this.owners = owners;
             this.taskStacks = tasks;
             this.projectUri = projectUri;
@@ -1648,6 +1677,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
             if (this.history?.uri === projectUri && this.history.projectId === index.projectId)
                 this.projection = this.projectIndex(this.history.index as unknown as RoadmapIndex, [], []);
             else this.projection = this.projectIndex(index, tasks, owners);
+            if (!this.history) void this.refreshWorkMonitor();
             if (switched && this.selectedId) {
                 const restoredTask = this.projection.nodes.find(node => node.id === this.selectedId && node.taskSource);
                 if (restoredTask) this.inspector.selectTask(restoredTask);
@@ -1960,9 +1990,43 @@ export class RoadmapCanvasWidget extends BaseWidget {
         return base;
     }
 
+    /** Read-only Work projection; source identity is checked before replacing visible card data. */
+    async refreshWorkMonitor(): Promise<void> {
+        const index = this.inspector.gateIndex, uri = this.projectUri, serial = ++this.workMonitorSerial;
+        if (!this.agentRuntime || !index || !uri || this.history) return;
+        try {
+            const links = index.phases.flatMap(phase => phase.workLinks ?? []);
+            if (!links.length) { this.workRuns = []; return; }
+            const { projectHandle } = await this.agentRuntime.attach(uri);
+            const pairs = await Promise.all(links.map(async link => ({ link,
+                tasks: await this.agentRuntime!.listWorkItemTasks(projectHandle, link.mapId, link.workItemId) })));
+            const runs = await this.agentRuntime.listRuns(projectHandle);
+            if (serial !== this.workMonitorSerial || this.projectUri !== uri || this.history ||
+                this.inspector.gateIndex?.projectId !== index.projectId ||
+                this.inspector.gateIndex.revision !== index.revision) return;
+            this.workRuns = pairs.flatMap(({ link, tasks }) => runs.filter(run =>
+                run.projectId === index.projectId && tasks.some(task => task.id === run.taskId &&
+                    task.projectId === link.planningProjectId && task.origin.kind === 'work-item' &&
+                    task.origin.workItemId === link.workItemId && task.origin.planningMapId === link.mapId))
+                .map(run => ({ workItemId: link.workItemId, runId: run.id, status: run.status,
+                    updatedAt: run.endedAt ?? run.startedAt ?? run.createdAt,
+                    result: run.changeSummary?.summary })));
+            this.projection = this.projectIndex(index as unknown as RoadmapIndex);
+            this.render();
+        } catch {
+            if (serial === this.workMonitorSerial && this.projectUri === uri && !this.history &&
+                this.inspector.gateIndex?.projectId === index.projectId) {
+                this.workRuns = [];
+                this.projection = this.projectIndex(index as unknown as RoadmapIndex);
+                this.render();
+            }
+        }
+    }
+
     private projectIndex(index: RoadmapIndex, tasks = this.taskStacks, owners = this.owners): TaskRoadmapProjection {
         if ((index as unknown as RoadmapGateIndex).schemaVersion === 2) {
-            const phases = gatePhaseCards(index as unknown as RoadmapGateIndex, owners);
+            const phases = gatePhaseCards(index as unknown as RoadmapGateIndex, owners,
+                this.history ? [] : this.workRuns);
             const accepted = this.createState?.projectId === phases.projectId ? this.createState.draft : undefined;
             const proposed = this.proposedDraft;
             const visible = projectGateDraftCards(phases, accepted, proposed);
@@ -2611,6 +2675,10 @@ export class RoadmapCanvasWidget extends BaseWidget {
                     select: (id: string) => this.select(id),
                     selectGate: (gateId: string, phaseId: string) => this.selectGate(gateId, phaseId,
                         projection!.projectId, projection!.revision),
+                    openWork: () => { if (this.projectUri && this.projectId === projection!.projectId) void this.openWork(); },
+                    openRun: (runId: string) => {
+                        if (this.projectUri && this.projectId === projection!.projectId) void this.openRun?.(this.projectUri, runId);
+                    },
                     activate: (id: string) => this.activateCheckpoint(id),
                     reveal: (id: string, element: HTMLButtonElement) => this.revealFocusedCard(id, position, element) },
                 selected: item.id === this.selectedId, draggable: !this.history && this.arranging, selectable: true,

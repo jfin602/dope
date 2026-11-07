@@ -32,6 +32,9 @@ export interface CheckpointNode {
     /** Read-only schema-two visual summary; no RoadmapStore field is written. */
     phaseCard?: { number: number; title: string; qualification: string; presentation: string; qualified: number; required: number;
         planningLocked: boolean;
+        monitor?: { label: 'Planning' | 'Ready for Work' | 'In Work' | 'Awaiting Qualification' | 'Complete';
+            warnings: string[]; nextAction: string; latestResult?: string; runIds: string[];
+            workItemIds: string[]; requirementGap?: string };
         gates: (RoadmapGate & { status: string; proposed: boolean })[];
         corrections: RoadmapCorrection[] };
 }

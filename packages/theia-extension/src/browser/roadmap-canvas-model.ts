@@ -15,6 +15,53 @@ export interface PhaseCardSummary {
     gates: (RoadmapGate & { status: string; proposed: boolean })[];
     corrections: RoadmapCorrection[];
     planningLocked: boolean;
+    monitor?: RoadmapPhaseMonitor;
+}
+
+export interface RoadmapPhaseMonitor {
+    label: 'Planning' | 'Ready for Work' | 'In Work' | 'Awaiting Qualification' | 'Complete';
+    warnings: string[];
+    nextAction: string;
+    latestResult?: string;
+    runIds: string[];
+    workItemIds: string[];
+    requirementGap?: string;
+}
+export interface RoadmapWorkRun { workItemId: string; runId: string; status: string; updatedAt: string; result?: string }
+
+/** Recomputed from the canonical Roadmap snapshot. Work completion and prose never award Green. */
+export function roadmapPhaseMonitor(index: RoadmapGateIndex, phaseId: string, runs: readonly RoadmapWorkRun[] = []): RoadmapPhaseMonitor {
+    const phase = index.phases.find(item => item.id === phaseId);
+    if (!phase) throw new Error('Missing Roadmap Phase');
+    const result = evaluatePhaseQualification(index, phaseId, phase.qualificationSource);
+    const gates = index.gates.filter(gate => gate.parentPhaseId === phaseId && gate.draftAcceptance !== 'proposed');
+    const evidence = gates.flatMap(gate => gate.criteria.flatMap(criterion => criterion.evidence));
+    const latest = [...evidence].sort((a, b) => b.observedAt.localeCompare(a.observedAt))[0];
+    const workItemIds = [...new Set((phase.workLinks ?? []).map(link => link.workItemId))];
+    const linkedRuns = runs.filter(run => workItemIds.includes(run.workItemId));
+    const runIds = [...new Set([...linkedRuns.map(run => run.runId),
+        ...evidence.flatMap(item => item.receipt?.runId ? [item.receipt.runId] : [])])];
+    const recentRun = [...linkedRuns].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    const warnings = [result.status === 'blocked' ? 'Blocked' : '', result.status === 'stale' ? 'Stale evidence or source' : '']
+        .filter(Boolean);
+    // Qualification eligibility is not the separate owner Phase closeout. Until a
+    // durable closeout owner exists, even all-Green Gates remain awaiting that decision.
+    const active = linkedRuns.some(run => ['pending', 'running', 'blocked', 'cancelling'].includes(run.status));
+    const label: RoadmapPhaseMonitor['label'] = !phase.planningLock ? 'Planning' :
+        active ? 'In Work' : !linkedRuns.length && !evidence.length ? 'Ready for Work' : 'Awaiting Qualification';
+    if (recentRun && ['failed', 'blocked', 'interrupted', 'cancelled'].includes(recentRun.status))
+        warnings.push(`Work ${recentRun.status}`);
+    const nextAction = warnings.length ? 'Review the qualification warning' :
+        label === 'Planning' ? 'Finish Planning and approve Gate coverage' :
+        label === 'Ready for Work' ? 'Review and prepare linked Work' :
+        label === 'In Work' ? 'Inspect linked Work and its run results' :
+        label === 'Awaiting Qualification' ? result.status === 'green' ? 'Request separate owner Phase closeout' :
+            'Review missing or current Criterion evidence' :
+        'Review separate owner Phase closeout';
+    return { label, warnings, nextAction, workItemIds, runIds,
+        requirementGap: result.reasons[0],
+        latestResult: recentRun ? `Run ${recentRun.status}${recentRun.result ? ` · ${recentRun.result}` : ''}` :
+            latest && `${latest.result} · ${latest.review.status}${latest.validation ? ' · stale' : ''} · ${latest.summary}` };
 }
 
 /** A color is a projection of accepted source state, never an editable qualification. */
@@ -55,7 +102,8 @@ export function roadmapSelectableGate(index: RoadmapGateIndex | undefined, proje
 }
 
 /** Read-only schema-two card data. Gate rows are contained in their Phase, never graph peers. */
-export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly RoadmapOwnerRecord[] = []): { projectId: string; revision: number;
+export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly RoadmapOwnerRecord[] = [],
+    runs: readonly RoadmapWorkRun[] = []): { projectId: string; revision: number;
     nodes: CheckpointNode[]; edges: CheckpointEdge[]; pools: RoadmapProjection['pools']; diagnostics: string[];
     unassignedCorrections: { id: string; title: string }[] } {
     const source = projectRoadmap(index, owners);
@@ -75,20 +123,14 @@ export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly Roadmap
         const label = phase.title.replace(/^Phase\s+\d+\s*(?:[-—:]\s*)?/i, '').trim() || phase.title;
         const phaseNumber = /^Phase\s+(\d+)\b/i.exec(phase.title);
         const presentation = roadmapPhasePresentation(index, phase.id);
+        const monitor = roadmapPhaseMonitor(index, phase.id, runs);
         const card: PhaseCardSummary = { number: phaseNumber ? Number(phaseNumber[1]) : number + 1, title: label,
             qualification: result.status, presentation, qualified: result.qualified, required: result.required,
-            gates, corrections, planningLocked: !!phase.planningLock };
+            gates, corrections, planningLocked: !!phase.planningLock, monitor };
         return { id: phase.id, kind: 'phase', title: phase.title, order: phase.order,
             status: presentation === 'green' ? 'green' : presentation === 'not-green' || presentation === 'blocked' ? 'not-green' :
                 presentation === 'active' ? 'active' : presentation === 'waived' ? 'waived' : 'unknown',
-            statusLabel: phase.planningLock && !phase.workLinks?.length &&
-                !['active', 'implemented'].includes(phase.implementationStatus) ?
-                `Ready for Work${presentation === 'stale' ? ' · Source Stale' : ''}` :
-                presentation === 'unplanned' ? 'Unplanned' : presentation === 'planned' ? 'Planning' :
-                presentation === 'active' ? 'Active' : presentation === 'not-green' ? 'Not Green' :
-                    presentation === 'blocked' ? 'Blocked' : presentation === 'stale' ? 'Requalification Required' :
-                result.status === 'stale' ? 'Requalification Required' : result.status === 'not-green' ? 'Not Green' :
-                    result.status[0].toUpperCase() + result.status.slice(1),
+            statusLabel: result.status === 'unplanned' ? 'Unplanned' : monitor.label,
             evidence: [], readOnly: true, lane: 'path',
             draftState: phase.draftAcceptance === 'published' ? undefined : phase.draftAcceptance,
             phaseCard: card };

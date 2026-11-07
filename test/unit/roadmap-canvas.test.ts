@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapPhaseMonitor, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import type { RoadmapGateIndex } from '../../packages/project-intelligence/src/node/roadmap-gate-domain.ts';
 import { roadmapEdgeStatus, roadmapStatusMark, type RoadmapStatus } from '../../packages/theia-extension/src/browser/roadmap-status-style.ts';
 
@@ -63,6 +63,25 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
     const lockedCards = gatePhaseCards(locked);
     assert.deepEqual(lockedCards.nodes.map(item => item.statusLabel), ['Ready for Work', 'Unplanned']);
     assert.deepEqual(lockedCards.nodes.map(item => item.phaseCard?.planningLocked), [true, false]);
+    assert.equal(lockedCards.nodes[0].phaseCard?.monitor?.nextAction, 'Review and prepare linked Work');
+    assert.deepEqual(lockedCards.nodes.map(item => item.phaseCard?.monitor?.runIds), [[], []]);
+    assert.equal(roadmapPhaseMonitor(structuredClone(locked), 'phase-a').label, 'Ready for Work');
+    locked.phases[0].workLinks = [{ planningProjectId: 'project', mapId: 'map-a', mapRevision: 1,
+        basis: { architectureRevision: 1, architectureFingerprint: 'a', physicalInputFingerprint: 'b', physicalGeneration: 1 },
+        workItemId: 'work-a', transformationIds: ['change-a'], criterionIds: ['criterion-a'] }];
+    const runs = [{ workItemId: 'work-a', runId: 'run-a', status: 'running', updatedAt: '2026-11-07T00:00:00Z' }];
+    assert.equal(roadmapPhaseMonitor(locked, 'phase-a', runs).label, 'In Work');
+    const failed = roadmapPhaseMonitor(locked, 'phase-a', [{ ...runs[0], status: 'failed' }]);
+    assert.equal(failed.label, 'Awaiting Qualification');
+    assert.ok(failed.warnings.includes('Work failed'));
+    assert.equal(gatePhaseCards(locked, [], [{ ...runs[0], status: 'failed' }]).nodes[0].phaseCard?.qualified, 0);
+    assert.equal(gatePhaseCards(locked, [], [{ ...runs[0], status: 'failed' }]).nodes[0].phaseCard?.monitor?.label,
+        'Awaiting Qualification');
+    locked.phases[0].qualificationBlockers = ['Required source proof unavailable'];
+    const blocked = gatePhaseCards(structuredClone(locked));
+    assert.deepEqual(blocked.nodes[0].phaseCard?.monitor?.warnings, ['Blocked']);
+    assert.equal(blocked.nodes[0].phaseCard?.qualified, 0);
+    assert.equal(gatePhaseCards(structuredClone(locked)).nodes[0].phaseCard?.monitor?.warnings[0], 'Blocked');
     assert.equal(index.phases[0].planningLock, undefined);
     const css = read('packages/theia-extension/src/browser/dope.css');
     assert.match(css, /\.dope-roadmap-phase-card \{ width: 500px/);

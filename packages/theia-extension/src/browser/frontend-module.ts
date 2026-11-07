@@ -356,6 +356,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             for (const widget of widgets.getWidgets(AGENT_TRANSCRIPT_ID) as AgentTranscriptWidget[])
                 if ((change.kind === 'run' || change.kind === 'event' || change.kind === 'transcript') && widget.options.runId === change.id)
                     widget.scheduleRefresh();
+            if (change.kind === 'run' || change.kind === 'task' || change.kind === 'event')
+                void widgets.tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)?.refreshWorkMonitor();
         });
     bind(ChatOpenOwners).toSelf().inSingletonScope();
     bind(WorkOpenOwners).toSelf().inSingletonScope();
@@ -571,7 +573,11 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     } catch { /* Another Chat's invalid lease cannot hide the active owner. */ }
                 }
                 return undefined;
-            }) })).inSingletonScope();
+            }, async (project, runId) => {
+                await openAgentTranscript({ project, runId }, options =>
+                    context.container.get(WidgetManager).getOrCreateWidget<AgentTranscriptWidget>(
+                        AGENT_TRANSCRIPT_ID, options), context.container.get(ApplicationShell));
+            }, context.container.get(AgentRuntimeService)) })).inSingletonScope();
     // Saved pre-overlay workbench layouts may restore this sidebar. It shares the model but cannot edit.
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
         new RoadmapInspectorWidget(context.container.get(RoadmapInspectorModel), false) })).inSingletonScope();
