@@ -113,7 +113,7 @@ export class RoadmapInspectorWidget extends BaseWidget {
                 if (review && review.phaseId === phase.id) {
                     const details = this.element('div'); details.setAttribute('role', 'group');
                     details.setAttribute('aria-label', 'Finish Planning review');
-                    details.append(this.element('p', `Review Phase ${phase.id} · Roadmap revision ${review.revision} · source ${review.source.path} · ${review.source.sha256}`),
+                    details.append(this.element('p', `Review Phase ${phase.id} · Roadmap revision ${review.revision} · source ${review.source.path ?? 'Roadmap index'} · ${review.source.sha256}`),
                         this.element('p', `Required Gates in order: ${review.requiredGateIds.join(', ')}`));
                     for (const criterion of review.criteria) details.append(this.element('p',
                         `${criterion.id}: ${criterion.expectedResult}`));
