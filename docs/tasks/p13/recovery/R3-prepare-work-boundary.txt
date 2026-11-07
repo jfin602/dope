@@ -1,0 +1,30 @@
+TASK: Phase 13 / R3 — Repair Prepare Work availability/recovery and simplify its owner-facing boundary
+
+MODEL / MODE
+- Recommended Codex: GPT-6 Sol High.
+- Standalone targeted correction; real Codex-connected browser required to qualify UX and recovery.
+- Product version remains 0.13.11; no 0.13.12 checkpoint marker and no Phase 13 GREEN.
+
+AUTHORITY / EVIDENCE
+Read BOOT.md, AGENTS.md, ADR 0038/0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/qualification/checkpoint-c.md and the R1/R2 reports if available. Inspect Roadmap Prepare Work, Planning Map generation/activation, Software Map context and synthesis, project/revision persistence, linked WorkItem routing and UI. Check current Git/dirty state, served bundle identity, project root/owner and permissions before touching source. Do not use the owner's actual tower-defense project.
+
+CONFIRMED USABILITY/RECOVERY FAILURE
+P12's locked "Slug helper" Phase could not Prepare Work until Software Map existed. The operator manually created System/Subsystem, added a fixture jsconfig.json and ran synthesis before proceeding. After backend restart, a subsequent Prepare Work retry said the Planning Map was unavailable until the Software Map was reopened. The owner-facing center UI mixed SMAP controls, Architecture/Flow tabs, raw IDs/hashes, WorkItem linkage and several different approval steps. This is a genuine availability and UX problem; do not misclassify it as merely an overbroad prompt.
+
+DIAGNOSE BEFORE CHOOSING DESIGN
+1. Determine which requirements are intrinsic to safely building the Phase → Planning Map → WorkItem association and which are accidental coupling to a manually opened Software Map tab, synthesis cache or transient browser state.
+2. Inspect persistence/re-hydration after project reopen/backend restart, Planning Map source selection, and handling of an absent or stale Software Map.
+3. If architecture data is truly mandatory for some operations, document exactly why and provide a guided, bounded prerequisite at the right UI step rather than an opaque failure. Do not disable architecture/project/source guards or silently synthesize a whole codebase.
+4. For small, source-grounded Work tasks, prefer the existing narrow planning/WorkItem route if it can safely operate without broad Software Map generation. Preserve the Planning Map/WorkItem link contract, explicit owner review, grants and immutable source identity.
+
+TARGETED REPAIR
+- Make Prepare Work from a locked Roadmap Phase deterministic and understandable across reload/restart, with a clear actionable reason when genuinely blocked.
+- Reduce default owner-facing UI to: Phase objective → proposed WorkItems with files and acceptance tests → reviewed Gate/Criterion links → next separate Work authorization. Keep technical hashes, UUIDs, architecture graph and diagnostics in details rather than primary flow. Use existing review mechanisms; do not create a second work-authority owner.
+- Preserve necessary Software Map exploration as a separate optional surface, not a new automatic deliverable or P12 acceptance criterion; where existing backend requires it, distinguish an actual hard prerequisite from UI-tab activation and fix the narrowest recovery path first.
+- Correct misleading status/approval wording; separate link approval, Work grant, candidate acceptance and Phase completion. Never conflate them.
+
+VERIFICATION
+Add focused tests for fresh project with no Software Map, existing valid architecture, restart/reopen, stale/unavailable map, wrong project/root, invalid link, review rejection and no implicit Work grant. Rebuild browser and operate real disposable "Slug helper" Phase through Prepare Work, reviewed Planning Map/WorkItem, browser reload/backend restart and a second Prepare Work entry without forced manual tab reopening. Verify clear compact owner text, keyboard/narrow viewport as practical, and preserved source identities. Log any unavoidable prereqs and exact user action.
+
+REPAIR BUDGET / EXIT
+Up to 3 targeted diagnosis/repair/live-retest cycles. Report PASS, PARTIAL or FAIL with direct browser evidence and separate UI vs persistence observations under docs/tasks/p13/recovery/qualification/. Keep all security/approval boundaries. Do not broaden to general Software Map architecture redesign, roadmap generation or whole-application UX. Keep P9/P12 technical results unchanged; no version/runner marker advance. Run focused tests/build and diff check. Commit/push scoped verified changes/report without force, leaving unrelated owner changes intact.

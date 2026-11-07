@@ -1,0 +1,25 @@
+TASK: Phase 13 / R1 — Diagnose and repair local Work first-file read authority failure
+
+MODEL / MODE
+- Recommended Codex: GPT-6 Sol High.
+- Manual recovery prompt, not a codex:phase implementation slot.
+- Live connected Codex browser required for final verification; source diagnosis and focused tests first.
+- Product version stays 0.13.11 during recovery. No 0.13.12 marker, P9/P12 technical GREEN, or P13 closeout.
+
+AUTHORITY / INPUTS
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/qualification/checkpoint-c.md and checkpoint-b.md, and the current source around Pi local Work tool calls, broker reads, grants, source-hash validation and safe transcript projection. Check actual HEAD, dirty state, branch, built/served app and local model before acting. Preserve all existing uncommitted/owner work and historical reports. Use only the existing disposable fixture or another explicitly authorized disposable project; never touch the owner's tower-defense project.
+
+CONFIRMED FAILURE TO REPRODUCE
+In the P12 fixture, owner-authorized local openai/gpt-oss-20b (observed 16,384 context) launched Task work-4e414d39defc9eff4b5892609b4daf4d and Run 5fd0ad56-9ed7-41b4-bec0-549e78337474 with grant e1a18ee7-a96c-4665-b58c-98c5dfa5bca4. list_files src succeeded; the first read_file src/slug.js at offset 0 returned Authority denied. The request included expectedSourceHash, but no preceding returned source hash was visible in the safe transcript. Zero files changed; validation did not run; there was no candidate or evidence receipt. The exact supplied hash and rejecting authority check were not established. Do NOT assume the model or broker is wrong without tracing the actual denial.
+
+REPAIR SCOPE
+1. Trace model-facing read_file tool schema and Pi adapter, invocation argument parsing, source snapshots/hash provenance, broker authorization, project/owner/root/lease/grant checks, pagination, and error/result projection. Correlate the failed Run with a precise safe denial category and validator branch. Protect raw content, secrets and security-sensitive internal data from user-visible diagnostics.
+2. Determine whether the initial expectedSourceHash was legitimately populated from a trusted source, hallucinated/incorrectly supplied by the model, or mismatched by an adapter. Verify semantics on first page and subsequent reads: a valid authorized first read should succeed without inventing a previous-page hash; reads that claim invalid expected hashes or stale source must continue to fail closed.
+3. Apply the narrowest supported correction: tool contract/guidance, argument adapter, or broker validation as evidence warrants. Never globally strip expectedSourceHash, bypass source pinning, widen grants, disable the authority check or silently change the model/provider. Expose a safe, actionable denial category in Work/diagnostics without leaking protected data.
+4. Add deterministic regressions for legitimate first read, malformed/wrong expected hash, stale file, offset/page continuation, wrong root/project/grant, and model call round-trip. Preserve history and retry safety.
+
+LIVE QUALIFICATION
+After focused tests/build, run an explicitly owner-authorized real local Work retry in the disposable slug project. Confirm source read, implementation edit in src/slug.js only, actual npm test execution and the expected validation outcome. Continue through candidate review only with explicit owner approval; never self-accept. Verify before/after source hashes, Run/task/grant IDs, selected model, safe tool trace, and that the previous failed Run stays historically failed. A successful run is not by itself Criterion/Gate GREEN.
+
+REPAIR BUDGET / EXIT
+Up to 3 diagnosis → narrow repair → focused verification → affected live retest cycles. Stop with FAIL / NOT GREEN if still blocked, or PASS only when first-file read and representative Work source/test execution are directly observed. Append an R1 entry under docs/tasks/p13/recovery/qualification/ (create if needed) with root cause, relevant code, tests, model/served bundle, browser evidence and residual gaps. Report any owner actions required. Keep P9/P12 NOT GREEN and P13 not authorized. Do not modify original P9/P12 prompt bytes or runner prefix/version logic. Commit/push only the scoped, verified fix and report to the current tracked branch without force or unrelated staging; leave a failed or unsafe change uncommitted and report accurately.

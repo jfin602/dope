@@ -1,0 +1,27 @@
+TASK: Phase 13 / R4 — Consolidated P9 + P12 source-bound live qualification replay
+
+MODEL / MODE
+- Recommended Codex: GPT-6 Sol High, browser required.
+- Standalone MANUAL qualification after R1, R2 and R3 have adequate verified results; not a coding runner prompt.
+- Assigned potential checkpoint marker is 0.13.12 ONLY after independent owner-reviewed PASS. Until then stay at 0.13.11 and keep P13 closeout held.
+
+AUTHORITY AND PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, the original docs/tasks/p13/P9-browser-checkpoint-b.txt and P12-browser-checkpoint-c.txt, checkpoint-b.md, checkpoint-c.md, and all R1–R3 qualification reports. Preserve owner progression exception history and all FAIL / PARTIAL / EVIDENCE GAP findings. Record exact Git HEAD/dirty state, tested source, built frontend/backend hashes, project/root/owner/source identity, selected local model, available context and explicit grants. Use authorized disposable project only; do not touch the real tower-defense project, silently change models, self-grant Work, self-promote candidates or self-award GREEN.
+
+EVIDENCE REUSE
+Re-use previous live PASS observations only if their exact source/environment preconditions remain applicable. R1–R3 repairs require repeating affected live cases on final tested source; do not retest unrelated PASS cases by default. Keep P9 and P12 acceptance matrices and owner approvals separate.
+
+MANDATORY LIVE JOURNEY
+1. From the center canonical Roadmap, maintain two independent Phases. Approve Gate coverage, Finish Planning/lock one Phase, and keep the other editable; verify locked editor/keyboard boundaries and persistence.
+2. Use Roadmap Prepare Work. Demonstrate understandable reviewed Planning Map/WorkItem → Phase/Gate/Criterion links with source hash/revision identity; do not silently require a Software Map synthesis or confuse link approval with Work authorization.
+3. Approve a bounded local Work grant, start a genuine Work run, read relevant project source/docs, edit only the authorized file(s), execute actual acceptance tests and hold the candidate. Explicitly review/promo the candidate; preserve rejected/failed attempt history.
+4. Verify accepted-source receipt provenance, stable WorkItem/Run/Criterion identities, tool/validator artifacts and current-source freshness. Confirm only supported Criteria qualify; required Gate count is truthful. Perform explicit owner-only Phase closeout and prove that mere run completion, validator exit zero, unaccepted candidate or waiver never self-completes the Phase.
+5. Watch Roadmap in real time across Planning, Ready, In Work, Awaiting Qualification, Complete, and failed/stale/blocked states when genuinely obtainable. Navigate Roadmap → Work/History/evidence → Roadmap without selection or camera disruption. Check accessibility, keyboard, focus, narrow viewport, theme and reduced-motion behavior.
+6. Run required P4/P9 negatives: incomplete coverage, pending proposal, stale/foreign/duplicate Phase lock and work link, invalid root/owner/grant, rejected candidate, forged/duplicate/stale lease or receipt, drift after validation, affected-only amendment staleness, missed/failed/waived evidence, interrupted/replayed Work, source/Markdown conflicts, history restoration/redaction and browser/backend restart. Distinguish directly operated browser cases from supplemental deterministic tests.
+7. Verify completed result and honest Gate evidence survive restart and do not leak between projects. No additional manual progress checklist may compete with authoritative Roadmap projection.
+
+REPAIRS AND REPORT
+Allow up to 3 narrow repair → source tests → rebuilt browser → affected live retest cycles per failing area; stop with truthful FAIL / PARTIAL when evidence is missing. Append dated direct evidence (source commit, served-bundle hash, screenshots/DOM attribution, IDs, grants, source file hashes, exact tests/results, repairs and limitations) separately to docs/tasks/p13/qualification/checkpoint-b.md and checkpoint-c.md; link the R1–R3 reports. The P9 technical result must be evaluated independently of the earlier owner runner-progression exception. Record explicit owner-reviewed P9 and P12 PASS only if every mandatory applicable criterion passes on final source. Previously failed reports remain intact.
+
+FINAL CONTROL
+If either checkpoint is FAIL/PARTIAL/BLOCKED or still awaiting owner review, do NOT create a 0.13.12 version marker or resume the original p13 runner; report exact outstanding cases. Only after genuine PASS and explicit owner authorization may the owner or directly supervised tool coherently bump the 13 assigned manifests and 20 internal pins 0.13.11 → 0.13.12, commit the reviewed repairs/reports with exact subject 0.13.12 and push without force. The marker is a runner-recognition artifact, never technical PASS proof. Then the owner may resume npm run codex:phase -- p13, no --closeout, to reach separate P13 native/Electron final qualification. No automatic P13 or tower-defense execution.

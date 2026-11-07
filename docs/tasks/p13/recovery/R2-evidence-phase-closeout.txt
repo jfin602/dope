@@ -1,0 +1,25 @@
+TASK: Phase 13 / R2 — Complete accepted-source evidence, Gate qualification, and owner Phase closeout
+
+MODEL / MODE
+- Recommended Codex: GPT-6 Sol High.
+- Standalone manual recovery step after R1 first-read/Work execution succeeds. Not a codex:phase prompt.
+- Real connected browser required for integrated verification; product version remains 0.13.11 until P12 independent owner-reviewed PASS.
+
+AUTHORITY / PRECONDITIONS
+Read BOOT.md, AGENTS.md, ADR 0040 and ADR 0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/qualification/checkpoint-c.md, the P11 integration report and R1 result. Inspect current Roadmap Gate/Criterion evaluation owner, immutable receipts, Work/History records, candidate promotion, Phase closeout and Roadmap state projection. Record HEAD, dirty state, project/root/source identities, selected model and grants. Do not infer R1 PASS without evidence. Use the existing owner-authorized disposable slug fixture where safe; preserve the tower-defense project and unrelated work.
+
+WHY THIS EXISTS
+Checkpoint C reached a real AgentRun but no validation, candidate, accepted-source receipt or Phase completion. P11 also reported a possible absence of a durable owner Phase-closeout writer and Complete projection. Treat that as a source-level hypothesis until confirmed, not as proof that nothing exists.
+
+TARGETED IMPLEMENTATION
+1. Trace the real successful Work path end-to-end: authorized Run → source edits → actual npm test/validator outcome → held candidate → owner review → promotion onto accepted source → source-bound evidence reconciliation → Criterion/Gate evaluation → explicit owner Phase closeout.
+2. If an existing durable closeout transaction exists, reuse and repair its invocation/projection; otherwise add the smallest owner-only, revision-bound closeout operation within the authoritative schema-2 Roadmap service. Guard against incomplete required Gates, missing coverage, pending proposals, stale receipts, foreign project/owner, duplicate submit, rollback and source drift.
+3. Keep orthogonal states distinct. Successful Work, validator exit zero, candidate existence, or an agent assertion must NOT automatically qualify any Criterion or complete a Phase. Evidence must have the appropriate WorkItem/Run/Criterion identity, expected outcome, validation artifact, accepted-source basis, freshness and explicit owner qualification where required.
+4. Show truthful Gate counts and evidence provenance on Roadmap, linked Work and History, with no parallel progress store. Preserve unrelated second Phase editability and affected-only invalidation. Ensure historical receipts remain auditable after restart/restore.
+5. Add deterministic tests for valid owner closeout and denials: unaccepted candidate, missing/failed/waived proof, stale hash, wrong owner/project/root, duplicate/replay, missing coverage, mixed required Gates, source amendment, and reload/recovery.
+
+LIVE QUALIFICATION
+Continue the disposable project Work journey only after separate owner approvals. Confirm accepted source hashes, actual passing npm test, held candidate review and explicit acceptance. Observe receipts with stable IDs in Work/History and the Roadmap Criterion; qualify a Gate only from currently sufficient evidence. Confirm owner-only Phase Complete persists after reload and the other Phase remains independently editable. Exercise at least one rejected or failed candidate, one stale-source invalidation and one denied early closeout. Do not fabricate an accepted result or silently approve a user action.
+
+REPAIR BUDGET / EXIT
+Up to 3 focused repair/retest cycles. PASS only for directly verified accepted-source → Criterion → Gate → owner Phase Complete journey on final source; otherwise PARTIAL/FAIL with exact blockers. Append source-bound R2 report under docs/tasks/p13/recovery/qualification/, preserving checkpoint-b/c history. Run relevant builds/focused tests and git diff --check. No 0.13.12 marker, no P9/P12 technical GREEN and no P13 auto-start. Commit/push only safe, verified scoped repairs/report, without force or unrelated changes.
