@@ -1654,8 +1654,11 @@ export class ChatBackend implements ChatService {
             'Use a JSON array for changes (maximum four). Escape newlines inside JSON strings. Do not put changes in report or add keys. If a required source is unreadable or incomplete, use changes:[] and explain the gap. Do not claim searched files were read or any file was applied.' : '';
         const revisionPrompt = revisionProposal ? `\nThis is revision ${revisionTarget!.revision + 1} of the selected pending documentation proposal. ` +
             'The saved proposal below is the authoritative starting point. Preserve every unrelated proposed target. ' +
-            'Return only requested delta operations in changes. To discard a proposed target use {"path":"...","remove":true}; ' +
-            'to modify its proposed content use after or replace against its current proposed text. ' +
+            'Return only requested delta operations in changes. Each change must have exactly path and one of after, replace, or remove; ' +
+            'never copy operation, hashes, or other saved-proposal metadata into a change. ' +
+            'To discard a proposed target use {"path":"...","remove":true}; ' +
+            'to modify its proposed content use {"path":"...","after":"complete revised proposed text"} or ' +
+            '{"path":"...","replace":{"before":"exact proposed excerpt","after":"replacement excerpt"}}. ' +
             'Do not write files. Selected proposal context: ' + JSON.stringify({ id: revisionProposal.id,
                 revision: revisionTarget!.revision, reviewIntent: revisionProposal.reviewIntent,
                 targets: revisionProposal.targets.map(({ path, operation, before, beforeHash, after, afterHash }) =>

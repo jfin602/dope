@@ -28,6 +28,12 @@ test('Revise Proposal selects one pending card in the composer and preserves an 
     assert.equal(controller.draft, '/docs-review ');
     assert.equal(controller.previousDocumentationDraft, 'Unsent notes');
     assert.equal(changes, 1, 'selection only refreshes the composer; it never submits a turn');
+    controller.setDraft('Revision instructions');
+    assert.equal(controller.draft, '/docs-review Revision instructions');
+    controller.setDraft('');
+    assert.equal(controller.draft, '/docs-review ');
+    controller.setDraft('/docs-review Keep the proposed source text.');
+    assert.equal(controller.draft, '/docs-review Keep the proposed source text.');
     controller.restoreDocumentationDraft();
     assert.equal(controller.draft, 'Unsent notes');
     assert.equal(controller.documentationRevision, undefined);

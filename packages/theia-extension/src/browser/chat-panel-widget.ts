@@ -3669,6 +3669,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         submitButton.classList.add('dope-chat-composer-submit');
         input.oninput = () => {
             state.setDraft(input.value);
+            if (input.value !== state.draft) input.value = state.draft;
             if (!state.running) submitButton.disabled =
                 !(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel) ||
                 state.pending || !hasSendableChatDraft(state.draft);

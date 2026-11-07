@@ -36,6 +36,7 @@ test('protected Docs review revises one card while only Accept applies its lates
                 revisionCalls++;
                 const context = request.messages.map(message => message.content).join('\n');
                 assert.match(context, /"path":"docs\/policy.md"/);
+                assert.match(context, /never copy operation, hashes, or other saved-proposal metadata into a change/);
                 if (revisionCalls === 1) assert.match(context, /"path":"docs\/new.txt"/);
                 assert.match(context, /"reviewIntent":"\/docs-review update docs\/policy.md/);
                 assert.match(context, /"beforeHash":"[a-f0-9]{64}"/);

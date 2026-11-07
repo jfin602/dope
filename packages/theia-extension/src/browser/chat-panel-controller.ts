@@ -623,6 +623,10 @@ export class ChatPanelController {
             this.error = 'Selected Roadmap elements require /roadmap at the start of the message.';
             this.changed(); return false;
         }
+        if (!retryMessageId && this.documentationRevision && !/^\/docs-review(?=\s|$)/u.test(this.draft)) {
+            this.error = 'Selected documentation proposals require /docs-review at the start of the message.';
+            this.changed(); return false;
+        }
         const content = this.draft;
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
@@ -638,7 +642,7 @@ export class ChatPanelController {
             previousIds: new Set(this.chat?.messages.filter(message => message.role === 'user').map(message => message.id)) };
         if (!retryMessageId) {
             const roadmapSkill = /^\/roadmap(?=\s|$)/u.test(content);
-            this.draft = roadmapSkill ? '/roadmap ' : '';
+            this.draft = roadmapSkill ? '/roadmap ' : this.documentationRevision ? '/docs-review ' : '';
             if (roadmapSkill) this.autoRoadmapPrefix = false;
         }
         this.changed();
@@ -673,7 +677,10 @@ export class ChatPanelController {
             this.planningProposalErrorMessageId = result.proposalError ? result.proposal?.messageId : undefined;
             completed = true;
             this.context = [];
-            if (!retryMessageId) this.documentationRevision = undefined;
+            if (!retryMessageId && this.documentationRevision) {
+                this.documentationRevision = undefined;
+                if (this.draft === '/docs-review ') this.draft = '';
+            }
             this.autoRoadmapPrefix = false;
             return true;
         } catch (error) {
@@ -808,7 +815,8 @@ export class ChatPanelController {
     }
     setDraft(value: string): void {
         if (this.autoRoadmapPrefix && !/^\/roadmap(?=\s|$)/.test(value)) this.autoRoadmapPrefix = false;
-        this.draft = value;
+        this.draft = this.documentationRevision && !/^\/docs-review(?=\s|$)/u.test(value) ?
+            `/docs-review ${value.trimStart()}` : value;
     }
     prepareDocumentationRevision(proposalId: string, digest: string): boolean {
         if (!this.lease || this.running || this.pending) return false;
