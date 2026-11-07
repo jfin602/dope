@@ -8,6 +8,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
+import { ChatContextComposer, ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { HistoryBackend } from '../../packages/theia-extension/lib/node/history-backend.js';
 
@@ -15,6 +16,7 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
     const root = await mkdtemp(join(tmpdir(), 'dope-doc-command-'));
     const repo = new ChatRepository();
     const seen: string[][] = [];
+    const sent: { role: string; content: string }[][] = [];
     let calls = 0;
     const before = '# Policy\n' + 'filler\n'.repeat(700) + '## Late policy\nold\n';
     const after = before.replace('## Late policy\nold\n', '## Late policy\nnew\n');
@@ -25,6 +27,7 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
         projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
         calls++;
         seen.push(request.messages.map(message => message.content));
+        sent.push(request.messages);
         if (request.messages.some(message => message.content.includes('Dope skill /docs-review'))) {
             const page = JSON.parse(await request.projectTools!.execute('read_file',
                 { path: 'docs/policy.md', offset: 0, maxBytes: 4096 })) as {
@@ -46,10 +49,9 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
         } else yield { type: 'complete' as const, text: 'A literal command example is inert.',
             actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
     } };
-    const composer = { compose: async (_root: string, _chat: unknown, content: string) => ({
-        messages: [{ role: 'user', content }], refs: [], diagnostics: [], usedTokens: 20, budgetTokens: 8192 }) };
     const store = new RoadmapStore();
-    const backend = new ChatBackend(repo, { notifyChatEvent() {} }, models as never, composer as never,
+    const composer = new ChatContextComposer({} as never, {} as never, {} as never, repo, store);
+    const backend = new ChatBackend(repo, { notifyChatEvent() {} }, models as never, composer,
         undefined, new ChatProjectGrounder({} as never), undefined, undefined, undefined, store);
     try {
         await mkdir(join(root, 'docs'));
@@ -65,7 +67,7 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
         const turn = (content: string) => backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
         await assert.rejects(turn('/docs-apply'), /exactly one current reviewed/i);
-        await turn('Please update the policy.');
+        await turn('Please update the policy. In ordinary Chat use short bullets and stop early.');
         await turn('Explain the literal command `/docs-review` in a code sample.');
         assert.equal((await backend.get(projectHandle, chatId))!.messages.at(-2)?.role === 'user' &&
             (await backend.get(projectHandle, chatId))!.messages.at(-2)?.skill, undefined);
@@ -90,6 +92,18 @@ test('protected Docs turn stages from brokered reads; command alone cannot appro
         assert.equal(seen.some(turnMessages => turnMessages.some(text => text.includes('Dope skill /docs-review'))), true);
         assert.equal(seen.some(turnMessages => turnMessages.some(text =>
             text.includes('with exactly these sibling keys'))), true);
+        const ordinary = sent.find(messages => messages.at(-1)?.content.startsWith('Please update the policy.'))!;
+        assert.ok(ordinary.some(message => message.role === 'system' &&
+            message.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION));
+        const reviewRequest = sent.find(messages => messages.at(-1)?.content.startsWith('/docs-review'))!;
+        assert.ok(reviewRequest.some(message => message.role === 'system' &&
+            message.content === SPECIALIZED_TURN_OUTPUT_INSTRUCTION));
+        assert.ok(!reviewRequest.some(message => message.role === 'system' &&
+            message.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION));
+        assert.ok(reviewRequest.some(message => message.role === 'system' &&
+            message.content.includes('with exactly these sibling keys')));
+        assert.ok(reviewRequest.some(message => message.role === 'user' &&
+            message.content.includes('In ordinary Chat use short bullets')));
         const history = new HistoryBackend();
         const attached = await history.attach(pathToFileURL(root).href);
         assert.equal((await history.read(attached.projectHandle)).entries.some(entry => entry.source === 'documentation'), false);

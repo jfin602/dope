@@ -242,14 +242,16 @@ export class ChatBackend implements ChatService {
         model: ConversationModelCapabilities, budget?: ReturnType<typeof roadmapLocalBudget>,
         draft?: { text: string }, grounding?: GroundingResult, bridgeMode = false,
         opportunity?: string, piMode = false, roadmapSkill = false,
-        roadmapPromptMode: 'ordinary' | 'native-roadmap-edit' = 'ordinary', ordinaryChat = false) {
+        roadmapPromptMode: 'ordinary' | 'native-roadmap-edit' = 'ordinary', ordinaryChat = false,
+        specializedTurn = false) {
         const nativeRoadmap = roadmapPromptMode !== 'ordinary';
         const capabilities = planningComposerCapabilities(model, budget, draft);
         let inputTokens = capabilities.maxInputTokens;
         for (let attempt = 0; attempt < 4; attempt++) {
             const composed = await this.composer!.compose(root, chat, content, context,
                 inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding,
-                !!budget, bridgeMode, opportunity, piMode, roadmapSkill, nativeRoadmap, ordinaryChat);
+                !!budget, bridgeMode, opportunity, piMode, roadmapSkill, nativeRoadmap, ordinaryChat,
+                specializedTurn);
             if (!budget) return composed;
             const messages = this.withDraft(composed.messages, draft);
             const bytes = Buffer.byteLength(JSON.stringify(messages), 'utf8');
@@ -336,7 +338,8 @@ export class ChatBackend implements ChatService {
             model.capabilities, budget, turnPrompt,
             connection?.providerId === 'local' ? undefined : await this.grounder?.ground(root, request.content),
             false, opportunity, connection?.providerId === 'local', roadmapSkill,
-            nativeCandidate ? 'native-roadmap-edit' : 'ordinary', ordinaryChat);
+            nativeCandidate ? 'native-roadmap-edit' : 'ordinary', ordinaryChat,
+            !!skill || !!draft || selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap'));
         if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
             chat.settings.context.reservedOutputTokens);
         if (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
@@ -1140,7 +1143,8 @@ export class ChatBackend implements ChatService {
             (!index.linkedDocument || item.id !== index.linkedDocument.path &&
                 item.label !== index.linkedDocument.path));
         const composed = this.composer ? await this.composeTurn(root, cleanChat, scope, cleanSelections,
-            model.capabilities, undefined, undefined, undefined, false, undefined, true) : undefined;
+            model.capabilities, undefined, undefined, undefined, false, undefined, true,
+            false, 'ordinary', false, true) : undefined;
         const contextRefs = composed?.refs ?? [];
         const executionId = randomUUID();
         const generationToolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
@@ -1705,7 +1709,7 @@ export class ChatBackend implements ChatService {
         const composed = await this.composeTurn(root, contextChat, content, selections,
             model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local', roadmapSkill,
-            roadmapPromptMode, ordinaryChat);
+            roadmapPromptMode, ordinaryChat, !!skill || roadmapTurn);
         if (bridge) composed.refs.push(bridge.reference);
         if (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
@@ -2223,7 +2227,7 @@ export class ChatBackend implements ChatService {
                         resolvedConnection?.providerId === 'local' ? undefined :
                             grounding ?? await this.grounder?.ground(root, content),
                         !!bridge, opportunity, resolvedConnection?.providerId === 'local', roadmapSkill,
-                        roadmapPromptMode, ordinaryChat);
+                        roadmapPromptMode, ordinaryChat, !!skill || roadmapTurn);
                     if (bridge) next.refs.push(bridge.reference);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');
@@ -2342,6 +2346,9 @@ export class ChatBackend implements ChatService {
                             this.pendingOutputLimits.set(key, pending);
                             abort.signal.addEventListener('abort', onAbort, { once: true });
                         });
+                        // Cancellation can arrive after the paused status is saved but before
+                        // the wait below; observe that rejection immediately without consuming it.
+                        if (typeof decisionWait !== 'string') void decisionWait.catch(() => undefined);
                         try {
                             await mutate({ type: 'pause-output-limit', chatId: key, messageId: assistant!.id,
                                 executionId: assistant!.execution.id, segment: event.segmentIndex, cursor: partialCursor,

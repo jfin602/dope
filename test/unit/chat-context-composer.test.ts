@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import type { Chat } from '../../packages/chat/lib/index.js';
-import { ChatContextComposer, GROUNDED_CHAT_INSTRUCTION, ORDINARY_CHAT_RESPONSE_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { ChatContextComposer, GROUNDED_CHAT_INSTRUCTION, GROUNDED_SOURCE_INSTRUCTION, ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { createSnapshot } from '../../packages/software-map/lib/index.js';
 import type { ProjectMindStore } from '../../packages/project-intelligence/lib/node/project-mind-store.js';
@@ -84,6 +84,41 @@ test('specialized Chat prompt paths do not receive ordinary response guidance', 
     message.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION).length, 1);
 });
 
+test('skill output contract overrides long ordinary Chat history without losing task context', async () => {
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const prior = chat();
+  prior.settings.context.maxInputTokens = 16000;
+  prior.messages = Array.from({ length: 60 }, (_, index) => [
+    { id: `user-${index}`, role: 'user', content: `Requirement ${index}: use compact bullets and stop early; preserve rule ${index}.` },
+    { id: `assistant-${index}`, role: 'assistant', content: `Recorded rule ${index}.`,
+      execution: { status: 'complete' } }
+  ]).flat() as Chat['messages'];
+  const capabilities = { ...model, contextWindowTokens: 16384, maxInputTokens: 16000 };
+  const result = await composer.compose('/fixture/project', prior, '/docs-review update docs/rules.md', [],
+    capabilities, undefined, false, false, undefined, true, false, false, false, true);
+  const systems = result.messages.filter(item => item.role === 'system').map(item => item.content);
+  assert.ok(systems.includes(SPECIALIZED_TURN_OUTPUT_INSTRUCTION));
+  assert.ok(!systems.includes(ORDINARY_CHAT_RESPONSE_INSTRUCTION));
+  assert.match(systems.join('\n'), /Prior Chat messages provide task context and facts/);
+  assert.match(systems.join('\n'), /complete JSON object with every required field/);
+  assert.ok(result.messages.some(item => item.role === 'user' && item.content.includes('preserve rule 59')));
+  assert.ok(result.messages.every(item => item.role !== 'system' || !item.content.includes('compact lists')));
+});
+
+test('specialized hosted grounding retains source safeguards without ordinary prose advice', async () => {
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const result = await composer.compose('/fixture/project', chat(), '/explain return exact JSON', [],
+    { ...model, contextWindowTokens: 4096, maxInputTokens: 4096 },
+    { blocks: [], diagnostics: [] } as never, false, false, undefined, false, false, false, false, true);
+  const systems = result.messages.filter(item => item.role === 'system').map(item => item.content);
+  assert.ok(systems.includes(GROUNDED_SOURCE_INSTRUCTION));
+  assert.ok(systems.includes(SPECIALIZED_TURN_OUTPUT_INSTRUCTION));
+  assert.ok(!systems.includes(GROUNDED_CHAT_INSTRUCTION));
+  assert.ok(!systems.includes(ORDINARY_CHAT_RESPONSE_INSTRUCTION));
+});
+
 test('Pi Chat retains project discovery, source truth, and read-only authority in the budgeted message', async () => {
   const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
     {} as SoftwareMapIndex, {} as ChatRepository);
@@ -119,8 +154,11 @@ test('marker creation omits saved legacy Roadmap instructions and optional mutat
     {} as SoftwareMapIndex, {} as ChatRepository);
   const composed = await composer.compose('/fixture/project', active, '/roadmap create a new game plan', [],
     { ...model, contextWindowTokens: 4096, maxInputTokens: 4096 }, undefined, false, false,
-    undefined, true, true, true, true);
-  assert.deepEqual(composed.messages, [{ role: 'user', content: '/roadmap create a new game plan' }]);
+    undefined, true, true, true, true, true);
+  assert.deepEqual(composed.messages.filter(item => item.role === 'user'),
+    [{ role: 'user', content: '/roadmap create a new game plan' }]);
+  assert.ok(composed.messages.some(item => item.content === SPECIALIZED_TURN_OUTPUT_INSTRUCTION));
+  assert.ok(!composed.messages.some(item => item.content.includes('roadmap_stage and gate.create')));
 });
 
 test('recent context keeps complete exchanges and excludes cancelled, failed and provisional turns', async () => {
@@ -520,7 +558,7 @@ test('send persists only included references and supplies their bounded text to 
       context: [{ kind: 'file', id: 'fact.txt' }] });
     assert.deepEqual(retried.refs, persisted.contextRefs);
     service.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally { await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 25 }); }
 });
 
 test('saved Chat lookup is bounded, matches titles, and excludes the active Chat', async () => {

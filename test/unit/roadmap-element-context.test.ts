@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { roadmapElementContext } from '../../packages/theia-extension/lib/node/roadmap-element-context.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { roadmapLocalBudget, verifyRoadmapLocalInput } from '../../packages/theia-extension/lib/node/roadmap-local-model.js';
 import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-skills.js';
 import { parseChatContextRef } from '../../packages/chat/lib/index.js';
@@ -109,8 +110,10 @@ test('serialized model messages carry only the selected Gate and refuse an incom
     const request = '/roadmap Change the purpose of the selected readiness Gate';
     const composed = await composer.compose(source.projectRoot, chat, request, selection,
         { conversationalText: true, streaming: true, contextWindowTokens: 16384 },
-        undefined, false, false, undefined, false, true);
+        undefined, false, false, undefined, false, true, false, false, true);
     const serialized = JSON.stringify(composed.messages);
+    assert.ok(composed.messages.some(item => item.content === SPECIALIZED_TURN_OUTPUT_INSTRUCTION));
+    assert.ok(!composed.messages.some(item => item.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION));
     assert.match(serialized, /gate-one|Verify target handling/);
     assert.doesNotMatch(serialized, /Ambiguous target test passed|evidence-one/);
     assert.doesNotMatch(serialized, /gate-two|Other readiness|Secret sibling purpose|siblingGateOrder/);

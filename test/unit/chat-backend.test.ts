@@ -566,6 +566,15 @@ test('ordinary Chat dispatches formatting guidance without changing its output b
         const report = requests.find(request => request.messages.at(-1)?.content === reportPrompt);
         assert.equal(report?.messages.filter(message => message.role === 'system' &&
             /Do not use Markdown tables in ordinary Chat by default/.test(message.content)).length, 1);
+        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/explain What is 2 + 2?' });
+        const skill = requests.find(request => request.messages.at(-1)?.content === '/explain What is 2 + 2?');
+        assert.ok(skill?.messages.some(message => message.role === 'system' &&
+            message.content.includes('Dope skill /explain')));
+        assert.ok(skill?.messages.some(message => message.role === 'system' &&
+            message.content.includes('Follow its current output contract and explicit schema exactly')));
+        assert.ok(!skill?.messages.some(message => message.role === 'system' &&
+            /Do not use Markdown tables in ordinary Chat by default/.test(message.content)));
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 

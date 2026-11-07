@@ -7,6 +7,8 @@ import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamE
   ROADMAP_ACTION_FIELDS, roadmapActionSchema } from '../../packages/pi-runtime/worker.mjs';
 import { PiRuntimeHost, resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { PiConversationLease } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
+import { ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
+import { parseDocumentationSkillReview } from '../../packages/theia-extension/lib/node/documentation-skill-review.js';
 import { runChatInvestigationCommand } from '../../packages/theia-extension/lib/node/chat-command-broker.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapNativeStageOwner, NATIVE_ROADMAP_ACTION_FIELDS } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
@@ -233,6 +235,8 @@ test('Pi Roadmap schema agrees with native stage fields and relays two typed rev
       const body = JSON.parse(options.body);
       assert.doesNotMatch(JSON.stringify(body.messages.filter(item => item.role === 'system')),
         /generally 1,000 tokens/);
+      assert.ok(!JSON.stringify(body.messages.filter(item => item.role === 'system'))
+        .includes(ORDINARY_CHAT_RESPONSE_INSTRUCTION));
       const schema = body.tools.find(item => item.function.name === 'roadmap_stage')?.function.parameters;
       assert.equal(schema.properties.actions.items.anyOf.length, 19);
       assert.equal(schema.additionalProperties, false);
@@ -807,6 +811,9 @@ test('Pi no-tool turn streams from Dope context without exposing tools or projec
       assert.ok(!body.tools?.length);
       assert.ok(body.messages.some(item => item.role === 'system' &&
         JSON.stringify(item).includes('Dope context')));
+      const providerSystems = JSON.stringify(body.messages.filter(item => item.role === 'system'));
+      assert.match(providerSystems, /Follow its current output contract and explicit schema exactly/);
+      assert.ok(!providerSystems.includes(ORDINARY_CHAT_RESPONSE_INSTRUCTION));
       assert.doesNotMatch(JSON.stringify(body.messages.filter(item => item.role === 'system')),
         /generally 1,000 tokens/);
       assert.ok(body.messages.some(item => item.role === 'assistant' &&
@@ -829,6 +836,7 @@ test('Pi no-tool turn streams from Dope context without exposing tools or projec
     await dispatch({ type: 'open', cwd, model });
     const result = await dispatch({ type: 'turn', maxOutputTokens: 128,
       messages: [{ role: 'system', content: 'Dope context' },
+        { role: 'system', content: SPECIALIZED_TURN_OUTPUT_INSTRUCTION },
         { role: 'user', content: 'first message' },
         { role: 'assistant', content: 'previous answer' },
         { role: 'user', content: 'second message' },
@@ -841,6 +849,34 @@ test('Pi no-tool turn streams from Dope context without exposing tools or projec
     assert.deepEqual(deltas, [{ type: 'delta', text: 'safe answer' }]);
     assert.equal(requests, 1);
     await assert.rejects(access(marker), { code: 'ENOENT' });
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi preserves a malformed stop-finished JSON answer for strict Docs rejection', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-malformed-json-'));
+  const raw = '{"final_response":"Review ready.","report":"No reads.","changes":[]';
+  try {
+    globalThis.fetch = async () => new Response([
+      `data: ${JSON.stringify({ id: 'malformed', object: 'chat.completion.chunk', created: 1,
+        model: 'offline-fixture', choices: [{ index: 0, delta: { role: 'assistant', content: raw }, finish_reason: null }] })}\n\n`,
+      `data: ${JSON.stringify({ id: 'malformed', object: 'chat.completion.chunk', created: 1,
+        model: 'offline-fixture', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })}\n\n`,
+      'data: [DONE]\n\n'
+    ].join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    await dispatch({ type: 'open', cwd, model });
+    const result = await dispatch({ type: 'turn', maxOutputTokens: 256,
+      messages: [{ role: 'system', content: SPECIALIZED_TURN_OUTPUT_INSTRUCTION },
+        { role: 'user', content: '/docs-review probe' }] });
+    assert.equal(result.finishReason, 'stop');
+    assert.equal(result.text, raw);
+    assert.throws(() => parseDocumentationSkillReview(result.text, []), /valid JSON object/);
+    await assert.rejects(dispatch({ type: 'turn', maxOutputTokens: 256,
+      messages: [{ role: 'user', content: 'A later ordinary Chat turn' }] }), /Invalid bounded Pi turn/);
   } finally {
     await dispatch({ type: 'close' });
     globalThis.fetch = originalFetch;
@@ -1134,6 +1170,7 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
       const body = JSON.parse(options.body);
       assert.deepEqual(body.tools.map(item => item.function.name).sort(),
         ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
+      assert.ok(!JSON.stringify(body.messages).includes(ORDINARY_CHAT_RESPONSE_INSTRUCTION));
       const response = ++turn === 1 ? [
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-1', type: 'function',
           function: { name: 'read_file', arguments: '{"path":"src/main.ts","maxBytes":100}' } }] }, finish_reason: null },
