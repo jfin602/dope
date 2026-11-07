@@ -100,15 +100,31 @@ export class RoadmapWorkEvidenceIntake {
                 task.createdAt <= amendment.reviewedAt))
             throw new Error('Work task or run predates reviewed Phase amendment; prepare and grant fresh Work');
         const origin = task?.origin.kind === 'work-item' ? task.origin : undefined;
+        const phase = index.phases.find(p => p.id === input.phaseId)!;
+        const linked = phase.workLinks?.find(link => link.planningProjectId === origin?.projectId &&
+            link.workItemId === input.workItemId && link.mapId === origin?.planningMapId &&
+            link.mapRevision === origin?.mapRevision);
+        const contract = run?.taskContract;
+        const planning = contract?.planning;
+        const roadmap = contract?.roadmap;
+        const expected = index.gates.find(g => g.id === input.gateId)!.criteria
+            .find(c => c.id === input.criterionId)!.expectedResult;
         if (!run || !task || task.origin.kind !== 'work-item' ||
             !origin || run.projectId !== origin.projectId || task.projectId !== origin.projectId ||
             origin.workItemId !== input.workItemId ||
             task.reviewPolicy?.kind !== 'required' ||
-            !index.phases.find(p => p.id === input.phaseId)?.workLinks?.some(link =>
-                link.planningProjectId === origin.projectId && link.workItemId === input.workItemId &&
-                link.mapId === origin.planningMapId &&
-                link.mapRevision === origin.mapRevision && JSON.stringify(link.basis) === JSON.stringify(origin.basis) &&
-                link.criterionIds.includes(input.criterionId)) ||
+            !linked || JSON.stringify(linked.basis) !== JSON.stringify(origin.basis) ||
+            !linked.criterionIds.includes(input.criterionId) ||
+            !contract || contract.taskId !== task.id || contract.sourceHead !== run.basis?.head ||
+            contract.grant.id !== run.grantId || contract.grant.revision !== run.grantRevision ||
+            planning === 'unknown' || !planning || planning.projectId !== origin.projectId ||
+            planning.mapId !== origin.planningMapId || planning.mapRevision !== origin.mapRevision ||
+            planning.workItemId !== input.workItemId ||
+            roadmap === 'unknown' || !roadmap || roadmap.projectId !== input.projectId ||
+            roadmap.phaseId !== input.phaseId || roadmap.approvalId !== phase.planningLock?.approvalId ||
+            roadmap.sourceRevision !== source.revision || roadmap.sourceHash !== source.sha256 ||
+            !roadmap.links.some(item => item.gateId === input.gateId &&
+                item.criterionId === input.criterionId && item.expectedResult === expected) ||
             run.taskId !== task.id || !identity(run.grantId) || run.grantRevision < 0 ||
             run.status !== 'completed' || run.outcome || !run.basis?.head || !gitHead(run.basis.head) ||
             !run.basis.clean || run.validationBasis !== 'execution-workspace' ||
@@ -122,7 +138,6 @@ export class RoadmapWorkEvidenceIntake {
         const validation = run.validationResults[input.validationIndex];
         const requiredChecks = index.phases.find(p => p.id === input.phaseId)?.workLinks
             ?.find(link => link.workItemId === input.workItemId)?.requiredChecks;
-        const expected = index.gates.find(g => g.id === input.gateId)!.criteria.find(c => c.id === input.criterionId)!.expectedResult;
         if (!validation || validation.owner !== 'dope' || validation.kind !== 'test' ||
             validation.status !== 'passed' ||
             requiredChecks !== undefined && !requiredChecks.includes(validation.label) ||

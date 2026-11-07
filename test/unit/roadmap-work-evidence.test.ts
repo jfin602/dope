@@ -48,6 +48,16 @@ async function harness(projectRoot = root) {
         stdout: 'ok 1 - Value present\n# pass 1\n# fail 0\ntoken [redacted]' } as const;
     const run = { id: 'run', taskId: 'task', projectId: 'planning', grantId: 'grant', grantRevision: 0,
         status: 'completed', basis: { head, clean: true }, validationBasis: 'execution-workspace',
+        taskContract: { taskId: 'task', taskHash: hash('task'), objective: 'Work',
+            instructionsHash: hash('instructions'), acceptance: ['Value present'],
+            validation: task.completion.validation,
+            planning: { projectId: 'planning', mapId: 'map', mapRevision: 1,
+                workItemId: 'w', workItemHash: hash('work') },
+            roadmap: { projectId: 'owner', phaseId: 'p', approvalId: 'approval',
+                sourceRevision: source.revision, sourceHash: source.sha256,
+                links: [{ gateId: 'g', criterionId: 'c', expectedResult: 'Value present' }] },
+            grant: { id: 'grant', revision: 0, acceptedAt: at,
+                permissionsHash: hash('permissions') }, sourceHead: head },
         finalGit: { head, headChanged: false },
         executionWorkspace: { id: 'workspace' }, candidateFingerprint: hash('candidate'),
         candidateReview: { candidateFingerprint: hash('candidate'), validation: [validation] },
@@ -116,6 +126,30 @@ test('forged, foreign, ungranted, partial and unpromoted Work are denied', async
     await assert.rejects(intake.ingestValidation(root, request), /Unaccepted/);
 });
 
+test('receipt intake requires the exact start-time Roadmap, Planning and grant contract', async () => {
+    const { intake, run } = await harness();
+    const request = { ...target, runId: 'run', validationIndex: 0 };
+    const original = structuredClone(run.taskContract!);
+    for (const changed of [
+        undefined,
+        { ...original, grant: { ...original.grant, id: 'unreviewed' } },
+        { ...original, planning: { ...original.planning as Exclude<typeof original.planning, 'unknown'>,
+            mapRevision: 2 } },
+        { ...original, roadmap: 'unknown' as const },
+        { ...original, roadmap: { ...original.roadmap as Exclude<typeof original.roadmap, 'unknown'>,
+            approvalId: 'historical-lock' } },
+        { ...original, roadmap: { ...original.roadmap as Exclude<typeof original.roadmap, 'unknown'>,
+            sourceHash: hash('changed roadmap') } },
+        { ...original, roadmap: { ...original.roadmap as Exclude<typeof original.roadmap, 'unknown'>,
+            links: [{ gateId: 'g', criterionId: 'c', expectedResult: 'Different result' }] } },
+    ]) {
+        run.taskContract = changed;
+        await assert.rejects(intake.ingestValidation(root, request), /Unaccepted/);
+    }
+    run.taskContract = original;
+    assert.equal((await intake.ingestValidation(root, request)).review.status, 'proposed');
+});
+
 test('human observation needs a current artifact and remains proposed for fail or pass', async () => {
     const { intake, index } = await harness();
     const artifactSha256 = hash(await readFile(resolve(root, 'BOOT.md')));
@@ -134,8 +168,9 @@ test('human observation needs a current artifact and remains proposed for fail o
 test('real Roadmap owner persists a proposed receipt without qualifying the Gate', async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), 'dope-criterion-receipt-'));
     try {
-        await writeFile(join(projectRoot, 'BOOT.md'), await readFile(join(root, 'BOOT.md')));
-        const { agents } = await harness(projectRoot);
+        const candidateBytes = await readFile(join(root, 'BOOT.md'));
+        await writeFile(join(projectRoot, 'BOOT.md'), candidateBytes);
+        const { agents, run } = await harness(projectRoot);
         const roadmap = new DurableRoadmapStore();
         let index = await roadmap.saveGateIndex(projectRoot, 0, 'uninitialized', {
             schemaVersion: 2, projectId: 'owner', projectRoot, revision: 1,
@@ -159,7 +194,24 @@ test('real Roadmap owner persists a proposed receipt without qualifying the Gate
                 [{ planningProjectId: 'planning', mapId: 'map', mapRevision: 1, basis,
                     workItemId: 'w', transformationIds: ['transformation'], criterionIds: ['c'] }], planning),
             true, 'human-owner', planning);
+        run.taskContract!.roadmap = { ...run.taskContract!.roadmap as Exclude<
+            typeof run.taskContract.roadmap, 'unknown'>,
+            approvalId: index.phases[0].planningLock!.approvalId,
+            sourceRevision: index.phases[0].planningLock!.source.revision };
+        index = await roadmap.mutateGateIndex(projectRoot, index.revision, 'owner',
+            { type: 'phase.create', id: 'p2', title: 'Independent Phase', objective: 'Other work' });
+        index = await roadmap.mutateGateIndex(projectRoot, index.revision, 'owner',
+            { type: 'phase.edit', id: 'p2', title: 'Still editable', objective: 'Other work' });
+        assert.equal(index.phases.find(item => item.id === 'p2')?.title, 'Still editable');
         const intake = new RoadmapWorkEvidenceIntake(roadmap, agents, async () => head);
+        run.status = 'failed';
+        await assert.rejects(intake.ingestValidation(projectRoot,
+            { ...target, runId: 'run', validationIndex: 0 }), /Unaccepted/);
+        run.status = 'completed';
+        await writeFile(join(projectRoot, 'BOOT.md'), 'Changed after candidate validation');
+        await assert.rejects(intake.ingestValidation(projectRoot,
+            { ...target, runId: 'run', validationIndex: 0 }), /Accepted candidate bytes changed/);
+        await writeFile(join(projectRoot, 'BOOT.md'), candidateBytes);
         const receipt = await intake.ingestValidation(projectRoot, { ...target, runId: 'run', validationIndex: 0 });
         assert.equal(receipt.review.status, 'proposed');
         const saved = await new DurableRoadmapStore().read<RoadmapGateIndex>(projectRoot);
