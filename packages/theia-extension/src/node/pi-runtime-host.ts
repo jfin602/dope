@@ -119,10 +119,10 @@ export class PiRuntimeHost {
     }
 
     openWorkSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
-        thinkingLevel?: string):
+        thinkingLevel?: string, processAvailable = true):
         Promise<{ version: string; tools: string[]; resources: string }> {
         return this.request({ type: 'open', mode: 'work', model, cwd,
-            ...(credential ? { credential } : {}), thinkingLevel });
+            ...(credential ? { credential } : {}), thinkingLevel, workProcessAvailable: processAvailable });
     }
 
     openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,

@@ -232,8 +232,9 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
             const sourceHash = createHash('sha256').update(JSON.stringify([
                 workspace!.id, workspace!.projectRoot, workspace!.root, call.arguments.path,
                 candidateHash, wire.digest])).digest('hex');
-            if (call.arguments.expectedSourceHash && call.arguments.expectedSourceHash !== sourceHash ||
-                await workspace!.fingerprint() !== candidateHash) return result(call, 'denied');
+            if (await workspace!.fingerprint() !== candidateHash) return result(call, 'denied');
+            if (call.arguments.expectedSourceHash && call.arguments.expectedSourceHash !== sourceHash)
+                return result(call, 'denied', 'SOURCE_HASH_MISMATCH: The supplied file source identity is not current. Start at offset 0 without expectedSourceHash to obtain a new one.');
             return result(call, 'failed', 'INVALID_OFFSET: Use a byte offset within the file at a UTF-8 boundary.');
         }
         if (wire.status !== 'completed' || typeof wire.truncated !== 'boolean') return result(call, 'failed');
@@ -251,9 +252,9 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
                 const sourceHash = createHash('sha256').update(JSON.stringify([
                     workspace!.id, workspace!.projectRoot, workspace!.root, call.arguments.path,
                     candidateHash, wire.digest])).digest('hex');
-                if (call.arguments.expectedSourceHash && call.arguments.expectedSourceHash !== sourceHash)
-                    return result(call, 'denied');
                 if (await workspace!.fingerprint() !== candidateHash) return result(call, 'denied');
+                if (call.arguments.expectedSourceHash && call.arguments.expectedSourceHash !== sourceHash)
+                    return result(call, 'denied', 'SOURCE_HASH_MISMATCH: The supplied file source identity is not current. Start at offset 0 without expectedSourceHash to obtain a new one.');
                 output = JSON.stringify({ path: call.arguments.path, offset: call.arguments.offset,
                     endOffset: wire.endOffset, nextOffset: wire.truncated ? wire.endOffset : null,
                     fileBytes: wire.fileBytes, text: bytes.toString('utf8'),

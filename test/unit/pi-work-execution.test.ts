@@ -30,6 +30,8 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         assert.equal(wire.model, 'synthetic-local');
         assert.deepEqual(wire.tools.map((item: any) => item.function.name).sort(),
             ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
+        assert.match(wire.tools.find((item: any) => item.function.name === 'read_file')?.function.description ?? '',
+            /FIRST read.*OMIT expectedSourceHash/);
         const next = calls[turn++];
         const chunks = next ? [
             { delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`, type: 'function',
@@ -214,6 +216,45 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
             /stopped/);
         assert.equal(events.length, count);
         adapter.dispose();
+    } finally {
+        await workspace?.dispose();
+        await rm(parent, { recursive: true, force: true });
+    }
+});
+
+test('Pi Work records a safe source-hash denial for a model-invented first-page identity', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-source-hash-'));
+    const project = join(parent, 'project');
+    let workspace: ExecutionWorkspace | undefined;
+    const events: any[] = [];
+    let reply: any;
+    const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>) {
+        reply = await tool({ id: 1, name: 'read_file', arguments: {
+            path: 'safe-source.txt', offset: 0, expectedSourceHash: '0'.repeat(64) } });
+        return { modelId: 'fixture-model', text: 'No file content read' };
+    }, dispose() {} };
+    const factory: any = { create() { return host; }, release() {} };
+    try {
+        await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
+        workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the authorized candidate tools.\n');
+        await writeFile(join(workspace.root, 'safe-source.txt'), 'safe source\n');
+        const grant = createDefaultExecutionGrant({ id: 'grant-source-hash', revision: 0,
+            taskId: 'task-source-hash', acceptedAt: new Date().toISOString() });
+        const adapter = new PiWorkExecutionAdapter({ async bind() { return { endpoint: 'http://127.0.0.1:9/v1' }; },
+            async assertWorkSelection() {} } as any, factory, () => workspace!, () => []);
+        const handle = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            grant, taskId: 'task-source-hash', connectionId: 'local', registrationId: 'local',
+            modelId: 'fixture-model', prompt: 'Read README', onEvent: event => events.push(event) });
+        await assert.rejects(handle.result, /denied/);
+        assert.equal(reply.status, 'denied');
+        assert.match(reply.output, /^SOURCE_HASH_MISMATCH:/);
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read_file' &&
+            event.phase === 'denied' && event.code === 'SOURCE_HASH_MISMATCH' &&
+            event.brokerInvoked === true && event.effectExecuted === false));
+        assert.ok(events.some(event => event.kind === 'provider-event' &&
+            /broker denied: SOURCE_HASH_MISMATCH/.test(event.summary)));
+        assert.doesNotMatch(JSON.stringify(events), /"expectedSourceHash":"0{64}"/);
     } finally {
         await workspace?.dispose();
         await rm(parent, { recursive: true, force: true });

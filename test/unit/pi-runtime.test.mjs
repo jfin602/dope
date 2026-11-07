@@ -1201,6 +1201,19 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
   }
 });
 
+test('Pi Work without approved process commands does not offer run_command', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-no-process-'));
+  try {
+    const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
+      workProcessAvailable: false });
+    assert.deepEqual(opened.tools.slice().sort(),
+      ['edit_file', 'list_files', 'read_command_output', 'read_file']);
+  } finally {
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('Pi Work compacts between distinct tool turns, then continues without replaying effects', async () => {
   const originalFetch = globalThis.fetch;
   const originalWrite = process.stdout.write;

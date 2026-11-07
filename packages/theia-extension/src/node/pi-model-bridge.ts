@@ -48,7 +48,7 @@ export class PiModelBridge {
 
     async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
         cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean;
-            roadmapGeneration?: boolean; reasoningMode?: string } = {}): Promise<PiLocalBinding> {
+            roadmapGeneration?: boolean; reasoningMode?: string; workProcessAvailable?: boolean } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
         const before = await this.dependencies.inventory();
@@ -137,9 +137,12 @@ export class PiModelBridge {
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, true) :
             options.chatTools && options.roadmapTools ?
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true) :
-            await (options.tools ? host.openWorkSession : options.chatTools ? host.openChatToolsSession : host.openNoToolSession)
-                .call(host, modelSpec, cwd, credential, thinkingLevel);
-        const expected = options.tools ? ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command'] :
+            options.tools ? await host.openWorkSession(modelSpec, cwd, credential, thinkingLevel,
+                options.workProcessAvailable !== false) : options.chatTools ?
+                await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel) :
+                await host.openNoToolSession(modelSpec, cwd, credential, thinkingLevel);
+        const expected = options.tools ? ['edit_file', 'list_files', 'read_command_output', 'read_file',
+            ...(options.workProcessAvailable === false ? [] : ['run_command'])] :
             options.chatTools ? options.roadmapGeneration ?
                 ['roadmap_finish', 'roadmap_phase'] :
                 options.roadmapTools ? ['roadmap_cancel', 'roadmap_read', 'roadmap_stage'] :

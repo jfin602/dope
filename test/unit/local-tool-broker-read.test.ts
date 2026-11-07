@@ -75,6 +75,20 @@ test('broker reads only candidate files under the fixed grant and isolated Linux
         } while (true);
         assert.equal(reconstructed, source);
         assert.ok(offset > 16_384);
+        const inventedFirst = await brokerLocalRead(request, { id: 'page-invented-first', name: 'read',
+            arguments: { path: 'paged.ts', maxBytes: 1024, offset: 0,
+                expectedSourceHash: '0'.repeat(64) } }, undefined, workspace);
+        assert.equal(inventedFirst.status, 'denied');
+        assert.match(inventedFirst.output, /^SOURCE_HASH_MISMATCH:/);
+        assert.doesNotMatch(inventedFirst.output, /candidate source|café|sourceHash/);
+        assert.throws(() => parseLocalToolRequests(JSON.stringify([{ id: 'malformed-hash', name: 'read',
+            arguments: { path: 'paged.ts', maxBytes: 1024, offset: 0,
+                expectedSourceHash: 'not-a-hash' } }])), /Invalid Local source identity/);
+        const wrongContinuation = await brokerLocalRead(request, { id: 'page-wrong-later', name: 'read',
+            arguments: { path: 'paged.ts', maxBytes: 1024, offset: 1024,
+                expectedSourceHash: '0'.repeat(64) } }, undefined, workspace);
+        assert.equal(wrongContinuation.status, 'denied');
+        assert.match(wrongContinuation.output, /^SOURCE_HASH_MISMATCH:/);
         const eof = await brokerLocalRead(request, { id: 'page-eof', name: 'read',
             arguments: { path: 'paged.ts', maxBytes: 1024, offset: Buffer.byteLength(source),
                 expectedSourceHash: sourceHash } }, undefined, workspace);
@@ -88,6 +102,7 @@ test('broker reads only candidate files under the fixed grant and isolated Linux
             arguments: { path: 'paged.ts', maxBytes: 1024, offset: Buffer.byteLength(source) + 1,
                 expectedSourceHash: '0'.repeat(64) } }, undefined, workspace);
         assert.equal(staleInvalid.status, 'denied');
+        assert.match(staleInvalid.output, /^SOURCE_HASH_MISMATCH:/);
         const foreign = await ExecutionWorkspace.create(project);
         try {
             await writeFile(join(foreign.root, 'paged.ts'), source);
@@ -96,15 +111,23 @@ test('broker reads only candidate files under the fixed grant and isolated Linux
                     maxBytes: 1024, offset: 1024, expectedSourceHash: sourceHash }
             }, undefined, foreign)).status, 'denied');
         } finally { await foreign.dispose(); }
+        assert.equal((await brokerLocalRead({ ...request, projectRoot: parent }, {
+            id: 'page-wrong-project', name: 'read', arguments: { path: 'paged.ts',
+                maxBytes: 1024, offset: 0 } }, undefined, workspace)).status, 'denied');
+        assert.equal((await brokerLocalRead({ ...request, executionRoot: parent }, {
+            id: 'page-wrong-root', name: 'read', arguments: { path: 'paged.ts',
+                maxBytes: 1024, offset: 0 } }, undefined, workspace)).status, 'denied');
         assert.equal((await brokerLocalRead({ ...request, grant: { ...grant, permissions:
             { ...grant.permissions, 'workspace-read': false } } }, {
             id: 'page-revoked', name: 'read', arguments: { path: 'paged.ts',
                 maxBytes: 1024, offset: 1024, expectedSourceHash: sourceHash }
         }, undefined, workspace)).status, 'denied');
         await writeFile(join(work, 'paged.ts'), source + 'changed');
-        assert.equal((await brokerLocalRead(request, { id: 'page-stale', name: 'read',
+        const stale = await brokerLocalRead(request, { id: 'page-stale', name: 'read',
             arguments: { path: 'paged.ts', maxBytes: 1024, offset: 1024,
-                expectedSourceHash: sourceHash } }, undefined, workspace)).status, 'denied');
+                expectedSourceHash: sourceHash } }, undefined, workspace);
+        assert.equal(stale.status, 'denied');
+        assert.match(stale.output, /^SOURCE_HASH_MISMATCH:/);
         await writeFile(join(work, 'sensitive.ts'), 'export const password = "hidden";\n');
         assert.equal((await brokerLocalRead(request, { id: 'page-sensitive', name: 'read',
             arguments: { path: 'sensitive.ts', maxBytes: 1024, offset: 0 } }, undefined, workspace)).status, 'denied');

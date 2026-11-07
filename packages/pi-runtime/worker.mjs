@@ -14,6 +14,7 @@ if (version !== '1.4.0') throw new Error('Bundled Pi version mismatch');
 let session;
 let isolatedDir;
 let workMode = false;
+let workProcessAvailable = true;
 let chatToolsMode = false;
 let roadmapToolsMode = false;
 let roadmapGenerationMode = false;
@@ -327,9 +328,9 @@ function chatTools() {
   }));
 }
 function workTools() {
-  return Object.entries(WORK_TOOLS).map(([name, properties]) => ({
+  return Object.entries(WORK_TOOLS).filter(([name]) => name !== 'run_command' || workProcessAvailable).map(([name, properties]) => ({
     name, label: name, description: name === 'read_file' ?
-      'Read an authorized candidate file. For a first exact page use path and offset 0 (maxBytes defaults to 4096). The reply supplies sourceHash and nextOffset; later pages require expectedSourceHash equal to that sourceHash. Path-only reads retain the legacy sanitized prefix.' :
+      'Read an authorized candidate file. On the FIRST read of each file, send path and offset 0; OMIT expectedSourceHash entirely. The reply supplies sourceHash and nextOffset. Only for later pages, send that exact returned sourceHash as expectedSourceHash with nextOffset. A task, Git or candidate hash is NOT a file sourceHash. Path-only reads retain the legacy sanitized prefix.' :
       name === 'list_files' ? 'List one directory in the authorized candidate workspace using a relative path and entry limit.' :
       name === 'edit_file' ? 'Create or modify one file in the authorized candidate workspace. Canonical project files are not edited.' :
       name === 'read_command_output' ? 'Read a retained page of a completed approved command result by handle and UTF-8 byte offset; does not rerun it.' :
@@ -399,6 +400,7 @@ function assertLocalModel(model) {
 
 async function dispose() {
   workMode = false;
+  workProcessAvailable = true;
   chatToolsMode = false;
   roadmapToolsMode = false;
   roadmapGenerationMode = false;
@@ -435,6 +437,9 @@ export async function dispatch(message) {
       if (!(message.model.reasoning ? ['off', 'low', 'medium', 'high'].includes(thinkingLevel) :
         thinkingLevel === 'off')) throw new Error('Unsupported Pi thinking level');
       if (message.mode !== undefined && !['work', 'chat-tools'].includes(message.mode)) throw new Error('Invalid Pi mode');
+      if (message.workProcessAvailable !== undefined &&
+          (message.mode !== 'work' || typeof message.workProcessAvailable !== 'boolean'))
+        throw new Error('Invalid Pi Work process availability');
       if (typeof message.cwd !== 'string' || !message.cwd.startsWith('/'))
         throw new Error('Explicit absolute Pi working directory required');
       isolatedDir = await mkdtemp(join(tmpdir(), 'dope-pi-'));
@@ -455,6 +460,7 @@ export async function dispatch(message) {
           }]
         });
         workMode = message.mode === 'work';
+        workProcessAvailable = message.workProcessAvailable !== false;
         chatToolsMode = message.mode === 'chat-tools';
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
         roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;
@@ -468,7 +474,8 @@ export async function dispatch(message) {
             reserveTokens: Math.min(8192, Math.floor(message.model.contextWindow / 4)),
             keepRecentTokens: Math.min(4096, Math.floor(message.model.contextWindow / 8)) },
             retry: { enabled: false } }),
-          resourceLoader: emptyResources, tools: workMode ? Object.keys(WORK_TOOLS) :
+          resourceLoader: emptyResources, tools: workMode ? Object.keys(WORK_TOOLS).filter(name =>
+            name !== 'run_command' || workProcessAvailable) :
             chatToolsMode ? chatToolNames : [],
           noTools: 'all', customTools: workMode ? workTools() : chatToolsMode ? chatTools() : [],
           scopedModels: [{ model: message.model }]
@@ -476,7 +483,8 @@ export async function dispatch(message) {
         session = result.session;
         sessionConsumed = false;
         const tools = session.getActiveToolNames();
-        if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? Object.keys(WORK_TOOLS) :
+        if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? Object.keys(WORK_TOOLS).filter(name =>
+          name !== 'run_command' || workProcessAvailable) :
           chatToolsMode ? chatToolNames : []).sort()))
           throw new Error('Pi opened with unexpected tools');
         return { version, tools, resources: 'isolated' };

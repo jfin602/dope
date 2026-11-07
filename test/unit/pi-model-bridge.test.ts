@@ -22,7 +22,8 @@ function fixture() {
         credential: async () => undefined });
     const host = { async openNoToolSession(...args: any[]) { calls.push(args); return { version: '1.4.0', tools: [], resources: 'isolated' }; },
         async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
-            tools: ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'], resources: 'isolated' }; },
+            tools: ['read_file', 'list_files', 'edit_file', 'read_command_output',
+                ...(args[4] === false ? [] : ['run_command'])], resources: 'isolated' }; },
         async openChatToolsSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
             tools: args[5] === true ? args[6] === true ? ['roadmap_phase'] :
                 ['roadmap_phase', 'roadmap_finish'] :
@@ -183,6 +184,14 @@ test('Pi bridge caps output and opens Work mode only after tool verification', a
         verified.host as any, '/tmp', { tools: true });
     assert.equal(work.modelId, 'exact-model');
     assert.equal(verified.calls.length, 1);
+    const noProcess = fixture();
+    noProcess.state.registry.models[0].capabilities.agentExecution = known(true);
+    const noProcessBridge = new PiModelBridge({ inventory: async () => noProcess.state,
+        refreshModels: async () => noProcess.state, credential: async () => undefined,
+        verifyLocalAgentExecution: async () => 'supported' });
+    await noProcessBridge.bind({ connectionId: 'desk', modelId: 'exact-model' },
+        noProcess.host as any, '/tmp', { tools: true, workProcessAvailable: false });
+    assert.equal(noProcess.calls[0][4], false);
     const selection = { connectionId: 'desk', modelId: 'exact-model', registryRevision: 3,
         loadedContextTokens: 32768 };
     await bridge.assertWorkSelection(selection, 'http://127.0.0.1:1234/v1');

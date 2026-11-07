@@ -146,7 +146,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
             await host.start();
             const binding = await this.bridge.bind({ connectionId: request.connectionId,
                 modelId: request.modelId, registryRevision: request.selectedRegistryRevision,
-                loadedContextTokens: request.selectedLoadedContextTokens }, host, workspace.root, { tools: true });
+                loadedContextTokens: request.selectedLoadedContextTokens }, host, workspace.root,
+                { tools: true, workProcessAvailable: commands.length > 0 });
             endpoint = binding.endpoint;
             boundRegistryRevision = binding.registryRevision;
         } catch (error) {
@@ -322,7 +323,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         request.onEvent({ kind: 'provider-event', summary: page ?
                             `Pi Work read_file broker completed: offset ${page.offset}; end ${page.endOffset}; truncated ${page.truncated}` :
                             `Pi Work read_file broker ${response.status}${response.output.startsWith('INVALID_OFFSET:') ?
-                                ': INVALID_OFFSET' : response.status === 'denied' ? ': AUTHORITY_DENIED' : ''}; ${call.arguments.offset === undefined ? 'legacy' :
+                                ': INVALID_OFFSET' : response.output.startsWith('SOURCE_HASH_MISMATCH:') ?
+                                ': SOURCE_HASH_MISMATCH' : response.status === 'denied' ? ': AUTHORITY_DENIED' : ''}; ${call.arguments.offset === undefined ? 'legacy' :
                                 `offset ${call.arguments.offset}`}; hash supplied ${Boolean(call.arguments.expectedSourceHash)}` });
                         if (response.status === 'completed') {
                             const evidence = documents?.observe(call, response.output);
@@ -369,6 +371,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             catch { return safe(response.output, 4000); }
                         })(),
                         outputTruncated: response.truncated });
+                    const sourceHashMismatch = call.name === 'read' && response.status === 'denied' &&
+                        response.output.startsWith('SOURCE_HASH_MISMATCH:');
                     const resultCode = response.status === 'failed' &&
                         (call.name === 'read' || call.name === 'output') &&
                         response.output.startsWith('INVALID_OFFSET:') ? 'INVALID_OFFSET' : undefined;
@@ -377,7 +381,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         resultCode === 'INVALID_OFFSET' ? 'recoverable' : 'failed', {
                         stage: call.name === 'output' ? 'output-read' : 'broker-execute',
                         detail: workResultDetail(call, response.output, response.truncated, documentRead),
-                        code: response.status === 'denied' ? 'AUTHORITY_DENIED' : resultCode,
+                        code: sourceHashMismatch ? 'SOURCE_HASH_MISMATCH' :
+                            response.status === 'denied' ? 'AUTHORITY_DENIED' : resultCode,
                         effectExecuted: (response.status === 'completed' || response.status === 'failed') &&
                             call.name === 'process' || response.status === 'completed' && call.name === 'edit' });
                     if (response.status === 'denied') {
