@@ -23,7 +23,7 @@ import type { RoadmapSyncPreview, RoadmapRelinkPreview, RoadmapPendingRecoveryPr
 import type { GreenfieldDraft, GreenfieldEdit, GreenfieldPreview, GreenfieldEditPreview, GreenfieldChange, ImplementationPlanDraft } from '@dope/project-intelligence/lib/node/roadmap-greenfield';
 import type { ChatEvent, ChatPlanningProposal, ChatContextSelection, ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import { currentDraftChange, projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapCanvasConnectors, roadmapConnectorTouchesSelection, roadmapImplementationStacks, roadmapSpatialNextId, roadmapSpatialLayout, roadmapEdgeHandles, roadmapBranchPath, roadmapDetailAtZoom, roadmapVisibleGraph,
-    type RoadmapWorkRun,
+    type RoadmapWorkRun, matchesRoadmapWorkRun,
     type RoadmapDetail, type RoadmapVisibleGraph } from './roadmap-canvas-model';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { roadmapHistoryTarget } from './roadmap-history-navigation';
@@ -2005,9 +2005,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
                 this.inspector.gateIndex?.projectId !== index.projectId ||
                 this.inspector.gateIndex.revision !== index.revision) return;
             this.workRuns = pairs.flatMap(({ link, tasks }) => runs.filter(run =>
-                run.projectId === index.projectId && tasks.some(task => task.id === run.taskId &&
-                    task.projectId === link.planningProjectId && task.origin.kind === 'work-item' &&
-                    task.origin.workItemId === link.workItemId && task.origin.planningMapId === link.mapId))
+                tasks.some(task => matchesRoadmapWorkRun(link, task, run)))
                 .map(run => ({ workItemId: link.workItemId, runId: run.id, status: run.status,
                     updatedAt: run.endedAt ?? run.startedAt ?? run.createdAt,
                     result: run.changeSummary?.summary })));

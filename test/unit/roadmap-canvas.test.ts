@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RoadmapProjection } from '../../packages/project-intelligence/src/roadmap-projection.ts';
-import { projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapPhaseMonitor, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
+import { projectRoadmapDraft, projectGateDraftCards, gatePhaseCards, roadmapPhaseMonitor, matchesRoadmapWorkRun, roadmapGateLabel, roadmapSelectableGate, roadmapCanvasOrder, roadmapNextId, roadmapCanvasConnectors, roadmapSpatialLayout } from '../../packages/theia-extension/src/browser/roadmap-canvas-model.ts';
 import type { RoadmapGateIndex } from '../../packages/project-intelligence/src/node/roadmap-gate-domain.ts';
 import { roadmapEdgeStatus, roadmapStatusMark, type RoadmapStatus } from '../../packages/theia-extension/src/browser/roadmap-status-style.ts';
 
@@ -11,6 +11,18 @@ const read = (path: string) => readFileSync(resolve(import.meta.dirname, '../..'
 const node = (id: string, lane: 'path' | 'branch', order: number) => ({
     id, lane, order, kind: lane === 'path' ? 'phase' as const : 'correction' as const,
     title: id, status: 'unknown' as const, statusLabel: 'Unknown', evidence: [], readOnly: false,
+});
+
+test('linked Work run uses its Planning project identity and exact WorkItem origin', () => {
+    const link = { planningProjectId: 'planning-project', mapId: 'map-a', workItemId: 'work-a' };
+    const task = { id: 'task-a', projectId: 'planning-project',
+        origin: { kind: 'work-item', planningMapId: 'map-a', workItemId: 'work-a' } };
+    const run = { taskId: 'task-a', projectId: 'planning-project' };
+    assert.equal(matchesRoadmapWorkRun(link, task, run), true);
+    assert.equal(matchesRoadmapWorkRun(link, task, { ...run, projectId: 'roadmap-project' }), false);
+    assert.equal(matchesRoadmapWorkRun(link, task, { ...run, projectId: undefined }), false);
+    assert.equal(matchesRoadmapWorkRun(link, { ...task, origin: { ...task.origin, workItemId: 'work-b' } }, run), false);
+    assert.equal(matchesRoadmapWorkRun(link, { ...task, origin: { ...task.origin, planningMapId: 'map-b' } }, run), false);
 });
 
 test('schema-two phase cards nest Gates, count only accepted Gates and leave source identity untouched', () => {
@@ -37,6 +49,9 @@ test('schema-two phase cards nest Gates, count only accepted Gates and leave sou
     const cards = gatePhaseCards(index);
     assert.deepEqual(cards.nodes.map(item => item.id), ['phase-a', 'phase-b']);
     assert.deepEqual(cards.nodes.map(item => item.statusLabel), ['Planning', 'Unplanned']);
+    assert.equal(cards.nodes[0].draftState, undefined);
+    assert.equal(gatePhaseCards({ ...index, phases: [{ ...index.phases[0], draftAcceptance: 'accepted' }, index.phases[1]] })
+        .nodes[0].draftState, undefined, 'accepted canonical structure is not an unpublished draft');
     assert.equal(cards.nodes[0].phaseCard?.required, 1);
     assert.equal(cards.nodes[0].phaseCard?.qualified, 0);
     assert.deepEqual(cards.nodes[0].phaseCard?.gates.map(item => [item.id, item.proposed]),

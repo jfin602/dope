@@ -29,6 +29,15 @@ export interface RoadmapPhaseMonitor {
 }
 export interface RoadmapWorkRun { workItemId: string; runId: string; status: string; updatedAt: string; result?: string }
 
+/** A Work run belongs to the Planning project named by the link, not the Roadmap owner. */
+export function matchesRoadmapWorkRun(link: { planningProjectId: string; mapId: string; workItemId: string },
+    task: { id: string; projectId?: string; origin: { kind: string; workItemId?: string; planningMapId?: string } },
+    run: { taskId: string; projectId?: string }): boolean {
+    return run.projectId === link.planningProjectId && task.id === run.taskId &&
+        task.projectId === link.planningProjectId && task.origin.kind === 'work-item' &&
+        task.origin.workItemId === link.workItemId && task.origin.planningMapId === link.mapId;
+}
+
 /** Recomputed from the canonical Roadmap snapshot. Work completion and prose never award Green. */
 export function roadmapPhaseMonitor(index: RoadmapGateIndex, phaseId: string, runs: readonly RoadmapWorkRun[] = []): RoadmapPhaseMonitor {
     const phase = index.phases.find(item => item.id === phaseId);
@@ -132,7 +141,8 @@ export function gatePhaseCards(index: RoadmapGateIndex, owners: readonly Roadmap
                 presentation === 'active' ? 'active' : presentation === 'waived' ? 'waived' : 'unknown',
             statusLabel: result.status === 'unplanned' ? 'Unplanned' : monitor.label,
             evidence: [], readOnly: true, lane: 'path',
-            draftState: phase.draftAcceptance === 'published' ? undefined : phase.draftAcceptance,
+            // An accepted Phase is already in the canonical Roadmap index. Markdown publication is separate.
+            draftState: phase.draftAcceptance === 'proposed' ? 'proposed' : undefined,
             phaseCard: card };
     });
     return { projectId: index.projectId, revision: index.revision, nodes, edges: [],
