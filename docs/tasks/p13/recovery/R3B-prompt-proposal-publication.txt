@@ -1,0 +1,26 @@
+TASK: Phase 13 / R3B — Reviewed Prompt Stack proposal, revision and protected publication
+
+MODEL / MODE
+- Recommended Codex: GPT-6 Sol High for source/approval/UI boundaries.
+- Standalone manual recovery AFTER source-verified R3A and committed R1, BEFORE R3/R2/R4.
+- Product 0.13.11; no auto Run, grant, candidate promotion, Roadmap GREEN or 0.13.12.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p13/native-prompt-stack-authoring-contract.md, recovery README, R3A test/live report, ADR 0041 and existing publication/Work contracts. Inspect local HEAD, dirty tree, current Chat proposal cards, prompt-stack importer/composer/validator, packages/theia-extension/src/node/planning-stack-publication.ts, browser presentation controls, saved Work sequence/discovery and current project/owner/root/source authority. Do not assume the Docs publisher can publish prompt stacks. Preserve owner work and unrelated project data.
+
+GOAL
+Make /prompt-write from R3A produce a durable, source-bound **Prompt Stack Proposal** card. The card owns Accept, Reject and Revise proposal actions. Only protected Accept publishes the exact reviewed prompt stack and makes it visible in existing Work. No /prompt-apply or second writer/runner.
+
+IMPLEMENT
+1. Bind pending proposal ID/digest to exact ordered files and bytes, target docs/tasks/<stack-id>/ (or configured safe project-relative task root), originating assessment/plan/Chat, project/worktree/root/owner, source fingerprints and optional locked Roadmap Phase/Gate/Criterion and revision. Display list, dependency order, validation/manual gates, source scope, version assumptions and collisions with understandable details.
+2. On Accept, use the existing guarded prompt-stack publication owner. Recheck proposal digest, owner/project/root, current relevant source/locked revision, target absence or explicit reviewed replacement, safe canonical paths/symlinks/traversal, strict prompt grammar and immutable execution basis. Write only reviewed bytes, verify persisted files/discovery, and use idempotent recovery on replay/crash. Do not silently overwrite accepted/executed or owner-dirty stack files. If partial effects remain, report and safely reconcile; no false success.
+3. On Reject, retire only pending proposal; zero canonical file/Work/History effects. On Revise proposal, prepopulate/associate native /prompt-write in the existing Chat composer with exact pending proposal identity, let user request additions/removals/splits, and preserve the prior candidate until a checked revision is ready. Never rewrite executed prompt snapshots or manufacture approvals.
+4. Reuse existing Docs proposal card visual conventions, neutral button hierarchy, shared theme tokens, accessible focus/keyboard/touch/narrow layout. Distinguish pending, accepted, stale, blocked and failed/recovery status. Existing Work stack list discovers the accepted prompts but MUST NOT auto-run, authorize tools, open a fresh unrelated work item, approve a candidate or mark any Roadmap Gate qualified.
+5. Standalone correction stacks remain possible without linked Roadmap/Software Map. Roadmap-linked stacks retain typed source IDs for R3/R2; no text/title inference.
+
+TEST / MANUAL ACCEPTANCE
+Focused tests: no-write preview and reject, revised draft and preserved original pending proposal, exact byte publication/validator, collision, path traversal/symlinks, foreign project/root, stale source/Phase revision, no proposal, double accept/replay, restart recovery, immutable accepted/executed history, Work discovery without execution. Inspect actual source-versus-compiled test imports, run only affected tests/builds and git diff --check.
+In real connected Codex browser with disposable project and actual local model: create a stack via all three native commands; Revise proposal to add/remove a prompt, inspect the new candidate, Accept and verify persisted exact files then open in Work without grant/Run. Produce another candidate and Reject it with zero effects. Observe source IDs, screenshots/DOM and errors. No Software Map/Planning Map prerequisite.
+
+EXIT / DELIVERY
+PASS only if exact source-bound reviewed publication and card behavior work live; else PARTIAL/FAIL and hold R3. Append dated report under recovery/qualification, preserving R1 and historical P9/P12 reports. At END stage only verified isolated files by exact paths/hunks, inspect staged diff, run focused relevant checks and git diff --check, commit/push to tracked branch without force/reset/overwrite. Report SHA, branch, push, exact results/gaps. Product 0.13.11 unchanged.
