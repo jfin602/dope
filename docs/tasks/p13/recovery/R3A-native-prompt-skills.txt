@@ -1,0 +1,30 @@
+TASK: Phase 13 / R3A — Native /prompt-ass, /prompt-plan and /prompt-write Chat authoring
+
+MODEL / MODE
+- Recommended Codex: GPT-6 Sol High for protected Skills/source integration.
+- Standalone manual recovery after committed R1, before R3B/R3/R2/R4. NOT a codex:phase runner step.
+- Stay at 0.13.11; no automatic version bump, product Gate GREEN or P9/P12/P13 qualification.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p12/skills-framework-contract.md, docs/planning/p13/native-prompt-stack-authoring-contract.md, recovery README and committed R1 qualification. Inspect actual HEAD, dirty tree, current selected model, chat slash dispatch, saved conversation, Pi skills, source-read broker, prompt-stack composer/importer and persistence interfaces, affected tests and compiled output ownership. Do not overwrite user work or modify tower-defense. No reset/stash/clean.
+
+OBJECTIVE
+Deliver all three native protected Chat commands as distinct inspectable authoring stages, not just model-visible instructions:
+  /prompt-ass → /prompt-plan → /prompt-write <folder>
+The developer can brainstorm naturally before invoking them. Stages retain selected saved Chat context and project identity. No canonical prompt file publication or Work execution in this R3A step (R3B owns reviewed publication).
+
+IMPLEMENT
+1. Register built-ins in the existing Skills/Chat registry. Resolve invocation at send time from trusted command metadata and allow the slash menu to insert an editable command without sending. Quoted slash strings, code fences, file paths and ordinary model prose must not invoke; missing/disabled/colliding names must fail clearly. Preserve custom Skills, prior Chat context, streaming, Ask/Allow, cancel, retry, attachments, keyboard and narrow composer.
+2. /prompt-ass selectively inspects relevant project requirements, exact code and tests via existing permitted project-read tools; reports listed/searched/actually-read coverage and source omissions. Produce a durable bound assessment draft: scope, preservation, dependencies, risks, source basis, authority, T1/T2/T3 evidence. Do not preload the full repo or execute an auxiliary model.
+3. /prompt-plan uses the saved selected assessment and current source to inspect producers/consumers, define ordered bounded work, relevant validations, affected build/test dependency order, manual checkpoints and explicit non-goals. Preserve approved plan identity; deny foreign/stale/switch-project use, with a visible revision path.
+4. /prompt-write <folder> consumes the selected current plan to produce a complete uncommitted stack draft via existing phase-stack composer/grammar. Include assessment, plan, contiguous prompt files, exactly one manual/terminal closeout and applicable model/Browser flags. Apply existing Prompt Efficiency Gate, UI Design Compliance and Human Usability as relevant; distinguish user projects from Dope's own version markers. Provide stable draft identity and exact candidate file bytes to R3B. No generic Pi file-writing authority, canonical prompt files, Work Run or Gate qualification.
+5. Persist bounded project-scoped intermediate drafts and dependency identity through cancel/reload; retries may not double-inject Skills or silently switch source/owner. Preserve no-Roadmap standalone correction drafts without fake WorkItems/maps. Bind optional locked Roadmap IDs for R3 integration, but DO NOT implement the Roadmap UI here.
+
+FOCUSED VALIDATION
+Tests: true slash dispatch versus code text/literal mention, skills snapshot on retry, Chat context retention and isolation, one model invocation per requested stage, malformed command/folder, source/owner/project switch, stale assessment/plan, interrupted/resumed drafts, no publication, no grant/Work/GREEN, actual prompt grammar and 16,384-token bounded retrieval. Build only changed packages and necessary compiled dependencies; no boilerplate aggregate commands.
+
+MANUAL CHECK
+In a disposable connected Codex browser with the selected local model, brainstorm a small feature, invoke /prompt-ass, /prompt-plan, /prompt-write in sequence and inspect distinct stage drafts and saved context across reload. Prove canonical docs/tasks files are not yet written and no Work run or grant started. Confirm keyboard/narrow/visible error behavior and read coverage.
+
+EXIT / DELIVERY
+Append truthful dated report under docs/tasks/p13/recovery/qualification/. PASS only with actual implementation, relevant tests and observed live stages; else PARTIAL/FAIL and stop R3B. Keep R1 and historical P9/P12 unchanged. At END inspect status/diff, stage only verified isolated source/tests/report with explicit paths/hunks (never git add . or -A), run final relevant checks plus git diff --check and staged diff check, commit with truthful result and push tracked branch without force/rebase/reset. Report SHA, branch, push, version, tests, live evidence and remaining gaps. No 0.13.12 marker.
