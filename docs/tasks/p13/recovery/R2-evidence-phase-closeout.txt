@@ -2,7 +2,7 @@ TASK: Phase 13 / R2 — Qualify Prompt-Stack Work evidence on the Roadmap and en
 
 MODEL / MODE
 - Recommended Codex: GPT-6 Sol High.
-- Standalone manual recovery AFTER R1 local Work read correction and R3 Roadmap → Prompt Stack → Work decoupling.
+- Standalone manual recovery AFTER committed R1 and source-verified R3A native authoring, R3B proposal publication and R3 Roadmap → Prompt Stack → Work decoupling.
 - Connected real browser required for acceptance. Version remains 0.13.11 until P9/P12 independent owner-reviewed PASS.
 
 OWNER-APPROVED WORKFLOW
@@ -10,10 +10,10 @@ Roadmap Planning → reviewed Prompt Stack Creation → authorized Work executio
 Roadmap is the authoritative requirement/progress owner. Accepted prompt stack is the implementation plan; Work executes selected approved prompts. Legacy Software Map/Planning Map architecture, physical transformations and their manual editor/approvals MUST NOT be dependencies of this flow. Phase 14 may reintegrate Software Map as optional intelligence; do not reintroduce it here.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, ADR 0040/0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/qualification/checkpoint-c.md, docs/tasks/p13/recovery/README.md and R1/R3 results. Inspect current prompt-stack import/discovery and Work execution, existing roadmap-work-evidence/service, immutable receipts, candidate promotion, History, owner Phase closeout and projection. Confirm repo HEAD/dirty/version/served app, project/owner/root/source IDs, explicit grants and actual runtime; preserve unrelated work and owner's tower-defense project.
+Read BOOT.md, AGENTS.md, ADR 0040/0051, docs/planning/p13/roadmap-work-lifecycle-contract.md, docs/tasks/p13/qualification/checkpoint-c.md, docs/tasks/p13/recovery/README.md and R1/R3A/R3B/R3 results and native prompt-stack authoring contract. Inspect current prompt-stack import/discovery and Work execution, existing roadmap-work-evidence/service, immutable receipts, candidate promotion, History, owner Phase closeout and projection. Confirm repo HEAD/dirty/version/served app, project/owner/root/source IDs, explicit grants and actual runtime; preserve unrelated work and owner's tower-defense project.
 
 REPAIR OBJECTIVE
-After R3, a reviewed Roadmap-derived prompt must retain an immutable, source-bound mapping (stack/stack revision/prompt → original Phase/Gate/Criterion and accepted revision/source basis). Map execution records to Criteria through this approved association, not title matching, generated text, or an incidental Planning Map project ID. Reuse existing evidence/Work authority; avoid a second checklist or independent Gate completion store.
+After the native R3A → R3B → R3 flow, an accepted and published Roadmap-derived prompt must retain an immutable, source-bound mapping (stack/stack revision/prompt → original Phase/Gate/Criterion and accepted revision/source basis). Map execution records to Criteria through this approved association, not title matching, generated text, or an incidental Planning Map project ID. Reuse existing evidence/Work authority; avoid a second checklist or independent Gate completion store.
 
 IMPLEMENT
 1. Trace approved prompt source → saved stack/sequence → authorized selected prompt/task/run → real source edits and validation → held candidate → explicit owner review/acceptance → current accepted-source evidence receipt → Criterion/Gate evaluation → explicit Phase closeout.
@@ -24,7 +24,7 @@ IMPLEMENT
 6. Add focused tests for two prompts against different Criteria, multiple receipts/one Criterion, rejected candidate, stale source after validation, partial/failed/waived proof, foreign project, duplicate receipt, restart and attempted premature closeout.
 
 LIVE PROOF
-Use the new Roadmap-generated reviewed prompt stack from R3 on a disposable real project, with separate owner grants. Execute a prompt using local Work, observe source edit and tests, hold/review/promote candidate, independently confirm tested accepted bytes, then observe receipt → Criterion → Gate qualification in Roadmap and Work/History. Require separate owner Phase completion and verify persistent Complete after restart, while a second Phase remains editable. Operate at least a failed/rejected candidate, an affected stale case and premature-closeout denial. Never auto-accept or self-qualify.
+Use an accepted native /prompt-ass → /prompt-plan → /prompt-write stack, reviewed/published through R3B and Roadmap-bound by R3, on a disposable real project, with separate owner grants. Execute a prompt using local Work, observe source edit and tests, hold/review/promote candidate, independently confirm tested accepted bytes, then observe receipt → Criterion → Gate qualification in Roadmap and Work/History. Require separate owner Phase completion and verify persistent Complete after restart, while a second Phase remains editable. Operate at least a failed/rejected candidate, an affected stale case and premature-closeout denial. Never auto-accept or self-qualify.
 
 REPAIR / EXIT
 Up to 3 narrow repair/retest cycles. PASS requires actual accepted-source → current Criterion → Gate → owner Phase Complete on final source; otherwise truthful PARTIAL/FAIL. Append dated source/runtime/IDs/grant/validation/evidence to docs/tasks/p13/recovery/qualification/. Run focused tests, relevant builds and git diff --check. Commit/push only scoped safe verified fixes/report, no force/owner-data loss. Keep P9/P12 NOT GREEN and no 0.13.12 marker or P13 auto-start until R4's independent technical qualification.
