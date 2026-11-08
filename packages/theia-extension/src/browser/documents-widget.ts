@@ -1,10 +1,12 @@
 import { BaseWidget, codicon } from '@theia/core/lib/browser/widgets/widget';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
+import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import URI from '@theia/core/lib/common/uri';
 import { DocumentsWorkspaceState, type DocumentsMode } from './documents-workspace-state';
 import { ProjectDocumentsTree, type ProjectDocumentEntry, type ProjectDocumentListing } from './project-documents-tree';
 import { documentFormat, readDocumentPreview, renderDocumentPreview, renderDocumentSource } from './documents-preview';
+import { DocumentsEditing } from './documents-editing';
 
 export const DOCUMENTS_WIDGET_ID = 'dope-documents';
 
@@ -13,6 +15,8 @@ export class DocumentsWidget extends BaseWidget {
     readonly presentation = new DocumentsWorkspaceState();
     private readonly rootsListener;
     private readonly locationListener;
+    private readonly filesListener;
+    private readonly editing: DocumentsEditing;
     private request = 0;
     private readonly tree = document.createElement('div');
     private readonly content = document.createElement('div');
@@ -31,8 +35,12 @@ export class DocumentsWidget extends BaseWidget {
     private previewLoading = false;
     private previewMode: 'preview' | 'source' = 'preview';
 
-    constructor(private readonly workspaces: WorkspaceService, private readonly files: FileService) {
+    constructor(private readonly workspaces: WorkspaceService, private readonly files: FileService, editors: EditorManager) {
         super();
+        this.editing = new DocumentsEditing(files, editors, () => {
+            const roots = workspaces.tryGetRoots();
+            return roots.length === 1 && roots[0].resource.scheme === 'file' ? roots[0].resource.toString() : undefined;
+        }, () => { if (!this.isDisposed) this.render(); });
         this.id = DOCUMENTS_WIDGET_ID;
         this.title.label = this.title.caption = 'Documents';
         this.title.iconClass = codicon('files');
@@ -72,11 +80,21 @@ export class DocumentsWidget extends BaseWidget {
 
         this.rootsListener = workspaces.onWorkspaceChanged(() => { void this.refreshProject(); });
         this.locationListener = workspaces.onWorkspaceLocationChanged(() => { void this.refreshProject(); });
+        this.filesListener = files.onDidFilesChange(event => {
+            const path = this.editing.activePath;
+            const project = this.presentation.selection.projectUri;
+            if (path && project && event.contains(new URI(project).resolve(path)))
+                this.editing.externalChange(new URI(project).resolve(path));
+            const selected = this.presentation.selection.selectedPath;
+            if (project && selected && this.presentation.selection.mode === 'explorer' &&
+                event.contains(new URI(project).resolve(selected))) void this.loadPreview(selected);
+        });
         void this.refreshProject();
     }
 
     async refreshProject(): Promise<void> {
         const request = ++this.request;
+        this.editing.invalidate();
         ++this.previewRequest;
         this.previewText = undefined;
         this.previewError = undefined;
@@ -262,8 +280,12 @@ export class DocumentsWidget extends BaseWidget {
         }
         this.status.textContent = state.status === 'error' ? state.error ?? 'Documents unavailable' :
             state.status === 'pending' ? 'Loading Documents…' : state.selectedPath ?
-                `${state.selectedPath} · ${documentFormat(state.selectedPath)?.toUpperCase() ?? 'Unknown format'} · Read-only` :
+                `${state.selectedPath} · ${documentFormat(state.selectedPath)?.toUpperCase() ?? 'Unknown format'} · ${
+                    this.editing.activePath === state.selectedPath ? this.editing.dirty ? 'Unsaved changes in editor' : 'Open in editor' : 'Preview'}` :
                 state.projectUri ? 'Select a document.' : 'Open one local project folder.';
+        if (this.editing.message) this.status.textContent += ` · ${this.editing.message}`;
+        if (this.editing.dirty && this.editing.activePath !== state.selectedPath)
+            this.status.textContent += ` · Unsaved in editor: ${this.editing.activePath}`;
         this.content.replaceChildren();
         if (state.mode !== 'explorer') { this.content.textContent = 'Review files will appear here.'; return; }
         if (!state.selectedPath) { this.content.textContent = 'Select a document to view its content.'; return; }
@@ -277,7 +299,23 @@ export class DocumentsWidget extends BaseWidget {
             button.addEventListener('click', () => { this.previewMode = choice; this.render(); });
             controls.append(button);
         }
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.textContent = 'Source/Edit in editor';
+        edit.setAttribute('aria-label', `Edit ${state.selectedPath} in the text editor`);
+        edit.addEventListener('click', () => {
+            const projectUri = this.presentation.selection.projectUri;
+            const path = this.presentation.selection.selectedPath;
+            if (this.presentation.selection.mode === 'explorer' && projectUri && path)
+                void this.editing.open(projectUri, path);
+        });
+        controls.append(edit);
         this.content.append(controls);
+        if (this.editing.activePath === state.selectedPath) {
+            const help = document.createElement('p');
+            help.textContent = 'Edit in the text editor. Use Ctrl/Cmd+S to save; its dirty tab, undo, conflict choice and close prompt protect your draft.';
+            this.content.append(help);
+        }
         if (this.previewLoading) { this.content.append('Loading document…'); return; }
         if (this.previewError) { this.content.append(this.previewError); return; }
         if (this.previewText === undefined) { this.content.append('Select a document to view its content.'); return; }
@@ -292,6 +330,7 @@ export class DocumentsWidget extends BaseWidget {
         this.previewRequest++;
         this.rootsListener.dispose();
         this.locationListener.dispose();
+        this.filesListener.dispose();
         super.dispose();
     }
 }

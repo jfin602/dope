@@ -522,7 +522,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 return `Linked ${review.items.length} WorkItems to locked Phase ${handoff.title}. No Work started.`;
             }) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: DOCUMENTS_WIDGET_ID, createWidget: () =>
-        new DocumentsWidget(context.container.get(WorkspaceService), context.container.get(FileService)) })).inSingletonScope();
+        new DocumentsWidget(context.container.get(WorkspaceService), context.container.get(FileService),
+            context.container.get(EditorManager)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),
             context.container.get(RoadmapInspectorModel),
