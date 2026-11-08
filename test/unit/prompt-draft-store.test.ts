@@ -130,6 +130,25 @@ test('saved structured assessment renders after restart without model or canonic
     await assert.rejects(lstat(join(v.root, 'docs', 'tasks', 'safe-task')), /ENOENT/);
 }));
 
+test('checked plan projection comes from durable noncanonical record', () => fixture(async v => {
+    await v.store.begin(v.root, v.identity, v.lease);
+    const assessed = await v.store.stage(v.root, v.identity, v.lease, 'assessment', 0,
+        { scope: 'Source checked' }, v.refs);
+    const record = { work: [{ id: 'step-1', title: 'Implement feature',
+        objective: 'Implement source-bound feature', tier: 'T1', dependsOn: [],
+        workingSet: ['README.md'], validationTargets: ['Run focused source test'],
+        buildNeeds: 'none', acceptanceCriteria: ['Feature behaves as requested'] }],
+        closeout: { title: 'Manual closeout', objective: 'Observe feature',
+            manualReason: 'Requires human observation', browserRequired: true, tier: 'T3',
+            acceptanceCriteria: ['Observe feature'] },
+        efficiencyAudit: Array.from({ length: 10 }, (_, index) => `Gate ${index + 1} checked`) };
+    await v.store.stage(v.root, v.identity, v.lease, 'plan', assessed.revision, record, v.refs);
+    const reopened = new PromptDraftStore(new ChatRepository(), new ChatProjectGrounder({} as never),
+        async () => basis);
+    assert.match(await reopened.planView(v.root, v.identity, v.lease), /step-1 \(T1\): Implement feature/);
+    await assert.rejects(lstat(join(v.root, 'docs', 'tasks', 'safe-task')), /ENOENT/);
+}));
+
 test('unsafe task parent and draft staging symlink are rejected without writing outside', () => fixture(async v => {
     await symlink(tmpdir(), join(v.root, 'docs'));
     await assert.rejects(v.store.begin(v.root, v.identity, v.lease), /Unsafe Chat directory/);

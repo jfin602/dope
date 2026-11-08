@@ -125,13 +125,14 @@ export async function verifyPromptSourceRefs(root: string,
 
 export function promptStageInstruction(command: { stage: PromptStage; folder?: string },
     prior: { assessment?: ChatAssistantMessage; plan?: ChatAssistantMessage }, sourceVersion?: string,
-    assessmentRecord?: AssessmentRecord): string {
+    assessmentRecord?: AssessmentRecord, planRecord?: PlanRecord): string {
     const inherited = [prior.assessment && `Selected assessment ${prior.assessment.id}:\n${assessmentRecord ?
         compactAssessmentContext(assessmentRecord) : prior.assessment.content.slice(0, 8_000)}`,
-        prior.plan && `Selected plan ${prior.plan.id}:\n${prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
+        prior.plan && `Selected plan ${prior.plan.id}:\n${planRecord ? JSON.stringify(planRecord) :
+            prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read relevant source and tests with read_file; report omissions. Keep the final response under 12,000 characters.';
     if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Return only one JSON object with exact keys scope, observations, preservation, dependencies, risks, tiers. scope is a short string. Each of observations, preservation, dependencies, risks is an array of {claim,path,start,end,sourceHash,quote}; quote is an exact short UTF-8 excerpt occupying start..end within a successful read_file result. Cite only brokered file ranges, using the sourceHash returned by the broker. A listed or searched path is not read evidence. tiers has T1, T2, T3 short strings: T1 focused source/unit work, T2 cross-boundary integration, T3 independent manual browser qualification. Do not include a Markdown report or invent omitted-file lists; Dope checks retrieval and renders the assessment.`;
-    if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn a Markdown plan with ordered steps, exact likely files, focused tests/build dependency order, manual checkpoints, explicit deferrals and prompt-efficiency decisions.`;
+    if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn one compact JSON object with exact keys work, closeout, efficiencyAudit. work is an ordered array of bounded {id,title,objective,tier,dependsOn,workingSet,validationTargets,buildNeeds,acceptanceCriteria} records; tier is T1 for focused implementation or T2 for explicit cross-boundary integration. Use stable step-N IDs and prior IDs for dependencies. workingSet contains only broker-read source/test paths; read_file each relevant source and late page before claiming it. buildNeeds states the actual narrow compiled-output requirement or "none". closeout has {title,objective,manualReason,browserRequired:true,acceptanceCriteria,tier:"T3"} and is separate from work. efficiencyAudit has exactly ten concise findings in docs/workflow.md order: single responsibility, 8/10/15-minute runtime, test precision, build precision, evidence distribution, command deduplication, model economy and deferral, runnable/traceable contract, UI Design Compliance (ADR 0016 and theme tokens if applicable), Human Usability (ADR 0037, entry/feedback/recovery/keyboard/narrow if applicable). Never invent CI, browser demo files, CommonJS adapters or dependencies. Do not return Markdown or claim publication.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
     const requestedCount = requestedWorkPromptCount(prior.plan?.content ?? '', prior.assessment?.content ?? '');
@@ -144,7 +145,7 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
 /** Only an explicit small numeric request binds a count; a vague plan never invents one. */
 export function requestedWorkPromptCount(...texts: string[]): number | undefined {
     const source = texts.join('\n');
-    const matched = /\b(\d{1,2}|ten)\s+(?:(?:substantial|dependency-ordered|ordered|implementation|work)\s+){0,4}(?:work\s+)?(?:prompts|steps)\b/iu.exec(source);
+    const matched = /\b(\d{1,2}|ten)[-\s]+(?:(?:substantial|dependency-ordered|ordered|implementation|work)[-\s]+){0,4}(?:work[-\s]+)?(?:prompts?|steps?|tasks?)\b/iu.exec(source);
     if (!matched) return undefined;
     const count = matched[1].toLowerCase() === 'ten' ? 10 : Number(matched[1]);
     return count >= 1 && count <= 48 ? count : undefined;
@@ -159,6 +160,108 @@ export interface AssessmentRecord {
     tiers: { T1: string; T2: string; T3: string };
     omittedRequestedFiles: string[];
 }
+export interface PlanWorkRecord { id: string; title: string; objective: string; tier: 'T1' | 'T2';
+    dependsOn: string[]; workingSet: string[]; validationTargets: string[]; buildNeeds: string;
+    acceptanceCriteria: string[] }
+export interface PlanRecord { work: PlanWorkRecord[]; closeout: { title: string; objective: string;
+    manualReason: string; browserRequired: true; acceptanceCriteria: string[]; tier: 'T3' };
+    efficiencyAudit: string[] }
+const planKeys = (value: object, expected: string[]): boolean =>
+    Object.keys(value).sort().join(',') === expected.sort().join(',');
+const planText = (value: unknown, limit = 300): value is string =>
+    typeof value === 'string' && !!value.trim() && value.length <= limit && !/[\u0000-\u001f\u007f]/u.test(value);
+const planStrings = (value: unknown, min = 1, max = 12): value is string[] =>
+    Array.isArray(value) && value.length >= min && value.length <= max && value.every(item => planText(item));
+/** A noncanonical plan may be staged only after its requested count, source and gate claims check out. */
+export function validatedPlan(modelText: string, assessment: AssessmentRecord,
+    refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>, requestedCount?: number): PlanRecord {
+    if (Buffer.byteLength(modelText, 'utf8') > 32_000) throw new Error('PLAN_PAYLOAD_LIMIT: Shorten the structured plan');
+    let parsed: unknown;
+    try { parsed = JSON.parse(modelText.trim()); } catch { throw new Error('PLAN_JSON: Return one structured JSON object'); }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) ||
+        !planKeys(parsed, ['work', 'closeout', 'efficiencyAudit']))
+        throw new Error('PLAN_SHAPE: Supply work, closeout and efficiencyAudit only');
+    const value = parsed as Record<string, unknown>;
+    if (!Array.isArray(value.work) || value.work.length < 2 || value.work.length > 48 ||
+        requestedCount !== undefined && value.work.length !== requestedCount)
+        throw new Error(`PLAN_WORK_COUNT: Supply ${requestedCount ?? '2–48'} work tasks plus a separate closeout`);
+    const readPaths = new Set(refs.filter(ref => ref.kind === 'file' && ref.origin === 'tool' && ref.sourceHash)
+        .map(ref => ref.id));
+    if (!readPaths.size) throw new Error('PLAN_READ_REQUIRED: Read actual source with read_file before planning');
+    const assessedPaths = new Set([...assessment.observations, ...assessment.preservation,
+        ...assessment.dependencies, ...assessment.risks].map(item => item.path));
+    const supported = new Set([...readPaths, ...assessedPaths]);
+    if (assessment.omittedRequestedFiles.some(path => !readPaths.has(path)))
+        throw new Error(`PLAN_MISSING_SOURCE: Read requested file ${assessment.omittedRequestedFiles.find(path => !readPaths.has(path))} before planning`);
+    let t2 = 0;
+    const seen = new Set<string>();
+    const work = value.work.map((raw: unknown, index: number) => {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+            !planKeys(raw, ['id', 'title', 'objective', 'tier', 'dependsOn', 'workingSet',
+                'validationTargets', 'buildNeeds', 'acceptanceCriteria']))
+            throw new Error(`PLAN_WORK_SHAPE: Step ${index + 1} needs responsibility, files, tests and build needs`);
+        const item = raw as PlanWorkRecord;
+        if (item.id !== `step-${index + 1}` || seen.has(item.id))
+            throw new Error(`PLAN_STEP_ID: Expected stable step-${index + 1}`);
+        if (!planText(item.title) || !planText(item.objective) ||
+            !(item.tier === 'T2' ? /\b(?:integrate|validate|implement|change|repair|wire|add|remove)\b/iu :
+                /\b(?:implement|change|repair|wire|add|remove)\b/iu).test(item.objective) ||
+            !planStrings(item.workingSet) || !planStrings(item.validationTargets) ||
+            !planStrings(item.acceptanceCriteria) || !planText(item.buildNeeds) ||
+            !Array.isArray(item.dependsOn) || item.dependsOn.some(id => typeof id !== 'string' || !seen.has(id)) ||
+            !['T1', 'T2'].includes(item.tier))
+            throw new Error(`PLAN_WORK_CONTENT: ${item.id} needs genuine implementation responsibility, prior dependencies, focused validation and build needs`);
+        if (/\b(?:read tiers?|T[123] read|source read only)\b/iu.test(item.objective) ||
+            /\b(?:CI pipeline|CommonJS|browser demo|npm install|new dependency)\b/iu.test(
+                [item.title, item.objective, item.buildNeeds, ...item.validationTargets].join(' ')) &&
+            ![...assessment.observations, ...assessment.dependencies].some(finding =>
+                /\b(?:CI pipeline|CommonJS|browser demo|npm install|new dependency)\b/iu.test(finding.claim)))
+            throw new Error(`PLAN_UNSUPPORTED_ASSUMPTION: ${item.id} asserts a read tier or unverified infrastructure`);
+        for (const path of item.workingSet) if (!supported.has(path))
+            throw new Error(`PLAN_UNSUPPORTED_SOURCE: ${item.id} names ${path} without broker-read assessment or plan evidence`);
+        const targets = item.validationTargets.flatMap(target => requestedPaths(target));
+        if (!targets.length || targets.some(path => !supported.has(path)))
+            throw new Error(`PLAN_TEST_TARGET: ${item.id} needs an actual broker-read test target`);
+        if (item.tier === 'T2') t2++;
+        seen.add(item.id);
+        return item;
+    });
+    if (!t2) throw new Error('PLAN_T2_REQUIRED: Include an explicit cross-boundary integration work task');
+    const closeout = value.closeout;
+    if (!closeout || typeof closeout !== 'object' || Array.isArray(closeout) ||
+        !planKeys(closeout, ['title', 'objective', 'manualReason', 'browserRequired', 'acceptanceCriteria', 'tier']) ||
+        !planText((closeout as PlanRecord['closeout']).title) ||
+        !planText((closeout as PlanRecord['closeout']).objective) ||
+        !planText((closeout as PlanRecord['closeout']).manualReason) ||
+        !planStrings((closeout as PlanRecord['closeout']).acceptanceCriteria) ||
+        (closeout as PlanRecord['closeout']).browserRequired !== true ||
+        (closeout as PlanRecord['closeout']).tier !== 'T3')
+        throw new Error('PLAN_T3_CLOSEOUT: Supply exactly one separate final manual browser closeout');
+    const audit = value.efficiencyAudit;
+    const gates = [/responsib|boundary/iu, /8.{0,30}10.{0,30}15|runtime|minute/iu,
+        /test|validation/iu, /build|compil|lib\//iu, /evidence|integration|T2|T3/iu,
+        /dedup|repeat|aggregate/iu, /model|deferr/iu, /runnable|trace|grammar|version/iu,
+        /(?:UI design|ADR 0016|non-UI).*(?:theme|token|not applicable)|(?:theme|token).*(?:UI design|ADR 0016)/iu,
+        /(?:human usability|ADR 0037|non-UI).*(?:keyboard|recovery|entry|not applicable)|(?:keyboard|recovery).*(?:human usability|ADR 0037)/iu];
+    if (!planStrings(audit, 10, 10)) throw new Error('PLAN_EFFICIENCY_COUNT: Supply all ten workflow gates');
+    if (new Set(audit.map(item => item.toLowerCase().trim())).size !== 10)
+        throw new Error('PLAN_EFFICIENCY_DUPLICATE: Supply ten distinct workflow findings');
+    for (let index = 0; index < gates.length; index++) if (!gates[index].test(audit[index]))
+        throw new Error(`PLAN_EFFICIENCY_GATE_${index + 1}: Wrong or missing docs/workflow.md gate`);
+    return { work, closeout: closeout as PlanRecord['closeout'], efficiencyAudit: audit };
+}
+
+export function renderPlan(record: PlanRecord): string {
+    return `${heading['prompt-plan']}\n\nDraft only. This command did not change project files or start Work.\n\n` +
+        record.work.map(step => `- ${step.id} (${step.tier}): ${step.title} — ${step.objective}\n  Files: ${step.workingSet.join(', ')}; depends on: ${step.dependsOn.join(', ') || 'none'}; validation: ${step.validationTargets.join('; ')}; build: ${step.buildNeeds}`).join('\n') +
+        `\n\nFinal manual closeout (T3): ${record.closeout.title} — ${record.closeout.objective}\n\n` +
+        `Prompt Efficiency Gates:\n${record.efficiencyAudit.map((finding, index) => `${index + 1}. ${finding}`).join('\n')}\n`;
+}
+export function planReceiptCurrent(content: string, contentHash: string | undefined,
+    revision: number | undefined): boolean {
+    const match = /Plan record sha256: ([a-f0-9]{64}); revision: ([1-9]\d*)/u.exec(content);
+    return !!match && match[1] === contentHash && Number(match[2]) === revision;
+}
 function compactAssessmentContext(record: AssessmentRecord): string {
     const section = (items: AssessmentFinding[]) => ({ count: items.length,
         sample: items.slice(0, 4).map(item => ({ claim: item.claim.slice(0, 180), path: item.path,
@@ -169,7 +272,7 @@ function compactAssessmentContext(record: AssessmentRecord): string {
         omittedRequestedFiles: record.omittedRequestedFiles.slice(0, 16) });
 }
 const assessmentFields = ['scope', 'observations', 'preservation', 'dependencies', 'risks', 'tiers'];
-const requestedPaths = (text: string): string[] => [...new Set(text.match(/\b(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.(?:md|txt|json|js|jsx|ts|tsx)\b/gu) ?? [])];
+const requestedPaths = (text: string): string[] => [...new Set(text.match(/\b(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*\.(?:md|txt|json|js|jsx|ts|tsx)\b/gu) ?? [])];
 /** Validate model claims against successful broker reads; metadata searches never count. */
 export function validatedAssessment(modelText: string,
     refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>, requestedText: string,

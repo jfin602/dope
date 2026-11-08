@@ -8,7 +8,68 @@ import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-s
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText, newPromptDraftIdentity,
     priorPromptDraft, promptStageCommand, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
-    verifyPromptDraftSource, validatedAssessment, renderAssessment } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+    verifyPromptDraftSource, validatedAssessment, renderAssessment, validatedPlan, renderPlan,
+    requestedWorkPromptCount, planReceiptCurrent } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+
+test('structured plan checks requested ten work tasks, source, order, T2/T3 and all efficiency gates', () => {
+    const finding = { claim: 'Read relevant source', path: 'src/clamp.ts', start: 0, end: 20,
+        sourceHash: 'a'.repeat(64), quote: 'source' };
+    const assessment = { scope: 'Clamp feature', observations: [finding], preservation: [finding],
+        dependencies: [finding], risks: [finding],
+        tiers: { T1: 'Focused implementation', T2: 'Integration', T3: 'Manual browser closeout' },
+        omittedRequestedFiles: [] };
+    const refs = [{ kind: 'file', id: 'src/clamp.ts', origin: 'tool', sourceHash: 'a'.repeat(64) },
+        { kind: 'file', id: 'test/clamp.test.ts', origin: 'tool', sourceHash: 'b'.repeat(64) }] as never;
+    const work = Array.from({ length: 10 }, (_, index) => ({ id: `step-${index + 1}`,
+        title: `Implement clamp responsibility ${index + 1}`,
+        objective: `Implement bounded clamp responsibility ${index + 1} in verified source`,
+        tier: index === 9 ? 'T2' : 'T1', dependsOn: index ? [`step-${index}`] : [],
+        workingSet: ['src/clamp.ts'], validationTargets: [`Run test/clamp.test.ts for case ${index + 1}`],
+        buildNeeds: 'Compile changed extension lib for compiled-import tests',
+        acceptanceCriteria: [`Clamp responsibility ${index + 1} works`] }));
+    const closeout = { title: 'Manual clamp closeout', objective: 'Observe clamp in browser',
+        manualReason: 'Human interaction needs observation', browserRequired: true, tier: 'T3',
+        acceptanceCriteria: ['Observe bounded behavior'] };
+    const efficiencyAudit = [
+        'Single responsibility and narrow boundary per task',
+        'Runtime target 8 minutes, soft 10 and hard 15 minutes',
+        'Test precision uses focused unit cases',
+        'Build precision compiles changed lib only',
+        'Evidence distribution puts integration in T2 and manual browser in T3',
+        'Command deduplication avoids repeated aggregate runs',
+        'Model economy uses Medium and defers unrelated features',
+        'Runnable traceable grammar preserves version and closeout',
+        'UI Design Compliance follows ADR 0016 and semantic theme tokens when applicable',
+        'Human Usability follows ADR 0037, keyboard and recovery when applicable' ];
+    const plan = { work, closeout, efficiencyAudit };
+    const check = (candidate: unknown, source = refs, record = assessment, count = 10) =>
+        validatedPlan(JSON.stringify(candidate), record, source, count);
+    assert.equal(requestedWorkPromptCount('Build ten work tasks plus closeout'), 10);
+    assert.equal(check(plan).work.length, 10);
+    assert.match(renderPlan(check(plan)), /Final manual closeout \(T3\)/);
+    const receipt = `Plan record sha256: ${'a'.repeat(64)}; revision: 1.`;
+    assert.equal(planReceiptCurrent(receipt, 'a'.repeat(64), 1), true);
+    assert.equal(planReceiptCurrent(receipt, 'a'.repeat(64), 2), false);
+    assert.equal(planReceiptCurrent(receipt, 'b'.repeat(64), 1), false);
+    assert.throws(() => check({ ...plan, work: work.slice(0, 9) }), /PLAN_WORK_COUNT/);
+    assert.throws(() => check({ ...plan, work: work.map((item, index) => index === 1 ?
+        { ...item, dependsOn: ['step-3'] } : item) }), /PLAN_WORK_CONTENT/);
+    assert.throws(() => check({ ...plan, work: work.map((item, index) => index === 2 ?
+        { ...item, workingSet: ['src/invented.ts'] } : item) }), /PLAN_UNSUPPORTED_SOURCE/);
+    assert.throws(() => check({ ...plan, work: work.map((item, index) => index === 0 ?
+        { ...item, objective: 'Validate T1 read tier only' } : item) }), /PLAN_UNSUPPORTED_ASSUMPTION|PLAN_WORK_CONTENT/);
+    assert.throws(() => check({ ...plan, work: work.map((item, index) => index === 0 ?
+        { ...item, buildNeeds: 'Add a CommonJS adapter and CI pipeline' } : item) }), /PLAN_UNSUPPORTED_ASSUMPTION/);
+    assert.throws(() => check(plan, [] as never), /PLAN_READ_REQUIRED/);
+    assert.throws(() => check(plan, refs, { ...assessment, omittedRequestedFiles: ['docs/late-guide.md'] }),
+        /PLAN_MISSING_SOURCE/);
+    assert.throws(() => check({ ...plan, work: work.map(item => ({ ...item, tier: 'T1' })) }), /PLAN_T2_REQUIRED/);
+    assert.throws(() => check({ ...plan, closeout: { ...closeout, tier: 'T2' } }), /PLAN_T3_CLOSEOUT/);
+    assert.throws(() => check({ ...plan, efficiencyAudit: efficiencyAudit.map((item, index) =>
+        index === 8 ? 'Ninth gate checks CI deployment' : item) }), /PLAN_EFFICIENCY_GATE_9/);
+    assert.throws(() => check({ ...plan, efficiencyAudit: efficiencyAudit.map((item, index) =>
+        index === 9 ? 'Tenth gate checks browser packaging' : item) }), /PLAN_EFFICIENCY_GATE_10/);
+});
 
 const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
     tier, model: 'GPT-6 Sol Medium', estimatedMinutes: 6,

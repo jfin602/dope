@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import type { ChatPromptDraftIdentity } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProjectGrounder } from './chat-project-grounder';
-import { renderAssessment, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
-    type AssessmentRecord } from './prompt-authoring-stage';
+import { renderAssessment, renderPlan, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
+    type AssessmentRecord, type PlanRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence } from './prompt-stack-proposal';
 
 export type PromptDraftStage = 'assessment' | 'plan';
@@ -102,6 +102,12 @@ export class PromptDraftStore {
         const saved = await this.read(root, identity, leaseToken);
         if (!saved.assessment) throw new Error('Named prompt assessment has not been staged');
         return renderAssessment(saved.assessment.record as unknown as AssessmentRecord);
+    }
+
+    async planView(root: string, identity: ChatPromptDraftIdentity, leaseToken: string): Promise<string> {
+        const saved = await this.read(root, identity, leaseToken);
+        if (!saved.plan) throw new Error('Named prompt plan has not been staged');
+        return renderPlan(saved.plan.record as unknown as PlanRecord);
     }
 
     async stage(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,

@@ -41,7 +41,8 @@ import type { DocumentationReadPage } from './documentation-skill-review';
 import { assertPromptDraftNameAvailable, newPromptDraftIdentity, promptStageCommand, priorPromptDraft,
     verifyPromptDraftIdentity, verifyPromptDraftSource, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
     promptStageInstruction, finishedPromptText, requestedWorkPromptCount,
-    validatedAssessment, renderAssessment, type AssessmentRecord,
+    validatedAssessment, renderAssessment, validatedPlan, planReceiptCurrent,
+    type AssessmentRecord, type PlanRecord,
     type AssessmentRead } from './prompt-authoring-stage';
 import { PromptDraftStore } from './prompt-draft-store';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
@@ -568,6 +569,8 @@ export class ChatBackend implements ChatService {
                 const plan = chat?.messages.find(item => item.id === proposal.planMessageId);
                 if (assessment?.role !== 'assistant' || plan?.role !== 'assistant')
                     throw new Error('Prompt stages unavailable');
+                if (!await this.currentPromptPlan(root, chat!, plan, leaseToken))
+                    throw new Error('Prompt plan was replaced');
                 await verifyPromptDraftSource(root, assessment, this.grounder);
                 await verifyPromptDraftSource(root, plan, this.grounder);
                 const git = await capturePromptSourceEvidence(root);
@@ -582,6 +585,19 @@ export class ChatBackend implements ChatService {
                 { ...activity, status: 'stale', diagnostic: reason },
                 { proposalId: proposal.id, status: 'pending', digest: proposal.digest });
         }
+    }
+    private async currentPromptPlan(root: string, chat: Chat, plan: ChatAssistantMessage,
+        leaseToken: string): Promise<boolean> {
+        if (priorPromptDraft(chat, 'prompt-plan')?.assistant.id !== plan.id) return false;
+        if (!plan.content.includes('Plan record sha256:'))
+            return true; // Historical three-message plans did not have structured records.
+        const identity = priorPromptDraft(chat, 'prompt-ass')?.user.promptDraft;
+        if (!identity || !this.grounder) return false;
+        try {
+            const draft = await new PromptDraftStore(this.repository, this.grounder).read(root,
+                identity, leaseToken);
+            return planReceiptCurrent(plan.content, draft.plan?.contentHash, draft.plan?.revision);
+        } catch { return false; }
     }
     async reviewDocumentation(projectHandle: string, chatId: string, leaseToken: string, messageId: string,
         changes: { path: string; after: string }[]): Promise<import('@dope/chat').ChatDocumentationProposal> {
@@ -781,6 +797,9 @@ export class ChatBackend implements ChatService {
             try {
                 await verifyPromptDraftSource(root, saved.assessment, this.grounder!);
                 await verifyPromptDraftSource(root, saved.plan, this.grounder!);
+                const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+                if (!chat || !await this.currentPromptPlan(root, chat, saved.plan, leaseToken))
+                    throw new Error('Prompt plan was replaced');
                 const git = await capturePromptSourceEvidence(root);
                 applicable = git.head === saved.proposal.gitHead &&
                     git.packageVersion === saved.proposal.sourceVersion &&
@@ -1865,6 +1884,7 @@ export class ChatBackend implements ChatService {
         if (priorAssessment) await verifyPromptDraftSource(root, priorAssessment.assistant, this.grounder!);
         if (priorPlan) await verifyPromptDraftSource(root, priorPlan.assistant, this.grounder!);
         let savedAssessmentRecord: AssessmentRecord | undefined;
+        let savedPlanRecord: PlanRecord | undefined;
         if (priorAssessment?.user.promptDraft) {
             const staged = await new PromptDraftStore(this.repository, this.grounder!).read(root,
                 priorAssessment.user.promptDraft, request.leaseToken).catch(error => {
@@ -1872,6 +1892,7 @@ export class ChatBackend implements ChatService {
                 throw error;
             });
             savedAssessmentRecord = staged?.assessment?.record as AssessmentRecord | undefined;
+            savedPlanRecord = staged?.plan?.record as PlanRecord | undefined;
         }
         const promptSourceBasis = promptStage?.stage === 'prompt-write' ?
             await capturePromptSourceEvidence(root) : undefined;
@@ -1920,10 +1941,8 @@ export class ChatBackend implements ChatService {
         const reviewObjective = docsReview ? documentationReviewObjective(content,
             chat.messages.filter(message => message.role === 'user').map(message => message.content)) : undefined;
         const discovery = docsReview ? await discoverDocumentation(root, reviewObjective!) : undefined;
-        const promptRequestedCount = promptStage?.stage === 'prompt-write' ? requestedWorkPromptCount(
-            content, ...chat.messages.filter(message => message.role === 'user').slice(-8).reverse()
-                .map(message => message.content), priorPlan?.assistant.content ?? '',
-            priorAssessment?.assistant.content ?? '') : undefined;
+        const promptRequestedCount = promptStage?.stage === 'prompt-plan' || promptStage?.stage === 'prompt-write' ?
+            requestedWorkPromptCount(priorAssessment?.user.content ?? '', content) : undefined;
         const discoveryPrompt = discovery ? `\nVerified local discovery: ${discovery.enumerated} documents enumerated, ` +
             `${discovery.searched} searched. Candidate paths and section byte offsets (search is not a model read): ` +
             JSON.stringify(discovery.candidates) + `\nOmissions: ${JSON.stringify(discovery.omitted)}. ` +
@@ -1934,7 +1953,7 @@ export class ChatBackend implements ChatService {
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` +
             (promptStage ? `\n${promptStageInstruction(promptStage, {
                 assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion,
-                savedAssessmentRecord)}` +
+                savedAssessmentRecord, savedPlanRecord)}` +
                 (promptRequestedCount ? `\nRequested work-prompt count: exactly ${promptRequestedCount}; keep one separate terminal manual closeout.` : '') : '') +
             (selectedPrompt ? `\nRevise the selected saved proposal through bounded proposal_stage_prompt calls. The previous candidate remains valid until replacement passes every check. Stage the complete replacement in dependency order. Saved prior file identities: ${JSON.stringify(
                 selectedPrompt.proposal.files.map(file => ({ path: file.path, hash: file.afterHash })).slice(2))}
@@ -1945,7 +1964,9 @@ export class ChatBackend implements ChatService {
                 message.content.startsWith('# Unpublished prompt assessment\n') ?
                 { ...message, content: message.id === priorAssessment?.assistant.id && savedAssessmentRecord ?
                     `Saved structured assessment ${message.id}; Dope supplies its bounded record separately.` :
-                    `Saved assessment ${message.id}; use the selected structured draft.` } : message) };
+                    `Saved assessment ${message.id}; use the selected structured draft.` } :
+                message.role === 'assistant' && message.content.startsWith('# Unpublished prompt plan\n') ?
+                { ...message, content: `Saved structured plan ${message.id}; use the selected draft.` } : message) };
         const helpTurn = !roadmapSkill && !docsReview && !promptStage && !!selectDopeCapabilityHelp(content);
         const draft = helpTurn || docsReview || promptStage || roadmapSkill && !greenfieldSkill ? undefined :
             await this.draftContext(root, request.chatId, request.planningSteps);
@@ -2920,6 +2941,27 @@ export class ChatBackend implements ChatService {
                                         ...(ref.start !== undefined ? { start: ref.start } : {}),
                                         ...(ref.end !== undefined ? { end: ref.end } : {}) })));
                                 output = renderAssessment(record);
+                            } else if (promptStage.stage === 'prompt-plan') {
+                                if (!priorAssessment?.user.promptDraft || !savedAssessmentRecord)
+                                    throw new Error('PLAN_ASSESSMENT_REQUIRED: Complete a structured named assessment first');
+                                const record = validatedPlan(output, savedAssessmentRecord, sourceRefs,
+                                    promptRequestedCount);
+                                const store = new PromptDraftStore(this.repository, this.grounder!);
+                                const draft = await store.read(root, priorAssessment.user.promptDraft,
+                                    request.leaseToken);
+                                const saved = await store.stage(root, priorAssessment.user.promptDraft, request.leaseToken,
+                                    'plan', draft.revision, record as unknown as Record<string, unknown>,
+                                    sourceRefs.filter(ref => ref.kind === 'file' && ref.sourceHash &&
+                                        ref.origin === 'tool').map(ref => ({ id: ref.id, sourceHash: ref.sourceHash!,
+                                        projectId: ref.projectId!,
+                                        ...(ref.contentHash ? { contentHash: ref.contentHash } : {}),
+                                        ...(ref.start !== undefined ? { start: ref.start } : {}),
+                                        ...(ref.end !== undefined ? { end: ref.end } : {}) })));
+                                output = `# Unpublished prompt plan\n\nSaved structured plan for ` +
+                                    `${priorAssessment.user.promptDraft.slug}: ${record.work.length} work tasks, ` +
+                                    `one separate manual closeout, ten checked efficiency gates. ` +
+                                    `Plan record sha256: ${saved.plan!.contentHash}; revision: ${saved.plan!.revision}. ` +
+                                    'Review the derived plan before /prompt-write. No files were published or Work started.';
                             } else output = finishedPromptText(promptStage.stage, output, sourceRefs, content);
                         }
                         let documentActivity: ChatPlanningActivity | undefined;

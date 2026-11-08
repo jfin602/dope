@@ -35,11 +35,11 @@ test('native prompt stages save an exact review candidate and publish only after
     await execute('git', ['-C', root, 'read-tree', 'HEAD']);
     await execute('git', ['-C', root, 'sparse-checkout', 'init', '--cone']);
     await mkdir(join(root, 'src'));
+    await mkdir(join(root, 'test'));
     await writeFile(join(root, 'src', 'feature.js'), 'export const feature = true;\n');
+    await writeFile(join(root, 'test', 'feature.test.ts'), 'test feature behavior\n');
     await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"1.2.3"}\n');
-    const answers = ['## Scope\nFeature scope.\n## Preservation\nNo Work run.\n## Dependencies\nSource.\n' +
-        '## Risks\nStale source.\n## Source basis\nRead source.\n## Authority\nChat only.\n## Evidence\nT1/T2/T3.',
-    '## Steps\n1. Implement.\n## Tests\nFocused integration.\n## Manual\nBrowser check.'];
+    const answers: string[] = [];
     const audit = ['One implementation responsibility remains in each feature step.',
         'The narrow implementation is estimated within the ordinary time budget.',
         'Focused feature tests cover changed behavior without unrelated suites.',
@@ -68,8 +68,42 @@ test('native prompt stages save an exact review candidate and publish only after
                 maxInputTokens: 16384 } }] }] }),
     async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
         const turn = calls++;
-        if (turn < 2)
-            await request.projectTools!.execute('read_file', { path: 'src/feature.js', offset: 0, maxBytes: 4096 });
+        if (turn < 2) {
+            const page = JSON.parse(await request.projectTools!.execute('read_file',
+                { path: 'src/feature.js', offset: 0, maxBytes: 4096 }));
+            if (turn === 0) {
+                const finding = { claim: 'Feature source was read', path: 'src/feature.js',
+                    start: 0, end: 6, sourceHash: page.sourceHash, quote: 'export' };
+                answers[0] = JSON.stringify({ scope: 'Implement source-bound feature',
+                    observations: [finding], preservation: [finding], dependencies: [finding],
+                    risks: [finding], tiers: { T1: 'Focused implementation',
+                        T2: 'Cross-boundary integration', T3: 'Independent manual browser closeout' } });
+            } else {
+                await request.projectTools!.execute('read_file',
+                    { path: 'test/feature.test.ts', offset: 0, maxBytes: 4096 });
+                answers[1] = JSON.stringify({ work: [1, 2].map(number => ({
+                    id: `step-${number}`, title: `Implement feature ${number}`,
+                    objective: `Implement feature responsibility ${number} in the inspected source`,
+                    tier: number === 2 ? 'T2' : 'T1', dependsOn: number === 2 ? ['step-1'] : [],
+                    workingSet: ['src/feature.js'],
+                    validationTargets: ['Run test/feature.test.ts'], buildNeeds: 'none',
+                    acceptanceCriteria: [`Feature ${number} works`] })),
+                    closeout: { title: 'Manual feature closeout', objective: 'Observe feature in browser',
+                        manualReason: 'Human observation', browserRequired: true, tier: 'T3',
+                        acceptanceCriteria: ['Observe feature behavior'] },
+                    efficiencyAudit: [
+                        'Single responsibility in each implementation boundary',
+                        'Runtime target 8 minutes, soft 10, hard 15',
+                        'Test precision uses focused feature tests',
+                        'Build precision uses changed lib outputs only',
+                        'Evidence distribution puts integration in T2 and browser in T3',
+                        'Command deduplication avoids repeat aggregate runs',
+                        'Model economy uses Medium and defers unrelated work',
+                        'Runnable traceable grammar preserves version and closeout',
+                        'UI design follows ADR 0016 theme tokens when applicable',
+                        'Human usability follows ADR 0037 keyboard recovery when applicable' ] });
+            }
+        }
         if (turn === 2 || turn === 3 || turn === 5) {
             const steps = turn < 5 ? [work(1, 'T2')] : [work(1, 'T2'), work(2, 'T1', ['step-1'])];
             for (const [index, value] of [...steps, closeout].entries()) {
