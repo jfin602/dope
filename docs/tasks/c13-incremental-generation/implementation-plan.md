@@ -1,6 +1,6 @@
 # /prompt-plan — c13-incremental-generation
 
-**Authority:** [ADR 0055](../../decisions/0055-incremental-proposal-generation.md), [technical contract](../../planning/p13/incremental-proposal-generation-contract.md), [assessment](prompt-assessment.md), `docs/workflow.md` and ADR 0054. **State:** prompt authoring only; not executed/qualified. Product version `0.13.11` must remain unchanged. The **running R3B must finish unchanged** before any implementation begins.
+**Authority:** [ADR 0055](../../decisions/0055-incremental-proposal-generation.md), [technical contract](../../planning/p13/incremental-proposal-generation-contract.md), [assessment](prompt-assessment.md), `docs/workflow.md` and ADR 0054. **State:** prompt authoring only; not executed/qualified. Product version `0.13.11` must remain unchanged. R3B's original work and evidence stay unchanged, but its technical PASS/report is **not** an entry prerequisite for independent P1/P2 or shared noncanonical staging. Inspect real delivered interfaces at their dependent P3/P5 boundaries; deny unsafe publication without holding unrelated implementation.
 
 ## Architectural plan
 
@@ -48,6 +48,6 @@ Use repository `scripts/codex-phase-core.mjs` grammar exactly: `Correction 13 / 
 
 ## Source, failure, and exit discipline
 
-Before P1, inspect ACTUAL owner checkout, `git status`, R3B completion and report, real code/compiled modules and exact `package.json` version; do not infer these from this authoring baseline or interrupt running R3B. If R3B incomplete, dangerous dirty state, protected basis or missing publication owner: **STOP BLOCKED**, preserving all work. Do not reset/stash/clean, do not rewrite running/completed prompt snapshots. Prompt authoring creates no product code/Run/Green.
+Before P1, inspect ACTUAL owner checkout, `git status`, available R3B source/status (including non-GREEN or missing report), real code/compiled modules and exact `package.json` version; do not infer these from the authoring baseline or overwrite R3B. **Do not STOP P1 merely for missing/non-GREEN R3B qualification**: P1 has no publisher dependency. Stop for dangerous dirty-tree, source/lease or broker authority conflicts. At P3/P5, inspect the actual distinct publisher and fail closed only on a missing/unsafe integration interface. Preserve truthful historical status and all owner work. Do not reset/stash/clean, do not rewrite running/completed prompt snapshots. Prompt authoring creates no product code/Run/Green.
 
 Runner preflight: `npm run codex:phase:validate -- c13-incremental-generation`. Later, after explicit owner Run authorization and safe entry: `npm run codex:phase -- c13-incremental-generation` (no `--closeout`). Stop-on-failure, source-tested commits/report for each checkpoint and no version bump. Run **P6 manually** with connected Codex browser only after P1–P5 evidence and owner review. Resume P13 R3/R2/R4 only after separate owner disposition of P6 and reconciliation against actual implemented interfaces, not by auto-awarding Green.
