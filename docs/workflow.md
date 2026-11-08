@@ -1,3 +1,5 @@
+> **2026-11-07 UNIFIED DOCUMENTS WORKSPACE — OWNER-APPROVED DOCS DESIGN:** [ADR 0053](decisions/0053-documents-workspace-and-proposal-review.md) and [UI contract](ui/documents-workspace-contract.md) add an optional central Documents viewport for ordinary project Docs Explorer/editor, source-bound `/docs-review` Original/Proposed highlighted review, and distinct native prompt-stack draft review. Chat proposal cards remain short Open Review / Accept / Reject / Revise Proposal entry points. One existing guarded Docs owner and a different existing prompt-stack publisher handle actual application; viewing/approval never creates Work grants or automatic Run. Native user-facing `/docs-apply` remains retired; the repository authoring approval/application stages remain distinct. This commit approves documentation only; do not author P*.txt, implement product code, advance version or reclassify historical qualification.
+
 > **2026-11-06 PHASE 13 OUTPUT-LIMIT DECISION / AUTHORING ONLY:** [ADR 0052](decisions/0052-chat-generation-limit-continuation.md) and [contract](planning/p13/chat-output-limit-continuation-contract.md) approve user-controlled pause/continue/stop at Chat generation limits, labeled durable incomplete text, Ask/Allow/Cancel per-Chat policies, safe Pi same-session continuation and concise-answer guidance. FireLaunch 0.13.8 / GPT-OSS 20B baseline remains **NOT GREEN, 10/100**, with `finishReason=length` and missing saved answer. [`c13-output-limit`](tasks/c13-output-limit/README.md) is a **docs/prompt-only** correction: runner headless implementations, one final **manual Codex browser** closeout, no automatic `--closeout`, no product change/version advance/Green by documentation approval, and no FireLaunch clone or source edits.
 
 > **2026-11-05 PHASE 13 OWNER-APPROVED FORWARD WORKFLOW:** [ADR 0051](decisions/0051-roadmap-work-evidence-lifecycle.md) adds Roadmap-centered Finish Planning (coverage/locked revision) → existing Prepare Work/WorkItems → separately approved Run/candidate review → source-bound Criterion evidence → derived Gate qualification → separate owner Phase closeout. Roadmap is the primary progress monitor; neither task completion nor runner checkpoint makes Gate GREEN. `0.13.0` baseline is committed; `p13` prompt authoring is not implementation authorization. Earlier Phase 13 LSKM reservation is deferred unassigned.
@@ -77,13 +79,11 @@ Read BOOT.md, AGENTS.md, and the narrowest relevant current docs before substant
 
 ## Documentation workflow
 
-/docs-review -> explicit approval -> /docs-apply
+**Current native Dope:** `/docs-review` investigates source and proposes concrete bounded diffs; its saved Chat card offers **Open Review / Accept / Reject / Revise Proposal**. Optional Open Review shows the exact candidate in the central Documents viewport, without writing. Card and viewport Accept share the same Dope-owned guarded approval/application service and applied-only History. There is no native user-facing `/docs-apply` command. Revisions re-enter `/docs-review` and preserve the earlier valid candidate until a checked replacement is available.
 
-/docs-review investigates current repository/doc state, identifies conflicts/gaps, and proposes a bounded documentation change.
+**Repository authoring:** `/docs-review -> explicit owner approval -> documentation application` (historically called external `/docs-apply`). Apply only the reviewed changes with source/authority guards, keeping relevant project authority documents mutually consistent. This human/connector stage is distinct from the retired native slash command.
 
-/docs-apply applies only the approved documentation change and keeps authority docs mutually consistent.
-
-Do not silently convert discussion into repository authority.
+Do not silently convert discussion into repository authority, promote prompt stacks, Run Work or award Gate GREEN.
 
 ### Product Planning documentation workflow — ADR 0041 (2026-10-30)
 
