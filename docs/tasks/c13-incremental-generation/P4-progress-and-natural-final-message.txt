@@ -1,0 +1,21 @@
+TASK: Correction 13 / P4 — Progressive native proposal status and finalMessage
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only: no manifest, workspace, lockfile or project-version bump.
+
+PREFLIGHT
+Read ADR 0055, ADR 0054, native editor UI contract, docs/workflow.md UI Design and Human Usability Gates, stack plan and P1–P3 implementation/evidence. Inspect actual Chat panel/controller, saved assistant activity and planningActivity models, frontend tool event presentation, native read-only Doc proposal tabs and delivered R3B Prompt Stack card/tabs; inspect relevant theme/keyboard tests. Preserve existing real Theia Explorer/editor and other Chat features.
+
+GOAL — T1: ONE PRESENTATION INTEGRATION
+Map verified controller stage events into saved Chat and provisional native read-only file previews in the existing Theia tabs. Show accurate pending/incomplete progress by file/order, bounded error/cancel/stale feedback and safe reopening after reload. Stage previews must never mutate canonical files or be mistaken for a completed review; disable Accept until the trusted controller reports sealed ready-for-review. Keep one compact proposal card and its individual file links/Open All controls; do not resurrect Documents viewport, duplicate cards, file explorer, or separate approval buttons.
+
+NATURAL FINAL RESPONSE
+After successful proposal_finish ONLY, render its required sanitized, bounded finalMessage as natural Chat prose immediately ABOVE the existing Docs or Prompt Stack Proposal card, once and only once across stream, retry and reload. The message is untrusted presentation, not a file list, outcome proof, tool invocation, grant, approval, or schema payload. When finish fails, display backend-owned diagnostic instead of false success prose. Preserve reasoning/tool activity distinction, copy, accessible focus, keyboard and narrow responsive behavior, existing semantic theme tokens and read-only virtual resource identity.
+
+VERIFY
+Focused chat-panel, Chat presentation and native-doc-editor-proposal tests: staged state transitions, no premature Accept, natural message exact placement and dedup, hostile/untrusted finalMessage escaping, reload/switch project, single Open All navigation with no write, wrong-proposal tab isolation and theme/keyboard-safe DOM behavior. Run only necessary UI package builds before lib-consuming tests, plus git diff --check. Record UI unobserved in browser as T3 evidence gap for P6; do not claim a visual PASS from headless tests.
