@@ -18,7 +18,8 @@ test('Documents registers one optional main widget and a discoverable command', 
     assert.match(frontend, /shell\.addWidget\(widget, \{ area: 'main' \}\)/);
     assert.match(widget, /onWorkspaceChanged\(\(\) => \{ void this\.refreshProject\(\); \}\)/);
     assert.match(widget, /role', 'tree'/);
-    assert.doesNotMatch(widget, /writeFile|applyDocumentationProposal|publishPromptStack/);
+    assert.doesNotMatch(widget, /writeFile|publishPromptStack/);
+    assert.match(widget, /owner\.applyDocumentationProposal\(compare\.proposalId, compare\.digest\)/);
 });
 
 test('project switch discards path and candidate presentation identity', () => {

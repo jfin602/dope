@@ -23,6 +23,10 @@ async function fixture() {
     const root = join(temporary, 'project');
     // A local clone supplies an existing HEAD; the fixture creates no commit.
     await execute('git', ['clone', '-q', '--local', '--no-hardlinks', '--no-checkout', process.cwd(), root]);
+    await execute('git', ['-C', root, 'read-tree', 'HEAD']);
+    // The no-checkout clone reports every tracked path as deleted. Sparse initialization
+    // materializes the small root fixture without overflowing bounded Git evidence.
+    await execute('git', ['-C', root, 'sparse-checkout', 'init', '--cone']);
     await mkdir(join(root, 'docs/tasks'), { recursive: true });
     await writeFile(join(root, 'package.json'), '{"version":"0.11.8"}\n');
     const markdown = '# Roadmap\n\n## Checkpoint\nOriginal objective\n';

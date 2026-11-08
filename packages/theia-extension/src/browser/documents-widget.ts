@@ -249,7 +249,14 @@ export class DocumentsWidget extends BaseWidget {
         return true;
     }
 
-    refreshReview(): void { if (!this.isDisposed && this.compare) this.render(); }
+    refreshReview(): void {
+        if (this.isDisposed || !this.compare) return;
+        const { proposalId, digest } = this.compare;
+        if (this.reviewOwner && !this.reviewOwner.pending && !this.reviewOwner.running &&
+            !this.reviewOwner.currentDocumentationProposal(proposalId, digest))
+            this.compare = { ...this.compare, status: 'historical', approvable: false };
+        this.render();
+    }
 
     private async recheckCompare(): Promise<void> {
         const owner = this.reviewOwner, compare = this.compare;
