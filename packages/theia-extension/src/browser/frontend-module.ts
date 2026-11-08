@@ -301,7 +301,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             const manager = context.container.get(WidgetManager);
             const shell = context.container.get(ApplicationShell);
             const widget = await manager.getOrCreateWidget<DocumentsWidget>(DOCUMENTS_WIDGET_ID);
-            await widget.refreshProject();
+            await widget.openExplorer();
             if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
             await shell.activateWidget(widget.id);
         } }) })).inSingletonScope();

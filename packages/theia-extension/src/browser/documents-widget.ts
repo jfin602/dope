@@ -137,6 +137,12 @@ export class DocumentsWidget extends BaseWidget {
         this.render();
     }
 
+    /** The normal Documents command explicitly returns to the project explorer. */
+    async openExplorer(): Promise<void> {
+        this.presentation.selectExplorer();
+        await this.refreshProject();
+    }
+
     private async loadFolder(path: string, request = this.request): Promise<void> {
         if (!this.listing || this.loading.has(path)) return;
         this.loading.add(path);
