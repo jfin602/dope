@@ -8,6 +8,7 @@ import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-s
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { finishedPromptStack, finishedPromptText, priorPromptDraft, promptStageCommand,
     verifyPromptDraftSource, validatePromptAssessment, validatePromptPlan } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+import { promptStageInstruction } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 
 const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
     tier, model: 'GPT-6 Sol Medium', estimatedMinutes: 6,
@@ -23,6 +24,10 @@ test('assessment and ten-step plan reject ungrounded retrieval, missing work and
     const refs = [{ kind: 'file', id: 'src/example.ts' }, { kind: 'file', id: 'test/example.test.ts' }] as never;
     const assessment = `# Source basis\nRead: src/example.ts, test/example.test.ts\nListed: none\nUninspected: docs/missing.md\n\n# Evidence\nT1 focused source/unit verification.\nT2 cross-boundary integration verification.\nT3 manual browser/native independent qualification.`;
     validatePromptAssessment(assessment, refs, '/prompt-ass inspect src/example.ts and docs/missing.md');
+    assert.throws(() => validatePromptAssessment(assessment.replace('# Source basis', 'Source basis'),
+        refs, '/prompt-ass inspect src/example.ts'), /literal Markdown # Source basis/);
+    assert.match(promptStageInstruction({ stage: 'prompt-ass' }, {}), /literal Markdown headings # Scope/);
+    assert.match(promptStageInstruction({ stage: 'prompt-ass' }, {}), /requested late section/);
     assert.throws(() => validatePromptAssessment(assessment.replace('Uninspected: docs/missing.md',
         'Uninspected: none'), refs, '/prompt-ass inspect docs/missing.md'), /uninspected path/);
     assert.throws(() => validatePromptAssessment(assessment.replace('T1 focused source/unit',
