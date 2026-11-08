@@ -1,6 +1,6 @@
 # Incremental Proposal Generation — Shared Controller Contract
 
-**Decision authority:** [ADR 0055](../../decisions/0055-incremental-proposal-generation.md), proposed on 2026-11-08. **Status:** forward documentation design for a separate post-R3B implementation; not current product behavior or technical qualification. **Applies to:** native protected `/docs-review` and `/prompt-write <folder>`.
+**Decision authority:** [ADR 0055](../../decisions/0055-incremental-proposal-generation.md), approved and documented on `main` on 2026-11-08. **Status:** forward documentation design for a separate post-R3B implementation; not current product behavior or technical qualification. **Applies to:** native protected `/docs-review` and `/prompt-write <folder>`.
 
 ## Goal and non-goals
 
