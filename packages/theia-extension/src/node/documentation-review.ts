@@ -8,9 +8,9 @@ import { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store'
 
 const digest = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
-const maxFile = 16_384;
+const maxFile = 128_000;
 // Count both sides of a reviewed update; a single eligible 16 KiB document must fit.
-const maxSet = 40_000;
+const maxSet = 1_000_000;
 
 async function worktreeIdentity(root: string): Promise<string> {
     const directory = await stat(root);
@@ -175,10 +175,10 @@ export async function prepareDocumentationReview(store: RoadmapStore, request: D
         throw new Error('Selected documentation proposal is stale or belongs to another owner');
     if (typeof ownerId !== 'string' || !ownerId.trim() || ownerId.length > 128 || /[\p{Cc}\p{Cf}]/u.test(ownerId))
         throw new Error('Current documentation owner is invalid');
-    if (!Array.isArray(changes) || !changes.length || changes.length > 4 ||
+    if (!Array.isArray(changes) || !changes.length || changes.length > 16 ||
         changes.some(change => !change || typeof change.path !== 'string') ||
         new Set(changes.map(change => change.path)).size !== changes.length)
-        throw new Error('Documentation review needs one to four distinct targets');
+        throw new Error('Documentation review needs one to sixteen distinct targets');
     const index = await store.read<RoadmapGateIndex>(root);
     if (index.projectRoot !== root || (index.linkedDocument && index.linkedDocument.syncState !== 'synced'))
         throw new Error('Roadmap source is not ready for documentation review');
@@ -238,7 +238,7 @@ export async function documentationReviewApplicability(store: RoadmapStore, prop
     if (proposal.dependencySnapshotVersion !== 1 || !Array.isArray(proposal.dependencies) ||
         proposal.dependencies.length > 16 ||
         new Set(proposal.dependencies.map(item => item.path)).size !== proposal.dependencies.length ||
-        !proposal.targets.length || proposal.targets.length > 4 ||
+        !proposal.targets.length || proposal.targets.length > 16 ||
         new Set(proposal.targets.map(target => target.path)).size !== proposal.targets.length) return 'stale';
     let size = 0;
     try {

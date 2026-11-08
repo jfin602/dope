@@ -37,13 +37,13 @@ import { prepareDocumentationReview, documentationReviewApplicability, documenta
     renewDocumentationReviewLease } from './documentation-review';
 import { applyDocumentationProposal, reconcileDocumentationApplication } from './documentation-application';
 import { discoverDocumentation, documentationReviewObjective } from './documentation-discovery';
-import { materializeDocumentationChanges, parseDocumentationSkillReview,
-    requireCompleteDocumentationReview, materializeDocumentationRevision, type DocumentationReadPage } from './documentation-skill-review';
+import type { DocumentationReadPage } from './documentation-skill-review';
 import { promptStageCommand, priorPromptDraft, verifyPromptDraftSource, verifyPromptSourceRefs,
     promptStageInstruction, finishedPromptText, finishedPromptStack } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence, createPromptStackProposal, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
-import { IncrementalProposalController } from './incremental-proposal-controller';
+import { IncrementalProposalController, type ProposalHandoff } from './incremental-proposal-controller';
+import { IncrementalDocumentReview } from './incremental-document-review';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -1883,24 +1883,9 @@ export class ChatBackend implements ChatService {
             `${discovery.searched} searched. Candidate paths and section byte offsets (search is not a model read): ` +
             JSON.stringify(discovery.candidates) + `\nOmissions: ${JSON.stringify(discovery.omitted)}. ` +
             'Keep the original task and acceptance criteria. Use read_file on relevant CURRENT documents: offset 0 first, then each relevant section offset shown above (including late sections); maxBytes 4096. A later offset is pinned to the first page sourceHash in this turn. Search metadata is not source evidence. ' +
-            'Propose every requested create/update using only actually read requirements. For updates, replace one short, exact, unique excerpt observed in a read_file page; never output a whole-file rewrite or placeholder text. Unchanged bytes are preserved by Dope. ' +
-            'Final output MUST be one valid JSON object, no fences or surrounding prose, with exactly these sibling keys: ' +
-            '{"final_response":"I prepared the changes for your review.","report":"Source-grounded findings only.","changes":[{"path":"docs/current/rules.md","replace":{"before":"exact observed excerpt","after":"exact replacement excerpt"}},{"path":"docs/current/new.txt","after":"complete new file text"}]}. ' +
-            'Use a JSON array for changes (maximum four). Escape newlines inside JSON strings. Do not put changes in report or add keys. If a required source is unreadable or incomplete, use changes:[] and explain the gap. Do not claim searched files were read or any file was applied.' : '';
-        const revisionPrompt = revisionProposal ? `\nThis is revision ${revisionTarget!.revision + 1} of the selected pending documentation proposal. ` +
-            'The saved proposal below is the authoritative starting point. Preserve every unrelated proposed target. ' +
-            'Return only requested delta operations in changes. Each change must have exactly path and one of after, replace, or remove; ' +
-            'never copy operation, hashes, or other saved-proposal metadata into a change. ' +
-            'To discard a proposed target use {"path":"...","remove":true}; ' +
-            'to modify its proposed content use {"path":"...","after":"complete revised proposed text"} or ' +
-            '{"path":"...","replace":{"before":"exact proposed excerpt","after":"replacement excerpt"}}. ' +
-            'Do not write files. Selected proposal context: ' + JSON.stringify({ id: revisionProposal.id,
-                revision: revisionTarget!.revision, reviewIntent: revisionProposal.reviewIntent,
-                targets: revisionProposal.targets.map(({ path, operation, before, beforeHash, after, afterHash }) =>
-                    ({ path, operation, before, beforeHash, after, afterHash })),
-                dependencies: revisionProposal.dependencies, roadmapRevision: revisionProposal.roadmapRevision,
-                projectId: revisionProposal.projectId, worktreeId: revisionProposal.worktreeId }) +
-            `\nOwner's new revision instructions: ${content}` : '';
+            'For an existing file, call proposal_stage_document with content as a JSON string containing exactly operation:replace, before:one short exact uniquely observed excerpt, after:replacement text, sourceHash:the fullHash returned by read_file. For a new file use content as a JSON string containing exactly operation:create and chunk:new text. Stage ordered chunks with increasing chunkIndex for one target. Use proposal_status to get sequence and expectedRevision; pass a stable unique idempotencyKey. The server computes the content digest. Set complete:true on the final stage of each target, then call proposal_finish with a short factual finalMessage. Do not output a JSON changes packet or claim application. Finish will check requested coverage and actual reads.' : '';
+        const revisionPrompt = revisionProposal ? `\nRevise the selected pending documentation proposal through proposal_stage_document. The saved candidate is the starting point; omitted proposed targets are preserved. For a saved target, use operation:replace with sourceHash equal to its afterHash and a short exact unique excerpt in the saved after text; to discard a saved target, use content JSON {"operation":"remove"} with complete:true. Keep unrelated proposed bytes. Do not output a final changes JSON packet. Saved proposal: ` + JSON.stringify({ id: revisionProposal.id, revision: revisionTarget!.revision,
+            targets: revisionProposal.targets.map(({ path, after, afterHash }) => ({ path, after, afterHash })) }) : '';
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` +
             (promptStage ? `\n${promptStageInstruction(promptStage, {
                 assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion)}` : '') +
@@ -2113,6 +2098,7 @@ export class ChatBackend implements ChatService {
         const documentationHashes = new Map<string, string>();
         const protectedProposal = retryIndex < 0 && (docsReview || promptStage?.stage === 'prompt-write');
         let proposalController: IncrementalProposalController | undefined;
+        let finishedDocument: ProposalHandoff<import('@dope/chat').ChatDocumentationProposal> | undefined;
         const noProjectTools = !!publicationIntent || forbidsProjectTools(content);
         // This closure belongs to one authorized Chat execution. A later read may inspect
         // staged operations, but cannot silently rebase its original source preconditions.
@@ -2139,12 +2125,20 @@ export class ChatBackend implements ChatService {
                             (args && typeof args === 'object' && !Array.isArray(args) &&
                                 Object.keys(args).length === 1 && (args as { version?: unknown }).version === 1 ?
                                 await proposalController.status() : (() => { throw new Error('PROPOSAL_STATUS_ARGUMENTS'); })()) :
-                            name === 'proposal_stage_document' ? await proposalController.stage(args, 'document') :
+                            name === 'proposal_stage_document' ? await proposalController.stage(
+                                args && typeof args === 'object' && !Array.isArray(args) &&
+                                typeof (args as { content?: unknown }).content === 'string' ?
+                                    { ...args, digest: createHash('sha256').update((args as { content: string }).content).digest('hex') } : args,
+                                'document') :
                             name === 'proposal_stage_prompt' ? await proposalController.stage(args, 'prompt') :
                             name === 'proposal_finish' ? await proposalController.finish(args) :
                             (() => { throw new Error('PROPOSAL_TOOL_UNKNOWN'); })();
+                        if (docsReview && name === 'proposal_finish')
+                            finishedDocument = result as ProposalHandoff<import('@dope/chat').ChatDocumentationProposal>;
                         status = 'completed';
-                        return JSON.stringify(result);
+                        return JSON.stringify(name === 'proposal_finish' && docsReview ?
+                            { proposalId: finishedDocument!.proposalId, revision: finishedDocument!.revision,
+                                state: 'ready-for-review' } : result);
                     } catch (error) {
                         status = 'failed';
                         return JSON.stringify({ version: 1, error: error instanceof Error &&
@@ -2535,7 +2529,12 @@ export class ChatBackend implements ChatService {
                     { root, chatId: key, messageId: assistant.id, leaseToken: request.leaseToken,
                         ownerId: proposalOwnerId, worktreeId: basis.worktreeId,
                         sourceBasis: basis.sourceBasis,
-                        domain: docsReview ? 'document' : 'prompt' }, authority);
+                        domain: docsReview ? 'document' : 'prompt' }, authority, docsReview ?
+                        new IncrementalDocumentReview(this.roadmapStore!, { root, chatId: key,
+                            messageId: assistant.id, ownerId: proposalOwnerId, leaseToken: request.leaseToken,
+                            objective: content, reviewIntent: reviewObjective, discovery: discovery!, pages: documentationPages,
+                            readPaths: () => documentationPages.map(page => page.path),
+                            ...(revisionProposal ? { prior: revisionProposal } : {}) }) : undefined);
                 await proposalController.begin();
             }
             if (localRoadmap) tracePlanning('submitted', key, assistant.id);
@@ -2826,38 +2825,11 @@ export class ChatBackend implements ChatService {
                         if (docsReview) {
                             const readPaths = sourceRefs.filter(ref => ref.kind === 'file').map(ref => ref.id);
                             try {
-                                if (event.finishReason === 'length') throw new Error('Model output was truncated');
-                                const review = parseDocumentationSkillReview(output, readPaths, !!revisionProposal);
-                                if (revisionProposal && !review.changes.length)
-                                    throw new Error('Revision response contained no proposal changes');
-                                if (!revisionProposal)
-                                    requireCompleteDocumentationReview(content, discovery!, review.changes, documentationPages);
-                                output = review.final_response;
-                                if (review.changes.length) {
-                                    const changes = revisionProposal ?
-                                        await materializeDocumentationRevision(root, revisionProposal, review.changes, documentationPages) :
-                                        await materializeDocumentationChanges(root, review.changes, documentationPages);
-                                    const dependencies = [...new Map(sourceRefs.filter(ref => ref.kind === 'file').map(ref => {
-                                        const page = documentationPages.find(item => item.path === ref.id);
-                                        const contentHash = page?.fullHash ??
-                                            (ref.sourceHash === ref.contentHash ? ref.contentHash : undefined);
-                                        if (!contentHash || !ref.sourceHash)
-                                            throw new Error(`Grounding dependency identity unavailable: ${ref.id}`);
-                                        return [ref.id, { path: ref.id, contentHash }] as const;
-                                    })).values()];
-                                    if (!dependencies.length && !revisionProposal)
-                                        throw new Error('Review needs broker-read grounding dependencies');
-                                    const proposal = await prepareDocumentationReview(this.roadmapStore!, {
-                                        root, chatId: key, messageId: revisionProposal?.messageId ?? assistant.id,
-                                        ownerId: this.leases.get(key)!.ownerId, leaseToken: request.leaseToken,
-                                        changes, ...(dependencies.length ? { dependencies } : {}),
-                                        ...(revisionProposal ? { revisionOf: revisionProposal } : { reviewIntent: reviewObjective }) });
-                                    if (proposal.targets.some(target => target.operation === 'update' &&
-                                        !readPaths.includes(target.path) &&
-                                        !revisionProposal?.targets.some(prior => prior.path === target.path)))
-                                        throw new Error('An updated target was not read through the broker');
-                                    if (await documentationReviewApplicability(this.roadmapStore!, proposal, root) !== 'applicable')
-                                        throw new Error('Documentation source changed during review');
+                                if (!finishedDocument || event.finishReason === 'length')
+                                    throw new Error('Incremental proposal was not finished and validated');
+                                const proposal = finishedDocument.candidate;
+                                output = finishedDocument.finalMessage;
+                                {
                                     const priorDiscovery = revisionActivity?.documentationDiscovery;
                                     const readCounts = new Map((priorDiscovery?.reads ?? []).map(item =>
                                         [item.path, item.count] as const));

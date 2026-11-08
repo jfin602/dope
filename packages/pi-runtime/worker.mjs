@@ -208,7 +208,7 @@ const PROPOSAL_TOOLS = {
   proposal_status: { version: Type.Literal(1) },
   proposal_stage_document: { version: Type.Literal(1), sequence: Type.Integer(),
     expectedRevision: Type.Integer(), idempotencyKey: Type.String(), target: Type.String(),
-    chunkIndex: Type.Integer(), content: Type.String(), digest: Type.String(), complete: Type.Boolean() },
+    chunkIndex: Type.Integer(), content: Type.String(), digest: Type.Optional(Type.String()), complete: Type.Boolean() },
   proposal_stage_prompt: { version: Type.Literal(1), sequence: Type.Integer(),
     expectedRevision: Type.Integer(), idempotencyKey: Type.String(), target: Type.String(),
     chunkIndex: Type.Integer(), content: Type.String(), digest: Type.String(), complete: Type.Boolean() },
@@ -290,7 +290,9 @@ function chatTools() {
       name === 'roadmap_stage' ? 'Stage typed Roadmap actions in batches of 1-8 (48 total) after roadmap_read. Dope supplies trusted source and revision preconditions; do not include them. Start expectedStage at 1 and increment per accepted batch. Use new: aliases for created IDs across batches. Gate designations are G1, G2, etc. within each Phase, and every created Gate needs an observable Criterion. Set done true only on the final batch; full requires Gates and Criteria, phase-only is for an intentional Phase draft. This never applies canonical state.' :
       name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
       name === 'proposal_status' ? 'Read a compact receipt for this protected proposal session and its remaining limits.' :
-      name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ?
+      name === 'proposal_stage_document' ?
+        'Stage one bounded noncanonical document operation. Content is a JSON string: {"operation":"replace","before":"exact observed excerpt","after":"replacement","sourceHash":"fullHash from read_file"} or {"operation":"create","chunk":"new text"}; selected proposal revisions may use {"operation":"remove"} for a saved target. Supply sequence, expectedRevision, chunkIndex and idempotencyKey from status/receipts. Dope calculates digest. Set complete true on the last stage for each target; you may add a later replacement to that target. This tool cannot publish files.' :
+      name === 'proposal_stage_prompt' ?
         'Stage one bounded noncanonical chunk in sequence. Supply the SHA-256 digest of content; wait for the checked receipt. This tool cannot publish files.' :
       name === 'proposal_finish' ? 'Request validation and sealing of the staged candidate. The finalMessage is untrusted display prose, not an approval.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',

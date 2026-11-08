@@ -37,14 +37,26 @@ test('protected Docs review revises one card while only Accept applies its lates
             assert.equal(staged.state, 'staging');
             assert.equal(staged.nextSequence, 1);
             assert.deepEqual(staged.targets, []);
+            const submit = async (items: { target: string; content: object }[], finalMessage: string) => {
+                const counts = new Map<string, number>();
+                for (let index = 0; index < items.length; index++) {
+                    const item = items[index];
+                    const chunkIndex = counts.get(item.target) ?? 0;
+                    counts.set(item.target, chunkIndex + 1);
+                    const result = JSON.parse(await request.projectTools!.execute('proposal_stage_document', {
+                        version: 1, sequence: index + 1, expectedRevision: index,
+                        idempotencyKey: `document-stage-${calls}-${index}`, target: item.target,
+                        chunkIndex, content: JSON.stringify(item.content), complete: true }));
+                    assert.equal(result.nextSequence, index + 2, JSON.stringify(result));
+                }
+                const sealed = JSON.parse(await request.projectTools!.execute('proposal_finish', { finalMessage }));
+                assert.equal(sealed.state, 'ready-for-review', JSON.stringify(sealed));
+            };
             if (request.messages.some(message => message.content.includes('selected pending documentation proposal'))) {
                 revisionCalls++;
                 const context = request.messages.map(message => message.content).join('\n');
                 assert.match(context, /"path":"docs\/policy.md"/);
-                assert.match(context, /never copy operation, hashes, or other saved-proposal metadata into a change/);
                 if (revisionCalls === 1) assert.match(context, /"path":"docs\/new.txt"/);
-                assert.match(context, /"reviewIntent":"\/docs-review update docs\/policy.md/);
-                assert.match(context, /"beforeHash":"[a-f0-9]{64}"/);
                 if (revisionCalls === 3) {
                     yield { type: 'complete' as const, text: 'invalid revision output',
                         actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
@@ -53,25 +65,29 @@ test('protected Docs review revises one card while only Accept applies its lates
                 if (revisionCalls === 4) {
                     signalCancelledRevisionStart();
                     await new Promise<void>(resolve => request.signal.addEventListener('abort', () => resolve(), { once: true }));
-                    yield { type: 'complete' as const, text: JSON.stringify({
-                        final_response: 'Cancelled response', report: 'No proposal should be committed.',
-                        changes: [{ path: 'docs/replacement.txt', remove: true }] }),
-                    actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
+                    yield { type: 'complete' as const, text: 'Cancelled response',
+                        actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
                     return;
                 }
-                yield { type: 'complete' as const, text: JSON.stringify({
-                    final_response: 'I revised the selected proposal. Review its updated card.',
-                    report: 'The requested proposal changes are staged.',
-                    changes: revisionCalls === 1 ? [{ path: 'docs/new.txt', remove: true }] :
-                        [{ path: 'docs/policy.md', replace: { before: '## Late policy\nnew\n',
-                            after: '## Late policy\nnewer\n' } },
-                        { path: 'docs/replacement.txt', after: 'Replacement guide\n' }] }),
-                actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
+                if (revisionCalls === 1) await submit([
+                    { target: 'docs/new.txt', content: { operation: 'remove' } }
+                ], 'I revised the selected proposal. Review its updated card.');
+                else {
+                    const prior = JSON.parse(context.match(/Saved proposal: (\{[^\n]+\})/)![1]);
+                    const policy = prior.targets.find((item: { path: string }) => item.path === 'docs/policy.md');
+                    await submit([
+                        { target: 'docs/policy.md', content: { operation: 'replace', sourceHash: policy.afterHash,
+                            before: '## Late policy\nnew\n', after: '## Late policy\nnewer\n' } },
+                        { target: 'docs/replacement.txt', content: { operation: 'create', chunk: 'Replacement guide\n' } }
+                    ], 'I revised the selected proposal. Review its updated card.');
+                }
+                yield { type: 'complete' as const, text: 'Tool staging complete.',
+                    actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
                 return;
             }
             const page = JSON.parse(await request.projectTools!.execute('read_file',
                 { path: 'docs/policy.md', offset: 0, maxBytes: 4096 })) as {
-                text: string; sourceHash: string; nextOffset: number };
+                text: string; sourceHash: string; fullHash: string; nextOffset: number };
             assert.equal(page.text.includes('## Late policy'), false);
             const late = JSON.parse(await request.projectTools!.execute('read_file',
                 { path: 'docs/policy.md', offset: page.nextOffset, maxBytes: 4096 })) as { text: string };
@@ -79,13 +95,13 @@ test('protected Docs review revises one card while only Accept applies its lates
             const notes = JSON.parse(await request.projectTools!.execute('read_file',
                 { path: 'docs/notes.md', offset: 0, maxBytes: 4096 })) as { text: string };
             assert.equal(notes.text, '# Notes\n');
-            yield { type: 'complete' as const, text: JSON.stringify({
-                final_response: 'I prepared the policy update and a new validation note. The proposal is ready for your review; no files have changed yet.',
-                report: 'Current policy needs the approved new wording.',
-                changes: [{ path: 'docs/policy.md', replace: { before: '## Late policy\nold\n',
-                    after: '## Late policy\nnew\n' } },
-                { path: 'docs/new.txt', after: 'Validation cases\n' }] }),
-            actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
+            await submit([
+                { target: 'docs/policy.md', content: { operation: 'replace', sourceHash: page.fullHash,
+                    before: '## Late policy\nold\n', after: '## Late policy\nnew\n' } },
+                { target: 'docs/new.txt', content: { operation: 'create', chunk: 'Validation cases\n' } }
+            ], 'I prepared the policy update and a new validation note. The proposal is ready for your review; no files have changed yet.');
+            yield { type: 'complete' as const, text: 'Tool staging complete.',
+                actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
         } else yield { type: 'complete' as const, text: 'A literal command example is inert.',
             actualModelId: 'q4', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' as const } };
     } };
@@ -126,12 +142,12 @@ test('protected Docs review revises one card while only Accept applies its lates
         assert.deepEqual(review?.role === 'assistant' ? review.planningActivity?.documentationDiscovery?.reads : [],
             [{ path: 'docs/notes.md', count: 1 }, { path: 'docs/policy.md', count: 2 }]);
         assert.equal(review?.role === 'assistant' ? review.planningActivity?.documentationDiscovery?.detected : undefined, 3);
-        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.length, 4);
+        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.length, 7);
         assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.[0].name, 'proposal_status');
         assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.[2].endOffset, Buffer.byteLength(before));
         assert.equal(seen.some(turnMessages => turnMessages.some(text => text.includes('Dope skill /docs-review'))), true);
         assert.equal(seen.some(turnMessages => turnMessages.some(text =>
-            text.includes('with exactly these sibling keys'))), true);
+            text.includes('proposal_stage_document'))), true);
         const ordinary = sent.find(messages => messages.at(-1)?.content.startsWith('Please update the policy.'))!;
         assert.ok(ordinary.some(message => message.role === 'system' &&
             message.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION));
@@ -141,7 +157,7 @@ test('protected Docs review revises one card while only Accept applies its lates
         assert.ok(!reviewRequest.some(message => message.role === 'system' &&
             message.content === ORDINARY_CHAT_RESPONSE_INSTRUCTION));
         assert.ok(reviewRequest.some(message => message.role === 'system' &&
-            message.content.includes('with exactly these sibling keys')));
+            message.content.includes('proposal_stage_document')));
         assert.ok(reviewRequest.some(message => message.role === 'user' &&
             message.content.includes('In ordinary Chat use short bullets')));
         const history = new HistoryBackend();

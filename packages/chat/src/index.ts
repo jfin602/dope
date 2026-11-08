@@ -767,7 +767,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
     }
     let documentProposal: ChatDocumentationProposal | undefined;
     if (v.documentProposal !== undefined) {
-        if (kind !== 'documentation-proposal' || JSON.stringify(v.documentProposal).length > 65_536)
+        if (kind !== 'documentation-proposal' || JSON.stringify(v.documentProposal).length > 4 * 1024 * 1024)
             throw new Error('Invalid saved documentation proposal');
         const p = record(v.documentProposal, ['id', 'digest', 'root', 'projectId', 'worktreeId', 'ownerId',
             'chatId', 'messageId', 'leaseDigest', 'roadmapRevision', 'createdAt', 'expiresAt', 'targets',
@@ -779,7 +779,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             if (!/^[a-f0-9]{64}$/u.test(result)) throw new Error('Invalid documentation hash');
             return result;
         };
-        if (p.id !== v.proposalId || !Array.isArray(p.targets) || !p.targets.length || p.targets.length > 4 ||
+        if (p.id !== v.proposalId || !Array.isArray(p.targets) || !p.targets.length || p.targets.length > 16 ||
             (p.dependencies !== undefined && (!Array.isArray(p.dependencies) || p.dependencies.length > 16)) ||
             (p.dependencySnapshotVersion !== undefined && p.dependencySnapshotVersion !== 1) ||
             (p.proposalRevision !== undefined && (!Number.isSafeInteger(p.proposalRevision) ||

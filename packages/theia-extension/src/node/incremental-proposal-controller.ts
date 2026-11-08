@@ -20,13 +20,13 @@ export interface ProposalStage {
     target: string; chunkIndex: number; content: string; digest: string; complete: boolean;
 }
 interface StoredStage extends ProposalStage { byteLength: number }
-interface Snapshot {
+export interface ProposalSnapshot {
     schemaVersion: 1; id: string; identity: ProposalIdentity; createdAt: number;
     revision: number; calls: number; state: 'staging' | 'ready-for-review' | 'cancelled' | 'stale' | 'blocked';
     stages: StoredStage[]; finalMessage?: string;
 }
 export interface ProposalReceipt {
-    proposalId: string; revision: number; nextSequence: number; state: Snapshot['state'];
+    proposalId: string; revision: number; nextSequence: number; state: ProposalSnapshot['state'];
     targets: { target: string; chunks: number; bytes: number; complete: boolean }[];
     remaining: { stages: number; calls: number; bytes: number; elapsedMs: number };
 }
@@ -34,9 +34,9 @@ export interface ProposalHandoff<T> { domain: ProposalDomain; proposalId: string
     finalMessage: string; candidate: T }
 export interface ProposalDomainHandler<T> {
     /** Validate one bounded stage before it enters durable, noncanonical state. */
-    validateStage(snapshot: Readonly<Snapshot>, stage: Readonly<ProposalStage>): Promise<void>;
+    validateStage(snapshot: Readonly<ProposalSnapshot>, stage: Readonly<ProposalStage>): Promise<void>;
     /** Return exact proposal-owner input; this method must not publish canonical files. */
-    validateComplete(snapshot: Readonly<Snapshot>): Promise<T>;
+    validateComplete(snapshot: Readonly<ProposalSnapshot>): Promise<T>;
 }
 const sha256 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
 const fail = (code: string): never => { throw new Error(`PROPOSAL_${code}`); };
@@ -60,7 +60,7 @@ function checkedStage(value: unknown, limits: ProposalLimits): ProposalStage {
         return fail('STAGE_ARGUMENTS');
     return value as ProposalStage;
 }
-function receipt(snapshot: Snapshot, limits: ProposalLimits): ProposalReceipt {
+function receipt(snapshot: ProposalSnapshot, limits: ProposalLimits): ProposalReceipt {
     const targets = new Map<string, { target: string; chunks: number; bytes: number; complete: boolean }>();
     for (const stage of snapshot.stages) {
         const value = targets.get(stage.target) ?? { target: stage.target, chunks: 0, bytes: 0, complete: false };
@@ -84,11 +84,11 @@ export class IncrementalProposalController<T = unknown> {
                 limits[key] > DEFAULT_PROPOSAL_LIMITS[key]) throw new Error('Invalid proposal resource limit');
     }
 
-    private async transact<R>(update: (snapshot: Snapshot) => Promise<{ snapshot: Snapshot; result: R }>): Promise<R> {
+    private async transact<R>(update: (snapshot: ProposalSnapshot) => Promise<{ snapshot: ProposalSnapshot; result: R }>): Promise<R> {
         const current = await this.authority();
         const outcome = await this.repository.transactProposalStage<R | { error: string }>(this.identity.root, this.identity.chatId,
             this.identity.messageId, this.identity.leaseToken, async raw => {
-                const snapshot = raw as Snapshot | undefined;
+                const snapshot = raw as ProposalSnapshot | undefined;
                 if (!snapshot || snapshot.schemaVersion !== 1 ||
                     JSON.stringify(snapshot.identity) !== JSON.stringify(this.identity)) return fail('FOREIGN_SESSION');
                 if (snapshot.state === 'cancelled' || snapshot.state === 'stale') return fail('TERMINAL');
@@ -113,7 +113,7 @@ export class IncrementalProposalController<T = unknown> {
         return this.repository.transactProposalStage(this.identity.root, this.identity.chatId,
             this.identity.messageId, this.identity.leaseToken, async raw => {
                 if (raw) return fail('ALREADY_STARTED');
-                const snapshot: Snapshot = { schemaVersion: 1, id: randomUUID(), identity: this.identity,
+                const snapshot: ProposalSnapshot = { schemaVersion: 1, id: randomUUID(), identity: this.identity,
                     createdAt: Date.now(), revision: 0, calls: 0, state: 'staging', stages: [] };
                 return { snapshot, result: receipt(snapshot, this.limits) };
             });
@@ -139,14 +139,14 @@ export class IncrementalProposalController<T = unknown> {
             if (snapshot.stages.length >= this.limits.stages) return fail('STAGE_LIMIT');
             const targetStages = snapshot.stages.filter(item => item.target === stage.target);
             if (targetStages.length >= 256 || stage.chunkIndex !== targetStages.length ||
-                targetStages.at(-1)?.complete) return fail('CHUNK_ORDER');
+                (targetStages.at(-1)?.complete && domain !== 'document')) return fail('CHUNK_ORDER');
             const bytes = Buffer.byteLength(stage.content, 'utf8');
             if (targetStages.reduce((sum, item) => sum + item.byteLength, 0) + bytes > this.limits.fileBytes ||
                 snapshot.stages.reduce((sum, item) => sum + item.byteLength, 0) + bytes > this.limits.totalBytes ||
                 !targetStages.length && new Set(snapshot.stages.map(item => item.target)).size >= this.limits.files)
                 return fail('BYTE_OR_FILE_LIMIT');
             await this.handler.validateStage(snapshot, stage);
-            const next: Snapshot = { ...snapshot, revision: snapshot.revision + 1,
+            const next: ProposalSnapshot = { ...snapshot, revision: snapshot.revision + 1,
                 stages: [...snapshot.stages, { ...stage, byteLength: bytes }] };
             return { snapshot: next, result: receipt(next, this.limits) };
         });
@@ -163,7 +163,7 @@ export class IncrementalProposalController<T = unknown> {
                 return fail('INCOMPLETE');
             if (!this.handler) return fail('DOMAIN_NOT_SUPPORTED');
             const candidate = await this.handler.validateComplete(snapshot);
-            const next: Snapshot = { ...snapshot, revision: snapshot.revision + 1,
+            const next: ProposalSnapshot = { ...snapshot, revision: snapshot.revision + 1,
                 state: 'ready-for-review', finalMessage };
             return { snapshot: next, result: { domain: snapshot.identity.domain, proposalId: snapshot.id,
                 revision: next.revision, finalMessage, candidate } };
@@ -171,7 +171,7 @@ export class IncrementalProposalController<T = unknown> {
     }
     cancel(): Promise<ProposalReceipt> {
         return this.transact(async snapshot => {
-            const next: Snapshot = { ...snapshot, state: 'cancelled', revision: snapshot.revision + 1 };
+            const next: ProposalSnapshot = { ...snapshot, state: 'cancelled', revision: snapshot.revision + 1 };
             return { snapshot: next, result: receipt(next, this.limits) };
         });
     }
@@ -179,7 +179,7 @@ export class IncrementalProposalController<T = unknown> {
     async stop(): Promise<void> {
         await this.repository.transactProposalStage(this.identity.root, this.identity.chatId,
             this.identity.messageId, this.identity.leaseToken, async raw => {
-                const snapshot = raw as Snapshot | undefined;
+                const snapshot = raw as ProposalSnapshot | undefined;
                 if (!snapshot || JSON.stringify(snapshot.identity) !== JSON.stringify(this.identity))
                     return fail('FOREIGN_SESSION');
                 return { snapshot: snapshot.state === 'staging' ?

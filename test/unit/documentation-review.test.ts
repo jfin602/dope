@@ -60,7 +60,7 @@ test('review rejects collision, symlink, protected, unsafe, oversized and foreig
                 /documentation|Documentation|Unsafe|ENOENT/i, path);
         }
         await assert.rejects(prepareDocumentationReview(store, request([{ path: 'docs/taken.md', after: 'old' }])), /no change/i);
-        await assert.rejects(prepareDocumentationReview(store, request([{ path: 'docs/new.md', after: 'x'.repeat(16_385) }])), /limit/i);
+        await assert.rejects(prepareDocumentationReview(store, request([{ path: 'docs/new.md', after: 'x'.repeat(128_001) }])), /limit/i);
         await assert.rejects(prepareDocumentationReview(store, request([{ path: 'docs/new.md', after: 'a\0b' }])), /text/i);
         await assert.rejects(prepareDocumentationReview(store, request([{ path: 'docs/new.md', after: '\ud800' }])), /lossless/i);
         const proposal = await prepareDocumentationReview(store, request([{ path: 'docs/new.md', after: 'new' }]));

@@ -10,7 +10,7 @@ import { checkedDocumentationParent, documentationReviewApplicability, documenta
 const hash = (bytes: string | Buffer): string => createHash('sha256').update(bytes).digest('hex');
 const missing = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
 const uuid = (value: string): boolean => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value);
-const MAX_RECORD = 96_000;
+const MAX_RECORD = 4 * 1024 * 1024;
 const BASE = 'documentation-applications';
 
 export interface DocumentationApplication {
@@ -49,7 +49,7 @@ async function location(root: string, create = false): Promise<string> {
 function validate(record: DocumentationApplication, root: string, id: string): void {
     if (!record || record.schemaVersion !== 1 || record.root !== root || record.id !== id || !uuid(id) ||
         !['applying', 'complete', 'partial', 'failed', 'uncertain'].includes(record.status) ||
-        !Array.isArray(record.targets) || !record.targets.length || record.targets.length > 4 ||
+        !Array.isArray(record.targets) || !record.targets.length || record.targets.length > 16 ||
         !Array.isArray(record.effects) || record.effects.length > record.targets.length ||
         !/^[a-f0-9]{64}$/u.test(record.proposalDigest) ||
         !record.effects.every(effect => record.targets.some(target => target.path === effect.path &&
@@ -149,12 +149,12 @@ function sidePath(root: string, path: string, id: string, side: 'stage' | 'backu
 async function fileIdentity(path: string): Promise<{ hash: string; dev: number; ino: number } | undefined> {
     let info;
     try { info = await lstat(path); } catch (error) { if (missing(error)) return undefined; throw error; }
-    if (!info.isFile() || info.isSymbolicLink() || info.nlink > 2 || info.size > 16_384)
+    if (!info.isFile() || info.isSymbolicLink() || info.nlink > 2 || info.size > 128_000)
         throw new Error('Unsafe documentation publication file');
     const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
         const opened = await handle.stat();
-        if (!opened.isFile() || opened.dev !== info.dev || opened.ino !== info.ino || opened.size > 16_384)
+        if (!opened.isFile() || opened.dev !== info.dev || opened.ino !== info.ino || opened.size > 128_000)
             throw new Error('Documentation publication file changed');
         const bytes = await handle.readFile();
         return { hash: hash(bytes), dev: opened.dev, ino: opened.ino };
