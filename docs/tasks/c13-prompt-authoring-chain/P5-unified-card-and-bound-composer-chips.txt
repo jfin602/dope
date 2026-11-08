@@ -1,0 +1,24 @@
+TASK: Correction 13 / P5 — Unified card and bound composer chips
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only. No manifest, lockfile, workspace, package-version change.
+
+AUTHORITY / PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, proposed ADR 0056 and docs/planning/p13/named-prompt-authoring-chain-contract.md, plus this stack's assessment/plan. Inspect actual local HEAD and dirty-tree/source state, compiled import ownership, relevant packages/tests, and earlier P6/R2 NOT GREEN evidence. Owner instruction to run this correction does not make it technically GREEN. Preserve local owner edits and historical prompts; do not reset, stash, clean, force-push or hide failures. Runner owns Git checkpoint and commits: do not self-commit or advance later prompts.
+
+GOAL — T1 UI
+Present one compact current-state Prompt Stack Draft card with stable owner-selected one-line name, Assessment/Plan/Write states, truthful loading/error/recovery and native read-only review access. After Assessment completes, /prompt-plan action prefills the composer with that command and a trusted Assessment chip; after Plan completes, /prompt-write action prefills it with a trusted Plan chip. Clicking is never submission: the owner may add instructions before sending.
+
+IMPLEMENTATION SCOPE
+Inspect current `chat-panel-controller.ts`, `chat-panel-widget.ts`, `chat-panel-presentation.ts`, Chat model and existing native proposal/editor adapters. Bind chips to opaque draft ID, stage/source revision and project/owner lease, not model-writable text or the visible slug alone. Validate at submit; provide remove, stale indicator and accessible keyboard focus. Keep one evolving current projection while preserving immutable history. Reuse semantic theme tokens per ADR 0016 and human entry/feedback/keyboard/narrow requirements per ADR 0037; no extra Documents workspace or new explorer.
+
+FOCUSED CHECKS
+Card stage progression, short name/ellipsis full tooltip, safe non-autosubmit click, optional notes, wrong-project or stale chip denial, duplicate card/tabs, keyboard/focus, narrow viewport, theme tokens and read-only views. Use the directly affected chat presentation tests; defer live visual qualification to P8.
+
+VERIFICATION AND EXIT
+Build only changed dependencies needed for fresh compiled tests; run the narrow directly affected tests and git diff --check. No broad npm run check, Electron packaging, or unnecessary repeat aggregates. Record exact changed files, actual test results, evidence gaps, and PASS/PARTIAL/BLOCKED. If implementation and focused checks exceed the 8-minute target, narrow the scope honestly rather than suppressing safety requirements. No browser qualification, Work Run/grant, Prompt Stack publication, Roadmap Gate, or version advance. Stop after this prompt's scoped result.

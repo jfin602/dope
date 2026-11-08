@@ -1,0 +1,24 @@
+TASK: Correction 13 / P3 — Source-backed structured assessment staging
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only. No manifest, lockfile, workspace, package-version change.
+
+AUTHORITY / PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, proposed ADR 0056 and docs/planning/p13/named-prompt-authoring-chain-contract.md, plus this stack's assessment/plan. Inspect actual local HEAD and dirty-tree/source state, compiled import ownership, relevant packages/tests, and earlier P6/R2 NOT GREEN evidence. Owner instruction to run this correction does not make it technically GREEN. Preserve local owner edits and historical prompts; do not reset, stash, clean, force-push or hide failures. Runner owns Git checkpoint and commits: do not self-commit or advance later prompts.
+
+GOAL — T1
+Replace the model's full Markdown assessment-as-final-answer with bounded typed assessment records attached to the P1/P2 draft. Stage actual source-based observations, preservation, dependencies, risks, T1/T2/T3, inspected source hashes/ranges and omitted requested files. Preserve Pi brokered read controls, including late/ranged sections. Dope owns final structured record validation; render an inspectable Markdown assessment on demand without re-running the model.
+
+IMPLEMENTATION SCOPE
+Inspect `prompt-authoring-stage.ts`, `chat-backend.ts`, Pi worker tools and existing read provenance. Use existing trusted staged data/lease/owner APIs rather than another tool dispatcher. Distinguish listed/searched paths from real read_file ranges. Stage records incrementally where necessary and provide actionable failure rather than silently saving unsupported source claims. Keep long rendered assessment bodies out of next-call model context.
+
+FOCUSED CHECKS
+Complete brokered assessment, missing requested file disclosure, listed-not-read denial, late range evidence, T1/T2/T3 correct meanings, unsupported claim diagnostic, source drift, max payload, restart and no canonical write. Verify existing narrow assessment/source-ref tests before adding targeted cases.
+
+VERIFICATION AND EXIT
+Build only changed dependencies needed for fresh compiled tests; run the narrow directly affected tests and git diff --check. No broad npm run check, Electron packaging, or unnecessary repeat aggregates. Record exact changed files, actual test results, evidence gaps, and PASS/PARTIAL/BLOCKED. If implementation and focused checks exceed the 8-minute target, narrow the scope honestly rather than suppressing safety requirements. No browser qualification, Work Run/grant, Prompt Stack publication, Roadmap Gate, or version advance. Stop after this prompt's scoped result.

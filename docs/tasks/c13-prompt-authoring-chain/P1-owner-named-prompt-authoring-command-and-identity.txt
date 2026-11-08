@@ -1,0 +1,24 @@
+TASK: Correction 13 / P1 — Owner-named prompt authoring command and identity
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only. No manifest, lockfile, workspace, package-version change.
+
+AUTHORITY / PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, proposed ADR 0056 and docs/planning/p13/named-prompt-authoring-chain-contract.md, plus this stack's assessment/plan. Inspect actual local HEAD and dirty-tree/source state, compiled import ownership, relevant packages/tests, and earlier P6/R2 NOT GREEN evidence. Owner instruction to run this correction does not make it technically GREEN. Preserve local owner edits and historical prompts; do not reset, stash, clean, force-push or hide failures. Runner owns Git checkpoint and commits: do not self-commit or advance later prompts.
+
+GOAL — T1
+Change only the trusted prompt authoring entry/identity boundary. Require `/prompt-ass <name> <task details>` with a nonempty owner-supplied safe 3–32-character lowercase hyphen slug and task details. Give the draft a separate opaque identity, version and owner/root/chat/source binding; retain this name exactly for eventual task directory. Reject traversal, reserved names, missing/duplicate names, accepted folder collisions and stale/foreign owners. A quoted slash command or model text must not invoke the path. Explicit obsolete command forms fail with actionable guidance, not a silent compatibility fallback.
+
+IMPLEMENTATION SCOPE
+Inspect current parser `prompt-authoring-stage.ts`, `chat-backend.ts` and typed `packages/chat` models. Introduce minimal durable draft identity/state contract, leaving long-term storage and card UI to P2/P5. Do not create canonical `docs/tasks/<slug>` files, a new publisher, or implicit downstream invocation. Preserve unrelated natural Chat and `/docs-review`.
+
+FOCUSED CHECKS
+Add narrow parser/entry tests: valid owner name, missing description, Unicode/traversal, duplicate/reserved names, canonical directory collision, quoted invocation denied, and foreign project/lease rejection. Check current `test/unit/prompt-authoring-stage.test.ts` and Chat backend test import mode before choosing commands.
+
+VERIFICATION AND EXIT
+Build only changed dependencies needed for fresh compiled tests; run the narrow directly affected tests and git diff --check. No broad npm run check, Electron packaging, or unnecessary repeat aggregates. Record exact changed files, actual test results, evidence gaps, and PASS/PARTIAL/BLOCKED. If implementation and focused checks exceed the 8-minute target, narrow the scope honestly rather than suppressing safety requirements. No browser qualification, Work Run/grant, Prompt Stack publication, Roadmap Gate, or version advance. Stop after this prompt's scoped result.

@@ -1,0 +1,24 @@
+TASK: Correction 13 / P4 — Structured plan tasks and efficiency checks
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only. No manifest, lockfile, workspace, package-version change.
+
+AUTHORITY / PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, proposed ADR 0056 and docs/planning/p13/named-prompt-authoring-chain-contract.md, plus this stack's assessment/plan. Inspect actual local HEAD and dirty-tree/source state, compiled import ownership, relevant packages/tests, and earlier P6/R2 NOT GREEN evidence. Owner instruction to run this correction does not make it technically GREEN. Preserve local owner edits and historical prompts; do not reset, stash, clean, force-push or hide failures. Runner owns Git checkpoint and commits: do not self-commit or advance later prompts.
+
+GOAL — T1
+Make `/prompt-plan` consume compact validated P3 assessment records by draft identity, stage bounded dependency-ordered work responsibilities, and produce a checked plan projection without generating/returning a long Markdown plan in Chat. Plan remains noncanonical; use one draft, no copied full assessment. User-specified work count remains binding when explicit; exactly one *separate* final manual closeout.
+
+IMPLEMENTATION SCOPE
+Inspect `prompt-authoring-stage.ts`, current plan/source validator and `incremental-prompt-stack.ts`. Require stable task IDs, genuine implementation responsibility per task, file/test targets, focused validation and build needs, explicit T2 integration, T3 manual closeout and all ten correct Prompt Efficiency Gates from docs/workflow.md. Avoid unsupported CI/browser demo/CommonJS/dependencies asserted as existing facts; reject material holes with precise diagnostics. Plan revisions invalidate prompts, not prior good Chat evidence.
+
+FOCUSED CHECKS
+Valid 10-work-task plan + separate closeout, wrong count, dependencies/order, invented source, T1/T2/T3 confused with read tiers, missing late page, no source read, bogus ninth/tenth gate, plan replacement staling dependent prompts, no publication. Reuse targeted plan/prompt-stage tests; keep actual package build narrow.
+
+VERIFICATION AND EXIT
+Build only changed dependencies needed for fresh compiled tests; run the narrow directly affected tests and git diff --check. No broad npm run check, Electron packaging, or unnecessary repeat aggregates. Record exact changed files, actual test results, evidence gaps, and PASS/PARTIAL/BLOCKED. If implementation and focused checks exceed the 8-minute target, narrow the scope honestly rather than suppressing safety requirements. No browser qualification, Work Run/grant, Prompt Stack publication, Roadmap Gate, or version advance. Stop after this prompt's scoped result.
