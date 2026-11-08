@@ -567,6 +567,29 @@ export class ChatBackend implements ChatService {
                 refs: message.execution.sourceRefs ?? [], proposalId: proposal.id, documentProposal: proposal });
         return proposal;
     }
+    async inspectDocumentation(projectHandle: string, chatId: string, leaseToken: string,
+        proposalId: string, proposalDigest: string): Promise<{
+            status: 'applicable' | 'stale'; projectRoot: string;
+            proposal: import('@dope/chat').ChatDocumentationProposal }> {
+        const root = this.active(projectHandle);
+        const lease = this.leases.get(chatId);
+        if (!this.roadmapStore || lease?.root !== root || lease.token !== leaseToken)
+            throw new Error('Current Chat ownership required for documentation review');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const message = chat?.messages.find(item => item.role === 'assistant' &&
+            item.planningActivity?.kind === 'documentation-proposal' &&
+            item.planningActivity.proposalId === proposalId &&
+            item.planningActivity.documentProposal?.digest === proposalDigest);
+        const proposal = message?.role === 'assistant' ? message.planningActivity?.documentProposal : undefined;
+        if (!proposal || proposal.id !== proposalId || proposal.chatId !== chatId ||
+            proposal.messageId !== message?.id || proposal.root !== root ||
+            proposal.ownerId !== lease.ownerId ||
+            proposal.leaseDigest !== createHash('sha256').update(leaseToken).digest('hex'))
+            throw new Error('Exact saved documentation candidate and Chat owner required');
+        const applicable = message?.role === 'assistant' && message.planningActivity?.status === 'pending' &&
+            await documentationReviewApplicability(this.roadmapStore, proposal, root) === 'applicable';
+        return { status: applicable ? 'applicable' : 'stale', projectRoot: root, proposal };
+    }
     async dismissDocumentation(projectHandle: string, chatId: string, leaseToken: string,
         proposalId: string, decision: 'deny' | 'cancel'): Promise<void> {
         const root = this.active(projectHandle);

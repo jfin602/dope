@@ -165,6 +165,11 @@ export interface ChatService {
     /** Protected review staging. Proposed bytes are inert until a separate approved apply. */
     reviewDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string, messageId: string,
         changes: { path: string; after: string }[]): Promise<import('./index').ChatDocumentationProposal>;
+    /** Read-only, current-owner check for an exact saved candidate before opening Documents. */
+    inspectDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string, proposalDigest: string): Promise<{
+            status: 'applicable' | 'stale'; projectRoot: string;
+            proposal: import('./index').ChatDocumentationProposal }>;
     dismissDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, decision: 'deny' | 'cancel'): Promise<void>;
     /** Developer UI approval, separate from command text and the Pi tool broker. */

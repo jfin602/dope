@@ -271,6 +271,16 @@ test('Chat backend requires a distinct exact developer approval and consumes it 
             outcome: 'complete', content: 'Reviewed decision' }, lease.token);
         const proposal = await backend.reviewDocumentation(projectHandle, chatId, lease.token, messageId,
             [{ path: 'docs/decision.md', after: '# Decision\n' }]);
+        const inspected = await backend.inspectDocumentation(projectHandle, chatId, lease.token,
+            proposal.id, proposal.digest);
+        assert.equal(inspected.status, 'applicable');
+        assert.equal(inspected.projectRoot, f.root);
+        assert.equal(inspected.proposal.id, proposal.id);
+        assert.equal(inspected.proposal.digest, proposal.digest);
+        await assert.rejects(backend.inspectDocumentation(projectHandle, chatId, 'foreign',
+            proposal.id, proposal.digest), /ownership/i);
+        await assert.rejects(backend.inspectDocumentation(projectHandle, chatId, lease.token,
+            proposal.id, digest('wrong')), /Exact/i);
         assert.equal((await readDocumentationApplications(f.root)).length, 0);
         await assert.rejects(backend.applyDocumentation(projectHandle, chatId, 'wrong', proposal.id, proposal.digest), /ownership/i);
         await assert.rejects(backend.applyDocumentation(projectHandle, chatId, lease.token, proposal.id, digest('wrong')), /Exact/i);
@@ -284,6 +294,10 @@ test('Chat backend requires a distinct exact developer approval and consumes it 
         assert.equal(pending?.role === 'assistant' && pending.planningActivity?.status, 'pending');
         assert.equal(renewed.id, proposal.id);
         assert.notEqual(renewed.digest, proposal.digest);
+        await assert.rejects(backend.inspectDocumentation(projectHandle, chatId, reclaimed.token,
+            proposal.id, proposal.digest), /Exact/i);
+        assert.equal((await backend.inspectDocumentation(projectHandle, chatId, reclaimed.token,
+            renewed.id, renewed.digest)).status, 'applicable');
         assert.deepEqual(renewed.targets, proposal.targets);
         assert.equal((await readDocumentationApplications(f.root)).length, 0);
         await assert.rejects(backend.applyDocumentation(projectHandle, chatId, reclaimed.token,
@@ -291,6 +305,8 @@ test('Chat backend requires a distinct exact developer approval and consumes it 
         const result = await backend.applyDocumentation(projectHandle, chatId, reclaimed.token,
             renewed.id, renewed.digest);
         assert.equal(result.status, 'complete');
+        assert.equal((await backend.inspectDocumentation(projectHandle, chatId, reclaimed.token,
+            renewed.id, renewed.digest)).status, 'stale');
         assert.equal(await readFile(join(f.root, 'docs', 'decision.md'), 'utf8'), '# Decision\n');
         await assert.rejects(backend.applyDocumentation(projectHandle, chatId, reclaimed.token, renewed.id, renewed.digest), /Exact/i);
         assert.equal((await readDocumentationApplications(f.root)).length, 1);

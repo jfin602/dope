@@ -17,11 +17,11 @@ import type { ChatConnection } from '../../packages/theia-extension/src/browser/
 test('Revise Proposal selects one pending card in the composer and preserves an unsent draft', () => {
     let changes = 0;
     const controller = new ChatPanelController(() => { throw new Error('unused'); }, () => { changes++; });
-    const proposal = { id: 'proposal', digest: 'digest', chatId: 'chat', proposalRevision: 2 };
+    const proposal = { id: 'proposal', digest: 'digest', chatId: 'chat', root: '/project', messageId: 'answer', proposalRevision: 2 };
     const chat = { id: 'chat', messages: [{ role: 'assistant', id: 'answer', planningActivity: {
         kind: 'documentation-proposal', status: 'pending', proposalId: 'proposal', documentProposal: proposal } }] };
-    Object.assign(controller, { workspace: 'project', chatId: 'chat', snapshot: { chats: [chat] },
-        draft: 'Unsent notes', lease: { workspace: 'project', chatId: 'chat' } });
+    Object.assign(controller, { workspace: 'file:///project', chatId: 'chat', snapshot: { chats: [chat] },
+        draft: 'Unsent notes', lease: { workspace: 'file:///project', chatId: 'chat' } });
     assert.equal(controller.prepareDocumentationRevision('proposal', 'digest'), true);
     assert.deepEqual(controller.documentationRevision,
         { proposalId: 'proposal', revision: 2, digest: 'digest' });
@@ -38,6 +38,40 @@ test('Revise Proposal selects one pending card in the composer and preserves an 
     assert.equal(controller.draft, 'Unsent notes');
     assert.equal(controller.documentationRevision, undefined);
     assert.equal(controller.prepareDocumentationRevision('proposal', 'stale'), false);
+});
+
+test('Docs card decisions share pending state and deny stale, foreign and repeated clicks', async () => {
+    const proposal = { id: 'proposal', digest: 'digest', root: '/project', chatId: 'chat', messageId: 'answer' };
+    const activity = { kind: 'documentation-proposal', status: 'pending', proposalId: 'proposal', documentProposal: proposal };
+    const chat = { id: 'chat', messages: [{ role: 'assistant', id: 'answer', planningActivity: activity }] };
+    let release!: (result: { id: string; status: string; paths: string[] }) => void;
+    const waiting = new Promise<{ id: string; status: string; paths: string[] }>(resolve => { release = resolve; });
+    const calls: unknown[][] = [];
+    const connection = { applyDocumentation: (...args: unknown[]) => { calls.push(args); return waiting; },
+        inspectDocumentation: async () => ({ status: 'applicable', projectRoot: '/project', proposal }) };
+    const controller = new ChatPanelController(() => { throw new Error('unused'); }, () => {});
+    Object.assign(controller, { workspace: 'file:///project', chatId: 'chat', snapshot: { chats: [chat] },
+        lease: { workspace: 'file:///project', chatId: 'chat', handle: 'handle', token: 'lease', connection },
+        refresh: async () => {} });
+    assert.equal(controller.canDecideDocumentation('proposal', 'digest'), true);
+    assert.equal(controller.canDecideDocumentation('proposal', 'old-digest'), false);
+    const action = controller.applyDocumentationProposal('proposal', 'digest');
+    assert.equal(controller.canDecideDocumentation('proposal', 'digest'), false);
+    await controller.applyDocumentationProposal('proposal', 'digest');
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0], ['handle', 'chat', 'lease', 'proposal', 'digest']);
+    release({ id: 'proposal', status: 'complete', paths: ['docs/a.md'] });
+    await action;
+    activity.status = 'applied';
+    assert.equal(controller.canDecideDocumentation('proposal', 'digest'), false);
+    await controller.applyDocumentationProposal('proposal', 'digest');
+    assert.equal(calls.length, 1, 'saved decided candidate cannot be replayed');
+    activity.status = 'pending';
+    controller.workspace = 'file:///other';
+    assert.equal(controller.canDecideDocumentation('proposal', 'digest'), false);
+    controller.workspace = 'file:///project';
+    controller.chatId = 'other-chat';
+    assert.equal(controller.canDecideDocumentation('proposal', 'digest'), false);
 });
 
 test('output-limit notice uses current Ask execution and checked action identity', async () => {

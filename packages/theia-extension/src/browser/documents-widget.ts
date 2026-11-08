@@ -9,6 +9,7 @@ import { documentFormat, readDocumentPreview, renderDocumentPreview, renderDocum
 import { DocumentsEditing } from './documents-editing';
 import { projectDocumentsCompare, type CompareFile, type CompareTreeNode, type DocumentsCompare,
     type VerifiedDocumentsCandidate } from './documents-diff';
+import type { ChatPanelController } from './chat-panel-controller';
 
 export const DOCUMENTS_WIDGET_ID = 'dope-documents';
 
@@ -37,6 +38,7 @@ export class DocumentsWidget extends BaseWidget {
     private previewLoading = false;
     private previewMode: 'preview' | 'source' = 'preview';
     private compare?: DocumentsCompare;
+    private reviewOwner?: ChatPanelController;
     private compareView: 'original' | 'proposed' | 'diff' = 'proposed';
 
     constructor(private readonly workspaces: WorkspaceService, private readonly files: FileService, editors: EditorManager) {
@@ -92,6 +94,9 @@ export class DocumentsWidget extends BaseWidget {
             const selected = this.presentation.selection.selectedPath;
             if (project && selected && this.presentation.selection.mode === 'explorer' &&
                 event.contains(new URI(project).resolve(selected))) void this.loadPreview(selected);
+            if (project && this.presentation.selection.mode === 'docs-proposal' && this.compare &&
+                this.compare.files.some(file => event.contains(new URI(project).resolve(file.path))))
+                void this.recheckCompare();
         });
         void this.refreshProject();
     }
@@ -105,6 +110,7 @@ export class DocumentsWidget extends BaseWidget {
         this.previewLoading = false;
         this.previewMode = 'preview';
         this.compare = undefined;
+        this.reviewOwner = undefined;
         this.listing = undefined;
         this.folders.clear();
         this.expanded.clear();
@@ -231,14 +237,35 @@ export class DocumentsWidget extends BaseWidget {
     }
 
     /** P6 can hand off only owner-checked proposal state; this view never decides or applies it. */
-    showDocumentationCompare(projectUri: string, candidate: VerifiedDocumentsCandidate): boolean {
-        if (!candidate.proposal || candidate.projectRoot !== new URL(projectUri).pathname ||
+    showDocumentationCompare(projectUri: string, candidate: VerifiedDocumentsCandidate,
+        owner?: ChatPanelController): boolean {
+        if (!candidate.proposal || candidate.projectRoot !== decodeURIComponent(new URL(projectUri).pathname) ||
             !this.presentation.selectCandidate('docs-proposal', projectUri, candidate.proposal.id)) return false;
         this.compare = projectDocumentsCompare(candidate);
+        this.reviewOwner = owner;
         this.compareView = 'proposed';
         this.presentation.setStatus('ready');
         this.render();
         return true;
+    }
+
+    refreshReview(): void { if (!this.isDisposed && this.compare) this.render(); }
+
+    private async recheckCompare(): Promise<void> {
+        const owner = this.reviewOwner, compare = this.compare;
+        if (!owner || !compare || !compare.approvable) return;
+        try {
+            const latest = await owner.inspectDocumentationProposal(compare.proposalId, compare.digest);
+            if (this.compare === compare && latest.status !== 'applicable') {
+                this.compare = projectDocumentsCompare(latest);
+                this.render();
+            }
+        } catch {
+            if (this.compare === compare) {
+                this.compare = { ...compare, status: 'stale', approvable: false };
+                this.render();
+            }
+        }
     }
 
     private renderCompareTree(nodes: CompareTreeNode[], depth = 0): void {
@@ -387,6 +414,24 @@ export class DocumentsWidget extends BaseWidget {
             this.status.textContent += ` · Unsaved in editor: ${this.editing.activePath}`;
         this.content.replaceChildren();
         if (state.mode === 'docs-proposal' && compare && compare.proposalId === state.candidateId) {
+            const owner = this.reviewOwner;
+            if (owner) {
+                const actions = document.createElement('div');
+                actions.className = 'dope-documents-view-controls';
+                for (const [label, action] of [
+                    ['Accept', () => owner.applyDocumentationProposal(compare.proposalId, compare.digest)],
+                    ['Reject', () => owner.dismissDocumentationProposal(compare.proposalId, 'deny')],
+                    ['Revise Proposal', () => { owner.prepareDocumentationRevision(compare.proposalId, compare.digest); }],
+                ] as const) {
+                    const button = document.createElement('button');
+                    button.type = 'button'; button.textContent = label;
+                    button.disabled = !owner.canDecideDocumentation(compare.proposalId, compare.digest) ||
+                        label === 'Accept' && !compare.approvable;
+                    button.addEventListener('click', () => { if (!button.disabled) void action(); });
+                    actions.append(button);
+                }
+                this.content.append(actions);
+            }
             const file = compare.files.find(item => item.path === state.selectedPath) ?? compare.files[0];
             if (file) this.renderCompare(file);
             else this.content.textContent = 'No comparable files.';

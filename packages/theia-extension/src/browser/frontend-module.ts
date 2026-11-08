@@ -64,6 +64,7 @@ import { HistoryFocusContribution } from './history-focus-contribution';
 import { historyOwnerNavigation } from './history-owner-navigation';
 import { RoadmapCanvasWidget, ROADMAP_CANVAS_ID } from './roadmap-canvas-widget';
 import { DocumentsWidget, DOCUMENTS_WIDGET_ID } from './documents-widget';
+import { checkedDocumentationHandoff } from './documentation-handoff';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { verifyPrepareWorkNavigation } from './prepare-work-navigation';
@@ -693,6 +694,23 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 const snapshot = await readLatest();
                 await widget.presentLiveChatStage(uri, { projectHandle: '', kind: 'roadmap-stage',
                     chatId: snapshot.chatId, messageId: snapshot.turnId, snapshot });
+            }, async (uri, owner, proposalId, digest) => {
+                const roots = await context.container.get(WorkspaceService).roots;
+                if (roots.length !== 1 || roots[0].resource.toString() !== uri || owner.workspace !== uri)
+                    throw new Error('Project changed before Documents review');
+                return checkedDocumentationHandoff(owner, uri, proposalId, digest, async candidate => {
+                    const widget = await context.container.get(WidgetManager)
+                        .getOrCreateWidget<DocumentsWidget>(DOCUMENTS_WIDGET_ID);
+                    await widget.refreshProject();
+                    const latestRoots = await context.container.get(WorkspaceService).roots;
+                    if (latestRoots.length !== 1 || latestRoots[0].resource.toString() !== uri ||
+                        !owner.currentDocumentationProposal(proposalId, digest) ||
+                        !widget.showDocumentationCompare(uri, candidate, owner))
+                        throw new Error('Documentation proposal or project changed before navigation');
+                    if (!widget.isAttached) await context.container.get(ApplicationShell).addWidget(widget, { area: 'main' });
+                    await context.container.get(ApplicationShell).activateWidget(widget.id);
+                    return widget;
+                });
             });
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();

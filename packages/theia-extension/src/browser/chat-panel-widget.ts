@@ -18,7 +18,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, documentationDiscoveryFileUri, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { fadeInNewAnswerText } from './live-answer-fade';
@@ -37,6 +37,7 @@ import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
 import { panelFocusTarget } from './history-focus-target';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 import { ReasoningRevealBuffer } from './reasoning-reveal';
+import type { DocumentsWidget } from './documents-widget';
 
 function copyChatText(text: string): Promise<void> {
     // Keep the copy command inside the click gesture. Some desktop browser
@@ -72,6 +73,7 @@ function appendSkillText(target: HTMLElement, content: string,
 }
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
+    private viewedDocuments?: DocumentsWidget;
     private readonly copyMenu = new ChatCopyContextMenu();
     private readonly copyFeedbackTimers = new WeakMap<HTMLElement, {
         timer: ReturnType<typeof setTimeout>; label: string | null; title: string | null }>();
@@ -309,7 +311,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             begin: (projectUri: string) => Promise<ChatContextSelection[] | undefined> },
         private readonly onRoadmapStage?: (event: Extract<ChatEvent, { kind: 'roadmap-stage' }>, workspace: string) => void,
         private readonly viewLiveRoadmapStage?: (uri: string,
-            readLatest: () => Promise<NonNullable<ChatPanelController['roadmapStage']>>) => Promise<void>) {
+            readLatest: () => Promise<NonNullable<ChatPanelController['roadmapStage']>>) => Promise<void>,
+        private readonly openDocumentationReview?: (uri: string, owner: ChatPanelController,
+            proposalId: string, digest: string) => Promise<DocumentsWidget>) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -321,6 +325,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.id !== workLauncherIds.left && this.id !== workLauncherIds.right;
         this.addClass('dope-chat-panel');
         this.controller = new ChatPanelController(connect, kind => {
+            this.viewedDocuments?.refreshReview();
             if (kind === 'activity' && !this.transcriptTouchActive && !this.transcriptTouchSettleTimer &&
                 this.updateLiveStreamActivity()) return;
             if (kind === 'answer' && !this.transcriptTouchActive && !this.transcriptTouchSettleTimer) {
@@ -705,21 +710,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const summary = document.createElement('p');
             summary.textContent = `${activity.documentProposal.targets.length} proposed file change(s)`;
             card.append(summary);
-            for (const target of activity.documentProposal.targets) {
-                const detail = document.createElement('details');
-                const label = document.createElement('summary');
-                label.textContent = `${target.operation === 'create' ? 'Create' : 'Update'} ${target.path}`;
-                const diff = document.createElement('pre');
-                diff.className = 'dope-chat-documentation-diff';
-                for (const line of target.diff.split('\n')) {
-                    const row = document.createElement('span');
-                    row.dataset.kind = documentationDiffLineKind(line);
-                    row.textContent = line;
-                    diff.append(row, document.createTextNode('\n'));
-                }
-                detail.append(label, diff);
-                card.append(detail);
-            }
             if (activity.documentationDiscovery) {
                 const discovery = activity.documentationDiscovery;
                 const section = document.createElement('details');
@@ -772,16 +762,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 activity.diagnostic ?? 'This proposal was not fully applied. Check History for any verified retained changes.';
             if (activity.status !== 'applied') card.append(note);
             if (activity.status === 'pending') {
+                card.append(this.button('Open Review', () => {
+                    const uri = this.controller.workspace;
+                    if (!uri || !this.openDocumentationReview) return;
+                    void this.openDocumentationReview(uri, this.controller, activity.proposalId!,
+                        activity.documentProposal!.digest).then(widget => { this.viewedDocuments = widget; }, error => {
+                            this.controller.planningProposalError = `Documentation review unavailable: ${String(error)}`;
+                            this.render();
+                        });
+                }, !this.openDocumentationReview || !this.controller.canDecideDocumentation(
+                    activity.proposalId!, activity.documentProposal.digest)));
                 card.append(this.button('Accept',
                     () => void this.controller.applyDocumentationProposal(activity.proposalId!, activity.documentProposal!.digest),
-                    this.controller.pending));
+                    !this.controller.canDecideDocumentation(activity.proposalId!, activity.documentProposal.digest)));
                 card.append(this.button('Reject',
                     () => void this.controller.dismissDocumentationProposal(activity.proposalId!, 'deny'),
-                    this.controller.pending));
+                    !this.controller.canDecideDocumentation(activity.proposalId!, activity.documentProposal.digest)));
                 card.append(this.button('Revise Proposal', () => {
                     if (this.controller.prepareDocumentationRevision(activity.proposalId!, activity.documentProposal!.digest))
                         queueMicrotask(() => this.content.querySelector<HTMLTextAreaElement>('.dope-chat-composer textarea')?.focus());
-                }, this.controller.pending || this.controller.running));
+                }, !this.controller.canDecideDocumentation(activity.proposalId!, activity.documentProposal.digest)));
             } else if (activity.status === 'approved') {
                 card.append(this.button('Recover application',
                     () => void this.controller.recoverDocumentationProposal(activity.proposalId!), this.controller.pending));

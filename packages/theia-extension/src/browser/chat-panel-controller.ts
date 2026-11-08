@@ -4,7 +4,7 @@ import type { ChatClient, ChatEvent, ChatOperation, ChatService, ChatContextSele
     ChatPlanningProposal, ChatTurnResult,
     ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
-import type { ChatModelSelection } from '@dope/chat';
+import type { ChatModelSelection, ChatDocumentationProposal } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 import { hasSendableChatDraft, isDraftPlanningAction, outputLimitDecisionTarget } from './chat-panel-presentation';
 
@@ -727,7 +727,7 @@ export class ChatPanelController {
     }
     async dismissDocumentationProposal(proposalId: string, decision: 'deny' | 'cancel'): Promise<void> {
         const lease = this.lease;
-        if (!lease || this.pending || this.running) return;
+        if (!lease || !this.currentDocumentationProposal(proposalId) || this.pending || this.running) return;
         this.pending = true; this.changed();
         try {
             await lease.connection.dismissDocumentation(lease.handle, lease.chatId, lease.token, proposalId, decision);
@@ -737,7 +737,7 @@ export class ChatPanelController {
     }
     async applyDocumentationProposal(proposalId: string, digest: string): Promise<void> {
         const lease = this.lease;
-        if (!lease || this.pending || this.running) return;
+        if (!lease || !this.currentDocumentationProposal(proposalId, digest) || this.pending || this.running) return;
         this.pending = true; this.changed();
         try {
             const result = await lease.connection.applyDocumentation(lease.handle, lease.chatId, lease.token,
@@ -758,6 +758,38 @@ export class ChatPanelController {
                 `Documentation ${result.status}: ${result.paths.length} verified file(s).${result.diagnostic ? ` ${result.diagnostic}` : ''}`;
         } catch (error) { this.planningProposalError = `Documentation recovery unresolved: ${String(error)}`;
         } finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
+    /** Saved Chat is only a selector; the backend checks lease and source again. */
+    currentDocumentationProposal(proposalId: string, digest?: string): ChatDocumentationProposal | undefined {
+        const lease = this.lease;
+        if (!lease || !this.workspace || lease.workspace !== this.workspace ||
+            lease.chatId !== this.chatId || this.disposed) return undefined;
+        const message = this.chat?.messages.find(item => item.role === 'assistant' &&
+            item.planningActivity?.kind === 'documentation-proposal' &&
+            item.planningActivity.status === 'pending' && item.planningActivity.proposalId === proposalId &&
+            (!digest || item.planningActivity.documentProposal?.digest === digest));
+        const proposal = message?.role === 'assistant' ? message.planningActivity?.documentProposal : undefined;
+        return proposal?.id === proposalId && proposal.chatId === this.chatId &&
+            proposal.messageId === message?.id && proposal.root === decodeURIComponent(new URL(this.workspace).pathname) ?
+            proposal : undefined;
+    }
+    canDecideDocumentation(proposalId: string, digest: string): boolean {
+        return !this.pending && !this.running && !!this.currentDocumentationProposal(proposalId, digest);
+    }
+    async inspectDocumentationProposal(proposalId: string, digest: string): Promise<{
+        status: 'applicable' | 'stale'; projectRoot: string; proposal: ChatDocumentationProposal }> {
+        const lease = this.lease, proposal = this.currentDocumentationProposal(proposalId, digest);
+        if (!lease || !proposal || this.pending || this.running)
+            throw new Error('Current pending documentation proposal is unavailable');
+        const candidate = await lease.connection.inspectDocumentation(lease.handle, lease.chatId, lease.token,
+            proposalId, digest);
+        if (lease !== this.lease || this.pending || this.running ||
+            this.currentDocumentationProposal(proposalId, digest) !== proposal ||
+            candidate.proposal.id !== proposalId || candidate.proposal.digest !== digest ||
+            candidate.projectRoot !== proposal.root || candidate.proposal.chatId !== lease.chatId ||
+            candidate.proposal.messageId !== proposal.messageId)
+            throw new Error('Documentation proposal changed before opening review');
+        return candidate;
     }
     async reviewNativeRoadmap(ids: string[], decision: 'apply' | 'reject'): Promise<void> {
         const lease = this.lease, proposal = this.planningProposal;
@@ -819,7 +851,7 @@ export class ChatPanelController {
             `/docs-review ${value.trimStart()}` : value;
     }
     prepareDocumentationRevision(proposalId: string, digest: string): boolean {
-        if (!this.lease || this.running || this.pending) return false;
+        if (!this.lease || this.running || this.pending || !this.currentDocumentationProposal(proposalId, digest)) return false;
         const message = this.chat?.messages.find(item => item.role === 'assistant' &&
             item.planningActivity?.kind === 'documentation-proposal' &&
             item.planningActivity.proposalId === proposalId &&
