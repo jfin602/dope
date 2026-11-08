@@ -93,10 +93,10 @@ test('native prompt commands bind leading protected invocation and draft exact v
     assert.deepEqual(promptStageCommand('/prompt-plan review more', 'prompt-plan'), { stage: 'prompt-plan' });
     assert.equal(promptStageCommand('`/prompt-ass`', undefined), undefined);
     assert.equal(promptStageCommand('Please /prompt-ass', undefined), undefined);
-    assert.throws(() => promptStageCommand('/prompt-write', 'prompt-write'), /Usage/);
+    assert.deepEqual(promptStageCommand('/prompt-write', 'prompt-write'), { stage: 'prompt-write' });
     assert.throws(() => promptStageCommand('/prompt-write ../escape', 'prompt-write'));
-    assert.deepEqual(promptStageCommand('/prompt-write c0-feature', 'prompt-write'),
-        { stage: 'prompt-write', folder: 'c0-feature' });
+    assert.deepEqual(promptStageCommand('/prompt-write add focused checks', 'prompt-write'),
+        { stage: 'prompt-write' });
     const input = { folderName: 'c0-feature', sourceKind: 'chat-plan', version: '1.2.3',
         sourceVersion: '1.2.3', work: [choice('step-1', 'Add feature', 'T1'),
             choice('step-2', 'Integrate feature', 'T2', ['step-1'])],

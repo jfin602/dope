@@ -43,6 +43,15 @@ test('correction draft preserves reviewed dependency-safe order and round trips 
     assert.equal(runner.unchangedVersion, '0.11.8');
 });
 
+test('owner named correction folder uses unchanged source version and round trips both validators', async () => {
+    const input = fixture('clamp-api-correction', '0.13.11');
+    const draft = await composePhaseStackDraft(input);
+    const sources = draft.files.map(({ filename, text }) => ({ filename, text }));
+    assert.equal((await importPhaseStack(input.folderName, sources)).phase, 13);
+    assert.equal(buildPlan(sources, input.folderName).unchangedVersion, '0.13.11');
+    assert.match(draft.files[0].text, /^TASK: Correction 13 \/ P1/u);
+});
+
 test('phase draft uses assigned versions and both existing validators', async () => {
     const input = fixture('p1-11', '1.11.1');
     const draft = await composePhaseStackDraft(input);

@@ -87,7 +87,7 @@ function orderWork(choices: readonly WorkPromptChoice[], sourceKind: ComposeStac
 
 /** Pure authoring: no file, Git, provider, approval, or execution side effects. */
 export async function composePhaseStackDraft(input: ComposeStackInput): Promise<DraftStack> {
-    const { mode, phase } = phaseStackFolder(input.folderName);
+    const { mode, phase } = phaseStackFolder(input.folderName, input.sourceVersion);
     const semver = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
     if (!semver.test(input.version) || !semver.test(input.sourceVersion))
         throw new Error('Invalid project version');

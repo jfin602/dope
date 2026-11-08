@@ -44,6 +44,13 @@ export async function discoverRoadmapTaskStacks(root: string, tasksRoot = 'docs/
         const path = `${directory.relative}/${child.name}`;
         let info: ReturnType<typeof phaseStackFolder> | undefined;
         try { info = phaseStackFolder(child.name); } catch { /* one-off source or ordinary documentation */ }
+        if (!info && child.isDirectory() && !child.isSymbolicLink() &&
+            /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(child.name) &&
+            child.name.length >= 3 && child.name.length <= 32) {
+            const names = (await boundedEntries(`${directory.absolute}/${child.name}`, 256)).map(entry => entry.name);
+            if (names.some(name => /^P1-[a-z0-9-]+\.txt$/u.test(name)))
+                info = { mode: 'correction', phase: 0 };
+        }
         if (!info) {
             if (child.isFile() && child.name.toLowerCase().endsWith('.txt'))
                 result.push({ folderName: child.name, path, prompts: [], executable: false,
@@ -78,6 +85,8 @@ export async function discoverRoadmapTaskStacks(root: string, tasksRoot = 'docs/
                 const sources = await readStackSources(root, child.name, directory.relative);
                 // Work's importer owns the same strict TASK, ordering, version and closeout rules as the runner.
                 const stack = await importPhaseStack(child.name, sources, path);
+                summary.mode = stack.mode;
+                summary.phase = stack.phase;
                 summary.fingerprint = stack.fingerprint;
                 summary.roadmapFamily = stack.roadmapFamily;
                 summary.continuationSlice = stack.continuationSlice;

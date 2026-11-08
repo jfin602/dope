@@ -78,7 +78,7 @@ function work(index: number, dependency?: string) {
 const closeout = { kind: 'closeout', title: 'Manual feature closeout',
     objective: 'Inspect the final feature in the real browser', manualReason: 'Human interaction needs observation',
     acceptanceCriteria: ['Observe all ten features in the real browser'], browserRequired: true,
-    efficiencyAudit: Array.from({ length: 10 }, (_, index) => `Gate ${index + 1} checks the specific fixture prompts and the verified source basis.`) };
+    efficiencyAudit: Array.from({ length: 10 }, (_, index) => `Gate ${index + 1} checks distinct fixture responsibility ${index + 1} and verified source basis.`) };
 
 test('ten substantial staged prompts seal exact bytes and remain absent until native guarded publication', async () => {
     const f = await fixture();

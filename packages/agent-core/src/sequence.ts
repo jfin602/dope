@@ -111,17 +111,24 @@ function parsePrompt(source: PromptSource): { entry: SequenceEntry; mode: StackM
         promptText: text, kind, execution: kind === 'closeout' || browserRequired ? 'manual-gate' : 'agent-task',
         recommendation, browserRequired, versionPolicy } };
 }
-export function phaseStackFolder(name: string): { mode: StackMode; phase: number } {
-    const { mode, phase } = folder(name);
+export function phaseStackFolder(name: string, sourceVersion?: string): { mode: StackMode; phase: number } {
+    const inferred = sourceVersion && semver.test(sourceVersion) ? Number(sourceVersion.split('.')[1]) : undefined;
+    const { mode, phase } = folder(name, inferred);
     return { mode, phase };
 }
-function folder(name: string) {
+function folder(name: string, inferredPhase?: number) {
     const historical = /^p(0|[1-9]\d*)$/u.exec(name);
     const continuation = /^p(0|[1-9]\d*)([a-z])$/u.exec(name);
     const post1 = /^p1-(0|[1-9]\d*)$/u.exec(name);
     const post2 = /^p2-(0|[1-9]\d*)$/u.exec(name);
     const correction = /^c(0|[1-9]\d*)-([a-z0-9]+(?:-[a-z0-9]+)*)$/u.exec(name);
     const match = historical ?? continuation ?? post1 ?? post2 ?? correction;
+    if (!match && inferredPhase !== undefined && Number.isSafeInteger(inferredPhase) &&
+        name.length >= 3 && name.length <= 32 &&
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name) &&
+        !['drafts', 'docs', 'tasks', 'prompt-ass', 'prompt-plan', 'prompt-write',
+            'readme', 'index', 'new', 'current', 'latest', 'null', 'undefined'].includes(name))
+        return { mode: 'correction' as const, phase: inferredPhase, correctionSlug: name };
     if (!match || !Number.isSafeInteger(Number(match[1]))) throw new Error(folderError);
     const phase = Number(match[1]);
     if (correction) return { mode: 'correction' as const, phase, correctionSlug: correction[2] };
@@ -131,9 +138,9 @@ function folder(name: string) {
         ...(continuation ? { continuationSlice: continuation[2].toUpperCase() } : {}) };
 }
 function normalizedStack(folderName: string, sources: readonly PromptSource[]): Omit<ImportedStack, 'fingerprint'> {
-    const info = folder(folderName);
     if (!Array.isArray(sources) || !sources.length || sources.length > 100) throw new Error('No valid prompt files were found.');
     const prompts = sources.map(source => parsePrompt(promptSource(source)));
+    const info = folder(folderName, prompts[0].phase);
     prompts.sort((a, b) => a.entry.number - b.entry.number);
     for (let index = 0; index < prompts.length; index++) {
         const prompt = prompts[index];

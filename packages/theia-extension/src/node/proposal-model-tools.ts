@@ -85,7 +85,7 @@ export function proposalToolError(error: unknown): { version: 1; error: string; 
     expected: string; recovery: string } {
     const message = error instanceof Error ? error.message : '';
     const matched = /^(PROPOSAL_[A-Z_]+)(?::([a-zA-Z]+))?$/u.exec(message);
-    const knownPrompt = /^(PROMPT_(?:WORK_STAGE|SECTION_STAGE|CLOSEOUT_STAGE|DEPENDENCY_ORDER|SECTION_ORDER|ORDER|INCOMPLETE_STACK|SOURCE_CHANGED))$/u.exec(message);
+    const knownPrompt = /^(PROMPT_(?:WORK_STAGE|SECTION_STAGE|CLOSEOUT_STAGE|WORK_PLAN_MISMATCH|CLOSEOUT_PLAN_MISMATCH|DEPENDENCY_ORDER|SECTION_ORDER|ORDER|INCOMPLETE_STACK|SOURCE_CHANGED))$/u.exec(message);
     const code = matched?.[1] ?? (knownPrompt ? `PROPOSAL_${knownPrompt[1]}` :
         /Exact replacement is missing or ambiguous/u.test(message) ? 'PROPOSAL_DOCUMENT_ANCHOR' :
         /Update source changed|Documentation source changed/u.test(message) ? 'PROPOSAL_DOCUMENT_SOURCE_CHANGED' :

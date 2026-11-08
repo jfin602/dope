@@ -1,7 +1,8 @@
 import type { ChatAssistantMessage, ChatPromptStackProposal } from '@dope/chat';
 import type { ComposeStackInput, WorkPromptChoice, CloseoutChoice } from '@dope/agent-core/lib/phase-stack-composer';
 import type { ProposalDomainHandler, ProposalSnapshot, ProposalStage } from './incremental-proposal-controller';
-import { composeSavedPromptStack, verifyPromptDraftSource } from './prompt-authoring-stage';
+import { composeSavedPromptStack, verifyPromptDraftSource, type AssessmentRecord,
+    type PlanRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence, createPromptStackProposal } from './prompt-stack-proposal';
 import type { ChatProjectGrounder } from './chat-project-grounder';
 
@@ -35,12 +36,14 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
             assessment: ChatAssistantMessage; plan: ChatAssistantMessage },
         private readonly grounder: ChatProjectGrounder, private readonly revision: number,
         private readonly expectedSource: { head: string; worktreeFingerprint: string },
-        private readonly requestedWorkCount?: number) {}
+        private readonly requestedWorkCount?: number,
+        private readonly selected?: { assessment: AssessmentRecord; plan: PlanRecord }) {}
 
     readyForFinish(snapshot: Readonly<ProposalSnapshot>): { ready: boolean; nextAction?: string } {
         const count = new Set(snapshot.stages.map(stage => stage.target).filter(target => target !== 'closeout')).size;
-        return this.requestedWorkCount && count !== this.requestedWorkCount ?
-            { ready: false, nextAction: `Stage ${this.requestedWorkCount - count} remaining requested work prompts before closeout.` } :
+        const required = this.selected?.plan.work.length ?? this.requestedWorkCount;
+        return required && count !== required ?
+            { ready: false, nextAction: `Stage ${required - count} remaining requested work prompts before closeout.` } :
             { ready: true };
     }
 
@@ -48,7 +51,7 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
         const value = parse(stage.content);
         const prior = snapshot.stages.filter(item => item.target === stage.target);
         if (stage.target === 'closeout') {
-            if (this.requestedWorkCount && this.readyForFinish(snapshot).ready === false)
+            if (this.readyForFinish(snapshot).ready === false)
                 throw new Error('PROPOSAL_PROMPT_WORK_COUNT');
             if (prior.length || !snapshot.stages.length || !snapshot.stages.at(-1)?.complete ||
                 stage.chunkIndex !== 0 || !stage.complete || value.kind !== 'closeout' ||
@@ -61,6 +64,11 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
                 new Set(value.efficiencyAudit.map(item => item.toLowerCase().replace(/\b(?:gate|check|finding)\s*\d+\b/gu, '')
                     .replace(/\s+/gu, ' ').trim())).size !== 10)
                 throw new Error('PROMPT_CLOSEOUT_STAGE');
+            const planned = this.selected?.plan.closeout;
+            if (planned && (value.title !== planned.title || value.objective !== planned.objective ||
+                value.manualReason !== planned.manualReason ||
+                JSON.stringify(value.acceptanceCriteria) !== JSON.stringify(planned.acceptanceCriteria)))
+                throw new Error('PROMPT_CLOSEOUT_PLAN_MISMATCH');
             return;
         }
         if (!identifier(stage.target) || snapshot.stages.some(item => item.target === 'closeout'))
@@ -79,6 +87,15 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
                 (value.estimatedMinutes !== undefined && (!Number.isInteger(value.estimatedMinutes) ||
                     value.estimatedMinutes < 1 || value.estimatedMinutes > 15)))
                 throw new Error('PROMPT_WORK_STAGE');
+            const planned = this.selected?.plan.work[new Set(snapshot.stages.map(item => item.target)).size];
+            if (this.selected && (!planned || stage.target !== planned.id ||
+                value.title !== planned.title || value.objective !== planned.objective ||
+                value.tier !== planned.tier ||
+                JSON.stringify(value.dependsOn ?? []) !== JSON.stringify(planned.dependsOn) ||
+                JSON.stringify(value.workingSet) !== JSON.stringify(planned.workingSet) ||
+                JSON.stringify(value.acceptanceCriteria) !== JSON.stringify(planned.acceptanceCriteria) ||
+                JSON.stringify(value.validationTargets) !== JSON.stringify(planned.validationTargets)))
+                throw new Error('PROMPT_WORK_PLAN_MISMATCH');
             const completed = new Set(snapshot.stages.filter(item => item.complete).map(item => item.target));
             if (snapshot.stages.length && !snapshot.stages.at(-1)!.complete ||
                 (value.dependsOn ?? []).some(id => id === stage.target || !completed.has(id)))
@@ -115,7 +132,8 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
         }
         if (groups.size < 2 || groups.size > 49 || [...groups.keys()].at(-1) !== 'closeout')
             throw new Error('PROMPT_INCOMPLETE_STACK');
-        if (this.requestedWorkCount && groups.size - 1 !== this.requestedWorkCount)
+        if ((this.selected?.plan.work.length ?? this.requestedWorkCount) &&
+            groups.size - 1 !== (this.selected?.plan.work.length ?? this.requestedWorkCount))
             throw new Error('PROPOSAL_PROMPT_WORK_COUNT');
         const closeout = groups.get('closeout')![0] as Closeout;
         const work: WorkPromptChoice[] = [...groups.entries()].slice(0, -1).map(([id, values]) => {
@@ -129,7 +147,8 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
                     acceptanceCriteria: meta.acceptanceCriteria, validationTargets: meta.validationTargets,
                     status: 'draft', delegablePaths: meta.workingSet, humanReservedPaths: [] } };
         });
-        if (this.requestedWorkCount && work.filter(item => item.tier === 'T2').length !== 1)
+        if (this.selected && work.filter(item => item.tier === 'T2').length !==
+            this.selected.plan.work.filter(item => item.tier === 'T2').length)
             throw new Error('PROPOSAL_PROMPT_T2_GATE');
         const allInstructionText = snapshot.stages.map(stage => stage.content).join('\n');
         if (/\.cjs\b/iu.test(allInstructionText) &&
@@ -147,7 +166,8 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
                 browserRequired: closeout.browserRequired, model: closeout.model ?? 'GPT-6 Sol High' } };
         await verifyPromptDraftSource(this.root, this.prior.assessment, this.grounder);
         await verifyPromptDraftSource(this.root, this.prior.plan, this.grounder);
-        const composed = await composeSavedPromptStack(input, this.folder, this.sourceVersion, this.prior);
+        const composed = await composeSavedPromptStack(input, this.folder, this.sourceVersion,
+            this.prior, this.selected);
         const source = await capturePromptSourceEvidence(this.root);
         if (source.head !== this.expectedSource.head ||
             source.worktreeFingerprint !== this.expectedSource.worktreeFingerprint)

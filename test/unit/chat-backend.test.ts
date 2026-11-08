@@ -51,14 +51,14 @@ test('native prompt stages save an exact review candidate and publish only after
         'The feature has no UI changes, so UI design evidence is inapplicable.',
         'The feature has no new human workflow, so usability evidence is inapplicable.'];
     const work = (number: number, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
-        kind: 'work', id: `step-${number}`, title: number === 1 ? 'Implement feature' : 'Check feature',
-        objective: number === 1 ? 'Implement the feature' : 'Check the feature', tier, dependsOn,
+        kind: 'work', id: `step-${number}`, title: `Implement feature ${number}`,
+        objective: `Implement feature responsibility ${number} in the inspected source`, tier, dependsOn,
         requirements: ['Read the verified source'], constraints: ['No implicit Work run'],
-        acceptanceCriteria: [`Feature ${number} works on the checked source`],
-        validationTargets: [`Run test/unit/feature-${number}.test.ts`], workingSet: ['src/feature.js'],
+        acceptanceCriteria: [`Feature ${number} works`],
+        validationTargets: ['Run test/feature.test.ts'], workingSet: ['src/feature.js'],
         ...(tier === 'T2' ? { integrationChecks: ['Run the affected feature integration check'] } : {}) });
-    const closeout = { kind: 'closeout', title: 'Feature closeout', objective: 'Inspect feature in browser',
-        manualReason: 'Interactive behavior', acceptanceCriteria: ['Open feature in the real browser'],
+    const closeout = { kind: 'closeout', title: 'Manual feature closeout', objective: 'Observe feature in browser',
+        manualReason: 'Human observation', acceptanceCriteria: ['Observe feature behavior'],
         browserRequired: true, efficiencyAudit: audit };
     const narration = '<img src=x onerror=alert(1)> Prepared feature prompts for review.';
     let calls = 0;
@@ -105,8 +105,9 @@ test('native prompt stages save an exact review candidate and publish only after
             }
         }
         if (turn === 2 || turn === 3 || turn === 5) {
-            const steps = turn < 5 ? [work(1, 'T2')] : [work(1, 'T2'), work(2, 'T1', ['step-1'])];
-            for (const [index, value] of [...steps, closeout].entries()) {
+            const steps = turn === 2 ? [work(1, 'T1')] :
+                [work(1, 'T1'), work(2, 'T2', ['step-1'])];
+            for (const [index, value] of [...steps, ...(turn === 2 ? [] : [closeout])].entries()) {
                 const { id: _id, ...fields } = value as typeof value & { id?: string };
                 const receipt = JSON.parse(await request.projectTools!.execute('proposal_stage_prompt', {
                     target: value.kind === 'closeout' ? 'closeout' : value.id,
@@ -141,7 +142,7 @@ test('native prompt stages save an exact review candidate and publish only after
         if (!lease.acquired) throw new Error('Lease missing');
         await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/prompt-ass c0-feature Build the feature' });
+            content: '/prompt-ass clamp-api-correction Build the feature' });
         const assessed = (await backend.get(projectHandle, chatId))!;
         const owner = assessed.messages.find(message => message.role === 'user' && message.promptDraft);
         assert.ok(owner?.role === 'user' && owner.promptDraft);
@@ -173,13 +174,16 @@ test('native prompt stages save an exact review candidate and publish only after
         assert.ok(planMessage);
         const writeTarget = target('plan', planMessage.id);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write c0-feature',
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write',
+            promptDraftTarget: { ...writeTarget, stageRevision: 99 } }), /stage changed/);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write',
             promptDraftTarget: writeTarget }),
         /Prompt authoring output was truncated/);
-        await assert.rejects(readFile(join(root, 'docs', 'tasks', 'c0-feature', 'P1-implement-feature.txt')),
+        await assert.rejects(readFile(join(root, 'docs', 'tasks', 'clamp-api-correction', 'P1-implement-feature.txt')),
             /ENOENT/);
         await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write c0-feature',
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write',
             promptDraftTarget: writeTarget });
         const chat = (await backend.get(projectHandle, chatId))!;
         const completed = chat.messages.filter(message => message.role === 'assistant' &&
@@ -194,13 +198,17 @@ test('native prompt stages save an exact review candidate and publish only after
         assert.equal(activity?.status, 'pending');
         const proposal = activity?.promptStackProposal;
         assert.ok(proposal);
+        assert.match(proposal.files[0].after, /## Scope/u);
+        assert.match(proposal.files[1].after, /Prompt Efficiency Gates:/u);
+        assert.doesNotMatch(proposal.files[1].after, /Plan record sha256:/u);
         assert.deepEqual(proposal.files.map(file => file.path), [
-            'docs/tasks/c0-feature/prompt-assessment.md',
-            'docs/tasks/c0-feature/implementation-plan.md',
-            'docs/tasks/c0-feature/README.md',
-            'docs/tasks/c0-feature/P1-implement-feature.txt',
-            'docs/tasks/c0-feature/P2-feature-closeout.txt']);
-        await assert.rejects(readFile(join(root, 'docs', 'tasks', 'c0-feature', 'P1-implement-feature.txt')),
+            'docs/tasks/clamp-api-correction/prompt-assessment.md',
+            'docs/tasks/clamp-api-correction/implementation-plan.md',
+            'docs/tasks/clamp-api-correction/README.md',
+            'docs/tasks/clamp-api-correction/P1-implement-feature-1.txt',
+            'docs/tasks/clamp-api-correction/P2-implement-feature-2.txt',
+            'docs/tasks/clamp-api-correction/P3-manual-feature-closeout.txt']);
+        await assert.rejects(readFile(join(root, 'docs', 'tasks', 'clamp-api-correction', 'P1-implement-feature.txt')),
             /ENOENT/);
         await backend.release(projectHandle, chatId, lease.token);
         const reopened = await backend.claim({ projectHandle, chatId, ownerId: 'reloaded-panel' });
@@ -224,34 +232,21 @@ test('native prompt stages save an exact review candidate and publish only after
         const revision = { proposalId: proposal.id, revision: proposal.revision, digest: proposal.digest };
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: currentToken,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/prompt-write c0-feature add a check prompt', promptStackRevision: revision }),
-        /Incremental prompt stack was not finished and validated/);
+            content: '/prompt-write add a check prompt', promptStackRevision: revision }),
+        /Named prompt draft belongs to another project, Chat or owner lease/);
         assert.equal((await backend.get(projectHandle, chatId))!.messages
             .find(message => message.id === proposal.messageId)?.role === 'assistant' &&
             (await backend.get(projectHandle, chatId))!.messages
                 .find(message => message.id === proposal.messageId)?.planningActivity?.status, 'pending');
-        await backend.runTurn({ projectHandle, chatId, leaseToken: currentToken,
-            selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/prompt-write c0-feature add a check prompt', promptStackRevision: revision });
-        const revisedChat = (await backend.get(projectHandle, chatId))!;
-        const revised = revisedChat.messages.filter(message => message.role === 'assistant' &&
-            message.planningActivity?.kind === 'prompt-stack-proposal').at(-1);
-        const revisedProposal = revised?.role === 'assistant' ? revised.planningActivity?.promptStackProposal : undefined;
-        assert.ok(revisedProposal);
-        assert.equal(revisedProposal.revision, 2);
-        assert.equal(revisedProposal.files.at(-1)?.path, 'docs/tasks/c0-feature/P3-feature-closeout.txt');
-        assert.equal(revisedChat.messages.find(message => message.id === proposal.messageId)?.role === 'assistant' &&
-            revisedChat.messages.find(message => message.id === proposal.messageId)?.planningActivity?.status,
-        'superseded');
         const published = await backend.publishPromptStack(projectHandle, chatId, currentToken,
-            revisedProposal.id, revisedProposal.digest);
+            proposal.id, proposal.digest);
         assert.equal(published.status, 'published');
-        for (const file of revisedProposal.files)
+        for (const file of proposal.files)
             assert.equal(await readFile(join(root, file.path), 'utf8'), file.after);
         assert.equal((await backend.get(projectHandle, chatId))!.messages
             .find(message => message.id === proposal.messageId)?.role, 'assistant');
         await assert.rejects(backend.publishPromptStack(projectHandle, chatId, currentToken,
-            revisedProposal.id, revisedProposal.digest), /Pending prompt proposal required/);
+            proposal.id, proposal.digest), /Pending prompt proposal required/);
     } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
 });

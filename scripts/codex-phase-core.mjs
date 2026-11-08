@@ -193,12 +193,18 @@ export function buildPlan(entries, folderName) {
   const post2PhaseFolderMatch = /^p2-(0|[1-9]\d*)$/.exec(folderName);
   const correctionFolderMatch =
     /^c(0|[1-9]\d*)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(folderName);
+  const namedCorrection = !correctionFolderMatch &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(folderName) &&
+    folderName.length >= 3 && folderName.length <= 32 &&
+    !['drafts', 'docs', 'tasks', 'prompt-ass', 'prompt-plan', 'prompt-write',
+      'readme', 'index', 'new', 'current', 'latest', 'null', 'undefined'].includes(folderName);
   if (
     !historicalPhaseFolderMatch &&
     !historicalContinuationFolderMatch &&
     !post1PhaseFolderMatch &&
     !post2PhaseFolderMatch &&
-    !correctionFolderMatch
+    !correctionFolderMatch &&
+    !namedCorrection
   ) {
     throw new Error(
       'Task folder must have the form p<number> (including p0), p<number><slice> for a pre-1.0 continuation, p1-<phase>, p2-<phase>, or c<phase>-<lower-kebab-slug>.',
@@ -218,9 +224,10 @@ export function buildPlan(entries, folderName) {
     post1PhaseFolderMatch ??
     post2PhaseFolderMatch ??
     correctionFolderMatch;
-  const phase = Number(folderMatch[1]);
+  const namedFirst = namedCorrection && entries.length ? parsePrompt(entries[0].filename, entries[0].text) : undefined;
+  const phase = namedCorrection ? namedFirst.taskPhase : Number(folderMatch[1]);
   const continuationSlice = historicalContinuationFolderMatch?.[2]?.toUpperCase();
-  const correctionSlug = correctionFolderMatch?.[2];
+  const correctionSlug = correctionFolderMatch?.[2] ?? (namedCorrection ? folderName : undefined);
   const roadmapFamily =
     historicalPhaseFolderMatch || historicalContinuationFolderMatch
       ? ROADMAP_FAMILIES.historical

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { ChatPromptStackProposal } from '@dope/chat';
 import type { DraftStack } from '@dope/agent-core/lib/phase-stack-composer';
+import { phaseStackFolder } from '@dope/agent-core/lib/sequence';
 import { captureSequenceEvidence } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import { versionCoherent } from '@dope/agent-core/lib/node/sequence-checkpoint';
 
@@ -66,7 +67,8 @@ export async function createPromptStackProposal(root: string, chatId: string, me
     ownerId: string, leaseToken: string, draft: DraftStack,
     supportingFiles: { path: string; text: string }[], assessmentMessageId: string,
     planMessageId: string, revision = 1): Promise<ChatPromptStackProposal> {
-    if (await realpath(root) !== root || !/^[cp][a-z0-9-]{0,99}$/u.test(draft.folderName) ||
+    phaseStackFolder(draft.folderName, (await capturePromptSourceEvidence(root)).packageVersion);
+    if (await realpath(root) !== root ||
         draft.sourcePath !== `docs/tasks/${draft.folderName}` ||
         supportingFiles.length !== 2 || draft.files.length < 2 || draft.files.length > 49)
         throw new Error('Unsafe prompt stack destination or incomplete draft');

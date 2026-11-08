@@ -1848,7 +1848,6 @@ export class ChatBackend implements ChatService {
                 request.promptStackRevision.proposalId, request.promptStackRevision.digest) : undefined;
         if (selectedPrompt && (selectedPrompt.activity.status !== 'pending' ||
             selectedPrompt.proposal.revision !== request.promptStackRevision!.revision ||
-            selectedPrompt.proposal.folder !== promptStage?.folder ||
             (await this.inspectPromptStack(request.projectHandle, request.chatId, request.leaseToken,
                 selectedPrompt.proposal.id, selectedPrompt.proposal.digest)).status !== 'applicable'))
             throw new Error('Selected prompt stack proposal is stale; its last valid revision remains available');
@@ -1873,8 +1872,16 @@ export class ChatBackend implements ChatService {
                 request.chatId, priorAssessment.user.id, request.leaseToken);
             const source = await capturePromptSourceEvidence(root);
             verifyPromptDraftSourceBasis(identity, source);
-            if (promptStage?.stage === 'prompt-write' && promptStage.folder !== identity.slug)
-                throw new Error(`Prompt task name is ${identity.slug}; start /prompt-write ${identity.slug} in this Chat`);
+            if (promptStage?.stage === 'prompt-write') {
+                promptStage.folder = identity.slug;
+            }
+        }
+        if (selectedPrompt && priorAssessment?.user.promptDraft && promptStage?.stage === 'prompt-write') {
+            const identity = verifyPromptDraftIdentity(priorAssessment.user.promptDraft, root,
+                request.chatId, priorAssessment.user.id, request.leaseToken);
+            promptStage.folder = identity.slug;
+            if (selectedPrompt.proposal.folder !== identity.slug)
+                throw new Error('Selected prompt revision belongs to another named draft');
         }
         if (priorAssessment && priorPlan &&
             chat.messages.findIndex(message => message.id === priorAssessment.assistant.id) >
@@ -1885,6 +1892,8 @@ export class ChatBackend implements ChatService {
         if (priorPlan) await verifyPromptDraftSource(root, priorPlan.assistant, this.grounder!);
         let savedAssessmentRecord: AssessmentRecord | undefined;
         let savedPlanRecord: PlanRecord | undefined;
+        let stagedAssessmentHash: string | undefined;
+        let stagedPlanHash: string | undefined;
         if (priorAssessment?.user.promptDraft) {
             const staged = await new PromptDraftStore(this.repository, this.grounder!).read(root,
                 priorAssessment.user.promptDraft, request.leaseToken).catch(error => {
@@ -1893,6 +1902,13 @@ export class ChatBackend implements ChatService {
             });
             savedAssessmentRecord = staged?.assessment?.record as AssessmentRecord | undefined;
             savedPlanRecord = staged?.plan?.record as PlanRecord | undefined;
+            stagedAssessmentHash = staged?.assessment?.contentHash;
+            stagedPlanHash = staged?.plan?.contentHash;
+            if (promptStage?.stage === 'prompt-write' && (!staged?.assessment || !staged.plan ||
+                !savedAssessmentRecord || !savedPlanRecord || !priorPlan ||
+                !planReceiptCurrent(priorPlan.assistant.content, staged.plan.contentHash,
+                    staged.plan.revision)))
+                throw new Error('Selected structured plan is missing or stale; choose the current Plan card');
         }
         if (request.promptDraftTarget) {
             const target = request.promptDraftTarget;
@@ -1961,8 +1977,9 @@ export class ChatBackend implements ChatService {
         const reviewObjective = docsReview ? documentationReviewObjective(content,
             chat.messages.filter(message => message.role === 'user').map(message => message.content)) : undefined;
         const discovery = docsReview ? await discoverDocumentation(root, reviewObjective!) : undefined;
-        const promptRequestedCount = promptStage?.stage === 'prompt-plan' || promptStage?.stage === 'prompt-write' ?
-            requestedWorkPromptCount(priorAssessment?.user.content ?? '', content) : undefined;
+        const promptRequestedCount = promptStage?.stage === 'prompt-write' ? savedPlanRecord?.work.length :
+            promptStage?.stage === 'prompt-plan' ?
+                requestedWorkPromptCount(priorAssessment?.user.content ?? '', content) : undefined;
         const discoveryPrompt = discovery ? `\nVerified local discovery: ${discovery.enumerated} documents enumerated, ` +
             `${discovery.searched} searched. Candidate paths and section byte offsets (search is not a model read): ` +
             JSON.stringify(discovery.candidates) + `\nOmissions: ${JSON.stringify(discovery.omitted)}. ` +
@@ -2644,6 +2661,14 @@ export class ChatBackend implements ChatService {
                         abort.signal.aborted || this.leases.get(key)?.token !== request.leaseToken ||
                         this.leases.get(key)?.ownerId !== proposalOwnerId)
                         throw new Error('PROPOSAL_TOOL_AUTHORITY');
+                    if (promptStage?.stage === 'prompt-write' && priorAssessment?.user.promptDraft) {
+                        const current = await new PromptDraftStore(this.repository, this.grounder!).read(
+                            root, priorAssessment.user.promptDraft, request.leaseToken);
+                        if (!current.assessment || !current.plan ||
+                            current.assessment.contentHash !== stagedAssessmentHash ||
+                            current.plan.contentHash !== stagedPlanHash)
+                            throw new Error('Selected prompt plan changed during staging');
+                    }
                     return stageBasis();
                 };
                 proposalController = new IncrementalProposalController<import('@dope/chat').ChatDocumentationProposal |
@@ -2660,7 +2685,10 @@ export class ChatBackend implements ChatService {
                         new IncrementalPromptStack(root, promptStage!.folder!, promptSourceVersion!,
                             { assessment: priorAssessment!.assistant, plan: priorPlan!.assistant },
                             this.grounder!, selectedPrompt ? selectedPrompt.proposal.revision + 1 : 1,
-                            promptSourceBasis!, promptRequestedCount));
+                            promptSourceBasis!, promptRequestedCount,
+                            savedAssessmentRecord && savedPlanRecord ? {
+                                assessment: savedAssessmentRecord, plan: savedPlanRecord
+                            } : undefined));
                 await proposalController.begin();
                 await this.repository.recordProposalProgress(root, key, assistant.id,
                     request.leaseToken, await proposalController.progress());

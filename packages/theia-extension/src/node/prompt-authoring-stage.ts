@@ -3,7 +3,6 @@ import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Chat, ChatAssistantMessage, ChatPromptDraftIdentity, ChatUserMessage } from '@dope/chat';
 import { composePhaseStackDraft, type ComposeStackInput, type DraftStack } from '@dope/agent-core/lib/phase-stack-composer';
-import { phaseStackFolder } from '@dope/agent-core/lib/sequence';
 import { boundPromptStage } from './chat-skills';
 import type { ChatProjectGrounder } from './chat-project-grounder';
 
@@ -70,10 +69,12 @@ export function promptStageCommand(content: string, bound: PromptStage | undefin
         return { stage: bound, folder: promptDraftSlug(match[1]), details: match[2] };
     }
     if (bound === 'prompt-plan') return { stage: bound };
-    const match = /^\/prompt-write\s+(\S+)(?:\s+[\s\S]*)?$/u.exec(content);
-    if (!match) throw new Error('Usage: /prompt-write <folder> [revision instructions]');
-    phaseStackFolder(match[1]);
-    return { stage: bound, folder: match[1] };
+    if (!/^\/prompt-write(?:[ \t]+[^\r\n][\s\S]*)?$/u.test(content))
+        throw new Error('Usage: /prompt-write [revision instructions] from the selected Plan card');
+    if (/^\/prompt-write[ \t]+(?:docs\/tasks\/|\.\.?\/|[cp]\d+(?:-|\b))/u.test(content) ||
+        /^\/prompt-write[ \t]+[a-z0-9]+(?:-[a-z0-9]+)*[ \t]*$/u.test(content))
+        throw new Error('Prompt destination comes from the selected Plan card');
+    return { stage: bound };
 }
 
 /** The saved assistant and its paired protected invocation are the durable draft owner. */
@@ -367,7 +368,8 @@ export async function finishedPromptStack(modelText: string, folder: string,
 
 /** Compose exact noncanonical bytes from independently persisted prompt stages. */
 export async function composeSavedPromptStack(proposed: ComposeStackInput, folder: string,
-    sourceVersion: string, prior: { assessment: ChatAssistantMessage; plan: ChatAssistantMessage }):
+    sourceVersion: string, prior: { assessment: ChatAssistantMessage; plan: ChatAssistantMessage },
+    records?: { assessment: AssessmentRecord; plan: PlanRecord }):
     Promise<{ text: string; draft: DraftStack; supportingFiles: { path: string; text: string }[] }> {
     if (proposed.folderName && proposed.folderName !== folder ||
         proposed.sourceKind && proposed.sourceKind !== 'chat-plan' ||
@@ -405,7 +407,10 @@ export async function composeSavedPromptStack(proposed: ComposeStackInput, folde
         !input.work.some(choice => choice.workItem.workingSet?.includes(path))))
         throw new Error('Prompt stack omitted a test file required by the saved plan');
     const draft = await composePhaseStackDraft(input);
-    const supportingFiles = ([['prompt-assessment.md', prior.assessment, 'Prompt assessment'],
+    const supportingFiles = records ? [
+        { path: `docs/tasks/${folder}/prompt-assessment.md`, text: renderAssessment(records.assessment) },
+        { path: `docs/tasks/${folder}/implementation-plan.md`, text: renderPlan(records.plan) }
+    ] : ([['prompt-assessment.md', prior.assessment, 'Prompt assessment'],
         ['implementation-plan.md', prior.plan, 'Implementation plan']] as const).map(([filename, message, title]) => {
         const body = message.content.replace(/^# Unpublished prompt (?:assessment|plan)\n\nDraft only\.[^\n]*\n\n/u, '');
         return { path: `docs/tasks/${folder}/${filename}`, text: `# ${title}\n\n${body}` };

@@ -633,8 +633,8 @@ export class ChatPanelController {
             this.changed(); return false;
         }
         if (!retryMessageId && this.promptStackRevision &&
-            !/^\/prompt-write\s+\S+/u.test(this.draft)) {
-            this.error = 'Selected prompt proposals require /prompt-write <folder> at the start.';
+            !/^\/prompt-write(?=\s|$)/u.test(this.draft)) {
+            this.error = 'Selected prompt proposals require /prompt-write at the start.';
             this.changed(); return false;
         }
         if (!retryMessageId && this.promptDraftChip) {
@@ -649,7 +649,7 @@ export class ChatPanelController {
                 current.identity.projectId !== chip.projectId ||
                 current.identity.sourceFingerprint !== chip.sourceFingerprint ||
                 current.identity.leaseDigest !== chip.leaseDigest ||
-                !this.draft.startsWith(chip.stage === 'assessment' ? '/prompt-plan' : '/prompt-write ')) {
+                !this.draft.startsWith(chip.stage === 'assessment' ? '/prompt-plan' : '/prompt-write')) {
                 this.error = 'Prompt draft chip is stale. Remove it and select the current card.';
                 this.changed(); return false;
             }
@@ -934,8 +934,8 @@ export class ChatPanelController {
         if (this.autoRoadmapPrefix && !/^\/roadmap(?=\s|$)/.test(value)) this.autoRoadmapPrefix = false;
         this.draft = this.documentationRevision && !/^\/docs-review(?=\s|$)/u.test(value) ?
             `/docs-review ${value.trimStart()}` :
-            this.promptStackRevision && !/^\/prompt-write\s+\S+/u.test(value) ?
-                `/prompt-write ${this.currentPromptStackProposal(this.promptStackRevision.proposalId)?.folder ?? ''} ${value.trimStart()}` :
+            this.promptStackRevision && !/^\/prompt-write(?=\s|$)/u.test(value) ?
+                `/prompt-write ${value.trimStart()}` :
                 value;
     }
     preparePromptDraft(stage: 'assessment' | 'plan'): boolean {
@@ -948,7 +948,7 @@ export class ChatPanelController {
             stageMessageId: current.stageMessageId, stage, stageRevision: current.stageRevision,
             projectId: identity.projectId, sourceFingerprint: identity.sourceFingerprint,
             leaseDigest: identity.leaseDigest };
-        this.draft = stage === 'assessment' ? '/prompt-plan ' : `/prompt-write ${identity.slug} `;
+        this.draft = stage === 'assessment' ? '/prompt-plan ' : '/prompt-write ';
         this.error = ''; this.changed();
         return true;
     }
@@ -975,7 +975,7 @@ export class ChatPanelController {
         if (this.draft.trim() && !this.promptStackRevision && this.previousPromptStackDraft === undefined)
             this.previousPromptStackDraft = this.draft;
         this.promptStackRevision = { proposalId, revision: proposal.revision, digest };
-        this.draft = `/prompt-write ${proposal.folder} `;
+        this.draft = '/prompt-write ';
         this.changed();
         return true;
     }
