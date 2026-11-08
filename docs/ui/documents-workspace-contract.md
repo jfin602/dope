@@ -1,3 +1,5 @@
+> **SUPERSEDED UI TARGET — 2026-11-07:** The standalone Documents center widget / extra explorer below is historical `c13-docs-view` design only. [ADR 0054](../decisions/0054-native-document-editor.md) and [native document editor contract](native-document-editor-contract.md) replace it with existing Theia editor tabs, Source/Diff/Formatted for `.md`, Source/Diff for `.txt`, and per-card file links/Open All Files. Preserve prior execution and qualification evidence; do not leave a hidden legacy workspace/fallback. All original source/approval safety remains authoritative.
+
 # Documents Workspace — UI and Interaction Contract
 
 **Decision basis:** [ADR 0053](../decisions/0053-documents-workspace-and-proposal-review.md), 2026-11-07. **Status:** Approved forward documentation design only; not shipped/qualified. **Scope:** the single shared central Documents editor, not a second state owner.

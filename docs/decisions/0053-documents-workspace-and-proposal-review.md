@@ -1,3 +1,5 @@
+> **SUPERSEDED FORWARD PRESENTATION DECISION — 2026-11-07:** [ADR 0054](0054-native-document-editor.md) replaces the standalone Documents viewport, duplicate file tree and custom editor with real Theia/Monaco tabs, a compact editor-scoped toolbar and direct proposal-card file links/Open All. This ADR remains immutable historical rationale for `c13-docs-view` source/prompt/evidence and its shared-authority requirements. Do not continue implementing its old UI or rewrite already executed prompts; inspect actual local source before native replacement.
+
 # ADR 0053 — Unified Documents Workspace and Proposal Review
 
 **Decision:** Accepted for documentation/planning, 2026-11-07 (America/Chicago). **State:** Forward design only; not source implementation, qualification, prompt authoring, Work authorization or version advancement. **Correction identifier:** `c13-docs-view`.
