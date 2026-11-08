@@ -1,0 +1,24 @@
+TASK: Correction 13 / P1 — Durable typed Pi proposal staging controller
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only: no manifest, workspace, lockfile or project-version bump.
+
+AUTHORITY AND PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0055-incremental-proposal-generation.md, docs/planning/p13/incremental-proposal-generation-contract.md and this stack's assessment/plan. Inspect actual local HEAD, status/dirty work, package version, current Pi/local-model broker projectTools, ChatBackend, ChatRepository/lease, save/reload and relevant tests. R3B must have independently finished and its verified source and report be available; otherwise STOP BLOCKED. It was running at authoring time. Never rewrite or replay R3B or touch unrelated owner changes. Runner owns the Git checkpoint; do not self-commit or advance later prompts.
+
+GOAL — T1: ONE SHARED STAGING AUTHORITY
+Implement a Dope-owned incremental proposal session/controller that binds a fresh trusted protected /docs-review or /prompt-write skill turn, exact project/root/worktree, Chat/turn, owner/lease, source basis and domain kind. One turn may contain many bounded Pi tool invocations. Add typed, broker-mediated proposal_status, proposal_stage_document, proposal_stage_prompt and proposal_finish({ finalMessage }) interfaces with domain dispatch as narrow extension points; P2/P3 supply domain semantics. NO parsing model final prose to recover staged data. A model must never be able to begin another session, forge an approval, or invoke unrestricted file writes through these tools.
+
+STAGE LIFECYCLE
+Per-stage monotonic sequence/revision, exact target identity, idempotency key and content digest; safe atomic noncanonical persistence, compact status receipts, ordered stage events and restart/cancel/stale transitions. Bind validated tool arguments to current originating session and prevent cross-chat, cross-project, wrong-owner, replay-with-different-bytes and stale-source operations. Enforce explicit per-stage payload, chunk/file/session byte, stage/call and elapsed budgets; neither infinite agent loops nor full accumulated proposed bytes in repeat model context. Stage failure leaves prior valid state and canonical files untouched. Finishing may only seal a complete validated domain candidate, with required bounded nonempty finalMessage retained as untrusted display data; make a typed handoff to existing proposal owners, not a publisher.
+
+INTEGRATION LIMITS
+Keep existing Pi runtime, model selector, Ask/Allow, tool transcripts, recovery/continuation and project-read broker; authoring still denies run_command. Avoid replacing ChatService or adding another proposal database, writer, Docs editor, Work engine or Roadmap owner. Do not change actual domain generation in P1; use typed handlers with explicit not-yet-supported failure until P2/P3. Any unavoidable compatibility layer must be narrow, no hidden legacy fallback for completed new protected skills.
+
+VERIFY
+Add focused controller/tool-contract tests: trusted skill entry, bounded sequential stages, identical replay vs conflicting replay, invalid payload/limits, cancel/restart/stale and foreign authority denial, finish before completeness denied, finalMessage bound, canonical files unchanged and no Work/History/Gate effects. Identify direct source vs compiled lib imports; build only affected workspaces in dependency order. Run smallest relevant new tests plus PI tool/Chat lease tests and git diff --check. No browser/GUI PASS claim or full aggregate. If reliable durability/tool binding cannot fit this bounded task, report PARTIAL/BLOCKED with exact evidence; do not ship unsafe stubs.
