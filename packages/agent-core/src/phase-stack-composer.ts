@@ -24,6 +24,8 @@ export interface CloseoutChoice {
 }
 export interface ComposeStackInput {
     folderName: string;
+    /** Chat-authored plan steps are draft inputs, not approved Planning Map WorkItems. */
+    sourceKind?: 'planning-work-items' | 'chat-plan';
     /** Correction unchanged version, or the first assigned phase version. */
     version: string;
     /** Exact version of the source checkout being drafted from. */
@@ -61,13 +63,15 @@ function versionFor(input: ComposeStackInput, mode: 'phase' | 'correction', numb
     const [major, minor, patch] = input.version.split('.').map(Number);
     return `${major}.${minor}.${patch + number - 1}`;
 }
-function orderWork(choices: readonly WorkPromptChoice[]): WorkPromptChoice[] {
+function orderWork(choices: readonly WorkPromptChoice[], sourceKind: ComposeStackInput['sourceKind']): WorkPromptChoice[] {
     if (!choices.length || choices.length > MAX_ITEMS) throw new Error('Draft needs 1–48 accepted WorkItems');
     const byId = new Map<string, WorkPromptChoice>();
     for (const choice of choices) {
         const id = line(choice.workItem.id, 'WorkItem ID');
         if (byId.has(id)) throw new Error(`Duplicate WorkItem ID: ${id}`);
-        if (choice.workItem.status !== 'ready') throw new Error(`WorkItem ${id} is not accepted/ready`);
+        if (sourceKind === 'chat-plan' ? choice.workItem.status !== 'draft' : choice.workItem.status !== 'ready')
+            throw new Error(sourceKind === 'chat-plan' ? `Plan step ${id} is not a draft` :
+                `WorkItem ${id} is not accepted/ready`);
         byId.set(id, choice);
     }
     // The reviewed outline owns presentation order. Sorting IDs here would silently undo
@@ -87,7 +91,7 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
     const expectedSource = mode === 'correction' ? input.version : `${major}.${minor}.${patch - 1}`;
     if (input.sourceVersion !== expectedSource)
         throw new Error(`Source version ${input.sourceVersion} does not match expected ${expectedSource}`);
-    const ordered = orderWork(input.work);
+    const ordered = orderWork(input.work, input.sourceKind);
     const diagnostics: string[] = [];
     const files: Array<PromptSource & { path: string }> = [];
     const seenSlugs = new Set<string>();
@@ -119,7 +123,9 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
             `TASK: ${mode === 'phase' ? 'Phase' : 'Correction'} ${phase} / P${number} — ${title}`,
             '', 'MODEL / REASONING / USAGE', `- Recommended configuration: \`${choice.model}\`.`, '- Browser required: no.',
             '', 'VERSIONING', mode === 'phase' ? `The assigned project version is \`${version}\`.` : `- Required unchanged project version: \`${version}\`.`,
-            '', 'SOURCE AND AUTHORITY', `- Accepted WorkItem: ${line(item.id, 'WorkItem ID')}.`,
+            '', 'SOURCE AND AUTHORITY', input.sourceKind === 'chat-plan' ?
+                `- Draft Chat plan step: ${line(item.id, 'plan step ID')}.` :
+                `- Accepted WorkItem: ${line(item.id, 'WorkItem ID')}.`,
             `- Depends on: ${dependencies.length ? dependencies.join(', ') : 'none'}.`,
             '- Authoring, previewing, selecting or approving this prompt does not independently authorize execution.',
             '- After the developer explicitly starts this task through Dope Work and accepts its ExecutionGrant, carry out the assigned implementation within that grant. Do not request an additional grant merely because this prompt was authored as a draft.',
@@ -165,7 +171,7 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
     files.push({ filename, text: closeoutText, path: `docs/tasks/${input.folderName}/${filename}` });
     await importPhaseStack(input.folderName, files.map(({ filename, text }) => ({ filename, text })), `docs/tasks/${input.folderName}`);
     const manifest = [`# Draft ${input.folderName}`, '', `Source version: ${input.sourceVersion}. Review the exact source before approval; approval does not Run.`, '',
-        ...files.map((file, index) => `- P${index + 1}: ${file.path} — ${index === files.length - 1 ? 'manual T3 closeout' : `${ordered[index].tier}, WorkItem ${ordered[index].workItem.id}`}`),
+        ...files.map((file, index) => `- P${index + 1}: ${file.path} — ${index === files.length - 1 ? 'manual T3 closeout' : `${ordered[index].tier}, ${input.sourceKind === 'chat-plan' ? 'draft plan step' : 'WorkItem'} ${ordered[index].workItem.id}`}`),
         '', ...diagnostics.map(message => `- Efficiency: ${message}`)].join('\n') + '\n';
     return { folderName: input.folderName, sourcePath: `docs/tasks/${input.folderName}`, files, manifest, diagnostics };
 }

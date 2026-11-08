@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend, forbidsProjectTools } from '../../packages/theia-extension/lib/node/chat-backend.js';
@@ -26,6 +27,67 @@ import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
 const id = () => randomUUID();
+test('native prompt stages use one saved Chat, current broker reads and no publication', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    await mkdir(join(root, 'src'));
+    await writeFile(join(root, 'src', 'feature.js'), 'export const feature = true;\n');
+    await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"1.2.3"}\n');
+    execFileSync('git', ['init', '-q', root]);
+    execFileSync('git', ['-C', root, 'add', 'src/feature.js', 'package.json']);
+    execFileSync('git', ['-C', root, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+        'commit', '-q', '-m', 'fixture']);
+    const writeInput = { folderName: 'c0-feature', sourceKind: 'chat-plan', version: '1.2.3',
+        sourceVersion: '1.2.3', work: [{ tier: 'T2', model: 'GPT-6 Sol Medium', estimatedMinutes: 6,
+            integrationChecks: ['Run integration check'], workItem: { id: 'step-1', title: 'Implement feature',
+                objective: 'Implement the feature', dependsOn: [], requirements: ['Read source'],
+                constraints: ['No implicit Work run'], acceptanceCriteria: ['Feature works'],
+                validationTargets: ['Run feature unit test'], workingSet: ['src/feature.js'],
+                status: 'draft', delegablePaths: ['src/feature.js'], humanReservedPaths: [] } }],
+        closeout: { title: 'Feature closeout', objective: 'Inspect feature in browser',
+            manualReason: 'Interactive behavior', acceptanceCriteria: ['Open feature'],
+            model: 'GPT-6 Sol High', browserRequired: true } };
+    const answers = ['## Scope\nFeature scope.\n## Preservation\nNo Work run.\n## Dependencies\nSource.\n' +
+        '## Risks\nStale source.\n## Source basis\nRead source.\n## Authority\nChat only.\n## Evidence\nT1/T2/T3.',
+    '## Steps\n1. Implement.\n## Tests\nFocused integration.\n## Manual\nBrowser check.',
+    JSON.stringify(writeInput)];
+    let calls = 0;
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
+                maxInputTokens: 16384 } }] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        if (calls < 2)
+            await request.projectTools!.execute('read_file', { path: 'src/feature.js', offset: 0, maxBytes: 4096 });
+        const text = answers[calls++];
+        yield { type: 'complete' as const, text, actualModelId: 'q4', finishReason: 'stop',
+            usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved Chat context' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 16384 }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
+        undefined, new ChatProjectGrounder({} as never));
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Feature discussion' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        for (const content of ['/prompt-ass', '/prompt-plan', '/prompt-write c0-feature'])
+            await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+                selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
+        const chat = (await backend.get(projectHandle, chatId))!;
+        const completed = chat.messages.filter(message => message.role === 'assistant');
+        assert.equal(calls, 3);
+        assert.equal(completed.length, 3);
+        assert.match(completed[0].content, /^# Unpublished prompt assessment/);
+        assert.match(completed[1].content, /^# Unpublished prompt plan/);
+        assert.match(completed[2].content, /^# Unpublished prompt stack draft/);
+        assert.match(completed[2].content, /P2-feature-closeout.txt/);
+        await assert.rejects(readFile(join(root, 'docs', 'tasks', 'c0-feature', 'P1-implement-feature.txt')),
+            /ENOENT/);
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
+        maxRetries: 10, retryDelay: 25 }); }
+});
 test('final deltas reach Chat before completion and tool resets replace transient text', async () => {
     const root = await folder(), repository = new ChatRepository(), events: ChatEvent[] = [];
     let release!: () => void;

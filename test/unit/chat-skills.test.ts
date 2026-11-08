@@ -17,6 +17,9 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.throws(() => validateSkill('docs-apply', 'description', 'body'));
         assert.throws(() => validateSkill('docs-review', 'description', 'body'));
         assert.throws(() => validateSkill('gen-roadmap', 'description', 'body'));
+        assert.throws(() => validateSkill('prompt-ass', 'description', 'body'));
+        assert.throws(() => validateSkill('prompt-plan', 'description', 'body'));
+        assert.throws(() => validateSkill('prompt-write', 'description', 'body'));
         assert.throws(() => validateSkill('a--b', 'description', 'body'));
         assert.throws(() => validateSkill('valid', '', 'body'));
         assert.throws(() => validateSkill('valid', 'description', 'body', ''));
@@ -76,7 +79,7 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.equal(skillCommand('literal /test-skill'), undefined);
         assert.equal(skillCommand('/test-skill arguments'), 'test-skill');
         await changeChatSkill({ type: 'delete', id: custom.id });
-        assert.equal((await listChatSkills()).length, 4);
+        assert.equal((await listChatSkills()).length, 7);
     } finally {
         if (previous === undefined) delete process.env.XDG_CONFIG_HOME;
         else process.env.XDG_CONFIG_HOME = previous;

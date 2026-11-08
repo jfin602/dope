@@ -4,7 +4,7 @@ import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, Chat
     ChatContextSelection, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
-import { changeChatSkill, generationChatSkillSnapshot, isBoundDocumentationSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
+import { boundPromptStage, changeChatSkill, generationChatSkillSnapshot, isBoundDocumentationSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
 import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatModelSelection, type ChatPlanningActivity, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
@@ -39,6 +39,9 @@ import { applyDocumentationProposal, reconcileDocumentationApplication } from '.
 import { discoverDocumentation, documentationReviewObjective } from './documentation-discovery';
 import { materializeDocumentationChanges, parseDocumentationSkillReview,
     requireCompleteDocumentationReview, materializeDocumentationRevision, type DocumentationReadPage } from './documentation-skill-review';
+import { promptStageCommand, priorPromptDraft, verifyPromptDraftSource, verifyPromptSourceRefs,
+    promptStageInstruction, finishedPromptText, finishedPromptStack } from './prompt-authoring-stage';
+import { captureSequenceEvidence } from '@dope/agent-core/lib/node/sequence-reconciliation';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -1602,6 +1605,25 @@ export class ChatBackend implements ChatService {
             throw new Error('Start a fresh /roadmap turn to request a reviewed Roadmap change');
         if (skill && createHash('sha256').update(skill.body).digest('hex') !== skill.digest)
             throw new Error('Saved skill instructions changed; start a fresh turn');
+        const promptStage = promptStageCommand(content, boundPromptStage(skill));
+        if (/^\/prompt-(?:ass|plan|write)(?=\s|$)/u.test(content) && !promptStage)
+            throw new Error('Protected prompt authoring skill identity changed; start a fresh turn');
+        const priorAssessment = promptStage && promptStage.stage !== 'prompt-ass' ?
+            priorPromptDraft(chat, 'prompt-ass', retryIndex >= 0 ? retryIndex - 1 : undefined) : undefined;
+        const priorPlan = promptStage?.stage === 'prompt-write' ?
+            priorPromptDraft(chat, 'prompt-plan', retryIndex >= 0 ? retryIndex - 1 : undefined) : undefined;
+        if (promptStage && promptStage.stage !== 'prompt-ass' && !priorAssessment ||
+            promptStage?.stage === 'prompt-write' && !priorPlan)
+            throw new Error('Complete /prompt-ass and /prompt-plan in this saved Chat before writing a stack');
+        if (priorAssessment && priorPlan &&
+            chat.messages.findIndex(message => message.id === priorAssessment.assistant.id) >
+            chat.messages.findIndex(message => message.id === priorPlan.assistant.id))
+            throw new Error('The selected assessment is newer than the saved plan; run /prompt-plan again');
+        if (promptStage && !this.grounder) throw new Error('Prompt authoring requires brokered project reads');
+        if (priorAssessment) await verifyPromptDraftSource(root, priorAssessment.assistant, this.grounder!);
+        if (priorPlan) await verifyPromptDraftSource(root, priorPlan.assistant, this.grounder!);
+        const promptSourceVersion = promptStage?.stage === 'prompt-write' ?
+            (await captureSequenceEvidence(root)).packageVersion : undefined;
         const docsReview = isBoundDocumentationSkill(skill, 'docs-review');
         if (skill?.name === 'docs-review' && !docsReview)
             throw new Error('Saved protected documentation skill identity changed; start a fresh turn');
@@ -1666,10 +1688,12 @@ export class ChatBackend implements ChatService {
                 dependencies: revisionProposal.dependencies, roadmapRevision: revisionProposal.roadmapRevision,
                 projectId: revisionProposal.projectId, worktreeId: revisionProposal.worktreeId }) +
             `\nOwner's new revision instructions: ${content}` : '';
-        const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` : undefined;
+        const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` +
+            (promptStage ? `\n${promptStageInstruction(promptStage, {
+                assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion)}` : '') : undefined;
         const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
-        const helpTurn = !roadmapSkill && !docsReview && !!selectDopeCapabilityHelp(content);
-        const draft = helpTurn || docsReview || roadmapSkill && !greenfieldSkill ? undefined :
+        const helpTurn = !roadmapSkill && !docsReview && !promptStage && !!selectDopeCapabilityHelp(content);
+        const draft = helpTurn || docsReview || promptStage || roadmapSkill && !greenfieldSkill ? undefined :
             await this.draftContext(root, request.chatId, request.planningSteps);
         const bridgeSelection = request.bridgeProposal;
         if (bridgeSelection && (helpTurn || draft || request.planningSteps || !this.bridgePlanning ||
@@ -1678,9 +1702,9 @@ export class ChatBackend implements ChatService {
                 item.ownerRevision === bridgeSelection.roadmapRevision).length !== 1))
             throw new Error('Bridge proposal requires one current selected checkpoint and a Planning owner');
         const bridge = bridgeSelection ? await BridgeLocalProposal.prepare(this.bridgePlanning!, root, bridgeSelection) : undefined;
-        const roadmapTurn = !docsReview && (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') ||
+        const roadmapTurn = !docsReview && !promptStage && (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') ||
             !!draft || helpTurn || !!bridge);
-        const opportunity = docsReview ? undefined : await this.roadmapOpportunity(root, content, !roadmapTurn &&
+        const opportunity = docsReview || promptStage ? undefined : await this.roadmapOpportunity(root, content, !roadmapTurn &&
             !selections.some(item => item.kind === 'planning-map'));
         if (request.planningSteps !== undefined && (![2, 3].includes(request.planningSteps) ||
             !roadmapTurn || helpTurn || !draft &&
@@ -1719,6 +1743,8 @@ export class ChatBackend implements ChatService {
         if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
         if (docsReview && (connection.providerId !== 'local' || !this.grounder || !this.roadmapStore))
             throw new Error('Protected documentation review requires the selected local Pi model, brokered reads and proposal owner');
+        if (promptStage && connection.providerId !== 'local')
+            throw new Error('Prompt authoring requires the selected local Pi model and brokered project reads');
         if ((draft || bridge) && connection.providerId !== 'local') throw new Error('Planning requires a selected local model');
         if (connection.providerId !== 'local' && request.hostedProjectDataAuthorized !== true)
             throw new Error('Chat hosted project-data confirmation required');
@@ -1763,7 +1789,7 @@ export class ChatBackend implements ChatService {
                     composed.refs.some(item => item.kind === 'roadmap') ? 'gate' : 'unlinked';
         const nativeRoadmap = !initialNative && localRoadmap && roadmapSkill && localMode === 'gate' && !greenfieldSkill &&
             !!this.nativeStages && !!this.grounder;
-        const retainStreamedAnswer = !localRoadmap && !nativeRoadmap && !docsReview && !publicationIntent;
+        const retainStreamedAnswer = !localRoadmap && !nativeRoadmap && !docsReview && !promptStage && !publicationIntent;
         if (roadmapSkill && !publicationIntent && !greenfieldSkill && localMode === 'gate' &&
             !nativeRoadmap)
             throw new Error('Protected native Roadmap tools are unavailable; no proposal was staged');
@@ -1994,11 +2020,11 @@ export class ChatBackend implements ChatService {
                     }
                 }
                 if (nativeRoadmap) throw new Error('ROADMAP_TOOL_DENIED');
-                if (docsReview && name === 'run_command') {
+                if ((docsReview || promptStage) && name === 'run_command') {
                     toolEvents.push({ name, status: 'denied', truncated: false, brokerExecuted: false,
                         code: 'COMMAND_DENIED', stage: 'authority', approval: 'denied' });
                     recordActivity('tool', 'run_command: denied');
-                    return 'Command denied: documentation review permits brokered reads only';
+                    return 'Command denied: this protected authoring turn permits brokered reads only';
                 }
                 const toolName = name as NonNullable<ChatAssistantMessage['execution']['toolEvents']>[number]['name'];
                 const field = name === 'run_command' ? 'command' :
@@ -2489,6 +2515,17 @@ export class ChatBackend implements ChatService {
                             throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
                         await flushActivity();
                         if (publicationIntent) output = 'Roadmap Markdown request received. Check the verified result below before any decision.';
+                        if (promptStage) {
+                            if (event.finishReason === 'length') throw new Error('Prompt authoring output was truncated');
+                            // /prompt-write is bound to the two previously verified drafts. It need not
+                            // make a redundant model read when their source identities are still current.
+                            if (promptStage.stage !== 'prompt-write')
+                                await verifyPromptSourceRefs(root, sourceRefs, this.grounder!);
+                            output = promptStage.stage === 'prompt-write' ?
+                                (await finishedPromptStack(output, promptStage.folder!, promptSourceVersion!,
+                                    { assessment: priorAssessment!.assistant, plan: priorPlan!.assistant })).text :
+                                finishedPromptText(promptStage.stage, output, sourceRefs, content);
+                        }
                         let documentActivity: ChatPlanningActivity | undefined;
                         let revisionActivityToCommit: ChatPlanningActivity | undefined;
                         if (docsReview) {
@@ -2582,6 +2619,7 @@ export class ChatBackend implements ChatService {
                         if (abort.signal.aborted && !localRoadmap) return preview;
                         const proposalRefs = [...preview.refs, ...sourceRefs];
                         const result = docsReview ? revisionCommitError ? { proposalError: revisionCommitError } : {} :
+                            promptStage ? {} :
                             nativeRoadmap ? await (async () => {
                             const stage = this.nativeStages?.get(key);
                             if (!stage) return {};

@@ -5,7 +5,8 @@ import { dirname, join } from 'node:path';
 import type { ChatSkill, ChatSkillChange, ChatSkillSnapshot } from '@dope/chat/lib/service';
 
 const skillsPath = () => join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'dope', 'chat-skills.json');
-const reserved = new Set(['docs-review', 'docs-apply', 'roadmap', 'gen-roadmap', 'skill']);
+const reserved = new Set(['docs-review', 'docs-apply', 'roadmap', 'gen-roadmap',
+    'prompt-ass', 'prompt-plan', 'prompt-write', 'skill']);
 const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     title: 'Explain',
     description: 'Explain a topic clearly using the current conversation.',
@@ -23,6 +24,18 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     description: 'Inspect relevant project documents and prepare a reviewed, source-bound diff.',
     body: 'Use the supplied bounded documentation discovery and brokered read_file ranges to inspect relevant current and historical sources, including late sections when indicated. Distinguish enumerated, searched and actually read files, disclose omissions, and do not claim to have inspected unread text. Return the requested structured review with at most four eligible .md/.txt changes. This turn can only stage a proposal; it never publishes files or records applied History.',
     enabled: true, provenance: 'builtin', version: 1 },
+{ id: 'builtin:prompt-ass', name: 'prompt-ass', title: 'Assess prompt work',
+    description: 'Assess the current project and saved Chat discussion before drafting a prompt stack.',
+    body: 'Assess the saved discussion and current project. Use brokered read_file, list_files, search_paths and search_text selectively; actually read relevant requirements, source and tests. Distinguish listed or searched paths from files read. Report scope, preservation, dependencies, risks, source omissions, authority and T1/T2/T3 evidence. Return a bounded Markdown assessment draft. Do not write files, run Work or claim approval.',
+    enabled: true, provenance: 'builtin', version: 1 },
+{ id: 'builtin:prompt-plan', name: 'prompt-plan', title: 'Plan prompt work',
+    description: 'Build a dependency-ordered plan from the selected saved assessment.',
+    body: 'Use the bound saved assessment and current brokered source reads. Trace producers and consumers, affected tests and package build order. Plan bounded implementation prompts, one integration gate and one manual closeout. Apply Prompt Efficiency, UI Design Compliance and Human Usability where applicable. Return a bounded Markdown plan draft. Do not publish files, grant Work or claim qualification.',
+    enabled: true, provenance: 'builtin', version: 1 },
+{ id: 'builtin:prompt-write', name: 'prompt-write', title: 'Draft prompt stack',
+    description: 'Generate a validated, unpublished stack from the selected saved plan.',
+    body: 'Use the bound saved assessment and plan. Produce only the compact JSON blueprint instructed by Dope; Dope supplies fixed source identity and validates the exact prompt grammar. Do not write files or claim publication. Keep work narrow and ordered with one separate manual closeout. Do not invent source reads, approvals, Work grants or Gate status.',
+    enabled: true, provenance: 'builtin', version: 2 },
 ];
 let serial = Promise.resolve();
 
@@ -140,4 +153,16 @@ export function isBoundDocumentationSkill(skill: ChatSkillSnapshot | undefined,
     return !!builtIn && !!skill && skill.id === builtIn.id && skill.name === name &&
         skill.version === builtIn.version && skill.body === builtIn.body &&
         skill.digest === createHash('sha256').update(builtIn.body).digest('hex');
+}
+
+/** A saved name or model-written slash string cannot grant native prompt authoring. */
+export function boundPromptStage(skill: ChatSkillSnapshot | undefined):
+    'prompt-ass' | 'prompt-plan' | 'prompt-write' | undefined {
+    if (!skill) return undefined;
+    const builtIn = builtins.find(item => item.id === `builtin:${skill.name}`);
+    if (!builtIn || !['prompt-ass', 'prompt-plan', 'prompt-write'].includes(builtIn.name) ||
+        skill.id !== builtIn.id || skill.name !== builtIn.name || skill.version !== builtIn.version ||
+        skill.body !== builtIn.body ||
+        skill.digest !== createHash('sha256').update(builtIn.body).digest('hex')) return undefined;
+    return builtIn.name as 'prompt-ass' | 'prompt-plan' | 'prompt-write';
 }
