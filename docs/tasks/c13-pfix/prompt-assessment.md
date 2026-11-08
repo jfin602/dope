@@ -1,6 +1,6 @@
-# /prompt-ass — c13-prompt-authoring-chain
+# /prompt-ass — c13-pfix
 
-**Disposition:** ASSESSMENT FOR DOCUMENTATION REVIEW ONLY. Source: GitHub `main` commit `7e5e3745` and saved owner direction on 2026-11-08; no local source test, build or browser qualification is claimed.
+**Disposition:** OWNER-APPROVED ASSESSMENT, NOT IMPLEMENTED. Source: GitHub `main` commit `7e5e3745` and saved owner direction on 2026-11-08; no local source test, build or browser qualification is claimed.
 
 ## Scope and source observations
 The owner requires one named, persistent assessment→plan→write draft rather than three unrelated Chat Markdown artifacts. Input changes to `/prompt-ass <name> <task details>`. The selected name is the final task folder slug; assessment/plan cards populate `/prompt-plan` or `/prompt-write` plus a bound contextual chip in the composer, with optional notes before submit. Intermediate data should live within a protected task-related draft area and be retrieved in bounded structures rather than repeated full Markdown model context.

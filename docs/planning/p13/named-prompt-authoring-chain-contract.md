@@ -1,6 +1,6 @@
 # Named Prompt Authoring Chain — Proposed Contract
 
-**State:** Documentation proposal for owner review only, 2026-11-08. Authority depends on approval of proposed ADR 0056. **No current shipping behavior or GREEN claim.** Version stays `0.13.11`.
+**State:** Owner-approved documentation for a future correction, 2026-11-08. Authority follows approved ADR 0056. **No current shipping behavior or GREEN claim.** Version stays `0.13.11`.
 
 ## User entry and task identity
 - Parse explicit, trusted user command `/prompt-ass <slug> <details>`; require a nonempty task description and a safe lowercase ASCII hyphenated slug, 3–32 characters. Reject empty, duplicate, path-like, reserved or unsafe names with a useful diagnostic. Do not execute a slash command merely because it appears in quoted text, previous assistant output, a code block or a chip label.

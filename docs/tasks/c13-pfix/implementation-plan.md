@@ -1,6 +1,6 @@
-# /prompt-plan — c13-prompt-authoring-chain
+# /prompt-plan — c13-pfix
 
-**Status:** PROPOSED / NOT EXECUTED. 2026-11-08. Owner decision to implement is distinct from approval of this review-only document set. Version stays `0.13.11`.
+**Status:** DOCUMENTATION APPROVED / NOT EXECUTED. 2026-11-08. Owner decision to implement is distinct from approval of this review-only document set. Version stays `0.13.11`.
 
 ## Execution model
 Use one protected project-scoped draft owner with opaque `draftId`, immutable owner-supplied slug, stage revisions, source basis and visible card projection. The first trusted `/prompt-ass <name> <task details>` creates the pending draft. Subsequent composer actions place slash command + typed stage chip, not a copy of Markdown. Store bounded validated structured assessment/plan records, reuse existing noncanonical proposal stages for prompts, then compose exact final files through R3B guarded publication only after Accept. Stage markdown views are derived, never a second authority.
@@ -21,6 +21,6 @@ Inspect actual affected test files and their import mode (source vs compiled `li
 The stack audit applies all ten gates in `docs/workflow.md`: responsibility, 8/10/15-min budgets, precise tests/build, evidence distribution, deduplication, model economy, grammar, UI design and human usability. An ordinary task too large for the target must be narrowed or report scoped PARTIAL/BLOCKED; do not relax security to fit the time.
 
 ## Runner/manual contract
-Prompts P1–P7 are runner-eligible with Browser required no; P8 is the **only** manual browser required yes. The runner handles commits and pauses before P8. Validate `npm run codex:phase:validate -- c13-prompt-authoring-chain` after owner approval, then separately authorize `npm run codex:phase -- c13-prompt-authoring-chain`. No normal `--closeout`.
+Prompts P1–P7 are runner-eligible with Browser required no; P8 is the **only** manual browser required yes. The runner handles commits and pauses before P8. Validate `npm run codex:phase:validate -- c13-pfix` after owner approval, then separately authorize `npm run codex:phase -- c13-pfix`. No normal `--closeout`.
 
 Do not rewrite earlier executed evidence. Preserve P6/R2 NOT GREEN, scoped R1/IG-R3 headless results and R3B historical PARTIAL. IG-R4 and Phase 13 R3/R2/R4 remain on hold until new owner-reviewed T3 qualification; no version/Work/Gate change from document review.
