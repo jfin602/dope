@@ -3215,8 +3215,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const nextUserIndex = chat.messages.findIndex((message, index) => index > stageIndex && message.role === 'user');
             const stageMessages = chat.messages.slice(stageIndex + 1, nextUserIndex < 0 ? undefined : nextUserIndex);
             namedCardAnchorId = stageMessages.filter(message => message.role === 'assistant').at(-1)?.id;
-            if (named.state === 'error' && namedCardAnchorId === latestMessage?.id && inlineTurnError)
-                status.textContent = `Blocked · ${inlineTurnError}`;
             namedCard = card;
         }
         const lastUserIndex = chat.messages.map(message => message.role).lastIndexOf('user');

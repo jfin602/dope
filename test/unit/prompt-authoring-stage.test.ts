@@ -7,7 +7,7 @@ import test from 'node:test';
 import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-skills.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText, newPromptDraftIdentity,
-    priorPromptDraft, promptStageCommand, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
+    priorPromptDraft, promptStageCommand, promptStageInstruction, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
     verifyPromptDraftSource, validatedAssessment, renderAssessment, validatedPlan, renderPlan,
     requestedWorkPromptCount, planReceiptCurrent } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 
@@ -317,4 +317,13 @@ test('saved P8 GPT-OSS citation is denied while an exact quote from that same re
     assert.equal(record.observations[0].sourceHash, sourceHash);
     assert.throws(() => validatedAssessment(JSON.stringify(candidate({ ...exact,
         quote: p8.quote })), refs, '', evidence), /UNSUPPORTED_SOURCE/);
+});
+
+test('assessment instruction asks for single-line citations and all requested late source', () => {
+    const instruction = promptStageInstruction({ stage: 'prompt-ass', folder: 'clamp-api-correction' }, {});
+    assert.match(instruction, /read every specifically requested file/);
+    assert.match(instruction, /requested late section.*nextOffset.*sourceHash/);
+    assert.match(instruction, /quote MUST be a short, unique, exact excerpt from ONE source line/);
+    assert.match(instruction, /Do not include a newline, backslash escape or whole-file quote/);
+    assert.doesNotMatch(instruction, /\{claim,path,start,end,sourceHash,quote\}/);
 });

@@ -584,6 +584,7 @@ test('sealed proposal narration is one escaped response directly above one card;
     assert.match(widget, /message\.planningActivity\?\.kind === 'prompt-stack-proposal'/);
     assert.match(widget, /response\.textContent = body;\s*content\.append\(response\)/);
     assert.match(widget, /item\.append\(content\);\s*if \(namedCard && message\.id === namedCardAnchorId\) item\.append\(namedCard\);/);
+    assert.doesNotMatch(widget, /status\.textContent = `Blocked · \$\{inlineTurnError\}`/);
     assert.match(widget, /this\.savedRoadmapProposalCard\(message\) \?\? this\.stagedProposalCard\(message\);/);
     assert.match(widget, /content\.querySelector\('\.dope-chat-error-bubble'\)\?\.remove\(\)/);
     assert.match(widget, /if \(savedProposal\) item\.append\(savedProposal\)/);
