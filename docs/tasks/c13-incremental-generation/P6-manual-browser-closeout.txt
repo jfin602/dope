@@ -1,0 +1,25 @@
+TASK: Correction 13 / P6 — Independent manual browser closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only: no manifest, workspace, lockfile or project-version bump.
+
+MANUAL ONLY — NO RUNNER EXECUTION
+This is the final T3 qualification prompt. Normal codex:phase invocation runs P1–P5 and STOPS before this prompt. Do not launch P6 with --closeout, auto-open a browser, or assert a PASS from its presence. Owner deliberately runs this separately in connected Codex browser. Recommended GPT-OSS 20B is the selected LOCAL INFERENCE model inside Dope for live tests, not this Codex prompt's model config.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0055, the incremental contract, stack assessment/plan, actual R3B independent report and P1–P5 source/test results. Inspect local HEAD/status and exact served Dope bundle/version (0.13.11 unchanged) before real interaction. Work in a new DISPOSABLE small project with bounded source/docs/tests. Do not alter the owner's tower-defense project, FireLaunch, active R3B history, or other production data. Preserve real local selected GPT-OSS 20B availability; if missing, mark BLOCKED rather than substituting a fake model or unit fixture.
+
+LIVE REQUIRED PROOF
+1. Create real relevant source/docs in disposable project and invoke a fresh /docs-review for multiple modifications including an existing late-section change and a substantial multi-chunk new document. Observe Pi broker actual reads, incremental stage receipts, live progress and noncanonical readonly provisional tabs before finish.
+2. Confirm model calls protected proposal_finish with a nonempty finalMessage, Dope builds exact completed files independent of a giant model JSON packet, and the **natural message appears immediately above exactly one** Documentation Proposal card. Check native .md/.txt Original/Proposed/Diff/Formatted as applicable, links/Open All, copy/scroll, narrow/keyboard/theme as appropriate.
+3. Invoke actual /prompt-ass, /prompt-plan and /prompt-write with an unused disposable correction folder. Require 10+ substantial dependency-ordered prompt files, one terminal manual closeout, correct supporting assessment/plan/manifest, explicit T1/T2/T3 and prompt-efficiency checks. Observe per-prompt staging, output size and model usage, correct finalMessage ABOVE one native Prompt Stack Proposal card, read-only tabs and deterministic P1–Pn navigation. Do not insist on exactly 200 lines per prompt if specificity/efficiency argues against padding; record actual sizes/count.
+4. Exercise genuine Revise Proposal change to an existing pending candidate, failed revision retaining original, Reject no canonical effects, and one explicit Accept each for Docs and Prompt Stack. Verify exact published bytes and only the correct publisher/History effects; approval alone must not grant or start Work, promote a candidate or award a Roadmap Gate. Validate restart/reload and one wrong-project/source-change denial, plus visible cancel or equivalent source-backed negative fixture.
+5. Collect exact local served SHA/bundle, selected model ID/context/settings, streamed stage counts, tool receipts, actual model output/call usage and wall-time where observable. Diagnose model failures honestly; do not invent improvement from architecture, passes from source tests or native Electron parity.
+
+EXIT AND EVIDENCE
+Allow up to THREE narrow source repair/retest cycles without broadening functionality or bypassing authority. Record a dated qualification under this task's qualification directory with each required case PASS / FAIL / BLOCKED / EVIDENCE GAP, exact candidate/source hashes, successful or failed model observations, applied/saved file state, Work/History/Roadmap non-effects and unresolved risks. A real source-based T3 PASS may recommend resuming the Phase 13 R3/R2/R4 recovery only after owner review and prompt-interface reconciliation. Mandatory unverified case means NOT GREEN; do not auto-advance version, Phase, Gate or Work. If repair requires product writes, preserve dirty user changes, run focused regressions and report exact state; do not silently self-commit, force-push or clear tests.
