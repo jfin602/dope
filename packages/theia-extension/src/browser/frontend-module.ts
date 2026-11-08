@@ -17,6 +17,8 @@ import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { EditorWidgetFactory } from '@theia/editor/lib/browser/editor-widget-factory';
 import { NativeDocumentEditorWidgetFactory } from './native-doc-editor-widget';
+import { ProposalDocumentResources, ProposalDocumentTabs } from './native-doc-editor-proposal';
+import { ResourceResolver } from '@theia/core/lib/common/resource';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { FileDialogService } from '@theia/filesystem/lib/browser/file-dialog/file-dialog-service';
 import { OpenerService } from '@theia/core/lib/browser';
@@ -162,6 +164,9 @@ class RightHistoryLauncher extends AbstractViewContribution<HistoryWidget> imple
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(EditorWidgetFactory).to(NativeDocumentEditorWidgetFactory).inSingletonScope();
+    bind(ProposalDocumentResources).toSelf().inSingletonScope();
+    bind(ResourceResolver).toService(ProposalDocumentResources);
+    bind(ProposalDocumentTabs).toSelf().inSingletonScope();
     rebind(FileNavigatorWidget).toDynamicValue(context => {
         const child = createFileNavigatorContainer(context.container);
         child.rebind(FileNavigatorWidget).to(ExplorerSearchWidget);
