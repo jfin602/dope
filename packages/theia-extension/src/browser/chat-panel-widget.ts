@@ -3165,8 +3165,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const transcript = document.createElement('ol');
         transcript.className = 'dope-chat-transcript';
         const named = currentPromptDraft(chat);
+        let namedCard: HTMLElement | undefined;
+        let namedCardAnchorId: string | undefined;
         if (named) {
-            const card = document.createElement('li'); card.className = 'dope-chat-prompt-draft-card';
+            const card = document.createElement('div'); card.className = 'dope-chat-prompt-draft-card';
             card.setAttribute('aria-label', 'Prompt Stack Draft');
             const title = document.createElement('strong'); title.className = 'dope-chat-prompt-draft-name';
             title.textContent = named.identity.slug; title.title = named.identity.slug;
@@ -3175,6 +3177,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 named.state === 'plan' ? named.stageMessageId ? 'Assessment ready · Plan next' : 'Plan in progress' :
                 named.state === 'write' ? named.stageMessageId ? 'Plan ready · Write next' : 'Writing in progress' :
                 named.state === 'ready' ? 'Prompt proposal ready for review' : `Blocked · ${named.error}`;
+            if (named.state === 'error') {
+                card.classList.add('dope-chat-prompt-draft-card-error');
+                card.setAttribute('role', 'alert');
+                status.removeAttribute('role');
+            }
             card.append(title, status);
             const reviewMessage = named.state === 'write' || named.state === 'ready' ||
                 named.recoveryStage === 'plan' ?
@@ -3199,7 +3206,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 });
                 action.title = 'Place command and trusted draft context in the composer'; card.append(action);
             }
-            transcript.append(card);
+            const ownerIndex = chat.messages.findIndex(message => message.id === named.identity.userMessageId);
+            const stageIndex = chat.messages.reduce((latest, message, index) =>
+                index >= ownerIndex && message.role === 'user' &&
+                (message.id === named.identity.userMessageId ||
+                    message.skill?.name === 'prompt-plan' || message.skill?.name === 'prompt-write') ? index : latest,
+            ownerIndex);
+            const nextUserIndex = chat.messages.findIndex((message, index) => index > stageIndex && message.role === 'user');
+            const stageMessages = chat.messages.slice(stageIndex + 1, nextUserIndex < 0 ? undefined : nextUserIndex);
+            namedCardAnchorId = stageMessages.filter(message => message.role === 'assistant').at(-1)?.id;
+            if (named.state === 'error' && namedCardAnchorId === latestMessage?.id && inlineTurnError)
+                status.textContent = `Blocked · ${inlineTurnError}`;
+            namedCard = card;
         }
         const lastUserIndex = chat.messages.map(message => message.role).lastIndexOf('user');
         const activeAssistant = [...chat.messages.slice(lastUserIndex + 1)].reverse().find(message =>
@@ -3399,9 +3417,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     message.execution.status === 'complete' && chatResponseCopyText(message) ||
                     active && state.stream?.content) content.classList.add('dope-chat-final-answer');
                 item.append(content);
+                if (namedCard && message.id === namedCardAnchorId) item.append(namedCard);
                 const savedProposal = revisedSource ?
                     this.savedRoadmapProposalCard(revisedSource) : relocated ? undefined :
                         this.savedRoadmapProposalCard(message) ?? this.stagedProposalCard(message);
+                if (message.execution.status === 'failed' &&
+                    (savedProposal || namedCard && message.id === namedCardAnchorId)) {
+                    content.querySelector('.dope-chat-error-bubble')?.remove();
+                    if (!content.textContent?.trim() && !content.childElementCount) content.remove();
+                }
                 if (savedProposal) item.append(savedProposal);
                 const action = savedProposal ? undefined : this.roadmapActionCard(message);
                 if (action) item.append(action);

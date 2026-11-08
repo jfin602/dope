@@ -1588,12 +1588,20 @@ body.theia-light:not(.dope-dark) {
     align-items: center;
     flex-wrap: wrap;
     gap: 0.5rem;
+    box-sizing: border-box;
+    width: 100%;
     min-width: 0;
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--theia-editorWidget-border, var(--theia-panel-border));
     border-radius: 6px;
     background: var(--theia-editorWidget-background, var(--theia-editor-background));
     color: var(--theia-editorWidget-foreground, var(--theia-editor-foreground));
+}
+.dope-chat-prompt-draft-card-error {
+    border-color: var(--theia-errorForeground);
+    background: color-mix(in srgb, var(--theia-errorForeground) 15%, var(--theia-sideBar-background));
+    color: var(--theia-errorForeground);
+    overflow-wrap: anywhere;
 }
 .dope-chat-prompt-draft-name {
     min-width: 0;
