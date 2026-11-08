@@ -5,7 +5,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MANUAL_CHAT_CONTEXT_SOURCES, assignedChatColor, compareChatsByInteraction, isChatFolderWithin, joinChatFolderPath, parseChat,
     parseChatCollection, parseChatColor, parseChatFolderPath, parseChatMessage, parseChatSettings, withAutomaticChatTitle } from '../index';
-import type { Chat, ChatCollection, ChatFolder, ChatPlanningActivity, ChatRoadmapAction } from '../index';
+import type { Chat, ChatCollection, ChatFolder, ChatPlanningActivity, ChatPromptDraftIdentity, ChatRoadmapAction } from '../index';
 import type { ChatEvent, ChatLeaseResult, ChatOperation, ChatSearchHit } from '../service';
 import type { ChatProposalProgress } from '../index';
 import { parseExecutionActivity, type ChatActivityEvent, type ChatExecutionActivity } from '../activity';
@@ -145,6 +145,44 @@ async function syncedJson(path: string, value: unknown): Promise<void> {
 }
 
 export class ChatRepository {
+    /** Named draft stages use the Chat lock, lease and proposal staging directory, not a second manifest. */
+    async transactPromptDraft<T>(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
+        update: (current: unknown | undefined) => Promise<{ snapshot?: unknown; result: T }>): Promise<T> {
+        return this.locked(root, async base => {
+            uuid(identity.chatId); uuid(identity.userMessageId); uuid(identity.id);
+            const lease = await this.lease(base, identity.chatId);
+            if (!lease || !this.active(lease) || lease.token !== leaseToken)
+                throw new Error('Chat ownership lease required');
+            const chats = await this.raw(root);
+            const owner = chats.chats.find(chat => chat.id === identity.chatId)?.messages.find(message =>
+                message.id === identity.userMessageId);
+            if (owner?.role !== 'user' || JSON.stringify(owner.promptDraft) !== JSON.stringify(identity) ||
+                identity.projectId !== createHash('sha256').update(root).digest('hex'))
+                throw new Error('Named prompt draft identity is not owned by this project and Chat');
+            let tasks = root;
+            for (const part of ['docs', 'tasks']) {
+                tasks = join(tasks, part);
+                if (!await directory(tasks)) break;
+            }
+            if (await directory(tasks)) {
+                const names = await readdir(tasks);
+                if (names.some(name => name.toLowerCase() === identity.slug.toLowerCase()))
+                    throw new Error('Named prompt draft collides with a canonical task folder');
+            }
+            const staging = join(base, '.proposal-staging');
+            await directory(staging, true);
+            const file = join(staging, `${identity.chatId}.${identity.userMessageId}.draft.json`);
+            const current = await regular(file) ? JSON.parse(await safeText(file, 256 * 1024)) as unknown : undefined;
+            const next = await update(current);
+            if (next.snapshot !== undefined) {
+                const encoded = JSON.stringify(next.snapshot);
+                if (Buffer.byteLength(encoded, 'utf8') > 256 * 1024)
+                    throw new Error('Named prompt draft exceeds durability bound');
+                await syncedJson(file, next.snapshot);
+            }
+            return next.result;
+        });
+    }
     /** Noncanonical proposal bytes share the saved Chat lock and current owner lease. */
     async transactProposalStage<T>(root: string, chatId: string, messageId: string, leaseToken: string,
         update: (current: unknown | undefined) => Promise<{ snapshot: unknown; result: T }>): Promise<T> {

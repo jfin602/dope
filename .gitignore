@@ -1,4 +1,5 @@
 node_modules/
+/.dope/chats/
 .env
 .env.*
 !.env.example
