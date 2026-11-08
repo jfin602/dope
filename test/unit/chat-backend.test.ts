@@ -40,8 +40,16 @@ test('native prompt stages save an exact review candidate and publish only after
     const answers = ['## Scope\nFeature scope.\n## Preservation\nNo Work run.\n## Dependencies\nSource.\n' +
         '## Risks\nStale source.\n## Source basis\nRead source.\n## Authority\nChat only.\n## Evidence\nT1/T2/T3.',
     '## Steps\n1. Implement.\n## Tests\nFocused integration.\n## Manual\nBrowser check.'];
-    const audit = Array.from({ length: 10 }, (_, index) =>
-        `Gate ${index + 1} checks the selected feature implementation and focused evidence in this fixture.`);
+    const audit = ['One implementation responsibility remains in each feature step.',
+        'The narrow implementation is estimated within the ordinary time budget.',
+        'Focused feature tests cover changed behavior without unrelated suites.',
+        'Compiled package output is built only when the imported test requires it.',
+        'Cross-package evidence belongs in the T2 integration step.',
+        'Nested command scripts are inspected before any aggregate is repeated.',
+        'Ordinary steps use moderate model effort and defer unrelated scope.',
+        'Every prompt keeps contiguous numbering and one terminal closeout.',
+        'The feature has no UI changes, so UI design evidence is inapplicable.',
+        'The feature has no new human workflow, so usability evidence is inapplicable.'];
     const work = (number: number, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
         kind: 'work', id: `step-${number}`, title: number === 1 ? 'Implement feature' : 'Check feature',
         objective: number === 1 ? 'Implement the feature' : 'Check the feature', tier, dependsOn,
@@ -65,10 +73,10 @@ test('native prompt stages save an exact review candidate and publish only after
         if (turn === 2 || turn === 3 || turn === 5) {
             const steps = turn < 5 ? [work(1, 'T2')] : [work(1, 'T2'), work(2, 'T1', ['step-1'])];
             for (const [index, value] of [...steps, closeout].entries()) {
+                const { id: _id, ...fields } = value as typeof value & { id?: string };
                 const receipt = JSON.parse(await request.projectTools!.execute('proposal_stage_prompt', {
-                    version: 1, sequence: index + 1, expectedRevision: index,
-                    idempotencyKey: `stage_key_${index + 1}`, target: value.kind === 'closeout' ? 'closeout' : value.id,
-                    chunkIndex: 0, content: JSON.stringify(value), complete: true }));
+                    target: value.kind === 'closeout' ? 'closeout' : value.id,
+                    ...fields, complete: true }));
                 assert.equal(receipt.revision, index + 1, JSON.stringify(receipt));
             }
             if (turn !== 2) {

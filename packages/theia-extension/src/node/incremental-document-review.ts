@@ -40,6 +40,25 @@ export interface DocumentStageContext {
 export class IncrementalDocumentReview implements ProposalDomainHandler<ChatDocumentationProposal> {
     constructor(private readonly store: RoadmapStore, private readonly context: DocumentStageContext) {}
 
+    readyForFinish(snapshot: Readonly<ProposalSnapshot>): { ready: boolean; nextAction?: string } {
+        const targets = new Set(this.context.prior?.targets.map(target => target.path) ?? []);
+        for (const stage of snapshot.stages) {
+            if (operation(stage).operation === 'remove') targets.delete(stage.target);
+            else targets.add(stage.target);
+        }
+        const priorReads: DocumentationReadPage[] = this.context.prior?.targets
+            .filter(target => target.operation === 'update').map(target => ({ path: target.path,
+                offset: 0, endOffset: 0, fileBytes: Buffer.byteLength(target.before ?? '', 'utf8'),
+                sourceHash: target.beforeHash!, text: '' })) ?? [];
+        try {
+            requireCompleteDocumentationReview(this.context.objective, this.context.discovery,
+                [...targets].map(path => ({ path })), [...this.context.pages, ...priorReads]);
+            return { ready: true };
+        } catch {
+            return { ready: false, nextAction: 'Stage missing requested targets or inspect required source, then finish.' };
+        }
+    }
+
     private async materialize(stages: readonly ProposalStage[]): Promise<{ path: string; after: string }[]> {
         const { root, pages, prior } = this.context;
         const candidates = new Map(prior?.targets.map(target => [target.path, target.after]) ?? []);

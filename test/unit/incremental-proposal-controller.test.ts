@@ -107,3 +107,34 @@ test('foreign lease, stale source, unsupported domain and cancellation fail clos
     await assert.rejects(controller.begin(), /lease/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('broker-owned stage order serializes calls and rejects conflicting transport replay', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-model-stage-'));
+  const repo = new ChatRepository(), chatId = randomUUID();
+  try {
+    await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'panel');
+    if (!lease.acquired) throw new Error('missing lease');
+    const identity = { root, chatId, messageId: randomUUID(), leaseToken: lease.token,
+      ownerId: 'panel', worktreeId: 'worktree-a', sourceBasis: 'source-a', domain: 'document' as const };
+    const handler = { validateStage: async () => {}, validateComplete: async () => 'candidate' };
+    const controller = new IncrementalProposalController(repo, identity,
+      async () => ({ worktreeId: 'worktree-a', sourceBasis: 'source-a' }), handler);
+    await controller.begin();
+    const first = { target: 'docs/a.md', content: 'first', complete: false };
+    const second = { target: 'docs/a.md', content: 'second', complete: true };
+    assert.equal((await controller.stageModel(first, 'document', 17)).nextSequence, 2);
+    assert.equal((await controller.stageModel(first, 'document', 17)).revision, 1);
+    assert.equal((await controller.stageModel(first, 'document', 18)).revision, 1,
+      'a new call with identical content cannot duplicate an ambiguous retry');
+    await assert.rejects(controller.stageModel({ ...first, content: 'changed' }, 'document', 17),
+      /REPLAY_CONFLICT/);
+    const [a, b] = await Promise.all([controller.stageModel(second, 'document', 19),
+      controller.stageModel({ target: 'docs/b.md', content: 'other', complete: true }, 'document', 20)]);
+    assert.deepEqual([a.revision, b.revision].sort(), [2, 3]);
+    assert.equal((await controller.status()).nextSequence, 4);
+    await assert.rejects(controller.stageModel({ target: '../escape', content: 'bad', complete: true },
+      'document', 21), /STAGE_INVALID_FIELD:target/);
+    assert.equal((await controller.finish({ finalMessage: 'Ready.' })).candidate, 'candidate');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

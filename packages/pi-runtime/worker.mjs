@@ -203,15 +203,34 @@ const CHAT_TOOLS = {
   search_text: { query: Type.String() },
   run_command: { command: Type.String() }
 };
-const PROPOSAL_TOOLS = {
+export const proposalDocumentSchema = Type.Union([
+  Type.Object({ path: Type.String(), operation: Type.Literal('replace'),
+    before: Type.String(), after: Type.String(), complete: Type.Boolean() }, { additionalProperties: false }),
+  Type.Object({ path: Type.String(), operation: Type.Literal('create'),
+    chunk: Type.String(), complete: Type.Boolean() }, { additionalProperties: false }),
+  Type.Object({ path: Type.String(), operation: Type.Literal('remove'),
+    complete: Type.Boolean() }, { additionalProperties: false })
+]);
+export const proposalPromptSchema = Type.Union([
+  Type.Object({ target: Type.String(), kind: Type.Literal('work'), title: Type.String(),
+    objective: Type.String(), tier: Type.Union([Type.Literal('T1'), Type.Literal('T2')]),
+    dependsOn: Type.Optional(Type.Array(Type.String())), workingSet: Type.Array(Type.String()),
+    requirements: Type.Optional(Type.Array(Type.String())), constraints: Type.Optional(Type.Array(Type.String())),
+    acceptanceCriteria: Type.Array(Type.String()), validationTargets: Type.Array(Type.String()),
+    integrationChecks: Type.Optional(Type.Array(Type.String())), complete: Type.Boolean() },
+  { additionalProperties: false }),
+  Type.Object({ target: Type.String(), kind: Type.Literal('section'), heading: Type.String(),
+    text: Type.String(), complete: Type.Boolean() }, { additionalProperties: false }),
+  Type.Object({ target: Type.String(), kind: Type.Literal('closeout'), title: Type.String(),
+    objective: Type.String(), manualReason: Type.String(), acceptanceCriteria: Type.Array(Type.String()),
+    browserRequired: Type.Boolean(), efficiencyAudit: Type.Array(Type.String()),
+    complete: Type.Boolean() }, { additionalProperties: false })
+]);
+export const PROPOSAL_TOOLS = {
   ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
-  proposal_status: { version: Type.Literal(1) },
-  proposal_stage_document: { version: Type.Literal(1), sequence: Type.Integer(),
-    expectedRevision: Type.Integer(), idempotencyKey: Type.String(), target: Type.String(),
-    chunkIndex: Type.Integer(), content: Type.String(), digest: Type.Optional(Type.String()), complete: Type.Boolean() },
-  proposal_stage_prompt: { version: Type.Literal(1), sequence: Type.Integer(),
-    expectedRevision: Type.Integer(), idempotencyKey: Type.String(), target: Type.String(),
-    chunkIndex: Type.Integer(), content: Type.String(), digest: Type.Optional(Type.String()), complete: Type.Boolean() },
+  proposal_status: {},
+  proposal_stage_document: proposalDocumentSchema,
+  proposal_stage_prompt: proposalPromptSchema,
   proposal_finish: { finalMessage: Type.String() }
 };
 // Keep this compact: Pi sees the legal discriminator and required fields, while
@@ -282,7 +301,7 @@ function chatTools() {
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
-      name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash, fullHash and nextOffset. sourceHash is only the root/path-bound identity for later pages: pass it as expectedSourceHash. For proposal_stage_document replace, use fullHash as the operation sourceHash because it hashes the raw file bytes. A path-only read retains the legacy prefix behavior.' :
+      name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. Pass sourceHash as expectedSourceHash for later pages. Dope binds the full-file identity internally for proposal changes. A path-only read retains the legacy prefix behavior.' :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
       name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Omit ids to discover entities; Phase entries include gateIds so you can read their Gates by ID. Results contain up to 20 entries; when nextOffset is not null, pass it as offset in another roadmap_read until all relevant entities are found. Read before staging; Dope retains source and revision preconditions.' :
       name === 'roadmap_phase' ? 'Submit the next Phase with nested Gates and observable Criteria. Wait for the checked noncanonical stage receipt before continuing. This tool cannot apply a Roadmap.' :
@@ -291,12 +310,13 @@ function chatTools() {
       name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
       name === 'proposal_status' ? 'Read a compact receipt for this protected proposal session and its remaining limits.' :
       name === 'proposal_stage_document' ?
-        'Stage one bounded noncanonical document operation. Content is a JSON string: {"operation":"replace","before":"exact observed excerpt","after":"replacement","sourceHash":"fullHash from read_file"} or {"operation":"create","chunk":"new text"}; a selected proposal revision uses the saved target afterHash for replace, and may use {"operation":"remove"} for a saved target. Call proposal_status first; use its nextSequence and revision, which are separate from a pending candidate revision. Supply chunkIndex and a unique idempotencyKey of 8-80 ASCII letters, digits, underscore or hyphen. Omit digest; Dope calculates it. Set complete true on the last stage for each target; call proposal_finish after all requested targets. This tool cannot publish files.' :
+        'Stage one bounded document change. For replace supply path, operation, exact broker-read before excerpt, after text, complete:true. For create supply path, operation, chunk text; send further chunks with the same path and complete:true only on the last. Remove only discards a target from a selected unpublished revision. Dope owns source identity and stage order. Call proposal_finish after all targets. This tool cannot publish files.' :
       name === 'proposal_stage_prompt' ?
-        'Stage one bounded noncanonical chunk in sequence. Call proposal_status first; use its nextSequence and revision, a unique idempotencyKey of 8-80 ASCII letters, digits, underscore or hyphen, and chunkIndex. Omit digest; Dope calculates it. Wait for each checked receipt and call proposal_finish after the terminal closeout. This tool cannot publish files.' :
+        'Stage one typed work step (kind work), detailed section (kind section), or separate terminal manual closeout (kind closeout). Give each work step a stable target ID; sections use that same target. Dope owns stage order and composition. Set complete:true on the last call for each target. Finish after all requested work steps and one closeout. This tool cannot publish files.' :
       name === 'proposal_finish' ? 'Request validation and sealing of the staged candidate. The finalMessage is untrusted display prose, not an approval.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
-    parameters: Type.Object(properties, { additionalProperties: false }),
+    parameters: name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ?
+      properties : Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
       if (proposalToolsMode && ++proposalToolCalls > 512) {

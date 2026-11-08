@@ -34,20 +34,32 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
         private readonly sourceVersion: string, private readonly prior: {
             assessment: ChatAssistantMessage; plan: ChatAssistantMessage },
         private readonly grounder: ChatProjectGrounder, private readonly revision: number,
-        private readonly expectedSource: { head: string; worktreeFingerprint: string }) {}
+        private readonly expectedSource: { head: string; worktreeFingerprint: string },
+        private readonly requestedWorkCount?: number) {}
+
+    readyForFinish(snapshot: Readonly<ProposalSnapshot>): { ready: boolean; nextAction?: string } {
+        const count = new Set(snapshot.stages.map(stage => stage.target).filter(target => target !== 'closeout')).size;
+        return this.requestedWorkCount && count !== this.requestedWorkCount ?
+            { ready: false, nextAction: `Stage ${this.requestedWorkCount - count} remaining requested work prompts before closeout.` } :
+            { ready: true };
+    }
 
     async validateStage(snapshot: Readonly<ProposalSnapshot>, stage: Readonly<ProposalStage>): Promise<void> {
         const value = parse(stage.content);
         const prior = snapshot.stages.filter(item => item.target === stage.target);
         if (stage.target === 'closeout') {
+            if (this.requestedWorkCount && this.readyForFinish(snapshot).ready === false)
+                throw new Error('PROPOSAL_PROMPT_WORK_COUNT');
             if (prior.length || !snapshot.stages.length || !snapshot.stages.at(-1)?.complete ||
                 stage.chunkIndex !== 0 || !stage.complete || value.kind !== 'closeout' ||
                 !keys(value, ['kind', 'title', 'objective', 'manualReason', 'acceptanceCriteria', 'browserRequired', 'model', 'efficiencyAudit'],
                     ['kind', 'title', 'objective', 'manualReason', 'acceptanceCriteria', 'browserRequired', 'efficiencyAudit']) ||
                 !field(value.title) || !field(value.objective) || !field(value.manualReason) ||
-                !strings(value.acceptanceCriteria) || typeof value.browserRequired !== 'boolean' ||
+                !strings(value.acceptanceCriteria) || value.browserRequired !== true ||
                 !Array.isArray(value.efficiencyAudit) || value.efficiencyAudit.length !== 10 ||
-                value.efficiencyAudit.some(item => !field(item) || item.trim().length < 20))
+                value.efficiencyAudit.some(item => !field(item) || item.trim().length < 20) ||
+                new Set(value.efficiencyAudit.map(item => item.toLowerCase().replace(/\b(?:gate|check|finding)\s*\d+\b/gu, '')
+                    .replace(/\s+/gu, ' ').trim())).size !== 10)
                 throw new Error('PROMPT_CLOSEOUT_STAGE');
             return;
         }
@@ -103,6 +115,8 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
         }
         if (groups.size < 2 || groups.size > 49 || [...groups.keys()].at(-1) !== 'closeout')
             throw new Error('PROMPT_INCOMPLETE_STACK');
+        if (this.requestedWorkCount && groups.size - 1 !== this.requestedWorkCount)
+            throw new Error('PROPOSAL_PROMPT_WORK_COUNT');
         const closeout = groups.get('closeout')![0] as Closeout;
         const work: WorkPromptChoice[] = [...groups.entries()].slice(0, -1).map(([id, values]) => {
             const meta = values[0] as Work;
@@ -115,6 +129,16 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
                     acceptanceCriteria: meta.acceptanceCriteria, validationTargets: meta.validationTargets,
                     status: 'draft', delegablePaths: meta.workingSet, humanReservedPaths: [] } };
         });
+        if (this.requestedWorkCount && work.filter(item => item.tier === 'T2').length !== 1)
+            throw new Error('PROPOSAL_PROMPT_T2_GATE');
+        const allInstructionText = snapshot.stages.map(stage => stage.content).join('\n');
+        if (/\.cjs\b/iu.test(allInstructionText) &&
+            !this.prior.plan.execution.sourceRefs?.some(ref => ref.kind === 'file' && /\.cjs$/u.test(ref.id)))
+            throw new Error('PROPOSAL_PROMPT_UNGROUNDED_MODULE_TEST');
+        if (/\b(?:npm\s+install|yarn\s+add|pnpm\s+add)\b/iu.test(allInstructionText) &&
+            (!this.prior.plan.execution.sourceRefs?.some(ref => ref.kind === 'file' && /(?:^|\/)package\.json$/u.test(ref.id)) ||
+                !/\bdependenc(?:y|ies)\b/iu.test(this.prior.plan.content)))
+            throw new Error('PROPOSAL_PROMPT_UNGROUNDED_DEPENDENCY');
         const input: ComposeStackInput = { folderName: this.folder, sourceKind: 'chat-plan',
             version: this.sourceVersion, sourceVersion: this.sourceVersion, work,
             efficiencyAudit: closeout.efficiencyAudit,

@@ -32,7 +32,7 @@ test('protected Docs review revises one card while only Accept applies its lates
         seen.push(request.messages.map(message => message.content));
         sent.push(request.messages);
         if (request.messages.some(message => message.content.includes('Dope skill /docs-review'))) {
-            const staged = JSON.parse(await request.projectTools!.execute('proposal_status', { version: 1 })) as {
+            const staged = JSON.parse(await request.projectTools!.execute('proposal_status', {})) as {
                 state: string; nextSequence: number; targets: unknown[] };
             assert.equal(staged.state, 'staging');
             assert.equal(staged.nextSequence, 1);
@@ -43,10 +43,9 @@ test('protected Docs review revises one card while only Accept applies its lates
                     const item = items[index];
                     const chunkIndex = counts.get(item.target) ?? 0;
                     counts.set(item.target, chunkIndex + 1);
+                    const { sourceHash: _sourceHash, ...fields } = item.content as Record<string, unknown>;
                     const result = JSON.parse(await request.projectTools!.execute('proposal_stage_document', {
-                        version: 1, sequence: index + 1, expectedRevision: index,
-                        idempotencyKey: `document-stage-${calls}-${index}`, target: item.target,
-                        chunkIndex, content: JSON.stringify(item.content), complete: true }));
+                        path: item.target, ...fields, complete: true }));
                     assert.equal(result.nextSequence, index + 2, JSON.stringify(result));
                 }
                 const sealed = JSON.parse(await request.projectTools!.execute('proposal_finish', { finalMessage }));

@@ -39,10 +39,11 @@ import { applyDocumentationProposal, reconcileDocumentationApplication } from '.
 import { discoverDocumentation, documentationReviewObjective } from './documentation-discovery';
 import type { DocumentationReadPage } from './documentation-skill-review';
 import { promptStageCommand, priorPromptDraft, verifyPromptDraftSource, verifyPromptSourceRefs,
-    promptStageInstruction, finishedPromptText } from './prompt-authoring-stage';
+    promptStageInstruction, finishedPromptText, requestedWorkPromptCount } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
 import { IncrementalProposalController, type ProposalHandoff } from './incremental-proposal-controller';
+import { documentModelStage, promptModelStage, proposalToolError } from './proposal-model-tools';
 import { IncrementalDocumentReview } from './incremental-document-review';
 import { IncrementalPromptStack } from './incremental-prompt-stack';
 
@@ -1880,16 +1881,21 @@ export class ChatBackend implements ChatService {
         const reviewObjective = docsReview ? documentationReviewObjective(content,
             chat.messages.filter(message => message.role === 'user').map(message => message.content)) : undefined;
         const discovery = docsReview ? await discoverDocumentation(root, reviewObjective!) : undefined;
+        const promptRequestedCount = promptStage?.stage === 'prompt-write' ? requestedWorkPromptCount(
+            content, ...chat.messages.filter(message => message.role === 'user').slice(-8).reverse()
+                .map(message => message.content), priorPlan?.assistant.content ?? '',
+            priorAssessment?.assistant.content ?? '') : undefined;
         const discoveryPrompt = discovery ? `\nVerified local discovery: ${discovery.enumerated} documents enumerated, ` +
             `${discovery.searched} searched. Candidate paths and section byte offsets (search is not a model read): ` +
             JSON.stringify(discovery.candidates) + `\nOmissions: ${JSON.stringify(discovery.omitted)}. ` +
             'Keep the original task and acceptance criteria. Use read_file on relevant CURRENT documents: offset 0 first, then each relevant section offset shown above (including late sections); maxBytes 4096. A later offset is pinned to the first page sourceHash in this turn. Search metadata is not source evidence. ' +
-            'For an existing file, call proposal_stage_document with content as a JSON string containing exactly operation:replace, before:one short exact uniquely observed excerpt, after:replacement text, sourceHash:the fullHash returned by read_file. For a new file use content as a JSON string containing exactly operation:create and chunk:new text. Stage ordered chunks with increasing chunkIndex for one target. Use proposal_status to get sequence and expectedRevision; pass a stable unique idempotencyKey. The server computes the content digest. Set complete:true on the final stage of each target, then call proposal_finish with a short factual finalMessage. Do not output a JSON changes packet or claim application. Finish will check requested coverage and actual reads.' : '';
-        const revisionPrompt = revisionProposal ? `\nRevise the selected pending documentation proposal through proposal_stage_document. The saved candidate is the starting point; omitted proposed targets are preserved. For a saved target, use operation:replace with sourceHash equal to its afterHash and a short exact unique excerpt in the saved after text; to discard a saved target, use content JSON {"operation":"remove"} with complete:true. Keep unrelated proposed bytes. Do not output a final changes JSON packet. Saved proposal: ` + JSON.stringify({ id: revisionProposal.id, revision: revisionTarget!.revision,
+            'For an existing file call proposal_stage_document with path, operation:replace, before:one short exact uniquely broker-read excerpt, after:replacement text, complete:true. Dope binds the verified full-file hash; do not supply hashes or counters. For a new file use operation:create and chunk:new text; repeat with the same path as needed, setting complete:true on its last chunk. proposal_status summarizes progress. After every requested target is complete, call proposal_finish with a short factual finalMessage. Do not claim application. Finish checks requested coverage and actual reads.' : '';
+        const revisionPrompt = revisionProposal ? `\nRevise the selected pending documentation proposal through proposal_stage_document. The saved candidate is the starting point; omitted proposed targets are preserved. For a saved target, use operation:replace with a short exact unique excerpt in the saved after text; Dope binds its afterHash. To discard a saved target, use operation:remove with complete:true. Keep unrelated proposed bytes. Do not output a final changes JSON packet. Saved proposal: ` + JSON.stringify({ id: revisionProposal.id, revision: revisionTarget!.revision,
             targets: revisionProposal.targets.map(({ path, after, afterHash }) => ({ path, after, afterHash })) }) : '';
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` +
             (promptStage ? `\n${promptStageInstruction(promptStage, {
-                assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion)}` : '') +
+                assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion)}` +
+                (promptRequestedCount ? `\nRequested work-prompt count: exactly ${promptRequestedCount}; keep one separate terminal manual closeout.` : '') : '') +
             (selectedPrompt ? `\nRevise the selected saved proposal through bounded proposal_stage_prompt calls. The previous candidate remains valid until replacement passes every check. Stage the complete replacement in dependency order. Saved prior file identities: ${JSON.stringify(
                 selectedPrompt.proposal.files.map(file => ({ path: file.path, hash: file.afterHash })).slice(2))}
                 \nDeveloper revision instructions: ${content}` : '') : undefined;
@@ -2109,7 +2115,7 @@ export class ChatBackend implements ChatService {
             linkState: string | null; expiresAt: number } | undefined;
         const projectTools = this.grounder && !noProjectTools ? { root, roadmapTools: nativeRoadmap,
             proposalTools: protectedProposal,
-            execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
+            execute: async (name: string, args: unknown, signal?: AbortSignal, toolCallId?: number): Promise<string> => {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
                 if (name.startsWith('proposal_')) {
                     const proposalName = name as 'proposal_status' | 'proposal_stage_document' |
@@ -2125,19 +2131,12 @@ export class ChatBackend implements ChatService {
                             throw new Error('PROPOSAL_TOOL_AUTHORITY');
                         const result = name === 'proposal_status' ?
                             (args && typeof args === 'object' && !Array.isArray(args) &&
-                                Object.keys(args).length === 1 && (args as { version?: unknown }).version === 1 ?
+                                Object.keys(args).length === 0 ?
                                 await proposalController.status() : (() => { throw new Error('PROPOSAL_STATUS_ARGUMENTS'); })()) :
-                            name === 'proposal_stage_document' ? await proposalController.stage(
-                                args && typeof args === 'object' && !Array.isArray(args) &&
-                                typeof (args as { content?: unknown }).content === 'string' ?
-                                    { ...args, digest: createHash('sha256').update((args as { content: string }).content).digest('hex') } : args,
-                                'document') :
-                            name === 'proposal_stage_prompt' ? await proposalController.stage(
-                                args && typeof args === 'object' && !Array.isArray(args) &&
-                                typeof (args as { content?: unknown }).content === 'string' &&
-                                !('digest' in args) ?
-                                    { ...args, digest: createHash('sha256').update((args as { content: string }).content).digest('hex') } : args,
-                                'prompt') :
+                            name === 'proposal_stage_document' ? await proposalController.stageModel(
+                                documentModelStage(args, documentationPages, revisionProposal), 'document', toolCallId) :
+                            name === 'proposal_stage_prompt' ? await proposalController.stageModel(
+                                promptModelStage(args), 'prompt', toolCallId) :
                             name === 'proposal_finish' ? await proposalController.finish(args) :
                             (() => { throw new Error('PROPOSAL_TOOL_UNKNOWN'); })();
                         if (docsReview && name === 'proposal_finish')
@@ -2166,8 +2165,7 @@ export class ChatBackend implements ChatService {
                                 this.repository.recordProposalProgress(root, key, assistant!.id,
                                     request.leaseToken, progress)).catch(() => undefined);
                         }
-                        return JSON.stringify({ version: 1, error: error instanceof Error &&
-                            error.message.startsWith('PROPOSAL_') ? error.message : 'PROPOSAL_TOOL_FAILED' });
+                        return JSON.stringify(proposalToolError(error));
                     } finally {
                         recordActivity('tool', `${proposalName}: ${status}${stageTarget ? ` · ${stageTarget}` : ''}`);
                         toolEvents.push({ name: proposalName, status, truncated: false,
@@ -2564,7 +2562,7 @@ export class ChatBackend implements ChatService {
                         new IncrementalPromptStack(root, promptStage!.folder!, promptSourceVersion!,
                             { assessment: priorAssessment!.assistant, plan: priorPlan!.assistant },
                             this.grounder!, selectedPrompt ? selectedPrompt.proposal.revision + 1 : 1,
-                            promptSourceBasis!));
+                            promptSourceBasis!, promptRequestedCount));
                 await proposalController.begin();
                 await this.repository.recordProposalProgress(root, key, assistant.id,
                     request.leaseToken, await proposalController.progress());

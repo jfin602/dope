@@ -30,6 +30,8 @@ export interface ProposalReceipt {
     proposalId: string; revision: number; nextSequence: number; state: ProposalSnapshot['state'];
     targets: { target: string; chunks: number; bytes: number; complete: boolean }[];
     remaining: { stages: number; calls: number; bytes: number; elapsedMs: number };
+    purpose: ProposalDomain; completedTargets: string[]; incompleteTargets: string[];
+    nextAction: string; finishPermitted: boolean;
 }
 export interface ProposalHandoff<T> { domain: ProposalDomain; proposalId: string; revision: number;
     finalMessage: string; candidate: T }
@@ -38,6 +40,7 @@ export interface ProposalDomainHandler<T> {
     validateStage(snapshot: Readonly<ProposalSnapshot>, stage: Readonly<ProposalStage>): Promise<void>;
     /** Return exact proposal-owner input; this method must not publish canonical files. */
     validateComplete(snapshot: Readonly<ProposalSnapshot>): Promise<T>;
+    readyForFinish?(snapshot: Readonly<ProposalSnapshot>): { ready: boolean; nextAction?: string };
     /** Bounded inert text for the native provisional read-only tab. */
     preview?(snapshot: Readonly<ProposalSnapshot>): Promise<{ target: string; path: string;
         original: string | null; proposed: string }[]>;
@@ -72,11 +75,21 @@ function receipt(snapshot: ProposalSnapshot, limits: ProposalLimits): ProposalRe
         value.chunks++; value.bytes += stage.byteLength; value.complete = stage.complete;
         targets.set(stage.target, value);
     }
+    const ordered = [...targets.values()];
     return { proposalId: snapshot.id, revision: snapshot.revision,
         nextSequence: snapshot.stages.length + 1, state: snapshot.state, targets: [...targets.values()],
         remaining: { stages: limits.stages - snapshot.stages.length, calls: limits.calls - snapshot.calls,
             bytes: limits.totalBytes - snapshot.stages.reduce((sum, stage) => sum + stage.byteLength, 0),
-            elapsedMs: Math.max(0, snapshot.createdAt + limits.elapsedMs - Date.now()) } };
+            elapsedMs: Math.max(0, snapshot.createdAt + limits.elapsedMs - Date.now()) },
+        purpose: snapshot.identity.domain, completedTargets: ordered.filter(item => item.complete).map(item => item.target),
+        incompleteTargets: ordered.filter(item => !item.complete).map(item => item.target),
+        finishPermitted: snapshot.state === 'staging' && ordered.length > 0 && ordered.every(item => item.complete) &&
+            (snapshot.identity.domain === 'document' || targets.has('closeout')),
+        nextAction: !ordered.length ? 'Stage the first requested target.' :
+            ordered.some(item => !item.complete) ? 'Complete the unfinished target.' :
+            snapshot.identity.domain === 'prompt' && !targets.has('closeout') ?
+                'Stage the separate terminal manual closeout.' :
+                'If all requested targets are staged, call proposal_finish with a short factual finalMessage.' };
 }
 /** A turn-scoped broker owns the identity; model tools never receive a begin or approval token. */
 export class IncrementalProposalController<T = unknown> {
@@ -158,7 +171,15 @@ export class IncrementalProposalController<T = unknown> {
                 { diagnostic: (diagnostic ?? 'Provisional preview unavailable; staged bytes remain noncanonical').slice(0, 300) } : {}) };
     }
     status(): Promise<ProposalReceipt> {
-        return this.transact(async snapshot => ({ snapshot, result: receipt(snapshot, this.limits) }));
+        return this.transact(async snapshot => {
+            const result = receipt(snapshot, this.limits);
+            const domain = this.handler?.readyForFinish?.(snapshot);
+            if (domain && !domain.ready) {
+                result.finishPermitted = false;
+                if (domain.nextAction) result.nextAction = domain.nextAction;
+            }
+            return { snapshot, result };
+        });
     }
     stage(value: unknown, domain: ProposalDomain): Promise<ProposalReceipt> {
         return this.transact(async snapshot => {
@@ -179,6 +200,48 @@ export class IncrementalProposalController<T = unknown> {
             const targetStages = snapshot.stages.filter(item => item.target === stage.target);
             if (targetStages.length >= 256 || stage.chunkIndex !== targetStages.length ||
                 (targetStages.at(-1)?.complete && domain !== 'document')) return fail('CHUNK_ORDER');
+            const bytes = Buffer.byteLength(stage.content, 'utf8');
+            if (targetStages.reduce((sum, item) => sum + item.byteLength, 0) + bytes > this.limits.fileBytes ||
+                snapshot.stages.reduce((sum, item) => sum + item.byteLength, 0) + bytes > this.limits.totalBytes ||
+                !targetStages.length && new Set(snapshot.stages.map(item => item.target)).size >= this.limits.files)
+                return fail('BYTE_OR_FILE_LIMIT');
+            await this.handler.validateStage(snapshot, stage);
+            const next: ProposalSnapshot = { ...snapshot, revision: snapshot.revision + 1,
+                stages: [...snapshot.stages, { ...stage, byteLength: bytes }] };
+            return { snapshot: next, result: receipt(next, this.limits) };
+        });
+    }
+    /** Model instructions contain content only. Sequence, revision, chunk order and replay identity are broker-owned. */
+    stageModel(value: { target: string; content: string; complete: boolean }, domain: ProposalDomain,
+        callId?: number): Promise<ProposalReceipt> {
+        return this.transact(async snapshot => {
+            if (snapshot.state !== 'staging' || domain !== snapshot.identity.domain) return fail('DOMAIN');
+            if (!value || typeof value.target !== 'string' || typeof value.content !== 'string' ||
+                typeof value.complete !== 'boolean') return fail('STAGE_ARGUMENTS');
+            if (value.target.length > 240 || !/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*$/.test(value.target) ||
+                value.target.split('/').some(part => part === '.' || part === '..'))
+                throw new Error('PROPOSAL_STAGE_INVALID_FIELD:target');
+            if (!value.content || Buffer.byteLength(value.content, 'utf8') > this.limits.chunkBytes)
+                throw new Error('PROPOSAL_STAGE_INVALID_FIELD:content');
+            const fingerprint = sha256(JSON.stringify([domain, value.target, value.content, value.complete]));
+            const key = Number.isSafeInteger(callId) && (callId as number) > 0 ? `pi_call_${callId}` :
+                `stage_${fingerprint.slice(0, 64)}`;
+            const replay = snapshot.stages.find(item => item.idempotencyKey === key ||
+                sha256(JSON.stringify([domain, item.target, item.content, item.complete])) === fingerprint);
+            if (replay) {
+                if (replay.target !== value.target || replay.content !== value.content || replay.complete !== value.complete)
+                    return fail('REPLAY_CONFLICT');
+                return { snapshot, result: receipt(snapshot, this.limits) };
+            }
+            if (!this.handler) return fail('DOMAIN_NOT_SUPPORTED');
+            const stage = checkedStage({ version: 1, sequence: snapshot.stages.length + 1,
+                expectedRevision: snapshot.revision, idempotencyKey: key, target: value.target,
+                chunkIndex: snapshot.stages.filter(item => item.target === value.target).length,
+                content: value.content, digest: sha256(value.content), complete: value.complete }, this.limits);
+            if (snapshot.stages.length >= this.limits.stages) return fail('STAGE_LIMIT');
+            const targetStages = snapshot.stages.filter(item => item.target === stage.target);
+            if (targetStages.length >= 256 || targetStages.at(-1)?.complete && domain !== 'document')
+                return fail('CHUNK_ORDER');
             const bytes = Buffer.byteLength(stage.content, 'utf8');
             if (targetStages.reduce((sum, item) => sum + item.byteLength, 0) + bytes > this.limits.fileBytes ||
                 snapshot.stages.reduce((sum, item) => sum + item.byteLength, 0) + bytes > this.limits.totalBytes ||

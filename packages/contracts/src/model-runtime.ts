@@ -89,7 +89,7 @@ export interface ConversationRequest {
     /** Backend-only authority for eligible local Pi project discovery. Never serialized to a provider. */
     projectTools?: { root: string; roadmapTools?: boolean; roadmapGeneration?: boolean; proposalTools?: boolean;
         generationId?: string;
-        execute(name: string, args: unknown, signal?: AbortSignal): Promise<string> };
+        execute(name: string, args: unknown, signal?: AbortSignal, toolCallId?: number): Promise<string> };
 }
 export interface ConversationUsage {
     inputTokens?: number;

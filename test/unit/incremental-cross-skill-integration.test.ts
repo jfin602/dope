@@ -48,10 +48,9 @@ function model(generate: (request: ToolRequest, turn: number) => Promise<void>) 
 
 async function stage(request: ToolRequest, domain: 'document' | 'prompt', sequence: number,
     target: string, chunkIndex: number, content: object, complete: boolean) {
-    const result = JSON.parse(await request.projectTools!.execute(`proposal_stage_${domain}`, {
-        version: 1, sequence, expectedRevision: sequence - 1,
-        idempotencyKey: `integration-stage-${sequence}`, target, chunkIndex,
-        content: JSON.stringify(content), complete }));
+    const { sourceHash: _sourceHash, id: _id, ...fields } = content as Record<string, unknown>;
+    const result = JSON.parse(await request.projectTools!.execute(`proposal_stage_${domain}`, domain === 'document' ?
+        { path: target, ...fields, complete } : { target, ...fields, complete }));
     assert.equal(result.revision, sequence, JSON.stringify(result));
     return result;
 }
@@ -91,7 +90,7 @@ test('protected Docs tools stage two late source edits and a chunked long file; 
             await stage(request, 'document', sequence++, 'docs/large.md', index,
                 { operation: 'create', chunk }, index === chunks.length - 1);
         toolCalls += sequence;
-        const status = JSON.parse(await request.projectTools!.execute('proposal_status', { version: 1 }));
+        const status = JSON.parse(await request.projectTools!.execute('proposal_status', {}));
         assert.equal(status.targets.length, 3);
         assert.equal(status.targets.find((item: { target: string }) => item.target === 'docs/large.md').chunks, 3);
         const sealed = JSON.parse(await request.projectTools!.execute('proposal_finish',
@@ -148,8 +147,16 @@ test('protected Prompt tools stage ten detailed dependent prompts and publish on
     const answers = ['## Scope\nTen source-backed steps.\n## Preservation\nNo Work run.\n## Dependencies\nOrdered.\n' +
         '## Risks\nSource drift.\n## Source basis\nRead source.\n## Authority\nChat only.\n## Evidence\nT1/T2/T3.',
     '## Steps\n1. Implement ten steps.\n## Tests\nFocused suites.\n## Manual\nBrowser closeout.'];
-    const audit = Array.from({ length: 10 }, (_, index) =>
-        `Gate ${index + 1} checks dependency order, exact sources and focused validation in this fixture.`);
+    const audit = ['Each work prompt owns one narrow source behavior and test.',
+        'The narrow steps fit ordinary runtime while integration is reserved for T2.',
+        'Each feature test target matches one source-backed behavior.',
+        'Build only changed dependency outputs before tests importing compiled files.',
+        'Cross-package evidence is gathered in the final T2 integration step.',
+        'Inspect nested command scripts to avoid duplicate aggregate executions.',
+        'Use ordinary model effort for narrow work and defer unrelated features.',
+        'Maintain ordered IDs and exactly one terminal manual closeout.',
+        'No UI files change here, so visual design checks are inapplicable.',
+        'No human workflow changes here, so usability checks are inapplicable.'];
     let stages = 0;
     const models = model(async (request, turn) => {
         if (turn < 2) {
@@ -177,7 +184,7 @@ test('protected Prompt tools stage ten detailed dependent prompts and publish on
             manualReason: 'Human interaction requires observation', browserRequired: true,
             acceptanceCriteria: ['Observe all ten features'], efficiencyAudit: audit }, true);
         stages = sequence - 1;
-        const status = JSON.parse(await request.projectTools!.execute('proposal_status', { version: 1 }));
+        const status = JSON.parse(await request.projectTools!.execute('proposal_status', {}));
         assert.equal(status.targets.length, 11);
         assert.ok(JSON.stringify(status).length < 4000, 'status excludes growing candidate text');
         const sealed = JSON.parse(await request.projectTools!.execute('proposal_finish',

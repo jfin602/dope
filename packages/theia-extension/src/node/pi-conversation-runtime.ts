@@ -171,7 +171,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                     sha256: createHash('sha256').update(message.content).digest('hex') })) }));
         }
         const onTool = request.projectTools ? async (call: { id: number; name: string; arguments: unknown }) => {
-            const output = await request.projectTools!.execute(call.name, call.arguments, request.signal);
+            const output = await request.projectTools!.execute(call.name, call.arguments, request.signal, call.id);
             return { status: 'completed', output };
         } : undefined;
         for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool,

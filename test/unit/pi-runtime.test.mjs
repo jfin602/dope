@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent,
-  ROADMAP_ACTION_FIELDS, roadmapActionSchema } from '../../packages/pi-runtime/worker.mjs';
+  ROADMAP_ACTION_FIELDS, roadmapActionSchema, PROPOSAL_TOOLS } from '../../packages/pi-runtime/worker.mjs';
 import { PiRuntimeHost, resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { PiConversationLease } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 import { ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
@@ -192,6 +192,31 @@ test('protected proposal session advertises bounded typed tools without command 
   } finally {
     await dispatch({ type: 'close' });
     await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi proposal schemas expose only content fields accepted by the broker', () => {
+  assert.deepEqual(Object.keys(PROPOSAL_TOOLS.proposal_status), []);
+  const document = PROPOSAL_TOOLS.proposal_stage_document.anyOf;
+  assert.deepEqual(document.map(variant => variant.properties.operation.const),
+    ['replace', 'create', 'remove']);
+  assert.deepEqual(document.map(variant => variant.required.sort()), [
+    ['path', 'operation', 'before', 'after', 'complete'].sort(),
+    ['path', 'operation', 'chunk', 'complete'].sort(),
+    ['path', 'operation', 'complete'].sort()]);
+  const prompt = PROPOSAL_TOOLS.proposal_stage_prompt.anyOf;
+  assert.deepEqual(prompt.map(variant => variant.properties.kind.const),
+    ['work', 'section', 'closeout']);
+  assert.deepEqual(prompt.map(variant => variant.required.sort()), [
+    ['target', 'kind', 'title', 'objective', 'tier', 'workingSet', 'acceptanceCriteria',
+      'validationTargets', 'complete'].sort(),
+    ['target', 'kind', 'heading', 'text', 'complete'].sort(),
+    ['target', 'kind', 'title', 'objective', 'manualReason', 'acceptanceCriteria',
+      'browserRequired', 'efficiencyAudit', 'complete'].sort()]);
+  for (const name of ['proposal_stage_document', 'proposal_stage_prompt']) {
+    for (const variant of PROPOSAL_TOOLS[name].anyOf) assert.equal(variant.additionalProperties, false);
+    for (const field of ['sequence', 'expectedRevision', 'idempotencyKey', 'digest', 'chunkIndex', 'content'])
+      assert.equal(PROPOSAL_TOOLS[name].anyOf.some(variant => field in variant.properties), false);
   }
 });
 
