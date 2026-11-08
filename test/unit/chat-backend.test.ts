@@ -105,7 +105,7 @@ test('native prompt stages save an exact review candidate and publish only after
             operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Feature discussion' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!lease.acquired) throw new Error('Lease missing');
-        for (const content of ['/prompt-ass', '/prompt-plan'])
+        for (const content of ['/prompt-ass c0-feature Build the feature', '/prompt-plan'])
             await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
                 selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,

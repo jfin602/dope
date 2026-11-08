@@ -107,6 +107,13 @@ export interface ChatUserMessage {
     content: string;
     contextRefs: ChatContextRef[];
     skill?: import('./service').ChatSkillSnapshot;
+    /** Trusted, inert identity of an unpublished named prompt draft. */
+    promptDraft?: ChatPromptDraftIdentity;
+}
+export interface ChatPromptDraftIdentity {
+    schemaVersion: 1; id: string; revision: number; slug: string;
+    projectId: string; chatId: string; userMessageId: string;
+    leaseDigest: string; sourceHead: string; sourceVersion: string; sourceFingerprint: string;
 }
 export interface ChatAssistantMessage {
     schemaVersion: 1;
@@ -524,7 +531,7 @@ function parseExecution(value: unknown): ChatExecution {
     return execution;
 }
 export function parseChatMessage(value: unknown): ChatMessage {
-    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'execution', 'activity', 'answerPartial', 'planningActivity', 'proposalProgress', 'roadmapAction', 'lockedRoadmapPlan'],
+    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'promptDraft', 'execution', 'activity', 'answerPartial', 'planningActivity', 'proposalProgress', 'roadmapAction', 'lockedRoadmapPlan'],
         ['schemaVersion', 'id', 'role', 'createdAt', 'content']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported message schema');
     const base = { schemaVersion: 1 as const, id: identifier(v.id), createdAt: time(v.createdAt), content: string(v.content, 'message content', false) };
@@ -541,7 +548,27 @@ export function parseChatMessage(value: unknown): ChatMessage {
             return { id: s.id, name: s.name, body: s.body, version: s.version as number, digest: s.digest,
                 ...(s.title ? { title: s.title } : {}), ...(s.description ? { description: s.description } : {}) };
         })();
-        return { ...base, role: 'user', contextRefs: v.contextRefs.map(parseChatContextRef), ...(skill ? { skill } : {}) };
+        const promptDraft = v.promptDraft === undefined ? undefined : (() => {
+            const draft = record(v.promptDraft, ['schemaVersion', 'id', 'revision', 'slug', 'projectId', 'chatId',
+                'userMessageId', 'leaseDigest', 'sourceHead', 'sourceVersion', 'sourceFingerprint'],
+            ['schemaVersion', 'id', 'revision', 'slug', 'projectId', 'chatId', 'userMessageId', 'leaseDigest',
+                'sourceHead', 'sourceVersion', 'sourceFingerprint']);
+            if (draft.schemaVersion !== 1 || draft.revision !== 1 ||
+                !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(draft.slug as string) ||
+                (draft.slug as string).length < 3 || (draft.slug as string).length > 32 ||
+                !/^[a-f0-9]{64}$/u.test(draft.projectId as string) ||
+                !/^[a-f0-9]{64}$/u.test(draft.leaseDigest as string) ||
+                typeof draft.sourceHead !== 'string' || typeof draft.sourceVersion !== 'string' ||
+                !/^[a-f0-9]{64}$/u.test(draft.sourceFingerprint as string) ||
+                draft.userMessageId !== base.id) throw new Error('Invalid named prompt draft identity');
+            return { schemaVersion: 1 as const, id: identifier(draft.id), revision: 1 as const,
+                slug: draft.slug as string, projectId: draft.projectId as string,
+                chatId: identifier(draft.chatId), userMessageId: base.id,
+                leaseDigest: draft.leaseDigest as string, sourceHead: draft.sourceHead,
+                sourceVersion: draft.sourceVersion, sourceFingerprint: draft.sourceFingerprint as string };
+        })();
+        return { ...base, role: 'user', contextRefs: v.contextRefs.map(parseChatContextRef),
+            ...(skill ? { skill } : {}), ...(promptDraft ? { promptDraft } : {}) };
     }
     if (v.role === 'assistant') {
         if (v.contextRefs !== undefined) throw new Error('Invalid assistant message');

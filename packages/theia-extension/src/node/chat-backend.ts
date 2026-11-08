@@ -38,7 +38,8 @@ import { prepareDocumentationReview, documentationReviewApplicability, documenta
 import { applyDocumentationProposal, reconcileDocumentationApplication } from './documentation-application';
 import { discoverDocumentation, documentationReviewObjective } from './documentation-discovery';
 import type { DocumentationReadPage } from './documentation-skill-review';
-import { promptStageCommand, priorPromptDraft, verifyPromptDraftSource, verifyPromptSourceRefs,
+import { assertPromptDraftNameAvailable, newPromptDraftIdentity, promptStageCommand, priorPromptDraft,
+    verifyPromptDraftIdentity, verifyPromptDraftSource, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
     promptStageInstruction, finishedPromptText, requestedWorkPromptCount } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
@@ -298,6 +299,8 @@ export class ChatBackend implements ChatService {
     }
     mutate(request: ChatMutation) {
         if (!request || typeof request !== 'object') throw new Error('Invalid Chat mutation');
+        if (request.operation?.type === 'append-user' && request.operation.message.promptDraft)
+            throw new Error('Named prompt draft identity is backend-owned');
         if (request.operation?.type === 'finish-assistant' && request.operation.planningActivity)
             throw new Error('Backend-only Roadmap outcome');
         return this.repository.mutate(this.active(request.projectHandle), request.expectedRevision,
@@ -1802,6 +1805,22 @@ export class ChatBackend implements ChatService {
             throw new Error('Protected prompt authoring skill identity changed; start a fresh turn');
         if (request.promptStackRevision && (promptStage?.stage !== 'prompt-write' || retryIndex >= 0))
             throw new Error('Prompt revision requires a fresh protected /prompt-write turn');
+        const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
+        const namedDraft = promptStage?.stage === 'prompt-ass' ?
+            retryIndex >= 0 ? await (async () => {
+                const draft = verifyPromptDraftIdentity(
+                    (chat.messages[retryIndex - 1] as ChatUserMessage).promptDraft,
+                    root, request.chatId, userMessageId, request.leaseToken);
+                verifyPromptDraftSourceBasis(draft, await capturePromptSourceEvidence(root));
+                return draft;
+            })() :
+                await (async () => {
+                    await assertPromptDraftNameAvailable(root, snapshot.chats, promptStage.folder!);
+                    const source = await capturePromptSourceEvidence(root);
+                    return newPromptDraftIdentity(promptStage.folder!, root, request.chatId,
+                        userMessageId, request.leaseToken, source.head, source.packageVersion,
+                        source.worktreeFingerprint);
+                })() : undefined;
         const selectedPrompt = request.promptStackRevision ?
             await this.savedPromptStack(root, request.chatId, request.leaseToken,
                 request.promptStackRevision.proposalId, request.promptStackRevision.digest) : undefined;
@@ -1826,7 +1845,15 @@ export class ChatBackend implements ChatService {
             priorPromptDraft(chat, 'prompt-plan', retryIndex >= 0 ? retryIndex - 1 : undefined) : undefined;
         if (promptStage && promptStage.stage !== 'prompt-ass' && !priorAssessment ||
             promptStage?.stage === 'prompt-write' && !priorPlan)
-            throw new Error('Complete /prompt-ass and /prompt-plan in this saved Chat before writing a stack');
+            throw new Error('Start /prompt-ass <name> <task details> and complete /prompt-plan in this saved Chat');
+        if (priorAssessment && !selectedPrompt) {
+            const identity = verifyPromptDraftIdentity(priorAssessment.user.promptDraft, root,
+                request.chatId, priorAssessment.user.id, request.leaseToken);
+            const source = await capturePromptSourceEvidence(root);
+            verifyPromptDraftSourceBasis(identity, source);
+            if (promptStage?.stage === 'prompt-write' && promptStage.folder !== identity.slug)
+                throw new Error(`Prompt task name is ${identity.slug}; start /prompt-write ${identity.slug} in this Chat`);
+        }
         if (priorAssessment && priorPlan &&
             chat.messages.findIndex(message => message.id === priorAssessment.assistant.id) >
             chat.messages.findIndex(message => message.id === priorPlan.assistant.id))
@@ -2077,7 +2104,6 @@ export class ChatBackend implements ChatService {
                     sequence: ++activitySequence, activityKind: item.kind, text: item.text });
             } catch { /* Diagnostic display cannot control execution. */ }
         };
-        const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
         let output = '';
         let partialCursor = 0;
         let partialSegments = 0;
@@ -2514,7 +2540,7 @@ export class ChatBackend implements ChatService {
                 if (!request.content?.trim()) throw new Error('Enter a message before sending');
                 const user: ChatUserMessage = { schemaVersion: 1, id: userMessageId, role: 'user',
                     createdAt: new Date().toISOString(), content: request.content.trim(), contextRefs: preview.refs,
-                    ...(skill ? { skill } : {}) };
+                    ...(skill ? { skill } : {}), ...(namedDraft ? { promptDraft: namedDraft } : {}) };
                 await mutate({ type: 'append-user', chatId: key, message: user });
             }
             const now = new Date().toISOString();

@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-skills.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
-import { finishedPromptStack, finishedPromptText, priorPromptDraft, promptStageCommand,
+import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText, newPromptDraftIdentity,
+    priorPromptDraft, promptStageCommand, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
     verifyPromptDraftSource } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 
 const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
@@ -22,7 +23,12 @@ const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[
 test('native prompt commands bind leading protected invocation and draft exact validated bytes', async () => {
     const prior = { assessment: { id: 'assessment-1', content: '# Unpublished prompt assessment\n\nDraft only. This command did not change project files or start Work.\n\nScope checked.' },
         plan: { id: 'plan-1', content: '# Unpublished prompt plan\n\nDraft only. This command did not change project files or start Work.\n\nTwo steps.' } } as never;
-    assert.deepEqual(promptStageCommand('/prompt-ass', 'prompt-ass'), { stage: 'prompt-ass' });
+    assert.deepEqual(promptStageCommand('/prompt-ass c0-feature Build a feature', 'prompt-ass'),
+        { stage: 'prompt-ass', folder: 'c0-feature', details: 'Build a feature' });
+    assert.throws(() => promptStageCommand('/prompt-ass', 'prompt-ass'), /Usage/);
+    assert.throws(() => promptStageCommand('/prompt-ass c0-feature', 'prompt-ass'), /Usage/);
+    for (const name of ['../escape', 'éclair', 'UPPER', 'a--b', 'ab', 'drafts'])
+        assert.throws(() => promptStageCommand(`/prompt-ass ${name} Do work`, 'prompt-ass'));
     assert.deepEqual(promptStageCommand('/prompt-plan review more', 'prompt-plan'), { stage: 'prompt-plan' });
     assert.equal(promptStageCommand('`/prompt-ass`', undefined), undefined);
     assert.equal(promptStageCommand('Please /prompt-ass', undefined), undefined);
@@ -74,6 +80,32 @@ test('native prompt commands bind leading protected invocation and draft exact v
     await assert.rejects(finishedPromptStack(JSON.stringify({ ...input, sourceVersion: '1.2.4' }),
         input.folderName, input.sourceVersion, prior), /source version/);
     await assert.rejects(finishedPromptStack('{oops}', input.folderName, input.sourceVersion, prior), /JSON/);
+});
+
+test('named draft rejects duplicate and canonical names, foreign owners and projects', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-named-prompt-'));
+    try {
+        const draft = newPromptDraftIdentity('c0-feature', root, randomUUID(), randomUUID(),
+            'owner-lease', 'head', '0.13.11', 'a'.repeat(64));
+        assert.equal(verifyPromptDraftIdentity(draft, root, draft.chatId, draft.userMessageId,
+            'owner-lease').id, draft.id);
+        assert.throws(() => verifyPromptDraftIdentity(draft, root + '-foreign', draft.chatId,
+            draft.userMessageId, 'owner-lease'), /another project/);
+        assert.throws(() => verifyPromptDraftIdentity(draft, root, draft.chatId,
+            draft.userMessageId, 'foreign-lease'), /owner lease/);
+        verifyPromptDraftSourceBasis(draft, { head: 'head', packageVersion: '0.13.11',
+            worktreeFingerprint: 'a'.repeat(64) });
+        assert.throws(() => verifyPromptDraftSourceBasis(draft, { head: 'new-head',
+            packageVersion: '0.13.11', worktreeFingerprint: 'a'.repeat(64) }), /source changed/);
+        assert.throws(() => verifyPromptDraftSourceBasis(draft, { head: 'head',
+            packageVersion: '0.13.12', worktreeFingerprint: 'a'.repeat(64) }), /source changed/);
+        assert.throws(() => verifyPromptDraftSourceBasis(draft, { head: 'head',
+            packageVersion: '0.13.11', worktreeFingerprint: 'b'.repeat(64) }), /source changed/);
+        await assert.rejects(assertPromptDraftNameAvailable(root, [{ messages: [
+            { role: 'user', promptDraft: draft }] } as never], 'c0-feature'), /already exists/);
+        await mkdir(join(root, 'docs', 'tasks', 'c0-feature'), { recursive: true });
+        await assert.rejects(assertPromptDraftNameAvailable(root, [], 'c0-feature'), /Task directory/);
+    } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('saved assessment is selected only from completed protected Chat and current broker-read source', async () => {

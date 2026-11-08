@@ -601,6 +601,9 @@ export class ChatRepository {
                 case 'append-user': {
                     const message = parseChatMessage(operation.message);
                     if (message.role !== 'user') throw new Error('Expected user message');
+                    if (message.promptDraft && chats.some(chat => chat.messages.some(item =>
+                        item.role === 'user' && item.promptDraft?.slug === message.promptDraft!.slug)))
+                        throw new Error(`Prompt draft name ${message.promptDraft.slug} already exists`);
                     if (chats[index]?.messages.some(item => item.role === 'assistant' &&
                         ['pending', 'streaming', 'paused-output-limit'].includes(item.execution.status)))
                         throw new Error('Resolve the active Chat execution before another user message');

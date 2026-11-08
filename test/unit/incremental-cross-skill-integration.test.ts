@@ -197,7 +197,7 @@ test('protected Prompt tools stage ten detailed dependent prompts and publish on
         composer as never, undefined, new ChatProjectGrounder({} as never));
     try {
         const owner = await chat(backend, root);
-        for (const content of ['/prompt-ass', '/prompt-plan']) await owner.turn(content);
+        for (const content of ['/prompt-ass c13-cross-skill-fixture Build the fixture', '/prompt-plan']) await owner.turn(content);
         await owner.turn('/prompt-write c13-cross-skill-fixture');
         const message = (await backend.get(owner.projectHandle, owner.chatId))!.messages.at(-1);
         assert.equal(message?.role, 'assistant');

@@ -1,5 +1,7 @@
-import { createHash } from 'node:crypto';
-import type { Chat, ChatAssistantMessage, ChatUserMessage } from '@dope/chat';
+import { createHash, randomUUID } from 'node:crypto';
+import { lstat } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { Chat, ChatAssistantMessage, ChatPromptDraftIdentity, ChatUserMessage } from '@dope/chat';
 import { composePhaseStackDraft, type ComposeStackInput, type DraftStack } from '@dope/agent-core/lib/phase-stack-composer';
 import { phaseStackFolder } from '@dope/agent-core/lib/sequence';
 import { boundPromptStage } from './chat-skills';
@@ -9,13 +11,65 @@ export type PromptStage = 'prompt-ass' | 'prompt-plan' | 'prompt-write';
 const heading = { 'prompt-ass': '# Unpublished prompt assessment',
     'prompt-plan': '# Unpublished prompt plan', 'prompt-write': '# Unpublished prompt stack draft' } as const;
 const hash = (value: string): string => createHash('sha256').update(value).digest('hex');
+const reservedSlugs = new Set(['drafts', 'docs', 'tasks', 'prompt-ass', 'prompt-plan', 'prompt-write',
+    'readme', 'index', 'new', 'current', 'latest', 'null', 'undefined']);
+
+export function promptDraftSlug(slug: string): string {
+    if (slug.length < 3 || slug.length > 32 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug) ||
+        reservedSlugs.has(slug))
+        throw new Error('Choose a unique 3–32 character lowercase task name using letters, digits and single hyphens');
+    return slug;
+}
+
+export function newPromptDraftIdentity(slug: string, root: string, chatId: string,
+    userMessageId: string, leaseToken: string, sourceHead: string, sourceVersion: string,
+    sourceFingerprint: string): ChatPromptDraftIdentity {
+    return { schemaVersion: 1, id: randomUUID(), revision: 1, slug: promptDraftSlug(slug),
+        projectId: hash(root), chatId, userMessageId, leaseDigest: hash(leaseToken), sourceHead,
+        sourceVersion, sourceFingerprint };
+}
+
+export function verifyPromptDraftIdentity(draft: ChatPromptDraftIdentity | undefined, root: string,
+    chatId: string, userMessageId: string, leaseToken: string): ChatPromptDraftIdentity {
+    if (!draft || draft.schemaVersion !== 1 || draft.revision !== 1 ||
+        draft.projectId !== hash(root) || draft.chatId !== chatId ||
+        draft.userMessageId !== userMessageId || draft.leaseDigest !== hash(leaseToken))
+        throw new Error('Named prompt draft belongs to another project, Chat or owner lease; start /prompt-ass <name> <task details>');
+    promptDraftSlug(draft.slug);
+    return draft;
+}
+
+export function verifyPromptDraftSourceBasis(draft: ChatPromptDraftIdentity,
+    source: { head: string; packageVersion: string; worktreeFingerprint: string }): void {
+    if (draft.sourceHead !== source.head || draft.sourceVersion !== source.packageVersion ||
+        draft.sourceFingerprint !== source.worktreeFingerprint)
+        throw new Error('Named prompt draft source changed; start a fresh /prompt-ass assessment');
+}
+
+export async function assertPromptDraftNameAvailable(root: string, chats: readonly Chat[], slug: string): Promise<void> {
+    promptDraftSlug(slug);
+    if (chats.some(chat => chat.messages.some(message => message.role === 'user' &&
+        message.promptDraft?.slug === slug)))
+        throw new Error(`Prompt draft name ${slug} already exists; choose a different name`);
+    try {
+        await lstat(join(root, 'docs', 'tasks', slug));
+        throw new Error(`Task directory docs/tasks/${slug} already exists; choose a different name`);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+}
 
 export function promptStageCommand(content: string, bound: PromptStage | undefined):
-    { stage: PromptStage; folder?: string } | undefined {
+    { stage: PromptStage; folder?: string; details?: string } | undefined {
     if (!bound) return undefined;
     if (!content.startsWith(`/${bound}`) || !/^\/prompt-(?:ass|plan|write)(?=\s|$)/u.test(content))
         throw new Error('Protected prompt command must be a fresh leading slash invocation');
-    if (bound !== 'prompt-write') return { stage: bound };
+    if (bound === 'prompt-ass') {
+        const match = /^\/prompt-ass[ \t]+([^\s]+)[ \t]+([\s\S]*\S)[ \t]*$/u.exec(content);
+        if (!match) throw new Error('Usage: /prompt-ass <name> <task details> — supply a new lowercase task name and description');
+        return { stage: bound, folder: promptDraftSlug(match[1]), details: match[2] };
+    }
+    if (bound === 'prompt-plan') return { stage: bound };
     const match = /^\/prompt-write\s+(\S+)(?:\s+[\s\S]*)?$/u.exec(content);
     if (!match) throw new Error('Usage: /prompt-write <folder> [revision instructions]');
     phaseStackFolder(match[1]);
@@ -68,7 +122,7 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
     const inherited = [prior.assessment && `Selected assessment ${prior.assessment.id}:\n${prior.assessment.content.slice(0, 12_000)}`,
         prior.plan && `Selected plan ${prior.plan.id}:\n${prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read relevant source and tests with read_file; report omissions. Keep the final response under 12,000 characters.';
-    if (command.stage === 'prompt-ass') return `${common}\nReturn a Markdown assessment with headings Scope, Preservation, Dependencies, Risks, Source basis, Authority, and Evidence (T1/T2/T3).`;
+    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Return a Markdown assessment with headings Scope, Preservation, Dependencies, Risks, Source basis, Authority, and Evidence (T1/T2/T3).`;
     if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn a Markdown plan with ordered steps, exact likely files, focused tests/build dependency order, manual checkpoints, explicit deferrals and prompt-efficiency decisions.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
