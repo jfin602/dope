@@ -1,0 +1,21 @@
+TASK: Correction 13 / P6 — Documentation Chat card and Documents shared review
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+PREFLIGHT
+Read docs-workflow contract current top amendment, ADR 0053, UI contract, P5 result, existing ChatDocumentationProposal/ChatPlanningActivity and chat-panel-widget.ts/controller.ts plus documentation-application.ts. Check live checkout version 0.13.11 and saved Chat lease/project owner flows.
+
+IMPLEMENT — ONE RESPONSIBILITY
+Make pending Docs Chat card compact with Open Review, Accept, Reject and Revise Proposal. Open Review explicitly navigates to the P1 Documents widget with the EXACT existing saved candidate identity (project/root, chatId, proposalId, digest) and P5 version viewer; no auto focus on proposal arrival. Both card and viewport Accept/Reject/Revise delegate to the existing authoritative controller/backend handlers, sharing the same status/in-flight state and digest checks. Keep prior selected candidate until a checked /docs-review replacement is created; no user-facing /docs-apply and no second publication manager. Handle stale/rejected/approved/recovery/history states with disabled/recoverable accurate actions after reload, project switch, cancellation and duplicate click. Preserve concise chat text and clean copy.
+
+VERIFY — T1
+Extend test/unit/chat-panel.test.ts and add a small Documents handoff test for exact candidate selection, card parity, stale/foreign/replay denial and revision draft preservation. Run test/unit/documentation-review.test.ts plus directly affected documentation-application.test.ts if backend authority changed; use only needed extension/chat builds before lib-importing tests. Avoid root aggregate and live browser. Stop BLOCKED if exposing a new writer or accepting an outdated candidate would be required.
+
+BOUNDARIES
+No unreviewed file write, no docs-apply command, no automatic History entry, no Roadmap/Work mutation, no version/commit/Run. Preserve P8 qualification history. STOP.

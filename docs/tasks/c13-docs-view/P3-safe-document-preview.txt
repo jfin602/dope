@@ -1,0 +1,21 @@
+TASK: Correction 13 / P3 — Safe Markdown and text preview
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+PREFLIGHT
+Read ADR 0053, UI contract and P1/P2 receipts. Inspect untrusted-message-markdown.ts, its DOMPurify/safe-link/code-copy boundary, existing Theia editor/Markdown services, and compiled-lib test imports. Check project scope and unchanged 0.13.11.
+
+IMPLEMENT — ONE RESPONSIBILITY
+Use the existing safe Markdown renderer or narrow safe reuse adapter in the shared Documents center pane to show selected .md files as formatted Markdown (headings, lists, tables, fenced code and copy), and .txt as literal escaped text. Add Preview / Source (read-only) switching, path/format status, safe loading/errors for unreadable/binary/oversized content, no outbound image/media fetch, scripts, unsafe HTML or privileged links. Preserve source text whitespace, wrapping, selection/copy and project-switch freshness. Do not invent a new global Markdown parser or bypass the existing sanitizer.
+
+VERIFY — T1
+Create test/unit/documents-preview.test.ts with hostile markdown/raw HTML/image/link cases and faithful .txt/source/code-copy cases. Build only changed extension output before lib-importing tests. Run the new preview tests and test/unit/message-code-copy.test.ts only if the shared renderer is modified. No browser or broad aggregate. Report actual output.
+
+BOUNDARIES
+This is view-only; editing and saving are P4, proposal diffs P5. Keep one normal Chat and provider/Work untouched. No version/commit/run. STOP.

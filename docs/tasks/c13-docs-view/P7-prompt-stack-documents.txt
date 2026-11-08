@@ -1,0 +1,21 @@
+TASK: Correction 13 / P7 — Prompt stack document review adapter
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+PREFLIGHT — MANDATORY DEPENDENCY CHECK
+Read the native prompt-stack contract and P13 recovery R3A/R3B status, this stack assessment/plan, P1/P3 and current actual source. Check whether /prompt-ass, /prompt-plan, /prompt-write and the NATIVE pending stack proposal + Accept/Reject/Revise publisher are truly implemented in the execution checkout. Remote baseline documents require these features but do not prove them shipped. Also inspect existing phase-stack-controller.ts, planning-stack-publication.ts, Work discovery and their tests. Confirm version 0.13.11.
+
+IMPLEMENT — ONE RESPONSIBILITY
+Connect the shared Documents widget to the EXISTING native pending prompt-stack proposal read model, plus published stack file metadata, displaying each exact P*.txt/README file by path and execution order, as faithful text with optional preview/copy, with Draft/Published labels and provenance. The originating native Chat proposal card gains Open Review; if present, equivalent viewport Accept/Reject/Revise must dispatch to that SAME existing guarded prompt publisher, never to Docs writer. Viewing or accepting cannot initiate Work, grant access, change started/executed prompt snapshots or award Roadmap GREEN. A published stack may open in read-only Documents even if native drafting is pending.
+
+DEPENDENCY FAIL-CLOSED
+If R3B's native proposal/card/publisher is absent, do NOT create a replacement proposal store, new publisher or optimistic fake review. Record BLOCKED / exact missing R3B dependency and stop before claiming integrated P7 PASS. Keep safe prior viewer work intact for later continuation.
+
+VERIFY — T1
+Use test/unit/phase-stack-ui.test.ts, test/unit/planning-stack-publication.test.ts and new focused prompt-stack Documents adapter tests with exact source, no-Run/grant negatives, path/digest/version and stale project. Build only affected package output before lib-importing tests. No live browser or Work Run. No version/commit. STOP.

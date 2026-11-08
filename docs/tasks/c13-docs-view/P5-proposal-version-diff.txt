@@ -1,0 +1,21 @@
+TASK: Correction 13 / P5 — Complete proposed-document compare projection
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+PREFLIGHT
+Read ADR 0053, UI contract, current ChatDocumentationProposal in packages/chat/src/index.ts, documentation-review.ts and existing chat-panel-widget.ts Docs diff. Verify current targets create/update only and 0.13.11 source.
+
+IMPLEMENT — ONE RESPONSIBILITY
+Add a pure typed Documents diff/view projection over an existing, verified project/proposal candidate. Its file explorer shows changed target paths and operation labels, with per-file Original and Proposed full-document tabs, accurate spans/anchors and a Source Diff mode that retains removed lines and meaningful whitespace. Proposed defaults to complete after-bytes, original to exact before-bytes or explicit absent-file state; copy/source view faithfully preserves text. Synthetic/verified compare fixtures may represent a deleted target, but do NOT add Docs delete operation or publish permissions: mark unsupported actual delete requests as not applicable/read-only. Historical/missing/stale proposal bytes must never appear as approvable. Avoid interpreting model-authored explanation as diff truth.
+
+VERIFY — T1
+Create test/unit/documents-diff.test.ts for create/update, replacement across Markdown boundaries, CRLF, whitespace, empty/absent file, path nesting, additions/removals, copy and old pending card. Build extension only when lib imports require; run new diff tests. Do not change documentation-review.ts/apply semantics absent a proven safety need.
+
+BOUNDARIES
+Read-only compare only; shared proposal decisions belong to P6. No per-file apply, editor write, History, grant, version/commit or Work Run. STOP.

@@ -1,6 +1,6 @@
 # ADR 0053 — Unified Documents Workspace and Proposal Review
 
-**Decision:** Accepted for documentation/planning, 2026-11-07 (America/Chicago). **State:** Forward design only; not source implementation, qualification, prompt authoring, Work authorization or version advancement. **Correction identifier:** `c13-documents-workspace`.
+**Decision:** Accepted for documentation/planning, 2026-11-07 (America/Chicago). **State:** Forward design only; not source implementation, qualification, prompt authoring, Work authorization or version advancement. **Correction identifier:** `c13-docs-view`.
 
 ## Context
 
@@ -41,7 +41,7 @@ The current **user-facing** Docs path is `/docs-review` → proposal card Accept
 
 The Documents viewport addresses an increasingly complex Chat proposal surface once; Docs Explorer and Prompt Stack Review reuse that visual/editor substrate. It does not replace the current prompt authoring pipeline or the Documentation/Work source rules. The earlier documentation-workflow UI sentence forbidding a *forced* documentation workspace still applies: this is an **optional editor**, not a gate for applying a reviewed card.
 
-The associated [UI contract](../ui/documents-workspace-contract.md) defines concrete behavior and qualification. Align [Documentation Workflow](../planning/p12/documentation-workflow-contract.md), [Native Prompt Stack Authoring](../planning/p13/native-prompt-stack-authoring-contract.md), [Architecture](../ARCHITECTURE.md), [Product Model](../PRODUCT-MODEL.md), and [workflow](../workflow.md). Any future correction stack follows `/prompt-ass -> /prompt-plan -> /prompt-write c13-documents-workspace` only after this documentation is approved, with separate owner Run and source-bound qualification. No P*.txt is authored or executed by this ADR.
+The associated [UI contract](../ui/documents-workspace-contract.md) defines concrete behavior and qualification. Align [Documentation Workflow](../planning/p12/documentation-workflow-contract.md), [Native Prompt Stack Authoring](../planning/p13/native-prompt-stack-authoring-contract.md), [Architecture](../ARCHITECTURE.md), [Product Model](../PRODUCT-MODEL.md), and [workflow](../workflow.md). Any future correction stack follows `/prompt-ass -> /prompt-plan -> /prompt-write c13-docs-view` only after this documentation is approved, with separate owner Run and source-bound qualification. No P*.txt is authored or executed by this ADR.
 
 ## Qualification boundary
 

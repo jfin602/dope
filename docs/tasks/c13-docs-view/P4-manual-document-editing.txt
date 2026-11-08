@@ -1,0 +1,21 @@
+TASK: Correction 13 / P4 — Manual project document edit and save
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+PREFLIGHT
+Read UI contract, docs-authority contract and P1–P3 results. Inspect EditorManager, Theia FileService/Monaco text model dirty/source-change/undo flows, project scope and any existing guard. Confirm unchanged 0.13.11 and no overlapping owner edits before touching source.
+
+IMPLEMENT — ONE RESPONSIBILITY
+Implement deliberate Source/Edit within ordinary Explorer mode using the existing Theia text editor and authorized filesystem save path, not an independent universal writer. Show unsaved changes, safe navigation/close behavior, read-only failures, external edits and stale write conflicts with a recoverable user choice; do not overwrite newer bytes silently. Preserve content line endings and normal editor keyboard/save/undo behavior where supported. Project switch invalidates pending save actions. Proposal review and prompt draft modes must NOT allow this generic editor save to write candidate bytes. Do not create documentation-application History records for normal manual saves.
+
+VERIFY — T1
+Add focused test/unit/documents-editing.test.ts for dirty, save, external conflict, multi-root isolation, symlink denial, no proposal bypass, and editor failure recovery. Build only changed extension output if tests load lib, run that test. Inspect resulting source of authority and avoid an unsafe custom FileService write path. STOP BLOCKED if safe editor integration cannot be done within scope.
+
+BOUNDARIES
+No Docs apply, no prompt publisher, no model tool, no Work grant/Run, no version or Git commit. Use neutral save/error UI and keyboard-focus semantics from ADR 0016/0037. STOP.

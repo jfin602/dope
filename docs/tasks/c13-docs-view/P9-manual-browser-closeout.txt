@@ -1,0 +1,21 @@
+TASK: Correction 13 / P9 — Manual Documents workspace closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+MANUAL T3 ONLY — NOT IN ORDINARY RUNNER
+This is the ONLY final closeout for c13-docs-view. Read BOOT.md, AGENTS.md, workflow, ADR 0053, Documents UI contract, assessment/plan and P1–P8 exact source receipts. Verify current actual product/head/version/dirty basis, served browser build, any native R3A/R3B prerequisite, and available connected Codex browser. Do not run via --closeout, auto-start Work, use owner project for destructive tests, or claim Electron parity from browser.
+
+REAL DOPE GUI MATRIX — DISPOSABLE PROJECT
+A. Enter Documents from the central viewport. Navigate a project with nested .md/.txt paths; verify real hierarchy, selection, Markdown headings/tables/code copy/links, .txt literal, no unsafe HTML/images, alternate theme, focus/keyboard, touch scroll and narrow panes. Edit source, dirty indicator, save/reopen, external-file conflict and project switch without losing unrelated owner edits.
+B. In existing Chat invoke a real /docs-review for 2–4 eligible create/update files (within current 4-target limit), inspect exact full Original/Proposed and source diff including whitespace/CRLF, revise via existing candidate, reject a different proposal and accept a fresh one. Confirm a single guarded approval, exact changed bytes and ONE actual-applied Project History record; no event for review/reject/manual editor save. Inspect rehydrate/reload, double-click/late response, stale/foreign/symlink/unsafe and crash/partial-recovery negatives. Current Docs writer does not authorize delete; show that it is refused, do not simulate successful removal.
+C. Only if native R3B actually exists, generate a prompt-stack draft via protected /prompt-write, open individual draft files in Documents, inspect order/source, revise/reject on separate candidates, publish by explicit existing publisher and verify Work discovery **without running Work**. If native R3B remains absent, record BLOCKED dependency, not fake PASS from an old Bridge publisher.
+D. Verify Chat stays saved/docked, Roadmap/Work navigations unchanged, all card/view decisions converge, normal Chat copy not polluted, no unintended provider egress/grants, UI errors actionable. Capture screenshots/traces and exact source/served build.
+
+REPORT AND MANUAL STOP
+Write docs/tasks/c13-docs-view/qualification/p9-documents-workspace-closeout.md with exact served SHA/product version, browser/native mode, separate T3 PASS/FAIL/BLOCKED/EVIDENCE GAP per case, screenshots/interaction/actual files, approval/application identities, changed before/after Git status, and explicit remaining risks. Re-run only invalidated tests after narrow repair; no aggregate unless justified on the final SHA and never duplicate nested check commands. Do not claim product GREEN when any mandatory safety, UI, Docs or prompt adapter gap remains. Preserve P13 original P8/P9/P12 and historical NOT GREEN. No automatic Phase closeout, Work Run, version or Git commit. STOP.

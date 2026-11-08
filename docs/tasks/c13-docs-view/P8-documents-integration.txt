@@ -1,0 +1,26 @@
+TASK: Correction 13 / P8 — Documents cross-boundary integration gate
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+PREFLIGHT
+Inspect actual P1–P7 source changes, receipts, current owner HEAD/dirty basis and coherent 0.13.11. Do not treat runner PASS commits as technical GREEN; P7 may have a recorded missing R3B dependency. Read existing Docs/Chat/Work owner contracts and focused test entry points. Inspect package.json nested scripts and compiled lib needs.
+
+IMPLEMENT / VERIFY — T2 INTEGRATION ONLY
+Repair ONLY reproducible integration defects needed by this correction, then run a bounded source-bound regression matrix:
+- normal Docs tree/filter, Markdown/text safe preview, manual edit/save/conflict and external stale bytes;
+- Docs multi-file create/update proposal complete original/proposed/source diff, shared card/viewport Accept/Reject/Revise, exact digest and one applied-only History record for actual verified changes;
+- stale, foreign, symlink/traversal, delete-not-authorized, oversized, dirty worktree, project switch, rehydrate/restart, duplicate click and interrupted/partial recovery, no unsafe writes;
+- prompt-stack native candidate when R3B genuinely exists, separate guarded publisher, saved/published stack browsing, exact P ordering and zero automatic Work Run/Grant/Gate GREEN;
+- Chat transcript/copy, Roadmap navigation and Work discovery remain intact, narrow/keyboard structural checks.
+
+VERIFY
+Build only the changed package outputs in dependency order (typically extension; build @dope/chat first only if changed). Use one intentional node --test invocation including new documents-*.test.ts and relevant existing chat-panel, documentation-review, documentation-application, phase-stack-ui, planning-stack-publication tests; add message-code-copy, dope-theme or explorer tests only when their behavior changed. Do not add npm run check / npm test / packaging as boilerplate or run tests against stale lib. Keep T3 actual rendered browser work for P9. Log exact commands/versions/source, counts, failures and remaining gaps. A missing native R3B or any write-security failure is BLOCKED/NOT GREEN; do not advance to P9 as though complete.
+
+BOUNDARIES
+No new owners, Docs delete publisher, Work execution or version change. Preserve original P13 P8/P9/P12 history and evidence. No self-commit; STOP.

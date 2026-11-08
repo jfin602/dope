@@ -1,0 +1,21 @@
+TASK: Correction 13 / P2 — Bounded project documentation tree
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+PREFLIGHT
+Read the approved Documents UI contract, stack assessment/plan and actual P1 result. Inspect existing WorkspaceService, FileService, navigator/search component and documentation-discovery.ts to distinguish ordinary explorer listing from AI /docs-review corpus search. Verify current project/root/dirty basis and unchanged 0.13.11.
+
+IMPLEMENT — ONE RESPONSIBILITY
+Populate the P1 left explorer in normal Explorer mode with a bounded/lazy, project-scoped hierarchical list of real .md/.txt files, showing actual project-relative paths. Folder expand/collapse, selected file, loading, no-docs, excluded/permission failure and long-name behavior must be explicit. Prevent symlink/outside-root traversal and ignore late reads after project switch. Do not walk or read full text corpus per Chat turn; on-demand tree/list only, no model call. Keep existing full Explorer untouched and do not assume filename suffix confers file-write permission.
+
+VERIFY — T1
+Add nested-root/multiple-project/extension filtering/hidden-or-symlink/error/late-switch fixtures in test/unit/documents-workspace.test.ts or one narrow adjacent test. Build affected extension compiled output when the test imports lib and run that file only (plus directly affected navigator regression if modified). Confirm no scanning for every Chat turn. Stop on unsafe root handling.
+
+BOUNDARIES
+No preview renderer, editor save, proposal publication, Work Run, version or commit change. Use accessible keyboard tree navigation and semantic theme tokens. Report results and STOP.

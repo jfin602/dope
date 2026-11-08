@@ -1,0 +1,21 @@
+TASK: Correction 13 / P1 — Documents central viewport shell
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction source only; do not change package manifests, internal version pins or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0053, docs/ui/documents-workspace-contract.md and this correction assessment/plan. Check actual local HEAD, git dirty state and coherent 0.13.11; protect owner work. Inspect frontend-module.ts main-widget/command patterns, WorkspaceService and dope.css/theme tokens before changing source.
+
+IMPLEMENT — ONE RESPONSIBILITY
+Add ONE optional Documents center widget and discoverable open command/viewport affordance, reusing existing Theia WidgetFactory/WidgetManager/ApplicationShell (area: main). Hold only typed presentation state: explorer | docs-proposal | prompt-stack mode, project identity, selected path/candidate identity, pending/error/empty status. Render a compact resizable left tree shell and center content shell with keyboard focus and narrow widths; wire no filesystem writes or proposal publishing. Reopen/project switch must not rehydrate stale candidate authority. Keep the existing docked saved Chat and Roadmap/Work widgets unchanged.
+
+VERIFY — T1
+Add focused widget registration/state and project-switch tests in test/unit/documents-workspace.test.ts; keep test/unit/explorer-roadmap-navigation.test.ts passing. Build only @dope/theia-extension when its compiled lib is imported, then run those tests. Do not use a browser, npm run check or packaged Electron here. Record source and exact results. If integration requires a second workspace owner or unsafe project state, stop BLOCKED.
+
+BOUNDARIES
+One UI shell only; no docs tree scan, viewer content, manual editing, proposal apply, prompt stack write, new store, Work Run, Git commit or version bump. Use current Theia/Dope semantic tokens and accessible controls. Do not auto-run the next prompt. STOP.
