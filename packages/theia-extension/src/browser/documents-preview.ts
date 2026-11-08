@@ -66,6 +66,10 @@ export function renderDocumentPreview(format: DocumentFormat, text: string): HTM
     rendered.classList.add('dope-documents-markdown');
     for (const link of rendered.querySelectorAll('a[href]')) {
         if (!safeDocumentLink(link.getAttribute('href')!)) link.removeAttribute('href');
+        else {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+        }
     }
     return rendered;
 }

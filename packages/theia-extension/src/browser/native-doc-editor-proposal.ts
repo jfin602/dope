@@ -2,7 +2,7 @@ import { injectable } from '@theia/core/shared/inversify';
 import URI from '@theia/core/lib/common/uri';
 import { ResourceResolver, type Resource } from '@theia/core/lib/common/resource';
 import { DiffUris } from '@theia/core/lib/browser/diff-uris';
-import { ApplicationShell, BaseWidget, Widget, Message } from '@theia/core/lib/browser';
+import { ApplicationShell, BaseWidget, Widget, Message, codicon } from '@theia/core/lib/browser';
 import { MonacoEditorProvider } from '@theia/monaco/lib/browser/monaco-editor-provider';
 import type { MonacoEditor } from '@theia/monaco/lib/browser/monaco-editor';
 import { MonacoDiffEditor } from '@theia/monaco/lib/browser/monaco-diff-editor';
@@ -56,6 +56,7 @@ export class ProposalDocumentWidget extends BaseWidget {
     private readonly footer = document.createElement('nav');
     private readonly statusNode = document.createElement('p');
     private readonly editors = new Map<'original' | 'proposed' | 'diff', MonacoEditor>();
+    private visibleEditor?: MonacoEditor;
 
     constructor(snapshot: ProposalTabSnapshot, private readonly provider: MonacoEditorProvider,
         private readonly resources: ProposalDocumentResources) {
@@ -63,8 +64,9 @@ export class ProposalDocumentWidget extends BaseWidget {
         this.snapshot = snapshot;
         this.selection = new ProposalTabSelection(snapshot);
         this.id = `dope-proposal-editor:${proposalTabKey(snapshot.identity)}`;
-        this.title.label = `${snapshot.identity.path.split('/').pop()} (Proposal)`;
-        this.title.caption = `${snapshot.identity.path} · ${snapshot.status} · read-only`;
+        this.title.label = snapshot.identity.path.split('/').pop() ?? snapshot.identity.path;
+        this.title.iconClass = codicon('diff');
+        this.title.caption = `${snapshot.identity.path.split('/').join(' › ')} · ${snapshot.status} · read-only`;
         this.title.closable = true;
         this.addClass('dope-proposal-document-editor');
         this.body.className = 'dope-proposal-editor-body';
@@ -77,8 +79,9 @@ export class ProposalDocumentWidget extends BaseWidget {
 
     invalidate(): void { this.selection.invalidateForProject(undefined); this.render(); }
     setStatus(status: ProposalViewStatus): void {
+        if (this.snapshot.status === status) return;
         this.snapshot.status = status;
-        this.title.caption = `${this.snapshot.identity.path} · ${status} · read-only`;
+        this.title.caption = `${this.snapshot.identity.path.split('/').join(' › ')} · ${status} · read-only`;
         this.render();
     }
 
@@ -102,6 +105,8 @@ export class ProposalDocumentWidget extends BaseWidget {
     }
 
     private render(): void {
+        this.visibleEditor?.handleVisibilityChanged(false);
+        this.visibleEditor = undefined;
         this.footer.replaceChildren();
         this.body.replaceChildren();
         this.statusNode.textContent = this.selection.invalid ? 'Wrong project · proposal view unavailable' :
@@ -130,7 +135,6 @@ export class ProposalDocumentWidget extends BaseWidget {
             else if (text.length > 1_000_000) formatted.textContent = 'Document is too large to format.';
             else {
                 const view = renderDocumentPreview('md', text);
-                for (const link of view.querySelectorAll('a[href]')) link.removeAttribute('href');
                 formatted.append(view);
             }
             this.body.append(formatted);
@@ -138,8 +142,17 @@ export class ProposalDocumentWidget extends BaseWidget {
             this.body.textContent = 'Original absent — this is a new file.';
         } else {
             const editor = this.editors.get(this.selection.mode === 'diff' ? 'diff' : this.selection.version);
-            if (editor) { this.body.append(editor.node); this.resizeEditor(editor); }
+            if (editor) {
+                this.body.append(editor.node);
+                if (this.isAttached && this.isVisible) this.showEditor(editor);
+            }
         }
+    }
+
+    private showEditor(editor: MonacoEditor): void {
+        editor.handleVisibilityChanged(true);
+        this.visibleEditor = editor;
+        this.resizeEditor(editor);
     }
 
     private resizeEditor(editor: MonacoEditor): void {
@@ -148,7 +161,12 @@ export class ProposalDocumentWidget extends BaseWidget {
     }
     protected override onAfterShow(msg: Message): void {
         super.onAfterShow(msg);
-        for (const editor of this.editors.values()) if (editor.node.isConnected) this.resizeEditor(editor);
+        for (const editor of this.editors.values()) if (editor.node.isConnected) this.showEditor(editor);
+    }
+    protected override onAfterHide(msg: Message): void {
+        this.visibleEditor?.handleVisibilityChanged(false);
+        this.visibleEditor = undefined;
+        super.onAfterHide(msg);
     }
     protected override onResize(msg: Widget.ResizeMessage): void {
         super.onResize(msg);
@@ -180,8 +198,22 @@ export class ProposalDocumentTabs {
         const proposal = candidate.proposal;
         if (!proposal || candidate.status === 'missing' || candidate.projectRoot !== proposal.root)
             throw new Error('Checked proposal bytes are unavailable for this project');
-        const status: ProposalViewStatus = candidate.status === 'applicable' ? 'applicable' : 'stale';
+        const status: ProposalViewStatus = candidate.status === 'applicable' ? 'pending' : 'stale';
         return this.openSnapshot(proposalSnapshot(proposal, path, status));
+    }
+
+    syncStatus(proposal: ChatDocumentationProposal, activityStatus: string): void {
+        const status: ProposalViewStatus = activityStatus === 'pending' ? 'pending' :
+            activityStatus === 'applied' ? 'accepted' : activityStatus === 'denied' ? 'rejected' :
+            activityStatus === 'superseded' ? 'revised' : activityStatus === 'stale' ? 'stale' :
+            activityStatus === 'approved' || activityStatus === 'failed' ? 'partial-recovery' : 'unavailable';
+        for (const widget of this.shell.mainPanel.widgets()) {
+            if (widget instanceof ProposalDocumentWidget &&
+                widget.snapshot.identity.root === proposal.root &&
+                widget.snapshot.identity.proposalId === proposal.id &&
+                widget.snapshot.identity.digest === proposal.digest && !widget.isDisposed)
+                widget.setStatus(status);
+        }
     }
 
     /** Saved Chat history may retain bytes after rejection or recovery; this remains viewing only. */

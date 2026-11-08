@@ -1,7 +1,7 @@
 import type { ChatDocumentationProposal } from '@dope/chat';
 import { nativeDocumentFormat, type NativeDocumentFormat, type NativeDocumentMode } from './native-doc-editor-modes';
 
-export type ProposalViewStatus = 'applicable' | 'stale' | 'rejected' | 'revised' | 'partial-recovery' |
+export type ProposalViewStatus = 'pending' | 'applicable' | 'stale' | 'rejected' | 'revised' | 'partial-recovery' |
     'accepted' | 'expired' | 'wrong-project' | 'unavailable';
 export interface ProposalTabIdentity {
     root: string; worktreeId: string; ownerId: string; proposalId: string;

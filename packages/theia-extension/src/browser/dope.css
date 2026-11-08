@@ -1,32 +1,8 @@
 .dope-ai-launcher { width: 100%; border: 0; padding: 0; color: inherit; background: transparent; cursor: pointer; position: relative; }
-.dope-documents { box-sizing: border-box; display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; color: var(--theia-editor-foreground); background: var(--theia-editor-background); font-family: var(--theia-ui-font-family); }
-.dope-documents > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--theia-widget-border); }
-.dope-documents h2, .dope-documents h3 { margin: 0; font-size: 14px; }
-.dope-documents-project { min-width: 0; overflow-wrap: anywhere; color: var(--theia-descriptionForeground); }
-.dope-documents-mode { margin-inline-start: auto; color: var(--theia-descriptionForeground); }
-.dope-documents-body { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; }
-.dope-documents-body > aside { box-sizing: border-box; flex: 0 0 auto; width: clamp(8rem, 24%, 18rem); min-width: 6rem; max-width: 65%; resize: horizontal; overflow: auto; padding: 10px; border-right: 1px solid var(--theia-widget-border); }
-.dope-documents-body > main { box-sizing: border-box; flex: 1 1 auto; min-width: 0; overflow: auto; padding: 10px 14px; }
-.dope-documents-tree, .dope-documents-content { min-height: 3rem; padding: 6px 0; overflow-wrap: anywhere; }
-.dope-documents-view-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.dope-documents-view-controls button { padding: 4px 9px; border: 1px solid var(--theia-widget-border); border-radius: 4px; color: var(--theia-editor-foreground); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); cursor: pointer; }
-.dope-documents-view-controls button[aria-pressed="true"] { border-color: var(--theia-focusBorder); font-weight: 700; }
-.dope-documents-literal, .dope-documents-source { white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; font: 13px/1.5 var(--theia-code-font-family, monospace); user-select: text; }
-.dope-documents-compare { max-width: 100%; overflow-x: auto; white-space: pre; overflow-wrap: normal; }
-.dope-documents-compare [data-kind="added"] { background: var(--theia-diffEditor-insertedTextBackground, rgba(50, 150, 80, .2)); }
-.dope-documents-compare [data-kind="removed"] { background: var(--theia-diffEditor-removedTextBackground, rgba(180, 75, 65, .2)); }
-.dope-documents-compare [data-unterminated="true"] { display: block; }
-.dope-documents-compare [data-unterminated="true"]::after { content: ' ⟵ no line ending'; color: var(--theia-descriptionForeground); font-size: .85em; }
 .dope-documents-markdown { min-width: 0; line-height: 1.5; user-select: text; }
 .dope-documents-markdown table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
 .dope-documents-markdown th, .dope-documents-markdown td { border: 1px solid var(--theia-widget-border); padding: 4px 8px; }
 .dope-documents-markdown pre { overflow-x: auto; white-space: pre; overflow-wrap: normal; }
-.dope-documents-tree-row { box-sizing: border-box; display: block; width: 100%; padding: 4px 6px 4px calc(6px + var(--dope-documents-depth) * 12px); border-radius: 3px; overflow-wrap: anywhere; cursor: pointer; }
-.dope-documents-tree-row:hover { background: var(--theia-list-hoverBackground); }
-.dope-documents-tree-row[aria-selected="true"] { background: var(--theia-editor-background); color: var(--theia-editor-foreground); box-shadow: inset 0 0 0 1px var(--theia-focusBorder); font-weight: 600; }
-.dope-documents-tree-notice { margin: 3px 0; color: var(--theia-descriptionForeground); overflow-wrap: anywhere; }
-.dope-documents [tabindex]:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }
-@media (max-width: 440px) { .dope-documents-body > aside { width: 7rem; min-width: 5rem; } .dope-documents-body > main { padding: 8px; } }
 .dope-roadmap-canvas { box-sizing: border-box; height: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; color: var(--theia-editor-foreground); background: var(--theia-editor-background); font-family: var(--theia-ui-font-family); }
 .dope-roadmap-canvas > header { display: flex; flex: none; flex-wrap: nowrap; align-items: center; gap: 4px; min-width: 0; padding: 4px 6px; overflow-x: auto; border-bottom: 1px solid var(--theia-widget-border); }
 .dope-roadmap-canvas h2 { margin: 0; font-size: 18px; }
@@ -1449,6 +1425,13 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-proposal-history .dope-chat-proposal-diagnostic { margin-top: 6px; color: var(--proposal-accent); line-height: 1.4; }
 .dope-chat-proposal-history details { margin-top: 3px; }
 .dope-chat-documentation-discovery { padding: 5px 0; }
+.dope-chat-documentation-file-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.dope-chat-documentation-file-heading p { flex: 1 1 auto; }
+.dope-chat-documentation-file-heading button { font-size: 11px; padding: 2px 6px; }
+.dope-chat-documentation-files { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.dope-chat-documentation-files button { padding: 0; border: 0; background: transparent; color: var(--theia-textLink-foreground); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.dope-chat-documentation-files button:hover { text-decoration: underline; }
+.dope-chat-documentation-files button:disabled { color: var(--theia-descriptionForeground); cursor: default; }
 .dope-chat-documentation-discovery summary { font-weight: 600; cursor: pointer; }
 .dope-chat-documentation-discovery table { width: 100%; border-collapse: collapse; margin: 5px 0; font-size: 11px; }
 .dope-chat-documentation-discovery :is(th, td) { text-align: left; border-bottom: 1px solid var(--theia-panel-border); padding: 3px 5px; }
@@ -1583,7 +1566,7 @@ body.theia-light:not(.dope-dark) {
 .dope-proposal-document-editor { position: relative; min-width: 0; min-height: 0; background: var(--theia-editor-background); }
 .dope-proposal-document-editor > [role="status"] { position: absolute; inset: 0 0 auto; box-sizing: border-box; height: 30px; padding: 5px 12px; margin: 0; color: var(--theia-descriptionForeground); background: var(--theia-editor-background); border-bottom: 1px solid var(--theia-widget-border); }
 .dope-proposal-editor-body { position: absolute; inset: 30px 0 38px; overflow: hidden; }
-.dope-proposal-editor-body > .monaco-editor { width: 100%; height: 100%; }
+.dope-proposal-editor-body > div { width: 100%; height: 100%; }
 .dope-proposal-editor-body > .dope-native-document-formatted { inset: 0; }
 .dope-native-document-modes { position: absolute; z-index: 2; inset: auto 0 0; box-sizing: border-box; height: 38px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 8px; border-top: 1px solid var(--theia-widget-border); background: var(--theia-editor-background); }
 .dope-native-document-modes button { min-width: 58px; min-height: 28px; padding: 3px 8px; border: 1px solid transparent; border-radius: 4px; color: var(--theia-editor-foreground); background: transparent; font: inherit; cursor: pointer; }

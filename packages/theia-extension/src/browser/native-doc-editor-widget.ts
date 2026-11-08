@@ -4,6 +4,8 @@ import URI from '@theia/core/lib/common/uri';
 import { Widget, Message } from '@theia/core/lib/browser';
 import { EditorWidget } from '@theia/editor/lib/browser/editor-widget';
 import { EditorWidgetFactory } from '@theia/editor/lib/browser/editor-widget-factory';
+import { EditorPreviewWidget } from '@theia/editor-preview/lib/browser/editor-preview-widget';
+import { EditorPreviewWidgetFactory } from '@theia/editor-preview/lib/browser/editor-preview-widget-factory';
 import type { TextEditor } from '@theia/editor/lib/browser/editor';
 import { renderDocumentPreview } from './documents-preview';
 import { nativeDocumentFormat, nativeDocumentModes, type NativeDocumentFormat, type NativeDocumentMode } from './native-doc-editor-modes';
@@ -12,7 +14,7 @@ const FOOTER_HEIGHT = 38;
 const MAX_FORMATTED_CHARACTERS = 1_000_000;
 
 /** The normal Theia file editor remains the save, undo and source owner. */
-export class NativeDocumentEditorWidget extends EditorWidget {
+export class NativeDocumentEditorWidget extends EditorPreviewWidget {
     private readonly footer = document.createElement('nav');
     private readonly formatted = document.createElement('div');
     private mode: NativeDocumentMode = 'source';
@@ -70,10 +72,8 @@ export class NativeDocumentEditorWidget extends EditorWidget {
             this.formatted.textContent = 'Document is too large to format.';
             return;
         }
-        // Reuse the existing untrusted Markdown boundary. Links are inert in this
-        // preview: document content never triggers navigation or resource loads.
+        // The shared renderer removes unsafe URLs and active resources.
         const documentView = renderDocumentPreview('md', text);
-        for (const link of documentView.querySelectorAll('a[href]')) link.removeAttribute('href');
         this.formatted.replaceChildren(documentView);
     }
 
@@ -98,6 +98,16 @@ export class NativeDocumentEditorWidget extends EditorWidget {
 @injectable()
 export class NativeDocumentEditorWidgetFactory extends EditorWidgetFactory {
     protected override async constructEditor(uri: URI): Promise<EditorWidget> {
+        const format = nativeDocumentFormat(uri.scheme, uri.path.toString());
+        if (!format) return super.constructEditor(uri);
+        return new NativeDocumentEditorWidget(await this.editorProvider(uri), this.selectionService, format);
+    }
+}
+
+/** Explorer opens through EditorPreviewManager, which uses this factory ID. */
+@injectable()
+export class NativeDocumentPreviewWidgetFactory extends EditorPreviewWidgetFactory {
+    protected override async constructEditor(uri: URI): Promise<EditorPreviewWidget> {
         const format = nativeDocumentFormat(uri.scheme, uri.path.toString());
         if (!format) return super.constructEditor(uri);
         return new NativeDocumentEditorWidget(await this.editorProvider(uri), this.selectionService, format);

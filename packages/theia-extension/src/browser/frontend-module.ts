@@ -16,7 +16,8 @@ import { ServiceConnectionProvider } from '@theia/core/lib/browser/messaging/ser
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
 import { EditorWidgetFactory } from '@theia/editor/lib/browser/editor-widget-factory';
-import { NativeDocumentEditorWidgetFactory } from './native-doc-editor-widget';
+import { EditorPreviewWidgetFactory } from '@theia/editor-preview/lib/browser/editor-preview-widget-factory';
+import { NativeDocumentEditorWidgetFactory, NativeDocumentPreviewWidgetFactory } from './native-doc-editor-widget';
 import { ProposalDocumentResources, ProposalDocumentTabs } from './native-doc-editor-proposal';
 import { ResourceResolver } from '@theia/core/lib/common/resource';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
@@ -67,7 +68,6 @@ import { HistoryWidget, HISTORY_WIDGET_ID } from './history-widget';
 import { HistoryFocusContribution } from './history-focus-contribution';
 import { historyOwnerNavigation } from './history-owner-navigation';
 import { RoadmapCanvasWidget, ROADMAP_CANVAS_ID } from './roadmap-canvas-widget';
-import { DocumentsWidget, DOCUMENTS_WIDGET_ID } from './documents-widget';
 import { checkedDocumentationHandoff } from './documentation-handoff';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
@@ -164,6 +164,7 @@ class RightHistoryLauncher extends AbstractViewContribution<HistoryWidget> imple
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     rebind(EditorWidgetFactory).to(NativeDocumentEditorWidgetFactory).inSingletonScope();
+    rebind(EditorPreviewWidgetFactory).to(NativeDocumentPreviewWidgetFactory).inSingletonScope();
     bind(ProposalDocumentResources).toSelf().inSingletonScope();
     bind(ResourceResolver).toService(ProposalDocumentResources);
     bind(ProposalDocumentTabs).toSelf().inSingletonScope();
@@ -301,15 +302,6 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             const manager = context.container.get(WidgetManager);
             const shell = context.container.get(ApplicationShell);
             const widget = await manager.getOrCreateWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID);
-            if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
-            await shell.activateWidget(widget.id);
-        } }) })).inSingletonScope();
-    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
-        commands.registerCommand({ id: 'dope.documents.open', label: 'Dope: Open Documents' }, { execute: async () => {
-            const manager = context.container.get(WidgetManager);
-            const shell = context.container.get(ApplicationShell);
-            const widget = await manager.getOrCreateWidget<DocumentsWidget>(DOCUMENTS_WIDGET_ID);
-            await widget.openExplorer();
             if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
             await shell.activateWidget(widget.id);
         } }) })).inSingletonScope();
@@ -530,9 +522,6 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 inspector.setSnapshot(handoff.workspace, result as unknown as RoadmapIndex);
                 return `Linked ${review.items.length} WorkItems to locked Phase ${handoff.title}. No Work started.`;
             }) })).inSingletonScope();
-    bind(WidgetFactory).toDynamicValue(context => ({ id: DOCUMENTS_WIDGET_ID, createWidget: () =>
-        new DocumentsWidget(context.container.get(WorkspaceService), context.container.get(FileService),
-            context.container.get(EditorManager)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),
             context.container.get(RoadmapInspectorModel),
@@ -702,24 +691,23 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 const snapshot = await readLatest();
                 await widget.presentLiveChatStage(uri, { projectHandle: '', kind: 'roadmap-stage',
                     chatId: snapshot.chatId, messageId: snapshot.turnId, snapshot });
-            }, async (uri, owner, proposalId, digest) => {
+            }, async (uri, owner, proposalId, digest, paths) => {
                 const roots = await context.container.get(WorkspaceService).roots;
                 if (roots.length !== 1 || roots[0].resource.toString() !== uri || owner.workspace !== uri)
                     throw new Error('Project changed before Documents review');
                 return checkedDocumentationHandoff(owner, uri, proposalId, digest, async candidate => {
-                    const widget = await context.container.get(WidgetManager)
-                        .getOrCreateWidget<DocumentsWidget>(DOCUMENTS_WIDGET_ID);
-                    await widget.refreshProject();
-                    const latestRoots = await context.container.get(WorkspaceService).roots;
-                    if (latestRoots.length !== 1 || latestRoots[0].resource.toString() !== uri ||
-                        !owner.currentDocumentationProposal(proposalId, digest) ||
-                        !widget.showDocumentationCompare(uri, candidate, owner))
-                        throw new Error('Documentation proposal or project changed before navigation');
-                    if (!widget.isAttached) await context.container.get(ApplicationShell).addWidget(widget, { area: 'main' });
-                    await context.container.get(ApplicationShell).activateWidget(widget.id);
-                    return widget;
+                    if (!paths.length) throw new Error('No proposal files are available');
+                    const tabs = context.container.get(ProposalDocumentTabs);
+                    let firstId: string | undefined;
+                    for (const path of paths) {
+                        if (owner.workspace !== uri || !owner.currentDocumentationProposal(proposalId, digest))
+                            throw new Error('Documentation proposal changed during navigation');
+                        const tab = await tabs.open(candidate, path);
+                        firstId ??= tab.id;
+                    }
+                    if (firstId) await context.container.get(ApplicationShell).activateWidget(firstId);
                 });
-            });
+            }, (proposal, status) => context.container.get(ProposalDocumentTabs).syncStatus(proposal, status));
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

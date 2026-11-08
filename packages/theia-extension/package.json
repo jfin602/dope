@@ -30,6 +30,7 @@
     "keytar": "7.9.0",
     "@theia/core": "1.75.0",
     "@theia/editor": "1.75.0",
+    "@theia/editor-preview": "1.75.0",
     "@theia/filesystem": "1.75.0",
     "@theia/file-search": "1.75.0",
     "@theia/navigator": "1.75.0",

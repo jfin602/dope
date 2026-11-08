@@ -11,7 +11,8 @@ import { FileDialogService } from '@theia/filesystem/lib/browser/file-dialog/fil
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import type { ChatOperation } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
-import { CHAT_COLORS, type ChatSettings, type ChatModelSelection, type ChatAssistantMessage } from '@dope/chat';
+import { CHAT_COLORS, type ChatSettings, type ChatModelSelection, type ChatAssistantMessage,
+    type ChatDocumentationProposal } from '@dope/chat';
 import type { ChatContextSelection, ChatEvent, ChatPlanningProposal } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
@@ -37,7 +38,6 @@ import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
 import { panelFocusTarget } from './history-focus-target';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 import { ReasoningRevealBuffer } from './reasoning-reveal';
-import type { DocumentsWidget } from './documents-widget';
 
 function copyChatText(text: string): Promise<void> {
     // Keep the copy command inside the click gesture. Some desktop browser
@@ -73,7 +73,6 @@ function appendSkillText(target: HTMLElement, content: string,
 }
 
 export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
-    private viewedDocuments?: DocumentsWidget;
     private readonly copyMenu = new ChatCopyContextMenu();
     private readonly copyFeedbackTimers = new WeakMap<HTMLElement, {
         timer: ReturnType<typeof setTimeout>; label: string | null; title: string | null }>();
@@ -313,7 +312,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly viewLiveRoadmapStage?: (uri: string,
             readLatest: () => Promise<NonNullable<ChatPanelController['roadmapStage']>>) => Promise<void>,
         private readonly openDocumentationReview?: (uri: string, owner: ChatPanelController,
-            proposalId: string, digest: string) => Promise<DocumentsWidget>) {
+            proposalId: string, digest: string, paths: string[]) => Promise<void>,
+        private readonly syncDocumentationTabs?: (proposal: ChatDocumentationProposal, status: string) => void) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -325,7 +325,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.id !== workLauncherIds.left && this.id !== workLauncherIds.right;
         this.addClass('dope-chat-panel');
         this.controller = new ChatPanelController(connect, kind => {
-            this.viewedDocuments?.refreshReview();
+            for (const message of this.controller.chat?.messages ?? []) {
+                if (message.role === 'assistant' && message.planningActivity?.kind === 'documentation-proposal' &&
+                    message.planningActivity.documentProposal)
+                    this.syncDocumentationTabs?.(message.planningActivity.documentProposal,
+                        message.planningActivity.status);
+            }
             if (kind === 'activity' && !this.transcriptTouchActive && !this.transcriptTouchSettleTimer &&
                 this.updateLiveStreamActivity()) return;
             if (kind === 'answer' && !this.transcriptTouchActive && !this.transcriptTouchSettleTimer) {
@@ -708,8 +713,32 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 activity.status === 'applied' ? 'Applied' : activity.status}`;
             card.append(heading);
             const summary = document.createElement('p');
-            summary.textContent = `${activity.documentProposal.targets.length} proposed file change(s)`;
-            card.append(summary);
+            summary.textContent = `Affected files (${activity.documentProposal.targets.length})`;
+            const fileHeading = document.createElement('div');
+            fileHeading.className = 'dope-chat-documentation-file-heading';
+            fileHeading.append(summary);
+            const canOpen = activity.status === 'pending' && !!this.openDocumentationReview &&
+                this.controller.canDecideDocumentation(activity.proposalId!, activity.documentProposal.digest);
+            const openFiles = (paths: string[]) => {
+                const uri = this.controller.workspace;
+                if (!uri || !this.openDocumentationReview) return;
+                void this.openDocumentationReview(uri, this.controller, activity.proposalId!,
+                    activity.documentProposal!.digest, paths).catch(error => {
+                    this.controller.planningProposalError = `Documentation review unavailable: ${String(error)}`;
+                    this.render();
+                });
+            };
+            if (activity.status === 'pending') fileHeading.append(this.button('Open All Files',
+                () => openFiles(activity.documentProposal!.targets.map(target => target.path)), !canOpen));
+            card.append(fileHeading);
+            const files = document.createElement('div');
+            files.className = 'dope-chat-documentation-files';
+            for (const target of activity.documentProposal.targets) {
+                const link = this.button(target.path, () => openFiles([target.path]), !canOpen);
+                link.title = target.path;
+                files.append(link);
+            }
+            card.append(files);
             if (activity.documentationDiscovery) {
                 const discovery = activity.documentationDiscovery;
                 const section = document.createElement('details');
@@ -763,13 +792,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (activity.status !== 'applied') card.append(note);
             if (activity.status === 'pending') {
                 card.append(this.button('Open Review', () => {
-                    const uri = this.controller.workspace;
-                    if (!uri || !this.openDocumentationReview) return;
-                    void this.openDocumentationReview(uri, this.controller, activity.proposalId!,
-                        activity.documentProposal!.digest).then(widget => { this.viewedDocuments = widget; }, error => {
-                            this.controller.planningProposalError = `Documentation review unavailable: ${String(error)}`;
-                            this.render();
-                        });
+                    openFiles(activity.documentProposal!.targets.slice(0, 1).map(target => target.path));
                 }, !this.openDocumentationReview || !this.controller.canDecideDocumentation(
                     activity.proposalId!, activity.documentProposal.digest)));
                 card.append(this.button('Accept',
