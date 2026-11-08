@@ -1,0 +1,21 @@
+TASK: Correction 13 / P3 — Incremental Prompt Stack drafting and deterministic assembly
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only: no manifest, workspace, lockfile or project-version bump.
+
+PREFLIGHT
+Read ADR 0055, shared contract, docs/workflow.md Prompt Efficiency Gate, this stack plan and P1/P2 evidence. Inspect actual prompt-authoring-stage.ts, priorPromptDraft/verifyPromptSourceRefs, phase-stack-composer.ts and importer/sequence grammar; inspect the real completed R3B saved proposal owner, guarded publisher and current Work discovery. Confirm R3B is qualified in its original bounded scope; if missing STOP BLOCKED, never build a competing publisher. Preserve user data and completed prompt snapshots.
+
+GOAL — T1: ONE PROMPT DOMAIN ADAPTER
+Make incremental proposal_stage_prompt the DEFAULT /prompt-write <folder> generator, using verified saved /prompt-ass and /prompt-plan context and current source identities. Stage one bounded stable plan-step metadata payload or a defined detailed prompt section at a time. Persist the accumulating full candidate outside model conversation; compact summaries and dependencies go back to Pi, not the entire stack. Reuse the deterministic existing composer/importer for boilerplate, grammar, version, model flags, working sets/tests and order; extend it only where strictly required for bounded detailed sections and dynamic work count. Retire the protected stage's four-work-item single-output JSON limit as an architectural restriction, not as a validator bypass.
+
+FINISH AND REVIEW
+On verified proposal_finish, assemble supporting assessment/plan/manifest, contiguous P1–Pn and EXACTLY ONE final manual closeout, with dependency-compatible execution order, valid filenames, source/version basis, tier/acceptance/validation specificity and full prompt efficiency audit. Require 10+ reasonably substantial prompt files as a supported fixture, not compulsory padding. Respect sensible per-file/total/tool budgets and the existing per-prompt size/importer rules, revising explicitly where proved necessary. Turn the exact composed byte set into ONE existing R3B native saved Prompt Stack Proposal; only R3B's guarded owner can later publish on Accept. Revise preserves prior valid candidate until replacement is complete. No canonical docs/tasks write, auto Work discovery before approval, grant, Run, or Roadmap GREEN.
+
+VERIFY
+Focused tests for stale selected assessment/plan, revision, malformed/empty/duplicate steps, dependency cycles, ordered 10+ file draft, concrete tests and criteria, one terminal manual closeout, exact rendered byte hashes/manifest, model-source truncation and no publication until Accept. Include prompt-authoring-stage, phase-stack-composer, phase-stack discovery and actual R3B publisher adapter tests; build changed packages only when needed for compiled imports, git diff --check. No browser or unsupported version advance.
