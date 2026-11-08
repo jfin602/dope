@@ -721,7 +721,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const basis = document.createElement('p');
             basis.textContent = `${proposal.folder} · revision ${proposal.revision} · ${proposal.files.length} files · version ${proposal.sourceVersion} · source ${proposal.gitHead.slice(0, 8)}`;
             const summary = document.createElement('p');
-            summary.textContent = `${proposal.files.length - 4} implementation/integration prompts · one manual browser closeout · Work remains unstarted`;
+            summary.textContent = `${proposal.files.length - 4} implementation/integration prompts · one final manual closeout · Work remains unstarted`;
             card.append(title, basis, summary);
             const heading = document.createElement('div');
             heading.className = 'dope-chat-documentation-file-heading';

@@ -820,7 +820,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
     let documentationDiscovery: ChatPlanningActivity['documentationDiscovery'];
     let promptStackProposal: ChatPromptStackProposal | undefined;
     if (v.promptStackProposal !== undefined) {
-        if (kind !== 'prompt-stack-proposal' || JSON.stringify(v.promptStackProposal).length > 65_536)
+        if (kind !== 'prompt-stack-proposal' || JSON.stringify(v.promptStackProposal).length > 384_000)
             throw new Error('Invalid saved prompt stack proposal');
         const p = record(v.promptStackProposal, ['id', 'digest', 'root', 'projectId', 'ownerId', 'chatId',
             'messageId', 'leaseDigest', 'revision', 'folder', 'sourceVersion', 'gitHead', 'worktreeId',
@@ -835,7 +835,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         };
         const folder = string(p.folder, 'prompt stack folder');
         if (!/^[cp][a-z0-9-]{0,99}$/u.test(folder) || !Array.isArray(p.files) ||
-            p.files.length < 5 || p.files.length > 8 || !Number.isSafeInteger(p.revision) ||
+            p.files.length < 5 || p.files.length > 52 || !Number.isSafeInteger(p.revision) ||
             (p.revision as number) < 1 || !/^[a-f0-9]{40,64}$/u.test(String(p.gitHead)) ||
             !/^\d+\.\d+\.\d+$/u.test(String(p.sourceVersion)) || p.id !== v.proposalId)
             throw new Error('Invalid prompt stack identity');

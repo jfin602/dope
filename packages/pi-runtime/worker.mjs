@@ -211,7 +211,7 @@ const PROPOSAL_TOOLS = {
     chunkIndex: Type.Integer(), content: Type.String(), digest: Type.Optional(Type.String()), complete: Type.Boolean() },
   proposal_stage_prompt: { version: Type.Literal(1), sequence: Type.Integer(),
     expectedRevision: Type.Integer(), idempotencyKey: Type.String(), target: Type.String(),
-    chunkIndex: Type.Integer(), content: Type.String(), digest: Type.String(), complete: Type.Boolean() },
+    chunkIndex: Type.Integer(), content: Type.String(), digest: Type.Optional(Type.String()), complete: Type.Boolean() },
   proposal_finish: { finalMessage: Type.String() }
 };
 // Keep this compact: Pi sees the legal discriminator and required fields, while

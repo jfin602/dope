@@ -180,7 +180,7 @@ export class PlanningStackPublication {
         if (proposal.root !== root) throw new Error('Foreign prompt stack publication');
         const paths = await this.location(root, proposal.folder);
         const files = proposal.files;
-        if (files.length < 5 || files.length > 8 ||
+        if (files.length < 5 || files.length > 52 ||
             files[0]?.path !== `docs/tasks/${proposal.folder}/prompt-assessment.md` ||
             files[1]?.path !== `docs/tasks/${proposal.folder}/implementation-plan.md` ||
             files[2]?.path !== `docs/tasks/${proposal.folder}/README.md` ||

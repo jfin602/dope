@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend, forbidsProjectTools } from '../../packages/theia-extension/lib/node/chat-backend.js';
@@ -27,46 +28,60 @@ import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
 const id = () => randomUUID();
+const execute = promisify(execFile);
 test('native prompt stages save an exact review candidate and publish only after Accept', async () => {
-    const root = await folder(), repository = new ChatRepository();
+    const temporary = await folder(), root = join(temporary, 'project'), repository = new ChatRepository();
+    await execute('git', ['clone', '-q', '--local', '--no-hardlinks', '--no-checkout', process.cwd(), root]);
+    await execute('git', ['-C', root, 'read-tree', 'HEAD']);
+    await execute('git', ['-C', root, 'sparse-checkout', 'init', '--cone']);
     await mkdir(join(root, 'src'));
     await writeFile(join(root, 'src', 'feature.js'), 'export const feature = true;\n');
     await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"1.2.3"}\n');
-    execFileSync('git', ['init', '-q', root]);
-    execFileSync('git', ['-C', root, 'add', 'src/feature.js', 'package.json']);
-    execFileSync('git', ['-C', root, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
-        'commit', '-q', '-m', 'fixture']);
-    const writeInput = { folderName: 'c0-feature', sourceKind: 'chat-plan', version: '1.2.3',
-        sourceVersion: '1.2.3', work: [{ tier: 'T2', model: 'GPT-6 Sol Medium', estimatedMinutes: 6,
-            integrationChecks: ['Run integration check'], workItem: { id: 'step-1', title: 'Implement feature',
-                objective: 'Implement the feature', dependsOn: [], requirements: ['Read source'],
-                constraints: ['No implicit Work run'], acceptanceCriteria: ['Feature works'],
-                validationTargets: ['Run feature unit test'], workingSet: ['src/feature.js'],
-                status: 'draft', delegablePaths: ['src/feature.js'], humanReservedPaths: [] } }],
-        closeout: { title: 'Feature closeout', objective: 'Inspect feature in browser',
-            manualReason: 'Interactive behavior', acceptanceCriteria: ['Open feature'],
-            model: 'GPT-6 Sol High', browserRequired: true } };
-    const revisedInput = { ...writeInput, work: [...writeInput.work,
-        { tier: 'T1', model: 'GPT-6 Sol Medium', estimatedMinutes: 6,
-            workItem: { id: 'step-2', title: 'Check feature', objective: 'Check the feature',
-                dependsOn: ['step-1'], requirements: ['Check source'], constraints: ['No Work run'],
-                acceptanceCriteria: ['Feature checks pass'], validationTargets: ['Run feature check'],
-                workingSet: ['src/feature.js'], status: 'draft',
-                delegablePaths: ['src/feature.js'], humanReservedPaths: [] } }] };
     const answers = ['## Scope\nFeature scope.\n## Preservation\nNo Work run.\n## Dependencies\nSource.\n' +
         '## Risks\nStale source.\n## Source basis\nRead source.\n## Authority\nChat only.\n## Evidence\nT1/T2/T3.',
-    '## Steps\n1. Implement.\n## Tests\nFocused integration.\n## Manual\nBrowser check.',
-    JSON.stringify(writeInput), '{malformed', JSON.stringify(revisedInput)];
+    '## Steps\n1. Implement.\n## Tests\nFocused integration.\n## Manual\nBrowser check.'];
+    const audit = Array.from({ length: 10 }, (_, index) =>
+        `Gate ${index + 1} checks the selected feature implementation and focused evidence in this fixture.`);
+    const work = (number: number, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
+        kind: 'work', id: `step-${number}`, title: number === 1 ? 'Implement feature' : 'Check feature',
+        objective: number === 1 ? 'Implement the feature' : 'Check the feature', tier, dependsOn,
+        requirements: ['Read the verified source'], constraints: ['No implicit Work run'],
+        acceptanceCriteria: [`Feature ${number} works on the checked source`],
+        validationTargets: [`Run test/unit/feature-${number}.test.ts`], workingSet: ['src/feature.js'],
+        ...(tier === 'T2' ? { integrationChecks: ['Run the affected feature integration check'] } : {}) });
+    const closeout = { kind: 'closeout', title: 'Feature closeout', objective: 'Inspect feature in browser',
+        manualReason: 'Interactive behavior', acceptanceCriteria: ['Open feature in the real browser'],
+        browserRequired: true, efficiencyAudit: audit };
     let calls = 0;
     const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
         providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
                 maxInputTokens: 16384 } }] }] }),
     async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
-        if (calls < 2)
+        const turn = calls++;
+        if (turn < 2)
             await request.projectTools!.execute('read_file', { path: 'src/feature.js', offset: 0, maxBytes: 4096 });
-        const text = answers[calls++];
-        yield { type: 'complete' as const, text, actualModelId: 'q4', finishReason: 'stop',
+        if (turn === 2 || turn === 3 || turn === 5) {
+            const steps = turn < 5 ? [work(1, 'T2')] : [work(1, 'T2'), work(2, 'T1', ['step-1'])];
+            for (const [index, value] of [...steps, closeout].entries()) {
+                const receipt = JSON.parse(await request.projectTools!.execute('proposal_stage_prompt', {
+                    version: 1, sequence: index + 1, expectedRevision: index,
+                    idempotencyKey: `stage_key_${index + 1}`, target: value.kind === 'closeout' ? 'closeout' : value.id,
+                    chunkIndex: 0, content: JSON.stringify(value), complete: true }));
+                assert.equal(receipt.revision, index + 1, JSON.stringify(receipt));
+            }
+            const finished = JSON.parse(await request.projectTools!.execute('proposal_finish',
+                { finalMessage: 'Prepared feature prompts for review.' }));
+            assert.equal(finished.state, 'ready-for-review', JSON.stringify(finished));
+        }
+        if (turn === 4) {
+            const failed = JSON.parse(await request.projectTools!.execute('proposal_finish',
+                { finalMessage: 'Premature revision.' }));
+            assert.match(failed.error, /PROPOSAL_INCOMPLETE/);
+        }
+        const text = answers[turn] ?? 'Model has finished staging.';
+        yield { type: 'complete' as const, text, actualModelId: 'q4',
+            finishReason: turn === 2 ? 'length' : 'stop',
             usage: { tokenMeasurement: 'unavailable' as const } };
     } };
     const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved Chat context' }],
@@ -79,16 +94,24 @@ test('native prompt stages save an exact review candidate and publish only after
             operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Feature discussion' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!lease.acquired) throw new Error('Lease missing');
-        for (const content of ['/prompt-ass', '/prompt-plan', '/prompt-write c0-feature'])
+        for (const content of ['/prompt-ass', '/prompt-plan'])
             await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
                 selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write c0-feature' }),
+        /Prompt authoring output was truncated/);
+        await assert.rejects(readFile(join(root, 'docs', 'tasks', 'c0-feature', 'P1-implement-feature.txt')),
+            /ENOENT/);
+        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write c0-feature' });
         const chat = (await backend.get(projectHandle, chatId))!;
-        const completed = chat.messages.filter(message => message.role === 'assistant');
-        assert.equal(calls, 3);
+        const completed = chat.messages.filter(message => message.role === 'assistant' &&
+            message.execution.status === 'complete');
+        assert.equal(calls, 4);
         assert.equal(completed.length, 3);
         assert.match(completed[0].content, /^# Unpublished prompt assessment/);
         assert.match(completed[1].content, /^# Unpublished prompt plan/);
-        assert.match(completed[2].content, /^Prompt stack proposal ready for review/);
+        assert.equal(completed[2].content, 'Prepared feature prompts for review.');
         const activity = completed[2].role === 'assistant' ? completed[2].planningActivity : undefined;
         assert.equal(activity?.kind, 'prompt-stack-proposal');
         assert.equal(activity?.status, 'pending');
@@ -125,7 +148,7 @@ test('native prompt stages save an exact review candidate and publish only after
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: currentToken,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: '/prompt-write c0-feature add a check prompt', promptStackRevision: revision }),
-        /valid ComposeStackInput JSON/);
+        /Incremental prompt stack was not finished and validated/);
         assert.equal((await backend.get(projectHandle, chatId))!.messages
             .find(message => message.id === proposal.messageId)?.role === 'assistant' &&
             (await backend.get(projectHandle, chatId))!.messages
@@ -152,7 +175,7 @@ test('native prompt stages save an exact review candidate and publish only after
             .find(message => message.id === proposal.messageId)?.role, 'assistant');
         await assert.rejects(backend.publishPromptStack(projectHandle, chatId, currentToken,
             revisedProposal.id, revisedProposal.digest), /Pending prompt proposal required/);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
+    } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
 });
 test('final deltas reach Chat before completion and tool resets replace transient text', async () => {

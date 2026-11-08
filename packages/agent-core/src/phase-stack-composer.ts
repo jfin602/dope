@@ -16,6 +16,8 @@ export interface WorkPromptChoice {
     model: ComposerModel;
     estimatedMinutes: number;
     integrationChecks?: readonly string[];
+    /** Bounded, model-authored detail retained outside the conversation until composition. */
+    detailSections?: readonly { heading: string; text: string }[];
 }
 export interface CloseoutChoice {
     title: string; objective: string; manualReason: string;
@@ -32,6 +34,8 @@ export interface ComposeStackInput {
     sourceVersion: string;
     work: readonly WorkPromptChoice[];
     closeout: CloseoutChoice;
+    /** Ten concise findings for the repository Prompt Efficiency Gate. */
+    efficiencyAudit?: readonly string[];
 }
 export interface DraftStack {
     folderName: string; sourcePath: string; files: readonly (PromptSource & { path: string })[];
@@ -117,6 +121,11 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
             delegable.some(path => reserved.some(blocked => within(path, blocked) || within(blocked, path))))
             throw new Error(`Invalid delegation scope in ${item.id}`);
         const checks = lines(choice.integrationChecks ?? [], 'T2 integration check', choice.tier === 'T2');
+        const details = choice.detailSections ?? [];
+        if (!Array.isArray(details) || details.length > 12 || details.some(section =>
+            !section || typeof section.heading !== 'string' || typeof section.text !== 'string' ||
+            !section.text.trim() || section.text.length > 8_000 || /[\u0000-\u0008\u000b-\u001f\u007f]/u.test(section.text)))
+            throw new Error(`Invalid detailed section in ${item.id}`);
         const dependencies = [...item.dependsOn].sort().map(id => `P${ordered.findIndex(entry => entry.workItem.id === id) + 1} (${id})`);
         const version = versionFor(input, mode, number);
         const text = [
@@ -136,6 +145,7 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
             'Human reserved paths:', reserved.length ? bullets(reserved) : '- none',
             'Requirements:', bullets(lines(item.requirements, 'requirements', false)),
             'Constraints:', bullets(lines(item.constraints, 'constraints', false)),
+            ...details.flatMap(section => ['', line(section.heading, 'section heading').toUpperCase(), section.text.trim()]),
             '', 'ACCEPTANCE', bullets(lines(item.acceptanceCriteria, 'acceptance criteria')),
             '', 'VALIDATION', `- ${choice.tier} work. Run focused T1 checks for the changed behavior.`,
             bullets(lines(item.validationTargets, 'validation targets')),
@@ -170,8 +180,18 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
     const filename = `P${number}-${closeoutSlug}.txt`;
     files.push({ filename, text: closeoutText, path: `docs/tasks/${input.folderName}/${filename}` });
     await importPhaseStack(input.folderName, files.map(({ filename, text }) => ({ filename, text })), `docs/tasks/${input.folderName}`);
+    const auditLabels = ['Single responsibility', 'Runtime feasibility', 'Test precision', 'Build precision',
+        'Evidence distribution', 'Command deduplication', 'Model economy and deferral',
+        'Runnable and traceable contract', 'UI Design Compliance', 'Human Usability'];
+    if (input.efficiencyAudit !== undefined && (!Array.isArray(input.efficiencyAudit) ||
+        input.efficiencyAudit.length !== auditLabels.length || input.efficiencyAudit.some(item =>
+            typeof item !== 'string' || item.trim().length < 20 || item.length > 500 ||
+            /[\r\n\u0000-\u001f\u007f]/u.test(item))))
+        throw new Error('Prompt efficiency audit requires ten specific bounded findings');
     const manifest = [`# Draft ${input.folderName}`, '', `Source version: ${input.sourceVersion}. Review the exact source before approval; approval does not Run.`, '',
         ...files.map((file, index) => `- P${index + 1}: ${file.path} — ${index === files.length - 1 ? 'manual T3 closeout' : `${ordered[index].tier}, ${input.sourceKind === 'chat-plan' ? 'draft plan step' : 'WorkItem'} ${ordered[index].workItem.id}`}`),
-        '', ...diagnostics.map(message => `- Efficiency: ${message}`)].join('\n') + '\n';
+        '', ...(input.efficiencyAudit ? ['## Prompt Efficiency Gate', '',
+            ...input.efficiencyAudit.map((finding, index) => `${index + 1}. ${auditLabels[index]}: ${finding.trim()}`),
+            ''] : []), ...diagnostics.map(message => `- Efficiency: ${message}`)].join('\n') + '\n';
     return { folderName: input.folderName, sourcePath: `docs/tasks/${input.folderName}`, files, manifest, diagnostics };
 }

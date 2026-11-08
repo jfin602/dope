@@ -68,7 +68,7 @@ export async function createPromptStackProposal(root: string, chatId: string, me
     planMessageId: string, revision = 1): Promise<ChatPromptStackProposal> {
     if (await realpath(root) !== root || !/^[cp][a-z0-9-]{0,99}$/u.test(draft.folderName) ||
         draft.sourcePath !== `docs/tasks/${draft.folderName}` ||
-        supportingFiles.length !== 2 || draft.files.length < 2 || draft.files.length > 9)
+        supportingFiles.length !== 2 || draft.files.length < 2 || draft.files.length > 49)
         throw new Error('Unsafe prompt stack destination or incomplete draft');
     let tasks = root;
     for (const part of ['docs', 'tasks']) {
@@ -98,7 +98,7 @@ export async function createPromptStackProposal(root: string, chatId: string, me
         leaseDigest: hash(leaseToken), revision, folder: draft.folderName,
         sourceVersion: git.packageVersion, gitHead: git.head, worktreeId: git.worktreeFingerprint,
         assessmentMessageId, planMessageId, createdAt: new Date().toISOString(), files };
-    if (Buffer.byteLength(JSON.stringify(unsigned), 'utf8') > 63_000)
+    if (Buffer.byteLength(JSON.stringify(unsigned), 'utf8') > 384_000)
         throw new Error('Prompt stack exceeds saved proposal limit');
     return { ...unsigned, digest: promptProposalDigest(unsigned) };
 }

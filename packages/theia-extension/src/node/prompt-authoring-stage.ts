@@ -72,11 +72,9 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
     if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn a Markdown plan with ordered steps, exact likely files, focused tests/build dependency order, manual checkpoints, explicit deferrals and prompt-efficiency decisions.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
-    return `${common}\n${inherited}\nReturn ONLY valid JSON, no fences, prose, code snippets or shell commands. ` +
-        `Dope supplies folder ${JSON.stringify(command.folder)} and source version ${JSON.stringify(sourceVersion)}; omit those fields. ` +
-        `The saved plan read these test files: ${JSON.stringify(planTests)}. Include each in a work step workingSet when the plan calls for changing tests. ` +
-        'Use exactly this compact shape: {"work":[{"id":"step-1","title":"Implement change","objective":"Change the relevant behavior","tier":"T1","dependsOn":[],"workingSet":["src/feature.js"],"requirements":["Preserve existing behavior"],"constraints":["Stay within the project"],"acceptanceCriteria":["Requested behavior works"],"validationTargets":["Run focused test"]},{"id":"step-2","title":"Integrate change","objective":"Check affected system","tier":"T2","dependsOn":["step-1"],"workingSet":["src/feature.js"],"requirements":["Use verified source"],"constraints":["Do not claim Green"],"acceptanceCriteria":["Affected system passes"],"validationTargets":["Run affected integration test"],"integrationChecks":["Run affected integration test"]}],"closeout":{"title":"Manual closeout","objective":"Observe final behavior","manualReason":"Human interaction needs inspection","acceptanceCriteria":["Observe expected behavior"],"browserRequired":true}}. ' +
-        'Replace every example title, objective, path, requirement, acceptance criterion, and validation target with concrete details from the saved plan. Acceptance must name observable project behavior and validation must name the affected check. Do not copy placeholder text. Use one to four work entries, including a T2 entry. The closeout is separate and never in work. All strings are short plain prose, and arrays contain strings only. Use plan-step IDs, never accepted WorkItem IDs. Keep prompts narrow; include UI and usability gates only when relevant. Do not claim approval, publication or execution.';
+    return `${common}\n${inherited}\nDope supplies folder ${JSON.stringify(command.folder)} and source version ${JSON.stringify(sourceVersion)}. ` +
+        `The saved plan read these test files: ${JSON.stringify(planTests)}. Include each in a step workingSet when changing tests. ` +
+        'Use proposal_status to obtain sequence/revision. Stage one ordered plan step per proposal_stage_prompt call: target is its stable step id, chunkIndex 0, content is JSON {"kind":"work","id":"step-1","title":"Specific task","objective":"Specific behavior","tier":"T1","dependsOn":[],"workingSet":["src/file.ts"],"requirements":["Specific requirement"],"constraints":["Preserve authority"],"acceptanceCriteria":["Observable project behavior"],"validationTargets":["Named focused test"]}. For T2 include integrationChecks. Optional following chunks on the same target contain JSON {"kind":"section","heading":"Specific heading","text":"Detailed bounded instructions"}; mark the last chunk complete:true. Stage exactly one final target named closeout with JSON {"kind":"closeout","title":"Manual closeout","objective":"Specific observation","manualReason":"Human inspection","acceptanceCriteria":["Observable result"],"browserRequired":true,"efficiencyAudit":["Specific finding for each of the ten gates"]}, complete:true. Supply exactly ten concise findings in docs/workflow.md gate order: responsibility, runtime, tests, builds, evidence, deduplication, model economy, runnable grammar, UI design and usability; state not applicable with a reason when appropriate. Set version:1, sequence, expectedRevision and a stable idempotencyKey on each call. Omit digest for Dope to compute from content, or supply a matching SHA-256 digest. Keep all prior candidate bytes in Dope, use only compact status receipts, and call proposal_finish({finalMessage:"Short factual review message"}) after all steps. Use plan-step IDs, dependency order, concrete tests and criteria, an explicit T2 gate, and one terminal manual closeout. Do not return a whole-stack JSON answer or claim publication.';
 }
 
 export function finishedPromptText(stage: 'prompt-ass' | 'prompt-plan', modelText: string,
@@ -98,17 +96,23 @@ export function finishedPromptText(stage: 'prompt-ass' | 'prompt-plan', modelTex
 export async function finishedPromptStack(modelText: string, folder: string,
     sourceVersion: string, prior: { assessment: ChatAssistantMessage; plan: ChatAssistantMessage }):
     Promise<{ text: string; draft: DraftStack; supportingFiles: { path: string; text: string }[] }> {
-    if (Buffer.byteLength(modelText, 'utf8') > 48_000) throw new Error('Prompt stack input exceeds draft limit');
+    if (Buffer.byteLength(modelText, 'utf8') > 256_000) throw new Error('Prompt stack input exceeds draft limit');
     let parsed: unknown;
     try { parsed = JSON.parse(modelText.trim().replace(/^```(?:json)?\s*/u, '').replace(/\s*```$/u, '')); }
     catch { throw new Error('Prompt stack needs one valid ComposeStackInput JSON object'); }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid prompt stack input');
-    const proposed = parsed as ComposeStackInput;
+    return composeSavedPromptStack(parsed as ComposeStackInput, folder, sourceVersion, prior);
+}
+
+/** Compose exact noncanonical bytes from independently persisted prompt stages. */
+export async function composeSavedPromptStack(proposed: ComposeStackInput, folder: string,
+    sourceVersion: string, prior: { assessment: ChatAssistantMessage; plan: ChatAssistantMessage }):
+    Promise<{ text: string; draft: DraftStack; supportingFiles: { path: string; text: string }[] }> {
     if (proposed.folderName && proposed.folderName !== folder ||
         proposed.sourceKind && proposed.sourceKind !== 'chat-plan' ||
         proposed.sourceVersion && proposed.sourceVersion !== sourceVersion ||
         proposed.version && proposed.version !== sourceVersion ||
-        !Array.isArray(proposed.work) || proposed.work.length > 4)
+        !Array.isArray(proposed.work) || proposed.work.length > 48)
         throw new Error('Prompt stack folder, source version, plan source or size changed');
     type CompactChoice = { id: string; title: string; objective: string; tier: 'T1' | 'T2';
         dependsOn?: string[]; workingSet: string[]; requirements?: string[]; constraints?: string[];
@@ -148,6 +152,6 @@ export async function finishedPromptStack(modelText: string, folder: string,
     const identity = { assessmentMessageId: prior.assessment.id, planMessageId: prior.plan.id,
         sourceVersion, draft, supportingFiles };
     const payload = JSON.stringify({ schemaVersion: 1, id: hash(JSON.stringify(identity)), ...identity }, null, 2);
-    if (Buffer.byteLength(payload, 'utf8') > 48_000) throw new Error('Validated prompt stack exceeds saved draft limit');
+    if (Buffer.byteLength(payload, 'utf8') > 384_000) throw new Error('Validated prompt stack exceeds saved draft limit');
     return { text: `${heading['prompt-write']}\n\n\`\`\`json\n${payload}\n\`\`\`\n`, draft, supportingFiles };
 }

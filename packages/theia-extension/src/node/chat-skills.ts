@@ -34,8 +34,8 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     enabled: true, provenance: 'builtin', version: 1 },
 { id: 'builtin:prompt-write', name: 'prompt-write', title: 'Draft prompt stack',
     description: 'Generate a validated, unpublished stack from the selected saved plan.',
-    body: 'Use the bound saved assessment and plan. Produce only the compact JSON blueprint instructed by Dope; Dope supplies fixed source identity and validates the exact prompt grammar. Do not write files or claim publication. Keep work narrow and ordered with one separate manual closeout. Do not invent source reads, approvals, Work grants or Gate status.',
-    enabled: true, provenance: 'builtin', version: 2 },
+    body: 'Use the bound saved assessment and plan. Stage one ordered plan step or bounded detailed section at a time through proposal_stage_prompt, inspect compact receipts, and call proposal_finish only after one terminal manual closeout. Dope composes and validates the exact prompt bytes. Do not return a whole-stack JSON packet, write files or claim publication, Work grants, Run or Gate status.',
+    enabled: true, provenance: 'builtin', version: 3 },
 ];
 let serial = Promise.resolve();
 
