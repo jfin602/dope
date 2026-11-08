@@ -8,7 +8,7 @@ import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-s
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText, newPromptDraftIdentity,
     priorPromptDraft, promptStageCommand, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
-    verifyPromptDraftSource } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+    verifyPromptDraftSource, validatedAssessment, renderAssessment } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 
 const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
     tier, model: 'GPT-6 Sol Medium', estimatedMinutes: 6,
@@ -134,6 +134,13 @@ test('saved assessment is selected only from completed protected Chat and curren
             id: 'README.md', sourceHash: full.blocks[0].ref.sourceHash,
             projectId: createHash('sha256').update(root).digest('hex'),
             contentHash: full.blocks[0].ref.contentHash }] } } as never, grounder);
+        await writeFile(join(root, 'README.md'), 'large'.repeat(3000));
+        const large = await grounder.readFile(root, 'README.md');
+        await verifyPromptDraftSource(root, { execution: { sourceRefs: [{ kind: 'file',
+            id: 'README.md', sourceHash: large.blocks[0].ref.sourceHash,
+            projectId: createHash('sha256').update(root).digest('hex'),
+            contentHash: createHash('sha256').update(large.blocks[0].text.slice(0, 8192)).digest('hex')
+        }] } } as never, grounder);
         await assert.rejects(verifyPromptDraftSource(root, { execution: { sourceRefs: [{ kind: 'file',
             id: 'README.md', sourceHash: full.blocks[0].ref.sourceHash,
             projectId: 'foreign-project', contentHash: full.blocks[0].ref.contentHash }] } } as never,
@@ -143,5 +150,45 @@ test('saved assessment is selected only from completed protected Chat and curren
         const forged = { messages: [{ role: 'user', content: '/prompt-ass',
             skill: { ...skill, digest: createHash('sha256').update('forged').digest('hex') } }, assistant] } as never;
         assert.equal(priorPromptDraft(forged, 'prompt-ass'), undefined);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('structured assessment requires actual brokered byte ranges and discloses omitted requests', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-assessment-range-'));
+    try {
+        await writeFile(join(root, 'README.md'), `${'early\n'.repeat(900)}late section\n`);
+        const grounder = new ChatProjectGrounder({} as never);
+        const first = await grounder.readFileRange(root, 'README.md', 0, 4096);
+        const late = await grounder.readFileRange(root, 'README.md', 5400, 256, first.sourceHash);
+        const projectId = createHash('sha256').update(root).digest('hex');
+        const refs = [{ kind: 'directory', id: 'docs', origin: 'tool' },
+            { kind: 'path-search', id: 'AGENTS.md', origin: 'tool' },
+            ...[first, late].map(page => ({ kind: 'file', id: page.path, origin: 'tool',
+                projectId, sourceHash: page.sourceHash, start: page.offset, end: page.endOffset }))] as never;
+        const finding = { claim: 'Late source section is present', path: 'README.md',
+            start: late.offset, end: late.offset + 5, sourceHash: late.sourceHash,
+            quote: late.text.slice(0, 5) };
+        const evidence = [first, late].map(page => ({ path: page.path, start: page.offset,
+            end: page.endOffset, sourceHash: page.sourceHash, text: page.text }));
+        const input = { scope: 'Assess the requested source', observations: [finding],
+            preservation: [finding], dependencies: [finding], risks: [finding],
+            tiers: { T1: 'Focused source test', T2: 'Cross-boundary integration',
+                T3: 'Manual browser qualification' } };
+        const record = validatedAssessment(JSON.stringify(input), refs,
+            '/prompt-ass safe-task Inspect README.md and AGENTS.md', evidence);
+        assert.deepEqual(record.omittedRequestedFiles, ['AGENTS.md']);
+        assert.match(renderAssessment(record), /README\.md bytes 5400/);
+        assert.match(renderAssessment(record), /T1 focused source and unit checks/);
+        assert.match(renderAssessment(record), /T2 cross-boundary integration/);
+        assert.match(renderAssessment(record), /T3 independent manual browser qualification/);
+        assert.throws(() => validatedAssessment(JSON.stringify({ ...input,
+            observations: [{ ...finding, path: 'AGENTS.md' }] }), refs, '', evidence), /UNSUPPORTED_SOURCE/);
+        assert.throws(() => validatedAssessment(JSON.stringify({ ...input,
+            observations: [{ ...finding, start: 4095, end: 5001 }] }), refs, '', evidence), /UNSUPPORTED_SOURCE/);
+        assert.throws(() => validatedAssessment(JSON.stringify({ ...input,
+            observations: [{ ...finding, quote: 'false' }] }), refs, '', evidence), /UNSUPPORTED_SOURCE/);
+        assert.throws(() => validatedAssessment('x'.repeat(20_001), refs, '', evidence), /PAYLOAD_LIMIT/);
+        await writeFile(join(root, 'README.md'), 'changed');
+        await assert.rejects(grounder.readFileRange(root, 'README.md', 0, 1, first.sourceHash), /Stale/);
     } finally { await rm(root, { recursive: true, force: true }); }
 });

@@ -40,7 +40,10 @@ import { discoverDocumentation, documentationReviewObjective } from './documenta
 import type { DocumentationReadPage } from './documentation-skill-review';
 import { assertPromptDraftNameAvailable, newPromptDraftIdentity, promptStageCommand, priorPromptDraft,
     verifyPromptDraftIdentity, verifyPromptDraftSource, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
-    promptStageInstruction, finishedPromptText, requestedWorkPromptCount } from './prompt-authoring-stage';
+    promptStageInstruction, finishedPromptText, requestedWorkPromptCount,
+    validatedAssessment, renderAssessment, type AssessmentRecord,
+    type AssessmentRead } from './prompt-authoring-stage';
+import { PromptDraftStore } from './prompt-draft-store';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
 import { IncrementalProposalController, type ProposalHandoff } from './incremental-proposal-controller';
@@ -1861,6 +1864,15 @@ export class ChatBackend implements ChatService {
         if (promptStage && !this.grounder) throw new Error('Prompt authoring requires brokered project reads');
         if (priorAssessment) await verifyPromptDraftSource(root, priorAssessment.assistant, this.grounder!);
         if (priorPlan) await verifyPromptDraftSource(root, priorPlan.assistant, this.grounder!);
+        let savedAssessmentRecord: AssessmentRecord | undefined;
+        if (priorAssessment?.user.promptDraft) {
+            const staged = await new PromptDraftStore(this.repository, this.grounder!).read(root,
+                priorAssessment.user.promptDraft, request.leaseToken).catch(error => {
+                if (String(error).includes('unavailable')) return undefined;
+                throw error;
+            });
+            savedAssessmentRecord = staged?.assessment?.record as AssessmentRecord | undefined;
+        }
         const promptSourceBasis = promptStage?.stage === 'prompt-write' ?
             await capturePromptSourceEvidence(root) : undefined;
         const promptSourceVersion = promptSourceBasis?.packageVersion;
@@ -1921,12 +1933,19 @@ export class ChatBackend implements ChatService {
             targets: revisionProposal.targets.map(({ path, after, afterHash }) => ({ path, after, afterHash })) }) : '';
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` +
             (promptStage ? `\n${promptStageInstruction(promptStage, {
-                assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion)}` +
+                assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion,
+                savedAssessmentRecord)}` +
                 (promptRequestedCount ? `\nRequested work-prompt count: exactly ${promptRequestedCount}; keep one separate terminal manual closeout.` : '') : '') +
             (selectedPrompt ? `\nRevise the selected saved proposal through bounded proposal_stage_prompt calls. The previous candidate remains valid until replacement passes every check. Stage the complete replacement in dependency order. Saved prior file identities: ${JSON.stringify(
                 selectedPrompt.proposal.files.map(file => ({ path: file.path, hash: file.afterHash })).slice(2))}
                 \nDeveloper revision instructions: ${content}` : '') : undefined;
-        const contextChat = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
+        const contextBase = retryIndex < 0 ? chat : { ...chat, messages: chat.messages.slice(0, retryIndex - 1) };
+        const contextChat = !promptStage ? contextBase : { ...contextBase,
+            messages: contextBase.messages.map(message => message.role === 'assistant' &&
+                message.content.startsWith('# Unpublished prompt assessment\n') ?
+                { ...message, content: message.id === priorAssessment?.assistant.id && savedAssessmentRecord ?
+                    `Saved structured assessment ${message.id}; Dope supplies its bounded record separately.` :
+                    `Saved assessment ${message.id}; use the selected structured draft.` } : message) };
         const helpTurn = !roadmapSkill && !docsReview && !promptStage && !!selectDopeCapabilityHelp(content);
         const draft = helpTurn || docsReview || promptStage || roadmapSkill && !greenfieldSkill ? undefined :
             await this.draftContext(root, request.chatId, request.planningSteps);
@@ -2125,6 +2144,7 @@ export class ChatBackend implements ChatService {
             modelId: model.id, providerId: connection.providerId, modelLabel: model.label };
         let routingProvenance: RoutingProvenance | undefined;
         const sourceRefs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> = [];
+        const assessmentReads: AssessmentRead[] = [];
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
         let toolBytes = 0;
         const documentationPages: DocumentationReadPage[] = [];
@@ -2480,10 +2500,14 @@ export class ChatBackend implements ChatService {
                         }
                         sourceRefs.push({ schemaVersion: 1, kind: 'file', id: page.path, label: page.path,
                             origin: 'tool', projectId: createHash('sha256').update(root).digest('hex'),
+                            start: page.offset, end: page.endOffset,
                             includedBytes: Buffer.byteLength(page.text, 'utf8'),
                             estimatedTokens: Math.ceil(Buffer.byteLength(page.text, 'utf8') / 3) + 4,
                             contentHash: createHash('sha256').update(page.text).digest('hex'),
                             sourceHash: page.sourceHash });
+                        if (promptStage?.stage === 'prompt-ass') assessmentReads.push({ path: page.path,
+                            start: page.offset, end: page.endOffset, sourceHash: page.sourceHash,
+                            text: page.text });
                         toolEvents.push({ name: toolName, status: 'completed', truncated: page.truncated,
                             stage: 'broker', brokerExecuted: true, ...rangeMeta, endOffset: page.endOffset });
                         return payload;
@@ -2501,8 +2525,15 @@ export class ChatBackend implements ChatService {
                         item.kind === 'truncated' || item.kind === 'omitted');
                     toolBytes += Buffer.byteLength(excerpt);
                     sourceRefs.push({ ...block.ref, origin: 'tool', includedBytes: Buffer.byteLength(excerpt),
+                        ...(name === 'read_file' && !result.diagnostics.some(item => item.kind === 'unavailable') ?
+                            { start: 0, end: Buffer.byteLength(excerpt, 'utf8') } : {}),
                         estimatedTokens: Math.ceil(Buffer.byteLength(excerpt) / 3) + 4,
                         contentHash: createHash('sha256').update(excerpt).digest('hex') });
+                    if (promptStage?.stage === 'prompt-ass' && name === 'read_file' &&
+                        block.ref.sourceHash && excerpt)
+                        assessmentReads.push({ path: block.ref.id, start: 0,
+                            end: Buffer.byteLength(excerpt, 'utf8'), sourceHash: block.ref.sourceHash,
+                            text: excerpt });
                     toolEvents.push({ name: toolName, status: 'completed', truncated,
                         stage: 'broker', brokerExecuted: true });
                     const payload = JSON.stringify({ source: block.ref.id, kind: block.ref.kind,
@@ -2858,6 +2889,8 @@ export class ChatBackend implements ChatService {
                             if (event.finishReason === 'length' &&
                                 (promptStage.stage !== 'prompt-write' || !finishedPrompt))
                                 throw new Error('Prompt authoring output was truncated');
+                            if (promptStage.stage === 'prompt-ass' && sourceRefs.length > 16)
+                                throw new Error('Prompt source evidence exceeds 16 saved refs; retry with fewer listed, searched or read paths');
                             // /prompt-write is bound to the two previously verified drafts. It need not
                             // make a redundant model read when their source identities are still current.
                             if (promptStage.stage !== 'prompt-write')
@@ -2870,6 +2903,23 @@ export class ChatBackend implements ChatService {
                                     status: 'pending', refs: [...preview.refs, ...sourceRefs],
                                     proposalId: proposal.id, promptStackProposal: proposal };
                                 output = finishedPrompt.finalMessage;
+                            } else if (promptStage.stage === 'prompt-ass') {
+                                const record = validatedAssessment(output, sourceRefs, content, assessmentReads);
+                                const store = new PromptDraftStore(this.repository, this.grounder!);
+                                const draft = await store.read(root, namedDraft!, request.leaseToken).catch(error => {
+                                    if (String(error).includes('unavailable'))
+                                        return store.begin(root, namedDraft!, request.leaseToken);
+                                    throw error;
+                                });
+                                await store.stage(root, namedDraft!, request.leaseToken, 'assessment',
+                                    draft.revision, record as unknown as Record<string, unknown>,
+                                    sourceRefs.filter(ref => ref.kind === 'file' && ref.sourceHash &&
+                                        ref.origin === 'tool').map(ref => ({ id: ref.id, sourceHash: ref.sourceHash!,
+                                        projectId: ref.projectId!,
+                                        ...(ref.contentHash ? { contentHash: ref.contentHash } : {}),
+                                        ...(ref.start !== undefined ? { start: ref.start } : {}),
+                                        ...(ref.end !== undefined ? { end: ref.end } : {}) })));
+                                output = renderAssessment(record);
                             } else output = finishedPromptText(promptStage.stage, output, sourceRefs, content);
                         }
                         let documentActivity: ChatPlanningActivity | undefined;

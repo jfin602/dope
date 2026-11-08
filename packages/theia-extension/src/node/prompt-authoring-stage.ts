@@ -111,18 +111,26 @@ export async function verifyPromptSourceRefs(root: string,
                 const reread = await grounder.readFile(root, file.id);
                 if (reread.blocks[0]?.ref.sourceHash !== file.sourceHash)
                     throw new Error('Full-file source changed');
-            } else await grounder.readFileRange(root, file.id, 0, 1, file.sourceHash);
+            } else {
+                const current = await grounder.readFileRange(root, file.id, 0, 1);
+                // Legacy path-only reads expose a full-content hash; ranged reads expose a
+                // project/path-bound source hash. Both are brokered identities.
+                if (current.sourceHash !== file.sourceHash && current.fullHash !== file.sourceHash)
+                    throw new Error('File source changed');
+            }
         }
         catch { throw new Error(`Saved prompt draft source changed or is unavailable: ${file.id}`); }
     }
 }
 
 export function promptStageInstruction(command: { stage: PromptStage; folder?: string },
-    prior: { assessment?: ChatAssistantMessage; plan?: ChatAssistantMessage }, sourceVersion?: string): string {
-    const inherited = [prior.assessment && `Selected assessment ${prior.assessment.id}:\n${prior.assessment.content.slice(0, 12_000)}`,
+    prior: { assessment?: ChatAssistantMessage; plan?: ChatAssistantMessage }, sourceVersion?: string,
+    assessmentRecord?: AssessmentRecord): string {
+    const inherited = [prior.assessment && `Selected assessment ${prior.assessment.id}:\n${assessmentRecord ?
+        compactAssessmentContext(assessmentRecord) : prior.assessment.content.slice(0, 8_000)}`,
         prior.plan && `Selected plan ${prior.plan.id}:\n${prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read relevant source and tests with read_file; report omissions. Keep the final response under 12,000 characters.';
-    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Return a Markdown assessment with headings Scope, Preservation, Dependencies, Risks, Source basis, Authority, and Evidence (T1/T2/T3).`;
+    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Return only one JSON object with exact keys scope, observations, preservation, dependencies, risks, tiers. scope is a short string. Each of observations, preservation, dependencies, risks is an array of {claim,path,start,end,sourceHash,quote}; quote is an exact short UTF-8 excerpt occupying start..end within a successful read_file result. Cite only brokered file ranges, using the sourceHash returned by the broker. A listed or searched path is not read evidence. tiers has T1, T2, T3 short strings: T1 focused source/unit work, T2 cross-boundary integration, T3 independent manual browser qualification. Do not include a Markdown report or invent omitted-file lists; Dope checks retrieval and renders the assessment.`;
     if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn a Markdown plan with ordered steps, exact likely files, focused tests/build dependency order, manual checkpoints, explicit deferrals and prompt-efficiency decisions.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
@@ -140,6 +148,91 @@ export function requestedWorkPromptCount(...texts: string[]): number | undefined
     if (!matched) return undefined;
     const count = matched[1].toLowerCase() === 'ten' ? 10 : Number(matched[1]);
     return count >= 1 && count <= 48 ? count : undefined;
+}
+
+export interface AssessmentFinding { claim: string; path: string; start: number; end: number;
+    sourceHash: string; quote: string }
+export interface AssessmentRead { path: string; start: number; end: number; sourceHash: string; text: string }
+export interface AssessmentRecord {
+    scope: string; observations: AssessmentFinding[]; preservation: AssessmentFinding[];
+    dependencies: AssessmentFinding[]; risks: AssessmentFinding[];
+    tiers: { T1: string; T2: string; T3: string };
+    omittedRequestedFiles: string[];
+}
+function compactAssessmentContext(record: AssessmentRecord): string {
+    const section = (items: AssessmentFinding[]) => ({ count: items.length,
+        sample: items.slice(0, 4).map(item => ({ claim: item.claim.slice(0, 180), path: item.path,
+            start: item.start, end: item.end, sourceHash: item.sourceHash })) });
+    return JSON.stringify({ scope: record.scope.slice(0, 500),
+        observations: section(record.observations), preservation: section(record.preservation),
+        dependencies: section(record.dependencies), risks: section(record.risks), tiers: record.tiers,
+        omittedRequestedFiles: record.omittedRequestedFiles.slice(0, 16) });
+}
+const assessmentFields = ['scope', 'observations', 'preservation', 'dependencies', 'risks', 'tiers'];
+const requestedPaths = (text: string): string[] => [...new Set(text.match(/\b(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.(?:md|txt|json|js|jsx|ts|tsx)\b/gu) ?? [])];
+/** Validate model claims against successful broker reads; metadata searches never count. */
+export function validatedAssessment(modelText: string,
+    refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>, requestedText: string,
+    evidence: readonly AssessmentRead[]): AssessmentRecord {
+    if (Buffer.byteLength(modelText, 'utf8') > 20_000) throw new Error('ASSESSMENT_PAYLOAD_LIMIT: Return fewer, shorter findings');
+    let parsed: unknown;
+    try { parsed = JSON.parse(modelText.trim()); }
+    catch { throw new Error('ASSESSMENT_JSON: Return one structured JSON object'); }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) ||
+        Object.keys(parsed).sort().join(',') !== assessmentFields.sort().join(','))
+        throw new Error('ASSESSMENT_SHAPE: Use scope, observations, preservation, dependencies, risks and tiers');
+    const value = parsed as Record<string, unknown>;
+    const short = (v: unknown, limit = 500): v is string => typeof v === 'string' &&
+        !!v.trim() && v.length <= limit && !/[\u0000-\u001f\u007f]/u.test(v);
+    if (!short(value.scope, 1000)) throw new Error('ASSESSMENT_SCOPE: Supply a bounded scope');
+    const read = refs.filter(ref => ref.kind === 'file' && ref.origin === 'tool' && ref.sourceHash &&
+        Number.isSafeInteger(ref.start) && Number.isSafeInteger(ref.end) && ref.end! > ref.start!);
+    if (!read.length) throw new Error('ASSESSMENT_READ_REQUIRED: Read source with read_file before assessment');
+    const findings = {} as Pick<AssessmentRecord, 'observations' | 'preservation' | 'dependencies' | 'risks'>;
+    for (const kind of ['observations', 'preservation', 'dependencies', 'risks'] as const) {
+        const items = value[kind];
+        if (!Array.isArray(items) || items.length < 1 || items.length > 12)
+            throw new Error(`ASSESSMENT_${kind.toUpperCase()}: Supply 1–12 source-backed findings`);
+        findings[kind] = items.map((raw: unknown) => {
+            if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+                Object.keys(raw).sort().join(',') !== 'claim,end,path,quote,sourceHash,start')
+                throw new Error(`ASSESSMENT_CITATION: ${kind} requires claim, path, start, end, sourceHash and quote`);
+            const item = raw as AssessmentFinding;
+            if (!short(item.claim) || !short(item.quote, 200) || typeof item.path !== 'string' ||
+                !Number.isSafeInteger(item.start) || !Number.isSafeInteger(item.end) ||
+                !read.some(ref => ref.id === item.path && ref.sourceHash === item.sourceHash &&
+                    item.start >= ref.start! && item.end <= ref.end! && item.end > item.start) ||
+                !evidence.some(page => page.path === item.path && page.sourceHash === item.sourceHash &&
+                    item.start >= page.start && item.end <= page.end &&
+                    page.text.includes(item.quote) &&
+                    Buffer.from(page.text, 'utf8').subarray(item.start - page.start,
+                        item.end - page.start).toString('utf8') === item.quote))
+                throw new Error(`ASSESSMENT_UNSUPPORTED_SOURCE: ${kind} cites ${String(item.path).slice(0, 100)} outside a brokered read_file range or the quote differs; read that range and retry`);
+            return item;
+        });
+    }
+    const tiers = value.tiers as Record<string, unknown> | undefined;
+    if (!tiers || typeof tiers !== 'object' || Array.isArray(tiers) ||
+        Object.keys(tiers).sort().join(',') !== 'T1,T2,T3' ||
+        !short(tiers.T1) || !short(tiers.T2) || !short(tiers.T3))
+        throw new Error('ASSESSMENT_TIERS: Supply T1 focused, T2 integration and T3 manual qualification');
+    const omittedRequestedFiles = requestedPaths(requestedText).filter(path =>
+        !read.some(ref => ref.id === path));
+    return { scope: value.scope as string, ...findings,
+        tiers: tiers as AssessmentRecord['tiers'], omittedRequestedFiles };
+}
+
+export function renderAssessment(record: AssessmentRecord): string {
+    const section = (title: string, items: AssessmentFinding[]) =>
+        `## ${title}\n${items.map(item => `- ${item.claim} — “${item.quote}” (${item.path} bytes ${item.start}–${item.end}, sha256 ${item.sourceHash})`).join('\n')}`;
+    return `${heading['prompt-ass']}\n\nDraft only. This command did not change project files or start Work.\n\n` +
+        `## Scope\n${record.scope}\n\n${section('Observations', record.observations)}\n\n` +
+        `${section('Preservation', record.preservation)}\n\n${section('Dependencies', record.dependencies)}\n\n` +
+        `${section('Risks', record.risks)}\n\n## Evidence tiers\n` +
+        `- T1 focused source and unit checks: ${record.tiers.T1}\n` +
+        `- T2 cross-boundary integration: ${record.tiers.T2}\n` +
+        `- T3 independent manual browser qualification: ${record.tiers.T3}\n\n` +
+        `## Requested files not read\n${record.omittedRequestedFiles.join(', ') || 'none'}\n`;
 }
 
 export function finishedPromptText(stage: 'prompt-ass' | 'prompt-plan', modelText: string,

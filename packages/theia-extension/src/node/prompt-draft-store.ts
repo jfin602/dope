@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import type { ChatPromptDraftIdentity } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProjectGrounder } from './chat-project-grounder';
-import { verifyPromptDraftSourceBasis, verifyPromptSourceRefs } from './prompt-authoring-stage';
+import { renderAssessment, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
+    type AssessmentRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence } from './prompt-stack-proposal';
 
 export type PromptDraftStage = 'assessment' | 'plan';
@@ -11,7 +12,8 @@ export interface StoredPromptDraftStage {
     contentHash: string;
     record: Record<string, unknown>;
     /** Broker-read file identities are pinned apart from the structured model record. */
-    sourceRefs: { id: string; sourceHash: string; contentHash?: string; projectId: string }[];
+    sourceRefs: { id: string; sourceHash: string; contentHash?: string; projectId: string;
+        start?: number; end?: number }[];
     sourceRefsHash: string;
     dependencyHash?: string;
 }
@@ -93,6 +95,13 @@ export class PromptDraftStore {
                     kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
             return { result: current };
         });
+    }
+
+    /** Derive the inspectable view from saved structured data; no model call or canonical write. */
+    async assessmentView(root: string, identity: ChatPromptDraftIdentity, leaseToken: string): Promise<string> {
+        const saved = await this.read(root, identity, leaseToken);
+        if (!saved.assessment) throw new Error('Named prompt assessment has not been staged');
+        return renderAssessment(saved.assessment.record as unknown as AssessmentRecord);
     }
 
     async stage(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,

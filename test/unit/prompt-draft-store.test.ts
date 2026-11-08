@@ -114,6 +114,22 @@ test('a reclaimed Chat lease can explicitly reopen intact stages after restart',
     assert.equal(saved.revision, 1);
 }));
 
+test('saved structured assessment renders after restart without model or canonical task files', () => fixture(async v => {
+    await v.store.begin(v.root, v.identity, v.lease);
+    const finding = { claim: 'The source exists', path: 'README.md', start: 0, end: 6,
+        quote: 'source', sourceHash: v.refs[0].sourceHash };
+    await v.store.stage(v.root, v.identity, v.lease, 'assessment', 0,
+        { scope: 'Review source', observations: [finding], preservation: [finding],
+            dependencies: [finding], risks: [finding],
+            tiers: { T1: 'Focused unit checks', T2: 'Integration checks',
+                T3: 'Independent browser review' }, omittedRequestedFiles: ['AGENTS.md'] },
+        v.refs.map(ref => ({ ...ref, start: 0, end: 11 })));
+    const reopened = new PromptDraftStore(new ChatRepository(), new ChatProjectGrounder({} as never),
+        async () => basis);
+    assert.match(await reopened.assessmentView(v.root, v.identity, v.lease), /Requested files not read\nAGENTS\.md/);
+    await assert.rejects(lstat(join(v.root, 'docs', 'tasks', 'safe-task')), /ENOENT/);
+}));
+
 test('unsafe task parent and draft staging symlink are rejected without writing outside', () => fixture(async v => {
     await symlink(tmpdir(), join(v.root, 'docs'));
     await assert.rejects(v.store.begin(v.root, v.identity, v.lease), /Unsafe Chat directory/);
