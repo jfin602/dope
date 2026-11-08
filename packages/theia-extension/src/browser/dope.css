@@ -12,6 +12,11 @@
 .dope-documents-view-controls button { padding: 4px 9px; border: 1px solid var(--theia-widget-border); border-radius: 4px; color: var(--theia-editor-foreground); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); cursor: pointer; }
 .dope-documents-view-controls button[aria-pressed="true"] { border-color: var(--theia-focusBorder); font-weight: 700; }
 .dope-documents-literal, .dope-documents-source { white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; font: 13px/1.5 var(--theia-code-font-family, monospace); user-select: text; }
+.dope-documents-compare { max-width: 100%; overflow-x: auto; white-space: pre; overflow-wrap: normal; }
+.dope-documents-compare [data-kind="added"] { background: var(--theia-diffEditor-insertedTextBackground, rgba(50, 150, 80, .2)); }
+.dope-documents-compare [data-kind="removed"] { background: var(--theia-diffEditor-removedTextBackground, rgba(180, 75, 65, .2)); }
+.dope-documents-compare [data-unterminated="true"] { display: block; }
+.dope-documents-compare [data-unterminated="true"]::after { content: ' ⟵ no line ending'; color: var(--theia-descriptionForeground); font-size: .85em; }
 .dope-documents-markdown { min-width: 0; line-height: 1.5; user-select: text; }
 .dope-documents-markdown table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
 .dope-documents-markdown th, .dope-documents-markdown td { border: 1px solid var(--theia-widget-border); padding: 4px 8px; }

@@ -7,6 +7,8 @@ import { DocumentsWorkspaceState, type DocumentsMode } from './documents-workspa
 import { ProjectDocumentsTree, type ProjectDocumentEntry, type ProjectDocumentListing } from './project-documents-tree';
 import { documentFormat, readDocumentPreview, renderDocumentPreview, renderDocumentSource } from './documents-preview';
 import { DocumentsEditing } from './documents-editing';
+import { projectDocumentsCompare, type CompareFile, type CompareTreeNode, type DocumentsCompare,
+    type VerifiedDocumentsCandidate } from './documents-diff';
 
 export const DOCUMENTS_WIDGET_ID = 'dope-documents';
 
@@ -34,6 +36,8 @@ export class DocumentsWidget extends BaseWidget {
     private previewError?: string;
     private previewLoading = false;
     private previewMode: 'preview' | 'source' = 'preview';
+    private compare?: DocumentsCompare;
+    private compareView: 'original' | 'proposed' | 'diff' = 'proposed';
 
     constructor(private readonly workspaces: WorkspaceService, private readonly files: FileService, editors: EditorManager) {
         super();
@@ -100,6 +104,7 @@ export class DocumentsWidget extends BaseWidget {
         this.previewError = undefined;
         this.previewLoading = false;
         this.previewMode = 'preview';
+        this.compare = undefined;
         this.listing = undefined;
         this.folders.clear();
         this.expanded.clear();
@@ -221,8 +226,96 @@ export class DocumentsWidget extends BaseWidget {
     /** Selection can be supplied only after a current owner has verified the same project. */
     showCandidate(mode: Exclude<DocumentsMode, 'explorer'>, projectUri: string, candidateId: string): boolean {
         const selected = this.presentation.selectCandidate(mode, projectUri, candidateId);
-        if (selected) this.render();
+        if (selected) { this.compare = undefined; this.render(); }
         return selected;
+    }
+
+    /** P6 can hand off only owner-checked proposal state; this view never decides or applies it. */
+    showDocumentationCompare(projectUri: string, candidate: VerifiedDocumentsCandidate): boolean {
+        if (!candidate.proposal || candidate.projectRoot !== new URL(projectUri).pathname ||
+            !this.presentation.selectCandidate('docs-proposal', projectUri, candidate.proposal.id)) return false;
+        this.compare = projectDocumentsCompare(candidate);
+        this.compareView = 'proposed';
+        this.presentation.setStatus('ready');
+        this.render();
+        return true;
+    }
+
+    private renderCompareTree(nodes: CompareTreeNode[], depth = 0): void {
+        for (const node of nodes) {
+            if (node.file) {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'dope-documents-tree-row';
+                row.style.setProperty('--dope-documents-depth', String(depth));
+                row.setAttribute('role', 'treeitem');
+                row.setAttribute('aria-level', String(depth + 1));
+                row.setAttribute('aria-selected', String(this.presentation.selection.selectedPath === node.path));
+                row.textContent = `${node.name} · ${node.file.label}`;
+                row.title = node.path;
+                row.addEventListener('click', () => {
+                    const current = this.presentation.selection;
+                    if (current.projectUri && current.candidateId) {
+                        this.presentation.selectCandidate('docs-proposal', current.projectUri, current.candidateId, node.path);
+                        this.presentation.setStatus('ready');
+                        this.compareView = 'proposed';
+                        this.render();
+                    }
+                });
+                this.tree.append(row);
+            } else {
+                const folder = document.createElement('div');
+                folder.className = 'dope-documents-tree-row';
+                folder.style.setProperty('--dope-documents-depth', String(depth));
+                folder.textContent = `${node.name}/`;
+                folder.setAttribute('role', 'group');
+                this.tree.append(folder);
+                this.renderCompareTree(node.children, depth + 1);
+            }
+        }
+    }
+
+    private renderCompare(file: CompareFile): void {
+        const controls = document.createElement('div');
+        controls.className = 'dope-documents-view-controls';
+        for (const view of ['original', 'proposed', 'diff'] as const) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = view === 'diff' ? 'Source Diff' : view === 'original' ? 'Original' : 'Proposed';
+            button.setAttribute('aria-pressed', String(this.compareView === view));
+            button.addEventListener('click', () => { this.compareView = view; this.render(); });
+            controls.append(button);
+        }
+        this.content.append(controls);
+        const selected = this.compareView === 'original' ? file.original : file.proposed;
+        if (this.compareView !== 'diff' && selected === null) {
+            const absent = document.createElement('p');
+            absent.textContent = this.compareView === 'original' ? 'Original file absent.' : 'Proposed file absent.';
+            this.content.append(absent);
+            return;
+        }
+        const source = document.createElement('pre');
+        source.className = 'dope-documents-source dope-documents-compare';
+        source.setAttribute('aria-label', `${file.path} ${this.compareView === 'diff' ? 'source diff' : this.compareView}`);
+        const rows = this.compareView === 'diff' ? file.sourceDiff :
+            this.compareView === 'original' ? file.originalLines : file.proposedLines;
+        for (const line of rows) {
+            const span = document.createElement('span');
+            span.id = line.anchor.replace(/[^a-zA-Z0-9_-]/gu, '-');
+            span.dataset.kind = line.kind;
+            span.dataset.line = String(line.line);
+            span.dataset.side = line.side;
+            if (this.compareView === 'diff' && !/[\r\n]$/u.test(line.text)) span.dataset.unterminated = 'true';
+            if (this.compareView === 'diff') {
+                const marker = document.createElement('span');
+                marker.textContent = line.kind === 'added' ? '+ ' : line.kind === 'removed' ? '- ' : '  ';
+                marker.setAttribute('aria-label', line.kind);
+                span.append(marker);
+            }
+            span.append(document.createTextNode(line.text));
+            source.append(span);
+        }
+        this.content.append(source);
     }
 
     private render(): void {
@@ -231,7 +324,10 @@ export class DocumentsWidget extends BaseWidget {
         this.mode.textContent = state.mode === 'explorer' ? 'Project docs' :
             state.mode === 'docs-proposal' ? 'Documentation proposal' : 'Prompt stack';
         this.tree.replaceChildren();
-        if (state.mode !== 'explorer') this.tree.textContent = 'Review files will appear here.';
+        const compare = this.compare;
+        if (state.mode === 'docs-proposal' && compare && compare.proposalId === state.candidateId)
+            this.renderCompareTree(compare.tree);
+        else if (state.mode !== 'explorer') this.tree.textContent = 'Review files will appear here.';
         else if (!state.projectUri) this.tree.textContent = 'Open one local project folder.';
         else if (this.loading.has('')) this.tree.textContent = 'Loading document folders…';
         else if (this.folderErrors.has('')) this.tree.textContent = this.folderErrors.get('')!;
@@ -278,7 +374,10 @@ export class DocumentsWidget extends BaseWidget {
                 this.tree.append(message);
             }
         }
-        this.status.textContent = state.status === 'error' ? state.error ?? 'Documents unavailable' :
+        this.status.textContent = state.mode === 'docs-proposal' && this.compare ?
+            `${this.compare.status === 'applicable' ? 'Pending · read-only' : `${this.compare.status} · read-only; review unavailable`} · ${
+                state.selectedPath ?? `${this.compare.files.length} changed file(s)`}` :
+            state.status === 'error' ? state.error ?? 'Documents unavailable' :
             state.status === 'pending' ? 'Loading Documents…' : state.selectedPath ?
                 `${state.selectedPath} · ${documentFormat(state.selectedPath)?.toUpperCase() ?? 'Unknown format'} · ${
                     this.editing.activePath === state.selectedPath ? this.editing.dirty ? 'Unsaved changes in editor' : 'Open in editor' : 'Preview'}` :
@@ -287,6 +386,12 @@ export class DocumentsWidget extends BaseWidget {
         if (this.editing.dirty && this.editing.activePath !== state.selectedPath)
             this.status.textContent += ` · Unsaved in editor: ${this.editing.activePath}`;
         this.content.replaceChildren();
+        if (state.mode === 'docs-proposal' && compare && compare.proposalId === state.candidateId) {
+            const file = compare.files.find(item => item.path === state.selectedPath) ?? compare.files[0];
+            if (file) this.renderCompare(file);
+            else this.content.textContent = 'No comparable files.';
+            return;
+        }
         if (state.mode !== 'explorer') { this.content.textContent = 'Review files will appear here.'; return; }
         if (!state.selectedPath) { this.content.textContent = 'Select a document to view its content.'; return; }
         const controls = document.createElement('div');
