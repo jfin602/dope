@@ -1,6 +1,6 @@
 # /prompt-ass — c13-incremental-generation
 
-**Owner-approved scope (2026-11-08):** Implement ADR 0055 after the already-running Phase 13 R3B recovery task. **State:** assessment and prompt authoring only; no product changes or execution. **GitHub authoring basis:** main `eb11adb05b1bd228894cbd45f075f875d3d6d89e`, manifest version `0.13.11`. The owner's live checkout may contain newer, dirty R3B output; all execution must inspect its actual state before touching code.
+**Owner-approved scope (2026-11-08; sequencing refined after first runner preflight):** Implement ADR 0055 against current protected interfaces; R3B technical PASS/report is not a prerequisite for independent controller/Docs authoring. **State:** assessment and prompt authoring only; no product changes or execution. **GitHub authoring basis:** main `eb11adb05b1bd228894cbd45f075f875d3d6d89e`, manifest version `0.13.11`. The owner's live checkout may contain newer, dirty R3B output; all execution must inspect its actual state before touching code.
 
 ## Outcome and acceptance
 
@@ -32,7 +32,7 @@ No claim that new post-R3B source already exists on GitHub main. R3B is underway
 
 ## Risks and mitigations
 
-1. **R3B source drift:** original GitHub authoring baseline does not contain active local R3B implementation. At run start require actual source/dirty-tree inspection and source-backed R3B qualification; stop BLOCKED if absent/unsafe, never invent duplicate publisher.
+1. **R3B source drift and false dependency:** local R3B source may be newer than this authoring baseline, while its report may be PARTIAL/NOT GREEN. Inspect actual checkout and preserve all evidence, but do **not** gate independent P1/P2 on R3B qualification. Check real publisher API only at the P3/P5 integration seam; stop that protected publication path if the API is missing/unsafe. Never invent a duplicate publisher.
 2. **Unbounded Pi loops/context pollution:** set server-side per-stage/per-file/total bytes, call and elapsed-time budgets; short receipts and compact state summaries; no echo of accumulating proposed bytes.
 3. **Incomplete or wrong packet:** typed stage identities + monotonic sequence + per-target digest, durable stage snapshots, and one backend `proposal_finish` that validates complete coverage and final bytes independently of model claims.
 4. **Stale/unsafe writes:** never allow model tools to call canonical FileService/write_file; keep existing Docs/Prompt publishers solely after human Accept, with source/owner/role/path/collision rechecks.
