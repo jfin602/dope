@@ -1579,3 +1579,17 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-roadmap-offer-actions button { max-width: 100%; white-space: normal; background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); color: var(--theia-button-secondaryForeground, var(--theia-foreground)); border: 1px solid var(--theia-widget-border); }
 .dope-chat-roadmap-offer-actions .dope-chat-roadmap-offer-primary { background: #9a4d22; color: #fff; border-color: #9a4d22; }
 .dope-chat-roadmap-offer button:focus-visible { outline: 2px solid #f0aa72; outline-offset: 2px; }
+.dope-native-document-editor { position: relative; min-width: 0; min-height: 0; background: var(--theia-editor-background); }
+.dope-native-document-modes { position: absolute; z-index: 2; inset: auto 0 0; box-sizing: border-box; height: 38px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 8px; border-top: 1px solid var(--theia-widget-border); background: var(--theia-editor-background); }
+.dope-native-document-modes button { min-width: 58px; min-height: 28px; padding: 3px 8px; border: 1px solid transparent; border-radius: 4px; color: var(--theia-editor-foreground); background: transparent; font: inherit; cursor: pointer; }
+.dope-native-document-modes button[aria-pressed="true"] { border-color: var(--theia-focusBorder); background: var(--theia-button-secondaryBackground, var(--theia-editorWidget-background)); }
+.dope-native-document-modes button:disabled { opacity: .5; cursor: default; }
+.dope-native-document-modes button:focus-visible, .dope-native-document-formatted:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }
+.dope-native-document-formatted { position: absolute; z-index: 1; inset: 0 0 38px; box-sizing: border-box; overflow: auto; padding: 28px max(16px, calc((100% - 784px) / 2)); color: var(--theia-editor-foreground); background: var(--theia-editor-background); font: 15px/1.65 var(--theia-ui-font-family); user-select: text; }
+.dope-native-document-formatted[hidden] { display: none; }
+.dope-native-document-formatted .dope-documents-markdown { max-width: 784px; margin: 0 auto; overflow-wrap: anywhere; }
+.dope-native-document-formatted :is(h1, h2, h3, h4) { line-height: 1.25; margin: 1.5em 0 .6em; }
+.dope-native-document-formatted p, .dope-native-document-formatted ul, .dope-native-document-formatted ol { margin: 0 0 1em; }
+.dope-native-document-formatted pre { padding: 12px; border: 1px solid var(--theia-widget-border); border-radius: 5px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); }
+.dope-native-document-show-formatted > .monaco-editor { visibility: hidden; pointer-events: none; }
+@media (max-width: 600px) { .dope-native-document-formatted { padding: 18px 16px; } }
