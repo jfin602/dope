@@ -88,6 +88,26 @@ test('Pi Chat binding accepts only the complete brokered tool boundary', async (
         /Pi tool boundary changed/);
 });
 
+test('protected proposal binding accepts the complete Pi tool set regardless of order', async () => {
+    const f = fixture();
+    f.state.registry.models[0].capabilities.agentExecution = known(true);
+    const proposalTools = ['read_file', 'list_files', 'search_paths', 'search_text',
+        'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish'];
+    const host = { ...f.host, openChatToolsSession: async (...args: any[]) => {
+        f.calls.push(args);
+        return { version: '1.4.0', tools: proposalTools, resources: 'isolated' };
+    } };
+    const selected = { connectionId: 'desk', modelId: 'exact-model' };
+    const binding = await f.bridge.bind(selected, host as any, '/tmp',
+        { chatTools: true, proposalTools: true });
+    assert.equal(binding.modelId, selected.modelId);
+    assert.equal(f.calls[0][6], true);
+    const missing = { ...host, openChatToolsSession: async () => ({ version: '1.4.0',
+        tools: proposalTools.filter(name => name !== 'proposal_finish'), resources: 'isolated' }) };
+    await assert.rejects(f.bridge.bind(selected, missing as any, '/tmp',
+        { chatTools: true, proposalTools: true }), /Pi tool boundary changed/);
+});
+
 test('protected native Roadmap mode has only read, stage and cancel tools', async () => {
     const f = fixture();
     f.state.registry.models[0].capabilities.agentExecution = known(true);

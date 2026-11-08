@@ -50,10 +50,11 @@ function checkedStage(value: unknown, limits: ProposalLimits): ProposalStage {
     if (!exact(value, ['version', 'sequence', 'expectedRevision', 'idempotencyKey', 'target',
         'chunkIndex', 'content', 'digest', 'complete'])) return fail('STAGE_ARGUMENTS');
     const v = value as Record<string, unknown>;
+    if (typeof v.idempotencyKey !== 'string' || !/^[a-zA-Z0-9_-]{8,80}$/.test(v.idempotencyKey))
+        return fail('STAGE_IDEMPOTENCY_KEY');
     if (v.version !== 1 || !Number.isSafeInteger(v.sequence) || (v.sequence as number) < 1 ||
         !Number.isSafeInteger(v.expectedRevision) || (v.expectedRevision as number) < 0 ||
         !Number.isSafeInteger(v.chunkIndex) || (v.chunkIndex as number) < 0 ||
-        typeof v.idempotencyKey !== 'string' || !/^[a-zA-Z0-9_-]{8,80}$/.test(v.idempotencyKey) ||
         typeof v.target !== 'string' || v.target.length > 240 ||
         !/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*$/.test(v.target) ||
         v.target.split('/').some(part => part === '.' || part === '..') ||

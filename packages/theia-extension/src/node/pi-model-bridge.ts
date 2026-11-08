@@ -152,7 +152,7 @@ export class PiModelBridge {
                 options.roadmapTools ? ['roadmap_cancel', 'roadmap_read', 'roadmap_stage'] :
                 ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
-            JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected))
+            JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected.slice().sort()))
             throw unavailable('Pi tool boundary changed; restart Dope');
         return { connectionId: selection.connectionId, modelId: selection.modelId,
             registryRevision: latest.registry.revision, endpoint,

@@ -80,7 +80,11 @@ export class IncrementalDocumentReview implements ProposalDomainHandler<ChatDocu
             const priorTarget = prior?.targets.find(target => target.path === path);
             const anchorBasis = priorTarget?.after ?? basis;
             if (anchorBasis === null || anchorBasis === undefined) throw new Error(`Update source missing: ${path}`);
-            if (edit.sourceHash !== hash(anchorBasis)) throw new Error(`Update source changed: ${path}`);
+            if (edit.sourceHash !== hash(anchorBasis)) {
+                if (pages.some(page => page.path === path && page.sourceHash === edit.sourceHash))
+                    throw new Error('PROPOSAL_DOCUMENT_USE_FULL_HASH');
+                throw new Error(`Update source changed: ${path}`);
+            }
             if (!priorTarget && !pages.some(page => page.path === path && page.fullHash === edit.sourceHash &&
                 page.text.includes(edit.before))) throw new Error(`Exact replacement was not broker-read: ${path}`);
             const start = anchorBasis.indexOf(edit.before);

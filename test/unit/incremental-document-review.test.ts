@@ -82,6 +82,9 @@ test('late anchors require a real page and stale, ambiguous and overlapping edit
             { ...context, pages: [], readPaths: () => [] }).validateStage(snapshot(root), good), /broker-read/);
         await assert.rejects(adapter.validateStage(snapshot(root), stage(1, 'docs/rule.md', 0,
             { operation: 'replace', sourceHash: hash('foreign'), before: 'unique old', after: 'x' }, true)), /source changed/);
+        await assert.rejects(adapter.validateStage(snapshot(root), stage(1, 'docs/rule.md', 0,
+            { operation: 'replace', sourceHash: page.sourceHash, before: 'unique old', after: 'x' }, true)),
+        /PROPOSAL_DOCUMENT_USE_FULL_HASH/);
         await assert.rejects(adapter.validateStage(snapshot(root, [good]), stage(2, 'docs/rule.md', 1,
             { operation: 'replace', sourceHash: hash(before), before: 'unique old', after: 'again' }, true)), /Overlapping/);
         const ambiguous = before.replace('## Late\nunique old\n', '## Late\nunique old\nunique old\n');

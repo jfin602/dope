@@ -48,6 +48,9 @@ test('trusted controller persists bounded ordered chunks, exact replay and seale
     await assert.rejects(reopened.stage(stage(2, 1, 'docs/new.md', 1, 'finish', true), 'prompt'), /DOMAIN/);
     await assert.rejects(reopened.stage({ ...stage(2, 1, 'docs/new.md', 1, 'finish', true), digest: 'wrong' },
       'document'), /STAGE_ARGUMENTS/);
+    await assert.rejects(reopened.stage({ ...stage(2, 1, 'docs/new.md', 1, 'finish', true),
+      idempotencyKey: 'a' }, 'document'), /STAGE_IDEMPOTENCY_KEY/);
+    assert.equal((await reopened.status()).nextSequence, 2);
     await assert.rejects(reopened.stage(stage(2, 1, '../outside.md', 1, 'bad', true), 'document'), /STAGE_ARGUMENTS/);
     await assert.rejects(reopened.stage(stage(2, 1, 'docs/new.md', 1, 'x'.repeat(16_001), true),
       'document'), /STAGE_ARGUMENTS/);
