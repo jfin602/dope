@@ -57,6 +57,7 @@ export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseT
     content?: string; retryMessageId?: string; context?: ChatContextSelection[];
     /** Card-selected pending candidate. Resolved against the current saved Chat, never trusted as proposal bytes. */
     documentationRevision?: { proposalId: string; revision: number; digest: string };
+    promptStackRevision?: { proposalId: string; revision: number; digest: string };
     /** Explicit, capped opt-in for an atomic preview of small unlinked Roadmap edits. */
     planningSteps?: 2 | 3;
     /** Explicit selected-checkpoint, local-only Bridge suggestion; never a write grant. */
@@ -177,6 +178,16 @@ export interface ChatService {
         proposalId: string, proposalDigest: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }>;
     recoverDocumentation(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }>;
+    inspectPromptStack(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string, digest: string): Promise<{
+            status: 'applicable' | 'stale'; projectRoot: string;
+            proposal: import('./index').ChatPromptStackProposal }>;
+    dismissPromptStack(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string, digest: string): Promise<void>;
+    publishPromptStack(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string, digest: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }>;
+    recoverPromptStack(projectHandle: string, chatId: ChatId, leaseToken: string,
+        proposalId: string, digest: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }>;
     reviewNativeRoadmap(projectHandle: string, chatId: ChatId, leaseToken: string, proposalId: string,
         operationIds: string[], decision: 'apply' | 'reject'):
         Promise<{ token: string; summary: string; preview?: ChatPlanningProposal['preview'] }>;

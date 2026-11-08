@@ -7,6 +7,8 @@ import { checkedTasksRoot, captureSequenceEvidence } from '@dope/agent-core/lib/
 import { versionCoherent } from '@dope/agent-core/lib/node/sequence-checkpoint';
 import { discoverRoadmapTaskStacks } from '@dope/agent-core/lib/node/roadmap-task-discovery';
 import type { DraftStack } from '@dope/agent-core/lib/phase-stack-composer';
+import type { ChatPromptStackProposal } from '@dope/chat';
+import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
 import type { BridgeOwnerSnapshot } from './planning-bridge-approvals';
 import { PlanningBridgeApprovals } from './planning-bridge-approvals';
 
@@ -28,6 +30,7 @@ export interface PublicationPreview {
 }
 export interface PublicationRecord {
     schemaVersion: 1; revision: number; projectId: string; checkpointId: string;
+    mode?: 'native';
     folderName: string; draftHash: string; sourceHash: string; ownerHash: string; gitHead: string;
     packageVersion: string;
     stackFingerprint: string; status: 'publishing' | 'review-required' | 'published';
@@ -44,8 +47,16 @@ export class PlanningStackPublication {
     }
     private async location(root: string, folder: string) {
         if (!safeFolder(folder) || await realpath(root) !== root) throw new Error('Unsafe or foreign publication root');
-        const tasks = await checkedTasksRoot(root);
-        const directory = join(tasks.absolute, folder);
+        let tasks = root;
+        for (const part of ['docs', 'tasks']) {
+            tasks = join(tasks, part);
+            try {
+                const info = await lstat(tasks);
+                if (!info.isDirectory() || info.isSymbolicLink() || await realpath(tasks) !== tasks)
+                    throw new Error('Unsafe tasks folder');
+            } catch (error) { if (!missing(error)) throw error; }
+        }
+        const directory = join(tasks, folder);
         const dope = join(root, '.dope');
         const base = await lstat(dope);
         if (!base.isDirectory() || base.isSymbolicLink() || await realpath(dope) !== dope)
@@ -76,14 +87,17 @@ export class PlanningStackPublication {
                 const value = JSON.parse(await handle.readFile('utf8')) as PublicationRecord;
                 if (value.schemaVersion !== 1 || value.folderName !== folder || !Number.isSafeInteger(value.revision) ||
                     value.revision < 1 || !['publishing', 'review-required', 'published'].includes(value.status) ||
+                    value.mode !== undefined && value.mode !== 'native' ||
                     typeof value.projectId !== 'string' || !value.projectId ||
-                    typeof value.checkpointId !== 'string' || !value.checkpointId ||
+                    typeof value.checkpointId !== 'string' || value.mode !== 'native' && !value.checkpointId ||
                     !hex(value.draftHash) || !hex(value.sourceHash) || !hex(value.ownerHash) ||
                     !hex(value.stackFingerprint) ||
                     typeof value.gitHead !== 'string' || !/^[a-f0-9]{40,64}$/u.test(value.gitHead) ||
                     typeof value.packageVersion !== 'string' || !/^\d+\.\d+\.\d+$/u.test(value.packageVersion) ||
                     !Array.isArray(value.files) || !value.files.length || value.files.length > 100 ||
                     value.files.some(file => !(file.path === `docs/tasks/${folder}/README.md` ||
+                        value.mode === 'native' && (file.path === `docs/tasks/${folder}/prompt-assessment.md` ||
+                            file.path === `docs/tasks/${folder}/implementation-plan.md`) ||
                         new RegExp(`^docs/tasks/${folder}/P[1-9]\\d*-[a-z0-9]+(?:-[a-z0-9]+)*\\.txt$`, 'u').test(file.path)) ||
                         !hex(file.hash)) || new Set(value.files.map(file => file.path)).size !== value.files.length)
                     throw new Error('Invalid publication record');
@@ -129,6 +143,7 @@ export class PlanningStackPublication {
             dependencies: planning.map.workItems.flatMap(item => item.dependsOn.map(id => `${id} -> ${item.id}`)) };
     }
     async preview(root: string, checkpointId: string, draft: DraftStack): Promise<PublicationPreview> {
+        await checkedTasksRoot(root);
         const { directory } = await this.location(root, draft.folderName);
         if (draft.sourcePath !== `docs/tasks/${draft.folderName}` || await this.record(root, draft.folderName))
             throw new Error('Publication already exists; review or choose a new stack');
@@ -158,6 +173,101 @@ export class PlanningStackPublication {
         this.pending.set(result.token, { root, preview: structuredClone(result),
             draft: { ...draft, files: draft.files.map(file => ({ ...file })), diagnostics: [...draft.diagnostics] } });
         return result;
+    }
+    /** The same protected publication journal and exclusive file writer, with no Bridge owner requirement. */
+    async publishNative(root: string, proposal: ChatPromptStackProposal): Promise<PublicationRecord> {
+        validatePromptStackProposal(proposal);
+        if (proposal.root !== root) throw new Error('Foreign prompt stack publication');
+        const paths = await this.location(root, proposal.folder);
+        const files = proposal.files;
+        if (files.length < 5 || files.length > 8 ||
+            files[0]?.path !== `docs/tasks/${proposal.folder}/prompt-assessment.md` ||
+            files[1]?.path !== `docs/tasks/${proposal.folder}/implementation-plan.md` ||
+            files[2]?.path !== `docs/tasks/${proposal.folder}/README.md` ||
+            new Set(files.map(file => file.path)).size !== files.length ||
+            files.some(file => !file.path.startsWith(`docs/tasks/${proposal.folder}/`) ||
+            file.afterHash !== digest(file.after)) ||
+            files.slice(3).some((file, index) =>
+                !new RegExp(`^docs/tasks/${proposal.folder}/P${index + 1}-[a-z0-9-]+\\.txt$`, 'u').test(file.path)))
+            throw new Error('Prompt stack file set changed');
+        // Extract only the basename from checked, project-relative target paths.
+        const imported = await importPhaseStack(proposal.folder,
+            files.slice(3).map(file => ({ filename: file.path.split('/').pop()!, text: file.after })),
+            `docs/tasks/${proposal.folder}`);
+        if (imported.mode === 'correction' && imported.unchangedVersion !== proposal.sourceVersion)
+            throw new Error('Reviewed prompt version differs from the project');
+        const draftHash = digest(JSON.stringify(files.map(({ path, afterHash }) => ({ path, afterHash }))));
+        await mkdir(paths.metadata, { recursive: true });
+        await mkdir(paths.lockDirectory, { recursive: true });
+        if ((await lstat(paths.metadata)).isSymbolicLink() ||
+            await realpath(paths.metadata) !== paths.metadata ||
+            (await lstat(paths.lockDirectory)).isSymbolicLink() ||
+            await realpath(paths.lockDirectory) !== paths.lockDirectory)
+            throw new Error('Unsafe prompt publication metadata');
+        const lock = await open(paths.lock,
+            constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+        let journal: PublicationRecord | undefined;
+        let journalWritten = false;
+        try {
+            const existing = await this.record(root, proposal.folder);
+            if (existing) {
+                const review = await this.inspect(root, proposal.folder);
+                if (existing.mode === 'native' && existing.status === 'published' &&
+                    existing.draftHash === draftHash && existing.projectId === proposal.projectId &&
+                    review.files.every(file => file.status === 'matching')) return existing;
+                throw new Error('Publication already exists; inspect its recovery record');
+            }
+            await this.absent(paths.directory);
+            const git = await capturePromptSourceEvidence(root);
+            await versionCoherent(root, git.packageVersion);
+            if (git.head !== proposal.gitHead || git.packageVersion !== proposal.sourceVersion ||
+                git.worktreeFingerprint !== proposal.worktreeId)
+                throw new Error('Git or source changed since prompt review');
+            journal = { schemaVersion: 1, revision: 1, mode: 'native', projectId: proposal.projectId,
+                checkpointId: '', folderName: proposal.folder, draftHash,
+                sourceHash: proposal.worktreeId, ownerHash: digest(proposal.ownerId),
+                gitHead: proposal.gitHead, packageVersion: proposal.sourceVersion,
+                stackFingerprint: imported.fingerprint, status: 'publishing',
+                files: files.map(file => ({ path: file.path, hash: file.afterHash })) };
+            await this.save(root, journal);
+            journalWritten = true;
+            let parent = root;
+            for (const part of ['docs', 'tasks']) {
+                parent = join(parent, part);
+                try { await mkdir(parent); }
+                catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+                const info = await lstat(parent);
+                if (!info.isDirectory() || info.isSymbolicLink() || await realpath(parent) !== parent)
+                    throw new Error('Unsafe tasks folder during publication');
+            }
+            await mkdir(paths.directory);
+            for (const file of files) {
+                const target = join(root, file.path);
+                const handle = await open(target,
+                    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+                try { await handle.writeFile(file.after); await handle.sync(); }
+                finally { await handle.close(); }
+            }
+            const review = await this.inspect(root, proposal.folder);
+            if (review.files.length !== files.length || review.files.some(file => file.status !== 'matching'))
+                throw new Error('Published prompt bytes differ from the reviewed proposal');
+            const found = (await discoverRoadmapTaskStacks(root, 'docs/tasks',
+                { expectedPaths: [`docs/tasks/${proposal.folder}`] }))
+                .find(item => item.path === `docs/tasks/${proposal.folder}`);
+            if (!found || found.diagnostic || found.fingerprint !== imported.fingerprint)
+                throw new Error('Published prompt stack failed Work discovery');
+            const after = await capturePromptSourceEvidence(root, proposal.folder);
+            if (after.head !== proposal.gitHead || after.packageVersion !== proposal.sourceVersion ||
+                after.worktreeFingerprint !== proposal.worktreeId)
+                throw new Error('Other project source changed during prompt publication');
+            journal = { ...journal, revision: 2, status: 'published' };
+            await this.save(root, journal);
+            return journal;
+        } catch (error) {
+            if (journal && journalWritten)
+                await this.save(root, { ...journal, revision: journal.revision + 1, status: 'review-required' });
+            throw error;
+        } finally { await lock.close(); await rm(paths.lock, { force: true }); }
     }
     cancel(token: string): void {
         if (!this.pending.delete(token)) throw new Error('Unknown or consumed publication preview');
@@ -247,11 +357,13 @@ export class PlanningStackPublication {
         const lock = await open(paths.lock, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
         try {
             const review = await this.inspect(root, folder), record = review.record;
-            if (!record || record.status === 'published' || review.files.some(file => file.status !== 'matching'))
+            if (!record || record.status === 'published' && record.mode !== 'native' ||
+                review.files.some(file => file.status !== 'matching'))
                 throw new Error('Partial or changed publication requires manual recovery review');
-            const owner = await this.currentSource(root, record.checkpointId);
+            if (record.mode === 'native' && record.status === 'published') return record;
             const git = await this.readGit(root);
-            if (owner.projectId !== record.projectId || owner.sourceHash !== record.ownerHash ||
+            const owner = record.mode === 'native' ? undefined : await this.currentSource(root, record.checkpointId);
+            if (owner && (owner.projectId !== record.projectId || owner.sourceHash !== record.ownerHash) ||
                 git.head !== record.gitHead || git.packageVersion !== record.packageVersion)
                 throw new Error('Publication owner or Git source changed; review again');
             await versionCoherent(root, git.packageVersion);

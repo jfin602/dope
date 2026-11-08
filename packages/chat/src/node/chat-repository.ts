@@ -760,7 +760,7 @@ export class ChatRepository {
     }
     /** The first model pass is durable only after this checked, write-once Chat mutation. */
     async recordPlanningActivity(root: string, chatId: string, messageId: string, leaseToken: string,
-        activity: ChatPlanningActivity, expected?: { proposalId: string; status: 'pending' | 'approved'; digest?: string }): Promise<void> {
+        activity: ChatPlanningActivity, expected?: { proposalId: string; status: 'pending' | 'approved' | 'failed'; digest?: string }): Promise<void> {
         await this.locked(root, async base => {
             const lease = await this.lease(base, chatId);
             if (!lease || !this.active(lease) || lease.token !== leaseToken) throw new Error('Chat ownership lease required');
@@ -773,7 +773,9 @@ export class ChatRepository {
             if (!message || message.role !== 'assistant' || !['complete', 'failed', 'cancelled'].includes(message.execution.status) ||
                 (expected ? message.planningActivity?.proposalId !== expected.proposalId ||
                     message.planningActivity.status !== expected.status ||
-                    expected.digest !== undefined && message.planningActivity.documentProposal?.digest !== expected.digest :
+                    expected.digest !== undefined &&
+                        (message.planningActivity.documentProposal?.digest ??
+                            message.planningActivity.promptStackProposal?.digest) !== expected.digest :
                     !!message.planningActivity))
                 throw new Error('Planning activity state changed');
             const messages = [...chat.messages];

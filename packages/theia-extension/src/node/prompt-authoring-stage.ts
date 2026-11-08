@@ -97,7 +97,7 @@ export function finishedPromptText(stage: 'prompt-ass' | 'prompt-plan', modelTex
 
 export async function finishedPromptStack(modelText: string, folder: string,
     sourceVersion: string, prior: { assessment: ChatAssistantMessage; plan: ChatAssistantMessage }):
-    Promise<{ text: string; draft: DraftStack }> {
+    Promise<{ text: string; draft: DraftStack; supportingFiles: { path: string; text: string }[] }> {
     if (Buffer.byteLength(modelText, 'utf8') > 48_000) throw new Error('Prompt stack input exceeds draft limit');
     let parsed: unknown;
     try { parsed = JSON.parse(modelText.trim().replace(/^```(?:json)?\s*/u, '').replace(/\s*```$/u, '')); }
@@ -149,5 +149,5 @@ export async function finishedPromptStack(modelText: string, folder: string,
         sourceVersion, draft, supportingFiles };
     const payload = JSON.stringify({ schemaVersion: 1, id: hash(JSON.stringify(identity)), ...identity }, null, 2);
     if (Buffer.byteLength(payload, 'utf8') > 48_000) throw new Error('Validated prompt stack exceeds saved draft limit');
-    return { text: `${heading['prompt-write']}\n\n\`\`\`json\n${payload}\n\`\`\`\n`, draft };
+    return { text: `${heading['prompt-write']}\n\n\`\`\`json\n${payload}\n\`\`\`\n`, draft, supportingFiles };
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -13,6 +13,7 @@ import { discoverRoadmapTaskStacks } from '../../packages/agent-core/lib/node/ro
 import { captureSequenceEvidence } from '../../packages/agent-core/lib/node/sequence-reconciliation.js';
 import { PlanningBridgeApprovals } from '../../packages/theia-extension/lib/node/planning-bridge-approvals.js';
 import { PlanningStackPublication } from '../../packages/theia-extension/lib/node/planning-stack-publication.js';
+import { createPromptStackProposal } from '../../packages/theia-extension/lib/node/prompt-stack-proposal.js';
 import type { BridgeOwnerSnapshot } from '../../packages/theia-extension/src/node/planning-bridge-approvals.ts';
 
 const execute = promisify(execFile);
@@ -80,6 +81,48 @@ test('preview and explicit publication preserve runner/importer grammar and do n
         assert.equal(found?.executable, false);
         await assert.rejects(f.service.publish(f.root, accepted.token, true), /Explicit developer/);
         await assert.rejects(f.service.preview(f.root, 'checkpoint', f.draft), /already exists/);
+    } finally { await f.dispose(); }
+});
+
+test('native prompt publication uses the protected journal without Bridge approvals or Work grants', async () => {
+    const f = await fixture();
+    try {
+        const native = new PlanningStackPublication(async () => {
+            throw new Error('Bridge owner must not be used for standalone prompts');
+        });
+        const proposal = await createPromptStackProposal(f.root, randomUUID(), randomUUID(), 'owner',
+            'lease', f.draft, [
+                { path: `${f.draft.sourcePath}/prompt-assessment.md`, text: '# Prompt assessment\n\nReviewed.\n' },
+                { path: `${f.draft.sourcePath}/implementation-plan.md`, text: '# Implementation plan\n\nReviewed.\n' }
+            ], randomUUID(), randomUUID());
+        assert.equal((await native.inspect(f.root, f.draft.folderName)).record, undefined);
+        assert.equal((await native.publishNative(f.root, proposal)).status, 'published');
+        for (const file of proposal.files)
+            assert.equal(await readFile(join(f.root, file.path), 'utf8'), file.after);
+        assert.equal((await native.inspect(f.root, f.draft.folderName)).record?.mode, 'native');
+        assert.equal((await native.publishNative(f.root, proposal)).status, 'published');
+    } finally { await f.dispose(); }
+});
+
+test('native prompt publication denies changed bytes and a symlink destination before writing', async () => {
+    const f = await fixture();
+    try {
+        const native = new PlanningStackPublication(async () => {
+            throw new Error('Bridge owner must not be used');
+        });
+        const proposal = await createPromptStackProposal(f.root, randomUUID(), randomUUID(), 'owner',
+            'lease', f.draft, [
+                { path: `${f.draft.sourcePath}/prompt-assessment.md`, text: '# Assessment\n' },
+                { path: `${f.draft.sourcePath}/implementation-plan.md`, text: '# Plan\n' }
+            ], randomUUID(), randomUUID());
+        await assert.rejects(native.publishNative(f.root, { ...proposal, files: proposal.files.map(
+            (file, index) => index === 0 ? { ...file, after: 'changed' } : file) }), /bytes or identity changed/);
+        const outside = join(f.root, 'ROADMAP.md');
+        const original = await readFile(outside, 'utf8');
+        await symlink(outside, join(f.root, f.draft.sourcePath));
+        await assert.rejects(native.publishNative(f.root, proposal), /collision/);
+        assert.equal(await readFile(outside, 'utf8'), original);
+        assert.equal((await native.inspect(f.root, f.draft.folderName)).record, undefined);
     } finally { await f.dispose(); }
 });
 

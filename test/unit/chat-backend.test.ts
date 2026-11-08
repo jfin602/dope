@@ -27,7 +27,7 @@ import type { ChatEvent } from '../../packages/chat/lib/service.js';
 
 const folder = () => mkdtemp(join(tmpdir(), 'dope-chat-backend-'));
 const id = () => randomUUID();
-test('native prompt stages use one saved Chat, current broker reads and no publication', async () => {
+test('native prompt stages save an exact review candidate and publish only after Accept', async () => {
     const root = await folder(), repository = new ChatRepository();
     await mkdir(join(root, 'src'));
     await writeFile(join(root, 'src', 'feature.js'), 'export const feature = true;\n');
@@ -46,10 +46,17 @@ test('native prompt stages use one saved Chat, current broker reads and no publi
         closeout: { title: 'Feature closeout', objective: 'Inspect feature in browser',
             manualReason: 'Interactive behavior', acceptanceCriteria: ['Open feature'],
             model: 'GPT-6 Sol High', browserRequired: true } };
+    const revisedInput = { ...writeInput, work: [...writeInput.work,
+        { tier: 'T1', model: 'GPT-6 Sol Medium', estimatedMinutes: 6,
+            workItem: { id: 'step-2', title: 'Check feature', objective: 'Check the feature',
+                dependsOn: ['step-1'], requirements: ['Check source'], constraints: ['No Work run'],
+                acceptanceCriteria: ['Feature checks pass'], validationTargets: ['Run feature check'],
+                workingSet: ['src/feature.js'], status: 'draft',
+                delegablePaths: ['src/feature.js'], humanReservedPaths: [] } }] };
     const answers = ['## Scope\nFeature scope.\n## Preservation\nNo Work run.\n## Dependencies\nSource.\n' +
         '## Risks\nStale source.\n## Source basis\nRead source.\n## Authority\nChat only.\n## Evidence\nT1/T2/T3.',
     '## Steps\n1. Implement.\n## Tests\nFocused integration.\n## Manual\nBrowser check.',
-    JSON.stringify(writeInput)];
+    JSON.stringify(writeInput), '{malformed', JSON.stringify(revisedInput)];
     let calls = 0;
     const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
         providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
@@ -81,10 +88,70 @@ test('native prompt stages use one saved Chat, current broker reads and no publi
         assert.equal(completed.length, 3);
         assert.match(completed[0].content, /^# Unpublished prompt assessment/);
         assert.match(completed[1].content, /^# Unpublished prompt plan/);
-        assert.match(completed[2].content, /^# Unpublished prompt stack draft/);
-        assert.match(completed[2].content, /P2-feature-closeout.txt/);
+        assert.match(completed[2].content, /^Prompt stack proposal ready for review/);
+        const activity = completed[2].role === 'assistant' ? completed[2].planningActivity : undefined;
+        assert.equal(activity?.kind, 'prompt-stack-proposal');
+        assert.equal(activity?.status, 'pending');
+        const proposal = activity?.promptStackProposal;
+        assert.ok(proposal);
+        assert.deepEqual(proposal.files.map(file => file.path), [
+            'docs/tasks/c0-feature/prompt-assessment.md',
+            'docs/tasks/c0-feature/implementation-plan.md',
+            'docs/tasks/c0-feature/README.md',
+            'docs/tasks/c0-feature/P1-implement-feature.txt',
+            'docs/tasks/c0-feature/P2-feature-closeout.txt']);
         await assert.rejects(readFile(join(root, 'docs', 'tasks', 'c0-feature', 'P1-implement-feature.txt')),
             /ENOENT/);
+        await backend.release(projectHandle, chatId, lease.token);
+        const reopened = await backend.claim({ projectHandle, chatId, ownerId: 'reloaded-panel' });
+        if (!reopened.acquired) throw new Error('Reloaded Chat lease missing');
+        const currentToken = reopened.token;
+        assert.equal((await backend.get(projectHandle, chatId))!.messages
+            .find(message => message.id === proposal.messageId)?.role === 'assistant' &&
+            (await backend.get(projectHandle, chatId))!.messages
+                .find(message => message.id === proposal.messageId)?.planningActivity?.status, 'pending');
+        const checked = await backend.inspectPromptStack(projectHandle, chatId, currentToken,
+            proposal.id, proposal.digest);
+        assert.equal(checked.status, 'applicable');
+        await writeFile(join(root, 'src', 'feature.js'), 'export const feature = false;\n');
+        assert.equal((await backend.inspectPromptStack(projectHandle, chatId, currentToken,
+            proposal.id, proposal.digest)).status, 'stale');
+        await writeFile(join(root, 'src', 'feature.js'), 'export const feature = true;\n');
+        assert.equal((await backend.inspectPromptStack(projectHandle, chatId, currentToken,
+            proposal.id, proposal.digest)).status, 'applicable');
+        await assert.rejects(backend.publishPromptStack(projectHandle, chatId, currentToken,
+            proposal.id, '0'.repeat(64)), /Exact saved prompt proposal unavailable/);
+        const revision = { proposalId: proposal.id, revision: proposal.revision, digest: proposal.digest };
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: currentToken,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/prompt-write c0-feature add a check prompt', promptStackRevision: revision }),
+        /valid ComposeStackInput JSON/);
+        assert.equal((await backend.get(projectHandle, chatId))!.messages
+            .find(message => message.id === proposal.messageId)?.role === 'assistant' &&
+            (await backend.get(projectHandle, chatId))!.messages
+                .find(message => message.id === proposal.messageId)?.planningActivity?.status, 'pending');
+        await backend.runTurn({ projectHandle, chatId, leaseToken: currentToken,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/prompt-write c0-feature add a check prompt', promptStackRevision: revision });
+        const revisedChat = (await backend.get(projectHandle, chatId))!;
+        const revised = revisedChat.messages.filter(message => message.role === 'assistant' &&
+            message.planningActivity?.kind === 'prompt-stack-proposal').at(-1);
+        const revisedProposal = revised?.role === 'assistant' ? revised.planningActivity?.promptStackProposal : undefined;
+        assert.ok(revisedProposal);
+        assert.equal(revisedProposal.revision, 2);
+        assert.equal(revisedProposal.files.at(-1)?.path, 'docs/tasks/c0-feature/P3-feature-closeout.txt');
+        assert.equal(revisedChat.messages.find(message => message.id === proposal.messageId)?.role === 'assistant' &&
+            revisedChat.messages.find(message => message.id === proposal.messageId)?.planningActivity?.status,
+        'superseded');
+        const published = await backend.publishPromptStack(projectHandle, chatId, currentToken,
+            revisedProposal.id, revisedProposal.digest);
+        assert.equal(published.status, 'published');
+        for (const file of revisedProposal.files)
+            assert.equal(await readFile(join(root, file.path), 'utf8'), file.after);
+        assert.equal((await backend.get(projectHandle, chatId))!.messages
+            .find(message => message.id === proposal.messageId)?.role, 'assistant');
+        await assert.rejects(backend.publishPromptStack(projectHandle, chatId, currentToken,
+            revisedProposal.id, revisedProposal.digest), /Pending prompt proposal required/);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
 });

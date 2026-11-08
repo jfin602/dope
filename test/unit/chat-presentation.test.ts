@@ -118,7 +118,7 @@ test('documentation card keeps applied result in the card without a completion n
     const controller = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-controller.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     assert.match(widget, /if \(activity\.status !== 'applied'\) card\.append\(note\)/);
-    assert.match(widget, /row\.dataset\.kind = documentationDiffLineKind\(line\)/);
+    assert.match(widget, /this\.openDocumentationReview\(uri, this\.controller, activity\.proposalId!/);
     assert.match(controller, /planningProposalError = result\.status === 'complete' \? undefined/g);
     assert.match(css, /documentation-discovery :is\(th, td\):last-child \{[^}]*white-space: nowrap/);
 });
@@ -154,6 +154,12 @@ test('pending documentation heading summarizes the saved reviewed change', () =>
     assert.equal(planningOutcome(applied)?.summary,
         'Update docs/current/rules.md: add “The bounds are inclusive.” Applied and verified.');
     assert.equal(documentationReviewDisplayText(applied), 'Read the rule.');
+});
+
+test('prompt proposal keeps its own saved Chat summary rather than Roadmap outcome copy', () => {
+    const message = { content: 'Prompt stack proposal ready for review.',
+        planningActivity: { kind: 'prompt-stack-proposal', status: 'pending' } } as ChatAssistantMessage;
+    assert.equal(planningOutcome(message), undefined);
 });
 
 test('saved and live diagnostic activity retains full content in the existing viewer', () => {
