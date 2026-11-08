@@ -78,7 +78,8 @@ function work(index: number, dependency?: string) {
 const closeout = { kind: 'closeout', title: 'Manual feature closeout',
     objective: 'Inspect the final feature in the real browser', manualReason: 'Human interaction needs observation',
     acceptanceCriteria: ['Observe all ten features in the real browser'], browserRequired: true,
-    efficiencyAudit: Array.from({ length: 10 }, (_, index) => `Gate ${index + 1} checks the specific fixture prompts and the verified source basis.`) };
+    efficiencyAudit: Array.from({ length: 10 }, (_, index) =>
+        `Gate ${index + 1} checks feature ${index + 1} against its distinct fixture source and test.`) };
 
 test('ten substantial staged prompts seal exact bytes and remain absent until native guarded publication', async () => {
     const f = await fixture();
@@ -89,6 +90,9 @@ test('ten substantial staged prompts seal exact bytes and remain absent until na
             const first = stage(sequence++, revision++, id, 0, work(index, index > 1 ? `step-${index - 1}` : undefined), false);
             await f.controller.stage(first, 'prompt');
             if (index === 1) assert.equal((await f.controller.stage(first, 'prompt')).revision, 1);
+            if (index === 1) await assert.rejects(f.controller.stage(stage(sequence, revision, id, 1,
+                { kind: 'section', heading: 'Repair P1', text: '' }), 'prompt'),
+            /PROMPT_SECTION_STAGE:text/);
             const detail = { kind: 'section', heading: `Detailed feature ${index} procedure`,
                 text: Array.from({ length: 90 }, (_, line) =>
                     `- Verify feature ${index} condition ${line + 1} against the observed source and focused test.`).join('\n') };

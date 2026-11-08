@@ -13,6 +13,7 @@ type Section = { kind: 'section'; heading: string; text: string };
 type Closeout = { kind: 'closeout'; title: string; objective: string; manualReason: string;
     acceptanceCriteria: string[]; browserRequired: boolean; model?: CloseoutChoice['model'];
     efficiencyAudit: string[] };
+type StageFields = Omit<Work, 'kind'> & Omit<Section, 'kind'> & Omit<Closeout, 'kind'> & { kind: string };
 const parse = (content: string): Work | Section | Closeout => {
     let value: unknown;
     try { value = JSON.parse(content); } catch { throw new Error('PROMPT_STAGE_JSON'); }
@@ -27,6 +28,9 @@ const field = (value: unknown): value is string => typeof value === 'string' &&
     !!value.trim() && value.length <= 500 && !/[\r\n\u0000-\u001f\u007f]/u.test(value);
 const keys = (value: object, allowed: string[], required: string[]): boolean =>
     Object.keys(value).every(key => allowed.includes(key)) && required.every(key => key in value);
+const invalidField = (value: Record<string, unknown>, allowed: string[], required: string[]): string | undefined =>
+    required.find(key => !(key in value)) ?? Object.keys(value).find(key => !allowed.includes(key));
+const reject = (code: string, field?: string): never => { throw new Error(field ? `${code}:${field}` : code); };
 
 /** Pure stage validation plus exact R3B proposal construction; publication remains with Accept. */
 export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptStackProposal> {
@@ -45,49 +49,66 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
     }
 
     async validateStage(snapshot: Readonly<ProposalSnapshot>, stage: Readonly<ProposalStage>): Promise<void> {
-        const value = parse(stage.content);
+        const value = parse(stage.content) as StageFields;
         const prior = snapshot.stages.filter(item => item.target === stage.target);
         if (stage.target === 'closeout') {
             if (this.requestedWorkCount && this.readyForFinish(snapshot).ready === false)
                 throw new Error('PROPOSAL_PROMPT_WORK_COUNT');
             if (prior.length || !snapshot.stages.length || !snapshot.stages.at(-1)?.complete ||
-                stage.chunkIndex !== 0 || !stage.complete || value.kind !== 'closeout' ||
-                !keys(value, ['kind', 'title', 'objective', 'manualReason', 'acceptanceCriteria', 'browserRequired', 'model', 'efficiencyAudit'],
-                    ['kind', 'title', 'objective', 'manualReason', 'acceptanceCriteria', 'browserRequired', 'efficiencyAudit']) ||
-                !field(value.title) || !field(value.objective) || !field(value.manualReason) ||
-                !strings(value.acceptanceCriteria) || value.browserRequired !== true ||
-                !Array.isArray(value.efficiencyAudit) || value.efficiencyAudit.length !== 10 ||
+                stage.chunkIndex !== 0 || !stage.complete || value.kind !== 'closeout')
+                reject('PROMPT_CLOSEOUT_STAGE', 'complete');
+            const closeoutField = invalidField(value as unknown as Record<string, unknown>,
+                ['kind', 'title', 'objective', 'manualReason', 'acceptanceCriteria', 'browserRequired', 'model', 'efficiencyAudit'],
+                ['kind', 'title', 'objective', 'manualReason', 'acceptanceCriteria', 'browserRequired', 'efficiencyAudit']);
+            if (closeoutField) reject('PROMPT_CLOSEOUT_STAGE', closeoutField);
+            if (!field(value.title)) reject('PROMPT_CLOSEOUT_STAGE', 'title');
+            if (!field(value.objective)) reject('PROMPT_CLOSEOUT_STAGE', 'objective');
+            if (!field(value.manualReason)) reject('PROMPT_CLOSEOUT_STAGE', 'manualReason');
+            if (!strings(value.acceptanceCriteria)) reject('PROMPT_CLOSEOUT_STAGE', 'acceptanceCriteria');
+            if (value.browserRequired !== true) reject('PROMPT_CLOSEOUT_STAGE', 'browserRequired');
+            if (!Array.isArray(value.efficiencyAudit) || value.efficiencyAudit.length !== 10 ||
                 value.efficiencyAudit.some(item => !field(item) || item.trim().length < 20) ||
                 new Set(value.efficiencyAudit.map(item => item.toLowerCase().replace(/\b(?:gate|check|finding)\s*\d+\b/gu, '')
                     .replace(/\s+/gu, ' ').trim())).size !== 10)
-                throw new Error('PROMPT_CLOSEOUT_STAGE');
+                reject('PROMPT_CLOSEOUT_STAGE', 'efficiencyAudit');
             return;
         }
         if (!identifier(stage.target) || snapshot.stages.some(item => item.target === 'closeout'))
             throw new Error('PROMPT_ORDER');
         if (!prior.length) {
-            if (stage.chunkIndex !== 0 || value.kind !== 'work' || value.id !== stage.target ||
-                !keys(value, ['kind', 'id', 'title', 'objective', 'tier', 'dependsOn', 'workingSet',
+            if (stage.chunkIndex !== 0 || value.kind !== 'work' || value.id !== stage.target)
+                reject('PROMPT_WORK_STAGE', 'kind');
+            const workField = invalidField(value as unknown as Record<string, unknown>,
+                ['kind', 'id', 'title', 'objective', 'tier', 'dependsOn', 'workingSet',
                     'requirements', 'constraints', 'acceptanceCriteria', 'validationTargets',
                     'integrationChecks', 'model', 'estimatedMinutes'],
-                    ['kind', 'id', 'title', 'objective', 'tier', 'workingSet', 'acceptanceCriteria', 'validationTargets']) ||
-                !field(value.title) || !field(value.objective) || !['T1', 'T2'].includes(value.tier) ||
-                !strings(value.dependsOn ?? [], false) || !strings(value.workingSet) ||
-                !strings(value.requirements ?? [], false) || !strings(value.constraints ?? [], false) ||
-                !strings(value.acceptanceCriteria) || !strings(value.validationTargets) ||
-                !strings(value.integrationChecks ?? [], value.tier === 'T2') ||
-                (value.estimatedMinutes !== undefined && (!Number.isInteger(value.estimatedMinutes) ||
-                    value.estimatedMinutes < 1 || value.estimatedMinutes > 15)))
-                throw new Error('PROMPT_WORK_STAGE');
+                ['kind', 'id', 'title', 'objective', 'tier', 'workingSet', 'acceptanceCriteria', 'validationTargets']);
+            if (workField) reject('PROMPT_WORK_STAGE', workField);
+            if (!field(value.title)) reject('PROMPT_WORK_STAGE', 'title');
+            if (!field(value.objective)) reject('PROMPT_WORK_STAGE', 'objective');
+            if (!['T1', 'T2'].includes(value.tier)) reject('PROMPT_WORK_STAGE', 'tier');
+            if (!strings(value.dependsOn ?? [], false)) reject('PROMPT_WORK_STAGE', 'dependsOn');
+            if (!strings(value.workingSet)) reject('PROMPT_WORK_STAGE', 'workingSet');
+            if (!strings(value.requirements ?? [], false)) reject('PROMPT_WORK_STAGE', 'requirements');
+            if (!strings(value.constraints ?? [], false)) reject('PROMPT_WORK_STAGE', 'constraints');
+            if (!strings(value.acceptanceCriteria)) reject('PROMPT_WORK_STAGE', 'acceptanceCriteria');
+            if (!strings(value.validationTargets)) reject('PROMPT_WORK_STAGE', 'validationTargets');
+            if (!strings(value.integrationChecks ?? [], value.tier === 'T2'))
+                reject('PROMPT_WORK_STAGE', 'integrationChecks');
+            if (value.estimatedMinutes !== undefined && (!Number.isInteger(value.estimatedMinutes) ||
+                value.estimatedMinutes < 1 || value.estimatedMinutes > 15))
+                reject('PROMPT_WORK_STAGE', 'estimatedMinutes');
             const completed = new Set(snapshot.stages.filter(item => item.complete).map(item => item.target));
             if (snapshot.stages.length && !snapshot.stages.at(-1)!.complete ||
                 (value.dependsOn ?? []).some(id => id === stage.target || !completed.has(id)))
                 throw new Error('PROMPT_DEPENDENCY_ORDER');
         } else {
-            if (value.kind !== 'section' || !keys(value, ['kind', 'heading', 'text'], ['kind', 'heading', 'text']) ||
-                !field(value.heading) || typeof value.text !== 'string' || !value.text.trim() ||
-                value.text.length > 8_000 || /[\u0000-\u0008\u000b-\u001f\u007f]/u.test(value.text))
-                throw new Error('PROMPT_SECTION_STAGE');
+            if (value.kind !== 'section' || !keys(value, ['kind', 'heading', 'text'], ['kind', 'heading', 'text']))
+                reject('PROMPT_SECTION_STAGE', 'kind');
+            if (!field(value.heading)) reject('PROMPT_SECTION_STAGE', 'heading');
+            if (typeof value.text !== 'string' || !value.text.trim() || value.text.length > 8_000 ||
+                /[\u0000-\u0008\u000b-\u001f\u007f]/u.test(value.text))
+                reject('PROMPT_SECTION_STAGE', 'text');
             if (snapshot.stages.at(-1)?.target !== stage.target) throw new Error('PROMPT_SECTION_ORDER');
         }
     }

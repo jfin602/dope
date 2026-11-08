@@ -29,6 +29,8 @@ let activeRequest = false;
 let sessionConsumed = false;
 let pausedChatTurn;
 let resumeInProgress = false;
+let proposalTerminalAvailable = false;
+let proposalOriginalOutputCeiling = 0;
 let chatRepeat = undefined;
 let chatLoopStopped = false;
 let chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
@@ -456,6 +458,8 @@ async function dispose() {
   session?.dispose();
   session = undefined;
   sessionConsumed = false;
+  proposalTerminalAvailable = false;
+  proposalOriginalOutputCeiling = 0;
   pausedChatTurn = undefined;
   resumeInProgress = false;
   chatRepeat = undefined;
@@ -563,9 +567,22 @@ export async function dispatch(message) {
       if (!assistant || assistant.stopReason === 'error') throw new Error('Local Pi completion failed');
       return { text: assistant.content.filter(item => item.type === 'text').map(item => item.text).join('') };
     }
+    case 'terminal_proposal':
     case 'resume':
     case 'turn': {
       const resuming = message.type === 'resume';
+      const terminalProposal = message.type === 'terminal_proposal';
+      if (terminalProposal) {
+        if (!proposalToolsMode || !proposalTerminalAvailable || !sessionConsumed ||
+            pausedChatTurn || !Number.isSafeInteger(message.maxOutputTokens) ||
+            message.maxOutputTokens < 1 || message.maxOutputTokens > 512 ||
+            message.maxOutputTokens > proposalOriginalOutputCeiling ||
+            session?.messages?.at(-1)?.role !== 'assistant' ||
+            session.messages.at(-1).stopReason !== 'stop')
+          throw new Error('Pi proposal terminal continuation unavailable');
+        // Claim before awaiting the provider. A failed attempt cannot be replayed.
+        proposalTerminalAvailable = false;
+      }
       const paused = pausedChatTurn;
       if (resuming) {
         if (!paused || !session || paused.session !== session ||
@@ -588,7 +605,7 @@ export async function dispatch(message) {
       compactionRecord = undefined;
       compactionRejected = false;
       compactionPending = undefined;
-      if (workMode || !session || (!resuming && (!Array.isArray(message.messages) || !message.messages.length ||
+      if (workMode || !session || (!resuming && !terminalProposal && (!Array.isArray(message.messages) || !message.messages.length ||
           sessionConsumed ||
           message.messages.at(-1)?.role !== 'user' ||
           message.messages.some(item => !['system', 'user', 'assistant'].includes(item?.role) ||
@@ -598,13 +615,15 @@ export async function dispatch(message) {
           message.maxOutputTokens > session.model.maxTokens)
         throw new Error('Invalid bounded Pi turn');
       sessionConsumed = true;
+      if (proposalToolsMode && !resuming && !terminalProposal)
+        proposalOriginalOutputCeiling = message.maxOutputTokens;
       if (roadmapGenerationMode && typeof message.generationId === 'string' &&
           /^[a-f0-9-]{36}$/iu.test(message.generationId)) {
         roadmapGenerationId = message.generationId;
         roadmapStartedAt = performance.now();
         roadmapTrace('pi-worker-turn-start');
       }
-      if (!resuming) {
+      if (!resuming && !terminalProposal) {
         chatRepeat = undefined;
         chatLoopStopped = false;
         chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
@@ -614,16 +633,16 @@ export async function dispatch(message) {
       }
       const zeroUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
         totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } };
-      const systems = resuming ? '' : message.messages.filter(item => item.role === 'system').map(item => item.content).join('\n\n');
+      const systems = resuming || terminalProposal ? '' : message.messages.filter(item => item.role === 'system').map(item => item.content).join('\n\n');
       if (systems) session.sessionManager.appendMessage({ role: 'system', content: systems, timestamp: Date.now() });
-      for (const item of (resuming ? [] : message.messages.slice(0, -1)).filter(item => item.role !== 'system')) {
+      for (const item of (resuming || terminalProposal ? [] : message.messages.slice(0, -1)).filter(item => item.role !== 'system')) {
         session.sessionManager.appendMessage(item.role === 'user' ?
           { role: 'user', content: item.content, timestamp: Date.now() } :
           { role: 'assistant', content: [{ type: 'text', text: item.content }],
             api: 'openai-completions', provider: 'dope-local', model: session.model.id,
             usage: zeroUsage, stopReason: 'stop', timestamp: Date.now() });
       }
-      if (!resuming) session.refreshContext();
+      if (!resuming && !terminalProposal) session.refreshContext();
       session.agent.state.model = { ...session.model, maxTokens: message.maxOutputTokens };
       let attemptedTool = false;
       let toolCount = resuming ? paused.toolCount : 0;
@@ -736,9 +755,11 @@ export async function dispatch(message) {
         }
       });
       try {
-        if (resuming) resumeInProgress = true;
-        if (resuming) session.settingsManager.setCompactionEnabled(false);
-        await session.prompt(resuming ? continuationControl(paused.text, message.segmentIndex) :
+        if (resuming || terminalProposal) resumeInProgress = true;
+        if (resuming || terminalProposal) session.settingsManager.setCompactionEnabled(false);
+        await session.prompt(terminalProposal ?
+          'The requested targets are staged. You must now call proposal_finish with a short factual finalMessage. Do not regenerate file contents or output a JSON proposal packet.' :
+          resuming ? continuationControl(paused.text, message.segmentIndex) :
           message.messages.at(-1).content, { expandPromptTemplates: false });
         if (resuming && message.signal?.aborted) throw new Error('Pi continuation cancelled');
         trace('session-prompt-returned', { toolCount });
@@ -748,7 +769,7 @@ export async function dispatch(message) {
         throw error;
       } finally {
         resumeInProgress = false;
-        if (outputLimitCompactionSuppressed || resuming) session.settingsManager.setCompactionEnabled(true);
+        if (outputLimitCompactionSuppressed || resuming || terminalProposal) session.settingsManager.setCompactionEnabled(true);
         roadmapTrace('pi-worker-turn-end', { providerOutputSeen: firstProviderOutput,
           lastProviderOutputElapsedMs: lastProviderOutputAt ?
             Math.round(lastProviderOutputAt - roadmapStartedAt) : undefined });
@@ -801,6 +822,8 @@ export async function dispatch(message) {
         pausedChatTurn = { session, id: message.id, segmentIndex: resuming ? message.segmentIndex : 1,
           modelId, provider: session.model.provider, text: accumulatedText, usage, toolCount,
           segments, lastAssistant: assistant };
+      if (proposalToolsMode && !terminalProposal && assistant.stopReason === 'stop')
+        proposalTerminalAvailable = true;
       return { text: accumulatedText, ...(resuming ? { novelText, segmentIndex: message.segmentIndex } :
         { segmentIndex: 1 }), modelId,
         finishReason: assistant.stopReason === 'length' ? 'length' : 'stop',

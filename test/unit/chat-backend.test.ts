@@ -38,7 +38,7 @@ test('native prompt stages save an exact review candidate and publish only after
     await writeFile(join(root, 'src', 'feature.js'), 'export const feature = true;\n');
     await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"1.2.3"}\n');
     const answers = ['## Scope\nFeature scope.\n## Preservation\nNo Work run.\n## Dependencies\nSource.\n' +
-        '## Risks\nStale source.\n## Source basis\nRead source.\n## Authority\nChat only.\n## Evidence\nT1/T2/T3.',
+        '## Risks\nStale source.\n## Source basis\nRead: src/feature.js\nListed: none\nUninspected: none\n## Authority\nChat only.\n## Evidence\nT1 focused source/unit verification.\nT2 cross-boundary integration verification.\nT3 manual browser qualification.',
     '## Steps\n1. Implement.\n## Tests\nFocused integration.\n## Manual\nBrowser check.'];
     const audit = ['One implementation responsibility remains in each feature step.',
         'The narrow implementation is estimated within the ordinary time budget.',
@@ -159,7 +159,7 @@ test('native prompt stages save an exact review candidate and publish only after
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: currentToken,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: '/prompt-write c0-feature add a check prompt', promptStackRevision: revision }),
-        /Incremental prompt stack was not finished and validated/);
+        /Proposal remains incomplete/);
         assert.equal((await backend.get(projectHandle, chatId))!.messages
             .find(message => message.id === proposal.messageId)?.role === 'assistant' &&
             (await backend.get(projectHandle, chatId))!.messages

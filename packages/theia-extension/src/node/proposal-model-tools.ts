@@ -85,13 +85,13 @@ export function proposalToolError(error: unknown): { version: 1; error: string; 
     expected: string; recovery: string } {
     const message = error instanceof Error ? error.message : '';
     const matched = /^(PROPOSAL_[A-Z_]+)(?::([a-zA-Z]+))?$/u.exec(message);
-    const knownPrompt = /^(PROMPT_(?:WORK_STAGE|SECTION_STAGE|CLOSEOUT_STAGE|DEPENDENCY_ORDER|SECTION_ORDER|ORDER|INCOMPLETE_STACK|SOURCE_CHANGED))$/u.exec(message);
+    const knownPrompt = /^(PROMPT_(?:WORK_STAGE|SECTION_STAGE|CLOSEOUT_STAGE|DEPENDENCY_ORDER|SECTION_ORDER|ORDER|INCOMPLETE_STACK|SOURCE_CHANGED))(?::([a-zA-Z]+))?$/u.exec(message);
     const code = matched?.[1] ?? (knownPrompt ? `PROPOSAL_${knownPrompt[1]}` :
         /Exact replacement is missing or ambiguous/u.test(message) ? 'PROPOSAL_DOCUMENT_ANCHOR' :
         /Update source changed|Documentation source changed/u.test(message) ? 'PROPOSAL_DOCUMENT_SOURCE_CHANGED' :
         /Created document is already complete/u.test(message) ? 'PROPOSAL_DOCUMENT_ALREADY_COMPLETE' :
         'PROPOSAL_TOOL_FAILED');
-    const field = matched?.[2] ?? (code === 'PROPOSAL_DOCUMENT_ANCHOR' ? 'before' : undefined);
+    const field = matched?.[2] ?? knownPrompt?.[2] ?? (code === 'PROPOSAL_DOCUMENT_ANCHOR' ? 'before' : undefined);
     const expected = code === 'PROPOSAL_STAGE_REQUIRED_FIELD' ? 'Supply the named required field.' :
         code === 'PROPOSAL_STAGE_UNSUPPORTED_FIELD' ? 'Use only fields in the exposed typed tool schema.' :
         code === 'PROPOSAL_DOCUMENT_BEFORE_UNREAD' ? 'Use an exact excerpt from a brokered read_file page.' :
@@ -101,16 +101,30 @@ export function proposalToolError(error: unknown): { version: 1; error: string; 
         code === 'PROPOSAL_DOCUMENT_ANCHOR' ? 'Use a unique exact excerpt from the verified source or selected proposal.' :
         code === 'PROPOSAL_DOCUMENT_SOURCE_CHANGED' ? 'The verified source must still match its pinned full-file hash.' :
         code === 'PROPOSAL_DOCUMENT_ALREADY_COMPLETE' ? 'The created target is complete; stage another target.' :
-        code === 'PROPOSAL_PROMPT_WORK_STAGE' ? 'Supply one valid work step with concrete working files and tests.' :
-        code === 'PROPOSAL_PROMPT_SECTION_STAGE' ? 'Supply a bounded section with heading and nonempty text.' :
-        code === 'PROPOSAL_PROMPT_CLOSEOUT_STAGE' ? 'Supply one terminal manual closeout with ten efficiency findings.' :
+        code === 'PROPOSAL_PROMPT_WORK_STAGE' ? field === 'integrationChecks' ?
+            'T2 work requires a nonempty integrationChecks array of concrete cross-boundary checks.' :
+            field ? `Correct ${field}; use a nonempty bounded value matching the exposed work schema.` :
+            'Supply one valid work step with concrete working files and tests.' :
+        code === 'PROPOSAL_PROMPT_SECTION_STAGE' ? field ?
+            `Correct ${field}; a section needs a nonempty heading and bounded text.` :
+            'Supply a bounded section with heading and nonempty text.' :
+        code === 'PROPOSAL_PROMPT_CLOSEOUT_STAGE' ? field === 'efficiencyAudit' ?
+            'Supply exactly ten distinct, substantive efficiency findings in docs/workflow.md gate order.' :
+            field ? `Correct ${field} in the separate terminal manual closeout.` :
+            'Supply one terminal manual closeout with ten efficiency findings.' :
         code === 'PROPOSAL_PROMPT_DEPENDENCY_ORDER' ? 'Finish dependency steps before staging their dependents.' :
         code === 'PROPOSAL_PROMPT_T2_GATE' ? 'Include exactly one explicit T2 integration gate among requested work prompts.' :
         code === 'PROPOSAL_PROMPT_UNGROUNDED_MODULE_TEST' ? 'A CommonJS test requires a matching actually read source file in the saved plan.' :
         code === 'PROPOSAL_PROMPT_UNGROUNDED_DEPENDENCY' ? 'A new dependency requires a saved plan source read and explicit dependency rationale.' :
         code === 'PROPOSAL_INCOMPLETE' ? 'Complete every staged target and required requested target.' :
+        code === 'PROPOSAL_REPEATED_INVALID_STAGE' ? 'The same rejected stage was repeated. Change its named invalid field or stop and revise the plan.' :
+        code === 'PROPOSAL_TERMINAL_FINISH_ONLY' ? 'The terminal continuation permits proposal_status and proposal_finish only; no further stages.' :
         'Use a valid bounded operation matching the current protected proposal session.';
     return { version: 1, error: code, ...(field ? { field } : {}), expected,
         recovery: code === 'PROPOSAL_REPLAY_CONFLICT' ? 'Start a new stage call with corrected content.' :
+            code === 'PROPOSAL_REPEATED_INVALID_STAGE' ? 'STOP/REVISE: do not repeat this call; inspect proposal_status and submit corrected arguments only.' :
+            code === 'PROPOSAL_TERMINAL_FINISH_ONLY' ? 'Call proposal_finish with a short factual finalMessage, or stop incomplete.' :
+            field && code.startsWith('PROPOSAL_PROMPT_') ?
+                'The rejected stage was not saved. Correct this field, then retry the same target; use proposal_status for progress.' :
             'Check proposal_status, correct the named field or operation, then retry.' };
 }

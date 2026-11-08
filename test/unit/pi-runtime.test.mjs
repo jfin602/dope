@@ -195,6 +195,59 @@ test('protected proposal session advertises bounded typed tools without command 
   }
 });
 
+test('protected proposal gets one same-session terminal finish opportunity after ordinary stop', async () => {
+  const originalFetch = globalThis.fetch, originalWrite = process.stdout.write;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-terminal-proposal-'));
+  const requests = [], calls = [];
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const record = JSON.parse(String(chunk));
+        if (record.tool) {
+          calls.push(record.tool);
+          queueMicrotask(() => void dispatch({ type: 'tool-result', toolId: record.tool.id,
+            result: { status: 'completed', output: '{"state":"ready-for-review"}' } }));
+          return true;
+        }
+      } catch { /* ordinary output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async (_url, options) => {
+      requests.push(JSON.parse(options.body));
+      const n = requests.length;
+      const chunks = n === 2 ? [
+        { delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'finish-once', type: 'function',
+          function: { name: 'proposal_finish', arguments: '{"finalMessage":"Ready for review."}' } }] }, finish_reason: null },
+        { delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { delta: { role: 'assistant', content: n === 1 ? 'I staged the files.' : 'Finished.' }, finish_reason: null },
+        { delta: {}, finish_reason: 'stop' }
+      ];
+      return new Response(chunks.map(choice => `data: ${JSON.stringify({ model: 'offline-fixture',
+        choices: [{ index: 0, ...choice }] })}\n\n`).join('') + 'data: [DONE]\n\n',
+      { headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'chat-tools', proposalTools: true, cwd, model });
+    const first = await dispatch({ type: 'turn', maxOutputTokens: 128,
+      messages: [{ role: 'user', content: 'Stage the requested files.' }] });
+    assert.equal(first.finishReason, 'stop');
+    assert.equal(calls.length, 0);
+    await assert.rejects(dispatch({ type: 'terminal_proposal', maxOutputTokens: 512 }), /unavailable/);
+    const final = await dispatch({ type: 'terminal_proposal', maxOutputTokens: 128 });
+    assert.equal(final.finishReason, 'stop');
+    assert.deepEqual(calls.map(call => call.name), ['proposal_finish']);
+    assert.equal(requests.length, 3);
+    assert.ok(requests[1].messages.some(item => item.role === 'assistant' &&
+      JSON.stringify(item).includes('I staged the files.')));
+    await assert.rejects(dispatch({ type: 'terminal_proposal', maxOutputTokens: 128 }), /unavailable/);
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('Pi proposal schemas use provider-compatible object parameters and broker-owned fields', () => {
   assert.deepEqual(Object.keys(PROPOSAL_TOOLS.proposal_status), []);
   const document = PROPOSAL_TOOLS.proposal_stage_document;

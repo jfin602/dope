@@ -33,15 +33,17 @@ async function chat(backend: ChatBackend, root: string) {
     return { projectHandle, chatId, lease, turn };
 }
 
-function model(generate: (request: ToolRequest, turn: number) => Promise<void>) {
+function model(generate: (request: ToolRequest, turn: number) => Promise<void | string | {
+    terminalContinuation: { continue(): AsyncIterable<unknown>; dispose(): void } }>) {
     let turns = 0;
     return { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
         label: 'Local', models: [{ id: 'q4', label: 'Q4', usable: true,
             capabilities: { conversationalText: true, streaming: true,
                 contextWindowTokens: 16384, maxInputTokens: 16384 } }] }] }),
     async *generate(_selection: unknown, request: ToolRequest) {
-        await generate(request, turns++);
-        yield { type: 'complete' as const, text: 'Tool sequence ended.', actualModelId: 'q4',
+        const answer = await generate(request, turns++);
+        yield { type: 'complete' as const, text: typeof answer === 'string' ? answer : 'Tool sequence ended.',
+            ...(answer && typeof answer === 'object' ? answer : {}), actualModelId: 'q4',
             finishReason: 'stop' as const, usage: { tokenMeasurement: 'unavailable' as const } };
     } };
 }
@@ -93,9 +95,16 @@ test('protected Docs tools stage two late source edits and a chunked long file; 
         const status = JSON.parse(await request.projectTools!.execute('proposal_status', {}));
         assert.equal(status.targets.length, 3);
         assert.equal(status.targets.find((item: { target: string }) => item.target === 'docs/large.md').chunks, 3);
-        const sealed = JSON.parse(await request.projectTools!.execute('proposal_finish',
-            { finalMessage: 'Three reviewed files are ready.' }));
-        assert.equal(sealed.state, 'ready-for-review', JSON.stringify(sealed));
+        return { terminalContinuation: { async *continue() {
+            const denied = JSON.parse(await request.projectTools!.execute('proposal_stage_document',
+                { path: 'docs/extra.md', operation: 'create', chunk: 'Unexpected', complete: true }));
+            assert.equal(denied.error, 'PROPOSAL_TERMINAL_FINISH_ONLY');
+            const sealed = JSON.parse(await request.projectTools!.execute('proposal_finish',
+                { finalMessage: 'Three reviewed files are ready.' }));
+            assert.equal(sealed.state, 'ready-for-review', JSON.stringify(sealed));
+            yield { type: 'complete', text: 'Finished.', actualModelId: 'q4', finishReason: 'stop',
+                usage: { tokenMeasurement: 'unavailable' } };
+        }, dispose() {} } };
     });
     const backend = new ChatBackend(repo, { notifyChatEvent() {} }, models as never,
         new ChatContextComposer({} as never, {} as never, {} as never, repo, store),
@@ -112,6 +121,8 @@ test('protected Docs tools stage two late source edits and a chunked long file; 
         const proposal = message?.role === 'assistant' ? message.planningActivity?.documentProposal : undefined;
         assert.ok(proposal);
         assert.equal(message?.role === 'assistant' && message.content, 'Three reviewed files are ready.');
+        assert.equal(message?.role === 'assistant' && message.activity?.events.some(event =>
+            event.text.includes('one same-session finish attempt')), true);
         assert.deepEqual(proposal.targets.map(item => item.path),
             ['docs/first.md', 'docs/second.md', 'docs/large.md']);
         assert.deepEqual(proposal.targets.map(item => hash(item.after)), proposal.targets.map(item => item.afterHash));
@@ -145,7 +156,7 @@ test('protected Prompt tools stage ten detailed dependent prompts and publish on
     await writeFile(join(root, 'src/feature.js'), 'export const feature = true;\n');
     await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"0.13.11"}\n');
     const answers = ['## Scope\nTen source-backed steps.\n## Preservation\nNo Work run.\n## Dependencies\nOrdered.\n' +
-        '## Risks\nSource drift.\n## Source basis\nRead source.\n## Authority\nChat only.\n## Evidence\nT1/T2/T3.',
+        '## Risks\nSource drift.\n## Source basis\nRead: src/feature.js\nListed: none\nUninspected: none\n## Authority\nChat only.\n## Evidence\nT1 focused source/unit verification.\nT2 cross-boundary integration verification.\nT3 manual browser qualification.',
     '## Steps\n1. Implement ten steps.\n## Tests\nFocused suites.\n## Manual\nBrowser closeout.'];
     const audit = ['Each work prompt owns one narrow source behavior and test.',
         'The narrow steps fit ordinary runtime while integration is reserved for T2.',
@@ -161,7 +172,7 @@ test('protected Prompt tools stage ten detailed dependent prompts and publish on
     const models = model(async (request, turn) => {
         if (turn < 2) {
             await request.projectTools!.execute('read_file', { path: 'src/feature.js', offset: 0, maxBytes: 4096 });
-            return;
+            return answers[turn];
         }
         let sequence = 1;
         for (let index = 1; index <= 10; index++) {
@@ -174,6 +185,13 @@ test('protected Prompt tools stage ten detailed dependent prompts and publish on
                 acceptanceCriteria: [`Feature ${index} passes on verified source`],
                 validationTargets: [`Run test/unit/feature-${index}.test.ts`],
                 ...(index === 10 ? { integrationChecks: ['Run focused integration tests'] } : {}) }, false);
+            if (index === 1) for (let retry = 0; retry < 3; retry++) {
+                const rejected = JSON.parse(await request.projectTools!.execute('proposal_stage_prompt',
+                    { target, kind: 'section', heading: 'Incomplete detail', text: '', complete: true }));
+                assert.equal(rejected.error, retry < 2 ? 'PROPOSAL_PROMPT_SECTION_STAGE' :
+                    'PROPOSAL_REPEATED_INVALID_STAGE');
+                if (retry === 2) assert.match(rejected.recovery, /STOP\/REVISE/);
+            }
             await stage(request, 'prompt', sequence++, target, 1, { kind: 'section',
                 heading: `Detailed feature ${index} procedure`,
                 text: Array.from({ length: 90 }, (_, line) =>

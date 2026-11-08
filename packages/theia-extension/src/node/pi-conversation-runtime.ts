@@ -1,6 +1,7 @@
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import { createHash } from 'node:crypto';
-import type { ConversationContinuation, ConversationEvent, ConversationRequest, ModelSelection } from '@dope/contracts/lib/model-runtime';
+import type { ConversationContinuation, ConversationEvent, ConversationRequest, ModelSelection,
+    ProposalTerminalContinuation } from '@dope/contracts/lib/model-runtime';
 import type { PiModelBridge } from './pi-model-bridge';
 import type { PiRuntimeFactory, PiRuntimeHost, PiTurnResult } from './pi-runtime-host';
 
@@ -123,6 +124,54 @@ export class PiConversationLease implements ConversationContinuation {
     }
 }
 
+/** Single-use same-session follow-up for a staged proposal after an ordinary provider stop. */
+class PiProposalTerminalLease implements ProposalTerminalContinuation {
+    private used = false;
+    private closed = false;
+    private readonly timer: NodeJS.Timeout;
+    private readonly onAbort = () => this.dispose();
+    constructor(private readonly host: PiRuntimeHost, private readonly factory: PiRuntimeFactory,
+        private readonly modelId: string, private readonly onTool: ToolHandler | undefined,
+        private readonly maxOutputTokens: number, private readonly signal?: AbortSignal) {
+        signal?.addEventListener('abort', this.onAbort, { once: true });
+        this.timer = setTimeout(() => this.dispose(), 120_000);
+        this.timer.unref?.();
+        if (signal?.aborted) this.dispose();
+    }
+    continue(): AsyncIterable<ConversationEvent> {
+        if (this.used || this.closed || this.signal?.aborted)
+            throw new ModelRuntimeFailure('Pi proposal continuation unavailable', 'incomplete-answer');
+        this.used = true;
+        clearTimeout(this.timer);
+        return this.run();
+    }
+    private async *run(): AsyncIterable<ConversationEvent> {
+        try {
+            for await (const event of this.host.continueProposalTurn(Math.min(512, this.maxOutputTokens),
+                this.signal, this.onTool)) {
+                if (this.closed || this.signal?.aborted)
+                    throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
+                if (event.type === 'delta' || event.type === 'activity' || event.type === 'reset') {
+                    yield event; continue;
+                }
+                if (event.result.modelId !== this.modelId)
+                    throw new ModelRuntimeFailure('Pi proposal continuation changed model', 'incomplete-answer');
+                if (event.type === 'paused')
+                    throw new ModelRuntimeFailure('Pi proposal continuation reached its output limit', 'incomplete-answer');
+                yield { type: 'complete', text: event.result.text, usage: event.result.usage,
+                    finishReason: event.result.finishReason, actualModelId: event.result.modelId };
+            }
+        } finally { this.dispose(); }
+    }
+    dispose(): void {
+        if (this.closed) return;
+        this.closed = true;
+        clearTimeout(this.timer);
+        this.signal?.removeEventListener('abort', this.onAbort);
+        this.factory.release(this.host);
+    }
+}
+
 /** One Dope-owned turn, reconstructed from saved Chat context. Pi never owns the transcript. */
 export async function* piConversation(selection: ModelSelection, request: Omit<ConversationRequest, 'modelId'>,
     bridge: PiModelBridge, factory: PiRuntimeFactory): AsyncIterable<ConversationEvent> {
@@ -192,7 +241,12 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 yield lease.pausedEvent();
                 return;
             }
+            const terminalContinuation = request.projectTools?.proposalTools && result.finishReason === 'stop' ?
+                new PiProposalTerminalLease(host, factory, selection.modelId, onTool,
+                    maxOutputTokens, request.signal) : undefined;
+            if (terminalContinuation) retained = true;
             yield { type: 'complete', text: result.text, usage: result.usage,
+                ...(terminalContinuation ? { terminalContinuation } : {}),
                 ...(result.compaction ? { compaction: { canonicalContextSha256:
                     createHash('sha256').update(JSON.stringify(request.messages)).digest('hex'),
                     ...result.compaction } } : {}),

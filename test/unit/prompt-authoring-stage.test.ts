@@ -7,7 +7,7 @@ import test from 'node:test';
 import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-skills.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { finishedPromptStack, finishedPromptText, priorPromptDraft, promptStageCommand,
-    verifyPromptDraftSource } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+    verifyPromptDraftSource, validatePromptAssessment, validatePromptPlan } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 
 const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
     tier, model: 'GPT-6 Sol Medium', estimatedMinutes: 6,
@@ -17,6 +17,28 @@ const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[
         acceptanceCriteria: ['The affected path works'], validationTargets: ['Run focused tests'],
         workingSet: ['src/feature.js'], status: 'draft',
         delegablePaths: ['src/feature.js'], humanReservedPaths: [] }
+});
+
+test('assessment and ten-step plan reject ungrounded retrieval, missing work and wrong gates', () => {
+    const refs = [{ kind: 'file', id: 'src/example.ts' }, { kind: 'file', id: 'test/example.test.ts' }] as never;
+    const assessment = `# Source basis\nRead: src/example.ts, test/example.test.ts\nListed: none\nUninspected: docs/missing.md\n\n# Evidence\nT1 focused source/unit verification.\nT2 cross-boundary integration verification.\nT3 manual browser/native independent qualification.`;
+    validatePromptAssessment(assessment, refs, '/prompt-ass inspect src/example.ts and docs/missing.md');
+    assert.throws(() => validatePromptAssessment(assessment.replace('Uninspected: docs/missing.md',
+        'Uninspected: none'), refs, '/prompt-ass inspect docs/missing.md'), /uninspected path/);
+    assert.throws(() => validatePromptAssessment(assessment.replace('T1 focused source/unit',
+        'T1 file listing'), refs, '/prompt-ass inspect src/example.ts'), /Evidence/);
+    const work = Array.from({ length: 10 }, (_, index) => `### Work ${index + 1}: Repair source boundary ${index + 1}\n- Tier: ${index === 8 ? 'T2' : 'T1'}\n- Depends on: ${index ? index : 'none'}\n- Files: src/example.ts\n- Tests: test/example.test.ts\n- Acceptance: Focused fixture ${index + 1} returns the expected checked result.${index === 8 ? '\n- Integration: Run cross-boundary integration between source and test.' : ''}`).join('\n\n');
+    const gates = ['Single responsibility', 'Runtime feasibility', 'Test precision', 'Build precision',
+        'Evidence distribution', 'Command deduplication', 'Model economy and deferral',
+        'Runnable/traceable contract', 'UI Design Compliance', 'Human Usability'];
+    const plan = `${work}\n\n### Manual closeout\n- Tier: T3\nObserve the browser independently.\n\n### Efficiency gates\n${gates.map((gate, index) => `${index + 1}. ${gate}: specific source reason ${index + 1}.`).join('\n')}`;
+    validatePromptPlan(plan, refs, 10);
+    assert.throws(() => validatePromptPlan(plan.replace('### Work 10:', '### Work ten:'), refs, 10), /10 distinct/);
+    assert.throws(() => validatePromptPlan(plan.replace('### Manual closeout', '### Work 11: Manual closeout'), refs, 10), /10 distinct/);
+    assert.throws(() => validatePromptPlan(plan.replace('10. Human Usability', '10. File retrieval'), refs, 10), /gate 10/);
+    assert.throws(() => validatePromptPlan(plan.replace('src/example.ts', 'index.html'), refs, 10), /unverified file/);
+    assert.throws(() => validatePromptPlan(plan.replace('test/example.test.ts', 'test/invented.test.ts'), refs, 10), /focused test/);
+    assert.throws(() => validatePromptPlan(plan.replace(/- Acceptance: [^\n]+/u, '- Acceptance: done'), refs, 10), /acceptance|Work/);
 });
 
 test('native prompt commands bind leading protected invocation and draft exact validated bytes', async () => {

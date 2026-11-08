@@ -61,6 +61,32 @@ test('Pi Chat passes brokered project tools through the exact local session', as
     assert.equal(events.at(-1)?.type, 'complete');
 });
 
+test('proposal terminal continuation retains one Pi host and cannot replay or switch models', async () => {
+    const calls: string[] = [];
+    const host = { start: async () => ({}), async *streamTurn() {
+        yield { type: 'complete', result: { text: 'Staged.', modelId: 'fixture-model',
+            finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' } } };
+    }, async *continueProposalTurn(limit: number, _signal: unknown, onTool: (call: { id: number; name: string;
+        arguments: unknown }) => Promise<unknown>) {
+        assert.equal(limit, 512);
+        calls.push('continued');
+        await onTool({ id: 1, name: 'proposal_finish', arguments: { finalMessage: 'Ready.' } });
+        yield { type: 'complete', result: { text: 'Done.', modelId: 'fixture-model',
+            finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' } } };
+    } };
+    const factory = { create: () => host, release: () => { calls.push('released'); } };
+    let lease: { continue(): AsyncIterable<unknown>; dispose(): void } | undefined;
+    for await (const event of piConversation(selection, { messages: [{ role: 'user', content: 'Stage.' }],
+        projectTools: { root: '/project', proposalTools: true, execute: async name => {
+            calls.push(name); return '{}'; } } }, bridge as never, factory as never))
+        if (event.type === 'complete') lease = event.terminalContinuation;
+    assert.ok(lease);
+    const result = await Array.fromAsync(lease.continue());
+    assert.equal((result.at(-1) as { type: string }).type, 'complete');
+    assert.deepEqual(calls, ['continued', 'proposal_finish', 'released']);
+    assert.throws(() => lease!.continue(), /unavailable/);
+});
+
 test('Pi stops on changed model, insufficient context and cancellation', async () => {
     const changed = fixture({ text: 'wrong', modelId: 'other', finishReason: 'stop',
         usage: { tokenMeasurement: 'provider-reported', inputTokens: 1, outputTokens: 1, totalTokens: 2 } });

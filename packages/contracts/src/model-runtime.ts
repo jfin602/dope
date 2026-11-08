@@ -104,6 +104,10 @@ export interface ConversationContinuation {
     stop(): Promise<Extract<ConversationEvent, { type: 'stopped-incomplete' }>>;
     dispose(): void;
 }
+export interface ProposalTerminalContinuation {
+    continue(): AsyncIterable<ConversationEvent>;
+    dispose(): void;
+}
 export type ConversationEvent =
     | { type: 'delta'; text: string }
     | { type: 'reset' }
@@ -115,6 +119,7 @@ export type ConversationEvent =
         usage: ConversationUsage; originalFinishReason: 'length'; finishReason: 'owner-stop';
         actualModelId: string }
     | { type: 'complete'; text: string; usage: ConversationUsage; finishReason?: string;
+        terminalContinuation?: ProposalTerminalContinuation;
         segmentIndex?: number; segmentUsage?: ConversationUsage; originalFinishReason?: 'length';
         /** Ephemeral Pi context projection; the saved Dope messages remain canonical. */
         compaction?: { canonicalContextSha256: string; originalSha256: string;

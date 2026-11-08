@@ -39,7 +39,8 @@ import { applyDocumentationProposal, reconcileDocumentationApplication } from '.
 import { discoverDocumentation, documentationReviewObjective } from './documentation-discovery';
 import type { DocumentationReadPage } from './documentation-skill-review';
 import { promptStageCommand, priorPromptDraft, verifyPromptDraftSource, verifyPromptSourceRefs,
-    promptStageInstruction, finishedPromptText, requestedWorkPromptCount } from './prompt-authoring-stage';
+    promptStageInstruction, finishedPromptText, requestedWorkPromptCount,
+    validatePromptAssessment, validatePromptPlan } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
 import { IncrementalProposalController, type ProposalHandoff } from './incremental-proposal-controller';
@@ -2047,6 +2048,8 @@ export class ChatBackend implements ChatService {
         };
         let assistant: ChatAssistantMessage | undefined;
         let liveContinuation: Extract<ConversationEvent, { type: 'paused' }>['continuation'] | undefined;
+        let liveProposalTerminal: Extract<ConversationEvent, { type: 'complete' }>['terminalContinuation'] | undefined;
+        let proposalTerminalAttempted = false;
         let activity: ChatActivityRecorder | undefined;
         let activitySequence = 0;
         let activityCount = 0;
@@ -2107,6 +2110,7 @@ export class ChatBackend implements ChatService {
         let proposalController: IncrementalProposalController | undefined;
         let finishedDocument: ProposalHandoff<import('@dope/chat').ChatDocumentationProposal> | undefined;
         let finishedPrompt: ProposalHandoff<ChatPromptStackProposal> | undefined;
+        const rejectedProposalCalls = new Map<string, number>();
         const noProjectTools = !!publicationIntent || forbidsProjectTools(content);
         // This closure belongs to one authorized Chat execution. A later read may inspect
         // staged operations, but cannot silently rebase its original source preconditions.
@@ -2125,10 +2129,16 @@ export class ChatBackend implements ChatService {
                         safeChatToolPath((args as { target: string }).target) : undefined;
                     recordActivity('tool', `${proposalName}: running${stageTarget ? ` · ${stageTarget}` : ''}`);
                     let status: 'completed' | 'failed' | 'denied' = 'denied';
+                    const rejectedKey = name === 'proposal_stage_prompt' ? JSON.stringify([name, args]) : '';
                     try {
                         if (!protectedProposal || !proposalController || signal?.aborted || abort.signal.aborted ||
                             this.turns.get(key)?.abort !== abort || toolEvents.length >= 512)
                             throw new Error('PROPOSAL_TOOL_AUTHORITY');
+                        if (proposalTerminalAttempted &&
+                            (name === 'proposal_stage_document' || name === 'proposal_stage_prompt'))
+                            throw new Error('PROPOSAL_TERMINAL_FINISH_ONLY');
+                        if (rejectedKey && (rejectedProposalCalls.get(rejectedKey) ?? 0) >= 2)
+                            throw new Error('PROPOSAL_REPEATED_INVALID_STAGE');
                         const result = name === 'proposal_status' ?
                             (args && typeof args === 'object' && !Array.isArray(args) &&
                                 Object.keys(args).length === 0 ?
@@ -2157,6 +2167,8 @@ export class ChatBackend implements ChatService {
                                 state: 'ready-for-review' } : result);
                     } catch (error) {
                         status = 'failed';
+                        if (rejectedKey) rejectedProposalCalls.set(rejectedKey,
+                            (rejectedProposalCalls.get(rejectedKey) ?? 0) + 1);
                         if (name === 'proposal_finish' || name === 'proposal_stage_document' ||
                             name === 'proposal_stage_prompt') {
                             const diagnostic = error instanceof Error && error.message.startsWith('PROPOSAL_') ?
@@ -2793,6 +2805,29 @@ export class ChatBackend implements ChatService {
                         if (retainStreamedAnswer && output && (Buffer.byteLength(output, 'utf8') - partialCursor >= 1024 ||
                             Date.now() - lastPartialWrite >= 3000)) await persistOutputPartial(output);
                     } else {
+                        if (protectedProposal && event.finishReason === 'stop' &&
+                            !finishedDocument && !finishedPrompt) {
+                            liveProposalTerminal = event.terminalContinuation;
+                            const current = await proposalController!.status();
+                            if (!proposalTerminalAttempted && current.finishPermitted &&
+                                current.state === 'staging' && event.finishReason === 'stop' &&
+                                event.terminalContinuation && !abort.signal.aborted &&
+                                this.turns.get(key)?.abort === abort &&
+                                this.leases.get(key)?.token === request.leaseToken) {
+                                proposalTerminalAttempted = true;
+                                recordActivity('provisional', 'Proposal completion: one same-session finish attempt.');
+                                resumedEvents = event.terminalContinuation.continue();
+                                break;
+                            }
+                            recordActivity('provisional', proposalTerminalAttempted ?
+                                'proposal completion continuation: ended without proposal_finish' :
+                                `proposal completion continuation: unavailable; ${current.nextAction}`);
+                            throw new ModelRuntimeFailure(proposalTerminalAttempted ?
+                                'Proposal remains incomplete: the model did not call proposal_finish after one continuation' :
+                                `Proposal remains incomplete: ${current.nextAction}`, 'incomplete-answer');
+                        }
+                        if (proposalTerminalAttempted)
+                            recordActivity('provisional', 'Proposal completion: proposal_finish validated.');
                         output = event.text;
                         if (partialSegments && !output.startsWith(partialText))
                             throw new ModelRuntimeFailure('Completed answer differs from saved continuation', 'incomplete-answer');
@@ -2844,7 +2879,18 @@ export class ChatBackend implements ChatService {
                                     status: 'pending', refs: [...preview.refs, ...sourceRefs],
                                     proposalId: proposal.id, promptStackProposal: proposal };
                                 output = finishedPrompt.finalMessage;
-                            } else output = finishedPromptText(promptStage.stage, output, sourceRefs, content);
+                            } else {
+                                if (promptStage.stage === 'prompt-ass')
+                                    validatePromptAssessment(output, sourceRefs, content + '\n' +
+                                        (chat.messages.filter(message => message.role === 'user').at(-1)?.content ?? ''));
+                                else {
+                                    const count = requestedWorkPromptCount(content,
+                                        priorAssessment?.user.content ?? '', priorAssessment?.assistant.content ?? '');
+                                    if (count) validatePromptPlan(output, sourceRefs, count,
+                                        priorAssessment?.assistant.execution.sourceRefs ?? []);
+                                }
+                                output = finishedPromptText(promptStage.stage, output, sourceRefs, content);
+                            }
                         }
                         let documentActivity: ChatPlanningActivity | undefined;
                         let revisionActivityToCommit: ChatPlanningActivity | undefined;
@@ -3022,6 +3068,9 @@ export class ChatBackend implements ChatService {
                 const cancelled = abort.signal.aborted || error instanceof ModelRuntimeFailure && error.failureClass === 'cancelled';
                 const storageCode = (error as NodeJS.ErrnoException)?.code;
                 const baseFailure = error instanceof ModelRuntimeFailure ? error.message :
+                    promptStage && error instanceof Error &&
+                    /^(?:Assessment |Plan |Saved prompt draft |Prompt authoring output )/u.test(error.message) ?
+                        error.message.slice(0, 500) :
                     storageCode === 'ENOSPC' || storageCode === 'EDQUOT' ? 'Chat storage exhausted during activity capture' :
                     storageCode === 'EIO' ? 'Chat activity storage failed with an I/O error' :
                     error instanceof Error && /^(?:Pi Chat stream backpressure limit exceeded|Pi worker output limit exceeded|Chat activity storage limit reached)$/u.test(error.message) ?
@@ -3063,6 +3112,7 @@ export class ChatBackend implements ChatService {
                             request.leaseToken, progress)).catch(() => undefined);
             }
             liveContinuation?.dispose();
+            liveProposalTerminal?.dispose();
             clearInterval(leaseHeartbeat);
             this.pendingOutputLimits.delete(key);
             if (activityTimer) clearTimeout(activityTimer);

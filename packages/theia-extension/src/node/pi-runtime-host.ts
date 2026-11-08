@@ -169,6 +169,14 @@ export class PiRuntimeHost {
             maxOutputTokens: paused.maxOutputTokens }, paused.id, signal, onTool);
     }
 
+    /** One additional prompt in the same protected Pi session after a normal stop. */
+    async *continueProposalTurn(maxOutputTokens: number, signal?: AbortSignal,
+        onTool?: NonNullable<Pending['onTool']>): AsyncIterable<PiTurnEvent> {
+        if (this.paused) throw new Error('Pi output-limit turn requires a decision');
+        yield* this.streamSegment({ type: 'terminal_proposal', maxOutputTokens },
+            ++this.nextId, signal, onTool);
+    }
+
     async stopTurn(segmentIndex: number): Promise<{ stopped: true; segmentIndex: number }> {
         const paused = this.paused;
         if (!paused || paused.segmentIndex !== segmentIndex)

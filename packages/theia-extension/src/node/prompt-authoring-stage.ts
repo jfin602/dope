@@ -68,15 +68,101 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
     const inherited = [prior.assessment && `Selected assessment ${prior.assessment.id}:\n${prior.assessment.content.slice(0, 12_000)}`,
         prior.plan && `Selected plan ${prior.plan.id}:\n${prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read relevant source and tests with read_file; report omissions. Keep the final response under 12,000 characters.';
-    if (command.stage === 'prompt-ass') return `${common}\nReturn a Markdown assessment with headings Scope, Preservation, Dependencies, Risks, Source basis, Authority, and Evidence (T1/T2/T3).`;
-    if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn a Markdown plan with ordered steps, exact likely files, focused tests/build dependency order, manual checkpoints, explicit deferrals and prompt-efficiency decisions.`;
+    if (command.stage === 'prompt-ass') return `${common}\nReturn a Markdown assessment with headings Scope, Preservation, Dependencies, Risks, Source basis, Authority, and Evidence. In Source basis use separate Read:, Listed:, and Uninspected: lines naming paths; a search/list is never a read. Disclose each explicitly requested path not actually read. Define T1 as focused source/unit verification, T2 as cross-boundary integration, and T3 as manual/browser/native/release or independent qualification. Never use T1/T2/T3 for retrieval levels.`;
+    if (command.stage === 'prompt-plan') {
+        const count = requestedWorkPromptCount(prior.assessment?.content ?? '');
+        const structured = count ? `\nFor this explicit ${count}-work-step request, use exactly ${count} headings \"### Work N: specific responsibility\" in dependency order. Under each put separate \"- Tier: T1\" or T2, \"- Depends on: none\" or earlier numbers, \"- Files: path\" (prefix a genuinely new file with NEW), \"- Tests: path or focused command\", and \"- Acceptance: observable result\" lines. Include one dedicated T2 integration step with an \"- Integration: concrete cross-boundary check\" line. Add exactly one \"### Manual closeout\" section after work, including \"- Tier: T3\" and a concrete manual acceptance. Add \"### Efficiency gates\" with numbered 1–10 findings in docs/workflow.md order: Single responsibility, Runtime feasibility, Test precision, Build precision, Evidence distribution, Command deduplication, Model economy and deferral, Runnable/traceable contract, UI Design Compliance, Human Usability. Mark UI checks N/A with a reason for non-UI steps. Do not make prompt writing an implementation step. Mark unverified or proposed files/CI explicitly; never state them as observed.` : '';
+        return `${common}\n${inherited}\nReturn a Markdown plan with ordered implementation responsibilities, affected source and tests, focused build order, manual checkpoint and explicit deferrals.${structured}`;
+    }
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
     const requestedCount = requestedWorkPromptCount(prior.plan?.content ?? '', prior.assessment?.content ?? '');
     return `${common}\n${inherited}\nDope supplies folder ${JSON.stringify(command.folder)} and source version ${JSON.stringify(sourceVersion)}. ` +
         (requestedCount ? `Stage exactly ${requestedCount} work prompts plus one separate manual closeout. ` : '') +
         `The saved plan read these test files: ${JSON.stringify(planTests)}. Include each in a step workingSet when changing tests. ` +
-        'Use proposal_status for progress. Stage one ordered plan step per proposal_stage_prompt call with direct typed fields: target:stable step ID, kind:work, title, objective, tier:T1 or T2, dependsOn, workingSet, requirements, constraints, acceptanceCriteria, validationTargets, complete. For T2 include integrationChecks. Optional detailed sections use the same target, kind:section, heading, text, complete:true on the last section. Stage exactly one final target closeout with kind:closeout, title, objective, manualReason, acceptanceCriteria, browserRequired:true, efficiencyAudit:exactly ten findings, complete:true. The ten findings follow docs/workflow.md order: responsibility, runtime, tests, builds, evidence, deduplication, model economy, runnable grammar, UI design and usability. Dope owns counters, hashes and stage identity; supply none. Keep all prior candidate bytes in Dope, use only compact status receipts, and call proposal_finish({finalMessage:"Short factual review message"}) after all requested work steps and the closeout. Use plan-step IDs, dependency order, concrete tests and criteria, an explicit T2 gate, and one terminal manual closeout. Do not return a whole-stack JSON answer or claim publication.';
+        'Call proposal_status first. For each work step call proposal_stage_prompt with target (stable step ID), kind:"work", title, objective, tier:"T1" or "T2", dependsOn, workingSet, acceptanceCriteria, validationTargets and complete:true. T2 also needs nonempty integrationChecks. To add detail, set work complete:false, then call the same target with kind:"section", heading, text and complete:true on its last section. Finish the current step before starting the next. Stage target:"closeout" separately with kind:"closeout", title, objective, manualReason, acceptanceCriteria, browserRequired:true, efficiencyAudit (ten distinct findings in docs/workflow.md order) and complete:true. On a rejection, correct the returned named field; the rejected call was not staged. Check proposal_status for progress. When all targets are complete, call proposal_finish with finalMessage. Do not resend whole prompt files, return a JSON packet, or claim publication.';
+}
+
+const requestedPaths = (text: string): string[] => [...new Set(text.match(/\b(?:[a-zA-Z0-9_.-]+\/)*[a-zA-Z0-9_.-]+\.(?:md|txt|json|js|jsx|ts|tsx)\b/gu) ?? [])];
+export function validatePromptAssessment(body: string, refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>,
+    request: string): void {
+    const read = [...new Set(refs.filter(ref => ref.kind === 'file').map(ref => ref.id))];
+    const source = /(?:^|\n)#{1,3} Source basis\s*\n([\s\S]*?)(?=\n#{1,3} |$)/iu.exec(body)?.[1] ?? '';
+    const readLine = /^Read:\s*(.+)$/imu.exec(source)?.[1] ?? '';
+    const uninspected = /^Uninspected:\s*(.+)$/imu.exec(source)?.[1] ?? '';
+    if (!read.length || !read.some(path => readLine.includes(path)))
+        throw new Error('Assessment Source basis must name a broker-read file on its Read: line');
+    const falselyRead = requestedPaths(readLine).filter(path => !read.includes(path));
+    if (falselyRead.length) throw new Error(`Assessment claims unread source: ${falselyRead[0]}`);
+    const omitted = requestedPaths(request).filter(path => !read.includes(path));
+    if (omitted.some(path => !uninspected.includes(path)))
+        throw new Error(`Assessment must disclose requested uninspected path: ${omitted.find(path => !uninspected.includes(path))}`);
+    const evidence = /(?:^|\n)#{1,3} Evidence(?:\s*\([^\n]*\))?\s*\n([\s\S]*?)(?=\n#{1,3} |$)/iu.exec(body)?.[1] ?? '';
+    if (!/T1[^\n]*focused[^\n]*(?:source|unit)/iu.test(evidence) ||
+        !/T2[^\n]*(?:integration|cross.boundary)/iu.test(evidence) ||
+        !/T3[^\n]*(?:manual|browser|native|release|independent)/iu.test(evidence))
+        throw new Error('Assessment Evidence must define T1 focused source/unit, T2 integration, T3 manual or independent qualification');
+}
+
+const gateNames = ['Single responsibility', 'Runtime feasibility', 'Test precision', 'Build precision',
+    'Evidence distribution', 'Command deduplication', 'Model economy and deferral',
+    'Runnable/traceable contract', 'UI Design Compliance', 'Human Usability'];
+export function validatePromptPlan(body: string, refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>,
+    count: number, priorRefs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> = []): void {
+    const read = new Set([...priorRefs, ...refs].filter(ref => ref.kind === 'file').map(ref => ref.id));
+    if (!refs.some(ref => ref.kind === 'file')) throw new Error('Plan needs an actual brokered source read');
+    const headings = [...body.matchAll(/^### Work (\d+):\s*(.+)$/gmu)];
+    if (headings.length !== count) throw new Error(`Plan needs ${count} distinct executable Work headings; found ${headings.length}`);
+    const titles = new Set<string>();
+    let t2 = 0;
+    for (let index = 0; index < headings.length; index++) {
+        const [, number, title] = headings[index];
+        if (Number(number) !== index + 1 || !title.trim() || /write (?:the )?(?:implementation )?prompts/iu.test(title))
+            throw new Error(`Plan Work ${index + 1} has wrong order or prompt-writing responsibility`);
+        if (titles.has(title.trim().toLowerCase())) throw new Error(`Plan Work ${index + 1} repeats a responsibility`);
+        titles.add(title.trim().toLowerCase());
+        const section = body.slice(headings[index].index! + headings[index][0].length,
+            headings[index + 1]?.index ?? body.length).split(/^### /mu)[0];
+        const line = (label: string) => new RegExp(`^- ${label}:\\s*(.+)$`, 'imu').exec(section)?.[1]?.trim();
+        const tier = line('Tier');
+        if (tier !== 'T1' && tier !== 'T2' || !line('Depends on') || !line('Files') || !line('Tests') ||
+            !line('Acceptance') || /^(?:works|passes|done|implement change|test)$/iu.test(line('Acceptance')!))
+            throw new Error(`Plan Work ${index + 1} needs tier, dependencies, files, tests and observable acceptance`);
+        if (tier === 'T2') {
+            t2++;
+            if (!line('Integration') || !/integrat|cross.boundary|end.to.end/iu.test(line('Integration')!))
+                throw new Error(`Plan Work ${index + 1} needs a concrete cross-boundary integration check`);
+        }
+        if (/\bwrite (?:the )?(?:implementation )?prompts\b/iu.test(section))
+            throw new Error(`Plan Work ${index + 1} assigns prompt writing as implementation`);
+        const dependencies = line('Depends on')!;
+        const dependencyNumbers = [...dependencies.matchAll(/\b\d+\b/gu)];
+        if (dependencies !== 'none' && (!dependencyNumbers.length || dependencyNumbers.some(match =>
+            Number(match[0]) < 1 || Number(match[0]) >= index + 1)))
+            throw new Error(`Plan Work ${index + 1} depends on an unfinished step`);
+        const paths = requestedPaths(line('Files')!);
+        if (!paths.length || paths.some(path => !read.has(path) && !line('Files')!.includes(`NEW ${path}`)))
+            throw new Error(`Plan Work ${index + 1} names an unverified file as observed; read it or mark NEW`);
+        const tests = requestedPaths(line('Tests')!);
+        if (!tests.length || tests.some(path => !read.has(path) && !line('Tests')!.includes(`NEW ${path}`)))
+            throw new Error(`Plan Work ${index + 1} needs a source-backed focused test path or an explicit NEW test`);
+        if (/\b(?:CI|index\.html)\b/iu.test(section) && ![...read].some(path =>
+            /(?:^|\/)(?:\.github\/workflows\/|index\.html$)/u.test(path)) && !/\b(?:proposed|unverified|NEW)\b/iu.test(section))
+            throw new Error(`Plan Work ${index + 1} presents unverified CI or index.html as observed`);
+    }
+    if (t2 !== 1) throw new Error('Plan needs exactly one dedicated T2 integration responsibility');
+    const closeouts = [...body.matchAll(/^### Manual closeout\s*$/gmu)];
+    const closeout = closeouts[0];
+    if (closeouts.length !== 1 || !closeout || closeout.index! < headings.at(-1)!.index! ||
+        !/^- Tier: T3\s*$/imu.test(body.slice(closeout.index!, closeout.index! + 700)) ||
+        !/browser|manual|native|independent/iu.test(body.slice(closeout.index!, closeout.index! + 700)))
+        throw new Error('Plan needs one separate terminal manual closeout');
+    const gates = /### Efficiency gates\s*\n([\s\S]*)/iu.exec(body)?.[1] ?? '';
+    const gateLines = [...gates.matchAll(/^(\d+)\.\s+(.+)$/gmu)];
+    for (let index = 0; index < gateNames.length; index++)
+        if (Number(gateLines[index]?.[1]) !== index + 1 ||
+            !gateLines[index][2].replaceAll('*', '').startsWith(gateNames[index]))
+            throw new Error(`Plan efficiency gate ${index + 1} must be ${gateNames[index]}`);
 }
 
 /** Only an explicit small numeric request binds a count; a vague plan never invents one. */
