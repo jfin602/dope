@@ -63,6 +63,7 @@ import { HistoryWidget, HISTORY_WIDGET_ID } from './history-widget';
 import { HistoryFocusContribution } from './history-focus-contribution';
 import { historyOwnerNavigation } from './history-owner-navigation';
 import { RoadmapCanvasWidget, ROADMAP_CANVAS_ID } from './roadmap-canvas-widget';
+import { DocumentsWidget, DOCUMENTS_WIDGET_ID } from './documents-widget';
 import { roadmapServicePath, type RoadmapClient, type RoadmapService } from '../roadmap-service';
 import { RoadmapInspectorModel } from './roadmap-inspector-model';
 import { verifyPrepareWorkNavigation } from './prepare-work-navigation';
@@ -295,6 +296,15 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             await shell.activateWidget(widget.id);
         } }) })).inSingletonScope();
     bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
+        commands.registerCommand({ id: 'dope.documents.open', label: 'Dope: Open Documents' }, { execute: async () => {
+            const manager = context.container.get(WidgetManager);
+            const shell = context.container.get(ApplicationShell);
+            const widget = await manager.getOrCreateWidget<DocumentsWidget>(DOCUMENTS_WIDGET_ID);
+            await widget.refreshProject();
+            if (!widget.isAttached) await shell.addWidget(widget, { area: 'main' });
+            await shell.activateWidget(widget.id);
+        } }) })).inSingletonScope();
+    bind(CommandContribution).toDynamicValue(context => ({ registerCommands: (commands: CommandRegistry) =>
         commands.registerCommand({ id: 'dope.roadmap.inspector', label: 'Dope: Show Roadmap Details' }, { execute: async () => {
             const manager = context.container.get(WidgetManager);
             const shell = context.container.get(ApplicationShell);
@@ -511,6 +521,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 inspector.setSnapshot(handoff.workspace, result as unknown as RoadmapIndex);
                 return `Linked ${review.items.length} WorkItems to locked Phase ${handoff.title}. No Work started.`;
             }) })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: DOCUMENTS_WIDGET_ID, createWidget: () =>
+        new DocumentsWidget(context.container.get(WorkspaceService)) })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_CANVAS_ID, createWidget: () =>
         new RoadmapCanvasWidget(context.container.get<RoadmapService>('RoadmapService'), context.container.get(WorkspaceService),
             context.container.get(RoadmapInspectorModel),

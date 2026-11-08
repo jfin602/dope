@@ -1,4 +1,15 @@
 .dope-ai-launcher { width: 100%; border: 0; padding: 0; color: inherit; background: transparent; cursor: pointer; position: relative; }
+.dope-documents { box-sizing: border-box; display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; color: var(--theia-editor-foreground); background: var(--theia-editor-background); font-family: var(--theia-ui-font-family); }
+.dope-documents > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--theia-widget-border); }
+.dope-documents h2, .dope-documents h3 { margin: 0; font-size: 14px; }
+.dope-documents-project { min-width: 0; overflow-wrap: anywhere; color: var(--theia-descriptionForeground); }
+.dope-documents-mode { margin-inline-start: auto; color: var(--theia-descriptionForeground); }
+.dope-documents-body { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; }
+.dope-documents-body > aside { box-sizing: border-box; flex: 0 0 auto; width: clamp(8rem, 24%, 18rem); min-width: 6rem; max-width: 65%; resize: horizontal; overflow: auto; padding: 10px; border-right: 1px solid var(--theia-widget-border); }
+.dope-documents-body > main { box-sizing: border-box; flex: 1 1 auto; min-width: 0; overflow: auto; padding: 10px 14px; }
+.dope-documents-tree, .dope-documents-content { min-height: 3rem; padding: 6px 0; overflow-wrap: anywhere; }
+.dope-documents [tabindex]:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }
+@media (max-width: 440px) { .dope-documents-body > aside { width: 7rem; min-width: 5rem; } .dope-documents-body > main { padding: 8px; } }
 .dope-roadmap-canvas { box-sizing: border-box; height: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; color: var(--theia-editor-foreground); background: var(--theia-editor-background); font-family: var(--theia-ui-font-family); }
 .dope-roadmap-canvas > header { display: flex; flex: none; flex-wrap: nowrap; align-items: center; gap: 4px; min-width: 0; padding: 4px 6px; overflow-x: auto; border-bottom: 1px solid var(--theia-widget-border); }
 .dope-roadmap-canvas h2 { margin: 0; font-size: 18px; }
