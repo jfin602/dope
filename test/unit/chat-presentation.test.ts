@@ -2,9 +2,30 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, proposalCardPlacement, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, proposalCardPlacement, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink, currentPromptDraft } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
-import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
+import type { Chat, ChatAssistantMessage } from '../../packages/chat/lib/index.js';
+
+test('named prompt card advances from saved turns without duplicating historical cards', () => {
+    const identity = { schemaVersion: 1, id: 'draft-1', revision: 1, slug: 'short-name',
+        projectId: 'project', chatId: 'chat', userMessageId: 'owner', leaseDigest: 'lease',
+        sourceHead: 'head', sourceVersion: '0.13.11', sourceFingerprint: 'source' } as const;
+    const messages: Chat['messages'] = [
+        { role: 'user', id: 'owner', promptDraft: identity } as Chat['messages'][number],
+        { role: 'assistant', id: 'ass', execution: { status: 'complete' },
+            content: '# Unpublished prompt assessment\nSaved' } as ChatAssistantMessage,
+    ];
+    const chat = { messages } as Chat;
+    assert.deepEqual(currentPromptDraft(chat), { identity, state: 'plan', stageMessageId: 'ass', stageRevision: 1 });
+    messages.push({ role: 'user', id: 'plan-user', skill: { name: 'prompt-plan' } } as Chat['messages'][number]);
+    assert.equal(currentPromptDraft(chat)?.state, 'plan');
+    messages.push({ role: 'assistant', id: 'plan', execution: { status: 'complete' },
+        content: `Plan record sha256: ${'a'.repeat(64)}; revision: 1.` } as ChatAssistantMessage);
+    assert.deepEqual(currentPromptDraft(chat), { identity, state: 'write', stageMessageId: 'plan', stageRevision: 1 });
+    messages.push({ role: 'user', id: 'write-user', skill: { name: 'prompt-write' } } as Chat['messages'][number]);
+    messages.push({ role: 'assistant', id: 'failed', execution: { status: 'failed', failure: 'Source changed' } } as ChatAssistantMessage);
+    assert.equal(currentPromptDraft(chat)?.state, 'error');
+});
 
 test('live continuation displays only text beyond the saved partial', () => {
     const message = { answerPartial: { text: 'First section. ', cursor: 15 } } as ChatAssistantMessage;

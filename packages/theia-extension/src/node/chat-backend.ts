@@ -1894,6 +1894,26 @@ export class ChatBackend implements ChatService {
             savedAssessmentRecord = staged?.assessment?.record as AssessmentRecord | undefined;
             savedPlanRecord = staged?.plan?.record as PlanRecord | undefined;
         }
+        if (request.promptDraftTarget) {
+            const target = request.promptDraftTarget;
+            const identity = priorAssessment?.user.promptDraft;
+            const selected = target.stage === 'assessment' ? priorAssessment : priorPlan;
+            const stage = target.stage === 'assessment' ? 'prompt-plan' : 'prompt-write';
+            if (!promptStage || promptStage.stage !== stage || retryIndex >= 0 ||
+                !identity || !selected || selected.assistant.id !== target.stageMessageId ||
+                priorAssessment.user.id !== target.ownerUserMessageId || identity.id !== target.draftId ||
+                identity.projectId !== target.projectId || identity.sourceFingerprint !== target.sourceFingerprint ||
+                identity.leaseDigest !== target.leaseDigest ||
+                !Number.isSafeInteger(target.stageRevision) || target.stageRevision < 1)
+                throw new Error('Selected prompt draft chip is stale or belongs to another owner');
+            const stored = await new PromptDraftStore(this.repository, this.grounder!).read(root,
+                identity, request.leaseToken);
+            const sealedStage = target.stage === 'assessment' ? stored.assessment : stored.plan;
+            if (!sealedStage || sealedStage.revision !== target.stageRevision)
+                throw new Error('Selected prompt draft stage changed; choose the current card again');
+        } else if (promptStage && promptStage.stage !== 'prompt-ass' && retryIndex < 0 && !selectedPrompt) {
+            throw new Error('Select the current Prompt Stack Draft card before submitting this command');
+        }
         const promptSourceBasis = promptStage?.stage === 'prompt-write' ?
             await capturePromptSourceEvidence(root) : undefined;
         const promptSourceVersion = promptSourceBasis?.packageVersion;

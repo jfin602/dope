@@ -58,6 +58,10 @@ export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseT
     /** Card-selected pending candidate. Resolved against the current saved Chat, never trusted as proposal bytes. */
     documentationRevision?: { proposalId: string; revision: number; digest: string };
     promptStackRevision?: { proposalId: string; revision: number; digest: string };
+    /** Inert UI selection; the backend resolves it against the saved owner and sealed stage. */
+    promptDraftTarget?: { draftId: string; ownerUserMessageId: string; stageMessageId: string;
+        stage: 'assessment' | 'plan'; stageRevision: number; projectId: string;
+        sourceFingerprint: string; leaseDigest: string };
     /** Explicit, capped opt-in for an atomic preview of small unlinked Roadmap edits. */
     planningSteps?: 2 | 3;
     /** Explicit selected-checkpoint, local-only Bridge suggestion; never a write grant. */

@@ -1,4 +1,50 @@
-import { safeChatToolPath, sanitizeChatDiagnosticText, type Chat, type ChatAssistantMessage, type ChatMessage, type ChatPlanningActivity } from '@dope/chat';
+import { safeChatToolPath, sanitizeChatDiagnosticText, type Chat, type ChatAssistantMessage, type ChatMessage, type ChatPlanningActivity, type ChatPromptDraftIdentity } from '@dope/chat';
+
+/** A single projection of saved turns. The owner identity comes only from a saved user message. */
+export function currentPromptDraft(chat: Chat): { identity: ChatPromptDraftIdentity;
+    state: 'assessment' | 'plan' | 'write' | 'ready' | 'error';
+    stageMessageId?: string; stageRevision?: number; recoveryStage?: 'assessment' | 'plan'; error?: string } | undefined {
+    const messages = chat.messages;
+    const lastIndex = (predicate: (message: ChatMessage, index: number) => boolean): number => {
+        for (let index = messages.length - 1; index >= 0; index--) if (predicate(messages[index], index)) return index;
+        return -1;
+    };
+    const ownerIndex = lastIndex(message => message.role === 'user' && !!message.promptDraft);
+    if (ownerIndex < 0) return undefined;
+    const owner = messages[ownerIndex];
+    if (owner.role !== 'user' || !owner.promptDraft) return undefined;
+    const identity = owner.promptDraft;
+    const turn = (index: number) => {
+        const next = messages.findIndex((message, at) => at > index && message.role === 'user');
+        return messages.slice(index + 1, next < 0 ? undefined : next).filter(
+            (message): message is ChatAssistantMessage => message.role === 'assistant').at(-1);
+    };
+    const assessment = turn(ownerIndex);
+    if (!assessment || assessment.execution.status === 'pending' || assessment.execution.status === 'streaming')
+        return { identity, state: 'assessment' };
+    if (assessment.execution.status !== 'complete' || !assessment.content.startsWith('# Unpublished prompt assessment\n'))
+        return { identity, state: 'error', error: assessment.execution.failure ?? 'Assessment did not complete' };
+    const planIndex = lastIndex((message, at) => at > ownerIndex && message.role === 'user' &&
+        message.skill?.name === 'prompt-plan');
+    if (planIndex < 0) return { identity, state: 'plan', stageMessageId: assessment.id, stageRevision: 1 };
+    const plan = turn(planIndex);
+    if (!plan || plan.execution.status === 'pending' || plan.execution.status === 'streaming')
+        return { identity, state: 'plan' };
+    const revision = /Plan record sha256: [a-f0-9]{64}; revision: (\d+)/u.exec(plan.content);
+    if (plan.execution.status !== 'complete' || !revision)
+        return { identity, state: 'error', stageMessageId: assessment.id, stageRevision: 1,
+            recoveryStage: 'assessment', error: plan.execution.failure ?? 'Plan did not complete' };
+    const writeIndex = lastIndex((message, at) => at > planIndex && message.role === 'user' &&
+        message.skill?.name === 'prompt-write');
+    if (writeIndex < 0) return { identity, state: 'write', stageMessageId: plan.id,
+        stageRevision: Number(revision[1]) };
+    const write = turn(writeIndex);
+    if (!write || write.execution.status === 'pending' || write.execution.status === 'streaming')
+        return { identity, state: 'write' };
+    return write.execution.status === 'complete' ? { identity, state: 'ready' } :
+        { identity, state: 'error', stageMessageId: plan.id, stageRevision: Number(revision[1]),
+            recoveryStage: 'plan', error: write.execution.failure ?? 'Prompt writing did not complete' };
+}
 
 /** A live continuation shows only text beyond the already displayed saved partial. */
 export function liveAnswerSource(message: ChatAssistantMessage | undefined, content: string): string {

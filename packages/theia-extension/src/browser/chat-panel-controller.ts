@@ -6,7 +6,7 @@ import type { ChatClient, ChatEvent, ChatOperation, ChatService, ChatContextSele
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import type { ChatModelSelection, ChatDocumentationProposal, ChatPromptStackProposal } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
-import { hasSendableChatDraft, isDraftPlanningAction, outputLimitDecisionTarget } from './chat-panel-presentation';
+import { currentPromptDraft, hasSendableChatDraft, isDraftPlanningAction, outputLimitDecisionTarget } from './chat-panel-presentation';
 
 export type ChatConnection = ChatService & { setClient(client: ChatClient | undefined): void; dispose(): void };
 export type ChatMode = 'select-chat' | 'chat';
@@ -75,6 +75,7 @@ export class ChatPanelController {
     pending = false;
     error = '';
     draft = '';
+    promptDraftChip?: NonNullable<import('@dope/chat/lib/service').ChatTurnRequest['promptDraftTarget']>;
     documentationRevision?: { proposalId: string; revision: number; digest: string };
     previousDocumentationDraft?: string;
     promptStackRevision?: { proposalId: string; revision: number; digest: string };
@@ -636,6 +637,23 @@ export class ChatPanelController {
             this.error = 'Selected prompt proposals require /prompt-write <folder> at the start.';
             this.changed(); return false;
         }
+        if (!retryMessageId && this.promptDraftChip) {
+            const chip = this.promptDraftChip;
+            const current = this.chat && currentPromptDraft(this.chat);
+            const expected = chip.stage === 'assessment' ? 'plan' : 'write';
+            if (!current || current.state !== expected &&
+                !(current.state === 'error' && current.recoveryStage === chip.stage) ||
+                current.identity.id !== chip.draftId ||
+                current.stageMessageId !== chip.stageMessageId ||
+                current.stageRevision !== chip.stageRevision ||
+                current.identity.projectId !== chip.projectId ||
+                current.identity.sourceFingerprint !== chip.sourceFingerprint ||
+                current.identity.leaseDigest !== chip.leaseDigest ||
+                !this.draft.startsWith(chip.stage === 'assessment' ? '/prompt-plan' : '/prompt-write ')) {
+                this.error = 'Prompt draft chip is stale. Remove it and select the current card.';
+                this.changed(); return false;
+            }
+        }
         const content = this.draft;
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
@@ -667,6 +685,8 @@ export class ChatPanelController {
                     { documentationRevision: this.documentationRevision } : {}),
                 ...(this.promptStackRevision && !retryMessageId ?
                     { promptStackRevision: this.promptStackRevision } : {}),
+                ...(this.promptDraftChip && !retryMessageId ?
+                    { promptDraftTarget: this.promptDraftChip } : {}),
                 ...(bridgeProposal ? { bridgeProposal } : {}),
                 ...(retryMessageId ? { retryMessageId } : { content }) };
             let result;
@@ -693,6 +713,7 @@ export class ChatPanelController {
                 if (this.draft === '/docs-review ') this.draft = '';
             }
             if (!retryMessageId && this.promptStackRevision) this.promptStackRevision = undefined;
+            if (!retryMessageId) this.promptDraftChip = undefined;
             this.autoRoadmapPrefix = false;
             return true;
         } catch (error) {
@@ -917,6 +938,21 @@ export class ChatPanelController {
                 `/prompt-write ${this.currentPromptStackProposal(this.promptStackRevision.proposalId)?.folder ?? ''} ${value.trimStart()}` :
                 value;
     }
+    preparePromptDraft(stage: 'assessment' | 'plan'): boolean {
+        const current = this.chat && currentPromptDraft(this.chat);
+        if (!this.lease || !current || current.state !== (stage === 'assessment' ? 'plan' : 'write') &&
+            !(current.state === 'error' && current.recoveryStage === stage) ||
+            !current.stageMessageId || !current.stageRevision || this.running || this.pending) return false;
+        const identity = current.identity;
+        this.promptDraftChip = { draftId: identity.id, ownerUserMessageId: identity.userMessageId,
+            stageMessageId: current.stageMessageId, stage, stageRevision: current.stageRevision,
+            projectId: identity.projectId, sourceFingerprint: identity.sourceFingerprint,
+            leaseDigest: identity.leaseDigest };
+        this.draft = stage === 'assessment' ? '/prompt-plan ' : `/prompt-write ${identity.slug} `;
+        this.error = ''; this.changed();
+        return true;
+    }
+    removePromptDraftChip(): void { this.promptDraftChip = undefined; this.changed(); }
     prepareDocumentationRevision(proposalId: string, digest: string): boolean {
         if (!this.lease || this.running || this.pending || !this.currentDocumentationProposal(proposalId, digest)) return false;
         const message = this.chat?.messages.find(item => item.role === 'assistant' &&

@@ -139,16 +139,48 @@ test('native prompt stages save an exact review candidate and publish only after
             operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Feature discussion' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
         if (!lease.acquired) throw new Error('Lease missing');
-        for (const content of ['/prompt-ass c0-feature Build the feature', '/prompt-plan'])
-            await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-                selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
+        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/prompt-ass c0-feature Build the feature' });
+        const assessed = (await backend.get(projectHandle, chatId))!;
+        const owner = assessed.messages.find(message => message.role === 'user' && message.promptDraft);
+        assert.ok(owner?.role === 'user' && owner.promptDraft);
+        const identity = owner.promptDraft;
+        const target = (stage: 'assessment' | 'plan', stageMessageId: string) => ({
+            draftId: identity.id, ownerUserMessageId: owner.id, stageMessageId,
+            stage, stageRevision: 1, projectId: identity.projectId,
+            sourceFingerprint: identity.sourceFingerprint, leaseDigest: identity.leaseDigest });
+        const assessmentMessage = assessed.messages.find(message => message.role === 'assistant' &&
+            message.execution.status === 'complete');
+        assert.ok(assessmentMessage);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write c0-feature' }),
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan' }),
+        /Select the current Prompt Stack Draft card/);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan',
+            promptDraftTarget: { ...target('assessment', assessmentMessage.id), projectId: 'wrong' } }),
+        /stale or belongs to another owner/);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan',
+            promptDraftTarget: { ...target('assessment', assessmentMessage.id), stageRevision: 99 } }),
+        /stage changed/);
+        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan',
+            promptDraftTarget: target('assessment', assessmentMessage.id) });
+        const planned = (await backend.get(projectHandle, chatId))!;
+        const planMessage = planned.messages.filter(message => message.role === 'assistant' &&
+            message.execution.status === 'complete').at(-1);
+        assert.ok(planMessage);
+        const writeTarget = target('plan', planMessage.id);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write c0-feature',
+            promptDraftTarget: writeTarget }),
         /Prompt authoring output was truncated/);
         await assert.rejects(readFile(join(root, 'docs', 'tasks', 'c0-feature', 'P1-implement-feature.txt')),
             /ENOENT/);
         await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write c0-feature' });
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write c0-feature',
+            promptDraftTarget: writeTarget });
         const chat = (await backend.get(projectHandle, chatId))!;
         const completed = chat.messages.filter(message => message.role === 'assistant' &&
             message.execution.status === 'complete');

@@ -19,7 +19,7 @@ import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/co
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, documentationDiscoveryFileUri, proposalCardPlacement, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, documentationDiscoveryFileUri, proposalCardPlacement, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, currentPromptDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { fadeInNewAnswerText } from './live-answer-fade';
@@ -3164,6 +3164,43 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         };
         const transcript = document.createElement('ol');
         transcript.className = 'dope-chat-transcript';
+        const named = currentPromptDraft(chat);
+        if (named) {
+            const card = document.createElement('li'); card.className = 'dope-chat-prompt-draft-card';
+            card.setAttribute('aria-label', 'Prompt Stack Draft');
+            const title = document.createElement('strong'); title.className = 'dope-chat-prompt-draft-name';
+            title.textContent = named.identity.slug; title.title = named.identity.slug;
+            const status = document.createElement('span'); status.setAttribute('role', 'status');
+            status.textContent = named.state === 'assessment' ? 'Assessment in progress' :
+                named.state === 'plan' ? named.stageMessageId ? 'Assessment ready · Plan next' : 'Plan in progress' :
+                named.state === 'write' ? named.stageMessageId ? 'Plan ready · Write next' : 'Writing in progress' :
+                named.state === 'ready' ? 'Prompt proposal ready for review' : `Blocked · ${named.error}`;
+            card.append(title, status);
+            const reviewMessage = named.state === 'write' || named.state === 'ready' ||
+                named.recoveryStage === 'plan' ?
+                chat.messages.filter(message => message.role === 'assistant' &&
+                    message.content.startsWith('# Unpublished prompt plan')).at(-1) :
+                chat.messages.filter(message => message.role === 'assistant' &&
+                    message.content.startsWith('# Unpublished prompt assessment')).at(-1);
+            if (reviewMessage) {
+                const review = this.button('Review saved stage', () => {
+                    const row = [...this.content.querySelectorAll<HTMLElement>('.dope-chat-message')]
+                        .find(item => item.dataset.messageId === reviewMessage.id);
+                    row?.scrollIntoView({ block: 'nearest' }); row?.setAttribute('tabindex', '-1'); row?.focus();
+                });
+                review.title = 'Open the saved read-only Chat stage'; card.append(review);
+            }
+            if (named.stageMessageId && (named.state === 'plan' || named.state === 'write' || named.recoveryStage)) {
+                const stage = named.recoveryStage ?? (named.state === 'plan' ? 'assessment' : 'plan');
+                const action = this.button(named.recoveryStage ? 'Retry stage' :
+                    stage === 'assessment' ? '/prompt-plan' : '/prompt-write', () => {
+                    if (state.preparePromptDraft(stage))
+                        queueMicrotask(() => this.content.querySelector<HTMLTextAreaElement>('.dope-chat-composer textarea')?.focus());
+                });
+                action.title = 'Place command and trusted draft context in the composer'; card.append(action);
+            }
+            transcript.append(card);
+        }
         const lastUserIndex = chat.messages.map(message => message.role).lastIndexOf('user');
         const activeAssistant = [...chat.messages.slice(lastUserIndex + 1)].reverse().find(message =>
             message.role === 'assistant' && ['pending', 'streaming', 'paused-output-limit'].includes(message.execution.status));
@@ -3849,7 +3886,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             progress.textContent = 'Validating local planning result…';
             responseNotices.append(progress);
         }
-        if (state.context.length || state.documentationRevision) {
+        if (state.context.length || state.documentationRevision || state.promptDraftChip) {
             const selectedContext = document.createElement('ul');
             selectedContext.className = 'dope-chat-selected-context';
             if (state.documentationRevision) {
@@ -3858,6 +3895,20 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 label.textContent = `Documentation proposal · Revision ${state.documentationRevision.revision}`;
                 const remove = this.button('×', () => state.restoreDocumentationDraft());
                 remove.setAttribute('aria-label', 'Remove documentation proposal revision target');
+                row.append(label, remove); selectedContext.append(row);
+            }
+            if (state.promptDraftChip) {
+                const chip = state.promptDraftChip;
+                const current = currentPromptDraft(chat);
+                const valid = current?.identity.id === chip.draftId && current.stageMessageId === chip.stageMessageId &&
+                    current.stageRevision === chip.stageRevision &&
+                    (current.state === (chip.stage === 'assessment' ? 'plan' : 'write') ||
+                        current.state === 'error' && current.recoveryStage === chip.stage);
+                const row = document.createElement('li');
+                const label = document.createElement('span');
+                label.textContent = `${current?.identity.slug ?? 'Prompt draft'} · ${chip.stage === 'assessment' ? 'Assessment' : 'Plan'}${valid ? '' : ' · Stale'}`;
+                const remove = this.button('×', () => state.removePromptDraftChip());
+                remove.setAttribute('aria-label', 'Remove prompt draft context');
                 row.append(label, remove); selectedContext.append(row);
             }
             state.context.forEach((item, index) => {

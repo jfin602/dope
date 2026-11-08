@@ -1583,3 +1583,22 @@ body.theia-light:not(.dope-dark) {
 .dope-native-document-formatted pre { padding: 12px; border: 1px solid var(--theia-widget-border); border-radius: 5px; background: var(--theia-editorWidget-background, var(--theia-editor-background)); }
 .dope-native-document-show-formatted > .monaco-editor { visibility: hidden; pointer-events: none; }
 @media (max-width: 600px) { .dope-native-document-formatted { padding: 18px 16px; } }
+.dope-chat-prompt-draft-card {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--theia-editorWidget-border, var(--theia-panel-border));
+    border-radius: 6px;
+    background: var(--theia-editorWidget-background, var(--theia-editor-background));
+    color: var(--theia-editorWidget-foreground, var(--theia-editor-foreground));
+}
+.dope-chat-prompt-draft-name {
+    min-width: 0;
+    max-width: min(16rem, 100%);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
