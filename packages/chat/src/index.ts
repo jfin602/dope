@@ -154,7 +154,7 @@ export interface ChatRoadmapAction {
 }
 export interface ChatPlanningActivity {
     schemaVersion: 1;
-    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-publication' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'documentation-proposal' | 'no-action' | 'error' | 'cancelled';
+    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-publication' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'documentation-proposal' | 'prompt-stack-proposal' | 'no-action' | 'error' | 'cancelled';
     status: 'pending' | 'approved' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'superseded' | 'applied' | 'failed' | 'cancelled';
     refs: ChatContextRef[];
     proposalId?: string;
@@ -162,6 +162,7 @@ export interface ChatPlanningActivity {
     /** Bounded, inert review presentation. Saved history never grants approval authority. */
     proposal?: import('./service').ChatPlanningProposal;
     documentProposal?: ChatDocumentationProposal;
+    promptStackProposal?: ChatPromptStackProposal;
     /** Broker-owned inventory and successful range reads; never model-authored. */
     documentationDiscovery?: { detected: number | null; omitted: string[];
         reads: { path: string; count: number }[] };
@@ -182,6 +183,14 @@ export interface ChatDocumentationProposal {
     dependencies: { path: string; contentHash: string; dev: number; ino: number }[];
     targets: { path: string; operation: 'create' | 'update'; before: string | null;
         beforeHash: string | null; after: string; afterHash: string; diff: string }[];
+}
+/** Exact, noncanonical prompt bytes. The saved object grants neither publication nor Work. */
+export interface ChatPromptStackProposal {
+    id: string; digest: string; root: string; projectId: string; ownerId: string;
+    chatId: string; messageId: string; leaseDigest: string; revision: number;
+    folder: string; sourceVersion: string; gitHead: string; worktreeId: string;
+    assessmentMessageId: string; planMessageId: string; createdAt: string;
+    files: { path: string; after: string; afterHash: string; before: null }[];
 }
 export type ChatMessage = ChatUserMessage | ChatAssistantMessage;
 
@@ -588,28 +597,33 @@ export function parseChatRoadmapAction(value: unknown): ChatRoadmapAction {
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'Roadmap diagnostic') }) };
 }
 export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
-    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'documentProposal', 'documentationDiscovery', 'diagnostic', 'verifiedGuidance'],
+    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'documentProposal', 'promptStackProposal', 'documentationDiscovery', 'diagnostic', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
-    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'documentation-proposal', 'no-action',
+    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'documentation-proposal', 'prompt-stack-proposal', 'no-action',
         'error', 'cancelled'] as const, 'planning activity kind');
     const status = choice(v.status, ['pending', 'approved', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'superseded', 'applied',
         'failed', 'cancelled'] as const, 'planning activity status');
     if ((kind === 'no-action') !== (status === 'no-action') ||
         (kind === 'bridge-proposal') !== (status === 'suggested') ||
         (status === 'suggested' && v.proposalId !== undefined) ||
-        (kind === 'error' ? status !== 'failed' : status === 'failed' && kind !== 'documentation-proposal') ||
+        (kind === 'error' ? status !== 'failed' : status === 'failed' && kind !== 'documentation-proposal' && kind !== 'prompt-stack-proposal') ||
         (kind === 'cancelled' ? status !== 'cancelled' :
-            status === 'cancelled' && kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' && kind !== 'roadmap-publication' && kind !== 'documentation-proposal') ||
+            status === 'cancelled' && kind !== 'roadmap-gate-proposal' && kind !== 'roadmap-gate-undo' && kind !== 'roadmap-publication' && kind !== 'documentation-proposal' && kind !== 'prompt-stack-proposal') ||
         (['pending', 'approved', 'denied', 'stale', 'superseded', 'applied'].includes(status) && v.proposalId === undefined) ||
         (status === 'cancelled' && kind !== 'cancelled' && v.proposalId === undefined) ||
-        (['no-action', 'failed'].includes(status) && v.proposalId !== undefined && kind !== 'documentation-proposal') ||
+        (['no-action', 'failed'].includes(status) && v.proposalId !== undefined && kind !== 'documentation-proposal' && kind !== 'prompt-stack-proposal') ||
         (status === 'cancelled' && kind === 'cancelled' && v.proposalId !== undefined) ||
-        (kind !== 'documentation-proposal' ? (status === 'applied') !== (v.appliedRevision !== undefined) : v.appliedRevision !== undefined) ||
+        (!['documentation-proposal', 'prompt-stack-proposal'].includes(kind) ?
+            (status === 'applied') !== (v.appliedRevision !== undefined) : v.appliedRevision !== undefined) ||
         (v.verifiedGuidance !== undefined && kind !== 'no-action') ||
         (kind === 'documentation-proposal' && (v.documentProposal === undefined || v.proposalId === undefined ||
             !['pending', 'approved', 'applied', 'failed', 'stale', 'superseded', 'denied', 'cancelled'].includes(status))) ||
-        (kind !== 'documentation-proposal' && v.documentProposal !== undefined)) throw new Error('Invalid planning activity state');
+        (kind !== 'documentation-proposal' && v.documentProposal !== undefined) ||
+        (kind === 'prompt-stack-proposal' && (v.promptStackProposal === undefined || v.proposalId === undefined ||
+            !['pending', 'approved', 'applied', 'failed', 'stale', 'superseded', 'denied', 'cancelled'].includes(status))) ||
+        (kind !== 'prompt-stack-proposal' && v.promptStackProposal !== undefined))
+        throw new Error('Invalid planning activity state');
     const guidance = v.verifiedGuidance === undefined ? undefined : record(v.verifiedGuidance,
         ['capabilityId', 'version', 'text'], ['capabilityId', 'version', 'text']);
     let proposal: import('./service').ChatPlanningProposal | undefined;
@@ -802,6 +816,50 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             ...(p.dependencySnapshotVersion === 1 ? { dependencySnapshotVersion: 1 as const } : {}) };
     }
     let documentationDiscovery: ChatPlanningActivity['documentationDiscovery'];
+    let promptStackProposal: ChatPromptStackProposal | undefined;
+    if (v.promptStackProposal !== undefined) {
+        if (kind !== 'prompt-stack-proposal' || JSON.stringify(v.promptStackProposal).length > 65_536)
+            throw new Error('Invalid saved prompt stack proposal');
+        const p = record(v.promptStackProposal, ['id', 'digest', 'root', 'projectId', 'ownerId', 'chatId',
+            'messageId', 'leaseDigest', 'revision', 'folder', 'sourceVersion', 'gitHead', 'worktreeId',
+            'assessmentMessageId', 'planMessageId', 'createdAt', 'files'],
+            ['id', 'digest', 'root', 'projectId', 'ownerId', 'chatId', 'messageId', 'leaseDigest',
+                'revision', 'folder', 'sourceVersion', 'gitHead', 'worktreeId',
+                'assessmentMessageId', 'planMessageId', 'createdAt', 'files']);
+        const hash = (x: unknown) => {
+            const s = string(x, 'prompt stack hash');
+            if (!/^[a-f0-9]{64}$/u.test(s)) throw new Error('Invalid prompt stack hash');
+            return s;
+        };
+        const folder = string(p.folder, 'prompt stack folder');
+        if (!/^[cp][a-z0-9-]{0,99}$/u.test(folder) || !Array.isArray(p.files) ||
+            p.files.length < 5 || p.files.length > 8 || !Number.isSafeInteger(p.revision) ||
+            (p.revision as number) < 1 || !/^[a-f0-9]{40,64}$/u.test(String(p.gitHead)) ||
+            !/^\d+\.\d+\.\d+$/u.test(String(p.sourceVersion)) || p.id !== v.proposalId)
+            throw new Error('Invalid prompt stack identity');
+        const files = p.files.map(item => {
+            const f = record(item, ['path', 'after', 'afterHash', 'before'],
+                ['path', 'after', 'afterHash', 'before']);
+            const path = string(f.path, 'prompt stack path');
+            const after = string(f.after, 'prompt stack text', false);
+            if (f.before !== null || !new RegExp(`^docs/tasks/${folder}/(?:prompt-assessment\\.md|implementation-plan\\.md|README\\.md|P[1-9]\\d*-[a-z0-9-]+\\.txt)$`, 'u').test(path) ||
+                partialBytes(after) > 32_000) throw new Error('Invalid prompt stack file');
+            return { path, after, afterHash: hash(f.afterHash), before: null as null };
+        });
+        if (new Set(files.map(file => file.path)).size !== files.length ||
+            files[0].path !== `docs/tasks/${folder}/prompt-assessment.md` ||
+            files[1].path !== `docs/tasks/${folder}/implementation-plan.md` ||
+            files[2].path !== `docs/tasks/${folder}/README.md`)
+            throw new Error('Invalid prompt stack file order');
+        promptStackProposal = { id: identifier(p.id), digest: hash(p.digest),
+            root: string(p.root, 'prompt stack root'), projectId: hash(p.projectId),
+            ownerId: string(p.ownerId, 'prompt stack owner'), chatId: identifier(p.chatId),
+            messageId: identifier(p.messageId), leaseDigest: hash(p.leaseDigest),
+            revision: p.revision as number, folder, sourceVersion: string(p.sourceVersion, 'source version'),
+            gitHead: string(p.gitHead, 'Git head'), worktreeId: hash(p.worktreeId),
+            assessmentMessageId: identifier(p.assessmentMessageId),
+            planMessageId: identifier(p.planMessageId), createdAt: time(p.createdAt), files };
+    }
     if (v.documentationDiscovery !== undefined) {
         if (kind !== 'documentation-proposal') throw new Error('Invalid documentation discovery');
         const d = record(v.documentationDiscovery, ['detected', 'omitted', 'reads'], ['detected', 'omitted', 'reads']);
@@ -825,6 +883,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         ...(v.appliedRevision === undefined ? {} : { appliedRevision: count(v.appliedRevision, 'applied revision') }),
         ...(proposal === undefined ? {} : { proposal }),
         ...(documentProposal === undefined ? {} : { documentProposal }),
+        ...(promptStackProposal === undefined ? {} : { promptStackProposal }),
         ...(documentationDiscovery === undefined ? {} : { documentationDiscovery }),
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'planning diagnostic').slice(0, 2000) }),
         ...(guidance === undefined ? {} : { verifiedGuidance: {

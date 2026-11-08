@@ -12,7 +12,7 @@ import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-renderin
 import type { ChatOperation } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import { CHAT_COLORS, type ChatSettings, type ChatModelSelection, type ChatAssistantMessage,
-    type ChatDocumentationProposal } from '@dope/chat';
+    type ChatDocumentationProposal, type ChatPromptStackProposal } from '@dope/chat';
 import type { ChatContextSelection, ChatEvent, ChatPlanningProposal } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
@@ -313,7 +313,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             readLatest: () => Promise<NonNullable<ChatPanelController['roadmapStage']>>) => Promise<void>,
         private readonly openDocumentationReview?: (uri: string, owner: ChatPanelController,
             proposalId: string, digest: string, paths: string[]) => Promise<void>,
-        private readonly syncDocumentationTabs?: (proposal: ChatDocumentationProposal, status: string) => void) {
+        private readonly syncDocumentationTabs?: (proposal: ChatDocumentationProposal, status: string) => void,
+        private readonly openPromptStackReview?: (uri: string, owner: ChatPanelController,
+            proposalId: string, digest: string, paths: string[]) => Promise<void>,
+        private readonly syncPromptStackTabs?: (proposal: ChatPromptStackProposal, status: string) => void) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -329,6 +332,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (message.role === 'assistant' && message.planningActivity?.kind === 'documentation-proposal' &&
                     message.planningActivity.documentProposal)
                     this.syncDocumentationTabs?.(message.planningActivity.documentProposal,
+                        message.planningActivity.status);
+                if (message.role === 'assistant' && message.planningActivity?.kind === 'prompt-stack-proposal' &&
+                    message.planningActivity.promptStackProposal)
+                    this.syncPromptStackTabs?.(message.planningActivity.promptStackProposal,
                         message.planningActivity.status);
             }
             if (kind === 'activity' && !this.transcriptTouchActive && !this.transcriptTouchSettleTimer &&
@@ -702,6 +709,71 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     /** Saved review data is display-only; only controller.planningProposal can expose decision buttons. */
     private savedRoadmapProposalCard(message: ChatAssistantMessage): HTMLElement | undefined {
         const activity = message.planningActivity;
+        if (activity?.kind === 'prompt-stack-proposal' && activity.promptStackProposal) {
+            const proposal = activity.promptStackProposal;
+            const card = document.createElement('section');
+            card.className = 'dope-chat-plan-review dope-chat-proposal-history';
+            card.dataset.status = activity.status;
+            card.setAttribute('aria-label', 'Prompt Stack Proposal');
+            const title = document.createElement('strong');
+            title.textContent = `Prompt Stack Proposal · ${activity.status === 'pending' ? 'Pending · no write' :
+                activity.status === 'applied' ? 'Published' : activity.status}`;
+            const basis = document.createElement('p');
+            basis.textContent = `${proposal.folder} · revision ${proposal.revision} · ${proposal.files.length} files · version ${proposal.sourceVersion} · source ${proposal.gitHead.slice(0, 8)}`;
+            const summary = document.createElement('p');
+            summary.textContent = `${proposal.files.length - 4} implementation/integration prompts · one manual browser closeout · Work remains unstarted`;
+            card.append(title, basis, summary);
+            const heading = document.createElement('div');
+            heading.className = 'dope-chat-documentation-file-heading';
+            const count = document.createElement('p');
+            count.textContent = `Affected files (${proposal.files.length})`;
+            heading.append(count);
+            const canOpen = activity.status === 'pending' && !!this.openPromptStackReview &&
+                this.controller.canDecidePromptStack(proposal.id, proposal.digest);
+            const openFiles = (paths: string[]) => {
+                const uri = this.controller.workspace;
+                if (!uri || !this.openPromptStackReview) return;
+                void this.openPromptStackReview(uri, this.controller, proposal.id, proposal.digest, paths)
+                    .catch(error => {
+                        this.controller.planningProposalError = `Prompt review unavailable: ${String(error)}`;
+                        this.render();
+                    });
+            };
+            if (activity.status === 'pending')
+                heading.append(this.button('Open All Files', () => openFiles(proposal.files.map(file => file.path)), !canOpen));
+            card.append(heading);
+            const files = document.createElement('div');
+            files.className = 'dope-chat-documentation-files';
+            for (const file of proposal.files) {
+                const link = this.button(file.path, () => openFiles([file.path]), !canOpen);
+                link.title = file.path;
+                files.append(link);
+            }
+            card.append(files);
+            if (activity.diagnostic) {
+                const error = document.createElement('p');
+                error.setAttribute('role', 'status');
+                error.textContent = activity.diagnostic;
+                card.append(error);
+            }
+            if (activity.status === 'pending') {
+                card.append(this.button('Accept',
+                    () => void this.controller.publishPromptStackProposal(proposal.id, proposal.digest),
+                    !this.controller.canDecidePromptStack(proposal.id, proposal.digest)));
+                card.append(this.button('Reject',
+                    () => void this.controller.dismissPromptStackProposal(proposal.id, proposal.digest),
+                    !this.controller.canDecidePromptStack(proposal.id, proposal.digest)));
+                card.append(this.button('Revise Proposal', () => {
+                    if (this.controller.preparePromptStackRevision(proposal.id, proposal.digest))
+                        queueMicrotask(() => this.content.querySelector<HTMLTextAreaElement>('.dope-chat-composer textarea')?.focus());
+                }, !this.controller.canDecidePromptStack(proposal.id, proposal.digest)));
+            } else if (activity.status === 'approved' || activity.status === 'failed') {
+                card.append(this.button('Recover publication',
+                    () => void this.controller.recoverPromptStackProposal(proposal.id, proposal.digest),
+                    this.controller.pending));
+            }
+            return card;
+        }
         if (activity?.kind === 'documentation-proposal' && activity.documentProposal) {
             const card = document.createElement('section');
             card.className = 'dope-chat-plan-review dope-chat-proposal-history';

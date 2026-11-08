@@ -1,4 +1,4 @@
-import type { ChatDocumentationProposal } from '@dope/chat';
+import type { ChatDocumentationProposal, ChatPromptStackProposal } from '@dope/chat';
 import { nativeDocumentFormat, type NativeDocumentFormat, type NativeDocumentMode } from './native-doc-editor-modes';
 
 export type ProposalViewStatus = 'pending' | 'applicable' | 'stale' | 'rejected' | 'revised' | 'partial-recovery' |
@@ -27,6 +27,18 @@ export function proposalSnapshot(proposal: ChatDocumentationProposal, path: stri
     return { identity: { root: proposal.root, worktreeId: proposal.worktreeId, ownerId: proposal.ownerId,
         proposalId: proposal.id, revision: proposal.proposalRevision ?? 1, digest: proposal.digest, path },
         format, original: target.before, proposed: target.after, status };
+}
+
+/** Prompt stacks use the same immutable editor surface with their own typed proposal owner. */
+export function promptStackSnapshot(proposal: ChatPromptStackProposal, path: string,
+    status: ProposalViewStatus): ProposalTabSnapshot {
+    const target = proposal.files.find(item => item.path === path);
+    const format = nativeDocumentFormat('file', path);
+    if (!target || !format || target.before !== null)
+        throw new Error('Exact supported prompt proposal file is unavailable');
+    return { identity: { root: proposal.root, worktreeId: proposal.worktreeId, ownerId: proposal.ownerId,
+        proposalId: proposal.id, revision: proposal.revision, digest: proposal.digest, path },
+        format, original: null, proposed: target.after, status };
 }
 
 /** Selection changes never change the reviewed bytes, identity, or status. */

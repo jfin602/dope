@@ -242,6 +242,7 @@ function validatedNoActionMessage(message: ChatAssistantMessage): string | undef
 export function planningOutcome(message: ChatAssistantMessage): { summary: string; questions: string[] } | undefined {
     const activity = message.planningActivity;
     if (!activity) return undefined;
+    if (activity.kind === 'prompt-stack-proposal') return undefined;
     if (activity.kind === 'no-action' && activity.status === 'no-action' && !noActionEnvelope(message))
         return undefined;
     if (activity.kind === 'implementation-plan' || activity.kind === 'implementation-plan-revision') return { summary:

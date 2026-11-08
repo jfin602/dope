@@ -707,7 +707,27 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     }
                     if (firstId) await context.container.get(ApplicationShell).activateWidget(firstId);
                 });
-            }, (proposal, status) => context.container.get(ProposalDocumentTabs).syncStatus(proposal, status));
+            }, (proposal, status) => context.container.get(ProposalDocumentTabs).syncStatus(proposal, status),
+            async (uri, owner, proposalId, digest, paths) => {
+                const roots = await context.container.get(WorkspaceService).roots;
+                if (roots.length !== 1 || roots[0].resource.toString() !== uri || owner.workspace !== uri)
+                    throw new Error('Project changed before prompt review');
+                const candidate = await owner.inspectPromptStackProposal(proposalId, digest);
+                if (candidate.status !== 'applicable' || !paths.length ||
+                    paths.length > candidate.proposal.files.length ||
+                    paths.some((path, index) => candidate.proposal.files.findIndex(file => file.path === path) < 0 ||
+                        paths.indexOf(path) !== index))
+                    throw new Error('Exact pending prompt files are unavailable');
+                const tabs = context.container.get(ProposalDocumentTabs);
+                let firstId: string | undefined;
+                for (const path of paths) {
+                    if (owner.workspace !== uri || !owner.currentPromptStackProposal(proposalId, digest))
+                        throw new Error('Prompt proposal changed during navigation');
+                    const tab = await tabs.openPrompt(candidate.proposal, path, 'pending');
+                    firstId ??= tab.id;
+                }
+                if (firstId) await context.container.get(ApplicationShell).activateWidget(firstId);
+            }, (proposal, status) => context.container.get(ProposalDocumentTabs).syncPromptStatus(proposal, status));
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

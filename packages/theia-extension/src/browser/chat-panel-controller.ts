@@ -4,7 +4,7 @@ import type { ChatClient, ChatEvent, ChatOperation, ChatService, ChatContextSele
     ChatPlanningProposal, ChatTurnResult,
     ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
-import type { ChatModelSelection, ChatDocumentationProposal } from '@dope/chat';
+import type { ChatModelSelection, ChatDocumentationProposal, ChatPromptStackProposal } from '@dope/chat';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 import { hasSendableChatDraft, isDraftPlanningAction, outputLimitDecisionTarget } from './chat-panel-presentation';
 
@@ -77,6 +77,8 @@ export class ChatPanelController {
     draft = '';
     documentationRevision?: { proposalId: string; revision: number; digest: string };
     previousDocumentationDraft?: string;
+    promptStackRevision?: { proposalId: string; revision: number; digest: string };
+    previousPromptStackDraft?: string;
     private autoRoadmapPrefix = false;
     context: ChatContextSelection[] = [];
     lastContext?: ChatContextPreview;
@@ -199,6 +201,7 @@ export class ChatPanelController {
         this.error = '';
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
         this.documentationRevision = undefined; this.previousDocumentationDraft = undefined;
+        this.promptStackRevision = undefined; this.previousPromptStackDraft = undefined;
         this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapStage = undefined; this.roadmapStageError = undefined;
         this.endedRoadmapTurnId = undefined;
@@ -402,6 +405,7 @@ export class ChatPanelController {
         this.outputLimitDecided = undefined;
         this.draft = ''; this.context = []; this.autoRoadmapPrefix = false;
         this.documentationRevision = undefined; this.previousDocumentationDraft = undefined;
+        this.promptStackRevision = undefined; this.previousPromptStackDraft = undefined;
         this.lastContext = undefined; this.planningProposal = undefined;
         this.roadmapStage = undefined; this.roadmapStageError = undefined;
         this.endedRoadmapTurnId = undefined;
@@ -627,6 +631,11 @@ export class ChatPanelController {
             this.error = 'Selected documentation proposals require /docs-review at the start of the message.';
             this.changed(); return false;
         }
+        if (!retryMessageId && this.promptStackRevision &&
+            !/^\/prompt-write\s+\S+/u.test(this.draft)) {
+            this.error = 'Selected prompt proposals require /prompt-write <folder> at the start.';
+            this.changed(); return false;
+        }
         const content = this.draft;
         const generation = this.generation, chatId = this.chatId;
         let completed = false;
@@ -656,6 +665,8 @@ export class ChatPanelController {
                 ...(model ? { selectedModel: model } : {}), context,
                 ...(this.documentationRevision && !retryMessageId ?
                     { documentationRevision: this.documentationRevision } : {}),
+                ...(this.promptStackRevision && !retryMessageId ?
+                    { promptStackRevision: this.promptStackRevision } : {}),
                 ...(bridgeProposal ? { bridgeProposal } : {}),
                 ...(retryMessageId ? { retryMessageId } : { content }) };
             let result;
@@ -681,6 +692,7 @@ export class ChatPanelController {
                 this.documentationRevision = undefined;
                 if (this.draft === '/docs-review ') this.draft = '';
             }
+            if (!retryMessageId && this.promptStackRevision) this.promptStackRevision = undefined;
             this.autoRoadmapPrefix = false;
             return true;
         } catch (error) {
@@ -776,6 +788,58 @@ export class ChatPanelController {
     canDecideDocumentation(proposalId: string, digest: string): boolean {
         return !this.pending && !this.running && !!this.currentDocumentationProposal(proposalId, digest);
     }
+    currentPromptStackProposal(proposalId: string, digest?: string): ChatPromptStackProposal | undefined {
+        const lease = this.lease;
+        if (!lease || !this.workspace || lease.workspace !== this.workspace ||
+            lease.chatId !== this.chatId || this.disposed) return undefined;
+        const message = this.chat?.messages.find(item => item.role === 'assistant' &&
+            item.planningActivity?.kind === 'prompt-stack-proposal' &&
+            item.planningActivity.status === 'pending' && item.planningActivity.proposalId === proposalId &&
+            (!digest || item.planningActivity.promptStackProposal?.digest === digest));
+        const proposal = message?.role === 'assistant' ? message.planningActivity?.promptStackProposal : undefined;
+        return proposal?.id === proposalId && proposal.chatId === this.chatId &&
+            proposal.messageId === message?.id && proposal.root === decodeURIComponent(new URL(this.workspace).pathname) ?
+            proposal : undefined;
+    }
+    canDecidePromptStack(proposalId: string, digest: string): boolean {
+        return !this.pending && !this.running && !!this.currentPromptStackProposal(proposalId, digest);
+    }
+    async inspectPromptStackProposal(proposalId: string, digest: string): Promise<{
+        status: 'applicable' | 'stale'; projectRoot: string; proposal: ChatPromptStackProposal }> {
+        const lease = this.lease, proposal = this.currentPromptStackProposal(proposalId, digest);
+        if (!lease || !proposal || this.pending || this.running)
+            throw new Error('Current prompt proposal is unavailable');
+        const result = await lease.connection.inspectPromptStack(lease.handle, lease.chatId, lease.token,
+            proposalId, digest);
+        if (lease !== this.lease || this.currentPromptStackProposal(proposalId, digest) !== proposal ||
+            result.projectRoot !== proposal.root || result.proposal.digest !== digest)
+            throw new Error('Prompt proposal changed before opening review');
+        return result;
+    }
+    async dismissPromptStackProposal(proposalId: string, digest: string): Promise<void> {
+        const lease = this.lease;
+        if (!lease || !this.canDecidePromptStack(proposalId, digest)) return;
+        this.pending = true; this.changed();
+        try { await lease.connection.dismissPromptStack(lease.handle, lease.chatId, lease.token, proposalId, digest); }
+        catch (error) { this.planningProposalError = `Prompt rejection failed: ${String(error)}`; }
+        finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
+    async publishPromptStackProposal(proposalId: string, digest: string): Promise<void> {
+        const lease = this.lease;
+        if (!lease || !this.canDecidePromptStack(proposalId, digest)) return;
+        this.pending = true; this.changed();
+        try { await lease.connection.publishPromptStack(lease.handle, lease.chatId, lease.token, proposalId, digest); }
+        catch (error) { this.planningProposalError = `Prompt publication needs review: ${String(error)}`; }
+        finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
+    async recoverPromptStackProposal(proposalId: string, digest: string): Promise<void> {
+        const lease = this.lease;
+        if (!lease || this.pending || this.running) return;
+        this.pending = true; this.changed();
+        try { await lease.connection.recoverPromptStack(lease.handle, lease.chatId, lease.token, proposalId, digest); }
+        catch (error) { this.planningProposalError = `Prompt recovery unresolved: ${String(error)}`; }
+        finally { this.pending = false; this.changed(); await this.refresh(true); }
+    }
     async inspectDocumentationProposal(proposalId: string, digest: string): Promise<{
         status: 'applicable' | 'stale'; projectRoot: string; proposal: ChatDocumentationProposal }> {
         const lease = this.lease, proposal = this.currentDocumentationProposal(proposalId, digest);
@@ -848,7 +912,10 @@ export class ChatPanelController {
     setDraft(value: string): void {
         if (this.autoRoadmapPrefix && !/^\/roadmap(?=\s|$)/.test(value)) this.autoRoadmapPrefix = false;
         this.draft = this.documentationRevision && !/^\/docs-review(?=\s|$)/u.test(value) ?
-            `/docs-review ${value.trimStart()}` : value;
+            `/docs-review ${value.trimStart()}` :
+            this.promptStackRevision && !/^\/prompt-write\s+\S+/u.test(value) ?
+                `/prompt-write ${this.currentPromptStackProposal(this.promptStackRevision.proposalId)?.folder ?? ''} ${value.trimStart()}` :
+                value;
     }
     prepareDocumentationRevision(proposalId: string, digest: string): boolean {
         if (!this.lease || this.running || this.pending || !this.currentDocumentationProposal(proposalId, digest)) return false;
@@ -863,6 +930,16 @@ export class ChatPanelController {
             this.previousDocumentationDraft = this.draft;
         this.documentationRevision = { proposalId, revision: proposal.proposalRevision ?? 1, digest };
         this.draft = '/docs-review ';
+        this.changed();
+        return true;
+    }
+    preparePromptStackRevision(proposalId: string, digest: string): boolean {
+        const proposal = this.currentPromptStackProposal(proposalId, digest);
+        if (!proposal || !this.canDecidePromptStack(proposalId, digest)) return false;
+        if (this.draft.trim() && !this.promptStackRevision && this.previousPromptStackDraft === undefined)
+            this.previousPromptStackDraft = this.draft;
+        this.promptStackRevision = { proposalId, revision: proposal.revision, digest };
+        this.draft = `/prompt-write ${proposal.folder} `;
         this.changed();
         return true;
     }

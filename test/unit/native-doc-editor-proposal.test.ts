@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { proposalSnapshot, proposalTabKey, ProposalTabSelection, lineEndingComparison } from
+import { proposalSnapshot, promptStackSnapshot, proposalTabKey, ProposalTabSelection, lineEndingComparison } from
     '../../packages/theia-extension/lib/browser/native-doc-editor-proposal-model.js';
-import type { ChatDocumentationProposal } from '../../packages/chat/lib/index.js';
+import type { ChatDocumentationProposal, ChatPromptStackProposal } from '../../packages/chat/lib/index.js';
 
 const source = readFileSync('packages/theia-extension/src/browser/native-doc-editor-proposal.ts', 'utf8');
 const moduleSource = readFileSync('packages/theia-extension/src/browser/frontend-module.ts', 'utf8');
@@ -68,6 +68,26 @@ test('plain-text proposal defaults to source and cannot select formatted', () =>
     assert.throws(() => selection.selectMode('formatted'));
     text.targets[0].path = 'main.ts';
     assert.throws(() => proposalSnapshot(text, 'main.ts', 'stale'));
+});
+
+test('prompt stack adapter keeps exact read-only files, absent originals and revision identity', () => {
+    const prompt: ChatPromptStackProposal = { id: 'prompt-1', digest: 'digest-a', root: '/work/a',
+        projectId: 'project', ownerId: 'owner', chatId: 'chat', messageId: 'message',
+        leaseDigest: 'lease', revision: 1, folder: 'c1-example', sourceVersion: '0.13.11',
+        gitHead: 'head', worktreeId: 'tree', assessmentMessageId: 'assessment',
+        planMessageId: 'plan', createdAt: '', files: [
+            { path: 'docs/tasks/c1-example/README.md', before: null, after: '# Ready\n', afterHash: 'hash-1' },
+            { path: 'docs/tasks/c1-example/P1-do-work.txt', before: null, after: 'TASK: work\n', afterHash: 'hash-2' }] };
+    const markdown = promptStackSnapshot(prompt, prompt.files[0].path, 'pending');
+    const text = promptStackSnapshot(prompt, prompt.files[1].path, 'pending');
+    assert.equal(markdown.original, null);
+    assert.equal(markdown.proposed, '# Ready\n');
+    assert.equal(new ProposalTabSelection(markdown).mode, 'formatted');
+    assert.equal(new ProposalTabSelection(text).mode, 'source');
+    assert.throws(() => new ProposalTabSelection(text).selectMode('formatted'));
+    assert.notEqual(proposalTabKey(text.identity), proposalTabKey(
+        promptStackSnapshot({ ...prompt, digest: 'digest-b', revision: 2 }, prompt.files[1].path, 'revised').identity));
+    assert.throws(() => promptStackSnapshot(prompt, 'docs/tasks/c1-example/other.md', 'pending'));
 });
 
 test('native diff uses original and proposed virtual resources and no writer', () => {

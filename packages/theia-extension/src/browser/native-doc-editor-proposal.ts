@@ -9,10 +9,10 @@ import { MonacoDiffEditor } from '@theia/monaco/lib/browser/monaco-diff-editor';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { renderDocumentPreview } from './documents-preview';
 import { nativeDocumentModes } from './native-doc-editor-modes';
-import { proposalSnapshot, proposalTabKey, ProposalTabSelection, lineEndingComparison,
+import { proposalSnapshot, promptStackSnapshot, proposalTabKey, ProposalTabSelection, lineEndingComparison,
     type ProposalTabSnapshot, type ProposalViewStatus } from './native-doc-editor-proposal-model';
 import type { VerifiedDocumentsCandidate } from './documents-diff';
-import type { ChatDocumentationProposal } from '@dope/chat';
+import type { ChatDocumentationProposal, ChatPromptStackProposal } from '@dope/chat';
 
 export const PROPOSAL_SCHEME = 'dope-doc-proposal';
 /** Only registered immutable bytes resolve. The resource has no mutation methods. */
@@ -202,6 +202,25 @@ export class ProposalDocumentTabs {
         return this.openSnapshot(proposalSnapshot(proposal, path, status));
     }
 
+    async openPrompt(proposal: ChatPromptStackProposal, path: string,
+        status: ProposalViewStatus): Promise<ProposalDocumentWidget> {
+        return this.openSnapshot(promptStackSnapshot(proposal, path, status), false);
+    }
+
+    syncPromptStatus(proposal: ChatPromptStackProposal, activityStatus: string): void {
+        const status: ProposalViewStatus = activityStatus === 'pending' ? 'pending' :
+            activityStatus === 'applied' ? 'accepted' : activityStatus === 'denied' ? 'rejected' :
+            activityStatus === 'superseded' ? 'revised' : activityStatus === 'stale' ? 'stale' :
+            activityStatus === 'approved' || activityStatus === 'failed' ? 'partial-recovery' : 'unavailable';
+        for (const widget of this.shell.mainPanel.widgets()) {
+            if (widget instanceof ProposalDocumentWidget &&
+                widget.snapshot.identity.root === proposal.root &&
+                widget.snapshot.identity.proposalId === proposal.id &&
+                widget.snapshot.identity.digest === proposal.digest && !widget.isDisposed)
+                widget.setStatus(status);
+        }
+    }
+
     syncStatus(proposal: ChatDocumentationProposal, activityStatus: string): void {
         const status: ProposalViewStatus = activityStatus === 'pending' ? 'pending' :
             activityStatus === 'applied' ? 'accepted' : activityStatus === 'denied' ? 'rejected' :
@@ -222,14 +241,14 @@ export class ProposalDocumentTabs {
         return this.openSnapshot(proposalSnapshot(proposal, path, status));
     }
 
-    private async openSnapshot(snapshot: ProposalTabSnapshot): Promise<ProposalDocumentWidget> {
+    private async openSnapshot(snapshot: ProposalTabSnapshot, activate = true): Promise<ProposalDocumentWidget> {
         const root = this.currentRoot();
         if (!root || root !== snapshot.identity.root) throw new Error('Wrong project for proposal tab');
         const id = `dope-proposal-editor:${proposalTabKey(snapshot.identity)}`;
         const existing = Array.from(this.shell.mainPanel.widgets()).find(widget => widget.id === id);
         if (existing instanceof ProposalDocumentWidget) {
             existing.setStatus(snapshot.status);
-            await this.shell.activateWidget(existing.id);
+            if (activate) await this.shell.activateWidget(existing.id);
             return existing;
         }
         this.resources.uris(snapshot);
@@ -238,7 +257,7 @@ export class ProposalDocumentTabs {
         if (this.currentRoot() !== root) { widget.dispose(); throw new Error('Project changed while opening proposal tab'); }
         await this.shell.addWidget(widget, { area: 'main' });
         if (this.currentRoot() !== root) { widget.dispose(); throw new Error('Project changed while opening proposal tab'); }
-        await this.shell.activateWidget(widget.id);
+        if (activate) await this.shell.activateWidget(widget.id);
         return widget;
     }
 }
