@@ -203,29 +203,26 @@ const CHAT_TOOLS = {
   search_text: { query: Type.String() },
   run_command: { command: Type.String() }
 };
-export const proposalDocumentSchema = Type.Union([
-  Type.Object({ path: Type.String(), operation: Type.Literal('replace'),
-    before: Type.String(), after: Type.String(), complete: Type.Boolean() }, { additionalProperties: false }),
-  Type.Object({ path: Type.String(), operation: Type.Literal('create'),
-    chunk: Type.String(), complete: Type.Boolean() }, { additionalProperties: false }),
-  Type.Object({ path: Type.String(), operation: Type.Literal('remove'),
-    complete: Type.Boolean() }, { additionalProperties: false })
-]);
-export const proposalPromptSchema = Type.Union([
-  Type.Object({ target: Type.String(), kind: Type.Literal('work'), title: Type.String(),
-    objective: Type.String(), tier: Type.Union([Type.Literal('T1'), Type.Literal('T2')]),
-    dependsOn: Type.Optional(Type.Array(Type.String())), workingSet: Type.Array(Type.String()),
-    requirements: Type.Optional(Type.Array(Type.String())), constraints: Type.Optional(Type.Array(Type.String())),
-    acceptanceCriteria: Type.Array(Type.String()), validationTargets: Type.Array(Type.String()),
-    integrationChecks: Type.Optional(Type.Array(Type.String())), complete: Type.Boolean() },
-  { additionalProperties: false }),
-  Type.Object({ target: Type.String(), kind: Type.Literal('section'), heading: Type.String(),
-    text: Type.String(), complete: Type.Boolean() }, { additionalProperties: false }),
-  Type.Object({ target: Type.String(), kind: Type.Literal('closeout'), title: Type.String(),
-    objective: Type.String(), manualReason: Type.String(), acceptanceCriteria: Type.Array(Type.String()),
-    browserRequired: Type.Boolean(), efficiencyAudit: Type.Array(Type.String()),
-    complete: Type.Boolean() }, { additionalProperties: false })
-]);
+// OpenAI-compatible local servers require a top-level object for function parameters.
+// The broker checks the exact operation-specific shape before any stage is persisted.
+export const proposalDocumentSchema = Type.Object({
+  path: Type.String(), operation: Type.Union([Type.Literal('replace'), Type.Literal('create'),
+    Type.Literal('remove')]), before: Type.Optional(Type.String()), after: Type.Optional(Type.String()),
+  chunk: Type.Optional(Type.String()), complete: Type.Boolean()
+}, { additionalProperties: false });
+export const proposalPromptSchema = Type.Object({
+  target: Type.String(), kind: Type.Union([Type.Literal('work'), Type.Literal('section'),
+    Type.Literal('closeout')]), title: Type.Optional(Type.String()), objective: Type.Optional(Type.String()),
+  tier: Type.Optional(Type.Union([Type.Literal('T1'), Type.Literal('T2')])),
+  dependsOn: Type.Optional(Type.Array(Type.String())), workingSet: Type.Optional(Type.Array(Type.String())),
+  requirements: Type.Optional(Type.Array(Type.String())), constraints: Type.Optional(Type.Array(Type.String())),
+  acceptanceCriteria: Type.Optional(Type.Array(Type.String())),
+  validationTargets: Type.Optional(Type.Array(Type.String())),
+  integrationChecks: Type.Optional(Type.Array(Type.String())), heading: Type.Optional(Type.String()),
+  text: Type.Optional(Type.String()), manualReason: Type.Optional(Type.String()),
+  browserRequired: Type.Optional(Type.Boolean()), efficiencyAudit: Type.Optional(Type.Array(Type.String())),
+  complete: Type.Boolean()
+}, { additionalProperties: false });
 export const PROPOSAL_TOOLS = {
   ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
   proposal_status: {},

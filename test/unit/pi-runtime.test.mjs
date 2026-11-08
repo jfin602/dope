@@ -195,28 +195,22 @@ test('protected proposal session advertises bounded typed tools without command 
   }
 });
 
-test('Pi proposal schemas expose only content fields accepted by the broker', () => {
+test('Pi proposal schemas use provider-compatible object parameters and broker-owned fields', () => {
   assert.deepEqual(Object.keys(PROPOSAL_TOOLS.proposal_status), []);
-  const document = PROPOSAL_TOOLS.proposal_stage_document.anyOf;
-  assert.deepEqual(document.map(variant => variant.properties.operation.const),
+  const document = PROPOSAL_TOOLS.proposal_stage_document;
+  assert.equal(document.type, 'object');
+  assert.deepEqual([...document.required].sort(), ['path', 'operation', 'complete'].sort());
+  assert.deepEqual(document.properties.operation.anyOf.map(variant => variant.const),
     ['replace', 'create', 'remove']);
-  assert.deepEqual(document.map(variant => variant.required.sort()), [
-    ['path', 'operation', 'before', 'after', 'complete'].sort(),
-    ['path', 'operation', 'chunk', 'complete'].sort(),
-    ['path', 'operation', 'complete'].sort()]);
-  const prompt = PROPOSAL_TOOLS.proposal_stage_prompt.anyOf;
-  assert.deepEqual(prompt.map(variant => variant.properties.kind.const),
+  const prompt = PROPOSAL_TOOLS.proposal_stage_prompt;
+  assert.equal(prompt.type, 'object');
+  assert.deepEqual([...prompt.required].sort(), ['target', 'kind', 'complete'].sort());
+  assert.deepEqual(prompt.properties.kind.anyOf.map(variant => variant.const),
     ['work', 'section', 'closeout']);
-  assert.deepEqual(prompt.map(variant => variant.required.sort()), [
-    ['target', 'kind', 'title', 'objective', 'tier', 'workingSet', 'acceptanceCriteria',
-      'validationTargets', 'complete'].sort(),
-    ['target', 'kind', 'heading', 'text', 'complete'].sort(),
-    ['target', 'kind', 'title', 'objective', 'manualReason', 'acceptanceCriteria',
-      'browserRequired', 'efficiencyAudit', 'complete'].sort()]);
   for (const name of ['proposal_stage_document', 'proposal_stage_prompt']) {
-    for (const variant of PROPOSAL_TOOLS[name].anyOf) assert.equal(variant.additionalProperties, false);
+    assert.equal(PROPOSAL_TOOLS[name].additionalProperties, false);
     for (const field of ['sequence', 'expectedRevision', 'idempotencyKey', 'digest', 'chunkIndex', 'content'])
-      assert.equal(PROPOSAL_TOOLS[name].anyOf.some(variant => field in variant.properties), false);
+      assert.equal(field in PROPOSAL_TOOLS[name].properties, false);
   }
 });
 
