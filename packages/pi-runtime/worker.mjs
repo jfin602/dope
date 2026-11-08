@@ -18,6 +18,9 @@ let workProcessAvailable = true;
 let chatToolsMode = false;
 let roadmapToolsMode = false;
 let roadmapGenerationMode = false;
+let proposalToolsMode = false;
+let proposalModelCalls = 0;
+let proposalToolCalls = 0;
 let roadmapGenerationId;
 let roadmapStartedAt = 0;
 let workRequestId;
@@ -200,6 +203,17 @@ const CHAT_TOOLS = {
   search_text: { query: Type.String() },
   run_command: { command: Type.String() }
 };
+const PROPOSAL_TOOLS = {
+  ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
+  proposal_status: { version: Type.Literal(1) },
+  proposal_stage_document: { version: Type.Literal(1), sequence: Type.Integer(),
+    expectedRevision: Type.Integer(), idempotencyKey: Type.String(), target: Type.String(),
+    chunkIndex: Type.Integer(), content: Type.String(), digest: Type.String(), complete: Type.Boolean() },
+  proposal_stage_prompt: { version: Type.Literal(1), sequence: Type.Integer(),
+    expectedRevision: Type.Integer(), idempotencyKey: Type.String(), target: Type.String(),
+    chunkIndex: Type.Integer(), content: Type.String(), digest: Type.String(), complete: Type.Boolean() },
+  proposal_finish: { finalMessage: Type.String() }
+};
 // Keep this compact: Pi sees the legal discriminator and required fields, while
 // the stage owner remains the authority for identity, source and content checks.
 const roadmapField = {
@@ -264,7 +278,7 @@ const ROADMAP_GENERATION_TOOLS = {
 };
 function chatTools() {
   return Object.entries(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
-    roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
+    roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
@@ -275,10 +289,20 @@ function chatTools() {
       name === 'roadmap_finish' ? 'Signal that no further Phase is proposed, listing unresolved or uncertain requirements. Dope checks the staged draft before review.' :
       name === 'roadmap_stage' ? 'Stage typed Roadmap actions in batches of 1-8 (48 total) after roadmap_read. Dope supplies trusted source and revision preconditions; do not include them. Start expectedStage at 1 and increment per accepted batch. Use new: aliases for created IDs across batches. Gate designations are G1, G2, etc. within each Phase, and every created Gate needs an observable Criterion. Set done true only on the final batch; full requires Gates and Criteria, phase-only is for an intentional Phase draft. This never applies canonical state.' :
       name === 'roadmap_cancel' ? 'Cancel this turn\'s noncanonical Roadmap stage.' :
+      name === 'proposal_status' ? 'Read a compact receipt for this protected proposal session and its remaining limits.' :
+      name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ?
+        'Stage one bounded noncanonical chunk in sequence. Supply the SHA-256 digest of content; wait for the checked receipt. This tool cannot publish files.' :
+      name === 'proposal_finish' ? 'Request validation and sealing of the staged candidate. The finalMessage is untrusted display prose, not an approval.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
+      if (proposalToolsMode && ++proposalToolCalls > 512) {
+        chatLoopStopped = true;
+        chatLoopReason = 'Protected proposal tool-call budget exceeded';
+        void session?.abort();
+        throw new Error(chatLoopReason);
+      }
       const id = ++nextToolId;
       const answer = new Promise((resolve, reject) => pendingTools.set(id, { resolve, reject }));
       const onAbort = () => { pendingTools.get(id)?.reject(new Error('Dope Chat tool cancelled')); pendingTools.delete(id); };
@@ -404,6 +428,9 @@ async function dispose() {
   chatToolsMode = false;
   roadmapToolsMode = false;
   roadmapGenerationMode = false;
+  proposalToolsMode = false;
+  proposalModelCalls = 0;
+  proposalToolCalls = 0;
   roadmapGenerationId = undefined;
   for (const pending of pendingTools.values()) pending.reject(new Error('Pi session closed'));
   pendingTools.clear();
@@ -464,8 +491,9 @@ export async function dispatch(message) {
         chatToolsMode = message.mode === 'chat-tools';
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
         roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;
+        proposalToolsMode = chatToolsMode && message.proposalTools === true && !roadmapToolsMode && !roadmapGenerationMode;
         const chatToolNames = Object.keys(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
-          roadmapToolsMode ? ROADMAP_TOOLS : CHAT_TOOLS);
+          roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS : CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           thinkingLevel,
@@ -561,6 +589,8 @@ export async function dispatch(message) {
         chatRepeat = undefined;
         chatLoopStopped = false;
         chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
+        proposalModelCalls = 0;
+        proposalToolCalls = 0;
         rejectedRoadmapStages = new Map();
       }
       const zeroUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
@@ -589,6 +619,11 @@ export async function dispatch(message) {
       let streamedAnswer = '';
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
+        if (proposalToolsMode && event.type === 'turn_start' && ++proposalModelCalls > 256) {
+          chatLoopStopped = true;
+          chatLoopReason = 'Protected proposal model-call budget exceeded';
+          void session.abort();
+        }
         nativeCompactionOutcome(event);
         if (event.type === 'turn_end' && event.message?.role === 'assistant' &&
             ((event.message.responseModel ?? event.message.model) !== session.model.id ||

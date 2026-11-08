@@ -43,6 +43,7 @@ import { promptStageCommand, priorPromptDraft, verifyPromptDraftSource, verifyPr
     promptStageInstruction, finishedPromptText, finishedPromptStack } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence, createPromptStackProposal, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
+import { IncrementalProposalController } from './incremental-proposal-controller';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -2110,6 +2111,8 @@ export class ChatBackend implements ChatService {
         let toolBytes = 0;
         const documentationPages: DocumentationReadPage[] = [];
         const documentationHashes = new Map<string, string>();
+        const protectedProposal = retryIndex < 0 && (docsReview || promptStage?.stage === 'prompt-write');
+        let proposalController: IncrementalProposalController | undefined;
         const noProjectTools = !!publicationIntent || forbidsProjectTools(content);
         // This closure belongs to one authorized Chat execution. A later read may inspect
         // staged operations, but cannot silently rebase its original source preconditions.
@@ -2117,8 +2120,41 @@ export class ChatBackend implements ChatService {
             turnId: string; lease: string; revision: number; sourceHash: string | null;
             linkState: string | null; expiresAt: number } | undefined;
         const projectTools = this.grounder && !noProjectTools ? { root, roadmapTools: nativeRoadmap,
+            proposalTools: protectedProposal,
             execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
+                if (name.startsWith('proposal_')) {
+                    const proposalName = name as 'proposal_status' | 'proposal_stage_document' |
+                        'proposal_stage_prompt' | 'proposal_finish';
+                    const stageTarget = args && typeof args === 'object' && !Array.isArray(args) &&
+                        typeof (args as { target?: unknown }).target === 'string' ?
+                        safeChatToolPath((args as { target: string }).target) : undefined;
+                    recordActivity('tool', `${proposalName}: running${stageTarget ? ` · ${stageTarget}` : ''}`);
+                    let status: 'completed' | 'failed' | 'denied' = 'denied';
+                    try {
+                        if (!protectedProposal || !proposalController || signal?.aborted || abort.signal.aborted ||
+                            this.turns.get(key)?.abort !== abort || toolEvents.length >= 512)
+                            throw new Error('PROPOSAL_TOOL_AUTHORITY');
+                        const result = name === 'proposal_status' ?
+                            (args && typeof args === 'object' && !Array.isArray(args) &&
+                                Object.keys(args).length === 1 && (args as { version?: unknown }).version === 1 ?
+                                await proposalController.status() : (() => { throw new Error('PROPOSAL_STATUS_ARGUMENTS'); })()) :
+                            name === 'proposal_stage_document' ? await proposalController.stage(args, 'document') :
+                            name === 'proposal_stage_prompt' ? await proposalController.stage(args, 'prompt') :
+                            name === 'proposal_finish' ? await proposalController.finish(args) :
+                            (() => { throw new Error('PROPOSAL_TOOL_UNKNOWN'); })();
+                        status = 'completed';
+                        return JSON.stringify(result);
+                    } catch (error) {
+                        status = 'failed';
+                        return JSON.stringify({ version: 1, error: error instanceof Error &&
+                            error.message.startsWith('PROPOSAL_') ? error.message : 'PROPOSAL_TOOL_FAILED' });
+                    } finally {
+                        recordActivity('tool', `${proposalName}: ${status}${stageTarget ? ` · ${stageTarget}` : ''}`);
+                        toolEvents.push({ name: proposalName, status, truncated: false,
+                            brokerExecuted: status === 'completed', stage: 'broker' });
+                    }
+                }
                 if (name.startsWith('roadmap_')) {
                     if (!['roadmap_read', 'roadmap_stage', 'roadmap_cancel'].includes(name))
                         throw new Error('ROADMAP_TOOL_UNKNOWN');
@@ -2267,7 +2303,8 @@ export class ChatBackend implements ChatService {
                 try { return await (async () => {
                 if (signal?.aborted || this.active(request.projectHandle) !== root ||
                     this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
-                if (toolEvents.length >= 16) throw new Error('Project discovery limit reached');
+                if (toolEvents.length >= (protectedProposal ? 512 : 16))
+                    throw new Error('Project discovery limit reached');
                 if (name === 'run_command') {
                     const record = args as Record<string, unknown>;
                     const commandMode = this.commandModes.get(key) === 'allow' ? 'allow' : 'ask';
@@ -2472,6 +2509,35 @@ export class ChatBackend implements ChatService {
                     startedAt: now } };
             activity = new ChatActivityRecorder(key, assistant.id, assistant.execution.id);
             await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
+            if (protectedProposal) {
+                const stageBasis = async () => {
+                    if (docsReview) {
+                        const roadmap = await this.roadmapStore!.read<RoadmapGateIndex>(root);
+                        return { worktreeId: createHash('sha256').update(root).digest('hex'),
+                            sourceBasis: JSON.stringify({ projectId: roadmap.projectId, revision: roadmap.revision,
+                                sourceHash: roadmap.linkedDocument?.sourceHash ?? null,
+                                syncState: roadmap.linkedDocument?.syncState ?? null }) };
+                    }
+                    const git = await capturePromptSourceEvidence(root);
+                    return { worktreeId: git.worktreeFingerprint,
+                        sourceBasis: `${git.head}:${git.packageVersion}:${git.worktreeFingerprint}` };
+                };
+                const basis = await stageBasis();
+                const proposalOwnerId = this.leases.get(key)!.ownerId;
+                const authority = async () => {
+                    if (this.active(request.projectHandle) !== root || this.turns.get(key)?.abort !== abort ||
+                        abort.signal.aborted || this.leases.get(key)?.token !== request.leaseToken ||
+                        this.leases.get(key)?.ownerId !== proposalOwnerId)
+                        throw new Error('PROPOSAL_TOOL_AUTHORITY');
+                    return stageBasis();
+                };
+                proposalController = new IncrementalProposalController(this.repository,
+                    { root, chatId: key, messageId: assistant.id, leaseToken: request.leaseToken,
+                        ownerId: proposalOwnerId, worktreeId: basis.worktreeId,
+                        sourceBasis: basis.sourceBasis,
+                        domain: docsReview ? 'document' : 'prompt' }, authority);
+                await proposalController.begin();
+            }
             if (localRoadmap) tracePlanning('submitted', key, assistant.id);
             if (localRoadmap) this.planningProgress(key, assistant.id, 'waiting');
             if (!following) {
@@ -2989,6 +3055,7 @@ export class ChatBackend implements ChatService {
             }
             throw error;
         } finally {
+            await proposalController?.stop().catch(() => undefined);
             liveContinuation?.dispose();
             clearInterval(leaseHeartbeat);
             this.pendingOutputLimits.delete(key);

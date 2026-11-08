@@ -183,6 +183,18 @@ test('Pi generation session advertises only typed Phase and finish operations', 
   }
 });
 
+test('protected proposal session advertises bounded typed tools without command or write access', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-proposal-tools-'));
+  try {
+    const opened = await dispatch({ type: 'open', mode: 'chat-tools', proposalTools: true, cwd, model });
+    assert.deepEqual(opened.tools.sort(), ['list_files', 'proposal_finish', 'proposal_stage_document',
+      'proposal_stage_prompt', 'proposal_status', 'read_file', 'search_paths', 'search_text']);
+  } finally {
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('Pi Roadmap schema agrees with native stage fields and relays two typed revision-zero batches', async () => {
   assert.deepEqual(ROADMAP_ACTION_FIELDS, NATIVE_ROADMAP_ACTION_FIELDS);
   assert.equal(roadmapActionSchema.anyOf.length, Object.keys(NATIVE_ROADMAP_ACTION_FIELDS).length);

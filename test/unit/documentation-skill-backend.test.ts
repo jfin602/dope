@@ -32,6 +32,11 @@ test('protected Docs review revises one card while only Accept applies its lates
         seen.push(request.messages.map(message => message.content));
         sent.push(request.messages);
         if (request.messages.some(message => message.content.includes('Dope skill /docs-review'))) {
+            const staged = JSON.parse(await request.projectTools!.execute('proposal_status', { version: 1 })) as {
+                state: string; nextSequence: number; targets: unknown[] };
+            assert.equal(staged.state, 'staging');
+            assert.equal(staged.nextSequence, 1);
+            assert.deepEqual(staged.targets, []);
             if (request.messages.some(message => message.content.includes('selected pending documentation proposal'))) {
                 revisionCalls++;
                 const context = request.messages.map(message => message.content).join('\n');
@@ -121,8 +126,9 @@ test('protected Docs review revises one card while only Accept applies its lates
         assert.deepEqual(review?.role === 'assistant' ? review.planningActivity?.documentationDiscovery?.reads : [],
             [{ path: 'docs/notes.md', count: 1 }, { path: 'docs/policy.md', count: 2 }]);
         assert.equal(review?.role === 'assistant' ? review.planningActivity?.documentationDiscovery?.detected : undefined, 3);
-        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.length, 3);
-        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.[1].endOffset, Buffer.byteLength(before));
+        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.length, 4);
+        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.[0].name, 'proposal_status');
+        assert.equal(review?.role === 'assistant' && review.execution.toolEvents?.[2].endOffset, Buffer.byteLength(before));
         assert.equal(seen.some(turnMessages => turnMessages.some(text => text.includes('Dope skill /docs-review'))), true);
         assert.equal(seen.some(turnMessages => turnMessages.some(text =>
             text.includes('with exactly these sibling keys'))), true);

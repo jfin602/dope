@@ -91,7 +91,8 @@ export interface ChatExecution {
     sourceRefs?: ChatContextRef[];
     toolEvents?: { name: 'read_file' | 'list_files' | 'search_paths' | 'search_text' | 'run_command' |
         'dope_read' | 'dope_list' | 'dope_search_paths' | 'dope_search_text' | 'dope_command' |
-        'roadmap_read' | 'roadmap_stage' | 'roadmap_cancel' | 'roadmap_phase' | 'roadmap_finish';
+        'roadmap_read' | 'roadmap_stage' | 'roadmap_cancel' | 'roadmap_phase' | 'roadmap_finish' |
+        'proposal_status' | 'proposal_stage_document' | 'proposal_stage_prompt' | 'proposal_finish';
         status: 'completed' | 'failed' | 'denied'; truncated: boolean;
         code?: string; stage?: string; brokerExecuted?: boolean;
         offset?: number; pageSize?: number; sourceHashSupplied?: boolean; endOffset?: number;
@@ -467,7 +468,7 @@ function parseExecution(value: unknown): ChatExecution {
         execution.sourceRefs = v.sourceRefs.map(parseChatContextRef);
     }
     if (v.toolEvents !== undefined) {
-        if (!Array.isArray(v.toolEvents) || v.toolEvents.length > 128) throw new Error('Invalid Chat tool events');
+        if (!Array.isArray(v.toolEvents) || v.toolEvents.length > 512) throw new Error('Invalid Chat tool events');
         execution.toolEvents = v.toolEvents.map(item => {
             const event = record(item, ['name', 'status', 'truncated', 'code', 'stage', 'brokerExecuted',
                 'offset', 'pageSize', 'sourceHashSupplied', 'endOffset', 'commandMode', 'approval',
@@ -475,7 +476,8 @@ function parseExecution(value: unknown): ChatExecution {
             if (typeof event.truncated !== 'boolean') throw new Error('Invalid Chat tool truncation');
             return { name: choice(event.name, ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command',
                 'dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command',
-                'roadmap_read', 'roadmap_stage', 'roadmap_cancel', 'roadmap_phase', 'roadmap_finish'] as const,
+                'roadmap_read', 'roadmap_stage', 'roadmap_cancel', 'roadmap_phase', 'roadmap_finish',
+                'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish'] as const,
                 'Chat tool'), status: choice(event.status, ['completed', 'failed', 'denied'] as const, 'Chat tool status'),
                 truncated: event.truncated,
                 ...(event.code === undefined ? {} : { code: choice(event.code, ['INVALID_ARGUMENTS',

@@ -144,6 +144,25 @@ async function syncedJson(path: string, value: unknown): Promise<void> {
 }
 
 export class ChatRepository {
+    /** Noncanonical proposal bytes share the saved Chat lock and current owner lease. */
+    async transactProposalStage<T>(root: string, chatId: string, messageId: string, leaseToken: string,
+        update: (current: unknown | undefined) => Promise<{ snapshot: unknown; result: T }>): Promise<T> {
+        return this.locked(root, async base => {
+            const lease = await this.lease(base, uuid(chatId));
+            if (!lease || !this.active(lease) || lease.token !== leaseToken)
+                throw new Error('Chat ownership lease required');
+            const staging = join(base, '.proposal-staging');
+            await directory(staging, true);
+            const file = join(staging, `${uuid(chatId)}.${uuid(messageId)}.json`);
+            const current = await regular(file) ? JSON.parse(await safeText(file, 2 * 1024 * 1024)) as unknown : undefined;
+            const next = await update(current);
+            const encoded = JSON.stringify(next.snapshot);
+            if (Buffer.byteLength(encoded, 'utf8') > 2 * 1024 * 1024)
+                throw new Error('Proposal staging snapshot exceeds durability bound');
+            await syncedJson(file, next.snapshot);
+            return next.result;
+        });
+    }
     private readonly listeners = new Set<(root: string, event: RepositoryEvent) => void>();
     onChange(listener: (root: string, event: RepositoryEvent) => void): () => void {
         this.listeners.add(listener);
@@ -752,6 +771,12 @@ export class ChatRepository {
             if (operation.type === 'delete-chat') {
                 const leaseFile = join(base, '.leases', `${operation.chatId}.json`);
                 if (await regular(leaseFile)) await rm(leaseFile);
+                const staging = join(base, '.proposal-staging');
+                if (await directory(staging)) for (const name of await readdir(staging)) {
+                    if (!name.startsWith(`${operation.chatId}.`) || !name.endsWith('.json')) continue;
+                    const file = join(staging, name);
+                    if (await regular(file)) await rm(file);
+                }
             }
             this.emit(root, { revision: next.revision, kind: 'changed',
                 ...('chatId' in operation ? { chatId: operation.chatId } : {}) });
