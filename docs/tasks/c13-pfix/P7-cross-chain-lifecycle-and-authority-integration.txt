@@ -1,0 +1,27 @@
+TASK: Correction 13 / P7 — Cross-chain lifecycle and authority integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only. No manifest, lockfile, workspace, package-version change.
+
+AUTHORITY / PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, proposed ADR 0056 and docs/planning/p13/named-prompt-authoring-chain-contract.md, plus this stack's assessment/plan. Inspect actual local HEAD and dirty-tree/source state, compiled import ownership, relevant packages/tests, and earlier P6/R2 NOT GREEN evidence. Owner instruction to run this correction does not make it technically GREEN. Preserve local owner edits and historical prompts; do not reset, stash, clean, force-push or hide failures. Runner owns Git checkpoint and commits: do not self-commit or advance later prompts.
+
+GOAL — T2
+Qualify the P1–P6 chain as one protected lifecycle across saved Chat, typed chips, durable draft records, actual Pi tool entry, controller, native projection and existing distinct guarded publisher. This is the shared cross-owner integration and adversarial check; not a broad UI rebuild or model benchmark.
+
+CHECK
+Run source-backed deterministic fixtures for two named drafts in same/different projects, Assessment→Plan→Write, optional owner notes, restart and project switch, source and stage revision drift, concurrent stage attempts, duplicate slug/replay, stale chip, malicious path/symlink, oversized data, canceled/failed revision and last-good candidate retention. Check edit-to-assessment invalidates Plan+Prompts; edit-to-plan invalidates Prompts. Verify draft records never leak into Git status/ordinary Docs or Work discovery/unsafe source fingerprints; verify real source changes still invalidate. Test 10 ordered work prompts, closeout grammar and exact canonical bytes only after simulated explicit Accept.
+
+AUTHORITY
+No publish on stage, no applied-only History without canonical effects, no Work task/grant/Run, candidate promotion or Roadmap Criterion/Gate GREEN from authoring or Accept. Preserve historical R3B/P6/R2 evidence. Fail closed on real unsafe missing publisher integration without retroactively reopening R3B.
+
+VERIFY
+Choose the smallest cross-boundary focused integration tests plus necessary changed-package builds (no redundant nested checks). Record exact source/test outcomes and known browser gaps; P7 T2 is not live GPT-OSS or native GUI qualification. Runner commits, not this prompt.
+
+VERIFICATION AND EXIT
+Build only changed dependencies needed for fresh compiled tests; run the narrow directly affected tests and git diff --check. No broad npm run check, Electron packaging, or unnecessary repeat aggregates. Record exact changed files, actual test results, evidence gaps, and PASS/PARTIAL/BLOCKED. If implementation and focused checks exceed the 8-minute target, narrow the scope honestly rather than suppressing safety requirements. No browser qualification, Work Run/grant, Prompt Stack publication, Roadmap Gate, or version advance. Stop after this prompt's scoped result.

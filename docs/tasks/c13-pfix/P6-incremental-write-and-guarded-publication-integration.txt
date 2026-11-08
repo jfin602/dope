@@ -1,0 +1,24 @@
+TASK: Correction 13 / P6 — Incremental write and guarded publication integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only. No manifest, lockfile, workspace, package-version change.
+
+AUTHORITY / PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, proposed ADR 0056 and docs/planning/p13/named-prompt-authoring-chain-contract.md, plus this stack's assessment/plan. Inspect actual local HEAD and dirty-tree/source state, compiled import ownership, relevant packages/tests, and earlier P6/R2 NOT GREEN evidence. Owner instruction to run this correction does not make it technically GREEN. Preserve local owner edits and historical prompts; do not reset, stash, clean, force-push or hide failures. Runner owns Git checkpoint and commits: do not self-commit or advance later prompts.
+
+GOAL — T1
+Make `/prompt-write` resolve the P4 Plan chip and immutable P1 name, stage bounded executable prompt content with the existing incremental controller, then seal exactly one complete reviewed Prompt Stack candidate through protected proposal_finish. Dope renders assessment and plan Markdown from validated structured records for final supporting files; no large inherited Markdown prompt injection.
+
+IMPLEMENTATION SCOPE
+Inspect `incremental-prompt-stack.ts`, `incremental-proposal-controller.ts`, `phase-stack-composer`, `prompt-stack-proposal.ts`, `planning-stack-publication.ts` and actual R3B publisher. Preserve requested work count, dependency order, source/version/lease, contiguous P1–Pn and exactly one final manual browser closeout. Derive destination `docs/tasks/<slug>` from owner selection; never accept a second folder parameter, collision, forged chip or empty-plan fallback. Dope owns exact candidate bytes and digest; publisher continues to require explicit owner Accept. Pending stages never write canonical files or trigger Work.
+
+FOCUSED CHECKS
+10 substantial work prompts + final manual closeout, supporting generated assessment/plan/manifest, selected plan hashing and stale denial, aborted/incomplete finish, canonical collision, safe accepted exact-byte publication, no publication on staging alone or implicit Run. Use existing incremental/publisher/composer focused tests with fresh compiled outputs as needed.
+
+VERIFICATION AND EXIT
+Build only changed dependencies needed for fresh compiled tests; run the narrow directly affected tests and git diff --check. No broad npm run check, Electron packaging, or unnecessary repeat aggregates. Record exact changed files, actual test results, evidence gaps, and PASS/PARTIAL/BLOCKED. If implementation and focused checks exceed the 8-minute target, narrow the scope honestly rather than suppressing safety requirements. No browser qualification, Work Run/grant, Prompt Stack publication, Roadmap Gate, or version advance. Stop after this prompt's scoped result.

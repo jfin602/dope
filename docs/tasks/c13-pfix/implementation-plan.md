@@ -1,0 +1,26 @@
+# /prompt-plan — c13-pfix
+
+**Status:** DOCUMENTATION APPROVED / NOT EXECUTED. 2026-11-08. Owner decision to implement is distinct from approval of this review-only document set. Version stays `0.13.11`.
+
+## Execution model
+Use one protected project-scoped draft owner with opaque `draftId`, immutable owner-supplied slug, stage revisions, source basis and visible card projection. The first trusted `/prompt-ass <name> <task details>` creates the pending draft. Subsequent composer actions place slash command + typed stage chip, not a copy of Markdown. Store bounded validated structured assessment/plan records, reuse existing noncanonical proposal stages for prompts, then compose exact final files through R3B guarded publication only after Accept. Stage markdown views are derived, never a second authority.
+
+## Dependency-ordered work plan
+1. **P1 named identity and command (T1):** inspect `prompt-authoring-stage.ts`, `chat-backend.ts` and Chat typed models. Require explicit slug/task details, collision/path/traversal rejection and trusted draft stage selection. Preserve literal slash mentions. Focus parser/owner tests.
+2. **P2 durable protected storage (T1):** inspect `ChatRepository`, proposal controller, project source fingerprint/Docs/Work discovery. Implement one atomic draft record owner and bounded structured storage under safe task namespace; prove draft exclusion and restart safety. Avoid duplicate database or unsafe ignore broadening. Focus persistence, stale/collision and symlink tests.
+3. **P3 assessment staging (T1):** replace verbose final Markdown production with compact validated structured findings and real read provenance; render read-only assessment view on demand. Test omissions vs listed paths, late ranges, source/version drift, T1/T2/T3 classification.
+4. **P4 planning staging (T1):** consume bounded assessment records, stage ordered source-backed tasks with dependencies/tests and ten applicable Prompt Efficiency Gate findings. Reject ungrounded modules/CI/dependencies, wrong count and incorrect closeout. Tests for valid/invalid plan, no fabricated source.
+5. **P5 unified Chat UX (T1):** one evolving named card and accessible /prompt-plan, /prompt-write composer-prefill actions with bound chips; preserve current native read-only views and proposal controls. Test no auto submission, correct chip/stage identity, loading/stale/revision feedback, keyboard/narrow/theme.
+6. **P6 prompt generation integration (T1):** derive target folder from original slug, retrieve task-relevant plan records, use existing incremental staging, deterministic composer and single final `proposal_finish`, then seal R3B proposal. Preserve exact publisher Accept/Reject/Revise and no publication on mere stage completion. Test 10 work prompts plus separate manual closeout.
+7. **P7 cross-chain safety (T2):** test named draft transitions, old chip/project rejection, concurrent drafts, restart/crash, stale source, assessment/plan invalidation, attempt to mutate accepted folder, exact Accept publication only, no Work/History/Gate effects.
+8. **P8 connected browser (T3, manual):** run independent real selected GPT-OSS 20B on a disposable project. Validate short name, assessment/plan carryover, user-added notes, token usage, 10+ prompt proposal, editor/card, revision/reject/accept, restart/source denial and no Work/Green; record exact hashes, browser/model provenance. Do not claim Electron parity.
+
+## Build, test and budget precision
+Inspect actual affected test files and their import mode (source vs compiled `lib`) before each task. Existing likely focused suites: `test/unit/prompt-authoring-stage.test.ts`, `test/unit/chat-backend.test.ts`, `test/unit/incremental-proposal-controller.test.ts`, `test/unit/incremental-prompt-stack.test.ts`, `test/unit/pi-runtime.test.mjs`, `test/unit/chat-presentation.test.ts`, `test/unit/planning-stack-publication.test.ts`, and native proposal editor tests; confirm actual filenames before invocation. Build only changed packages (`@dope/chat`, `@dope/agent-core`, `@dope/theia-extension`, `@dope/browser`) when necessary in dependency order. No blanket `npm run check`, `npm test`, Electron packaging or repeated nested aggregates by default.
+
+The stack audit applies all ten gates in `docs/workflow.md`: responsibility, 8/10/15-min budgets, precise tests/build, evidence distribution, deduplication, model economy, grammar, UI design and human usability. An ordinary task too large for the target must be narrowed or report scoped PARTIAL/BLOCKED; do not relax security to fit the time.
+
+## Runner/manual contract
+Prompts P1–P7 are runner-eligible with Browser required no; P8 is the **only** manual browser required yes. The runner handles commits and pauses before P8. Validate `npm run codex:phase:validate -- c13-pfix` after owner approval, then separately authorize `npm run codex:phase -- c13-pfix`. No normal `--closeout`.
+
+Do not rewrite earlier executed evidence. Preserve P6/R2 NOT GREEN, scoped R1/IG-R3 headless results and R3B historical PARTIAL. IG-R4 and Phase 13 R3/R2/R4 remain on hold until new owner-reviewed T3 qualification; no version/Work/Gate change from document review.

@@ -1,0 +1,24 @@
+TASK: Correction 13 / P8 — Independent real GPT-OSS browser closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only: no product-version bump.
+
+MANUAL T3 ONLY — NOT RUNNER EXECUTION
+The runner executes P1–P7 only and STOPS. This last prompt must be deliberately initiated by the owner in a connected Codex browser. Do not use normal `codex:phase --closeout`, mock inference or a headless-only DOM substitute to claim Green.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, proposed ADR 0056 and named-chain contract, this stack assessment/plan and P1–P7 real qualification outputs; preserve P6/R2 NOT GREEN, R3B historical PARTIAL and owner-reported IG-R3 headless result. Inspect exact local HEAD/version, current source/dirt, changed package bundle/worker hashes and selected local GPT-OSS 20B. Start/restart real Dope browser with correct build. Connected Codex browser unavailable -> BLOCKED; Chrome/Puppeteer may be supporting evidence only. No owner production source modifications.
+
+DISPOSABLE LIVE WALKTHROUGH
+Create a versioned ESM clamp fixture with source, test, late guide section and release notes. In native Chat submit `/prompt-ass clamp-api-correction <details>`; inspect actual broker reads, concise one-line named assessment card, structured staged findings, saved/provisional assessment source evidence. Click its `/prompt-plan` action; inspect bound Assessment chip + composer prefill, edit optional owner notes, then submit. Verify a coherent ten-work-step plan, ten real efficiency gates, separate terminal manual closeout, concise plan card, unchanged slug. Click `/prompt-write` with bound Plan chip; add notes and submit. Observe bounded Pi stages, source-grounded outputs and protected finish into exactly one reviewable Prompt Stack Proposal. Confirm final generated folder name is inherited, not typed twice.
+
+REVIEW AND NEGATIVES
+Inspect native .md/.txt source/diff/formatted where applicable, real file links/Open All, readonly Save denial, restart persistence, no duplicate cards, keyboard/narrow/theme and truthful loading/failed state. Exercise a valid assessment or plan revision and verify downstream invalidation, a failed revision retaining prior candidate, a stale/wrong-project chip rejection, a slug/canonical-folder collision, source drift denial and Reject no canonical effects. Explicit Accept of a complete reviewed prompt stack must publish exact bytes through existing R3B journal, make it discoverable to Work, but not create Work Run/grant or Roadmap GREEN. Collect actual model usage, stage counts, hashes, wall-time, screenshots and all PASS/FAIL/BLOCKED/EVIDENCE GAP dispositions. Do not claim native Electron parity without observing it.
+
+EXIT
+Up to three tightly justified repair/retest cycles; on mandatory failure STOP NOT GREEN with preserved source evidence and remaining correction. Write independent dated qualification in this stack's qualification directory, no rewritten historical reports or automatic Phase 13 continuation. Commit/push only safe verified implementation/report using the approved manual workflow, never force/reset/stash, change version or auto-run Work. Owner decides whether IG-R4 and Phase 13 R3/R2/R4 resume afterward.

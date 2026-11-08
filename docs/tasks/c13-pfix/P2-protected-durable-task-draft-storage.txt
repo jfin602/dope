@@ -1,0 +1,24 @@
+TASK: Correction 13 / P2 — Protected durable task draft storage
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only. No manifest, lockfile, workspace, package-version change.
+
+AUTHORITY / PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, proposed ADR 0056 and docs/planning/p13/named-prompt-authoring-chain-contract.md, plus this stack's assessment/plan. Inspect actual local HEAD and dirty-tree/source state, compiled import ownership, relevant packages/tests, and earlier P6/R2 NOT GREEN evidence. Owner instruction to run this correction does not make it technically GREEN. Preserve local owner edits and historical prompts; do not reset, stash, clean, force-push or hide failures. Runner owns Git checkpoint and commits: do not self-commit or advance later prompts.
+
+GOAL — T1
+Persist one versioned noncanonical Prompt Stack Draft under the P1 identity across restarts; it stores structured assessment/plan records and reuses the existing proposal staging owner for prompt stages. Implement safe atomic writes/recovery, stable stage revision/content hashes, project/lease ownership, and task slug mapping. Avoid a second database or a competing source of truth.
+
+IMPLEMENTATION SCOPE
+Inspect `packages/chat/src/node/chat-repository.ts`, `incremental-proposal-controller.ts`, project/worktree fingerprints, Git ignore rules, Docs discovery and Work stack discovery. Prefer a protected `docs/tasks/.drafts/<slug>/` namespace only if proven safely ignored by Git, canonical Docs and Work discovery, ordinary source drift checks and inappropriate write surfaces. Pin real broker source hashes separately. If that filesystem placement cannot be secured, use the existing project-scoped `.dope` staging store and preserve the task namespace logically; report exact deviation for owner review. No mutable duplicate manifests.
+
+FOCUSED CHECKS
+Atomic persistence/restart, concurrent same slug and competing owners, symlink/traversal/case collision, source hash/lease drift, stale/abort, ignored draft vs real source change, wrong project, and accepted folder collision; verify no canonical task files or Work effects. Determine narrow actual existing repo/store tests and compiled dependencies before running.
+
+VERIFICATION AND EXIT
+Build only changed dependencies needed for fresh compiled tests; run the narrow directly affected tests and git diff --check. No broad npm run check, Electron packaging, or unnecessary repeat aggregates. Record exact changed files, actual test results, evidence gaps, and PASS/PARTIAL/BLOCKED. If implementation and focused checks exceed the 8-minute target, narrow the scope honestly rather than suppressing safety requirements. No browser qualification, Work Run/grant, Prompt Stack publication, Roadmap Gate, or version advance. Stop after this prompt's scoped result.
