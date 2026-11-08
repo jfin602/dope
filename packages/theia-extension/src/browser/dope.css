@@ -1418,6 +1418,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-proposal-history[data-status="applied"] { --proposal-accent: var(--dope-roadmap-green, var(--theia-testing-iconPassed)); }
 .dope-chat-proposal-history[data-status="stale"], .dope-chat-proposal-history[data-status="denied"] { --proposal-accent: var(--theia-editorWarning-foreground); }
 .dope-chat-proposal-history[data-status="failed"] { --proposal-accent: var(--theia-errorForeground); }
+.dope-chat-proposal-history[data-status="staging"], .dope-chat-proposal-history[data-status="blocked"], .dope-chat-proposal-history[data-status="cancelled"] { --proposal-accent: var(--theia-editorWarning-foreground); }
 .dope-chat-proposal-history-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; font-size: 11px; }
 .dope-chat-proposal-history-heading strong { flex: 1 1 12ch; min-width: 0; font-weight: 600; }
 .dope-chat-proposal-history-heading > span:last-child { color: var(--theia-descriptionForeground); }
@@ -1432,6 +1433,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-documentation-files button { padding: 0; border: 0; background: transparent; color: var(--theia-textLink-foreground); text-align: left; overflow-wrap: anywhere; cursor: pointer; }
 .dope-chat-documentation-files button:hover { text-decoration: underline; }
 .dope-chat-documentation-files button:disabled { color: var(--theia-descriptionForeground); cursor: default; }
+.dope-chat-documentation-files button:focus-visible { outline: 1px solid var(--theia-focusBorder); outline-offset: 2px; }
 .dope-chat-documentation-discovery summary { font-weight: 600; cursor: pointer; }
 .dope-chat-documentation-discovery table { width: 100%; border-collapse: collapse; margin: 5px 0; font-size: 11px; }
 .dope-chat-documentation-discovery :is(th, td) { text-align: left; border-bottom: 1px solid var(--theia-panel-border); padding: 3px 5px; }

@@ -9,10 +9,10 @@ import { MonacoDiffEditor } from '@theia/monaco/lib/browser/monaco-diff-editor';
 import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
 import { renderDocumentPreview } from './documents-preview';
 import { nativeDocumentModes } from './native-doc-editor-modes';
-import { proposalSnapshot, promptStackSnapshot, proposalTabKey, ProposalTabSelection, lineEndingComparison,
+import { proposalSnapshot, promptStackSnapshot, stagedProposalSnapshot, proposalTabKey, ProposalTabSelection, lineEndingComparison,
     type ProposalTabSnapshot, type ProposalViewStatus } from './native-doc-editor-proposal-model';
 import type { VerifiedDocumentsCandidate } from './documents-diff';
-import type { ChatDocumentationProposal, ChatPromptStackProposal } from '@dope/chat';
+import type { ChatDocumentationProposal, ChatPromptStackProposal, ChatProposalProgress } from '@dope/chat';
 
 export const PROPOSAL_SCHEME = 'dope-doc-proposal';
 /** Only registered immutable bytes resolve. The resource has no mutation methods. */
@@ -110,7 +110,7 @@ export class ProposalDocumentWidget extends BaseWidget {
         this.footer.replaceChildren();
         this.body.replaceChildren();
         this.statusNode.textContent = this.selection.invalid ? 'Wrong project · proposal view unavailable' :
-            `${this.snapshot.status} · read-only · ${this.selection.mode === 'diff' ?
+            `${this.snapshot.status === 'staging' ? 'Incomplete staging · no approval' : this.snapshot.status} · read-only${this.snapshot.previewTruncated ? ' · preview truncated' : ''} · ${this.selection.mode === 'diff' ?
                 lineEndingComparison(this.snapshot.original, this.snapshot.proposed) :
                 this.snapshot.original === null ? 'Original absent (new file)' : 'Original retained'}`;
         if (this.selection.invalid) return;
@@ -205,6 +205,21 @@ export class ProposalDocumentTabs {
     async openPrompt(proposal: ChatPromptStackProposal, path: string,
         status: ProposalViewStatus): Promise<ProposalDocumentWidget> {
         return this.openSnapshot(promptStackSnapshot(proposal, path, status), false);
+    }
+
+    async openStaged(progress: ChatProposalProgress, path: string): Promise<ProposalDocumentWidget> {
+        return this.openSnapshot(stagedProposalSnapshot(progress, path), false);
+    }
+
+    syncStaged(progress: ChatProposalProgress): void {
+        for (const widget of this.shell.mainPanel.widgets()) {
+            if (widget instanceof ProposalDocumentWidget && !widget.isDisposed &&
+                widget.snapshot.identity.root === progress.root &&
+                widget.snapshot.identity.proposalId === progress.proposalId &&
+                widget.snapshot.identity.digest.startsWith('staging:') &&
+                (widget.snapshot.identity.revision !== progress.revision || progress.state !== 'staging'))
+                widget.setStatus(progress.state === 'stale' ? 'stale' : 'unavailable');
+        }
     }
 
     syncPromptStatus(proposal: ChatPromptStackProposal, activityStatus: string): void {

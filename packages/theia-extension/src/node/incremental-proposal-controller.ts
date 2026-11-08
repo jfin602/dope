@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { ChatRepository } from '@dope/chat/lib/node';
+import type { ChatProposalProgress } from '@dope/chat';
 
 export type ProposalDomain = 'document' | 'prompt';
 export interface ProposalIdentity {
@@ -37,6 +38,9 @@ export interface ProposalDomainHandler<T> {
     validateStage(snapshot: Readonly<ProposalSnapshot>, stage: Readonly<ProposalStage>): Promise<void>;
     /** Return exact proposal-owner input; this method must not publish canonical files. */
     validateComplete(snapshot: Readonly<ProposalSnapshot>): Promise<T>;
+    /** Bounded inert text for the native provisional read-only tab. */
+    preview?(snapshot: Readonly<ProposalSnapshot>): Promise<{ target: string; path: string;
+        original: string | null; proposed: string }[]>;
 }
 const sha256 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex');
 const fail = (code: string): never => { throw new Error(`PROPOSAL_${code}`); };
@@ -75,6 +79,7 @@ function receipt(snapshot: ProposalSnapshot, limits: ProposalLimits): ProposalRe
 }
 /** A turn-scoped broker owns the identity; model tools never receive a begin or approval token. */
 export class IncrementalProposalController<T = unknown> {
+    private currentSnapshot?: ProposalSnapshot;
     constructor(private readonly repository: ChatRepository, private readonly identity: ProposalIdentity,
         private readonly authority: () => Promise<{ worktreeId: string; sourceBasis: string }>,
         private readonly handler?: ProposalDomainHandler<T>,
@@ -86,6 +91,7 @@ export class IncrementalProposalController<T = unknown> {
 
     private async transact<R>(update: (snapshot: ProposalSnapshot) => Promise<{ snapshot: ProposalSnapshot; result: R }>): Promise<R> {
         const current = await this.authority();
+        let committed: ProposalSnapshot | undefined;
         const outcome = await this.repository.transactProposalStage<R | { error: string }>(this.identity.root, this.identity.chatId,
             this.identity.messageId, this.identity.leaseToken, async raw => {
                 const snapshot = raw as ProposalSnapshot | undefined;
@@ -93,15 +99,22 @@ export class IncrementalProposalController<T = unknown> {
                     JSON.stringify(snapshot.identity) !== JSON.stringify(this.identity)) return fail('FOREIGN_SESSION');
                 if (snapshot.state === 'cancelled' || snapshot.state === 'stale') return fail('TERMINAL');
                 if (current.worktreeId !== snapshot.identity.worktreeId ||
-                    current.sourceBasis !== snapshot.identity.sourceBasis)
-                    return { snapshot: { ...snapshot, state: 'stale' as const },
+                    current.sourceBasis !== snapshot.identity.sourceBasis) {
+                    committed = { ...snapshot, state: 'stale' as const };
+                    return { snapshot: committed,
                         result: { error: 'STALE_SOURCE' } as const };
-                if (Date.now() - snapshot.createdAt > this.limits.elapsedMs)
-                    return { snapshot: { ...snapshot, state: 'blocked' as const },
+                }
+                if (Date.now() - snapshot.createdAt > this.limits.elapsedMs) {
+                    committed = { ...snapshot, state: 'blocked' as const };
+                    return { snapshot: committed,
                         result: { error: 'ELAPSED_LIMIT' } as const };
+                }
                 if (snapshot.calls >= this.limits.calls) return fail('CALL_LIMIT');
-                return update({ ...snapshot, calls: snapshot.calls + 1 });
+                const next = await update({ ...snapshot, calls: snapshot.calls + 1 });
+                committed = next.snapshot;
+                return next;
             });
+        if (committed) this.currentSnapshot = committed;
         if (outcome && typeof outcome === 'object' && 'error' in outcome)
             return fail(String(outcome.error));
         return outcome as R;
@@ -110,13 +123,38 @@ export class IncrementalProposalController<T = unknown> {
         const current = await this.authority();
         if (current.worktreeId !== this.identity.worktreeId || current.sourceBasis !== this.identity.sourceBasis)
             return fail('STALE_SOURCE');
-        return this.repository.transactProposalStage(this.identity.root, this.identity.chatId,
+        const result = await this.repository.transactProposalStage(this.identity.root, this.identity.chatId,
             this.identity.messageId, this.identity.leaseToken, async raw => {
                 if (raw) return fail('ALREADY_STARTED');
                 const snapshot: ProposalSnapshot = { schemaVersion: 1, id: randomUUID(), identity: this.identity,
                     createdAt: Date.now(), revision: 0, calls: 0, state: 'staging', stages: [] };
+                this.currentSnapshot = snapshot;
                 return { snapshot, result: receipt(snapshot, this.limits) };
             });
+        return result;
+    }
+    async progress(diagnostic?: string): Promise<ChatProposalProgress> {
+        const snapshot = this.currentSnapshot;
+        if (!snapshot) return fail('NOT_STARTED');
+        let previews: { target: string; path: string; original: string | null; proposed: string }[] = [];
+        let previewError = false;
+        try { previews = await this.handler?.preview?.(snapshot) ?? []; }
+        catch { previewError = true; }
+        const byTarget = new Map(previews.map(item => [item.target, item]));
+        const clipped = (value: string) => value.length > 8192 ? value.slice(0, 8192) : value;
+        return { schemaVersion: 1, domain: snapshot.identity.domain, proposalId: snapshot.id,
+            root: snapshot.identity.root, worktreeId: snapshot.identity.worktreeId,
+            ownerId: snapshot.identity.ownerId, revision: snapshot.revision, state: snapshot.state,
+            targets: receipt(snapshot, this.limits).targets.map(item => {
+                const preview = byTarget.get(item.target);
+                return { ...item, path: preview?.path ?? (snapshot.identity.domain === 'document' ?
+                    item.target : `staging/${item.target}.txt`),
+                    original: preview?.original === undefined || preview.original === null ? null : clipped(preview.original),
+                    proposed: clipped(preview?.proposed ?? ''),
+                    truncated: previewError || !!preview && (preview.proposed.length > 8192 ||
+                        preview.original !== null && preview.original.length > 8192) };
+            }), ...(diagnostic || previewError ?
+                { diagnostic: (diagnostic ?? 'Provisional preview unavailable; staged bytes remain noncanonical').slice(0, 300) } : {}) };
     }
     status(): Promise<ProposalReceipt> {
         return this.transact(async snapshot => ({ snapshot, result: receipt(snapshot, this.limits) }));
@@ -155,7 +193,7 @@ export class IncrementalProposalController<T = unknown> {
         if (!exact(value, ['finalMessage']) || typeof (value as { finalMessage?: unknown }).finalMessage !== 'string')
             return fail('FINISH_ARGUMENTS');
         const finalMessage = (value as { finalMessage: string }).finalMessage.trim();
-        if (!finalMessage || finalMessage.length > 2_000 || /[\u0000-\u001f\u007f]/u.test(finalMessage))
+        if (!finalMessage || finalMessage.length > 2_000 || /[\p{Cc}\p{Cf}]/u.test(finalMessage))
             return fail('FINISH_ARGUMENTS');
         return this.transact(async snapshot => {
             if (snapshot.state !== 'staging') return fail('ALREADY_FINISHED');
@@ -177,14 +215,14 @@ export class IncrementalProposalController<T = unknown> {
     }
     /** Terminal turn cleanup may run after abort; the repository still checks the owner lease. */
     async stop(): Promise<void> {
-        await this.repository.transactProposalStage(this.identity.root, this.identity.chatId,
+        this.currentSnapshot = await this.repository.transactProposalStage<ProposalSnapshot>(this.identity.root, this.identity.chatId,
             this.identity.messageId, this.identity.leaseToken, async raw => {
                 const snapshot = raw as ProposalSnapshot | undefined;
                 if (!snapshot || JSON.stringify(snapshot.identity) !== JSON.stringify(this.identity))
                     return fail('FOREIGN_SESSION');
-                return { snapshot: snapshot.state === 'staging' ?
-                    { ...snapshot, state: 'cancelled' as const, revision: snapshot.revision + 1 } : snapshot,
-                    result: undefined };
+                const next = snapshot.state === 'staging' ?
+                    { ...snapshot, state: 'cancelled' as const, revision: snapshot.revision + 1 } : snapshot;
+                return { snapshot: next, result: next };
             });
     }
 }

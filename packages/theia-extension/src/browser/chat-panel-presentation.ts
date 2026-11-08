@@ -1,4 +1,4 @@
-import { safeChatToolPath, sanitizeChatDiagnosticText, type Chat, type ChatAssistantMessage, type ChatPlanningActivity } from '@dope/chat';
+import { safeChatToolPath, sanitizeChatDiagnosticText, type Chat, type ChatAssistantMessage, type ChatMessage, type ChatPlanningActivity } from '@dope/chat';
 
 /** A live continuation shows only text beyond the already displayed saved partial. */
 export function liveAnswerSource(message: ChatAssistantMessage | undefined, content: string): string {
@@ -386,6 +386,29 @@ export function planningOutcome(message: ChatAssistantMessage): { summary: strin
 export function documentationReviewDisplayText(message: ChatAssistantMessage): string {
     if (message.planningActivity?.kind !== 'documentation-proposal') return message.content;
     return message.content.replace(/\n\nA source-bound documentation diff is ready for separate review and approval\. No document was changed\.$/u, '');
+}
+
+/** Docs revision keeps its decision owner on the first turn; place its one card beside the sealed revision narration. */
+export function proposalCardPlacement(message: ChatAssistantMessage, messages: readonly ChatMessage[]):
+    { source?: ChatAssistantMessage; relocated: boolean } {
+    const matches = (source: ChatAssistantMessage, revision: ChatAssistantMessage): boolean => {
+        const activity = source.planningActivity, proposal = activity?.documentProposal;
+        const progress = revision.proposalProgress;
+        return source !== revision && activity?.kind === 'documentation-proposal' && !!proposal &&
+            revision.execution.status === 'complete' && !revision.planningActivity &&
+            progress?.state === 'ready-for-review' && !!progress.reviewDigest &&
+            activity.proposalId === progress.proposalId && proposal.digest === progress.reviewDigest &&
+            proposal.root === progress.root && proposal.ownerId === progress.ownerId &&
+            proposal.worktreeId === progress.worktreeId;
+    };
+    if (message.proposalProgress?.reviewDigest && !message.planningActivity) {
+        const source = messages.find(item => item.role === 'assistant' && matches(item, message));
+        if (source?.role === 'assistant') return { source, relocated: false };
+    }
+    if (message.planningActivity?.kind === 'documentation-proposal' &&
+        messages.some(item => item.role === 'assistant' && matches(message, item)))
+        return { relocated: true };
+    return { relocated: false };
 }
 
 export function documentationDiffLineKind(line: string): 'added' | 'removed' | 'hunk' | 'header' | 'context' {

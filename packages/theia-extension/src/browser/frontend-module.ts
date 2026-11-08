@@ -727,7 +727,30 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                     firstId ??= tab.id;
                 }
                 if (firstId) await context.container.get(ApplicationShell).activateWidget(firstId);
-            }, (proposal, status) => context.container.get(ProposalDocumentTabs).syncPromptStatus(proposal, status));
+            }, (proposal, status) => context.container.get(ProposalDocumentTabs).syncPromptStatus(proposal, status),
+            async (uri, owner, progress, paths) => {
+                const roots = await context.container.get(WorkspaceService).roots;
+                const current = () => owner.workspace === uri && owner.chat?.messages.some(message =>
+                    message.role === 'assistant' && message.proposalProgress?.proposalId === progress.proposalId &&
+                    message.proposalProgress.revision === progress.revision &&
+                    message.proposalProgress.state === progress.state);
+                if (!current() || roots.length !== 1 || roots[0].resource.toString() !== uri ||
+                    decodeURIComponent(new URL(uri).pathname) !== progress.root ||
+                    !paths.length || paths.length > progress.targets.length ||
+                    paths.some((path, index) => !progress.targets.some(target => target.path === path && !!target.proposed) ||
+                        paths.indexOf(path) !== index))
+                    throw new Error('Exact provisional files are unavailable for this project');
+                const tabs = context.container.get(ProposalDocumentTabs);
+                let firstId: string | undefined;
+                for (const path of paths) {
+                    const currentRoots = await context.container.get(WorkspaceService).roots;
+                    if (!current() || currentRoots.length !== 1 || currentRoots[0].resource.toString() !== uri)
+                        throw new Error('Project changed during provisional navigation');
+                    const tab = await tabs.openStaged(progress, path);
+                    firstId ??= tab.id;
+                }
+                if (firstId) await context.container.get(ApplicationShell).activateWidget(firstId);
+            }, progress => context.container.get(ProposalDocumentTabs).syncStaged(progress));
     bind(WidgetFactory).toDynamicValue(context => ({ id: CHAT_PANEL_ID, createWidget: (options: ChatPanelOptions) =>
         createChatWidget(context, options) })).inSingletonScope();
     for (const side of ['left', 'right'] as const) bind(WidgetFactory).toDynamicValue(context => ({

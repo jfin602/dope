@@ -1,7 +1,7 @@
-import type { ChatDocumentationProposal, ChatPromptStackProposal } from '@dope/chat';
+import type { ChatDocumentationProposal, ChatPromptStackProposal, ChatProposalProgress } from '@dope/chat';
 import { nativeDocumentFormat, type NativeDocumentFormat, type NativeDocumentMode } from './native-doc-editor-modes';
 
-export type ProposalViewStatus = 'pending' | 'applicable' | 'stale' | 'rejected' | 'revised' | 'partial-recovery' |
+export type ProposalViewStatus = 'staging' | 'pending' | 'applicable' | 'stale' | 'rejected' | 'revised' | 'partial-recovery' |
     'accepted' | 'expired' | 'wrong-project' | 'unavailable';
 export interface ProposalTabIdentity {
     root: string; worktreeId: string; ownerId: string; proposalId: string;
@@ -9,7 +9,7 @@ export interface ProposalTabIdentity {
 }
 export interface ProposalTabSnapshot {
     identity: ProposalTabIdentity; format: NativeDocumentFormat;
-    original: string | null; proposed: string; status: ProposalViewStatus;
+    original: string | null; proposed: string; status: ProposalViewStatus; previewTruncated?: boolean;
 }
 
 export function proposalTabKey(identity: ProposalTabIdentity): string {
@@ -39,6 +39,19 @@ export function promptStackSnapshot(proposal: ChatPromptStackProposal, path: str
     return { identity: { root: proposal.root, worktreeId: proposal.worktreeId, ownerId: proposal.ownerId,
         proposalId: proposal.id, revision: proposal.revision, digest: proposal.digest, path },
         format, original: null, proposed: target.after, status };
+}
+/** A stage has its own revision identity and can never alias a sealed review resource. */
+export function stagedProposalSnapshot(progress: ChatProposalProgress, path: string): ProposalTabSnapshot {
+    const target = progress.targets.find(item => item.path === path);
+    const format = nativeDocumentFormat('file', path);
+    if (!target || !format || progress.state === 'ready-for-review')
+        throw new Error('Provisional proposal preview unavailable');
+    return { identity: { root: progress.root, worktreeId: progress.worktreeId,
+        ownerId: progress.ownerId, proposalId: progress.proposalId,
+        revision: progress.revision, digest: `staging:${progress.proposalId}:${progress.revision}`, path },
+        format, original: target.original, proposed: target.proposed,
+        status: progress.state === 'staging' ? 'staging' : progress.state === 'stale' ? 'stale' : 'unavailable',
+        previewTruncated: target.truncated };
 }
 
 /** Selection changes never change the reviewed bytes, identity, or status. */

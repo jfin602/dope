@@ -12,14 +12,14 @@ import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-renderin
 import type { ChatOperation } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
 import { CHAT_COLORS, type ChatSettings, type ChatModelSelection, type ChatAssistantMessage,
-    type ChatDocumentationProposal, type ChatPromptStackProposal } from '@dope/chat';
+    type ChatDocumentationProposal, type ChatPromptStackProposal, type ChatProposalProgress } from '@dope/chat';
 import type { ChatContextSelection, ChatEvent, ChatPlanningProposal } from '@dope/chat/lib/service';
 import { SoftwareMapController } from './software-map-controller';
 import type { ModelConnectionsService, ModelConnectionsSnapshot } from '@dope/contracts/lib/model-connections-service';
 import { AICenterContribution } from './ai-center-contribution';
 import { ChatOpenOwners, ChatPanelController, chatTree } from './chat-panel-controller';
 import type { ChatConnection, ChatTree } from './chat-panel-controller';
-import { ChatScrollFollow, ChatTranscriptDrag, LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, documentationDiscoveryFileUri, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
+import { ChatScrollFollow, ChatTranscriptDrag, LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, animateChatToLatest, canDragChatTranscript, chatResponseCopyText, chatTranscriptCopyText, chatDiagnosticCopyText, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatLauncherIds, workLauncherIds, chatPanelWidgetId, panelModule, planningActivityPresentation, planningOutcome, documentationReviewDisplayText, documentationDiscoveryFileUri, proposalCardPlacement, implementationPlanAnswer, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, resizeChatInput, resolveChatModel, shouldSendChatInput, hasSendableChatDraft, type ChatActivityDisplay, type ChatPanelOptions } from './chat-panel-presentation';
 import { ChatCopyContextMenu } from './chat-copy-context-menu';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { fadeInNewAnswerText } from './live-answer-fade';
@@ -316,7 +316,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly syncDocumentationTabs?: (proposal: ChatDocumentationProposal, status: string) => void,
         private readonly openPromptStackReview?: (uri: string, owner: ChatPanelController,
             proposalId: string, digest: string, paths: string[]) => Promise<void>,
-        private readonly syncPromptStackTabs?: (proposal: ChatPromptStackProposal, status: string) => void) {
+        private readonly syncPromptStackTabs?: (proposal: ChatPromptStackProposal, status: string) => void,
+        private readonly openStagedReview?: (uri: string, owner: ChatPanelController, progress: ChatProposalProgress,
+            paths: string[]) => Promise<void>,
+        private readonly syncStagedTabs?: (progress: ChatProposalProgress) => void) {
         super();
         this.module = panelModule(options);
         this.id = chatPanelWidgetId(options);
@@ -329,6 +332,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         this.addClass('dope-chat-panel');
         this.controller = new ChatPanelController(connect, kind => {
             for (const message of this.controller.chat?.messages ?? []) {
+                if (message.role === 'assistant' && message.proposalProgress)
+                    this.syncStagedTabs?.(message.proposalProgress);
                 if (message.role === 'assistant' && message.planningActivity?.kind === 'documentation-proposal' &&
                     message.planningActivity.documentProposal)
                     this.syncDocumentationTabs?.(message.planningActivity.documentProposal,
@@ -707,6 +712,57 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
 
     /** Saved review data is display-only; only controller.planningProposal can expose decision buttons. */
+    private stagedProposalCard(message: ChatAssistantMessage): HTMLElement | undefined {
+        const progress = message.proposalProgress;
+        if (!progress || progress.state === 'ready-for-review' ||
+            message.planningActivity?.kind === 'documentation-proposal' ||
+            message.planningActivity?.kind === 'prompt-stack-proposal') return undefined;
+        const card = document.createElement('section');
+        card.className = 'dope-chat-plan-review dope-chat-proposal-history';
+        card.dataset.status = progress.state;
+        card.setAttribute('aria-label', `${progress.domain === 'document' ? 'Documentation' : 'Prompt Stack'} staging progress`);
+        const title = document.createElement('strong');
+        title.textContent = `${progress.domain === 'document' ? 'Documentation' : 'Prompt Stack'} Proposal · ` +
+            `${progress.state === 'staging' ? 'Incomplete · no approval' : progress.state}`;
+        const count = document.createElement('p');
+        count.textContent = `${progress.targets.filter(target => target.complete).length}/${progress.targets.length} staged files complete · review unavailable until finish`;
+        const heading = document.createElement('div');
+        heading.className = 'dope-chat-documentation-file-heading';
+        heading.append(count);
+        const root = this.controller.workspace;
+        const viewable = progress.targets.filter(target => !!target.proposed);
+        const canOpen = !!root && decodeURIComponent(new URL(root).pathname) === progress.root &&
+            !!this.openStagedReview && viewable.length > 0;
+        const open = (paths: string[]) => {
+            if (!root || !this.openStagedReview) return;
+            void this.openStagedReview(root, this.controller, progress, paths).catch(error => {
+                this.controller.planningProposalError = `Provisional preview unavailable: ${String(error)}`;
+                this.render();
+            });
+        };
+        if (progress.targets.length) heading.append(this.button('Open All Files',
+            () => open(viewable.map(target => target.path)), !canOpen));
+        const files = document.createElement('div');
+        files.className = 'dope-chat-documentation-files';
+        for (const [index, target] of progress.targets.entries()) {
+            const link = this.button(`${index + 1}. ${target.path} · ${target.complete ? 'staged' : 'receiving'} · ` +
+                `${target.chunks} chunk${target.chunks === 1 ? '' : 's'}${target.truncated ? ' · preview truncated' : ''}`,
+                () => open([target.path]), !canOpen || !target.proposed);
+            link.title = target.path;
+            files.append(link);
+        }
+        card.append(title, heading, files);
+        if (progress.diagnostic || ['failed', 'cancelled', 'interrupted', 'stopped-incomplete'].includes(message.execution.status)) {
+            const diagnostic = document.createElement('p');
+            diagnostic.setAttribute('role', 'status');
+            diagnostic.textContent = progress.diagnostic ?? (message.execution.status === 'cancelled' ?
+                'Generation cancelled. Staged files were not approved.' :
+                'Generation ended before a reviewable proposal was sealed. Start a fresh request to continue.');
+            card.append(diagnostic);
+        }
+        return card;
+    }
+
     private savedRoadmapProposalCard(message: ChatAssistantMessage): HTMLElement | undefined {
         const activity = message.planningActivity;
         if (activity?.kind === 'prompt-stack-proposal' && activity.promptStackProposal) {
@@ -3112,6 +3168,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const activeAssistant = [...chat.messages.slice(lastUserIndex + 1)].reverse().find(message =>
             message.role === 'assistant' && ['pending', 'streaming', 'paused-output-limit'].includes(message.execution.status));
         for (const message of chat.messages) {
+            const placement = message.role === 'assistant' ? proposalCardPlacement(message, chat.messages) : undefined;
+            const revisedSource = placement?.source;
+            const relocated = placement?.relocated;
             const item = document.createElement('li');
             item.className = `dope-chat-message dope-chat-message-${message.role}`;
             item.dataset.messageId = message.id;
@@ -3125,15 +3184,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             } else if (message.role === 'assistant') {
                 const activity = planningActivityPresentation(message);
                 const outcome = message.execution.status === 'failed' ? undefined : planningOutcome(message);
-                const docsFinal = message.execution.status === 'complete' &&
-                    message.planningActivity?.kind === 'documentation-proposal';
-                if (docsFinal) {
+                const proposalFinal = message.execution.status === 'complete' &&
+                    (message.planningActivity?.kind === 'documentation-proposal' ||
+                        message.planningActivity?.kind === 'prompt-stack-proposal' || !!revisedSource);
+                if (proposalFinal) {
                     const response = document.createElement('div');
+                    response.className = 'dope-chat-proposal-final-message';
                     response.style.whiteSpace = 'pre-wrap';
                     response.textContent = body;
                     content.append(response);
                 }
-                if (outcome && !docsFinal && !isInlineRoadmapProposal(message)) {
+                if (outcome && !proposalFinal && !isInlineRoadmapProposal(message)) {
                     if (message.planningActivity?.kind === 'no-action' &&
                         message.planningActivity.status === 'no-action') {
                         content.append(renderUntrustedMessageMarkdown(this.markdown, outcome.summary));
@@ -3150,7 +3211,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         content.append(explanation);
                     }
                 }
-                if (activity && !docsFinal && !isInlineRoadmapProposal(message)) {
+                if (activity && !proposalFinal && !isInlineRoadmapProposal(message)) {
                     const planAnswer = implementationPlanAnswer(message);
                     if (planAnswer) content.append(renderUntrustedMessageMarkdown(this.markdown, planAnswer));
                     const details = document.createElement('details');
@@ -3179,7 +3240,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     details.append(summary, raw, copy);
                     content.append(details);
                     if (activity.alert) item.classList.add('dope-chat-message-alert');
-                } else if (!isInlineRoadmapProposal(message) && (message.planningActivity?.status === 'failed' ||
+                } else if (!proposalFinal && !isInlineRoadmapProposal(message) && (message.planningActivity?.status === 'failed' ||
                     message.planningActivity?.status === 'cancelled')) {
                     if (body) {
                         const raw = document.createElement('pre');
@@ -3187,7 +3248,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         raw.textContent = body;
                         content.append(raw);
                     }
-                } else if (message.execution.status === 'complete' && !docsFinal && !isInlineRoadmapProposal(message) &&
+                } else if (message.execution.status === 'complete' && !proposalFinal && !isInlineRoadmapProposal(message) &&
                     !(message.planningActivity?.kind === 'no-action' && outcome))
                     content.append(renderUntrustedMessageMarkdown(this.markdown, body));
                 else if (message.execution.status === 'cancelled' && !message.answerPartial) {
@@ -3301,7 +3362,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     message.execution.status === 'complete' && chatResponseCopyText(message) ||
                     active && state.stream?.content) content.classList.add('dope-chat-final-answer');
                 item.append(content);
-                const savedProposal = this.savedRoadmapProposalCard(message);
+                const savedProposal = revisedSource ?
+                    this.savedRoadmapProposalCard(revisedSource) : relocated ? undefined :
+                        this.savedRoadmapProposalCard(message) ?? this.stagedProposalCard(message);
                 if (savedProposal) item.append(savedProposal);
                 const action = savedProposal ? undefined : this.roadmapActionCard(message);
                 if (action) item.append(action);

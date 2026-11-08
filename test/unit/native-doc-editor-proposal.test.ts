@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { proposalSnapshot, promptStackSnapshot, proposalTabKey, ProposalTabSelection, lineEndingComparison } from
+import { proposalSnapshot, promptStackSnapshot, stagedProposalSnapshot, proposalTabKey, ProposalTabSelection, lineEndingComparison } from
     '../../packages/theia-extension/lib/browser/native-doc-editor-proposal-model.js';
-import type { ChatDocumentationProposal, ChatPromptStackProposal } from '../../packages/chat/lib/index.js';
+import type { ChatDocumentationProposal, ChatPromptStackProposal, ChatProposalProgress } from '../../packages/chat/lib/index.js';
 
 const source = readFileSync('packages/theia-extension/src/browser/native-doc-editor-proposal.ts', 'utf8');
 const moduleSource = readFileSync('packages/theia-extension/src/browser/frontend-module.ts', 'utf8');
@@ -88,6 +88,28 @@ test('prompt stack adapter keeps exact read-only files, absent originals and rev
     assert.notEqual(proposalTabKey(text.identity), proposalTabKey(
         promptStackSnapshot({ ...prompt, digest: 'digest-b', revision: 2 }, prompt.files[1].path, 'revised').identity));
     assert.throws(() => promptStackSnapshot(prompt, 'docs/tasks/c1-example/other.md', 'pending'));
+});
+
+test('provisional tab identity stays separate from sealed and wrong-proposal resources', () => {
+    const progress: ChatProposalProgress = { schemaVersion: 1, domain: 'document', proposalId: 'proposal-1',
+        root: '/work/a', worktreeId: 'tree-a', ownerId: 'owner-a', revision: 2, state: 'staging',
+        targets: [{ target: 'docs/readme.md', path: 'docs/readme.md', chunks: 2, bytes: 100,
+            complete: false, original: 'before', proposed: 'partial', truncated: true }] };
+    const staged = stagedProposalSnapshot(progress, 'docs/readme.md');
+    assert.equal(staged.status, 'staging');
+    assert.equal(staged.previewTruncated, true);
+    assert.equal(staged.proposed, 'partial');
+    assert.notEqual(proposalTabKey(staged.identity),
+        proposalTabKey(proposalSnapshot(proposal(), 'docs/readme.md', 'pending').identity));
+    assert.notEqual(proposalTabKey(staged.identity), proposalTabKey(stagedProposalSnapshot(
+        { ...progress, proposalId: 'foreign' }, 'docs/readme.md').identity));
+    assert.notEqual(proposalTabKey(staged.identity), proposalTabKey(stagedProposalSnapshot(
+        { ...progress, revision: 3 }, 'docs/readme.md').identity));
+    assert.throws(() => stagedProposalSnapshot(progress, 'docs/other.md'));
+    assert.throws(() => stagedProposalSnapshot({ ...progress, state: 'ready-for-review' }, 'docs/readme.md'));
+    assert.match(source, /readOnly: true, autosaveable: false/);
+    assert.match(source, /openStaged\(progress: ChatProposalProgress/);
+    assert.doesNotMatch(source, /withScheme\('file'\)/);
 });
 
 test('native diff uses original and proposed virtual resources and no writer', () => {

@@ -1,0 +1,7 @@
+# P4 headless evidence — 2026-11-08
+
+**Source basis:** pre-task HEAD `877ddfa5d9bcf6d884d753b4749027ae5e2741a3`, project version `0.13.11`. P4 implementation is uncommitted for the phase runner. P1–P3 source was present at preflight; this report does not requalify those checkpoints or R3B's live Prompt Stack behavior.
+
+**T1 headless result:** focused builds of `@dope/chat` and `@dope/theia-extension` passed. The eight focused test files passed with `node --test --test-concurrency=1`: `chat-backend`, `documentation-skill-backend`, `prompt-authoring-stage`, `chat-panel`, `chat-presentation`, `native-doc-editor-proposal`, `incremental-proposal-controller`, and `chat-repository`. Tests cover checked stage persistence and order, no decision on staging, bounded read-only virtual preview identity, exact sealed narration and revision card placement, failed finish, reload, and wrong project isolation. Source assertions cover safe text rendering, one card, one Open All action, focus-visible and narrow layout rules. `git diff --check` passed.
+
+**T3 evidence gap for P6:** no connected browser or native Electron GUI was used in P4. Actual visual layout, keyboard/touch interaction, theme appearance, live model progress timing, and end-to-end Docs/Prompt Stack review remain **UNOBSERVED**, not visual PASS. P6 must inspect these against the exact later source and record its own result. No canonical Docs/prompt write, Work grant, Roadmap Gate award, version advance, or product GREEN is claimed here.

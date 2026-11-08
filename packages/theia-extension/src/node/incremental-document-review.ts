@@ -108,6 +108,14 @@ export class IncrementalDocumentReview implements ProposalDomainHandler<ChatDocu
             operation(item).operation === 'create')) throw new Error('Created document is already complete');
         await this.materialize([...snapshot.stages, stage]);
     }
+    async preview(snapshot: Readonly<ProposalSnapshot>): Promise<{ target: string; path: string;
+        original: string | null; proposed: string }[]> {
+        if (!snapshot.stages.length) return [];
+        const changes = await this.materialize(snapshot.stages);
+        return Promise.all(changes.map(async change => ({ target: change.path, path: change.path,
+            original: (await readDocumentationBasis(this.context.root, change.path)).before,
+            proposed: change.after })));
+    }
     async validateComplete(snapshot: Readonly<ProposalSnapshot>): Promise<ChatDocumentationProposal> {
         const { root, prior, pages, discovery, objective } = this.context;
         const changes = await this.materialize(snapshot.stages);

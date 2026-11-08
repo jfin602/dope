@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import markdownit from 'markdown-it';
-import { LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { LiveAnswerRevealBuffer, LiveAnswerUpdateBatcher, chatActivityPresentation, chatStreamingActivityPresentation, chatToolCallLabel, chatResponseCopyText, documentationReviewDisplayText, documentationDiscoveryFileUri, documentationDiffLineKind, proposalCardPlacement, implementationPlanAnswer, implementationPlanDiff, isDraftPlanningAction, isInlineRoadmapProposal, liveAnswerSource, nativeRoadmapCardStatus, planningActivityPresentation, planningOutcome, safeChatLink } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { ChatAssistantMessage } from '../../packages/chat/lib/index.js';
 
@@ -299,7 +299,7 @@ test('Roadmap proposal presentation stays in the originating response and automa
     const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
     const canvas = await readFile(new URL('../../packages/theia-extension/src/browser/roadmap-canvas-widget.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-    assert.match(widget, /if \(activity && !docsFinal && !isInlineRoadmapProposal\(message\)\)/);
+    assert.match(widget, /if \(activity && !proposalFinal && !isInlineRoadmapProposal\(message\)\)/);
     assert.match(widget, /if \(savedProposal\) item\.append\(savedProposal\)/);
     assert.match(widget, /return this\.roadmapProposalReviewCard\(this\.controller\.planningProposal\)/);
     assert.match(widget, /diagnostic\.textContent = activity\.diagnostic;\s*card\.append\(diagnostic\)/);
@@ -544,7 +544,7 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
     assert.match(widget, /navigator\.clipboard\?\.writeText\(text\)/);
     assert.match(widget, /copyChatText\(body\)/);
     assert.match(widget, /summary\.textContent = outcome\.summary/);
-    assert.match(widget, /if \(outcome && !docsFinal && !isInlineRoadmapProposal\(message\)\) \{/);
+    assert.match(widget, /if \(outcome && !proposalFinal && !isInlineRoadmapProposal\(message\)\) \{/);
     assert.doesNotMatch(widget, /body\.replace\(\/\\s\+\/g, ' '\)\.slice\(0, 160\)/);
     assert.match(widget, /this\.openPlanningActivities\.add\(message\.id\)/);
     assert.match(widget, /if \(activity\.alert\) item\.classList\.add\('dope-chat-message-alert'\)/);
@@ -553,6 +553,48 @@ test('trusted machine activity uses native disclosure, literal raw text and neut
     assert.match(css, /\.dope-chat-planning-activity \{[^}]*var\(--theia-descriptionForeground\)/);
     assert.match(css, /\.dope-chat-message-alert \.dope-chat-activity-status \{[^}]*var\(--theia-errorForeground\)/);
     assert.match(css, /\.dope-chat-panel button:focus-visible, \.dope-chat-panel summary:focus-visible/);
+});
+
+test('sealed proposal narration is one escaped response directly above one card; staging has no Accept', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const backend = await readFile(new URL('../../packages/theia-extension/src/node/chat-backend.ts', import.meta.url), 'utf8');
+    const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+    assert.match(widget, /const proposalFinal = message\.execution\.status === 'complete'/);
+    assert.match(widget, /message\.planningActivity\?\.kind === 'prompt-stack-proposal'/);
+    assert.match(widget, /response\.textContent = body;\s*content\.append\(response\)/);
+    assert.match(widget, /item\.append\(content\);\s*const savedProposal = revisedSource/);
+    assert.match(widget, /this\.savedRoadmapProposalCard\(message\) \?\? this\.stagedProposalCard\(message\);\s*if \(savedProposal\) item\.append\(savedProposal\)/);
+    assert.match(widget, /if \(!progress \|\| progress\.state === 'ready-for-review' \|\|/);
+    const staged = widget.slice(widget.indexOf('private stagedProposalCard('), widget.indexOf('private savedRoadmapProposalCard('));
+    assert.doesNotMatch(staged, /this\.button\('Accept'/);
+    assert.match(staged, /this\.button\('Open All Files'/);
+    assert.match(staged, /this\.button\(`\$\{index \+ 1\}\. \$\{target\.path\}/);
+    assert.match(backend, /if \(!protectedProposal\) await this\.repository\.publishDelta/);
+    assert.match(backend, /output = finishedPrompt\.finalMessage/);
+    assert.match(backend, /output = finishedDocument\.finalMessage/);
+    assert.match(css, /\.dope-chat-documentation-files button:focus-visible \{ outline: 1px solid var\(--theia-focusBorder\)/);
+    assert.match(css, /\.dope-chat-documentation-file-heading \{[^}]*flex-wrap: wrap/);
+});
+
+test('Docs revision card moves to the exact sealed narration on reload only for matching proposal basis', () => {
+    const original = { role: 'assistant', id: 'original', execution: { status: 'complete' },
+        planningActivity: { kind: 'documentation-proposal', proposalId: 'proposal',
+            documentProposal: { id: 'proposal', digest: 'digest', root: '/project',
+                ownerId: 'owner', worktreeId: 'tree' } } } as unknown as ChatAssistantMessage;
+    const revision = { role: 'assistant', id: 'revision', execution: { status: 'complete' },
+        content: '<script>alert(1)</script> Ready for review.',
+        proposalProgress: { state: 'ready-for-review', proposalId: 'proposal',
+            reviewDigest: 'digest', root: '/project', ownerId: 'owner', worktreeId: 'tree' } } as ChatAssistantMessage;
+    const messages = [original, revision];
+    assert.deepEqual(proposalCardPlacement(original, messages), { relocated: true });
+    assert.deepEqual(proposalCardPlacement(revision, messages), { source: original, relocated: false });
+    assert.equal(chatResponseCopyText(revision), revision.content);
+    assert.deepEqual(proposalCardPlacement({ ...revision, proposalProgress: {
+        ...revision.proposalProgress!, reviewDigest: 'wrong' } }, messages), { relocated: false });
+    assert.deepEqual(proposalCardPlacement({ ...revision, proposalProgress: {
+        ...revision.proposalProgress!, root: '/other' } }, messages), { relocated: false });
+    assert.deepEqual(proposalCardPlacement({ ...revision, execution: {
+        ...revision.execution, status: 'failed' } }, messages), { relocated: false });
 });
 
 test('Select Chat keeps folder disclosure and keyboard accessible contextual actions separate from selection', async () => {

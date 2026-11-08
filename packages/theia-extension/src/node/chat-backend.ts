@@ -2144,6 +2144,13 @@ export class ChatBackend implements ChatService {
                             finishedDocument = result as ProposalHandoff<import('@dope/chat').ChatDocumentationProposal>;
                         if (promptStage?.stage === 'prompt-write' && name === 'proposal_finish')
                             finishedPrompt = result as ProposalHandoff<ChatPromptStackProposal>;
+                        if (name !== 'proposal_status') {
+                            const projection = await proposalController.progress();
+                            if (name === 'proposal_finish') projection.reviewDigest =
+                                ((finishedDocument ?? finishedPrompt)!.candidate as { digest: string }).digest;
+                            await this.repository.recordProposalProgress(root, key, assistant!.id,
+                                request.leaseToken, projection).catch(() => undefined);
+                        }
                         status = 'completed';
                         return JSON.stringify(name === 'proposal_finish' && (docsReview || promptStage?.stage === 'prompt-write') ?
                             { proposalId: (finishedDocument ?? finishedPrompt)!.proposalId,
@@ -2151,6 +2158,14 @@ export class ChatBackend implements ChatService {
                                 state: 'ready-for-review' } : result);
                     } catch (error) {
                         status = 'failed';
+                        if (name === 'proposal_finish' || name === 'proposal_stage_document' ||
+                            name === 'proposal_stage_prompt') {
+                            const diagnostic = error instanceof Error && error.message.startsWith('PROPOSAL_') ?
+                                error.message : 'Proposal stage failed validation';
+                            await proposalController?.progress(diagnostic).then(progress =>
+                                this.repository.recordProposalProgress(root, key, assistant!.id,
+                                    request.leaseToken, progress)).catch(() => undefined);
+                        }
                         return JSON.stringify({ version: 1, error: error instanceof Error &&
                             error.message.startsWith('PROPOSAL_') ? error.message : 'PROPOSAL_TOOL_FAILED' });
                     } finally {
@@ -2551,6 +2566,8 @@ export class ChatBackend implements ChatService {
                             this.grounder!, selectedPrompt ? selectedPrompt.proposal.revision + 1 : 1,
                             promptSourceBasis!));
                 await proposalController.begin();
+                await this.repository.recordProposalProgress(root, key, assistant.id,
+                    request.leaseToken, await proposalController.progress());
             }
             if (localRoadmap) tracePlanning('submitted', key, assistant.id);
             if (localRoadmap) this.planningProgress(key, assistant.id, 'waiting');
@@ -2756,8 +2773,9 @@ export class ChatBackend implements ChatService {
                             partialCursor = 0;
                             persistedPartial = '';
                         }
-                        await this.repository.publishReset(root, key, assistant!.id, assistant!.execution.id,
-                            sequence++, request.leaseToken);
+                        if (!protectedProposal) await this.repository.publishReset(root, key, assistant!.id,
+                            assistant!.execution.id, sequence++, request.leaseToken);
+                        else sequence++;
                         continue;
                     }
                     if (event.type === 'delta') {
@@ -2771,8 +2789,9 @@ export class ChatBackend implements ChatService {
                         }
                         output += event.text;
                         recordActivity('provisional', event.text);
-                        await this.repository.publishDelta(root, key, assistant.id, assistant.execution.id,
-                            sequence++, event.text, request.leaseToken);
+                        if (!protectedProposal) await this.repository.publishDelta(root, key, assistant.id,
+                            assistant.execution.id, sequence++, event.text, request.leaseToken);
+                        else sequence++;
                         if (retainStreamedAnswer && output && (Buffer.byteLength(output, 'utf8') - partialCursor >= 1024 ||
                             Date.now() - lastPartialWrite >= 3000)) await persistOutputPartial(output);
                     } else {
@@ -2812,13 +2831,15 @@ export class ChatBackend implements ChatService {
                         if (publicationIntent) output = 'Roadmap Markdown request received. Check the verified result below before any decision.';
                         let promptActivity: ChatPlanningActivity | undefined;
                         if (promptStage) {
-                            if (event.finishReason === 'length') throw new Error('Prompt authoring output was truncated');
+                            if (event.finishReason === 'length' &&
+                                (promptStage.stage !== 'prompt-write' || !finishedPrompt))
+                                throw new Error('Prompt authoring output was truncated');
                             // /prompt-write is bound to the two previously verified drafts. It need not
                             // make a redundant model read when their source identities are still current.
                             if (promptStage.stage !== 'prompt-write')
                                 await verifyPromptSourceRefs(root, sourceRefs, this.grounder!);
                             if (promptStage.stage === 'prompt-write') {
-                                if (!finishedPrompt || event.finishReason === 'length')
+                                if (!finishedPrompt)
                                     throw new Error('Incremental prompt stack was not finished and validated');
                                 const proposal = finishedPrompt.candidate;
                                 promptActivity = { schemaVersion: 1, kind: 'prompt-stack-proposal',
@@ -2832,7 +2853,7 @@ export class ChatBackend implements ChatService {
                         if (docsReview) {
                             const readPaths = sourceRefs.filter(ref => ref.kind === 'file').map(ref => ref.id);
                             try {
-                                if (!finishedDocument || event.finishReason === 'length')
+                                if (!finishedDocument)
                                     throw new Error('Incremental proposal was not finished and validated');
                                 const proposal = finishedDocument.candidate;
                                 output = finishedDocument.finalMessage;
@@ -2866,7 +2887,8 @@ export class ChatBackend implements ChatService {
                             ...(publicationIntent ? {} : { actualModel: actual, routingProvenance }),
                             contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                             tokenUsage: event.usage, ...(event.compaction ? { compaction: event.compaction } : {}),
-                            ...(event.finishReason ? { finishReason: event.finishReason } : {}),
+                            ...(event.finishReason && !(protectedProposal && (finishedDocument || finishedPrompt)) ?
+                                { finishReason: event.finishReason } : {}),
                             ...(toolEvents.length ? { sourceRefs, toolEvents } : {}) });
                             void this.repository.removeActivityLog(root, key, assistant!.id, assistant!.execution.id)
                             .catch(() => undefined);
@@ -2878,17 +2900,6 @@ export class ChatBackend implements ChatService {
                                     message.role === 'assistant' && message.execution.status === 'complete'))
                                 void this.automaticTitle(root, key, preceding, assistant!.id, output, actual);
                         };
-                        await finishAssistant(promptActivity ?? documentActivity);
-                        if (promptActivity && selectedPrompt && !abort.signal.aborted) {
-                            try {
-                                await this.repository.recordPlanningActivity(root, key, selectedPrompt.message.id,
-                                    request.leaseToken, { ...selectedPrompt.activity, status: 'superseded' },
-                                    { proposalId: selectedPrompt.proposal.id, status: 'pending',
-                                        digest: selectedPrompt.proposal.digest });
-                            } catch {
-                                // Both candidates remain immutable. The older one retains its review controls.
-                            }
-                        }
                         let revisionCommitError: string | undefined;
                         if (revisionActivityToCommit && revisionProposal && !abort.signal.aborted) {
                             try {
@@ -2898,6 +2909,18 @@ export class ChatBackend implements ChatService {
                             } catch (error) {
                                 revisionCommitError = `Documentation revision was not accepted: ${String(error)}. ` +
                                     'The last valid proposal remains available.';
+                            }
+                        }
+                        if (revisionCommitError) output = revisionCommitError;
+                        await finishAssistant(promptActivity ?? documentActivity);
+                        if (promptActivity && selectedPrompt && !abort.signal.aborted) {
+                            try {
+                                await this.repository.recordPlanningActivity(root, key, selectedPrompt.message.id,
+                                    request.leaseToken, { ...selectedPrompt.activity, status: 'superseded' },
+                                    { proposalId: selectedPrompt.proposal.id, status: 'pending',
+                                        digest: selectedPrompt.proposal.digest });
+                            } catch {
+                                // Both candidates remain immutable. The older one retains its review controls.
                             }
                         }
                         if (abort.signal.aborted && !localRoadmap) return preview;
@@ -3034,7 +3057,13 @@ export class ChatBackend implements ChatService {
             }
             throw error;
         } finally {
-            await proposalController?.stop().catch(() => undefined);
+            if (proposalController) {
+                await proposalController.stop().catch(() => undefined);
+                if (!finishedDocument && !finishedPrompt)
+                    await proposalController.progress('Generation ended before a reviewable proposal was sealed; no files were changed.').then(progress =>
+                        this.repository.recordProposalProgress(root, key, assistant!.id,
+                            request.leaseToken, progress)).catch(() => undefined);
+            }
             liveContinuation?.dispose();
             clearInterval(leaseHeartbeat);
             this.pendingOutputLimits.delete(key);

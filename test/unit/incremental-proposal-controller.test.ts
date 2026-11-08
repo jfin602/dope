@@ -26,13 +26,19 @@ test('trusted controller persists bounded ordered chunks, exact replay and seale
     let basis = 'source-a';
     const authority = async () => ({ worktreeId: 'worktree-a', sourceBasis: basis });
     const handler = { validateStage: async () => {}, validateComplete: async (snapshot: {
-      stages: { target: string; content: string }[] }) => snapshot.stages.map(item => item.content).join('') };
+      stages: { target: string; content: string }[] }) => snapshot.stages.map(item => item.content).join(''),
+    preview: async (snapshot: { stages: { target: string; content: string }[] }) => snapshot.stages.length ?
+      [{ target: 'docs/new.md', path: 'docs/new.md', original: null,
+        proposed: snapshot.stages.map(item => item.content).join('') }] : [] };
     const controller = new IncrementalProposalController(repo, identity, authority, handler);
     assert.equal((await controller.begin()).nextSequence, 1);
     await assert.rejects(controller.begin(), /ALREADY_STARTED/);
     await assert.rejects(controller.finish({ finalMessage: 'Ready' }), /INCOMPLETE/);
     const first = stage(1, 0, 'docs/new.md', 0, '# New\n', false);
     assert.equal((await controller.stage(first, 'document')).revision, 1);
+    assert.deepEqual((await controller.progress()).targets.map(item =>
+      ({ path: item.path, complete: item.complete, proposed: item.proposed })),
+    [{ path: 'docs/new.md', complete: false, proposed: '# New\n' }]);
     const reopened = new IncrementalProposalController(new ChatRepository(), identity, authority, handler);
     assert.equal((await reopened.status()).targets[0].bytes, Buffer.byteLength(first.content));
     assert.equal((await reopened.stage(first, 'document')).revision, 1);
@@ -48,9 +54,12 @@ test('trusted controller persists bounded ordered chunks, exact replay and seale
     await assert.rejects(reopened.finish({ finalMessage: 'Ready' }), /INCOMPLETE/);
     assert.equal((await reopened.stage(stage(2, 1, 'docs/new.md', 1, 'finish', true), 'document')).revision, 2);
     await assert.rejects(reopened.finish({ finalMessage: '' }), /FINISH_ARGUMENTS/);
+    await assert.rejects(reopened.finish({ finalMessage: 'Ready\u202e spoofed' }), /FINISH_ARGUMENTS/);
+    await assert.rejects(reopened.finish({ finalMessage: 'x'.repeat(2_001) }), /FINISH_ARGUMENTS/);
     const handoff = await reopened.finish({ finalMessage: 'Prepared for review.' });
     assert.equal(handoff.finalMessage, 'Prepared for review.');
     assert.equal(handoff.candidate, '# New\nfinish');
+    assert.equal((await reopened.progress()).state, 'ready-for-review');
     await assert.rejects(reopened.finish({ finalMessage: 'again' }), /ALREADY_FINISHED/);
     assert.equal(await readFile(canonical, 'utf8'), 'original\n');
     assert.equal((await repo.read(root)).chats[0].messages.length, 0);

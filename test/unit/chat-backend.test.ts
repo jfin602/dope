@@ -52,6 +52,7 @@ test('native prompt stages save an exact review candidate and publish only after
     const closeout = { kind: 'closeout', title: 'Feature closeout', objective: 'Inspect feature in browser',
         manualReason: 'Interactive behavior', acceptanceCriteria: ['Open feature in the real browser'],
         browserRequired: true, efficiencyAudit: audit };
+    const narration = '<img src=x onerror=alert(1)> Prepared feature prompts for review.';
     let calls = 0;
     const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
         providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
@@ -70,9 +71,11 @@ test('native prompt stages save an exact review candidate and publish only after
                     chunkIndex: 0, content: JSON.stringify(value), complete: true }));
                 assert.equal(receipt.revision, index + 1, JSON.stringify(receipt));
             }
-            const finished = JSON.parse(await request.projectTools!.execute('proposal_finish',
-                { finalMessage: 'Prepared feature prompts for review.' }));
-            assert.equal(finished.state, 'ready-for-review', JSON.stringify(finished));
+            if (turn !== 2) {
+                const finished = JSON.parse(await request.projectTools!.execute('proposal_finish',
+                    { finalMessage: narration }));
+                assert.equal(finished.state, 'ready-for-review', JSON.stringify(finished));
+            }
         }
         if (turn === 4) {
             const failed = JSON.parse(await request.projectTools!.execute('proposal_finish',
@@ -81,7 +84,7 @@ test('native prompt stages save an exact review candidate and publish only after
         }
         const text = answers[turn] ?? 'Model has finished staging.';
         yield { type: 'complete' as const, text, actualModelId: 'q4',
-            finishReason: turn === 2 ? 'length' : 'stop',
+            finishReason: turn === 2 || turn === 3 ? 'length' : 'stop',
             usage: { tokenMeasurement: 'unavailable' as const } };
     } };
     const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved Chat context' }],
@@ -111,7 +114,7 @@ test('native prompt stages save an exact review candidate and publish only after
         assert.equal(completed.length, 3);
         assert.match(completed[0].content, /^# Unpublished prompt assessment/);
         assert.match(completed[1].content, /^# Unpublished prompt plan/);
-        assert.equal(completed[2].content, 'Prepared feature prompts for review.');
+        assert.equal(completed[2].content, narration);
         const activity = completed[2].role === 'assistant' ? completed[2].planningActivity : undefined;
         assert.equal(activity?.kind, 'prompt-stack-proposal');
         assert.equal(activity?.status, 'pending');

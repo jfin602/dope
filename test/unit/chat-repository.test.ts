@@ -30,6 +30,39 @@ test('generation limit policy persists across repository reopen', async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('verified proposal stages persist on the assistant without becoming a decision or canonical answer', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'stage-owner');
+    if (!lease.acquired) throw new Error('Chat claim missing');
+    state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId, message: {
+      schemaVersion: 1, id: messageId, role: 'assistant', createdAt: state.chats[0].updatedAt, content: '',
+      execution: { schemaVersion: 1, id: id(), status: 'pending', selectedModel: model,
+        startedAt: state.chats[0].updatedAt } } }, lease.token);
+    const first = { schemaVersion: 1 as const, domain: 'document' as const, proposalId: id(),
+      root, worktreeId: 'tree', ownerId: 'stage-owner', revision: 1, state: 'staging' as const,
+      targets: [{ target: 'docs/readme.md', path: 'docs/readme.md', chunks: 1, bytes: 9,
+        complete: false, original: 'old', proposed: '<script>', truncated: false }] };
+    await assert.rejects(repo.recordProposalProgress(root, chatId, messageId, 'wrong', first), /lease/);
+    await repo.recordProposalProgress(root, chatId, messageId, lease.token, first);
+    const reopened = (await new ChatRepository().read(root)).chats[0].messages[0];
+    assert.equal(reopened.role, 'assistant');
+    if (reopened.role !== 'assistant') throw new Error('Assistant missing');
+    assert.equal(reopened.content, '');
+    assert.equal(reopened.planningActivity, undefined);
+    assert.equal(reopened.proposalProgress?.targets[0].proposed, '<script>');
+    await assert.rejects(repo.recordProposalProgress(root, chatId, messageId, lease.token,
+      { ...first, revision: 0 }), /progress changed/);
+    await assert.rejects(repo.recordProposalProgress(root, chatId, messageId, lease.token,
+      { ...first, revision: 2, targets: [{ ...first.targets[0], path: '../outside.md' }] }), /progress target/);
+    await repo.recordProposalProgress(root, chatId, messageId, lease.token,
+      { ...first, revision: 2, state: 'ready-for-review', targets: [{ ...first.targets[0], complete: true }] });
+    await assert.rejects(repo.recordProposalProgress(root, chatId, messageId, lease.token,
+      { ...first, revision: 3 }), /progress changed/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('partial output is append-once, lease-bound, and remains noncanonical through stop and recovery', async () => {
   const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id(), executionId = id();
   try {

@@ -118,8 +118,17 @@ export interface ChatAssistantMessage {
     activity?: ChatExecutionActivity; // Isolated diagnostics; never prompt context or search content.
     answerPartial?: ChatAnswerPartial; // Inspectable incomplete answer, never conversational content.
     planningActivity?: ChatPlanningActivity; // Backend-verified projection; content remains the exact model output.
+    proposalProgress?: ChatProposalProgress; // Inert, bounded staging projection; never an approval token.
     roadmapAction?: ChatRoadmapAction;
     lockedRoadmapPlan?: ChatLockedRoadmapPlan; // Inert evidence, never an approval or proposal.
+}
+export interface ChatProposalProgress {
+    schemaVersion: 1; domain: 'document' | 'prompt'; proposalId: string;
+    root: string; worktreeId: string; ownerId: string; revision: number;
+    state: 'staging' | 'ready-for-review' | 'cancelled' | 'stale' | 'blocked';
+    targets: { target: string; path: string; chunks: number; bytes: number; complete: boolean;
+        original: string | null; proposed: string; truncated: boolean }[];
+    diagnostic?: string; reviewDigest?: string;
 }
 export interface ChatLockedRoadmapPlan {
     schemaVersion: 1;
@@ -515,12 +524,12 @@ function parseExecution(value: unknown): ChatExecution {
     return execution;
 }
 export function parseChatMessage(value: unknown): ChatMessage {
-    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'execution', 'activity', 'answerPartial', 'planningActivity', 'roadmapAction', 'lockedRoadmapPlan'],
+    const v = record(value, ['schemaVersion', 'id', 'role', 'createdAt', 'content', 'contextRefs', 'skill', 'execution', 'activity', 'answerPartial', 'planningActivity', 'proposalProgress', 'roadmapAction', 'lockedRoadmapPlan'],
         ['schemaVersion', 'id', 'role', 'createdAt', 'content']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported message schema');
     const base = { schemaVersion: 1 as const, id: identifier(v.id), createdAt: time(v.createdAt), content: string(v.content, 'message content', false) };
     if (v.role === 'user') {
-        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.answerPartial !== undefined || v.planningActivity !== undefined || v.roadmapAction !== undefined || v.lockedRoadmapPlan !== undefined || !base.content.trim()) throw new Error('Invalid user message');
+        if (!Array.isArray(v.contextRefs) || v.execution !== undefined || v.activity !== undefined || v.answerPartial !== undefined || v.planningActivity !== undefined || v.proposalProgress !== undefined || v.roadmapAction !== undefined || v.lockedRoadmapPlan !== undefined || !base.content.trim()) throw new Error('Invalid user message');
         const skill = v.skill === undefined ? undefined : (() => {
             const s = record(v.skill, ['id', 'name', 'title', 'description', 'body', 'version', 'digest'],
                 ['id', 'name', 'body', 'version', 'digest']);
@@ -543,6 +552,7 @@ export function parseChatMessage(value: unknown): ChatMessage {
         if ((answerPartial || ['paused-output-limit', 'stopped-incomplete', 'interrupted'].includes(execution.status)) && base.content ||
             answerPartial && execution.status === 'pending') throw new Error('Incomplete assistant cannot commit content');
         const planningActivity = v.planningActivity === undefined ? undefined : parsePlanningActivity(v.planningActivity);
+        const proposalProgress = v.proposalProgress === undefined ? undefined : parseProposalProgress(v.proposalProgress);
         const roadmapAction = v.roadmapAction === undefined ? undefined : parseChatRoadmapAction(v.roadmapAction);
         const lockedRoadmapPlan = v.lockedRoadmapPlan === undefined ? undefined : parseChatLockedRoadmapPlan(v.lockedRoadmapPlan);
         if (lockedRoadmapPlan && (lockedRoadmapPlan.assistantMessageId !== base.id || lockedRoadmapPlan.executionId !== execution.id))
@@ -555,10 +565,45 @@ export function parseChatMessage(value: unknown): ChatMessage {
         return { ...base, role: 'assistant', execution, ...(activity ? { activity } : {}),
             ...(answerPartial ? { answerPartial } : {}),
             ...(planningActivity ? { planningActivity } : {}),
+            ...(proposalProgress ? { proposalProgress } : {}),
             ...(roadmapAction ? { roadmapAction } : {}),
             ...(lockedRoadmapPlan ? { lockedRoadmapPlan } : {}) };
     }
     throw new Error('Invalid Chat role');
+}
+export function parseProposalProgress(value: unknown): ChatProposalProgress {
+    const v = record(value, ['schemaVersion', 'domain', 'proposalId', 'root', 'worktreeId', 'ownerId',
+        'revision', 'state', 'targets', 'diagnostic', 'reviewDigest'], ['schemaVersion', 'domain', 'proposalId', 'root',
+        'worktreeId', 'ownerId', 'revision', 'state', 'targets']);
+    if (v.schemaVersion !== 1 || !Number.isSafeInteger(v.revision) || (v.revision as number) < 0 ||
+        !Array.isArray(v.targets) || v.targets.length > 64 ||
+        v.diagnostic !== undefined && (typeof v.diagnostic !== 'string' || v.diagnostic.length > 300) ||
+        v.reviewDigest !== undefined && (v.state !== 'ready-for-review' ||
+            typeof v.reviewDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(v.reviewDigest)))
+        throw new Error('Invalid proposal progress');
+    const targets = v.targets.map(raw => {
+        const target = record(raw, ['target', 'path', 'chunks', 'bytes', 'complete', 'original',
+            'proposed', 'truncated'], ['target', 'path', 'chunks', 'bytes', 'complete', 'original',
+            'proposed', 'truncated']);
+        if (typeof target.target !== 'string' || target.target.length > 240 ||
+            typeof target.path !== 'string' || target.path.length > 300 ||
+            !/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*\.(?:md|txt)$/u.test(target.path) ||
+            target.path.split('/').some(part => part === '.' || part === '..') ||
+            !Number.isSafeInteger(target.chunks) || (target.chunks as number) < 1 ||
+            !Number.isSafeInteger(target.bytes) || (target.bytes as number) < 1 ||
+            typeof target.complete !== 'boolean' || typeof target.proposed !== 'string' ||
+            target.proposed.length > 8192 || target.original !== null &&
+                (typeof target.original !== 'string' || target.original.length > 8192) ||
+            typeof target.truncated !== 'boolean') throw new Error('Invalid proposal progress target');
+        return target as unknown as ChatProposalProgress['targets'][number];
+    });
+    return { schemaVersion: 1, domain: choice(v.domain, ['document', 'prompt'] as const, 'proposal domain'),
+        proposalId: identifier(v.proposalId), root: string(v.root, 'proposal root'),
+        worktreeId: string(v.worktreeId, 'proposal worktree'), ownerId: string(v.ownerId, 'proposal owner'),
+        revision: v.revision as number,
+        state: choice(v.state, ['staging', 'ready-for-review', 'cancelled', 'stale', 'blocked'] as const, 'proposal state'),
+        targets, ...(v.diagnostic ? { diagnostic: v.diagnostic as string } : {}),
+        ...(v.reviewDigest ? { reviewDigest: v.reviewDigest as string } : {}) };
 }
 export function parseChatLockedRoadmapPlan(value: unknown): ChatLockedRoadmapPlan {
     const v = record(value, ['schemaVersion', 'status', 'text', 'sha256', 'projectRoot', 'projectId',

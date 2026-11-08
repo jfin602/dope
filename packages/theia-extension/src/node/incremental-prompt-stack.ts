@@ -80,6 +80,21 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
         }
     }
 
+    async preview(snapshot: Readonly<ProposalSnapshot>): Promise<{ target: string; path: string;
+        original: null; proposed: string }[]> {
+        const groups = new Map<string, string[]>();
+        for (const stage of snapshot.stages) {
+            const parts = groups.get(stage.target) ?? [];
+            const value = parse(stage.content);
+            parts.push(value.kind === 'section' ? `${value.heading}\n\n${value.text}` :
+                JSON.stringify(value, null, 2));
+            groups.set(stage.target, parts);
+        }
+        return [...groups].map(([target, parts]) => ({ target,
+            path: `staging/${target}.txt`, original: null,
+            proposed: `Provisional prompt stage · ${target}\nFinal composed file is available only after finish.\n\n${parts.join('\n\n')}` }));
+    }
+
     async validateComplete(snapshot: Readonly<ProposalSnapshot>): Promise<ChatPromptStackProposal> {
         const groups = new Map<string, (Work | Section | Closeout)[]>();
         for (const stage of snapshot.stages) {
