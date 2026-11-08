@@ -1,0 +1,21 @@
+TASK: Correction 13 / P5 — Cross-skill incremental proposal safety integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only: no manifest, workspace, lockfile or project-version bump.
+
+PREFLIGHT
+Read ADR 0055, its shared contract, stack plan, P1–P4 source/tests/qualification receipts and actual delivered R3B publisher. Inspect current HEAD/dirty tree, source/compiled imports, touched-package build order, actual test helpers and relevant project-root fixture isolation. Do not infer quality from previous runner commits alone; preserve existing tests and historical R3B/P13 results.
+
+GOAL — T2: ONE CROSS-BOUNDARY QUALIFICATION SLICE
+Exercise both protected skills with the same shared Pi staging contract and real domain proposal adapters under deterministic local tests. Use actual tool entry, durable stage receipts and finish to generate: (a) multiple source-backed Docs edits with late-page source reads and a chunked large new document; (b) 10+ dependency-ordered substantial prompt files with exactly one final manual closeout and valid supporting files, model/grammar, and manifest. Prove correct native pending proposal and exact reviewed bytes/hashes, but NO canonical file effects before explicit simulated owner Accept. Use actual Docs application and native R3B distinct guarded publisher for approved test publications; do not invent a duplicate mock-only writer and call it proof.
+
+ADVERSARIAL MATRIX
+Wrong project/worktree/chat/owner/lease, source hash/revision changes, stale locked Roadmap, traversal/symlink/target collision, duplicate/out-of-order/conflicting stage, truncated/oversized/empty/invalid content, duplicated prompt IDs, changed plan, retry/restart/cancel, finish-before-complete, denied/rejected/failed revision retention, double Accept and safe partial publication/recovery. Assert no Work grant, Run, candidate promotion, applied History before actual Docs application, or Roadmap Gate qualification. Include concise budget accounting/call measurements if available; do not claim measured performance without actual observations. Shared API must not re-inject growing full candidate into model context.
+
+VERIFY
+Run minimal targeted T2 test set for controller, Pi bridge, Docs stage/application, Prompt composer/importer/R3B publication and Chat proposal state, building changed workspaces before lib-import tests. Run changed-file-specific safety regressions and git diff --check; avoid blanket npm run check, Electron build or browser at this tier. Repair only direct discovered defects; STOP PARTIAL/NOT GREEN on mandatory security or integration failure, with explicit report and owner-safe tree. Do not begin downstream R3/R2/R4 or declare Phase 13 qualified.
