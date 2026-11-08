@@ -126,6 +126,35 @@ test('native prompt publication denies changed bytes and a symlink destination b
     } finally { await f.dispose(); }
 });
 
+test('native partial publication remains review-required until every reviewed byte is restored', async () => {
+    const f = await fixture();
+    try {
+        const native = new PlanningStackPublication(async () => {
+            throw new Error('Bridge owner must not be used');
+        });
+        const proposal = await createPromptStackProposal(f.root, randomUUID(), randomUUID(), 'owner',
+            'lease', f.draft, [
+                { path: `${f.draft.sourcePath}/prompt-assessment.md`, text: '# Assessment\n' },
+                { path: `${f.draft.sourcePath}/implementation-plan.md`, text: '# Plan\n' }
+            ], randomUUID(), randomUUID());
+        const published = await native.publishNative(f.root, proposal);
+        const journal = join(f.root, '.dope/planning-bridge-publications', `${proposal.folder}.json`);
+        await writeFile(journal, JSON.stringify({ ...published, revision: published.revision + 1,
+            status: 'review-required' }));
+        const missing = join(f.root, proposal.files.at(-1)!.path);
+        await rm(missing);
+        assert.equal((await native.inspect(f.root, proposal.folder)).files.at(-1)?.status, 'missing');
+        await assert.rejects(native.confirmRecovered(f.root, proposal.folder, false), /Explicit developer/);
+        await assert.rejects(native.confirmRecovered(f.root, proposal.folder, true), /Partial or changed/);
+        assert.equal((await native.inspect(f.root, proposal.folder)).record?.status, 'review-required');
+        await writeFile(missing, proposal.files.at(-1)!.after);
+        const recovered = await native.confirmRecovered(f.root, proposal.folder, true);
+        assert.equal(recovered.status, 'published');
+        assert.equal((await native.inspect(f.root, proposal.folder)).files.every(file => file.status === 'matching'), true);
+        assert.equal((await discoverRoadmapTaskStacks(f.root)).find(item => item.folderName === proposal.folder)?.executable, false);
+    } finally { await f.dispose(); }
+});
+
 test('cancel, source changes, Git movement and WorkItem edits require a new preview', async () => {
     const f = await fixture();
     try {
