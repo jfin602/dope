@@ -1,6 +1,6 @@
 # ADR 0055 — Incremental Pi Proposal Generation for Docs and Prompt Stacks
 
-**Owner decision:** 2026-11-08 (America/Chicago). **Status:** PROPOSED FOR DOCUMENTATION REVIEW; accepted product direction, not implemented, qualified, or published to `main`. **Scope:** forward generation architecture for `/docs-review` and `/prompt-write`. **Detailed contract:** [Incremental Proposal Generation](../planning/p13/incremental-proposal-generation-contract.md).
+**Owner decision:** 2026-11-08 (America/Chicago). **Status:** OWNER-APPROVED FORWARD DOCUMENTATION, applied to `main` via PR #13 on 2026-11-08; product implementation and qualification not asserted. **Scope:** forward generation architecture for `/docs-review` and `/prompt-write`. **Detailed contract:** [Incremental Proposal Generation](../planning/p13/incremental-proposal-generation-contract.md).
 
 ## Context and problem
 
@@ -57,7 +57,7 @@ Do not create another Docs editor, duplicate project explorer, publisher, filesy
 
 **R3B is already running as of this decision. Do not change, interrupt, invalidate, expand, rerun, or retarget `docs/tasks/p13/recovery/R3B-prompt-proposal-publication.txt` or its active tests/qualification.** Finish and assess R3B against its original source and prompt. This ADR defines a **separate follow-on implementation** after R3B, subject to its own owner-approved assessment, bounded prompt stack, run and qualification. No automatic dependency or new entry gate is imposed on active R3B or historical R3A/R1/P9/P12 results. Later Phase 13 R3/R2/R4 scheduling remains explicitly owner-controlled.
 
-This is documentation review only. No product source code, R3B task file, Work grant/Run, acceptance, version bump or Roadmap qualification is authorized by recording the decision.
+This applied documentation decision does not authorize product source code changes, R3B task changes, Work grants/Runs, product acceptance, version bumps or Roadmap qualification.
 
 ## Qualification required before calling the design implemented
 
