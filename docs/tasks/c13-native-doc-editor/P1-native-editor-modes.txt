@@ -1,0 +1,21 @@
+TASK: Correction 13 / P1 — Native Theia .md/.txt editor viewing modes
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction at unchanged version; no manifest, pin or lockfile change.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0054, native editor UI contract, stack assessment/plan. Inspect ACTUAL LOCAL post-run c13-docs-view source/dirty work, exact package version, Theia 1.75 editor/Monaco/Markdown APIs and file/editor tests; preserve all owner work. Remote main may be behind the completed local stack. No replays, resets or automatic version change.
+
+GOAL — T1: ONE PRESENTATION BOUNDARY
+Add scoped editor-bottom Source/Diff/Formatted controls for .md and Source/Diff for .txt only; all other files use unmodified Theia editor. Ordinary Source remains the normal editable Monaco file with native save/undo; Diff is enabled only when a real compare basis exists. Implement centered (~720–800px) safe, readable, READ-ONLY Formatted Markdown in the same editor tab, with no editor gutters, unsafe HTML, images or privileged file/url fetch. Reuse existing safe Markdown service, theme tokens and supported Theia editor integration; do not create another Documents widget/secondary Explorer or shadow file writer. Bottom controls must not cover text, block scroll, or cause layout jumps; narrow/keyboard/theme support required.
+
+VERIFY
+Add narrow test/unit/native-doc-editor*.test.ts cases for extension gating, mode availability, read-only formatted, sanitizer and editor preservation. Build changed @dope/theia-extension before tests importing lib; run only new tests plus directly affected shared renderer/theme test(s). Normal implementation+focused validation target <=8m; if Theia seam requires private API or larger refactor, STOP BLOCKED with evidence instead of sprawling. No browser, full aggregate or GUI Green claim.
+
+GENERAL
+Do not implement proposal publishing, card links/Open All, old UI removal or Work. No self-commit, manifest bump or next prompt auto-run. Report source/tests and STOP.

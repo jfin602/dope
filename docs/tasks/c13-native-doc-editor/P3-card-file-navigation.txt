@@ -1,0 +1,21 @@
+TASK: Correction 13 / P3 — Clickable proposal files and Open All Files on both cards
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction at unchanged version; no manifest, pin or lockfile change.
+
+PREFLIGHT — REQUIRED OWNER READINESS
+Read ADR 0054, UI contract, P1/P2 actual receipts and source; inspect existing Docs Chat proposal card/controller, the native /prompt-write proposal card/R3B publisher in the CURRENT LOCAL CHECKOUT and any c13-docs-view UI code. Existing Bridge PlanningStackPublication does NOT substitute for absent native R3B. Check root/project/proposal digest/lease identity and package version; protect dirty work. If the native prompt proposal owner is absent, report BLOCKED with the exact dependency—do not implement a parallel publisher or claim complete integration.
+
+GOAL — T1: ONE CARD NAVIGATION BOUNDARY
+Make EACH affected filename on Documentation Proposal and native Prompt Stack Proposal cards an accessible hotlink opening one exact read-only P2 proposal tab in the existing main editor. Add compact neutral **Open All Files** next to affected-file count on BOTH cards: open individual tabs, deterministic order (P1–Pn for prompt stacks, supporting README in stable place), dedup by exact proposal/digest/path not by filename alone, activate first, preserve other open editor tabs, and handle large stacks through bounded/cancellable batches and truthful partial failures. No extra Explorer/widget. Keep card summary compact and existing Accept/Reject/Revise wired to their ORIGINAL distinct authoritative controllers; opening a tab is not approval. Disable stale/rejected/superseded write actions; keep historical read-only navigation when retained bytes exist.
+
+VERIFY
+Add focused card/open-all tests, including Docs 1–4 file changes, Prompt Stack P1–Pn ordering/README, tab dedup, reentrant clicks, wrong project, partial-open errors and no Work Run/grants. Run test/unit/chat-panel.test.ts and test/unit/phase-stack-ui.test.ts or actual native card suite, plus new native-doc-editor navigation tests; build touched outputs first. No browser/aggregate; normal target <=8m, STOP if requirement needs new publication backend.
+
+GENERAL
+Do not invoke Docs apply/prompt publisher from Open All, change source files, edit started prompts, bump versions or remove old widget. Record evidence and STOP.

@@ -1,0 +1,21 @@
+TASK: Correction 13 / P5 — Manual native Documentation Editor replacement closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction at unchanged version; no manifest, pin or lockfile change.
+
+MANUAL T3 ONLY — FINAL CLOSEOUT, NEVER AUTOMATIC
+Read BOOT.md, AGENTS.md, workflow, ADR 0054, native editor UI contract, assessment/plan, actual c13-docs-view preserved receipts and new P1–P4 source/tests. Verify exact served product commit/dirty source, current version, local native R3B readiness and REAL connected Codex browser. Use an approved disposable project, preserve user work. Never invoke with npm run codex:phase -- c13-native-doc-editor --closeout or claim a headless run observed UI.
+
+REAL BROWSER CASES
+A. Confirm one normal project Explorer and standard Theia editor tab strip; NO standalone Documents viewport, duplicated doc tree, hidden fallback or unrelated editor regression. Open real .md, exercise editable Monaco Source and native Diff with real compare basis, centered read-only Formatted with headings/tables/code/quotes, safe links/images, theme, narrow width, long scroll and editor-bottom controls not obscuring text; save/undo/external stale conflict. Open real .txt: Source + Diff, NO Formatted; unrelated .ts files have no Dope doc toolbar.
+B. Generate an actual protected /docs-review create/update proposal on 2–4 eligible files. Click one affected filename; it opens one read-only proposal tab with exact Original/Proposed/Monaco Diff and correct missing-original behavior. Click Open All: all affected files open as separate existing editor tabs with first activated; repeat to prove no duplicates, preserve already-open canonical file tabs. Reject one proposal, revise a different one, accept a third; verify tab statuses, immutable historical versions, actual canonical bytes and only applied Docs History event, no source write from Ctrl/Cmd+S. Check stale/foreign, project switch/reload, delayed opens and protected path/symlink negatives.
+C. In native Prompt Stack proposal card, click individual P*.txt/README.md and Open All; confirm proposal order, long prompt stack batching/cancel/error, Source/Formatted eligibility, read-only virtual resources and distinct guarded publisher; approve ONLY by card and confirm Work discovery WITHOUT Work Run, grants or Roadmap Gate GREEN. If native /prompt-write R3B is truly missing, mark BLOCKED, never substitute an old Bridge preview or fake PASS.
+D. Inspect keyboard focus, tab switching, narrow/touch scrolling, copy and alternate theme. Record screenshots/event/source receipts; source-only/agent estimates are NOT live GUI proof. Electron parity requires separate native observation.
+
+REPORT
+Create docs/tasks/c13-native-doc-editor/qualification/p5-native-editor-closeout.md with exact served SHA, version, real browser mode/model when relevant, per-case PASS/FAIL/BLOCKED/EVIDENCE GAP, screenshots/paths, actual source file before/after, project/approval identities, tests and outstanding gaps. Preserve historical c13-docs-view and Phase 13 reports; don't call prior tests new evidence. Run final aggregate only if justified on same final source, avoid redundant commands. Unobserved Electron remains a gap. No automatic version change, Git commit, Phase closeout or Work Run. STOP.

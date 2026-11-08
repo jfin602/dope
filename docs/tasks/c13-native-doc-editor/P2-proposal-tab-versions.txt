@@ -1,0 +1,21 @@
+TASK: Correction 13 / P2 — Read-only proposal editor tabs and Monaco comparisons
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction at unchanged version; no manifest, pin or lockfile change.
+
+PREFLIGHT
+Read ADR 0054, UI contract, c13-native-doc-editor assessment/plan, P1 actual source/test receipt, saved ChatDocumentationProposal schema and existing Docs proposal/apply owner. Inspect current Monaco diff and read-only editor resource APIs (do not guess an unsupported private hook). Confirm applicable local version and preserve dirty owner work.
+
+GOAL — T1: ONE PROPOSAL RESOURCE BOUNDARY
+Add proposal-scoped non-file read-only editor tabs in the EXISTING Theia main tab strip for .md/.txt only, keyed by root/worktree, owner, proposal ID, revision/digest and exact path. Supply current retained immutable Original and Proposed bytes from existing guarded read model, with a separate Original/Proposed switch; Diff always compares both through native Monaco comparison and shows precise whitespace/CRLF/additions/removals. For a new file, Original is explicitly absent. Default .md Proposed+Formatted and .txt Proposed+Source. Every proposal view (Source, Diff, Formatted) remains READ-ONLY: no Ctrl/Cmd+S, model alias, FileService, context menu or URI resource scheme can write candidate bytes to canonical project files. Preserve typed stale, rejected, revised, partial-recovery and wrong-project statuses without assuming retained proposal bytes are still approvable. Existing Docs application service alone owns Accept.
+
+VERIFY
+Add focused test/unit/native-doc-editor-proposal.test.ts cases for virtual vs canonical tab identity, per-proposal/path dedup basis, readonly operations, exact versions/new-file semantics, source diff, version/mode independence, late project-switch invalidation, rejection/revision history. Build changed extension first if using lib; run this narrow test plus documentation-review.test.ts only if touched. Confirm no new Docs publisher or delete authorization. Target <=8m; STOP on unsafe editor model semantics.
+
+GENERAL
+No card links/Open All yet, no old widget cleanup, no Work Run, grants, version/commit or Green. Preserve prior c13-docs-view reports. STOP.

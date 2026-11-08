@@ -1,0 +1,23 @@
+TASK: Correction 13 / P4 — Retire duplicate Documents UI and integrate native editor replacement
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction at unchanged version; no manifest, pin or lockfile change.
+
+PREFLIGHT
+Read exact local c13-docs-view P1–P9 source/evidence and P1–P3 native replacement test receipts; verify user dirty work, actual HEAD, 0.13.11 coherent version, native R3B readiness and shared Docs/Stack owners. DO NOT treat prior runner checkpoint as a technical PASS. If native replacement cannot open/review/preserve exact proposal bytes, STOP before deleting the old presentation.
+
+GOAL — T2: RETIRE PRESENTATION + ONE CROSS-OWNER INTEGRATION GATE
+Remove old c13-docs-view standalone center Documents widget, extra .md/.txt file selector, its registration/open command, duplicate custom viewer/editor/content state, obsolete CSS and dead-only tests **after** P1–P3 replacement is source-verified. No hidden feature flag/legacy fallback. Preserve normal project Explorer, Theia editor, shared safe renderer, all Docs create/update/guarded application/History services, distinct prompt-stack publisher/Work discovery, and historical c13-docs-view P*.txt/reports. Check via source search no reachable duplicate Document workspace UI remains.
+
+Run focused cross-boundary matrix against final changed source: real-file Source edit/save/dirty conflict, MD Source/Diff/Formatted vs TXT Source/Diff, read-only virtual proposal tabs, exact Original/Proposed/source diff/absent-file, Docs proposal Accept/Reject/Revise/History actual verified effects, source-stale/foreign/symlink, reopened/revised/rejected tabs/project switch, both card Open All ordering and dedup, native prompt publication and NO Work grant/Run/Gate GREEN. Test deletion is unpublishable, not silently accepted. Fix only discovered seam defects, keep no second writer.
+
+VERIFY
+Inspect package.json nested scripts and compiled lib imports. Build changed packages once in dependency order, then one targeted node --test invocation for new native-doc-editor*.test.ts and directly affected chat-panel/documentation-review/documentation-application/phase-stack-ui/planning-stack-publication tests. Include theme/message-code-copy/navigator tests when affected by CSS/renderer/registration deletion. No per-step npm run check, packaging or browser; P5 owns T3. Record exact commands, counts, source SHA, failures and missing-native-publisher gaps. This dedicated T2 may exceed ordinary 8m implementation target; does not grant fake Green.
+
+GENERAL
+Preserve dirty work and executed history; no source self-commit, version bump, automatic Work Run or P5 auto-run. STOP NOT GREEN/BLOCKED on safety failure. STOP.
