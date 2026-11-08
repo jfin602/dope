@@ -147,7 +147,8 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
                     acceptanceCriteria: meta.acceptanceCriteria, validationTargets: meta.validationTargets,
                     status: 'draft', delegablePaths: meta.workingSet, humanReservedPaths: [] } };
         });
-        if (this.selected && work.filter(item => item.tier === 'T2').length !==
+        if (!work.some(item => item.tier === 'T2') ||
+            this.selected && work.filter(item => item.tier === 'T2').length !==
             this.selected.plan.work.filter(item => item.tier === 'T2').length)
             throw new Error('PROPOSAL_PROMPT_T2_GATE');
         const allInstructionText = snapshot.stages.map(stage => stage.content).join('\n');

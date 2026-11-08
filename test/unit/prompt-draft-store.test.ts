@@ -3,13 +3,18 @@ import { createHash, randomUUID } from 'node:crypto';
 import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
+import { discoverRoadmapTaskStacks } from '../../packages/agent-core/lib/node/roadmap-task-discovery.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { newPromptDraftIdentity } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 import { PromptDraftStore } from '../../packages/theia-extension/lib/node/prompt-draft-store.js';
+import { capturePromptSourceEvidence } from '../../packages/theia-extension/lib/node/prompt-stack-proposal.js';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+const execute = promisify(execFile);
 const basis = { head: 'a'.repeat(40), packageVersion: '0.13.11', worktreeFingerprint: 'b'.repeat(64) };
 
 async function fixture(run: (value: Awaited<ReturnType<typeof setup>>) => Promise<void>) {
@@ -48,6 +53,9 @@ test('named stages persist atomically with revisions, broker hashes and dependen
     const assessment = await v.store.stage(v.root, v.identity, v.lease, 'assessment', 0,
         { scope: 'Source checked', count: 2 }, v.refs);
     assert.equal(assessment.assessment?.contentHash, hash('{"count":2,"scope":"Source checked"}'));
+    await assert.rejects(v.store.stage(v.root, v.identity, v.lease, 'plan', 1,
+        { details: 'x'.repeat(33_000) }, v.refs), /oversized/);
+    assert.equal((await v.store.read(v.root, v.identity, v.lease)).revision, 1);
     assert.equal((await new PromptDraftStore(new ChatRepository(), new ChatProjectGrounder({} as never),
         async () => basis).read(v.root, v.identity, v.lease)).revision, 1);
     const plan = await v.store.stage(v.root, v.identity, v.lease, 'plan', 1,
@@ -173,3 +181,69 @@ test('replaced draft file is rejected before update and the saved snapshot can b
     await writeFile(file, original);
     assert.equal((await v.store.read(v.root, v.identity, v.lease)).revision, 0);
 }));
+
+test('two project-bound drafts stay noncanonical across restart, concurrent stage and real source drift', async () => {
+    const temporary = await mkdtemp(join(tmpdir(), 'dope-draft-chain-'));
+    const roots = [join(temporary, 'first'), join(temporary, 'second')];
+    try {
+        for (const root of roots) {
+            await execute('git', ['clone', '-q', '--local', '--no-hardlinks', '--no-checkout', process.cwd(), root]);
+            await execute('git', ['-C', root, 'read-tree', 'HEAD']);
+            await execute('git', ['-C', root, 'sparse-checkout', 'init', '--cone']);
+            await writeFile(join(root, '.gitignore'), await readFile(join(process.cwd(), '.gitignore')));
+            await mkdir(join(root, 'src'));
+            await writeFile(join(root, 'src', 'feature.js'), 'export const feature = true;\n');
+            await writeFile(join(root, 'package.json'), '{"name":"draft-fixture","version":"0.13.11"}\n');
+            await mkdir(join(root, 'docs', 'tasks'), { recursive: true });
+        }
+        const repo = new ChatRepository(), grounder = new ChatProjectGrounder({} as never);
+        const drafts = [];
+        for (const [index, root] of roots.entries()) {
+            const source = await capturePromptSourceEvidence(root);
+            const chatId = randomUUID(), userMessageId = randomUUID();
+            await repo.mutate(root, (await repo.read(root)).revision,
+                { type: 'create-chat', id: chatId, folderPath: '' });
+            const lease = await repo.claim(root, chatId, 'owner');
+            if (!lease.acquired) throw new Error('Chat lease missing');
+            const identity = newPromptDraftIdentity(index ? 'second-task' : 'first-task', root,
+                chatId, userMessageId, lease.token, source.head, source.packageVersion,
+                source.worktreeFingerprint);
+            await repo.mutate(root, (await repo.read(root)).revision, { type: 'append-user', chatId,
+                message: { schemaVersion: 1, id: userMessageId, role: 'user',
+                    createdAt: new Date().toISOString(), content: `/prompt-ass ${identity.slug} Review source`,
+                    contextRefs: [], promptDraft: identity } }, lease.token);
+            const page = await grounder.readFile(root, 'src/feature.js');
+            const refs = [{ id: 'src/feature.js', sourceHash: page.blocks[0].ref.sourceHash,
+                contentHash: page.blocks[0].ref.contentHash, projectId: hash(root) }];
+            const store = new PromptDraftStore(repo, grounder);
+            await store.begin(root, identity, lease.token);
+            drafts.push({ root, identity, lease: lease.token, refs, store, source });
+        }
+        const first = drafts[0], second = drafts[1];
+        const competing = await Promise.allSettled([
+            first.store.stage(first.root, first.identity, first.lease, 'assessment', 0,
+                { scope: 'First accepted' }, first.refs),
+            first.store.stage(first.root, first.identity, first.lease, 'assessment', 0,
+                { scope: 'Competing revision' }, first.refs)
+        ]);
+        assert.deepEqual(competing.map(result => result.status).sort(), ['fulfilled', 'rejected']);
+        assert.equal((await second.store.stage(second.root, second.identity, second.lease,
+            'assessment', 0, { scope: 'Second project' }, second.refs)).revision, 1);
+        assert.equal((await capturePromptSourceEvidence(first.root)).worktreeFingerprint,
+            first.source.worktreeFingerprint);
+        const status = (await execute('git', ['-C', first.root, 'status', '--porcelain=v1',
+            '--untracked-files=all'])).stdout;
+        assert.doesNotMatch(status, /\.dope|first-task/u);
+        assert.equal((await discoverRoadmapTaskStacks(first.root)).length, 0);
+        assert.doesNotMatch((await grounder.listDirectory(first.root, 'docs/tasks')).blocks
+            .map(block => block.text).join('\n'), /first-task|\.dope/u);
+        const reopened = new PromptDraftStore(new ChatRepository(), new ChatProjectGrounder({} as never));
+        assert.equal((await reopened.read(first.root, first.identity, first.lease)).revision, 1);
+        await assert.rejects(reopened.read(second.root, first.identity, first.lease), /project|identity|lease/u);
+        await writeFile(join(first.root, 'src', 'feature.js'), 'export const feature = false;\n');
+        assert.notEqual((await capturePromptSourceEvidence(first.root)).worktreeFingerprint,
+            first.source.worktreeFingerprint);
+        await assert.rejects(reopened.read(first.root, first.identity, first.lease), /source changed/u);
+        assert.equal((await reopened.read(second.root, second.identity, second.lease)).revision, 1);
+    } finally { await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 25 }); }
+});

@@ -81,10 +81,10 @@ test('native prompt stages save an exact review candidate and publish only after
             } else {
                 await request.projectTools!.execute('read_file',
                     { path: 'test/feature.test.ts', offset: 0, maxBytes: 4096 });
-                answers[1] = JSON.stringify({ work: [1, 2].map(number => ({
+                answers[1] = JSON.stringify({ work: Array.from({ length: 10 }, (_, index) => index + 1).map(number => ({
                     id: `step-${number}`, title: `Implement feature ${number}`,
                     objective: `Implement feature responsibility ${number} in the inspected source`,
-                    tier: number === 2 ? 'T2' : 'T1', dependsOn: number === 2 ? ['step-1'] : [],
+                    tier: number === 10 ? 'T2' : 'T1', dependsOn: number > 1 ? [`step-${number - 1}`] : [],
                     workingSet: ['src/feature.js'],
                     validationTargets: ['Run test/feature.test.ts'], buildNeeds: 'none',
                     acceptanceCriteria: [`Feature ${number} works`] })),
@@ -106,7 +106,8 @@ test('native prompt stages save an exact review candidate and publish only after
         }
         if (turn === 2 || turn === 3 || turn === 5) {
             const steps = turn === 2 ? [work(1, 'T1')] :
-                [work(1, 'T1'), work(2, 'T2', ['step-1'])];
+                Array.from({ length: 10 }, (_, index) => work(index + 1,
+                    index === 9 ? 'T2' : 'T1', index ? [`step-${index}`] : []));
             for (const [index, value] of [...steps, ...(turn === 2 ? [] : [closeout])].entries()) {
                 const { id: _id, ...fields } = value as typeof value & { id?: string };
                 const receipt = JSON.parse(await request.projectTools!.execute('proposal_stage_prompt', {
@@ -142,7 +143,7 @@ test('native prompt stages save an exact review candidate and publish only after
         if (!lease.acquired) throw new Error('Lease missing');
         await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/prompt-ass clamp-api-correction Build the feature' });
+            content: '/prompt-ass clamp-api-correction Build ten work prompts plus a manual closeout' });
         const assessed = (await backend.get(projectHandle, chatId))!;
         const owner = assessed.messages.find(message => message.role === 'user' && message.promptDraft);
         assert.ok(owner?.role === 'user' && owner.promptDraft);
@@ -158,7 +159,7 @@ test('native prompt stages save an exact review candidate and publish only after
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan' }),
         /Select the current Prompt Stack Draft card/);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan',
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan Keep the existing API',
             promptDraftTarget: { ...target('assessment', assessmentMessage.id), projectId: 'wrong' } }),
         /stale or belongs to another owner/);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
@@ -166,7 +167,7 @@ test('native prompt stages save an exact review candidate and publish only after
             promptDraftTarget: { ...target('assessment', assessmentMessage.id), stageRevision: 99 } }),
         /stage changed/);
         await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan',
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-plan Keep the existing API',
             promptDraftTarget: target('assessment', assessmentMessage.id) });
         const planned = (await backend.get(projectHandle, chatId))!;
         const planMessage = planned.messages.filter(message => message.role === 'assistant' &&
@@ -174,7 +175,7 @@ test('native prompt stages save an exact review candidate and publish only after
         assert.ok(planMessage);
         const writeTarget = target('plan', planMessage.id);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write',
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write Include boundary cases',
             promptDraftTarget: { ...writeTarget, stageRevision: 99 } }), /stage changed/);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write',
@@ -183,7 +184,7 @@ test('native prompt stages save an exact review candidate and publish only after
         await assert.rejects(readFile(join(root, 'docs', 'tasks', 'clamp-api-correction', 'P1-implement-feature.txt')),
             /ENOENT/);
         await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write',
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: '/prompt-write Include boundary cases',
             promptDraftTarget: writeTarget });
         const chat = (await backend.get(projectHandle, chatId))!;
         const completed = chat.messages.filter(message => message.role === 'assistant' &&
@@ -205,9 +206,11 @@ test('native prompt stages save an exact review candidate and publish only after
             'docs/tasks/clamp-api-correction/prompt-assessment.md',
             'docs/tasks/clamp-api-correction/implementation-plan.md',
             'docs/tasks/clamp-api-correction/README.md',
-            'docs/tasks/clamp-api-correction/P1-implement-feature-1.txt',
-            'docs/tasks/clamp-api-correction/P2-implement-feature-2.txt',
-            'docs/tasks/clamp-api-correction/P3-manual-feature-closeout.txt']);
+            ...Array.from({ length: 10 }, (_, index) =>
+                `docs/tasks/clamp-api-correction/P${index + 1}-implement-feature-${index + 1}.txt`),
+            'docs/tasks/clamp-api-correction/P11-manual-feature-closeout.txt']);
+        await assert.rejects(readFile(join(root, '.dope', 'planning-bridge-publications',
+            'clamp-api-correction.json')), /ENOENT/);
         await assert.rejects(readFile(join(root, 'docs', 'tasks', 'clamp-api-correction', 'P1-implement-feature.txt')),
             /ENOENT/);
         await backend.release(projectHandle, chatId, lease.token);

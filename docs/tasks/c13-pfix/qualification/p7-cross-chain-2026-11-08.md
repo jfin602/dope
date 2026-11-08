@@ -1,0 +1,17 @@
+# P7 cross-chain integration — 2026-11-08
+
+**Disposition: PARTIAL / NOT GREEN.** Source basis: pre-task HEAD `3e7c78856db227963ae2221cf3e3ae7c14649536`, clean at entry; version `0.13.11` unchanged. This is deterministic source-backed T2 evidence, not live GPT-OSS, connected browser or native Electron qualification. The runner owns the implementation checkpoint; this report and all changes remain uncommitted at handoff.
+
+## Changed source and checks
+
+- `packages/theia-extension/src/node/incremental-prompt-stack.ts`: reject a complete unselected prompt stack with no T2 work prompt before source verification or proposal creation. The existing focused negative exposed a `TypeError` in that case instead of the required `PROPOSAL_PROMPT_T2_GATE`; the rebuilt source now returns the guarded error.
+- `test/unit/chat-backend.test.ts`: exercise the protected brokered read → structured Assessment → typed Plan chip → typed Write chip → ten ordered work stages → separate P11 manual closeout → pending saved proposal → restart/lease recovery → stale source denial → explicit Accept path. Both successful later stage turns include optional owner notes. The test checks reviewed paths, absent canonical prompt bytes and absent publication journal before Accept, then exact published bytes and replay denial.
+- `test/unit/prompt-draft-store.test.ts`: exercise two named drafts in distinct project roots, concurrent same-revision attempts, restart read, cross-project denial, Git status and source-fingerprint exclusion for saved draft files, ordinary Docs/Work discovery exclusion, and a real source edit invalidating the draft. Existing cases in the same suite cover duplicate slug, stale revision, oversized records, symlink substitution, canonical collision, abort and assessment replacement clearing Plan.
+
+Verification: `corepack yarn workspace @dope/theia-extension build` PASS; focused `node --test --test-name-pattern='native prompt stages save an exact review candidate' test/unit/chat-backend.test.ts` PASS (1 selected test); seven directly affected suites (`prompt-draft-store`, `prompt-authoring-stage`, `incremental-prompt-stack`, `incremental-proposal-controller`, `proposal-model-tools`, `chat-presentation`, `planning-stack-publication`) PASS (7 files). `git diff --check` PASS. Only the extension was rebuilt because the tests import its compiled `lib`; no dependency source changed. No broad aggregate, Electron package, browser, Work Run, publication in the owner workspace, or version change was performed.
+
+## Remaining qualification gaps
+
+- This P7 addition does not execute a real Pi worker/model turn or a native GUI. The backend fixture uses the real project-tool dispatch with a deterministic fake model; P8 must observe actual selected GPT-OSS and connected browser behavior.
+- A second differently named draft in the **same** project, chip switching across two active Chats/projects, Plan replacement invalidating a *pending* prompt proposal, canceled/failed revision retention through the full Chat publisher, and applied-only History after canonical effects were not newly verified as one cross-chain fixture. Existing individual tests for these owners remain source evidence only.
+- The adversarial cases are distributed across focused suites, not a single exhaustive lifecycle matrix. P6 and R2 remain NOT GREEN; R3B's historical PARTIAL remains intact. No Work task/grant/Run, candidate promotion, Criterion/Gate GREEN, Phase close, or broader P7 technical PASS is inferred.
