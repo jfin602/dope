@@ -1,0 +1,21 @@
+TASK: Correction 13 / P2 — Incremental source-backed Docs proposal staging
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction only: no manifest, workspace, lockfile or project-version bump.
+
+PREFLIGHT
+Read ADR 0055, shared contract, the stack plan and P1 source/evidence. Inspect actual documentation-skill-review.ts, documentation-discovery.ts, documentation-review.ts, documentation-application.ts, ChatBackend protected /docs-review path, full/late-page broker reads, native Docs proposal state, and direct relevant tests. Verify R3B historical status and preserve its scope. Do not assume uncommitted owner work is yours.
+
+GOAL — T1: ONE DOCUMENT ADAPTER
+Make incremental staging the DEFAULT protected /docs-review generation process. During one selected Pi tool loop, permit multiple bounded proposal_stage_document operations: (a) unique exact anchored excerpt/section replacements on actually broker-read existing source, (b) ordered byte-bounded chunks of a new .md/.txt file. Dope materializes every stage against pinned original/current candidate bytes and preserves unrelated bytes, line endings, target identity and approved path scope. A listed/searched file is not an inspected source. Reject missing, overlapping, repeated nonunique, ambiguous, source-changed or unobserved-late anchors; never use a guessed full-file rewrite to bypass read evidence.
+
+FINISH AND REVIEW
+proposal_finish independently checks explicit required creates/updates, requested target set, current hashes, file coverage, valid content, cross-doc consistency, limits and current project/owner before forming the single existing source-bound ChatDocumentationProposal; never use final model JSON {changes: [...]} as the new output packet. Pass finalMessage as display-only data for P4. Revisions use staged copy-on-write changes from the selected pending proposal; cancel/invalid revision preserves earlier complete candidate and its digest. Preserve Docs application create/update only, Accept/Reject/Revise, native read-only tabs, path/symlink/collision/source checks, applied-only Project History and no user-facing /docs-apply. Neither stage nor finish writes canonical files.
+
+VERIFY
+Focused documentation-skill-review, documentation-skill-backend, documentation-review and documentation-application tests plus new incremental adapter cases: small replacement, multiple changes exceeding the former 4-operation packet, multi-chunk large create, late-page actual read, stale/foreign/ambiguous/no-read rejection, failure retention, no project write before explicit Accept, and exact post-approval bytes on simulated owner accept. Only relevant package builds and git diff --check. Keep a small honest error path on incomplete proposal, no bulk model-output fallback. No browser.
