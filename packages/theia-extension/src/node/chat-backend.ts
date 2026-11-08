@@ -3192,8 +3192,13 @@ export class ChatBackend implements ChatService {
                     storageCode === 'EIO' ? 'Chat activity storage failed with an I/O error' :
                     error instanceof Error && /^(?:Pi Chat stream backpressure limit exceeded|Pi worker output limit exceeded|Chat activity storage limit reached)$/u.test(error.message) ?
                         error.message : 'Conversation failed';
-                const diagnostic = undefined;
-                const failure = diagnostic && !cancelled ? `${baseFailure}. ${diagnostic}`.slice(0, 1000) : baseFailure;
+                const assessmentCode = promptStage?.stage === 'prompt-ass' && error instanceof Error ?
+                    /^ASSESSMENT_[A-Z_]+:/u.exec(error.message)?.[0].slice(0, -1) : undefined;
+                const diagnostic = assessmentCode && !cancelled ?
+                    `Assessment blocked (${assessmentCode}): ${assessmentCode === 'ASSESSMENT_UNSUPPORTED_SOURCE' ?
+                        'Citation does not match one unique verified source read. Read the source again and use an exact, unique quote.' :
+                        'The structured assessment is invalid. Review the assessment format and retry Assessment.'}` : undefined;
+                const failure = diagnostic ?? (cancelled ? 'Conversation cancelled' : baseFailure);
                 if (retainStreamedAnswer && output && output.startsWith(persistedPartial))
                     try { await persistOutputPartial(output); } catch { /* Storage failure is reported below. */ }
                 try { await flushActivity(); } catch { /* Final mutation below still carries the captured snapshot. */ }

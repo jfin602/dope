@@ -21,7 +21,7 @@ test('explicit current-turn tool opt-out is narrow and distinct from read-only c
 });
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapGreenfield } from '../../packages/project-intelligence/lib/node/roadmap-greenfield.js';
-import { chatDiagnosticCopyText, chatResponseCopyText, planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
+import { chatDiagnosticCopyText, chatResponseCopyText, currentPromptDraft, planningOutcome } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { ChatContextComposer } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import type { ChatEvent } from '../../packages/chat/lib/service.js';
@@ -69,11 +69,11 @@ test('native prompt stages save an exact review candidate and publish only after
     async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
         const turn = calls++;
         if (turn < 2) {
-            const page = JSON.parse(await request.projectTools!.execute('read_file',
-                { path: 'src/feature.js', offset: 0, maxBytes: 4096 }));
+            await request.projectTools!.execute('read_file',
+                { path: 'src/feature.js', offset: 0, maxBytes: 4096 });
             if (turn === 0) {
                 const finding = { claim: 'Feature source was read', path: 'src/feature.js',
-                    start: 0, end: 6, sourceHash: page.sourceHash, quote: 'export' };
+                    quote: 'export' };
                 answers[0] = JSON.stringify({ scope: 'Implement source-bound feature',
                     observations: [finding], preservation: [finding], dependencies: [finding],
                     risks: [finding], tiers: { T1: 'Focused implementation',
@@ -252,6 +252,66 @@ test('native prompt stages save an exact review candidate and publish only after
             proposal.id, proposal.digest), /Pending prompt proposal required/);
     } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
+});
+
+test('P8-style assessment rejection persists one coded blocked draft after backend restart', async () => {
+    const temporary = await folder(), root = join(temporary, 'project');
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(join(root, 'src', 'clamp.js'), 'export function clamp(value) {\n  return value;\n}\n');
+    await writeFile(join(root, 'package.json'), '{"name":"clamp","version":"1.4.2"}\n');
+    await execute('git', ['init', '-q', root]);
+    await execute('git', ['-C', root, 'add', 'src/clamp.js', 'package.json']);
+    await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+        'commit', '-qm', 'Fixture']);
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
+                maxInputTokens: 16384 } }] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        await request.projectTools!.execute('read_file', { path: 'src/clamp.js', offset: 0, maxBytes: 4096 });
+        const finding = { claim: 'Saved P8 style source', path: 'src/clamp.js',
+            quote: 'export function clamp(value) {\\n  return value;' };
+        yield { type: 'complete' as const, text: JSON.stringify({ scope: 'Clamp review',
+            observations: [finding], preservation: [finding], dependencies: [finding], risks: [finding],
+            tiers: { T1: 'Focused', T2: 'Integration', T3: 'Manual browser' } }),
+        actualModelId: 'q4', finishReason: 'stop' as const,
+        usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 16384 }) };
+    const makeBackend = () => new ChatBackend(new ChatRepository(), { notifyChatEvent() {} },
+        models as never, composer as never, undefined, new ChatProjectGrounder({} as never));
+    const backend = makeBackend();
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Clamp discussion' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/prompt-ass clamp-api-correction Inspect src/clamp.js' }), /ASSESSMENT_UNSUPPORTED_SOURCE/);
+        const saved = (await backend.get(projectHandle, chatId))!;
+        const assistant = saved.messages.find(message => message.role === 'assistant');
+        assert.ok(assistant?.role === 'assistant');
+        assert.equal(assistant.execution.status, 'failed');
+        assert.match(assistant.execution.failure ?? '', /ASSESSMENT_UNSUPPORTED_SOURCE/);
+        assert.match(assistant.execution.failure ?? '', /Read the source again/);
+        assert.equal(currentPromptDraft(saved)?.error, assistant.execution.failure);
+        assert.equal(currentPromptDraft(saved)?.state, 'error');
+        assert.equal(saved.messages.filter(message => message.role === 'assistant').length, 1);
+        await assert.rejects(readFile(join(root, 'docs', 'tasks', 'clamp-api-correction', 'prompt-assessment.md')),
+            /ENOENT/);
+        backend.dispose();
+        const restarted = makeBackend();
+        try {
+            const { projectHandle: nextHandle } = await restarted.attach(pathToFileURL(root).href);
+            const reloaded = (await restarted.get(nextHandle, chatId))!;
+            assert.equal(currentPromptDraft(reloaded)?.error, assistant.execution.failure);
+            assert.equal(currentPromptDraft(reloaded)?.state, 'error');
+            assert.equal(reloaded.messages.filter(message => message.role === 'assistant').length, 1);
+        } finally { restarted.dispose(); }
+    } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true }); }
 });
 test('final deltas reach Chat before completion and tool resets replace transient text', async () => {
     const root = await folder(), repository = new ChatRepository(), events: ChatEvent[] = [];

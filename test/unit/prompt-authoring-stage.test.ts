@@ -227,8 +227,7 @@ test('structured assessment requires actual brokered byte ranges and discloses o
             ...[first, late].map(page => ({ kind: 'file', id: page.path, origin: 'tool',
                 projectId, sourceHash: page.sourceHash, start: page.offset, end: page.endOffset }))] as never;
         const finding = { claim: 'Late source section is present', path: 'README.md',
-            start: late.offset, end: late.offset + 5, sourceHash: late.sourceHash,
-            quote: late.text.slice(0, 5) };
+            quote: 'late section' };
         const evidence = [first, late].map(page => ({ path: page.path, start: page.offset,
             end: page.endOffset, sourceHash: page.sourceHash, text: page.text }));
         const input = { scope: 'Assess the requested source', observations: [finding],
@@ -239,17 +238,83 @@ test('structured assessment requires actual brokered byte ranges and discloses o
             '/prompt-ass safe-task Inspect README.md and AGENTS.md', evidence);
         assert.deepEqual(record.omittedRequestedFiles, ['AGENTS.md']);
         assert.match(renderAssessment(record), /README\.md bytes 5400/);
+        assert.equal(record.observations[0].sourceHash, late.sourceHash);
+        assert.equal(record.observations[0].end, 5412);
         assert.match(renderAssessment(record), /T1 focused source and unit checks/);
         assert.match(renderAssessment(record), /T2 cross-boundary integration/);
         assert.match(renderAssessment(record), /T3 independent manual browser qualification/);
         assert.throws(() => validatedAssessment(JSON.stringify({ ...input,
             observations: [{ ...finding, path: 'AGENTS.md' }] }), refs, '', evidence), /UNSUPPORTED_SOURCE/);
         assert.throws(() => validatedAssessment(JSON.stringify({ ...input,
-            observations: [{ ...finding, start: 4095, end: 5001 }] }), refs, '', evidence), /UNSUPPORTED_SOURCE/);
+            observations: [{ ...finding, quote: 'early\nlate section' }] }), refs, '', evidence), /UNSUPPORTED_SOURCE/);
         assert.throws(() => validatedAssessment(JSON.stringify({ ...input,
             observations: [{ ...finding, quote: 'false' }] }), refs, '', evidence), /UNSUPPORTED_SOURCE/);
         assert.throws(() => validatedAssessment('x'.repeat(20_001), refs, '', evidence), /PAYLOAD_LIMIT/);
         await writeFile(join(root, 'README.md'), 'changed');
         await assert.rejects(grounder.readFileRange(root, 'README.md', 0, 1, first.sourceHash), /Stale/);
     } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('assessment resolves exact ASCII and UTF-8 citations across brokered pages and files', () => {
+    const pages = [
+        { path: 'src/clamp.js', start: 0, text: 'export const café = 1;\n', sourceHash: 'a'.repeat(64) },
+        { path: 'src/clamp.js', start: 100, text: 'return Math.min(value, max);\n', sourceHash: 'a'.repeat(64) },
+        { path: 'test/clamp.test.js', start: 0, text: 'assert.equal(clamp(4), 4);\n', sourceHash: 'b'.repeat(64) }
+    ].map(page => ({ ...page, end: page.start + Buffer.byteLength(page.text, 'utf8') }));
+    const refs = pages.map(page => ({ kind: 'file', id: page.path, origin: 'tool',
+        sourceHash: page.sourceHash, start: page.start, end: page.end })) as never;
+    const findings = [
+        { claim: 'Unicode source', path: 'src/clamp.js', quote: 'café' },
+        { claim: 'Late source', path: 'src/clamp.js', quote: 'Math.min(value, max)' },
+        { claim: 'Test source', path: 'test/clamp.test.js', quote: 'clamp(4)' }
+    ];
+    const input = { scope: 'Review clamp source', observations: findings,
+        preservation: [findings[0]], dependencies: [findings[1]], risks: [findings[2]],
+        tiers: { T1: 'Focused tests', T2: 'Integration', T3: 'Manual browser' } };
+    const check = (candidate: unknown, read = refs, observed = pages) =>
+        validatedAssessment(JSON.stringify(candidate), read, '', observed);
+    const record = check(input);
+    assert.deepEqual(record.observations.map(item => [item.start, item.end, item.sourceHash]),
+        [[13, 18, 'a'.repeat(64)], [107, 127, 'a'.repeat(64)], [13, 21, 'b'.repeat(64)]]);
+    assert.throws(() => check({ ...input, observations: [{ ...findings[0], quote: 'never observed' }] }),
+        /UNSUPPORTED_SOURCE/);
+    assert.throws(() => check({ ...input, observations: [{ ...findings[0], path: 'test/clamp.test.js' }] }),
+        /UNSUPPORTED_SOURCE/);
+    assert.throws(() => check({ ...input, observations: [{ ...findings[0], path: 'listed.js' }] },
+        [...refs, { kind: 'path-search', id: 'listed.js', origin: 'tool' }] as never), /UNSUPPORTED_SOURCE/);
+    assert.throws(() => check(input, refs.slice(1) as never), /UNSUPPORTED_SOURCE/);
+    assert.throws(() => check(input, refs, pages.map(page => page.path === 'src/clamp.js' && page.start === 0 ?
+        { ...page, sourceHash: 'c'.repeat(64) } : page)), /UNSUPPORTED_SOURCE/);
+    assert.throws(() => check({ ...input, observations: [{ ...findings[0], quote: 'Math.min(value, max);\nnot read' }] }),
+        /UNSUPPORTED_SOURCE/);
+    assert.throws(() => check({ ...input, observations: [{ ...findings[0], start: 0,
+        end: 18, sourceHash: 'a'.repeat(64) }] }), /ASSESSMENT_CITATION/);
+    assert.throws(() => check({ ...input, observations: [{ ...findings[0], quote: 'export' }] },
+        [...refs, { kind: 'file', id: 'src/clamp.js', origin: 'tool',
+            sourceHash: 'a'.repeat(64), start: 200, end: 200 + Buffer.byteLength(pages[0].text) }] as never,
+        [...pages, { ...pages[0], start: 200, end: 200 + Buffer.byteLength(pages[0].text) }]),
+    /ambiguous repeated matches/);
+});
+
+test('saved P8 GPT-OSS citation is denied while an exact quote from that same read gets trusted metadata', () => {
+    const source = "export function clamp(value, min, max) {\n  if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {\n    throw new TypeError('clamp expects numbers');\n  }\n  if (min > max) throw new RangeError('min must be at most max');\n  return Math.min(Math.max(value, min), max);\n}\n";
+    const sourceHash = 'cbf7b0f869f07dc1835ac5a09706b9b5e7184ae1d5e4c385c02d8ffd45d44431';
+    const evidence = [{ path: 'src/clamp.js', start: 0, end: 298, sourceHash, text: source }];
+    const refs = [{ kind: 'file', id: 'src/clamp.js', origin: 'tool', start: 0,
+        end: 298, sourceHash }] as never;
+    const p8 = { claim: 'public API currently accepts non-finite numbers', path: 'src/clamp.js',
+        start: 0, end: 298, sourceHash,
+        quote: "export function clamp(value, min, max) {\\n  if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {" };
+    const candidate = (finding: unknown) => ({ scope: 'clamp API implementation review',
+        observations: [finding], preservation: [finding], dependencies: [finding], risks: [finding],
+        tiers: { T1: 'Focused source', T2: 'Integration', T3: 'Manual browser' } });
+    assert.throws(() => validatedAssessment(JSON.stringify(candidate(p8)), refs, '', evidence),
+        /ASSESSMENT_CITATION/);
+    const exact = { claim: p8.claim, path: p8.path,
+        quote: "if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {" };
+    const record = validatedAssessment(JSON.stringify(candidate(exact)), refs, '', evidence);
+    assert.equal(record.observations[0].start, 43);
+    assert.equal(record.observations[0].sourceHash, sourceHash);
+    assert.throws(() => validatedAssessment(JSON.stringify(candidate({ ...exact,
+        quote: p8.quote })), refs, '', evidence), /UNSUPPORTED_SOURCE/);
 });

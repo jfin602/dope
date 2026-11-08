@@ -132,7 +132,7 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
         prior.plan && `Selected plan ${prior.plan.id}:\n${planRecord ? JSON.stringify(planRecord) :
             prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read relevant source and tests with read_file; report omissions. Keep the final response under 12,000 characters.';
-    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Return only one JSON object with exact keys scope, observations, preservation, dependencies, risks, tiers. scope is a short string. Each of observations, preservation, dependencies, risks is an array of {claim,path,start,end,sourceHash,quote}; quote is an exact short UTF-8 excerpt occupying start..end within a successful read_file result. Cite only brokered file ranges, using the sourceHash returned by the broker. A listed or searched path is not read evidence. tiers has T1, T2, T3 short strings: T1 focused source/unit work, T2 cross-boundary integration, T3 independent manual browser qualification. Do not include a Markdown report or invent omitted-file lists; Dope checks retrieval and renders the assessment.`;
+    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Return only one JSON object with exact keys scope, observations, preservation, dependencies, risks, tiers. scope is a short string. Each of observations, preservation, dependencies, risks is an array of {claim,path,quote}; quote must be an exact short excerpt from a successful read_file result, unique within observed reads for that file. Use a longer exact excerpt if a quote repeats. For a line break inside a quote, JSON-escape the actual newline as \\n, not a literal backslash followed by n. Do not provide byte offsets or hashes; Dope resolves them from brokered reads. A listed or searched path is not read evidence. tiers is an object with T1, T2, T3 short string properties: T1 focused source/unit work, T2 cross-boundary integration, T3 independent manual browser qualification. Do not include a Markdown report or invent omitted-file lists; Dope checks retrieval and renders the assessment.`;
     if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn one compact JSON object with exact keys work, closeout, efficiencyAudit. work is an ordered array of bounded {id,title,objective,tier,dependsOn,workingSet,validationTargets,buildNeeds,acceptanceCriteria} records; tier is T1 for focused implementation or T2 for explicit cross-boundary integration. Use stable step-N IDs and prior IDs for dependencies. workingSet contains only broker-read source/test paths; read_file each relevant source and late page before claiming it. buildNeeds states the actual narrow compiled-output requirement or "none". closeout has {title,objective,manualReason,browserRequired:true,acceptanceCriteria,tier:"T3"} and is separate from work. efficiencyAudit has exactly ten concise findings in docs/workflow.md order: single responsibility, 8/10/15-minute runtime, test precision, build precision, evidence distribution, command deduplication, model economy and deferral, runnable/traceable contract, UI Design Compliance (ADR 0016 and theme tokens if applicable), Human Usability (ADR 0037, entry/feedback/recovery/keyboard/narrow if applicable). Never invent CI, browser demo files, CommonJS adapters or dependencies. Do not return Markdown or claim publication.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
@@ -154,6 +154,7 @@ export function requestedWorkPromptCount(...texts: string[]): number | undefined
 
 export interface AssessmentFinding { claim: string; path: string; start: number; end: number;
     sourceHash: string; quote: string }
+interface AssessmentCitation { claim: string; path: string; quote: string }
 export interface AssessmentRead { path: string; start: number; end: number; sourceHash: string; text: string }
 export interface AssessmentRecord {
     scope: string; observations: AssessmentFinding[]; preservation: AssessmentFinding[];
@@ -299,20 +300,31 @@ export function validatedAssessment(modelText: string,
             throw new Error(`ASSESSMENT_${kind.toUpperCase()}: Supply 1–12 source-backed findings`);
         findings[kind] = items.map((raw: unknown) => {
             if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
-                Object.keys(raw).sort().join(',') !== 'claim,end,path,quote,sourceHash,start')
-                throw new Error(`ASSESSMENT_CITATION: ${kind} requires claim, path, start, end, sourceHash and quote`);
-            const item = raw as AssessmentFinding;
-            if (!short(item.claim) || !short(item.quote, 200) || typeof item.path !== 'string' ||
-                !Number.isSafeInteger(item.start) || !Number.isSafeInteger(item.end) ||
-                !read.some(ref => ref.id === item.path && ref.sourceHash === item.sourceHash &&
-                    item.start >= ref.start! && item.end <= ref.end! && item.end > item.start) ||
-                !evidence.some(page => page.path === item.path && page.sourceHash === item.sourceHash &&
-                    item.start >= page.start && item.end <= page.end &&
-                    page.text.includes(item.quote) &&
-                    Buffer.from(page.text, 'utf8').subarray(item.start - page.start,
-                        item.end - page.start).toString('utf8') === item.quote))
-                throw new Error(`ASSESSMENT_UNSUPPORTED_SOURCE: ${kind} cites ${String(item.path).slice(0, 100)} outside a brokered read_file range or the quote differs; read that range and retry`);
-            return item;
+                Object.keys(raw).sort().join(',') !== 'claim,path,quote')
+                throw new Error(`ASSESSMENT_CITATION: ${kind} requires claim, path and exact quote only`);
+            const item = raw as AssessmentCitation;
+            if (!short(item.claim) || typeof item.quote !== 'string' || !item.quote.trim() ||
+                item.quote.length > 200 || /[\u0000-\u0009\u000b-\u001f\u007f]/u.test(item.quote) ||
+                typeof item.path !== 'string')
+                throw new Error(`ASSESSMENT_CITATION: ${kind} needs a bounded claim, path and quote`);
+            const quoteBytes = Buffer.from(item.quote, 'utf8');
+            const matches = new Map<string, AssessmentFinding>();
+            for (const page of evidence) {
+                if (page.path !== item.path || page.end !== page.start + Buffer.byteLength(page.text, 'utf8') ||
+                    !read.some(ref => ref.id === page.path && ref.sourceHash === page.sourceHash &&
+                        ref.start === page.start && ref.end === page.end)) continue;
+                const bytes = Buffer.from(page.text, 'utf8');
+                for (let at = bytes.indexOf(quoteBytes); at >= 0; at = bytes.indexOf(quoteBytes, at + 1)) {
+                    const start = page.start + at, end = start + quoteBytes.length;
+                    matches.set(`${page.sourceHash}:${start}:${end}`,
+                        { claim: item.claim, path: item.path, quote: item.quote, start, end,
+                            sourceHash: page.sourceHash });
+                }
+            }
+            if (matches.size !== 1)
+                throw new Error(`ASSESSMENT_UNSUPPORTED_SOURCE: ${kind} citation has ${matches.size ?
+                    'ambiguous repeated matches' : 'no exact brokered read match'}; read the source and use a unique exact quote`);
+            return [...matches.values()][0];
         });
     }
     const tiers = value.tiers as Record<string, unknown> | undefined;
