@@ -8,6 +8,14 @@
 .dope-documents-body > aside { box-sizing: border-box; flex: 0 0 auto; width: clamp(8rem, 24%, 18rem); min-width: 6rem; max-width: 65%; resize: horizontal; overflow: auto; padding: 10px; border-right: 1px solid var(--theia-widget-border); }
 .dope-documents-body > main { box-sizing: border-box; flex: 1 1 auto; min-width: 0; overflow: auto; padding: 10px 14px; }
 .dope-documents-tree, .dope-documents-content { min-height: 3rem; padding: 6px 0; overflow-wrap: anywhere; }
+.dope-documents-view-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.dope-documents-view-controls button { padding: 4px 9px; border: 1px solid var(--theia-widget-border); border-radius: 4px; color: var(--theia-editor-foreground); background: var(--theia-button-secondaryBackground, var(--theia-editor-background)); cursor: pointer; }
+.dope-documents-view-controls button[aria-pressed="true"] { border-color: var(--theia-focusBorder); font-weight: 700; }
+.dope-documents-literal, .dope-documents-source { white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; font: 13px/1.5 var(--theia-code-font-family, monospace); user-select: text; }
+.dope-documents-markdown { min-width: 0; line-height: 1.5; user-select: text; }
+.dope-documents-markdown table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
+.dope-documents-markdown th, .dope-documents-markdown td { border: 1px solid var(--theia-widget-border); padding: 4px 8px; }
+.dope-documents-markdown pre { overflow-x: auto; white-space: pre; overflow-wrap: normal; }
 .dope-documents-tree-row { box-sizing: border-box; display: block; width: 100%; padding: 4px 6px 4px calc(6px + var(--dope-documents-depth) * 12px); border-radius: 3px; overflow-wrap: anywhere; cursor: pointer; }
 .dope-documents-tree-row:hover { background: var(--theia-list-hoverBackground); }
 .dope-documents-tree-row[aria-selected="true"] { background: var(--theia-list-activeSelectionBackground); color: var(--theia-list-activeSelectionForeground); }

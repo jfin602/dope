@@ -4,6 +4,7 @@ import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import URI from '@theia/core/lib/common/uri';
 import { DocumentsWorkspaceState, type DocumentsMode } from './documents-workspace-state';
 import { ProjectDocumentsTree, type ProjectDocumentEntry, type ProjectDocumentListing } from './project-documents-tree';
+import { documentFormat, readDocumentPreview, renderDocumentPreview, renderDocumentSource } from './documents-preview';
 
 export const DOCUMENTS_WIDGET_ID = 'dope-documents';
 
@@ -24,6 +25,11 @@ export class DocumentsWidget extends BaseWidget {
     private readonly loading = new Set<string>();
     private readonly folderErrors = new Map<string, string>();
     private activePath?: string;
+    private previewRequest = 0;
+    private previewText?: string;
+    private previewError?: string;
+    private previewLoading = false;
+    private previewMode: 'preview' | 'source' = 'preview';
 
     constructor(private readonly workspaces: WorkspaceService, private readonly files: FileService) {
         super();
@@ -71,6 +77,11 @@ export class DocumentsWidget extends BaseWidget {
 
     async refreshProject(): Promise<void> {
         const request = ++this.request;
+        ++this.previewRequest;
+        this.previewText = undefined;
+        this.previewError = undefined;
+        this.previewLoading = false;
+        this.previewMode = 'preview';
         this.listing = undefined;
         this.folders.clear();
         this.expanded.clear();
@@ -132,8 +143,37 @@ export class DocumentsWidget extends BaseWidget {
             if (this.expanded.delete(entry.path)) { this.render(); return; }
             this.expanded.add(entry.path);
             if (!this.folders.has(entry.path)) void this.loadFolder(entry.path);
-        } else this.presentation.selectExplorer(entry.path);
+        } else {
+            this.presentation.selectExplorer(entry.path);
+            this.previewMode = 'preview';
+            void this.loadPreview(entry.path);
+        }
         this.render();
+    }
+
+    private async loadPreview(path: string): Promise<void> {
+        const request = ++this.previewRequest;
+        const projectUri = this.presentation.selection.projectUri;
+        this.previewText = undefined;
+        this.previewError = undefined;
+        this.previewLoading = true;
+        this.render();
+        try {
+            if (!projectUri) throw new Error('No local project is open.');
+            const text = await readDocumentPreview(this.files, new URI(projectUri), path);
+            if (this.isDisposed || request !== this.previewRequest ||
+                this.presentation.selection.projectUri !== projectUri || this.presentation.selection.selectedPath !== path) return;
+            this.previewText = text;
+        } catch (error) {
+            if (this.isDisposed || request !== this.previewRequest) return;
+            this.previewError = error instanceof Error && /too large|binary|UTF-8|linked|Unsafe/u.test(error.message) ?
+                error.message : 'Document unavailable or access denied.';
+        } finally {
+            if (!this.isDisposed && request === this.previewRequest) {
+                this.previewLoading = false;
+                this.render();
+            }
+        }
     }
 
     private onTreeKeyDown(event: KeyboardEvent): void {
@@ -221,16 +261,35 @@ export class DocumentsWidget extends BaseWidget {
             }
         }
         this.status.textContent = state.status === 'error' ? state.error ?? 'Documents unavailable' :
-            state.status === 'pending' ? 'Loading Documents…' : state.selectedPath ? `Selected: ${state.selectedPath}` :
+            state.status === 'pending' ? 'Loading Documents…' : state.selectedPath ?
+                `${state.selectedPath} · ${documentFormat(state.selectedPath)?.toUpperCase() ?? 'Unknown format'} · Read-only` :
                 state.projectUri ? 'Select a document.' : 'Open one local project folder.';
-        this.content.textContent = state.selectedPath ? `${state.selectedPath} — preview will appear here.` :
-            'Select a document to view its content.';
+        this.content.replaceChildren();
+        if (state.mode !== 'explorer') { this.content.textContent = 'Review files will appear here.'; return; }
+        if (!state.selectedPath) { this.content.textContent = 'Select a document to view its content.'; return; }
+        const controls = document.createElement('div');
+        controls.className = 'dope-documents-view-controls';
+        for (const choice of ['preview', 'source'] as const) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = choice === 'preview' ? 'Preview' : 'Source (read-only)';
+            button.setAttribute('aria-pressed', String(this.previewMode === choice));
+            button.addEventListener('click', () => { this.previewMode = choice; this.render(); });
+            controls.append(button);
+        }
+        this.content.append(controls);
+        if (this.previewLoading) { this.content.append('Loading document…'); return; }
+        if (this.previewError) { this.content.append(this.previewError); return; }
+        if (this.previewText === undefined) { this.content.append('Select a document to view its content.'); return; }
+        this.content.append(this.previewMode === 'source' ? renderDocumentSource(this.previewText) :
+            renderDocumentPreview(documentFormat(state.selectedPath) ?? 'txt', this.previewText));
     }
 
     protected override onActivateRequest(): void { this.node.focus(); }
 
     override dispose(): void {
         this.request++;
+        this.previewRequest++;
         this.rootsListener.dispose();
         this.locationListener.dispose();
         super.dispose();
