@@ -40,11 +40,12 @@ import { discoverDocumentation, documentationReviewObjective } from './documenta
 import type { DocumentationReadPage } from './documentation-skill-review';
 import { assertPromptDraftNameAvailable, newPromptDraftIdentity, promptStageCommand, priorPromptDraft,
     verifyPromptDraftIdentity, verifyPromptDraftSource, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
-    promptStageInstruction, finishedPromptText, requestedWorkPromptCount,
-    validatedAssessment, renderAssessment, validatedPlan, planReceiptCurrent,
+    promptStageInstruction, finishedPromptText, requestedWorkPromptCount, requestedPaths,
+    renderAssessment, validatedPlan, planReceiptCurrent,
     type AssessmentRecord, type PlanRecord,
     type AssessmentRead } from './prompt-authoring-stage';
 import { PromptDraftStore } from './prompt-draft-store';
+import { IncrementalAssessment } from './incremental-assessment';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
 import { IncrementalProposalController, type ProposalHandoff } from './incremental-proposal-controller';
@@ -1833,7 +1834,7 @@ export class ChatBackend implements ChatService {
             retryIndex >= 0 ? await (async () => {
                 const draft = verifyPromptDraftIdentity(
                     (chat.messages[retryIndex - 1] as ChatUserMessage).promptDraft,
-                    root, request.chatId, userMessageId, request.leaseToken);
+                    root, request.chatId, userMessageId, request.leaseToken, true);
                 verifyPromptDraftSourceBasis(draft, await capturePromptSourceEvidence(root));
                 return draft;
             })() :
@@ -1870,7 +1871,7 @@ export class ChatBackend implements ChatService {
             throw new Error('Start /prompt-ass <name> <task details> and complete /prompt-plan in this saved Chat');
         if (priorAssessment && !selectedPrompt) {
             const identity = verifyPromptDraftIdentity(priorAssessment.user.promptDraft, root,
-                request.chatId, priorAssessment.user.id, request.leaseToken);
+                request.chatId, priorAssessment.user.id, request.leaseToken, true);
             const source = await capturePromptSourceEvidence(root);
             verifyPromptDraftSourceBasis(identity, source);
             if (promptStage?.stage === 'prompt-write') {
@@ -2208,11 +2209,16 @@ export class ChatBackend implements ChatService {
         let routingProvenance: RoutingProvenance | undefined;
         const sourceRefs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> = [];
         const assessmentReads: AssessmentRead[] = [];
+        let assessmentController: IncrementalAssessment | undefined;
+        let finishedAssessment: AssessmentRecord | undefined;
+        let rejectedAssessmentCalls = 0;
+        let assessmentFailure: string | undefined;
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
         let toolBytes = 0;
         const documentationPages: DocumentationReadPage[] = [];
         const documentationHashes = new Map<string, string>();
         const protectedProposal = retryIndex < 0 && (docsReview || promptStage?.stage === 'prompt-write');
+        const protectedAssessment = promptStage?.stage === 'prompt-ass';
         let proposalController: IncrementalProposalController | undefined;
         let finishedDocument: ProposalHandoff<import('@dope/chat').ChatDocumentationProposal> | undefined;
         let finishedPrompt: ProposalHandoff<ChatPromptStackProposal> | undefined;
@@ -2223,9 +2229,57 @@ export class ChatBackend implements ChatService {
             turnId: string; lease: string; revision: number; sourceHash: string | null;
             linkState: string | null; expiresAt: number } | undefined;
         const projectTools = this.grounder && !noProjectTools ? { root, roadmapTools: nativeRoadmap,
-            proposalTools: protectedProposal,
+            proposalTools: protectedProposal, assessmentTools: protectedAssessment,
             execute: async (name: string, args: unknown, signal?: AbortSignal, toolCallId?: number): Promise<string> => {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
+                if (name.startsWith('assessment_')) {
+                    const assessmentName = name as 'assessment_status' | 'assessment_stage' | 'assessment_finish';
+                    recordActivity('tool', `${assessmentName}: running`);
+                    let status: 'completed' | 'failed' | 'denied' = 'denied';
+                    try {
+                        if (!protectedAssessment || !assessmentController || signal?.aborted || abort.signal.aborted ||
+                            this.active(request.projectHandle) !== root || this.turns.get(key)?.abort !== abort ||
+                            this.leases.get(key)?.token !== request.leaseToken || toolEvents.length >= 128 ||
+                            rejectedAssessmentCalls >= 8)
+                            throw new Error('ASSESSMENT_TOOL_AUTHORITY: Start a new authorized assessment turn');
+                        if (!args || typeof args !== 'object' || Array.isArray(args))
+                            throw new Error('ASSESSMENT_STAGE_SHAPE: Supply a top-level object');
+                        const result = name === 'assessment_status' ?
+                            Object.keys(args).length === 0 ? await assessmentController.status() :
+                                (() => { throw new Error('ASSESSMENT_STATUS_ARGUMENTS: Use {}'); })() :
+                            name === 'assessment_stage' ? await assessmentController.stage(args, sourceRefs,
+                                assessmentReads) :
+                            name === 'assessment_finish' ? Object.keys(args).length === 0 ?
+                                await assessmentController.finish() :
+                                (() => { throw new Error('ASSESSMENT_FINISH_ARGUMENTS: Use {}'); })() :
+                            (() => { throw new Error('ASSESSMENT_TOOL_UNKNOWN: Unknown assessment tool'); })();
+                        if (name === 'assessment_finish') {
+                            finishedAssessment = (result as { record: AssessmentRecord }).record;
+                            sourceRefs.splice(0, sourceRefs.length,
+                                ...(result as { refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> }).refs);
+                        }
+                        status = 'completed';
+                        return JSON.stringify(name === 'assessment_finish' ?
+                            { complete: true, revision: (result as { revision: number }).revision } : result);
+                    } catch (error) {
+                        status = 'failed';
+                        rejectedAssessmentCalls++;
+                        const message = error instanceof Error && error.message.startsWith('ASSESSMENT_') ?
+                            error.message : 'ASSESSMENT_STAGE_FAILED: Retry after checking assessment_status';
+                        assessmentFailure = message;
+                        const [code, reason] = message.split(/:\s*/u, 2);
+                        return JSON.stringify({ code, field: name === 'assessment_stage' ? 'category or citation' :
+                            name, reason, expectedShape: name === 'assessment_stage' ?
+                            '{category, claim, path, quote} or {category, reason} or scope/tiers' : '{}',
+                            recovery: code === 'ASSESSMENT_SOURCE_COVERAGE' ? 'Use assessment_status, then read_file' :
+                                'Check assessment_status and retry with corrected arguments',
+                            previousFindingsPreserved: true });
+                    } finally {
+                        recordActivity('tool', `${assessmentName}: ${status}`);
+                        toolEvents.push({ name: assessmentName, status, truncated: false,
+                            brokerExecuted: status === 'completed', stage: 'broker' });
+                    }
+                }
                 if (name.startsWith('proposal_')) {
                     const proposalName = name as 'proposal_status' | 'proposal_stage_document' |
                         'proposal_stage_prompt' | 'proposal_finish';
@@ -2429,7 +2483,7 @@ export class ChatBackend implements ChatService {
                 try { return await (async () => {
                 if (signal?.aborted || this.active(request.projectHandle) !== root ||
                     this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
-                if (toolEvents.length >= (protectedProposal ? 512 : 16))
+                if (toolEvents.length >= (protectedProposal ? 512 : protectedAssessment ? 128 : 16))
                     throw new Error('Project discovery limit reached');
                 if (name === 'run_command') {
                     const record = args as Record<string, unknown>;
@@ -2505,7 +2559,8 @@ export class ChatBackend implements ChatService {
                 const field = name === 'read_file' || name === 'list_files' ? 'path' : 'query';
                 const record = args as Record<string, unknown>;
                 const keys = Object.keys(record);
-                const rangeRead = name === 'read_file' && keys.some(key => key !== 'path');
+                const rangeRead = name === 'read_file' &&
+                    (protectedAssessment || keys.some(key => key !== 'path'));
                 if (typeof record[field] !== 'string' || (rangeRead ?
                     keys.some(key => !['path', 'offset', 'maxBytes', 'expectedSourceHash'].includes(key)) :
                     keys.length !== 1)) {
@@ -2563,7 +2618,7 @@ export class ChatBackend implements ChatService {
                         }
                         sourceRefs.push({ schemaVersion: 1, kind: 'file', id: page.path, label: page.path,
                             origin: 'tool', projectId: createHash('sha256').update(root).digest('hex'),
-                            start: page.offset, end: page.endOffset,
+                            ...(page.fileBytes ? { start: page.offset, end: page.endOffset } : {}),
                             includedBytes: Buffer.byteLength(page.text, 'utf8'),
                             estimatedTokens: Math.ceil(Buffer.byteLength(page.text, 'utf8') / 3) + 4,
                             contentHash: createHash('sha256').update(page.text).digest('hex'),
@@ -2571,6 +2626,7 @@ export class ChatBackend implements ChatService {
                         if (promptStage?.stage === 'prompt-ass') assessmentReads.push({ path: page.path,
                             start: page.offset, end: page.endOffset, sourceHash: page.sourceHash,
                             text: page.text });
+                        if (protectedAssessment) await assessmentController!.readPage(page);
                         toolEvents.push({ name: toolName, status: 'completed', truncated: page.truncated,
                             stage: 'broker', brokerExecuted: true, ...rangeMeta, endOffset: page.endOffset });
                         return payload;
@@ -2583,6 +2639,9 @@ export class ChatBackend implements ChatService {
                     const block = result.blocks[0];
                     const remaining = Math.max(0, Math.min(8192, 32 * 1024 - toolBytes));
                     if (!block || !remaining) throw new Error('Project discovery output limit reached');
+                    if (protectedAssessment && name === 'read_file' &&
+                        result.diagnostics.some(item => item.kind === 'unavailable'))
+                        await assessmentController!.blockedRead(record.path as string, 'MISSING_OR_UNAVAILABLE');
                     const excerpt = Buffer.from(block.text, 'utf8').subarray(0, remaining).toString('utf8').replace(/\uFFFD+$/, '');
                     const truncated = excerpt !== block.text || result.diagnostics.some(item =>
                         item.kind === 'truncated' || item.kind === 'omitted');
@@ -2609,15 +2668,41 @@ export class ChatBackend implements ChatService {
                         message === 'File page cannot fit output budget' ? 'OUTPUT_BUDGET' :
                         message === 'Stale file continuation' || message === 'Project file changed during read' ?
                         'STALE_SOURCE' : message === 'Invalid file range' ||
-                        message === 'Offset splits UTF-8 character' ? 'INVALID_OFFSET' : undefined;
+                        message === 'Offset splits UTF-8 character' ? 'INVALID_OFFSET' :
+                        message === 'Unsafe project-relative path' ? 'UNSAFE_PATH' :
+                        (error as NodeJS.ErrnoException).code === 'ENOENT' && name === 'read_file' &&
+                        typeof record.path === 'string' && requestedPaths(content).includes(record.path) ?
+                        'MISSING_FILE' : undefined;
+                    if (protectedAssessment && name === 'read_file' && typeof record.path === 'string')
+                        await assessmentController!.blockedRead(record.path,
+                            code ?? 'AUTHORITY_DENIED').catch(() => undefined);
+                    if (protectedAssessment && rangeRead &&
+                        /^ASSESSMENT_(?:STAGE_LIMIT|SOURCE_DRIFT|STAGE_STALE):/u.test(message)) {
+                        toolEvents.push({ name: toolName, status: 'failed', truncated: false,
+                            stage: 'source-identity', brokerExecuted: false });
+                        return message;
+                    }
                     if (rangeRead && code) {
                         toolEvents.push({ name: toolName, status: 'failed', truncated: false, code,
                             stage: code === 'OUTPUT_BUDGET' ? 'output-budget' :
-                                code === 'STALE_SOURCE' ? 'source-identity' : 'argument-validation',
+                                code === 'STALE_SOURCE' ? 'source-identity' :
+                                    code === 'MISSING_FILE' ? 'broker' :
+                                        code === 'UNSAFE_PATH' ? 'authority' : 'argument-validation',
                             brokerExecuted: code !== 'OUTPUT_BUDGET', ...rangeMeta });
                         return code === 'STALE_SOURCE' ? 'STALE_SOURCE: Reread from offset 0 to obtain a fresh sourceHash.' :
                             code === 'OUTPUT_BUDGET' ? 'OUTPUT_BUDGET: Use a smaller page or finish with available evidence.' :
+                            code === 'MISSING_FILE' ? 'MISSING_FILE: Requested file is absent. Check the relative path with the owner.' :
+                            code === 'UNSAFE_PATH' ? 'UNSAFE_PATH: Use an eligible project-relative file path.' :
                             'INVALID_OFFSET: Use an offset within the file at a UTF-8 boundary.';
+                    }
+                    if (name === 'list_files' && promptStage?.stage === 'prompt-ass' &&
+                        typeof record.path === 'string' && requestedPaths(content).includes(record.path)) {
+                        try {
+                            await this.grounder!.readFileRange(root, record.path, 0, 1);
+                            toolEvents.push({ name: toolName, status: 'failed', truncated: false,
+                                code: 'NOT_A_DIRECTORY', stage: 'broker', brokerExecuted: true });
+                            return 'NOT_A_DIRECTORY: list_files expects a directory. Use read_file with this relative file path.';
+                        } catch { /* Never reveal protected, foreign or missing paths. */ }
                     }
                     toolEvents.push({ name: toolName, status: 'denied', truncated: false,
                         code: 'AUTHORITY_DENIED', stage: 'authority', brokerExecuted: true });
@@ -2646,6 +2731,15 @@ export class ChatBackend implements ChatService {
                     startedAt: now } };
             activity = new ChatActivityRecorder(key, assistant.id, assistant.execution.id);
             await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
+            if (protectedAssessment) {
+                assessmentController = new IncrementalAssessment(this.repository, this.grounder!, root,
+                    namedDraft!, request.leaseToken, content);
+                finishedAssessment = await assessmentController.begin();
+                if (finishedAssessment) {
+                    const recovered = await assessmentController.finish();
+                    sourceRefs.push(...recovered.refs);
+                }
+            }
             if (protectedProposal) {
                 const stageBasis = async () => {
                     if (docsReview) {
@@ -2759,7 +2853,11 @@ export class ChatBackend implements ChatService {
                 localRoadmap ? { localOnly: true } : undefined);
             // The current protected command is already a complete typed intent. No model output
             // can add authority or improve the owner-issued publication preview.
-            let events: AsyncIterable<ConversationEvent> = publicationIntent ? (async function* (): AsyncGenerator<ConversationEvent> {
+            let events: AsyncIterable<ConversationEvent> = protectedAssessment && finishedAssessment ?
+                (async function* (): AsyncGenerator<ConversationEvent> {
+                    yield { type: 'complete', text: 'Verified sealed Assessment recovered.',
+                        usage: { tokenMeasurement: 'unavailable' }, finishReason: 'deterministic-recovery' };
+                })() : publicationIntent ? (async function* (): AsyncGenerator<ConversationEvent> {
                 yield { type: 'complete', text: 'Roadmap Markdown request received.',
                     usage: { tokenMeasurement: 'unavailable' }, finishReason: 'deterministic-intent' };
             })() : nativeRoadmap ? generate() : localRoadmap ? (async function* (backend: ChatBackend) {
@@ -2963,8 +3061,6 @@ export class ChatBackend implements ChatService {
                             if (event.finishReason === 'length' &&
                                 (promptStage.stage !== 'prompt-write' || !finishedPrompt))
                                 throw new Error('Prompt authoring output was truncated');
-                            if (promptStage.stage === 'prompt-ass' && sourceRefs.length > 16)
-                                throw new Error('Prompt source evidence exceeds 16 saved refs; retry with fewer listed, searched or read paths');
                             // /prompt-write is bound to the two previously verified drafts. It need not
                             // make a redundant model read when their source identities are still current.
                             if (promptStage.stage !== 'prompt-write')
@@ -2978,22 +3074,13 @@ export class ChatBackend implements ChatService {
                                     proposalId: proposal.id, promptStackProposal: proposal };
                                 output = finishedPrompt.finalMessage;
                             } else if (promptStage.stage === 'prompt-ass') {
-                                const record = validatedAssessment(output, sourceRefs, content, assessmentReads);
-                                const store = new PromptDraftStore(this.repository, this.grounder!);
-                                const draft = await store.read(root, namedDraft!, request.leaseToken).catch(error => {
-                                    if (String(error).includes('unavailable'))
-                                        return store.begin(root, namedDraft!, request.leaseToken);
-                                    throw error;
-                                });
-                                await store.stage(root, namedDraft!, request.leaseToken, 'assessment',
-                                    draft.revision, record as unknown as Record<string, unknown>,
-                                    sourceRefs.filter(ref => ref.kind === 'file' && ref.sourceHash &&
-                                        ref.origin === 'tool').map(ref => ({ id: ref.id, sourceHash: ref.sourceHash!,
-                                        projectId: ref.projectId!,
-                                        ...(ref.contentHash ? { contentHash: ref.contentHash } : {}),
-                                        ...(ref.start !== undefined ? { start: ref.start } : {}),
-                                        ...(ref.end !== undefined ? { end: ref.end } : {}) })));
-                                output = renderAssessment(record);
+                                if (!finishedAssessment) {
+                                    const status = await assessmentController!.status();
+                                    throw new Error(assessmentFailure ??
+                                        `ASSESSMENT_CATEGORY_INCOMPLETE: ${status.sources}; ` +
+                                        `${status.findings} verified findings. Next: ${status.nextAction}`);
+                                }
+                                output = renderAssessment(finishedAssessment);
                             } else if (promptStage.stage === 'prompt-plan') {
                                 if (!priorAssessment?.user.promptDraft || !savedAssessmentRecord)
                                     throw new Error('PLAN_ASSESSMENT_REQUIRED: Complete a structured named assessment first');
@@ -3203,12 +3290,20 @@ export class ChatBackend implements ChatService {
                 const diagnostic = assessmentCode && !cancelled ?
                     `Assessment blocked (${assessmentCode}): ${assessmentCode === 'ASSESSMENT_UNSUPPORTED_SOURCE' ?
                         'Citation does not match one unique verified source read. Read the source again and use an exact, unique quote.' :
-                        'The structured assessment is invalid. Review the assessment format and retry Assessment.'}` : undefined;
+                        (error instanceof Error ? error.message.slice(assessmentCode.length + 1,
+                            assessmentCode.length + 301).trim() : 'Assessment validation failed.')}` : undefined;
+                const assessmentStatus = protectedAssessment ? await assessmentController?.status()
+                    .catch(() => undefined) : undefined;
+                const assessmentProgress = assessmentStatus ?
+                    ` ${assessmentStatus.sources}; ${assessmentStatus.findings} verified findings; ` +
+                    `${assessmentStatus.remaining.length} requested sources remaining.` : '';
                 const failure = leaseRenewalFailed ?
                     'Chat ownership lease expired or changed during the turn. Reopen this Chat and start a new authorized turn.' :
-                    diagnostic ?? (cancelled ? 'Conversation cancelled' : baseFailure);
+                    (diagnostic ?? (cancelled ? 'Conversation cancelled' : baseFailure)) + assessmentProgress;
                 const failureCode = leaseRenewalFailed ? 'chat_lease' as const :
                     error instanceof PiConversationFailure ? error.boundaryCode : undefined;
+                if (protectedAssessment && sourceRefs.length > 16)
+                    sourceRefs.splice(0, sourceRefs.length - 16);
                 if (retainStreamedAnswer && output && output.startsWith(persistedPartial))
                     try { await persistOutputPartial(output); } catch { /* Storage failure is reported below. */ }
                 try { await flushActivity(); } catch { /* Final mutation below still carries the captured snapshot. */ }

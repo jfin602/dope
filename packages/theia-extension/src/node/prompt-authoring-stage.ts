@@ -29,10 +29,12 @@ export function newPromptDraftIdentity(slug: string, root: string, chatId: strin
 }
 
 export function verifyPromptDraftIdentity(draft: ChatPromptDraftIdentity | undefined, root: string,
-    chatId: string, userMessageId: string, leaseToken: string): ChatPromptDraftIdentity {
+    chatId: string, userMessageId: string, leaseToken: string,
+    reclaimedLease = false): ChatPromptDraftIdentity {
     if (!draft || draft.schemaVersion !== 1 || draft.revision !== 1 ||
         draft.projectId !== hash(root) || draft.chatId !== chatId ||
-        draft.userMessageId !== userMessageId || draft.leaseDigest !== hash(leaseToken))
+        draft.userMessageId !== userMessageId || !/^[a-f0-9]{64}$/u.test(draft.leaseDigest) ||
+        !reclaimedLease && draft.leaseDigest !== hash(leaseToken))
         throw new Error('Named prompt draft belongs to another project, Chat or owner lease; start /prompt-ass <name> <task details>');
     promptDraftSlug(draft.slug);
     return draft;
@@ -132,7 +134,7 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
         prior.plan && `Selected plan ${prior.plan.id}:\n${planRecord ? JSON.stringify(planRecord) :
             prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read relevant source and tests with read_file; report omissions. Keep the final response under 12,000 characters.';
-    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Before answering, read every specifically requested file; if the owner requests all files in a small fixture, list relevant directories and read those files too. For a requested late section, read offset 0 and then continue at nextOffset with the returned sourceHash. If a requested read cannot finish, limit claims to observed bytes; Dope will list unread requested paths. Return only one compact JSON object with exact keys scope, observations, preservation, dependencies, risks, tiers. scope is a short string. Each of observations, preservation, dependencies, risks is an array of {claim,path,quote}; one or two findings per array are enough. Every quote MUST be a short, unique, exact excerpt from ONE source line returned by a successful read_file. For example, source line "return value;" is JSON quote "return value;". JSON \\n represents an actual newline after parsing, but source characters backslash and n are different bytes; use single-line quotes to avoid this ambiguity. Do not reconstruct multiline code or quote an entire file. Do not provide byte offsets or hashes; Dope resolves them from brokered reads. A listed or searched path is not read evidence. tiers is an object with T1, T2, T3 short string properties: T1 focused source/unit work, T2 cross-boundary integration, T3 independent manual browser qualification. Do not include a Markdown report or invent omitted-file lists; Dope checks retrieval and renders the assessment.`;
+    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Call assessment_status first for Dope's required source checklist. Read every requested file with read_file using offset:0 and maxBytes:4096, then continue each nextOffset with expectedSourceHash until nextOffset is null. A list_files result is never a read. For each source-backed claim call assessment_stage with category (observations, preservation, dependencies or risks), claim, path and one short unique exact quote from a brokered read. Do not supply hashes or offsets. Stage scope with {category:"scope",text:"..."}. Stage tiers with {category:"tiers",T1:"focused source/unit...",T2:"cross-boundary integration...",T3:"independent manual browser..."}. After all requested files are fully read, an actually empty dependencies or risks category may be staged with {category:"dependencies",reason:"..."} or risks likewise; never invent a finding. Read assessment_status for remaining work. Call assessment_finish only after coverage and categories are complete. The tool receipt, not your final prose, controls completion. Keep final prose short and factual; do not return a whole Assessment JSON or Markdown.`;
     if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn one compact JSON object with exact keys work, closeout, efficiencyAudit. work is an ordered array of bounded {id,title,objective,tier,dependsOn,workingSet,validationTargets,buildNeeds,acceptanceCriteria} records; tier is T1 for focused implementation or T2 for explicit cross-boundary integration. Use stable step-N IDs and prior IDs for dependencies. workingSet contains only broker-read source/test paths; read_file each relevant source and late page before claiming it. buildNeeds states the actual narrow compiled-output requirement or "none". closeout has {title,objective,manualReason,browserRequired:true,acceptanceCriteria,tier:"T3"} and is separate from work. efficiencyAudit has exactly ten concise findings in docs/workflow.md order: single responsibility, 8/10/15-minute runtime, test precision, build precision, evidence distribution, command deduplication, model economy and deferral, runnable/traceable contract, UI Design Compliance (ADR 0016 and theme tokens if applicable), Human Usability (ADR 0037, entry/feedback/recovery/keyboard/narrow if applicable). Never invent CI, browser demo files, CommonJS adapters or dependencies. Do not return Markdown or claim publication.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
@@ -160,6 +162,7 @@ export interface AssessmentRecord {
     scope: string; observations: AssessmentFinding[]; preservation: AssessmentFinding[];
     dependencies: AssessmentFinding[]; risks: AssessmentFinding[];
     tiers: { T1: string; T2: string; T3: string };
+    emptyReasons?: Partial<Record<'observations' | 'preservation' | 'dependencies' | 'risks', string>>;
     omittedRequestedFiles: string[];
 }
 export interface PlanWorkRecord { id: string; title: string; objective: string; tier: 'T1' | 'T2';
@@ -271,10 +274,47 @@ function compactAssessmentContext(record: AssessmentRecord): string {
     return JSON.stringify({ scope: record.scope.slice(0, 500),
         observations: section(record.observations), preservation: section(record.preservation),
         dependencies: section(record.dependencies), risks: section(record.risks), tiers: record.tiers,
+        emptyReasons: record.emptyReasons ?? {},
         omittedRequestedFiles: record.omittedRequestedFiles.slice(0, 16) });
 }
 const assessmentFields = ['scope', 'observations', 'preservation', 'dependencies', 'risks', 'tiers'];
-const requestedPaths = (text: string): string[] => [...new Set(text.match(/\b(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*\.(?:md|txt|json|js|jsx|ts|tsx)\b/gu) ?? [])];
+export const requestedPaths = (text: string): string[] => [...new Set(text.match(/\b(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*\.(?:md|txt|json|js|jsx|ts|tsx)\b/gu) ?? [])];
+export type AssessmentCategory = 'observations' | 'preservation' | 'dependencies' | 'risks';
+/** Resolve a model citation only within bytes returned by a successful brokered read. */
+export function validatedAssessmentFinding(raw: unknown, kind: AssessmentCategory,
+    refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>,
+    evidence: readonly AssessmentRead[]): AssessmentFinding {
+    const short = (v: unknown, limit = 500): v is string => typeof v === 'string' &&
+        !!v.trim() && v.length <= limit && !/[\u0000-\u001f\u007f]/u.test(v);
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+        Object.keys(raw).sort().join(',') !== 'claim,path,quote')
+        throw new Error(`ASSESSMENT_CITATION: ${kind} requires claim, path and exact quote only`);
+    const item = raw as AssessmentCitation;
+    if (!short(item.claim) || typeof item.quote !== 'string' || !item.quote.trim() ||
+        item.quote.length > 200 || /[\u0000-\u0009\u000b-\u001f\u007f]/u.test(item.quote) ||
+        typeof item.path !== 'string')
+        throw new Error(`ASSESSMENT_CITATION: ${kind} needs a bounded claim, path and quote`);
+    const read = refs.filter(ref => ref.kind === 'file' && ref.origin === 'tool' && ref.sourceHash &&
+        Number.isSafeInteger(ref.start) && Number.isSafeInteger(ref.end) && ref.end! > ref.start!);
+    const quoteBytes = Buffer.from(item.quote, 'utf8');
+    const matches = new Map<string, AssessmentFinding>();
+    for (const page of evidence) {
+        if (page.path !== item.path || page.end !== page.start + Buffer.byteLength(page.text, 'utf8') ||
+            !read.some(ref => ref.id === page.path && ref.sourceHash === page.sourceHash &&
+                ref.start === page.start && ref.end === page.end)) continue;
+        const bytes = Buffer.from(page.text, 'utf8');
+        for (let at = bytes.indexOf(quoteBytes); at >= 0; at = bytes.indexOf(quoteBytes, at + 1)) {
+            const start = page.start + at, end = start + quoteBytes.length;
+            matches.set(`${page.sourceHash}:${start}:${end}`,
+                { claim: item.claim, path: item.path, quote: item.quote, start, end,
+                    sourceHash: page.sourceHash });
+        }
+    }
+    if (matches.size !== 1)
+        throw new Error(`ASSESSMENT_UNSUPPORTED_SOURCE: ${kind} citation has ${matches.size ?
+            'ambiguous repeated matches' : 'no exact brokered read match'}; read the source and use a unique exact quote`);
+    return [...matches.values()][0];
+}
 /** Validate model claims against successful broker reads; metadata searches never count. */
 export function validatedAssessment(modelText: string,
     refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>, requestedText: string,
@@ -284,48 +324,35 @@ export function validatedAssessment(modelText: string,
     try { parsed = JSON.parse(modelText.trim()); }
     catch { throw new Error('ASSESSMENT_JSON: Return one structured JSON object'); }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) ||
-        Object.keys(parsed).sort().join(',') !== assessmentFields.sort().join(','))
+        !Object.keys(parsed).every(key => [...assessmentFields, 'emptyReasons'].includes(key)) ||
+        assessmentFields.some(key => !Object.hasOwn(parsed, key)))
         throw new Error('ASSESSMENT_SHAPE: Use scope, observations, preservation, dependencies, risks and tiers');
     const value = parsed as Record<string, unknown>;
     const short = (v: unknown, limit = 500): v is string => typeof v === 'string' &&
         !!v.trim() && v.length <= limit && !/[\u0000-\u001f\u007f]/u.test(v);
     if (!short(value.scope, 1000)) throw new Error('ASSESSMENT_SCOPE: Supply a bounded scope');
+    if (value.emptyReasons !== undefined && (!value.emptyReasons ||
+        typeof value.emptyReasons !== 'object' || Array.isArray(value.emptyReasons) ||
+        Object.keys(value.emptyReasons).some(key =>
+            !['observations', 'preservation', 'dependencies', 'risks'].includes(key))))
+        throw new Error('ASSESSMENT_EMPTY_REASON: Use category-specific reasons only');
     const read = refs.filter(ref => ref.kind === 'file' && ref.origin === 'tool' && ref.sourceHash &&
         Number.isSafeInteger(ref.start) && Number.isSafeInteger(ref.end) && ref.end! > ref.start!);
     if (!read.length) throw new Error('ASSESSMENT_READ_REQUIRED: Read source with read_file before assessment');
     const findings = {} as Pick<AssessmentRecord, 'observations' | 'preservation' | 'dependencies' | 'risks'>;
     for (const kind of ['observations', 'preservation', 'dependencies', 'risks'] as const) {
         const items = value[kind];
-        if (!Array.isArray(items) || items.length < 1 || items.length > 12)
-            throw new Error(`ASSESSMENT_${kind.toUpperCase()}: Supply 1–12 source-backed findings`);
-        findings[kind] = items.map((raw: unknown) => {
-            if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
-                Object.keys(raw).sort().join(',') !== 'claim,path,quote')
-                throw new Error(`ASSESSMENT_CITATION: ${kind} requires claim, path and exact quote only`);
-            const item = raw as AssessmentCitation;
-            if (!short(item.claim) || typeof item.quote !== 'string' || !item.quote.trim() ||
-                item.quote.length > 200 || /[\u0000-\u0009\u000b-\u001f\u007f]/u.test(item.quote) ||
-                typeof item.path !== 'string')
-                throw new Error(`ASSESSMENT_CITATION: ${kind} needs a bounded claim, path and quote`);
-            const quoteBytes = Buffer.from(item.quote, 'utf8');
-            const matches = new Map<string, AssessmentFinding>();
-            for (const page of evidence) {
-                if (page.path !== item.path || page.end !== page.start + Buffer.byteLength(page.text, 'utf8') ||
-                    !read.some(ref => ref.id === page.path && ref.sourceHash === page.sourceHash &&
-                        ref.start === page.start && ref.end === page.end)) continue;
-                const bytes = Buffer.from(page.text, 'utf8');
-                for (let at = bytes.indexOf(quoteBytes); at >= 0; at = bytes.indexOf(quoteBytes, at + 1)) {
-                    const start = page.start + at, end = start + quoteBytes.length;
-                    matches.set(`${page.sourceHash}:${start}:${end}`,
-                        { claim: item.claim, path: item.path, quote: item.quote, start, end,
-                            sourceHash: page.sourceHash });
-                }
-            }
-            if (matches.size !== 1)
-                throw new Error(`ASSESSMENT_UNSUPPORTED_SOURCE: ${kind} citation has ${matches.size ?
-                    'ambiguous repeated matches' : 'no exact brokered read match'}; read the source and use a unique exact quote`);
-            return [...matches.values()][0];
-        });
+        if (!Array.isArray(items) || items.length > 12)
+            throw new Error(`ASSESSMENT_${kind.toUpperCase()}: Supply 0–12 source-backed findings`);
+        if (items.length && (value.emptyReasons as Record<string, unknown> | undefined)?.[kind] !== undefined)
+            throw new Error(`ASSESSMENT_${kind.toUpperCase()}_EMPTY: A populated category cannot have an empty reason`);
+        if (!items.length) {
+            const reasons = value.emptyReasons as Record<string, unknown> | undefined;
+            if (!reasons || !short(reasons[kind]) || !read.length ||
+                requestedPaths(requestedText).some(path => !read.some(ref => ref.id === path)))
+                throw new Error(`ASSESSMENT_${kind.toUpperCase()}_EMPTY: A justified empty category requires all requested source reads`);
+        }
+        findings[kind] = items.map((raw: unknown) => validatedAssessmentFinding(raw, kind, refs, evidence));
     }
     const tiers = value.tiers as Record<string, unknown> | undefined;
     if (!tiers || typeof tiers !== 'object' || Array.isArray(tiers) ||
@@ -335,12 +362,14 @@ export function validatedAssessment(modelText: string,
     const omittedRequestedFiles = requestedPaths(requestedText).filter(path =>
         !read.some(ref => ref.id === path));
     return { scope: value.scope as string, ...findings,
+        ...(value.emptyReasons ? { emptyReasons: value.emptyReasons as AssessmentRecord['emptyReasons'] } : {}),
         tiers: tiers as AssessmentRecord['tiers'], omittedRequestedFiles };
 }
 
 export function renderAssessment(record: AssessmentRecord): string {
     const section = (title: string, items: AssessmentFinding[]) =>
-        `## ${title}\n${items.map(item => `- ${item.claim} — “${item.quote}” (${item.path} bytes ${item.start}–${item.end}, sha256 ${item.sourceHash})`).join('\n')}`;
+        `## ${title}\n${items.length ? items.map(item => `- ${item.claim} — “${item.quote}” (${item.path} bytes ${item.start}–${item.end}, sha256 ${item.sourceHash})`).join('\n') :
+            `- None: ${record.emptyReasons?.[title.toLowerCase() as keyof NonNullable<AssessmentRecord['emptyReasons']>] ?? 'Not justified'}`}`;
     return `${heading['prompt-ass']}\n\nDraft only. This command did not change project files or start Work.\n\n` +
         `## Scope\n${record.scope}\n\n${section('Observations', record.observations)}\n\n` +
         `${section('Preservation', record.preservation)}\n\n${section('Dependencies', record.dependencies)}\n\n` +

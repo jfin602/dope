@@ -73,12 +73,19 @@ test('native prompt stages save an exact review candidate and publish only after
             await request.projectTools!.execute('read_file',
                 { path: 'src/feature.js', offset: 0, maxBytes: 4096 });
             if (turn === 0) {
-                const finding = { claim: 'Feature source was read', path: 'src/feature.js',
-                    quote: 'export' };
-                answers[0] = JSON.stringify({ scope: 'Implement source-bound feature',
-                    observations: [finding], preservation: [finding], dependencies: [finding],
-                    risks: [finding], tiers: { T1: 'Focused implementation',
-                        T2: 'Cross-boundary integration', T3: 'Independent manual browser closeout' } });
+                for (const category of ['observations', 'preservation', 'dependencies', 'risks']) {
+                    const receipt = JSON.parse(await request.projectTools!.execute('assessment_stage',
+                        { category, claim: 'Feature source was read', path: 'src/feature.js', quote: 'export' }));
+                    assert.equal(receipt.accepted, true, JSON.stringify(receipt));
+                }
+                await request.projectTools!.execute('assessment_stage',
+                    { category: 'scope', text: 'Implement source-bound feature' });
+                await request.projectTools!.execute('assessment_stage', { category: 'tiers',
+                    T1: 'Focused unit implementation', T2: 'Cross-boundary integration',
+                    T3: 'Independent manual browser closeout' });
+                const finished = JSON.parse(await request.projectTools!.execute('assessment_finish', {}));
+                assert.equal(finished.complete, true, JSON.stringify(finished));
+                answers[0] = 'Assessment staged and sealed.';
             } else {
                 await request.projectTools!.execute('read_file',
                     { path: 'test/feature.test.ts', offset: 0, maxBytes: 4096 });
@@ -264,20 +271,36 @@ test('P8-style assessment rejection persists one coded blocked draft after backe
     await execute('git', ['-C', root, 'add', 'src/clamp.js', 'package.json']);
     await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
         'commit', '-qm', 'Fixture']);
-    let failPi = false;
+    let failPi = false, assessmentAttempts = 0;
     const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
         providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
                 maxInputTokens: 16384 } }] }] }),
     async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        assessmentAttempts++;
         await request.projectTools!.execute('read_file', { path: 'src/clamp.js', offset: 0, maxBytes: 4096 });
+        const guidance = await request.projectTools!.execute('list_files', { path: 'package.json' });
+        assert.match(guidance, /NOT_A_DIRECTORY.*Use read_file/);
+        const beforeRead = JSON.parse(await request.projectTools!.execute('assessment_status', {}));
+        if (assessmentAttempts <= 2) assert.equal(beforeRead.required.find((item: { path: string }) =>
+            item.path === 'package.json')?.state, 'not inspected');
+        const packageRead = await request.projectTools!.execute('read_file',
+            { path: 'package.json' });
+        assert.match(packageRead, /"sourceHash"/);
+        assert.match(packageRead, /"nextOffset":null/);
+        assert.match(await request.projectTools!.execute('read_file',
+            { path: 'docs/missing.md' }), /^MISSING_FILE:/);
+        const afterMissing = JSON.parse(await request.projectTools!.execute('assessment_status', {}));
+        assert.equal(afterMissing.required.find((item: { path: string }) =>
+            item.path === 'docs/missing.md')?.state, 'unavailable or blocked');
+        assert.match(await request.projectTools!.execute('read_file',
+            { path: '.dope/private' }), /^UNSAFE_PATH:/);
         if (failPi) throw new PiConversationFailure('Pi worker exited during the turn. Restart Dope and retry.',
             'connection-unavailable', 'worker_exit');
-        const finding = { claim: 'Saved P8 style source', path: 'src/clamp.js',
-            quote: 'export function clamp(value) {\\n  return value;' };
-        yield { type: 'complete' as const, text: JSON.stringify({ scope: 'Clamp review',
-            observations: [finding], preservation: [finding], dependencies: [finding], risks: [finding],
-            tiers: { T1: 'Focused', T2: 'Integration', T3: 'Manual browser' } }),
+        await request.projectTools!.execute('assessment_stage', { category: 'observations',
+            claim: 'Saved P8 style source', path: 'src/clamp.js',
+            quote: 'export function clamp(value) {\\n  return value;' });
+        yield { type: 'complete' as const, text: 'Assessment could not finish.',
         actualModelId: 'q4', finishReason: 'stop' as const,
         usage: { tokenMeasurement: 'unavailable' as const } };
     } };
@@ -294,13 +317,14 @@ test('P8-style assessment rejection persists one coded blocked draft after backe
         if (!lease.acquired) throw new Error('Lease missing');
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/prompt-ass clamp-api-correction Inspect src/clamp.js' }), /ASSESSMENT_UNSUPPORTED_SOURCE/);
+            content: '/prompt-ass clamp-api-correction Inspect src/clamp.js, package.json and docs/missing.md' }), /ASSESSMENT_UNSUPPORTED_SOURCE/);
         const saved = (await backend.get(projectHandle, chatId))!;
         const assistant = saved.messages.find(message => message.role === 'assistant');
         assert.ok(assistant?.role === 'assistant');
         assert.equal(assistant.execution.status, 'failed');
         assert.match(assistant.execution.failure ?? '', /ASSESSMENT_UNSUPPORTED_SOURCE/);
         assert.match(assistant.execution.failure ?? '', /Read the source again/);
+        assert.match(assistant.execution.failure ?? '', /2\/3 inspected; 0 verified findings/);
         assert.equal(currentPromptDraft(saved)?.error, assistant.execution.failure);
         assert.equal(currentPromptDraft(saved)?.state, 'error');
         assert.equal(saved.messages.filter(message => message.role === 'assistant').length, 1);
@@ -315,11 +339,12 @@ test('P8-style assessment rejection persists one coded blocked draft after backe
         if (!secondLease.acquired) throw new Error('Second lease missing');
         await assert.rejects(backend.runTurn({ projectHandle, chatId: secondChatId,
             leaseToken: secondLease.token, selectedModel: { connectionId: 'local', modelId: 'q4' },
-            content: '/prompt-ass clamp-pi-failure Inspect src/clamp.js' }), /Pi worker exited/);
+            content: '/prompt-ass clamp-pi-failure Inspect src/clamp.js, package.json and docs/missing.md' }), /Pi worker exited/);
         const secondSaved = (await backend.get(projectHandle, secondChatId))!;
         assert.match(currentPromptDraft(secondSaved)?.error ?? '', /Pi worker exited/);
         assert.equal(secondSaved.messages.find(message => message.role === 'assistant')?.execution.failureCode,
             'worker_exit');
+        await backend.release(projectHandle, chatId, lease.token);
         backend.dispose();
         const restarted = makeBackend();
         try {
@@ -332,8 +357,17 @@ test('P8-style assessment rejection persists one coded blocked draft after backe
                 /Pi worker exited/);
             assert.equal((await restarted.get(nextHandle, secondChatId))?.messages.find(message =>
                 message.role === 'assistant')?.execution.failureCode, 'worker_exit');
+            failPi = false;
+            const reclaimed = await restarted.claim({ projectHandle: nextHandle, chatId, ownerId: 'reopened-panel' });
+            if (!reclaimed.acquired) throw new Error('Reclaimed lease missing');
+            await assert.rejects(restarted.runTurn({ projectHandle: nextHandle, chatId,
+                leaseToken: reclaimed.token, retryMessageId: assistant.id,
+                selectedModel: { connectionId: 'local', modelId: 'q4' } }), /ASSESSMENT_UNSUPPORTED_SOURCE/);
+            assert.equal((await restarted.get(nextHandle, chatId))?.messages.filter(message =>
+                message.role === 'assistant').length, 2);
         } finally { restarted.dispose(); }
-    } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true,
+        maxRetries: 10, retryDelay: 25 }); }
 });
 test('final deltas reach Chat before completion and tool resets replace transient text', async () => {
     const root = await folder(), repository = new ChatRepository(), events: ChatEvent[] = [];

@@ -48,7 +48,8 @@ export class PiModelBridge {
 
     async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
         cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean;
-            roadmapGeneration?: boolean; proposalTools?: boolean; reasoningMode?: string; workProcessAvailable?: boolean } = {}): Promise<PiLocalBinding> {
+            roadmapGeneration?: boolean; proposalTools?: boolean; assessmentTools?: boolean;
+            reasoningMode?: string; workProcessAvailable?: boolean } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
         const before = await this.dependencies.inventory();
@@ -137,6 +138,8 @@ export class PiModelBridge {
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, true) :
             options.chatTools && options.proposalTools ?
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, true) :
+            options.chatTools && options.assessmentTools ?
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, true) :
             options.chatTools && options.roadmapTools ?
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true) :
             options.tools ? await host.openWorkSession(modelSpec, cwd, credential, thinkingLevel,
@@ -149,6 +152,8 @@ export class PiModelBridge {
                 ['roadmap_finish', 'roadmap_phase'] :
                 options.proposalTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
                     'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish'] :
+                options.assessmentTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
+                    'assessment_stage', 'assessment_status', 'assessment_finish'] :
                 options.roadmapTools ? ['roadmap_cancel', 'roadmap_read', 'roadmap_stage'] :
                 ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||

@@ -686,7 +686,7 @@ export interface ChatActivityDisplay {
 function activityTimeline(events: readonly import('@dope/chat').ChatActivityEvent[],
     message?: ChatAssistantMessage, omitProvisional = false): ChatActivityPart[] {
     const parts: ChatActivityPart[] = [];
-    const toolPattern = /^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command|roadmap_read|roadmap_stage|roadmap_cancel|roadmap_phase|roadmap_finish|proposal_status|proposal_stage_document|proposal_stage_prompt|proposal_finish): (running|completed|failed|denied)(?: · (.+))?$/u;
+    const toolPattern = /^(read_file|list_files|search_paths|search_text|run_command|dope_read|dope_list|dope_search_paths|dope_search_text|dope_command|roadmap_read|roadmap_stage|roadmap_cancel|roadmap_phase|roadmap_finish|proposal_status|proposal_stage_document|proposal_stage_prompt|proposal_finish|assessment_status|assessment_stage|assessment_finish): (running|completed|failed|denied)(?: · (.+))?$/u;
     for (const event of events) {
         if (event.kind === 'thinking' || event.kind === 'provisional' && !omitProvisional) {
             const last = parts.at(-1);

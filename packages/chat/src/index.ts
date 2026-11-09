@@ -95,7 +95,8 @@ export interface ChatExecution {
     toolEvents?: { name: 'read_file' | 'list_files' | 'search_paths' | 'search_text' | 'run_command' |
         'dope_read' | 'dope_list' | 'dope_search_paths' | 'dope_search_text' | 'dope_command' |
         'roadmap_read' | 'roadmap_stage' | 'roadmap_cancel' | 'roadmap_phase' | 'roadmap_finish' |
-        'proposal_status' | 'proposal_stage_document' | 'proposal_stage_prompt' | 'proposal_finish';
+        'proposal_status' | 'proposal_stage_document' | 'proposal_stage_prompt' | 'proposal_finish' |
+        'assessment_status' | 'assessment_stage' | 'assessment_finish';
         status: 'completed' | 'failed' | 'denied'; truncated: boolean;
         code?: string; stage?: string; brokerExecuted?: boolean;
         offset?: number; pageSize?: number; sourceHashSupplied?: boolean; endOffset?: number;
@@ -500,12 +501,14 @@ function parseExecution(value: unknown): ChatExecution {
             return { name: choice(event.name, ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command',
                 'dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command',
                 'roadmap_read', 'roadmap_stage', 'roadmap_cancel', 'roadmap_phase', 'roadmap_finish',
-                'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish'] as const,
+                'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish',
+                'assessment_status', 'assessment_stage', 'assessment_finish'] as const,
                 'Chat tool'), status: choice(event.status, ['completed', 'failed', 'denied'] as const, 'Chat tool status'),
                 truncated: event.truncated,
                 ...(event.code === undefined ? {} : { code: choice(event.code, ['INVALID_ARGUMENTS',
                     'INVALID_OFFSET', 'INVALID_PAGE_SIZE', 'SOURCE_IDENTITY_REQUIRED',
                     'INVALID_SOURCE_IDENTITY', 'STALE_SOURCE', 'OUTPUT_BUDGET', 'AUTHORITY_DENIED',
+                    'NOT_A_DIRECTORY', 'MISSING_FILE', 'UNSAFE_PATH',
                     'COMMAND_INVALID', 'COMMAND_DENIED', 'COMMAND_EXPIRED'] as const, 'Chat tool code') }),
                 ...(event.stage === undefined ? {} : { stage: choice(event.stage,
                     ['schema', 'argument-validation', 'source-identity', 'output-budget', 'broker', 'authority'] as const,

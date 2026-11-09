@@ -189,7 +189,8 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             { ...(request.projectTools ? { chatTools: true,
                 ...(request.projectTools.roadmapTools ? { roadmapTools: true } : {}),
                 ...(request.projectTools.roadmapGeneration ? { roadmapGeneration: true } : {}),
-                ...(request.projectTools.proposalTools ? { proposalTools: true } : {}) } : {}),
+                ...(request.projectTools.proposalTools ? { proposalTools: true } : {}),
+                ...(request.projectTools.assessmentTools ? { assessmentTools: true } : {}) } : {}),
                 reasoningMode: request.controls?.['reasoning.effort'] });
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         const maxOutputTokens = request.maxOutputTokens ?? Math.min(binding.reasoningEnabled ? 2048 : 1024,

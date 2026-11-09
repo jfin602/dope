@@ -138,9 +138,11 @@ export class PiRuntimeHost {
     }
 
     openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
-        thinkingLevel?: string, roadmapTools = false, roadmapGeneration = false, proposalTools = false):
+        thinkingLevel?: string, roadmapTools = false, roadmapGeneration = false, proposalTools = false,
+        assessmentTools = false):
         Promise<{ version: string; tools: string[]; resources: string }> {
-        return this.request({ type: 'open', mode: 'chat-tools', model, cwd, roadmapTools, roadmapGeneration, proposalTools,
+        return this.request({ type: 'open', mode: 'chat-tools', model, cwd, roadmapTools, roadmapGeneration,
+            proposalTools, assessmentTools,
             ...(credential ? { credential } : {}), thinkingLevel });
     }
 

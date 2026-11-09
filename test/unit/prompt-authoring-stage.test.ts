@@ -372,14 +372,32 @@ test('exact P8-R2 provisional Assessment is denied against its two brokered read
         ['package.json', 'docs/late-guide.md', 'RELEASE_NOTES.md']);
 });
 
-test('assessment instruction asks for single-line citations and all requested late source', () => {
+test('assessment instruction requires staged exact citations and all requested late source', () => {
     const instruction = promptStageInstruction({ stage: 'prompt-ass', folder: 'clamp-api-correction' }, {});
-    assert.match(instruction, /read every specifically requested file/);
-    assert.match(instruction, /requested late section.*nextOffset.*sourceHash/);
-    assert.match(instruction, /quote MUST be a short, unique, exact excerpt from ONE source line/);
-    assert.match(instruction, /JSON \\n represents an actual newline after parsing/);
-    assert.match(instruction, /Do not reconstruct multiline code or quote an entire file/);
+    assert.match(instruction, /assessment_status first/);
+    assert.match(instruction, /every requested file.*nextOffset.*expectedSourceHash/);
+    assert.match(instruction, /assessment_stage.*unique exact quote/);
+    assert.match(instruction, /assessment_finish only after coverage and categories/);
     assert.doesNotMatch(instruction, /\{claim,path,start,end,sourceHash,quote\}/);
+});
+
+test('P8-R4 empty dependencies cannot pass without verified coverage and a reason', () => {
+    const text = 'export function clamp(value) { return value; }\n';
+    const sourceHash = 'e'.repeat(64);
+    const refs = [{ kind: 'file', id: 'src/clamp.js', origin: 'tool',
+        sourceHash, start: 0, end: Buffer.byteLength(text) }] as never;
+    const evidence = [{ path: 'src/clamp.js', start: 0, end: Buffer.byteLength(text),
+        sourceHash, text }];
+    const finding = { claim: 'Clamp returns the supplied value', path: 'src/clamp.js',
+        quote: 'return value;' };
+    const output = { scope: 'Assess clamp', observations: [finding], preservation: [finding],
+        dependencies: [], risks: [finding], tiers: { T1: 'Focused source unit tests',
+            T2: 'Cross-boundary integration', T3: 'Independent manual browser qualification' } };
+    assert.throws(() => validatedAssessment(JSON.stringify(output), refs,
+        'Inspect src/clamp.js and package.json', evidence), /ASSESSMENT_DEPENDENCIES_EMPTY/);
+    assert.throws(() => validatedAssessment(JSON.stringify({ ...output,
+        emptyReasons: { dependencies: 'No runtime dependencies declared' } }), refs,
+        'Inspect src/clamp.js and package.json', evidence), /ASSESSMENT_DEPENDENCIES_EMPTY/);
 });
 
 test('assessment keeps JSON escaped newline distinct from literal source backslash-n', () => {

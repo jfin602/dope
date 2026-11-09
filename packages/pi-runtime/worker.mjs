@@ -19,6 +19,7 @@ let chatToolsMode = false;
 let roadmapToolsMode = false;
 let roadmapGenerationMode = false;
 let proposalToolsMode = false;
+let assessmentToolsMode = false;
 let proposalModelCalls = 0;
 let proposalToolCalls = 0;
 let roadmapGenerationId;
@@ -235,6 +236,16 @@ export const PROPOSAL_TOOLS = {
   proposal_stage_prompt: proposalPromptSchema,
   proposal_finish: { finalMessage: Type.String() }
 };
+export const ASSESSMENT_TOOLS = {
+  ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
+  assessment_status: {},
+  assessment_stage: { category: Type.Union(['scope', 'observations', 'preservation',
+    'dependencies', 'risks', 'tiers'].map(Type.Literal)), claim: Type.Optional(Type.String()),
+    path: Type.Optional(Type.String()), quote: Type.Optional(Type.String()), reason: Type.Optional(Type.String()),
+    text: Type.Optional(Type.String()), T1: Type.Optional(Type.String()),
+    T2: Type.Optional(Type.String()), T3: Type.Optional(Type.String()) },
+  assessment_finish: {}
+};
 // Keep this compact: Pi sees the legal discriminator and required fields, while
 // the stage owner remains the authority for identity, source and content checks.
 const roadmapField = {
@@ -299,11 +310,12 @@ const ROADMAP_GENERATION_TOOLS = {
 };
 function chatTools() {
   return Object.entries(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
-    roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
+    roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS :
+    assessmentToolsMode ? ASSESSMENT_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
-      name === 'read_file' ? 'Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. Pass sourceHash as expectedSourceHash for later pages. Dope binds the full-file identity internally for proposal changes. A path-only read retains the legacy prefix behavior.' :
+      name === 'read_file' ? `Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. Pass sourceHash as expectedSourceHash for later pages. Dope binds the full-file identity internally for proposal changes. ${assessmentToolsMode ? 'Assessment path-only reads also return a bounded first page; continue until nextOffset is null.' : 'A path-only read retains the legacy prefix behavior.'}` :
       name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
       name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Omit ids to discover entities; Phase entries include gateIds so you can read their Gates by ID. Results contain up to 20 entries; when nextOffset is not null, pass it as offset in another roadmap_read until all relevant entities are found. Read before staging; Dope retains source and revision preconditions.' :
       name === 'roadmap_phase' ? 'Submit the next Phase with nested Gates and observable Criteria. Wait for the checked noncanonical stage receipt before continuing. This tool cannot apply a Roadmap.' :
@@ -316,12 +328,15 @@ function chatTools() {
       name === 'proposal_stage_prompt' ?
         'Stage one typed work step (kind work), detailed section (kind section), or separate terminal manual closeout (kind closeout). Give each work step a stable target ID; sections use that same target. Dope owns stage order and composition. Set complete:true on the last call for each target. Finish after all requested work steps and one closeout. This tool cannot publish files.' :
       name === 'proposal_finish' ? 'Request validation and sealing of the staged candidate. The finalMessage is untrusted display prose, not an approval.' :
+      name === 'assessment_status' ? 'Read required source coverage, accepted finding counts and the next action.' :
+      name === 'assessment_stage' ? 'Submit one verified finding with category, claim, path and a unique exact quote from read_file. Use category scope with text; category tiers with T1/T2/T3; or category dependencies/risks with reason when no findings apply after all requested files are read. Dope derives source offsets and identity.' :
+      name === 'assessment_finish' ? 'Seal only after all requested file bytes and all categories are complete. Dope independently validates source citations, tiers and authority.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ?
       properties : Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
-      if (proposalToolsMode && ++proposalToolCalls > 512) {
+      if ((proposalToolsMode || assessmentToolsMode) && ++proposalToolCalls > (assessmentToolsMode ? 128 : 512)) {
         chatLoopStopped = true;
         chatLoopReason = 'Protected proposal tool-call budget exceeded';
         void session?.abort();
@@ -453,6 +468,7 @@ async function dispose() {
   roadmapToolsMode = false;
   roadmapGenerationMode = false;
   proposalToolsMode = false;
+  assessmentToolsMode = false;
   proposalModelCalls = 0;
   proposalToolCalls = 0;
   roadmapGenerationId = undefined;
@@ -516,8 +532,11 @@ export async function dispatch(message) {
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
         roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;
         proposalToolsMode = chatToolsMode && message.proposalTools === true && !roadmapToolsMode && !roadmapGenerationMode;
+        assessmentToolsMode = chatToolsMode && message.assessmentTools === true &&
+          !proposalToolsMode && !roadmapToolsMode && !roadmapGenerationMode;
         const chatToolNames = Object.keys(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
-          roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS : CHAT_TOOLS);
+          roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS :
+          assessmentToolsMode ? ASSESSMENT_TOOLS : CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           thinkingLevel,
@@ -644,7 +663,8 @@ export async function dispatch(message) {
       let streamedAnswer = '';
       workRequestId = message.id;
       const unsubscribe = session.subscribe(event => {
-        if (proposalToolsMode && event.type === 'turn_start' && ++proposalModelCalls > 256) {
+        if ((proposalToolsMode || assessmentToolsMode) && event.type === 'turn_start' &&
+            ++proposalModelCalls > (assessmentToolsMode ? 64 : 256)) {
           chatLoopStopped = true;
           chatLoopReason = 'Protected proposal model-call budget exceeded';
           void session.abort();

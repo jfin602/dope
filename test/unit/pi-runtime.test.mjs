@@ -4,7 +4,14 @@ import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent,
-  ROADMAP_ACTION_FIELDS, roadmapActionSchema, PROPOSAL_TOOLS } from '../../packages/pi-runtime/worker.mjs';
+  ROADMAP_ACTION_FIELDS, roadmapActionSchema, PROPOSAL_TOOLS, ASSESSMENT_TOOLS } from '../../packages/pi-runtime/worker.mjs';
+
+test('incremental assessment advertises top-level object tools without command or write access', () => {
+  assert.deepEqual(Object.keys(ASSESSMENT_TOOLS).sort(), ['assessment_finish', 'assessment_stage',
+    'assessment_status', 'list_files', 'read_file', 'search_paths', 'search_text']);
+  assert.equal(ASSESSMENT_TOOLS.assessment_stage.category.anyOf.length, 6);
+  assert.equal(ASSESSMENT_TOOLS.assessment_stage.claim.type, 'string');
+});
 import { PiRuntimeHost, resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { PiConversationLease } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 import { ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
@@ -199,6 +206,18 @@ test('protected proposal session advertises bounded typed tools without command 
     const opened = await dispatch({ type: 'open', mode: 'chat-tools', proposalTools: true, cwd, model });
     assert.deepEqual(opened.tools.sort(), ['list_files', 'proposal_finish', 'proposal_stage_document',
       'proposal_stage_prompt', 'proposal_status', 'read_file', 'search_paths', 'search_text']);
+  } finally {
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('protected assessment session offers only brokered reads and staged findings', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-assessment-tools-'));
+  try {
+    const opened = await dispatch({ type: 'open', mode: 'chat-tools', assessmentTools: true, cwd, model });
+    assert.deepEqual(opened.tools.sort(), ['assessment_finish', 'assessment_stage',
+      'assessment_status', 'list_files', 'read_file', 'search_paths', 'search_text']);
   } finally {
     await dispatch({ type: 'close' });
     await rm(cwd, { recursive: true, force: true });

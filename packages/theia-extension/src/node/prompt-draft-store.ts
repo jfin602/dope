@@ -3,7 +3,7 @@ import type { ChatPromptDraftIdentity } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProjectGrounder } from './chat-project-grounder';
 import { renderAssessment, renderPlan, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
-    type AssessmentRecord, type PlanRecord } from './prompt-authoring-stage';
+    type AssessmentRecord, type AssessmentFinding, type AssessmentCategory, type PlanRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence } from './prompt-stack-proposal';
 
 export type PromptDraftStage = 'assessment' | 'plan';
@@ -23,6 +23,15 @@ export interface StoredPromptDraft {
     revision: number;
     state: 'active' | 'aborted';
     assessment?: StoredPromptDraftStage;
+    partialAssessment?: {
+        requested: string[];
+        pages: { path: string; start: number; end: number; fileBytes: number; sourceHash: string }[];
+        blocked: Record<string, string>;
+        scope?: string;
+        findings: Record<AssessmentCategory, AssessmentFinding[]>;
+        emptyReasons: Partial<Record<AssessmentCategory, string>>;
+        tiers?: AssessmentRecord['tiers'];
+    };
     plan?: StoredPromptDraftStage;
     history: { stage: PromptDraftStage; value: StoredPromptDraftStage }[];
     integrityHash: string;
@@ -40,6 +49,36 @@ function canonical(value: unknown): string {
 }
 function sealed(value: Omit<StoredPromptDraft, 'integrityHash'>): StoredPromptDraft {
     return { ...value, integrityHash: sha256(canonical(value)) };
+}
+function validPartial(value: StoredPromptDraft['partialAssessment']): boolean {
+    if (!value || !Array.isArray(value.requested) || value.requested.length > 16 ||
+        value.requested.some(path => typeof path !== 'string' || !/^[A-Za-z0-9_./-]{1,200}$/u.test(path) ||
+            path.startsWith('/') || path.split('/').includes('..')) ||
+        !Array.isArray(value.pages) || value.pages.length > 32 ||
+        !value.blocked || typeof value.blocked !== 'object' || Array.isArray(value.blocked) ||
+        !value.findings || typeof value.findings !== 'object' || Array.isArray(value.findings) ||
+        !value.emptyReasons || typeof value.emptyReasons !== 'object' || Array.isArray(value.emptyReasons) ||
+        Buffer.byteLength(canonical(value), 'utf8') > 32_000) return false;
+    if (value.pages.some(page => !page || typeof page.path !== 'string' || !hex(page.sourceHash) ||
+        !Number.isSafeInteger(page.start) || !Number.isSafeInteger(page.end) ||
+        !Number.isSafeInteger(page.fileBytes) || page.start < 0 ||
+        (page.fileBytes === 0 ? page.start !== 0 || page.end !== 0 : page.end <= page.start) ||
+        page.end > page.fileBytes)) return false;
+    for (const category of ['observations', 'preservation', 'dependencies', 'risks'] as const) {
+        const items = value.findings[category];
+        if (!Array.isArray(items) || items.length > 12 || items.some(item => !item ||
+            typeof item.claim !== 'string' || typeof item.path !== 'string' ||
+            typeof item.quote !== 'string' || !hex(item.sourceHash) ||
+            !Number.isSafeInteger(item.start) || !Number.isSafeInteger(item.end) ||
+            item.start < 0 || item.end <= item.start ||
+            !value.pages.some(page => page.path === item.path && page.sourceHash === item.sourceHash &&
+                page.start <= item.start && page.end >= item.end))) return false;
+        if (value.emptyReasons[category] !== undefined &&
+            (typeof value.emptyReasons[category] !== 'string' ||
+            (value.emptyReasons[category]?.length ?? 0) > 500)) return false;
+    }
+    return Object.entries(value.blocked).every(([path, reason]) => value.requested.includes(path) &&
+        typeof reason === 'string' && reason.length <= 80);
 }
 function checked(raw: unknown, identity: ChatPromptDraftIdentity): StoredPromptDraft {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Corrupt named prompt draft');
@@ -62,6 +101,8 @@ function checked(raw: unknown, identity: ChatPromptDraftIdentity): StoredPromptD
     }
     if (value.plan && (!value.assessment || value.plan.dependencyHash !== value.assessment.contentHash))
         throw new Error('Stale named prompt plan dependency');
+    if (value.partialAssessment && !validPartial(value.partialAssessment))
+        throw new Error('Corrupt partial prompt assessment');
     return value;
 }
 
@@ -93,7 +134,33 @@ export class PromptDraftStore {
             for (const stage of [current.assessment, current.plan]) if (stage)
                 await verifyPromptSourceRefs(root, stage.sourceRefs.map(ref => ({ ...ref, schemaVersion: 1,
                     kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
+            for (const page of current.partialAssessment?.pages ?? []) {
+                const currentPage = await this.grounder.readFileRange(root, page.path, 0, 1)
+                    .catch(() => { throw new Error('ASSESSMENT_SOURCE_DRIFT: Partial assessment source unavailable'); });
+                if (currentPage.sourceHash !== page.sourceHash)
+                    throw new Error('ASSESSMENT_SOURCE_DRIFT: Partial assessment source changed');
+            }
             return { result: current };
+        });
+    }
+
+    /** Atomic noncanonical progress; a failed call never changes a previously sealed assessment. */
+    async updatePartialAssessment(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
+        expectedRevision: number, partial: NonNullable<StoredPromptDraft['partialAssessment']>): Promise<StoredPromptDraft> {
+        if (!validPartial(partial))
+            throw new Error('ASSESSMENT_STAGE_LIMIT: Reduce the staged assessment');
+        return this.transact(root, identity, leaseToken, async current => {
+            if (!current || current.state !== 'active' || current.revision !== expectedRevision || current.assessment)
+                throw new Error('ASSESSMENT_STAGE_STALE: Assessment authority changed');
+            for (const page of partial.pages) {
+                const actual = await this.grounder.readFileRange(root, page.path, 0, 1)
+                    .catch(() => { throw new Error('ASSESSMENT_SOURCE_DRIFT: Source unavailable during staging'); });
+                if (actual.sourceHash !== page.sourceHash || actual.fileBytes !== page.fileBytes)
+                    throw new Error('ASSESSMENT_SOURCE_DRIFT: Source changed during staging');
+            }
+            const { integrityHash: _integrityHash, ...body } = current;
+            const snapshot = sealed({ ...body, revision: current.revision + 1, partialAssessment: partial });
+            return { snapshot, result: snapshot };
         });
     }
 
@@ -134,7 +201,7 @@ export class PromptDraftStore {
             const history = [...current.history, ...(old ? [{ stage: kind, value: old }] : []),
                 ...(kind === 'assessment' && current.plan ? [{ stage: 'plan' as const, value: current.plan }] : [])].slice(-8);
             const { integrityHash: _integrityHash, ...body } = current;
-            const { assessment: _assessment, plan: _plan, ...base } = body;
+            const { assessment: _assessment, plan: _plan, partialAssessment: _partialAssessment, ...base } = body;
             const snapshot = sealed({ ...base, revision: current.revision + 1,
                 ...(kind === 'assessment' ? { assessment: value } : { assessment: current.assessment!, plan: value }),
                 history });
