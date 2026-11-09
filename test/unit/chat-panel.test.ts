@@ -661,6 +661,17 @@ test('selector and transcript retain keyboard and dark theme surfaces', async ()
     assert.match(source, /dope-chat-settings/);
 });
 
+test('Chat settings expose one persisted context mode without legacy numeric inputs', async () => {
+    const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const settings = source.slice(source.indexOf('private renderSettings('), source.indexOf('private renderSkillsDrawer('));
+    assert.match(settings, /field\(advanced, 'Context limits', contextMode\)/);
+    assert.match(settings, /new Option\('Managed', 'managed'\), new Option\('Unmanaged', 'unmanaged'\)/);
+    assert.match(settings, /contextMode\.value = draft\.contextMode \?\? 'managed'/);
+    assert.match(settings, /draft\.contextMode = contextMode\.value/);
+    assert.match(settings, /describeContextMode\(\)/);
+    assert.doesNotMatch(settings, /Input token budget|Output token reserve|type = 'number'/);
+});
+
 test('pending planning disclosure stays separate from review and failure feedback', async () => {
     const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
     assert.match(source, /private roadmapProposalReviewCard\(proposal: ChatPlanningProposal\)/);

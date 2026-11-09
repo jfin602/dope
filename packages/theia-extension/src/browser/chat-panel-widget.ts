@@ -2639,15 +2639,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const advanced = document.createElement('details'); advanced.className = 'dope-chat-settings-advanced';
         const advancedTitle = document.createElement('summary'); advancedTitle.textContent = 'Advanced settings';
         advanced.append(advancedTitle); form.append(advanced);
-        const tokenInputs: HTMLInputElement[] = [];
-        for (const [label, key] of [['Input token budget', 'maxInputTokens'], ['Output token reserve', 'reservedOutputTokens']] as const) {
-            const input = document.createElement('input'); input.type = 'number'; input.min = key === 'maxInputTokens' ? '1' : '0';
-            input.step = '1'; input.value = String(draft.context[key]); tokenInputs.push(input);
-            input.onchange = () => { draft.context[key] = Number(input.value); };
-            field(advanced, label, input);
-        }
+        const contextMode = document.createElement('select');
+        contextMode.append(new Option('Managed', 'managed'), new Option('Unmanaged', 'unmanaged'));
+        contextMode.value = draft.contextMode ?? 'managed';
+        field(advanced, 'Context limits', contextMode);
         const budgetNote = document.createElement('p'); budgetNote.className = 'dope-chat-settings-note';
-        budgetNote.textContent = 'These saved limits are capped by the selected model’s loaded capacity when a turn runs.';
+        const describeContextMode = () => {
+            budgetNote.textContent = contextMode.value === 'managed' ?
+                'Dope manages context limits for each command within the selected model’s capacity.' :
+                'Dope adds no discretionary context limits. Model capacity and safety checks still apply.';
+        };
+        describeContextMode();
+        contextMode.onchange = () => {
+            draft.contextMode = contextMode.value as ChatSettings['contextMode'];
+            describeContextMode();
+        };
         advanced.append(budgetNote);
         const saved = document.createElement('input'); saved.type = 'checkbox'; saved.checked = draft.context.savedChatSearch;
         saved.onchange = () => { draft.context.savedChatSearch = saved.checked; };
@@ -2655,18 +2661,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const savedNote = document.createElement('p'); savedNote.className = 'dope-chat-settings-note';
         savedNote.textContent = 'Lets you select an excerpt from another saved Chat. Your current conversation history is controlled above.';
         advanced.append(savedNote);
-        const error = document.createElement('p'); error.className = 'dope-chat-settings-error';
-        error.setAttribute('role', 'alert'); advanced.append(error);
         const actions = document.createElement('footer');
         const save = this.button('Save settings', () => {
-            const [input, output] = tokenInputs.map(control => Number(control.value));
-            if (!tokenInputs.every(control => control.value.trim() && control.checkValidity()) ||
-                !Number.isSafeInteger(input) || input < 1 || !Number.isSafeInteger(output) || output < 0) {
-                error.textContent = 'Enter whole, nonnegative token limits; input must be at least 1.';
-                advanced.open = true; return;
-            }
-            draft.context.maxInputTokens = input; draft.context.reservedOutputTokens = output;
-            error.textContent = '';
+            draft.contextMode = contextMode.value as ChatSettings['contextMode'];
             void this.controller.mutate({ type: 'set-settings', chatId,
             settings: draft }).then(saved => {
             if (saved && this.settingsChatId === chatId) {
