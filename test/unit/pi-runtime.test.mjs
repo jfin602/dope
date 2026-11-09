@@ -1136,6 +1136,31 @@ test('Pi sends a reported graded reasoning level through the installed SDK', asy
   }
 });
 
+test('Pi sends the validated per-call ceiling as provider max_tokens for a loaded 16K model', async () => {
+  const originalFetch = globalThis.fetch;
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-capacity-'));
+  const requests = [];
+  try {
+    globalThis.fetch = async (_url, options) => {
+      requests.push(JSON.parse(options.body));
+      return new Response('data: {"choices":[{"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+        { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    for (const limit of [6144, 12000]) {
+      await dispatch({ type: 'open', cwd, model: { ...model, contextWindow: 16384, maxTokens: 12000,
+        compat: { maxTokensField: 'max_tokens' } } });
+      await dispatch({ type: 'turn', maxOutputTokens: limit,
+        messages: [{ role: 'user', content: 'Generate one word.' }] });
+      await dispatch({ type: 'close' });
+    }
+    assert.deepEqual(requests.map(request => request.max_tokens), [6144, 12000]);
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('Pi no-tool turn streams from Dope context without exposing tools or project extensions', async () => {
   const originalFetch = globalThis.fetch;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-turn-'));

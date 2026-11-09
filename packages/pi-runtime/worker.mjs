@@ -496,11 +496,13 @@ function assertLocalModel(model) {
       model.provider !== 'dope-local' || model.api !== 'openai-completions' ||
       typeof model.id !== 'string' || !model.id.trim() ||
       typeof model.name !== 'string' || !model.name.trim() ||
+      (model.compat?.maxTokensField !== undefined && model.compat.maxTokensField !== 'max_tokens') ||
       (model.reasoning === true ?
-        (!model.compat || Object.keys(model.compat).length !== 1 ||
+        (!model.compat || Object.keys(model.compat).length !== (model.compat.maxTokensField ? 2 : 1) ||
           !(model.compat.thinkingFormat === 'qwen-chat-template' ||
             model.compat.supportsReasoningEffort === true)) :
-        (model.reasoning !== false || model.compat !== undefined)) ||
+        (model.reasoning !== false || model.compat !== undefined &&
+          (Object.keys(model.compat).length !== 1 || model.compat.maxTokensField !== 'max_tokens'))) ||
       !Array.isArray(model.input) || model.input.length !== 1 || model.input[0] !== 'text' ||
       !model.cost || Object.values(model.cost).some(value => value !== 0) ||
       !Number.isSafeInteger(model.contextWindow) || model.contextWindow < 2048 ||

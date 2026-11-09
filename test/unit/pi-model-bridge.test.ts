@@ -41,11 +41,26 @@ test('Pi bridge binds only the exact refreshed AI Center Local model and measure
     assert.equal(binding.modelId, 'exact-model');
     assert.equal(binding.registryRevision, 3);
     assert.equal(binding.contextWindowTokens, 32768);
-    assert.equal(binding.maxOutputTokens, 4096);
+    assert.equal(binding.maxOutputTokens, 32768 - 1536);
     assert.equal(calls[0][0].id, 'exact-model');
     assert.equal(calls[0][0].provider, 'dope-local');
     assert.equal(calls[0][0].baseUrl, 'http://127.0.0.1:1234/v1');
     assert.equal(calls[0][0].contextWindow, 32768);
+    assert.equal(calls[0][0].maxTokens, binding.maxOutputTokens);
+});
+
+test('Pi bridge uses the loaded 16K context and declared provider ceiling without a 4K/8K cap', async () => {
+    const f = fixture();
+    f.state.loadedLocalModels[0].contextWindowTokens = 16384;
+    f.state.registry.models[0].limits.maxOutputTokens = known(20000);
+    const selected = { connectionId: 'desk', modelId: 'exact-model', loadedContextTokens: 16384 };
+    const binding = await f.bridge.bind(selected, f.host as any, '/tmp');
+    assert.equal(binding.maxOutputTokens, 16384 - 1536);
+    assert.equal(f.calls[0][0].maxTokens, binding.maxOutputTokens);
+    f.state.registry.models[0].limits.maxOutputTokens = known(12000);
+    const declared = await f.bridge.bind(selected, f.host as any, '/tmp');
+    assert.equal(declared.maxOutputTokens, 12000);
+    assert.equal(f.calls[1][0].maxTokens, 12000);
 });
 
 test('Pi binding follows reported modes rather than a model name', async () => {
@@ -58,7 +73,7 @@ test('Pi binding follows reported modes rather than a model name', async () => {
         value: { values: ['on'], default: 'on', format: 'qwen-chat-template' } };
     await f.bridge.bind({ connectionId: 'desk', modelId: 'qwen3.5-9b' }, f.host as any, '/tmp');
     assert.equal(f.calls[1][0].reasoning, true);
-    assert.deepEqual(f.calls[1][0].compat, { thinkingFormat: 'qwen-chat-template' });
+    assert.deepEqual(f.calls[1][0].compat, { maxTokensField: 'max_tokens', thinkingFormat: 'qwen-chat-template' });
     assert.equal(f.calls[1][3], 'medium');
     await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'qwen3.5-9b' }, f.host as any, '/tmp',
         { reasoningMode: 'off' }), /Reasoning Off is unavailable/);
@@ -70,7 +85,7 @@ test('Pi binding follows reported modes rather than a model name', async () => {
     delete f.state.registry.models[0].capabilities.localReasoning;
     await f.bridge.bind({ connectionId: 'desk', modelId: 'another-model' }, f.host as any, '/tmp');
     assert.equal(f.calls[2][0].reasoning, false);
-    assert.equal(f.calls[2][0].compat, undefined);
+    assert.deepEqual(f.calls[2][0].compat, { maxTokensField: 'max_tokens' });
 });
 
 test('Pi Chat binding accepts only the complete brokered tool boundary', async () => {

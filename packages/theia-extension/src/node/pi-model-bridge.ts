@@ -112,7 +112,9 @@ export class PiModelBridge {
         const thinkingLevel = mode === 'on' ? 'medium' : mode ?? 'off';
         const reasoningEnabled = !!reasoning && mode !== 'off';
         const declared = model.limits.maxOutputTokens.value;
-        const maxOutputTokens = Math.min(reasoningEnabled ? 8192 : 4096, loaded - 1536,
+        // Register the physical per-call ceiling. Operation-specific allowances are sent
+        // with each turn; the model registration must not impose another hidden quota.
+        const maxOutputTokens = Math.min(loaded - 1536,
             Number.isSafeInteger(declared) && declared! > 0 ? declared! : Infinity);
         if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1)
             throw unavailable('Selected Local model has insufficient output budget');
@@ -131,8 +133,8 @@ export class PiModelBridge {
         const modelSpec = { id: selection.modelId, name: model.label,
             provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
             reasoning: !!reasoning, input: ['text'],
-            ...(reasoning ? { compat: reasoning.format === 'qwen-chat-template' ?
-                { thinkingFormat: 'qwen-chat-template' } : { supportsReasoningEffort: true } } : {}),
+            compat: { maxTokensField: 'max_tokens', ...(reasoning ? reasoning.format === 'qwen-chat-template' ?
+                { thinkingFormat: 'qwen-chat-template' } : { supportsReasoningEffort: true } : {}) },
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: loaded, maxTokens: maxOutputTokens };
         const opened = options.chatTools && options.roadmapGeneration ?

@@ -245,8 +245,17 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 operationPolicy: request.projectTools?.operationPolicy,
                 reasoningMode: request.controls?.['reasoning.effort'] });
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
-        const maxOutputTokens = request.maxOutputTokens ?? Math.min(binding.reasoningEnabled ? 2048 : 1024,
-            binding.maxOutputTokens);
+        const inputBytes = Buffer.byteLength(JSON.stringify(request.messages), 'utf8');
+        const immutableBytes = Buffer.byteLength(JSON.stringify(request.messages.filter(item => item.role === 'system')),
+            'utf8') + Buffer.byteLength(request.messages.at(-1)?.content ?? '', 'utf8');
+        // Pi may compact older history, but the system instructions and current user
+        // message must fit alongside this call's output and context safety reserve.
+        const callHeadroom = binding.contextWindowTokens - Math.ceil(immutableBytes / 3) - 1024;
+        const maxOutputTokens = request.maxOutputTokens ?? Math.min(binding.maxOutputTokens, callHeadroom);
+        if (!request.messages.length || request.messages.at(-1)?.role !== 'user' ||
+            inputBytes > 512 * 1024 || callHeadroom < 1)
+            throw new ModelRuntimeFailure('Local Chat context exceeds the measured model budget; shorten the turn or select a larger model',
+                'unsupported-capability');
         if (binding.reasoningEnabled && maxOutputTokens < 2048)
             throw new ModelRuntimeFailure('Reasoning needs at least 2048 output tokens including the final answer; increase the Chat budget or load a larger model',
                 'unsupported-capability');
@@ -254,11 +263,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             maxOutputTokens > binding.maxOutputTokens)
             throw new ModelRuntimeFailure('Selected Local model has insufficient output capacity; load a larger model in AI Center',
                 'unsupported-capability');
-        const inputBytes = Buffer.byteLength(JSON.stringify(request.messages), 'utf8');
-        const immutableBytes = Buffer.byteLength(JSON.stringify(request.messages.filter(item => item.role === 'system')),
-            'utf8') + Buffer.byteLength(request.messages.at(-1)?.content ?? '', 'utf8');
-        if (!request.messages.length || request.messages.at(-1)?.role !== 'user' ||
-            inputBytes > 512 * 1024 || Math.ceil(immutableBytes / 3) + maxOutputTokens + 1024 > binding.contextWindowTokens)
+        if (maxOutputTokens > callHeadroom)
             throw new ModelRuntimeFailure('Local Chat context exceeds the measured model budget; shorten the turn or select a larger model',
                 'unsupported-capability');
         if (process.env.DOPE_PI_CHAT_CONTEXT_TRACE === '1') {

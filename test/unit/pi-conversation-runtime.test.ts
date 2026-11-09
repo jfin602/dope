@@ -36,6 +36,27 @@ test('Pi turn preserves exact model, saved follow-up roles, streaming and bounde
     assert.equal((events.at(-1) as { usage: { totalTokens: number } }).usage.totalTokens, 27);
 });
 
+test('Pi uses the bound physical ceiling for Unmanaged and the explicit Managed allowance per call', async () => {
+    const capacity = { contextWindowTokens: 16384, maxOutputTokens: 12000, reasoningEnabled: true };
+    const localBridge = { bind: async () => capacity };
+    const unmanaged = fixture();
+    for await (const _event of piConversation(selection,
+        { messages: [{ role: 'user', content: 'Inspect.' }] }, localBridge as never,
+        unmanaged.factory as never)) { /* inspect request */ }
+    assert.equal((unmanaged.calls[0] as { limit: number }).limit, 12000);
+    const managed = fixture();
+    for await (const _event of piConversation(selection,
+        { messages: [{ role: 'user', content: 'Inspect.' }], maxOutputTokens: 6144 },
+        localBridge as never, managed.factory as never)) { /* inspect request */ }
+    assert.equal((managed.calls[0] as { limit: number }).limit, 6144);
+    const constrained = fixture();
+    const large = 'x'.repeat(12000);
+    for await (const _event of piConversation(selection,
+        { messages: [{ role: 'user', content: large }] }, localBridge as never,
+        constrained.factory as never)) { /* inspect request */ }
+    assert.ok((constrained.calls[0] as { limit: number }).limit < 12000);
+});
+
 test('Pi adapter preserves policy failure provenance without treating it as transport', async () => {
     const detail = { stage: 'resource_limit' as const, brokerResultAcknowledged: false,
         failureOrigin: 'tool_budget' as const, toolStarts: 17, toolAcknowledgements: 16,
@@ -71,7 +92,7 @@ test('Pi Chat passes brokered project tools through the exact local session', as
             observed.push({ name, args }); return '<h1>Heading</h1>';
         } } }, localBridge as never, { create: () => host, release: () => {} } as never)) events.push(event);
     assert.deepEqual(observed, [
-        { cwd: '/project', options: { chatTools: true, reasoningMode: 'off' } },
+        { cwd: '/project', options: { chatTools: true, operationPolicy: undefined, reasoningMode: 'off' } },
         { name: 'read_file', args: { path: 'src/index.html' } },
         { status: 'completed', output: '<h1>Heading</h1>' }
     ]);
