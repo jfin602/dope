@@ -2,20 +2,21 @@ import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import { createHash } from 'node:crypto';
 import type { ConversationContinuation, ConversationEvent, ConversationRequest, ModelSelection } from '@dope/contracts/lib/model-runtime';
 import type { PiModelBridge } from './pi-model-bridge';
-import { PiWorkerFailure, type PiWorkerFailureCode, type PiRuntimeFactory, type PiRuntimeHost, type PiTurnResult } from './pi-runtime-host';
+import { PiWorkerFailure, type PiWorkerFailureCode, type PiToolFailureDetail,
+    type PiRuntimeFactory, type PiRuntimeHost, type PiTurnResult } from './pi-runtime-host';
 
 type ToolHandler = (call: { id: number; name: string; arguments: unknown }) => Promise<unknown>;
 const MAX_AGGREGATE_BYTES = 65536;
 export class PiConversationFailure extends ModelRuntimeFailure {
     constructor(message: string, failureClass: ModelRuntimeFailure['failureClass'],
-        readonly boundaryCode: PiWorkerFailureCode) {
+        readonly boundaryCode: PiWorkerFailureCode, readonly toolFailure?: PiToolFailureDetail) {
         super(message, failureClass);
     }
 }
 export function classifyPiFailure(error: unknown): PiConversationFailure | undefined {
     if (!(error instanceof PiWorkerFailure)) return undefined;
     const failure = (message: string, failureClass: ModelRuntimeFailure['failureClass']) =>
-        new PiConversationFailure(message, failureClass, error.code);
+        new PiConversationFailure(message, failureClass, error.code, error.toolFailure);
     switch (error.code) {
         case 'session_init': return failure(
             'Pi session could not open. Restart Dope and retry with the selected Local model.', 'connection-unavailable');
@@ -26,6 +27,23 @@ export function classifyPiFailure(error: unknown): PiConversationFailure | undef
             'Local provider connection failed during generation. Check LM Studio and retry.', 'transient-transport');
         case 'tool_protocol': return failure(
             'Pi tool execution or protocol failed. Retry the turn; inspect the saved tool outcomes.',
+            'incomplete-answer');
+        case 'model_tool_call_invalid': return failure(
+            'The local model sent an invalid tool call. Start a new authorized turn with the current source.',
+            'incomplete-answer');
+        case 'broker_tool_denied': return failure(
+            'Project authority denied a tool call. Review the saved tool outcome before retrying.',
+            'incomplete-answer');
+        case 'broker_tool_failed': return failure(
+            'A project tool failed. Review the saved tool outcome before retrying.', 'incomplete-answer');
+        case 'tool_reply_invalid':
+        case 'tool_reply_unmatched':
+        case 'tool_reply_duplicate':
+        case 'tool_reply_delivery_failed':
+        case 'worker_dispatch_failed':
+        case 'session_closed_with_pending_tool':
+        case 'tool_protocol_unknown': return failure(
+            'Pi tool transport stopped. Review the saved failure stage and start a new authorized turn.',
             'incomplete-answer');
         case 'worker_exit': return failure(
             'Pi worker exited during the turn. Restart Dope and retry.', 'connection-unavailable');
@@ -217,8 +235,14 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                     sha256: createHash('sha256').update(message.content).digest('hex') })) }));
         }
         const onTool = request.projectTools ? async (call: { id: number; name: string; arguments: unknown }) => {
-            const output = await request.projectTools!.execute(call.name, call.arguments, request.signal, call.id);
-            return { status: 'completed', output };
+            try {
+                const output = await request.projectTools!.execute(call.name, call.arguments, request.signal, call.id);
+                return { status: 'completed', output };
+            } catch (error) {
+                if (error instanceof Error && /\bdenied\b/iu.test(error.message))
+                    return { status: 'denied', output: '' };
+                throw error;
+            }
         } : undefined;
         for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool,
             request.projectTools?.generationId)) {

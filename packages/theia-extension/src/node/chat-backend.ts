@@ -3302,6 +3302,8 @@ export class ChatBackend implements ChatService {
                     (diagnostic ?? (cancelled ? 'Conversation cancelled' : baseFailure)) + assessmentProgress;
                 const failureCode = leaseRenewalFailed ? 'chat_lease' as const :
                     error instanceof PiConversationFailure ? error.boundaryCode : undefined;
+                const toolFailure = !cancelled && !leaseRenewalFailed && error instanceof PiConversationFailure ?
+                    error.toolFailure : undefined;
                 if (protectedAssessment && sourceRefs.length > 16)
                     sourceRefs.splice(0, sourceRefs.length - 16);
                 if (retainStreamedAnswer && output && output.startsWith(persistedPartial))
@@ -3313,13 +3315,15 @@ export class ChatBackend implements ChatService {
                     { type: 'interrupt-output-limit', chatId: key, messageId: assistant.id,
                         executionId: assistant.execution.id, cursor: saved.answerPartial.cursor,
                         failure: cancelled ? 'Conversation cancelled' : failure, cancelled,
-                        ...(!cancelled && failureCode ? { failureCode } : {}), sourceRefs, toolEvents,
+                        ...(!cancelled && failureCode ? { failureCode } : {}),
+                        ...(toolFailure ? { toolFailure } : {}), sourceRefs, toolEvents,
                         activity: activity?.snapshot() } :
                     { type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: '', activity: activity?.snapshot(),
                     contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                     ...(toolEvents.length ? { sourceRefs, toolEvents } : {}),
-                    ...(!cancelled ? { failure, ...(failureCode ? { failureCode } : {}) } : {}) });
+                    ...(!cancelled ? { failure, ...(failureCode ? { failureCode } : {}),
+                        ...(toolFailure ? { toolFailure } : {}) } : {}) });
                     void this.repository.removeActivityLog(root, key, assistant.id, assistant.execution.id)
                         .catch(() => undefined); }
                 catch { /* A lost lease or newer revision is recovered by ChatRepository. */ }

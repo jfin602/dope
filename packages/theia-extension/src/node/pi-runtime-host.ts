@@ -55,15 +55,33 @@ type Pending = { resolve(value: unknown): void; reject(error: Error): void; time
 
 export type PiWorkerFailureCode = 'session_init' | 'provider_http' | 'provider_connection' |
     'tool_protocol' | 'model_generation' | 'worker_exit' | 'worker_protocol' |
-    'context_limit' | 'output_limit' | 'worker_timeout' | 'resource_limit';
+    'context_limit' | 'output_limit' | 'worker_timeout' | 'resource_limit' |
+    'model_tool_call_invalid' | 'broker_tool_denied' | 'broker_tool_failed' |
+    'tool_reply_invalid' | 'tool_reply_unmatched' | 'tool_reply_duplicate' |
+    'tool_reply_delivery_failed' | 'worker_dispatch_failed' |
+    'session_closed_with_pending_tool' | 'tool_protocol_unknown';
+export interface PiToolFailureDetail { stage: PiWorkerFailureCode; requestId?: number;
+    toolId?: number; toolName?: string; lastConfirmed?: { requestId: number;
+        toolId: number; toolName: string; outcome: string }; brokerResultAcknowledged: boolean;
+    elapsedMs?: number }
 export class PiWorkerFailure extends Error {
-    constructor(readonly code: PiWorkerFailureCode, readonly httpStatus?: number) {
+    constructor(readonly code: PiWorkerFailureCode, readonly httpStatus?: number,
+        readonly toolFailure?: PiToolFailureDetail) {
         super(`Pi worker ${code}`);
     }
 }
 const workerFailureCodes = new Set<PiWorkerFailureCode>(['session_init', 'provider_http',
     'provider_connection', 'tool_protocol', 'model_generation', 'worker_exit', 'worker_protocol',
-    'context_limit', 'output_limit', 'worker_timeout', 'resource_limit']);
+    'context_limit', 'output_limit', 'worker_timeout', 'resource_limit',
+    'model_tool_call_invalid', 'broker_tool_denied', 'broker_tool_failed',
+    'tool_reply_invalid', 'tool_reply_unmatched', 'tool_reply_duplicate',
+    'tool_reply_delivery_failed', 'worker_dispatch_failed',
+    'session_closed_with_pending_tool', 'tool_protocol_unknown']);
+const offeredToolNames = new Set(['read_file', 'list_files', 'search_paths', 'search_text',
+    'run_command', 'edit_file', 'read_command_output', 'roadmap_read', 'roadmap_stage',
+    'roadmap_cancel', 'roadmap_phase', 'roadmap_finish', 'proposal_status',
+    'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish',
+    'assessment_status', 'assessment_stage', 'assessment_finish']);
 
 /** Only Dope-owned paths are considered. No PATH lookup or user Pi installation is used. */
 export function resolvePiWorkerPath(runtimeDir = __dirname, resourcesPath = process.resourcesPath): string {
@@ -85,6 +103,10 @@ export class PiRuntimeHost {
     private nextId = 0;
     private stdout = '';
     private readonly pending = new Map<number, Pending>();
+    private readonly seenToolIds = new Set<number>();
+    private readonly toolReplyRequestIds = new Set<number>();
+    private readonly activeTools = new Map<number, { requestId: number; name: string; startedAt: number }>();
+    private lastConfirmed?: PiToolFailureDetail['lastConfirmed'];
     private paused?: { id: number; segmentIndex: number; maxOutputTokens: number };
 
     constructor(private readonly workerPath = resolvePiWorkerPath(),
@@ -92,6 +114,10 @@ export class PiRuntimeHost {
 
     async start(): Promise<PiRuntimeDiagnostics> {
         if (this.child) throw new Error('Pi runtime already started');
+        this.seenToolIds.clear();
+        this.toolReplyRequestIds.clear();
+        this.activeTools.clear();
+        this.lastConfirmed = undefined;
         const child = spawn(this.executable, [this.workerPath], {
             stdio: ['pipe', 'pipe', 'pipe'],
             env: {
@@ -109,8 +135,10 @@ export class PiRuntimeHost {
                 String(chunk).includes('[dope-roadmap-generation]'))
                 console.info(String(chunk).slice(0, 4096));
         });
-        child.on('error', error => this.fail(error));
-        child.on('exit', () => this.fail(new PiWorkerFailure('worker_exit')));
+        child.on('error', () => this.fail(new PiWorkerFailure(this.activeTools.size ?
+            'session_closed_with_pending_tool' : 'worker_exit')));
+        child.on('exit', () => this.fail(new PiWorkerFailure(this.activeTools.size ?
+            'session_closed_with_pending_tool' : 'worker_exit')));
         try {
             const diagnostics = await this.request<PiRuntimeDiagnostics>({ type: 'diagnostics' });
             if (diagnostics.version !== '1.4.0' || diagnostics.transport !== 'supervised-worker' ||
@@ -262,22 +290,30 @@ export class PiRuntimeHost {
     private request<T>(record: Record<string, unknown>, onEvent?: Pending['onEvent'],
         onTool?: Pending['onTool'], requestId?: number): Promise<T> {
         const child = this.child;
-        if (!child || child.exitCode !== null || child.killed) return Promise.reject(new Error('Pi worker unavailable'));
+        if (!child || child.exitCode !== null || child.killed) return Promise.reject(
+            new PiWorkerFailure(record.type === 'tool-result' ? 'tool_reply_delivery_failed' : 'worker_exit',
+                undefined, this.toolDetail(record.type === 'tool-result' ?
+                    'tool_reply_delivery_failed' : 'worker_exit')));
         const id = requestId ?? ++this.nextId;
         if (this.pending.has(id)) return Promise.reject(new Error('Pi worker request already active'));
         const line = `${JSON.stringify({ ...record, id })}\n`;
         if (Buffer.byteLength(line, 'utf8') > 600_000 || child.stdin.writableLength > 600_000)
             return Promise.reject(new PiWorkerFailure('resource_limit'));
+        if (record.type === 'tool-result') this.toolReplyRequestIds.add(id);
         return new Promise<T>((resolve, reject) => {
             const timer = setTimeout(() => {
                 this.pending.delete(id);
-                reject(new PiWorkerFailure('worker_timeout'));
-                this.dispose();
+                const code = record.type === 'tool-result' ?
+                    'tool_reply_delivery_failed' : 'worker_timeout';
+                const failure = new PiWorkerFailure(code, undefined, this.toolDetail(code));
+                reject(failure);
+                this.fail(failure);
             }, record.type === 'work' ? 1_800_000 :
                 ['complete', 'turn', 'resume'].includes(String(record.type)) ? 900_000 : 10_000);
             this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent, onTool });
             child.stdin.write(line, error => {
-                if (error) this.fail(error);
+                if (error) this.fail(new PiWorkerFailure(record.type === 'tool-result' ?
+                    'tool_reply_delivery_failed' : 'worker_protocol'));
             });
         });
     }
@@ -295,31 +331,63 @@ export class PiRuntimeHost {
             try {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
                     errorCode?: PiWorkerFailureCode; httpStatus?: number;
+                    lastToolReceipt?: PiToolFailureDetail['lastConfirmed'];
                     event?: { type: 'delta'; text: string } | { type: 'reset' } |
                         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent;
                     tool?: { id: number; name: string; arguments: unknown } };
                 const pending = this.pending.get(record.id);
-                if (!pending) throw new Error('Unexpected Pi worker response');
+                if (!pending) throw new PiWorkerFailure(this.toolReplyRequestIds.has(record.id) ?
+                    'tool_reply_duplicate' : 'tool_reply_unmatched');
                 if (record.tool) {
                     if (!pending.onTool || !Number.isSafeInteger(record.tool.id) || record.tool.id < 1 ||
-                        typeof record.tool.name !== 'string') throw new Error('Unexpected Pi tool call');
+                        typeof record.tool.name !== 'string') throw new PiWorkerFailure('tool_reply_invalid');
+                    if (!offeredToolNames.has(record.tool.name))
+                        throw new PiWorkerFailure('model_tool_call_invalid');
+                    if (this.seenToolIds.has(record.tool.id)) throw new PiWorkerFailure('tool_reply_duplicate');
+                    this.seenToolIds.add(record.tool.id);
+                    this.activeTools.set(record.tool.id, { requestId: record.id,
+                        name: record.tool.name, startedAt: Date.now() });
                     if (process.env.DOPE_PI_CONTINUATION_TRACE === '1')
                         console.info('[dope-pi-continuation]', JSON.stringify({ at: new Date().toISOString(),
                             stage: 'broker-received', requestId: record.id, toolId: record.tool.id,
                             toolName: record.tool.name }));
                     void pending.onTool(record.tool).then(result => {
                         if (!this.pending.has(record.id)) return;
+                        if (!result || typeof result !== 'object' ||
+                            !['completed', 'failed', 'denied'].includes((result as { status?: string }).status ?? '') ||
+                            typeof (result as { output?: unknown }).output !== 'string')
+                            throw new PiWorkerFailure('tool_reply_invalid');
                         if (process.env.DOPE_PI_CONTINUATION_TRACE === '1')
                             console.info('[dope-pi-continuation]', JSON.stringify({ at: new Date().toISOString(),
                                 stage: 'broker-completed', requestId: record.id, toolId: record.tool!.id,
                                 status: (result as { status?: string })?.status,
                                 outputBytes: Buffer.byteLength((result as { output?: string })?.output ?? '') }));
-                        return this.request({ type: 'tool-result', toolId: record.tool!.id, result });
+                        return this.request({ type: 'tool-result', requestId: record.id,
+                            toolId: record.tool!.id, result }).then(ack => {
+                            if (!ack || typeof ack !== 'object' ||
+                                (ack as { received?: unknown }).received !== true ||
+                                (ack as { requestId?: unknown }).requestId !== record.id ||
+                                (ack as { toolId?: unknown }).toolId !== record.tool!.id)
+                                throw new PiWorkerFailure('tool_reply_invalid');
+                            this.lastConfirmed = { requestId: record.id, toolId: record.tool!.id,
+                                toolName: record.tool!.name, outcome: (result as { status: string }).status };
+                            this.activeTools.delete(record.tool!.id);
+                        });
                     }, () => {
                         if (!this.pending.has(record.id)) return;
-                        return this.request({ type: 'tool-result', toolId: record.tool!.id,
-                            result: { status: 'denied', output: '' } });
-                    }).catch(() => this.fail(new Error('Pi tool reply failed')));
+                        return this.request({ type: 'tool-result', requestId: record.id,
+                            toolId: record.tool!.id, result: { status: 'failed', output: '' } }).then(ack => {
+                            if (!ack || typeof ack !== 'object' ||
+                                (ack as { received?: unknown }).received !== true ||
+                                (ack as { requestId?: unknown }).requestId !== record.id ||
+                                (ack as { toolId?: unknown }).toolId !== record.tool!.id)
+                                throw new PiWorkerFailure('tool_reply_invalid');
+                            this.lastConfirmed = { requestId: record.id, toolId: record.tool!.id,
+                                toolName: record.tool!.name, outcome: 'failed' };
+                            this.activeTools.delete(record.tool!.id);
+                        });
+                    }).catch(error => this.fail(error instanceof PiWorkerFailure ? error :
+                        new PiWorkerFailure('tool_reply_delivery_failed')));
                     continue;
                 }
                 if (record.event) {
@@ -371,7 +439,8 @@ export class PiRuntimeHost {
                 else pending.reject(record.errorCode && workerFailureCodes.has(record.errorCode) ?
                     new PiWorkerFailure(record.errorCode,
                         Number.isSafeInteger(record.httpStatus) && record.httpStatus! >= 400 &&
-                        record.httpStatus! <= 599 ? record.httpStatus : undefined) :
+                        record.httpStatus! <= 599 ? record.httpStatus : undefined,
+                        this.toolDetail(record.errorCode, record.lastToolReceipt)) :
                     new PiWorkerFailure('worker_protocol'));
             } catch (error) {
                 this.fail(error instanceof PiWorkerFailure ? error : new PiWorkerFailure('worker_protocol'));
@@ -381,18 +450,38 @@ export class PiRuntimeHost {
     }
 
     private fail(error: Error): void {
+        if (error instanceof PiWorkerFailure && !error.toolFailure)
+            error = new PiWorkerFailure(error.code, error.httpStatus, this.toolDetail(error.code));
         this.paused = undefined;
         for (const pending of this.pending.values()) {
             clearTimeout(pending.timer);
             pending.reject(error);
         }
         this.pending.clear();
+        this.activeTools.clear();
         this.stdout = '';
         this.child?.kill();
         this.child = undefined;
     }
 
     dispose(): void { this.fail(new Error('Pi runtime disposed')); }
+
+    private toolDetail(stage: PiWorkerFailureCode,
+        workerReceipt?: PiToolFailureDetail['lastConfirmed']): PiToolFailureDetail {
+        const active = this.activeTools.entries().next().value as
+            [number, { requestId: number; name: string; startedAt: number }] | undefined;
+        const lastConfirmed = workerReceipt && Number.isSafeInteger(workerReceipt.requestId) &&
+            workerReceipt.requestId > 0 && Number.isSafeInteger(workerReceipt.toolId) &&
+            workerReceipt.toolId > 0 && typeof workerReceipt.toolName === 'string' &&
+            /^[a-z_]{1,64}$/u.test(workerReceipt.toolName) &&
+            ['completed', 'failed', 'denied'].includes(workerReceipt.outcome) ?
+            workerReceipt : this.lastConfirmed;
+        return { stage, ...(active ? { toolId: active[0], requestId: active[1].requestId,
+            toolName: active[1].name, elapsedMs: Math.min(1_800_000,
+                Math.max(0, Date.now() - active[1].startedAt)) } : {}),
+            ...(lastConfirmed ? { lastConfirmed } : {}),
+            brokerResultAcknowledged: !active && !!lastConfirmed };
+    }
 }
 
 /** Injectable host factory. An unexpected exit fails current work; a new host is explicit. */

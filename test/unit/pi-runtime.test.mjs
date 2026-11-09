@@ -12,7 +12,7 @@ test('incremental assessment advertises top-level object tools without command o
   assert.equal(ASSESSMENT_TOOLS.assessment_stage.category.anyOf.length, 6);
   assert.equal(ASSESSMENT_TOOLS.assessment_stage.claim.type, 'string');
 });
-import { PiRuntimeHost, resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
+import { PiRuntimeHost, PiWorkerFailure, resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { PiConversationLease } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 import { ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { parseDocumentationSkillReview } from '../../packages/theia-extension/lib/node/documentation-skill-review.js';
@@ -34,6 +34,127 @@ test('bundled worker returns a bounded session initialization code', async () =>
     await host.start();
     await assert.rejects(host.openNoToolSession({ baseUrl: 'http://127.0.0.1:9/v1' }, '/tmp'),
       error => error.code === 'session_init' && !String(error).includes('127.0.0.1'));
+  } finally { host.dispose(); }
+});
+
+test('host correlates acknowledged tool results and rejects a replay before a second broker effect', async () => {
+  const host = new PiRuntimeHost('/unused');
+  const sent = [];
+  let effects = 0;
+  host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+    stdin: { writableLength: 0, write(line, callback) {
+      const frame = JSON.parse(line); sent.push(frame);
+      if (frame.type === 'tool-result') queueMicrotask(() => host.acceptOutput(JSON.stringify({
+        id: frame.id, ok: true, data: { received: true,
+          requestId: frame.requestId, toolId: frame.toolId } }) + '\n'));
+      callback?.(); return true;
+    } } };
+  try {
+    const first = host.request({ type: 'turn' }, undefined, async () => {
+      effects++; return { status: 'completed', output: 'one' };
+    });
+    const requestId = sent[0].id;
+    host.acceptOutput(JSON.stringify({ id: requestId, tool: {
+      id: 1, name: 'read_file', arguments: { path: 'one' } } }) + '\n');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(sent[1].requestId, requestId);
+    assert.equal(sent[1].toolId, 1);
+    assert.equal(host.lastConfirmed?.toolId, 1);
+    assert.equal(effects, 1);
+    host.acceptOutput(JSON.stringify({ id: requestId, tool: {
+      id: 1, name: 'read_file', arguments: { path: 'different' } } }) + '\n');
+    await assert.rejects(first, error => error.code === 'tool_reply_duplicate' &&
+      error.toolFailure?.lastConfirmed?.toolId === 1);
+    assert.equal(effects, 1);
+  } finally { host.dispose(); }
+});
+
+test('host rejects malformed broker replies without reporting an acknowledgement', async () => {
+  const host = new PiRuntimeHost('/unused');
+  host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+    stdin: { writableLength: 0, write(_line, callback) { callback?.(); return true; } } };
+  try {
+    const turn = host.request({ type: 'turn' }, undefined,
+      async () => ({ status: 'completed', output: { private: 'invalid' } }));
+    const requestId = host.nextId;
+    host.acceptOutput(JSON.stringify({ id: requestId, tool: {
+      id: 1, name: 'read_file', arguments: { path: 'one' } } }) + '\n');
+    await assert.rejects(turn, error => error.code === 'tool_reply_invalid' &&
+      error.toolFailure?.toolId === 1 && !error.toolFailure.brokerResultAcknowledged);
+  } finally { host.dispose(); }
+});
+
+test('worker rejects an unmatched result frame and host identifies a close with a pending tool', async () => {
+  await assert.rejects(dispatch({ type: 'tool-result', requestId: 9999, toolId: 9999,
+    result: { status: 'completed', output: '' } }),
+  error => error.code === 'tool_reply_unmatched');
+  const host = new PiRuntimeHost('/unused');
+  host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+    stdin: { writableLength: 0, write(_line, callback) { callback?.(); return true; } } };
+  try {
+    const turn = host.request({ type: 'turn' }, undefined,
+      async () => new Promise(() => {}));
+    const requestId = host.nextId;
+    host.acceptOutput(JSON.stringify({ id: requestId, tool: {
+      id: 1, name: 'search_text', arguments: { query: 'alpha' } } }) + '\n');
+    host.fail(new PiWorkerFailure('session_closed_with_pending_tool'));
+    await assert.rejects(turn, error => error.code === 'session_closed_with_pending_tool' &&
+      error.toolFailure?.toolId === 1 && !error.toolFailure.brokerResultAcknowledged);
+    assert.equal(host.activeTools.size, 0);
+  } finally { host.dispose(); }
+});
+
+test('the seven R6 broker operations remain correlated before a rejected next call', async () => {
+  const host = new PiRuntimeHost('/unused');
+  const calls = [];
+  host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+    stdin: { writableLength: 0, write(line, callback) {
+      const frame = JSON.parse(line);
+      if (frame.type === 'tool-result') queueMicrotask(() => host.acceptOutput(JSON.stringify({
+        id: frame.id, ok: true, data: { received: true,
+          requestId: frame.requestId, toolId: frame.toolId } }) + '\n'));
+      callback?.(); return true;
+    } } };
+  try {
+    const turn = host.request({ type: 'turn' }, undefined, async call => {
+      calls.push({ id: call.id, name: call.name });
+      return { status: 'completed', output: '{}' };
+    });
+    const requestId = host.nextId;
+    const names = ['list_files', 'search_paths', 'read_file', 'list_files',
+      'read_file', 'read_file', 'search_text'];
+    for (let index = 0; index < names.length; index++) {
+      host.acceptOutput(JSON.stringify({ id: requestId, tool: {
+        id: index + 1, name: names[index], arguments: {} } }) + '\n');
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(host.lastConfirmed?.toolId, index + 1);
+    }
+    host.acceptOutput(JSON.stringify({ id: requestId, tool: {
+      id: 8, name: 'not_a_tool', arguments: {} } }) + '\n');
+    await assert.rejects(turn, error => error.code === 'model_tool_call_invalid' &&
+      error.toolFailure?.lastConfirmed?.toolId === 7);
+    assert.deepEqual(calls.map(call => call.name), names);
+  } finally { host.dispose(); }
+});
+
+test('a wrong acknowledgement tool ID fails closed without a completed receipt', async () => {
+  const host = new PiRuntimeHost('/unused');
+  host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+    stdin: { writableLength: 0, write(line, callback) {
+      const frame = JSON.parse(line);
+      if (frame.type === 'tool-result') queueMicrotask(() => host.acceptOutput(JSON.stringify({
+        id: frame.id, ok: true, data: { received: true,
+          requestId: frame.requestId, toolId: frame.toolId + 1 } }) + '\n'));
+      callback?.(); return true;
+    } } };
+  try {
+    const turn = host.request({ type: 'turn' }, undefined,
+      async () => ({ status: 'completed', output: 'read' }));
+    host.acceptOutput(JSON.stringify({ id: host.nextId, tool: {
+      id: 1, name: 'read_file', arguments: { path: 'one' } } }) + '\n');
+    await assert.rejects(turn, error => error.code === 'tool_reply_invalid' &&
+      error.toolFailure?.toolId === 1 && !error.toolFailure.brokerResultAcknowledged);
+    assert.equal(host.lastConfirmed, undefined);
   } finally { host.dispose(); }
 });
 
@@ -176,7 +297,7 @@ test('Pi host closes a worker when unread stream frames exceed byte backpressure
     assert.equal((await stream.next()).value.type, 'delta');
     await new Promise(resolve => setTimeout(resolve, 200));
     await assert.rejects(host.openNoToolSession({ baseUrl: 'http://127.0.0.1:9/v1' }, '/tmp'),
-      /unavailable/);
+      error => error.code === 'worker_exit');
     await stream.return();
   } finally { host.dispose(); await fixture.cleanup(); }
 });
@@ -273,10 +394,10 @@ test('Pi Roadmap schema agrees with native stage fields and relays two typed rev
                 { ...record.tool.arguments, ...basis } : record.tool.arguments;
               const result = await owner[record.tool.name.slice('roadmap_'.length)](context, params);
               if (record.tool.name === 'roadmap_read') basis = result.stageBasis;
-              await dispatch({ type: 'tool-result', toolId: record.tool.id,
+              await dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
                 result: { status: 'completed', output: JSON.stringify(result) } });
             } catch (error) {
-              await dispatch({ type: 'tool-result', toolId: record.tool.id,
+              await dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
                 result: { status: 'completed', output: JSON.stringify({ error: String(error) }) } });
             }
           });
@@ -634,7 +755,7 @@ test('Pi continuation retains one brokered tool result and rejects stale or canc
         const record = JSON.parse(String(chunk));
         if (record.tool) {
           tools.push(record.tool);
-          queueMicrotask(() => void dispatch({ type: 'tool-result', toolId: record.tool.id,
+          queueMicrotask(() => void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
             result: { status: 'completed', output: 'checked once' } }));
           return true;
         }
@@ -967,9 +1088,9 @@ test('Pi Chat discovers a project without attachments through only brokered read
             record.tool.name === 'read_file' ? '<h1>Fixture project</h1>' : '';
           if (record.tool.name === 'run_command') {
             void runChatInvestigationCommand(cwd, record.tool.arguments.command).then(result =>
-              dispatch({ type: 'tool-result', toolId: record.tool.id,
+              dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
                 result: { status: 'completed', output: result.output } }));
-          } else queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+          } else queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
             result: { status: 'completed', output } }); });
           return true;
         }
@@ -1040,7 +1161,7 @@ test('Pi bounds repeated unchanged read evidence without fabricating completion'
         const record = JSON.parse(String(chunk));
         if (record.tool) {
           calls.push(record.tool.name);
-          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
             result: { status: 'completed', output: 'unchanged source' } }); });
           return true;
         }
@@ -1093,7 +1214,7 @@ test('Pi stops a repeated invalid Roadmap stage even when the model rereads betw
               expectedSourceHash: null } }) :
             JSON.stringify({ version: 1, acceptedOperationIds: [], error:
               'ROADMAP_STAGE_ARGUMENTS: invalid stage manifest' });
-          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
             result: { status: 'completed', output } }); });
           return true;
         }
@@ -1138,7 +1259,7 @@ test('Pi permits changed evidence and ordinary second reads', async () => {
       try {
         const record = JSON.parse(String(chunk));
         if (record.tool) {
-          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
             result: { status: 'completed', output: `source revision ${++reads}` } }); });
           return true;
         }
@@ -1219,7 +1340,7 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
         const record = JSON.parse(String(chunk));
         if (record.tool) {
           seen.push(record.tool);
-          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
             result: { status: 'completed', output: 'candidate source' } }); });
           return true;
         }
@@ -1289,7 +1410,7 @@ test('Pi Work compacts between distinct tool turns, then continues without repla
         if (record.tool) {
           if (record.tool.name === 'read_file') reads++;
           if (record.tool.name === 'run_command') commandExecutions++;
-          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
             result: { status: record.tool.name === 'read_file' && reads === 1 ? 'failed' : 'completed',
               output: record.tool.name === 'run_command' ? 'command passed once' :
                 `read ${reads}: ${'distinct source line '.repeat(45)}` } }); });
@@ -1418,7 +1539,7 @@ test('a failed approved Work test reaches Pi as repair feedback on the next mode
         const record = JSON.parse(String(chunk));
         if (record.tool) {
           assert.equal(record.tool.name, 'run_command');
-          queueMicrotask(() => { void dispatch({ type: 'tool-result', toolId: record.tool.id,
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
             result: { status: 'failed', output: '3 tests failed: checkout total mismatch' } }); });
           return true;
         }

@@ -84,7 +84,13 @@ export interface ChatExecution {
     failure?: string; // User-safe summary; no raw provider payload.
     failureCode?: 'session_init' | 'provider_http' | 'provider_connection' | 'tool_protocol' |
         'model_generation' | 'worker_exit' | 'worker_protocol' | 'context_limit' | 'output_limit' |
-        'worker_timeout' | 'resource_limit' | 'chat_lease';
+        'worker_timeout' | 'resource_limit' | 'chat_lease' | 'model_tool_call_invalid' |
+        'broker_tool_denied' | 'broker_tool_failed' | 'tool_reply_invalid' |
+        'tool_reply_unmatched' | 'tool_reply_duplicate' | 'tool_reply_delivery_failed' |
+        'worker_dispatch_failed' | 'session_closed_with_pending_tool' | 'tool_protocol_unknown';
+    toolFailure?: { stage: string; requestId?: number; toolId?: number; toolName?: string;
+        lastConfirmed?: { requestId: number; toolId: number; toolName: string; outcome: string };
+        brokerResultAcknowledged: boolean; elapsedMs?: number };
     contextUsage?: { usedTokens: number; budgetTokens: number };
     tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number;
         tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable' };
@@ -437,7 +443,7 @@ export function availableChatContextTokens(policy: ChatContextPolicy, modelWindo
 }
 
 function parseExecution(value: unknown): ChatExecution {
-    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'outputLimitPolicy', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'failureCode', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
+    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'outputLimitPolicy', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'failureCode', 'toolFailure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported execution schema');
     const execution: ChatExecution = { schemaVersion: 1, id: identifier(v.id), status: choice(v.status, statuses, 'assistant status'),
@@ -452,7 +458,45 @@ function parseExecution(value: unknown): ChatExecution {
     if (v.failureCode !== undefined) execution.failureCode = choice(v.failureCode,
         ['session_init', 'provider_http', 'provider_connection', 'tool_protocol',
             'model_generation', 'worker_exit', 'worker_protocol', 'context_limit', 'output_limit',
-            'worker_timeout', 'resource_limit', 'chat_lease'] as const, 'failure code');
+            'worker_timeout', 'resource_limit', 'chat_lease', 'model_tool_call_invalid',
+            'broker_tool_denied', 'broker_tool_failed', 'tool_reply_invalid',
+            'tool_reply_unmatched', 'tool_reply_duplicate', 'tool_reply_delivery_failed',
+            'worker_dispatch_failed', 'session_closed_with_pending_tool', 'tool_protocol_unknown'] as const, 'failure code');
+    if (v.toolFailure !== undefined) {
+        const detail = record(v.toolFailure, ['stage', 'requestId', 'toolId', 'toolName',
+            'lastConfirmed', 'brokerResultAcknowledged', 'elapsedMs'], ['stage', 'brokerResultAcknowledged']);
+        const stage = choice(detail.stage, ['session_init', 'provider_http', 'provider_connection',
+            'tool_protocol', 'model_generation', 'worker_exit', 'worker_protocol', 'context_limit',
+            'output_limit', 'worker_timeout', 'resource_limit', 'model_tool_call_invalid',
+            'broker_tool_denied', 'broker_tool_failed', 'tool_reply_invalid',
+            'tool_reply_unmatched', 'tool_reply_duplicate', 'tool_reply_delivery_failed',
+            'worker_dispatch_failed', 'session_closed_with_pending_tool', 'tool_protocol_unknown'] as const,
+        'Pi tool failure stage');
+        if (typeof detail.brokerResultAcknowledged !== 'boolean' ||
+            [detail.requestId, detail.toolId].some(id => id !== undefined &&
+                (!Number.isSafeInteger(id) || (id as number) < 1)) ||
+            detail.elapsedMs !== undefined && (!Number.isSafeInteger(detail.elapsedMs) ||
+                (detail.elapsedMs as number) < 0 || (detail.elapsedMs as number) > 1_800_000) ||
+            detail.toolName !== undefined && (typeof detail.toolName !== 'string' ||
+                !/^[a-z_]{1,64}$/u.test(detail.toolName))) throw new Error('Invalid Pi tool failure');
+        let lastConfirmed: NonNullable<ChatExecution['toolFailure']>['lastConfirmed'];
+        if (detail.lastConfirmed !== undefined) {
+            const last = record(detail.lastConfirmed, ['requestId', 'toolId', 'toolName', 'outcome'],
+                ['requestId', 'toolId', 'toolName', 'outcome']);
+            if (!Number.isSafeInteger(last.requestId) || (last.requestId as number) < 1 ||
+                !Number.isSafeInteger(last.toolId) || (last.toolId as number) < 1 ||
+                typeof last.toolName !== 'string' || !/^[a-z_]{1,64}$/u.test(last.toolName) ||
+                !['completed', 'failed', 'denied'].includes(String(last.outcome)))
+                throw new Error('Invalid last Pi tool receipt');
+            lastConfirmed = last as NonNullable<ChatExecution['toolFailure']>['lastConfirmed'];
+        }
+        execution.toolFailure = { stage, brokerResultAcknowledged: detail.brokerResultAcknowledged,
+            ...(detail.requestId !== undefined ? { requestId: detail.requestId as number } : {}),
+            ...(detail.toolId !== undefined ? { toolId: detail.toolId as number } : {}),
+            ...(detail.elapsedMs !== undefined ? { elapsedMs: detail.elapsedMs as number } : {}),
+            ...(detail.toolName !== undefined ? { toolName: detail.toolName as string } : {}),
+            ...(lastConfirmed ? { lastConfirmed } : {}) };
+    }
     const tokens = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 &&
         (value as number) <= 1_000_000_000;
     if (v.contextUsage !== undefined) {

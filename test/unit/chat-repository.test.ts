@@ -30,6 +30,36 @@ test('generation limit policy persists across repository reopen', async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('sanitized Pi failure stage and last acknowledged tool survive Chat restart', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'pi-owner');
+    if (!lease.acquired) throw new Error('Chat claim missing');
+    state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId,
+      message: { schemaVersion: 1, id: messageId, role: 'assistant',
+        createdAt: new Date().toISOString(), content: '',
+        execution: { schemaVersion: 1, id: id(), status: 'pending', selectedModel: model,
+          startedAt: new Date().toISOString() } } }, lease.token);
+    const toolFailure = { stage: 'tool_reply_delivery_failed', requestId: 3, toolId: 8,
+      toolName: 'search_text', brokerResultAcknowledged: false,
+      lastConfirmed: { requestId: 3, toolId: 7, toolName: 'read_file', outcome: 'completed' } };
+    state = await repo.mutate(root, state.revision, { type: 'finish-assistant', chatId,
+      messageId, outcome: 'failed', content: '', failure: 'Pi tool transport stopped.',
+      failureCode: 'tool_reply_delivery_failed', toolFailure }, lease.token);
+    const saved = (await new ChatRepository().read(root)).chats[0].messages[0];
+    assert.equal(saved.role, 'assistant');
+    if (saved.role === 'assistant') {
+      assert.deepEqual(saved.execution.toolFailure, toolFailure);
+      assert.equal(saved.execution.failureCode, 'tool_reply_delivery_failed');
+      assert.equal(saved.content, '');
+    }
+    assert.throws(() => parseChatMessage({ ...saved, execution: {
+      ...saved.execution, toolFailure: { ...toolFailure, toolName: 'src/private.js' } } }),
+    /Invalid Pi tool failure/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('verified proposal stages persist on the assistant without becoming a decision or canonical answer', async () => {
   const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id();
   try {
