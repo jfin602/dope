@@ -53,6 +53,7 @@ import { documentModelStage, promptModelStage, proposalToolError } from './propo
 import { IncrementalDocumentReview } from './incremental-document-review';
 import { IncrementalPromptStack } from './incremental-prompt-stack';
 import { PiConversationFailure } from './pi-conversation-runtime';
+import { resolveOperationContextPolicy, trustedOperationForTurn } from './operation-context-policy';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -1362,6 +1363,10 @@ export class ChatBackend implements ChatService {
             connection.models.find(item => item.id === selection.modelId && item.usable);
         if (!model || !model.capabilities.contextWindowTokens)
             throw new Error('Selected local model is unavailable');
+        // The dedicated dispatch above is the authority for this operation, not scope prose.
+        const operationPolicy = resolveOperationContextPolicy('managed', 'phase-roadmap',
+            model.capabilities, chat.settings.reasoningControls);
+        void operationPolicy; // P4/P6/P7 consume this versioned snapshot at the enforcement boundaries.
         const connectionFingerprint = JSON.stringify(connection);
         for (const [id, value] of Object.entries(chat.settings.reasoningControls ?? {}))
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
@@ -2089,6 +2094,11 @@ export class ChatBackend implements ChatService {
         const turnPrompt = nativeCandidate ? planningPrompt : skillInstruction ?
             { text: planningPrompt ? `${planningPrompt.text}\n\n${skillInstruction}` : skillInstruction } : planningPrompt;
         const ordinaryChat = !roadmapTurn && !docsReview && !skill;
+        const operationPolicy = resolveOperationContextPolicy('managed', trustedOperationForTurn({
+            promptStage: promptStage?.stage, docsReview, roadmapEdit: !!roadmapSkill,
+            investigation: !ordinaryChat || !!opportunity || !!bridge || !!helpTurn
+        }), model.capabilities, controls);
+        void operationPolicy; // This slice selects policy; later slices bind it to composition and Pi.
         const composed = await this.composeTurn(root, contextChat, content, selections,
             model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local', roadmapSkill,

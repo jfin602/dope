@@ -5,6 +5,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { resolveChatSkill } from '../../packages/theia-extension/lib/node/chat-skills.js';
+import { trustedOperationForTurn } from '../../packages/theia-extension/lib/node/operation-context-policy.js';
+
+test('only bound prompt command stages select protected policy classes', () => {
+    for (const stage of ['prompt-ass', 'prompt-plan', 'prompt-write'] as const) {
+        const parsed = promptStageCommand(stage === 'prompt-ass' ? '/prompt-ass c0-test Do work' : `/${stage}`,
+            stage);
+        assert.equal(trustedOperationForTurn({ promptStage: parsed?.stage, docsReview: false,
+            roadmapEdit: false, investigation: false }), stage);
+    }
+    assert.equal(trustedOperationForTurn({ promptStage: promptStageCommand('Quote /prompt-write', undefined)?.stage,
+        docsReview: false, roadmapEdit: false, investigation: false }), 'chat');
+});
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText, newPromptDraftIdentity,
     priorPromptDraft, promptStageCommand, promptStageInstruction, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,

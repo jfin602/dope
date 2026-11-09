@@ -11,6 +11,14 @@ import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend, forbidsProjectTools } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ModelRuntimeFailure } from '../../packages/contracts/lib/model-runtime.js';
 import { PiConversationFailure } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
+import { trustedOperationForTurn } from '../../packages/theia-extension/lib/node/operation-context-policy.js';
+
+test('backend policy dispatch uses validated operation flags, never inert request text', () => {
+    const ordinary = { docsReview: false, roadmapEdit: false, investigation: false };
+    assert.equal(trustedOperationForTurn(ordinary), 'chat');
+    assert.equal(trustedOperationForTurn({ ...ordinary, investigation: true }), 'investigation');
+    assert.equal(trustedOperationForTurn({ ...ordinary, roadmapEdit: true }), 'roadmap-edit');
+});
 
 test('explicit current-turn tool opt-out is narrow and distinct from read-only constraints', () => {
     assert.equal(forbidsProjectTools('What is 1+1? Do not call tools or modify files.'), true);
