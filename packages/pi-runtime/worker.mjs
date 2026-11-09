@@ -1000,10 +1000,17 @@ async function accept(line) {
       'output_limit' : /input limit exceeded|event limit exceeded/u.test(detail) ?
       'resource_limit' : provider?.kind === 'http' ? 'provider_http' :
       provider?.kind === 'connection' ? 'provider_connection' :
+      message?.type === 'resume' && /continuation model drift/u.test(detail) ?
+      'continuation_model_drift' :
+      message?.type === 'resume' && /continuation unavailable or stale/u.test(detail) ?
+      'continuation_unavailable' :
+      message?.type === 'resume' && /^(?:Pi continuation|Local Pi completion)/u.test(detail) ?
+      'continuation_pi_rejected' :
       /invalid.*tool.?call|tool.?call.*invalid/iu.test(detail) ? 'model_tool_call_invalid' :
       /Dope Chat tool|Unknown Pi tool result|Pi worker busy|Invalid Pi|tool call/u.test(detail) ?
       'tool_protocol_unknown' : message?.type === 'open' ? 'session_init' :
-      ['turn', 'resume', 'complete', 'work'].includes(message?.type) ? 'model_generation' :
+      message?.type === 'resume' ? 'continuation_pi_rejected' :
+      ['turn', 'complete', 'work'].includes(message?.type) ? 'model_generation' :
       'worker_protocol';
     process.stdout.write(`${JSON.stringify({ id, ok: false, errorCode,
       ...(lastToolReceipt ? { lastToolReceipt } : {}),

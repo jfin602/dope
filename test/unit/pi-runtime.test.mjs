@@ -162,8 +162,8 @@ async function protocolFixture(mode) {
   const host = new PiRuntimeHost('/unused');
   const calls = [];
   let pausedId, index = 0;
-  const segment = (n, reason) => ({ text: n === 1 ? 'Part.' : 'Part. Done.',
-    ...(n > 1 ? { novelText: ' Done.' } : {}), segmentIndex: n,
+  const segment = (n, reason) => ({ text: n === 1 ? 'Part.' : n === 2 ? 'Part. Done.' : 'Part. Done. Finished.',
+    ...(n > 1 ? { novelText: n === 2 ? ' Done.' : ' Finished.' } : {}), segmentIndex: n,
     modelId: 'offline-fixture', finishReason: reason,
     segmentUsage: { inputTokens: 10, outputTokens: 5, totalTokens: 15,
       tokenMeasurement: 'provider-reported' },
@@ -196,7 +196,13 @@ async function protocolFixture(mode) {
             send(message.id, { ok: false, error: 'Pi continuation unavailable or stale' });
           else if (mode === 'provider-error') send(message.id, { ok: false,
             errorCode: 'provider_http', httpStatus: 503 });
-          else if (mode !== 'hang') { index++; send(message.id, { ok: true, data: segment(index, 'stop') }); }
+          else if (mode === 'invalid-resume-result') {
+            index++; const result = segment(index, 'stop');
+            result.novelText = 'unrelated';
+            send(message.id, { ok: true, data: result });
+          }
+          else if (mode !== 'hang') { index++; send(message.id, { ok: true,
+            data: segment(index, mode === 'multi-pause' && index === 2 ? 'length' : 'stop') }); }
         } else if (message.type === 'stop') send(message.id,
           message.id === pausedId && message.segmentIndex === index ?
             { ok: true, data: { stopped: true, segmentIndex: index } } :
@@ -219,7 +225,7 @@ test('Pi host checks the final provider call against its limit, not aggregate to
         assert.equal(events.at(-1).type, 'paused');
         assert.equal(events.at(-1).result.segmentUsage.outputTokens, 2085);
         assert.equal(events.at(-1).result.lastCallOutputTokens, 2048);
-      } else await assert.rejects(pending, /Invalid Pi turn result/);
+      } else await assert.rejects(pending, error => error.code === 'worker_protocol');
     } finally { fixture.host.dispose(); await fixture.cleanup(); }
   }
 });
@@ -259,8 +265,31 @@ test('Pi host and adapter retain one worker across pause, resume, and checked st
   } finally { stoppedHost.dispose(); await stoppedFixture.cleanup(); }
 });
 
-test('Pi continuation expires, rejects disposed workers and provider errors, and cancellation wins a resume race', async () => {
-  for (const mode of ['normal', 'disposed', 'provider-error', 'hang']) {
+test('a second Continue keeps the retained session when the prior paused stream closes', async () => {
+  const fixture = await protocolFixture('multi-pause');
+  const { host, calls } = fixture;
+  try {
+    const first = await Array.fromAsync(host.streamTurn([{ role: 'user', content: 'Answer.' }], 128));
+    const lease = new PiConversationLease(host, { release: value => value.dispose() },
+      'offline-fixture', undefined, undefined, first.at(-1).result, 1000);
+    let third;
+    for await (const event of lease.resume()) {
+      if (event.type === 'paused') {
+        third = event.continuation.resume();
+        break;
+      }
+    }
+    assert.ok(third);
+    const final = await Array.fromAsync(third);
+    assert.equal(final.at(-1).type, 'complete');
+    assert.equal(final.at(-1).text, 'Part. Done. Finished.');
+    assert.equal(final.at(-1).segmentIndex, 3);
+    assert.deepEqual(calls.filter(call => call.type === 'resume').map(call => call.segmentIndex), [2, 3]);
+  } finally { host.dispose(); await fixture.cleanup(); }
+});
+
+test('Pi continuation expires, classifies invalid results and provider errors, and cancellation wins a resume race', async () => {
+  for (const mode of ['normal', 'disposed', 'provider-error', 'invalid-resume-result', 'hang']) {
     const fixture = await protocolFixture(mode);
     const { host } = fixture;
     const controller = new AbortController();
@@ -271,12 +300,17 @@ test('Pi continuation expires, rejects disposed workers and provider errors, and
         mode === 'normal' ? 10 : 1000);
       if (mode === 'normal') {
         await new Promise(resolve => setTimeout(resolve, 30));
-        assert.throws(() => lease.resume(), /expired/);
+        assert.throws(() => lease.resume(), error => error.boundaryCode === 'continuation_expired');
       } else if (mode === 'disposed') {
         host.dispose();
-        await assert.rejects(Array.fromAsync(lease.resume()), /failed or expired|worker protocol failed/);
+        await assert.rejects(Array.fromAsync(lease.resume()),
+          error => error.boundaryCode === 'continuation_unavailable');
       } else if (mode === 'provider-error') {
         await assert.rejects(Array.fromAsync(lease.resume()), /HTTP 503/);
+        assert.throws(() => lease.resume(), /unavailable or stale/);
+      } else if (mode === 'invalid-resume-result') {
+        await assert.rejects(Array.fromAsync(lease.resume()),
+          error => error.boundaryCode === 'continuation_result_invalid');
         assert.throws(() => lease.resume(), /unavailable or stale/);
       } else {
         const pending = Array.fromAsync(lease.resume());
@@ -765,9 +799,9 @@ test('Pi continuation retains one brokered tool result and rejects stale or canc
     globalThis.fetch = async (_url, options) => {
       requests.push(JSON.parse(options.body));
       const n = requests.length;
-      const chunks = n === 1 ? [
-        { delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-once', type: 'function',
-          function: { name: 'read_file', arguments: '{"path":"README.md"}' } }] }, finish_reason: null },
+      const chunks = n === 1 || n === 3 ? [
+        { delta: { role: 'assistant', tool_calls: [{ index: 0, id: n === 1 ? 'call-once' : 'call-after', type: 'function',
+          function: { name: 'read_file', arguments: JSON.stringify({ path: n === 1 ? 'README.md' : 'NEXT.md' }) } }] }, finish_reason: null },
         { delta: {}, finish_reason: 'tool_calls' }
       ] : [
         { delta: { role: 'assistant', content: n === 2 ? 'First.' : 'Second.' }, finish_reason: null },
@@ -789,9 +823,10 @@ test('Pi continuation retains one brokered tool result and rejects stale or canc
       maxOutputTokens: 128, cancelled: true }), /unavailable or stale/);
     const answer = await dispatch({ type: 'resume', id: 101, segmentIndex: 2, maxOutputTokens: 128 });
     assert.equal(answer.text, 'First.Second.');
-    assert.equal(tools.length, 1);
-    assert.equal(requests.length, 3);
-    assert.equal(requests[2].messages.filter(item => item.role === 'tool').length, 1);
+    assert.equal(tools.length, 2);
+    assert.deepEqual(tools.map(item => item.arguments.path), ['README.md', 'NEXT.md']);
+    assert.equal(requests.length, 4);
+    assert.equal(requests[3].messages.filter(item => item.role === 'tool').length, 2);
     await dispatch({ type: 'close' });
     await assert.rejects(dispatch({ type: 'resume', id: 101, segmentIndex: 3,
       maxOutputTokens: 128 }), /unavailable or stale/);

@@ -87,7 +87,9 @@ export interface ChatExecution {
         'worker_timeout' | 'resource_limit' | 'chat_lease' | 'model_tool_call_invalid' |
         'broker_tool_denied' | 'broker_tool_failed' | 'tool_reply_invalid' |
         'tool_reply_unmatched' | 'tool_reply_duplicate' | 'tool_reply_delivery_failed' |
-        'worker_dispatch_failed' | 'session_closed_with_pending_tool' | 'tool_protocol_unknown';
+        'worker_dispatch_failed' | 'session_closed_with_pending_tool' | 'tool_protocol_unknown' |
+        'continuation_unavailable' | 'continuation_expired' | 'continuation_result_invalid' |
+        'continuation_pi_rejected' | 'continuation_model_drift';
     toolFailure?: { stage: string; requestId?: number; toolId?: number; toolName?: string;
         lastConfirmed?: { requestId: number; toolId: number; toolName: string; outcome: string };
         brokerResultAcknowledged: boolean; elapsedMs?: number };
@@ -466,7 +468,9 @@ function parseExecution(value: unknown): ChatExecution {
             'worker_timeout', 'resource_limit', 'chat_lease', 'model_tool_call_invalid',
             'broker_tool_denied', 'broker_tool_failed', 'tool_reply_invalid',
             'tool_reply_unmatched', 'tool_reply_duplicate', 'tool_reply_delivery_failed',
-            'worker_dispatch_failed', 'session_closed_with_pending_tool', 'tool_protocol_unknown'] as const, 'failure code');
+            'worker_dispatch_failed', 'session_closed_with_pending_tool', 'tool_protocol_unknown',
+            'continuation_unavailable', 'continuation_expired', 'continuation_result_invalid',
+            'continuation_pi_rejected', 'continuation_model_drift'] as const, 'failure code');
     if (v.toolFailure !== undefined) {
         const detail = record(v.toolFailure, ['stage', 'requestId', 'toolId', 'toolName',
             'lastConfirmed', 'brokerResultAcknowledged', 'elapsedMs'], ['stage', 'brokerResultAcknowledged']);
@@ -475,7 +479,9 @@ function parseExecution(value: unknown): ChatExecution {
             'output_limit', 'worker_timeout', 'resource_limit', 'model_tool_call_invalid',
             'broker_tool_denied', 'broker_tool_failed', 'tool_reply_invalid',
             'tool_reply_unmatched', 'tool_reply_duplicate', 'tool_reply_delivery_failed',
-            'worker_dispatch_failed', 'session_closed_with_pending_tool', 'tool_protocol_unknown'] as const,
+            'worker_dispatch_failed', 'session_closed_with_pending_tool', 'tool_protocol_unknown',
+            'continuation_unavailable', 'continuation_expired', 'continuation_result_invalid',
+            'continuation_pi_rejected', 'continuation_model_drift'] as const,
         'Pi tool failure stage');
         if (typeof detail.brokerResultAcknowledged !== 'boolean' ||
             [detail.requestId, detail.toolId].some(id => id !== undefined &&

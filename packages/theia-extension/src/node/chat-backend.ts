@@ -2992,7 +2992,8 @@ export class ChatBackend implements ChatService {
                                 reject(new ModelRuntimeFailure('Conversation cancelled', 'cancelled')); };
                             if (abort.signal.aborted) { onAbort(); return; }
                             timer = setTimeout(() => { cleanup(); this.pendingOutputLimits.delete(key);
-                                reject(new ModelRuntimeFailure('Local Pi continuation expired', 'connection-unavailable')); }, 120_000);
+                                reject(new PiConversationFailure('Pi continuation expired. Start a new authorized turn from the saved partial work.',
+                                    'connection-unavailable', 'continuation_expired')); }, 120_000);
                             this.pendingOutputLimits.set(key, pending);
                             abort.signal.addEventListener('abort', onAbort, { once: true });
                         });

@@ -59,7 +59,9 @@ export type PiWorkerFailureCode = 'session_init' | 'provider_http' | 'provider_c
     'model_tool_call_invalid' | 'broker_tool_denied' | 'broker_tool_failed' |
     'tool_reply_invalid' | 'tool_reply_unmatched' | 'tool_reply_duplicate' |
     'tool_reply_delivery_failed' | 'worker_dispatch_failed' |
-    'session_closed_with_pending_tool' | 'tool_protocol_unknown';
+    'session_closed_with_pending_tool' | 'tool_protocol_unknown' |
+    'continuation_unavailable' | 'continuation_expired' | 'continuation_result_invalid' |
+    'continuation_pi_rejected' | 'continuation_model_drift';
 export interface PiToolFailureDetail { stage: PiWorkerFailureCode; requestId?: number;
     toolId?: number; toolName?: string; lastConfirmed?: { requestId: number;
         toolId: number; toolName: string; outcome: string }; brokerResultAcknowledged: boolean;
@@ -76,7 +78,9 @@ const workerFailureCodes = new Set<PiWorkerFailureCode>(['session_init', 'provid
     'model_tool_call_invalid', 'broker_tool_denied', 'broker_tool_failed',
     'tool_reply_invalid', 'tool_reply_unmatched', 'tool_reply_duplicate',
     'tool_reply_delivery_failed', 'worker_dispatch_failed',
-    'session_closed_with_pending_tool', 'tool_protocol_unknown']);
+    'session_closed_with_pending_tool', 'tool_protocol_unknown',
+    'continuation_unavailable', 'continuation_expired', 'continuation_result_invalid',
+    'continuation_pi_rejected', 'continuation_model_drift']);
 const offeredToolNames = new Set(['read_file', 'list_files', 'search_paths', 'search_text',
     'run_command', 'edit_file', 'read_command_output', 'roadmap_read', 'roadmap_stage',
     'roadmap_cancel', 'roadmap_phase', 'roadmap_finish', 'proposal_status',
@@ -205,7 +209,7 @@ export class PiRuntimeHost {
         onTool?: NonNullable<Pending['onTool']>): AsyncIterable<PiTurnEvent> {
         const paused = this.paused;
         if (!paused || segmentIndex !== paused.segmentIndex + 1)
-            throw new Error('Pi continuation unavailable or stale');
+            throw new PiWorkerFailure('continuation_unavailable');
         this.paused = undefined; // Claim before the first await: duplicate resumes cannot replay tools.
         yield* this.streamSegment({ type: 'resume', segmentIndex,
             maxOutputTokens: paused.maxOutputTokens }, paused.id, signal, onTool);
@@ -279,7 +283,8 @@ export class PiRuntimeHost {
                 (result.lastCallOutputTokens === undefined && result.segmentUsage?.outputTokens !== undefined &&
                     result.segmentUsage.outputTokens > Number(record.maxOutputTokens)) ||
                 (record.type === 'resume' && typeof result.novelText !== 'string'))
-                throw new Error('Invalid Pi turn result');
+                throw new PiWorkerFailure(record.type === 'resume' ?
+                    'continuation_result_invalid' : 'worker_protocol');
             if (result.finishReason === 'length') this.paused = { id, segmentIndex: result.segmentIndex,
                 maxOutputTokens: Number(record.maxOutputTokens) };
             yield { type: result.finishReason === 'length' ? 'paused' : 'complete',

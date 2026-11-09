@@ -63,6 +63,21 @@ export function classifyPiFailure(error: unknown): PiConversationFailure | undef
         case 'resource_limit': return failure(
             'Pi worker resource limit was reached. Shorten the turn or reduce tool output, then retry.',
             'unsupported-capability');
+        case 'continuation_unavailable': return failure(
+            'Pi continuation unavailable or stale. Start a new authorized turn from the saved partial work.',
+            'incomplete-answer');
+        case 'continuation_expired': return failure(
+            'Pi continuation expired. Start a new authorized turn from the saved partial work.',
+            'connection-unavailable');
+        case 'continuation_result_invalid': return failure(
+            'Pi returned an invalid continuation segment. The saved partial work remains incomplete.',
+            'incomplete-answer');
+        case 'continuation_pi_rejected': return failure(
+            'Pi rejected the continuation in the retained session. Review the saved partial work before retrying.',
+            'incomplete-answer');
+        case 'continuation_model_drift': return failure(
+            'The continuation changed the selected model. Start a new authorized turn with the original model.',
+            'incomplete-answer');
     }
 }
 
@@ -71,6 +86,7 @@ export class PiConversationLease implements ConversationContinuation {
     private state: 'paused' | 'running' | 'closed' = 'paused';
     private timer?: NodeJS.Timeout;
     private expired = false;
+    private resumeGeneration = 0;
     private readonly onAbort = () => this.dispose();
     private result: PiTurnResult;
 
@@ -99,22 +115,25 @@ export class PiConversationLease implements ConversationContinuation {
             typeof result.novelText !== 'string' || result.text !== this.result.text + result.novelText ||
             Buffer.byteLength(result.text, 'utf8') > MAX_AGGREGATE_BYTES ||
             !Array.isArray(result.usageSegments) || result.usageSegments.length !== result.segmentIndex)
-            throw new ModelRuntimeFailure('Local Pi continuation changed model or answer', 'incomplete-answer');
+            throw new PiConversationFailure('Pi returned an invalid continuation segment. The saved partial work remains incomplete.',
+                'incomplete-answer', 'continuation_result_invalid');
         this.result = result;
     }
 
     resume(): AsyncIterable<ConversationEvent> {
         if (this.expired)
-            throw new ModelRuntimeFailure('Pi continuation expired', 'connection-unavailable');
+            throw new PiConversationFailure('Pi continuation expired. Start a new authorized turn from the saved partial work.',
+                'connection-unavailable', 'continuation_expired');
         if (this.state !== 'paused' || this.signal?.aborted)
-            throw new ModelRuntimeFailure('Pi continuation unavailable or stale', 'incomplete-answer');
+            throw new PiConversationFailure('Pi continuation unavailable or stale. Start a new authorized turn from the saved partial work.',
+                'incomplete-answer', 'continuation_unavailable');
         this.state = 'running';
         this.clear();
         this.arm(900_000);
-        return this.run();
+        return this.run(++this.resumeGeneration);
     }
 
-    private async *run(): AsyncIterable<ConversationEvent> {
+    private async *run(generation: number): AsyncIterable<ConversationEvent> {
         try {
             for await (const event of this.host.resumeTurn(this.result.segmentIndex + 1,
                 this.signal, this.onTool)) {
@@ -143,9 +162,12 @@ export class PiConversationLease implements ConversationContinuation {
             if (error instanceof ModelRuntimeFailure) throw error;
             const classified = classifyPiFailure(error);
             if (classified) throw classified;
-            throw new ModelRuntimeFailure('Local Pi continuation failed or expired', 'connection-unavailable');
+            throw new PiConversationFailure('Pi rejected the continuation in the retained session. Review the saved partial work before retrying.',
+                'incomplete-answer', 'continuation_pi_rejected');
         } finally {
-            if (this.state === 'running') this.dispose();
+            // The backend can begin the next segment before closing this paused iterator.
+            // Its cleanup must not release the worker now owned by that newer segment.
+            if (this.state === 'running' && this.resumeGeneration === generation) this.dispose();
         }
     }
 
@@ -161,9 +183,11 @@ export class PiConversationLease implements ConversationContinuation {
 
     async stop(): Promise<Extract<ConversationEvent, { type: 'stopped-incomplete' }>> {
         if (this.expired)
-            throw new ModelRuntimeFailure('Pi continuation expired', 'connection-unavailable');
+            throw new PiConversationFailure('Pi continuation expired. Start a new authorized turn from the saved partial work.',
+                'connection-unavailable', 'continuation_expired');
         if (this.state !== 'paused' || this.signal?.aborted)
-            throw new ModelRuntimeFailure('Pi continuation unavailable or stale', 'incomplete-answer');
+            throw new PiConversationFailure('Pi continuation unavailable or stale. Start a new authorized turn from the saved partial work.',
+                'incomplete-answer', 'continuation_unavailable');
         this.state = 'running';
         this.clear();
         const result = this.result;

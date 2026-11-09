@@ -679,8 +679,9 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         const text = `Part ${generated}`;
         const continuation = { async *resume() {
             resumed++;
-            if (generated === 4) throw new ModelRuntimeFailure('Local Pi continuation failed or expired',
-                'connection-unavailable');
+            if (generated === 4) throw new PiConversationFailure(
+                'Pi rejected the continuation in the retained session. Review the saved partial work before retrying.',
+                'incomplete-answer', 'continuation_pi_rejected');
             yield { type: 'complete' as const, text: `${text} complete`, actualModelId: 'q4',
                 finishReason: 'stop', usage: { tokenMeasurement: 'provider-reported' as const,
                     inputTokens: 12, outputTokens: 8, totalTokens: 20 } };
@@ -807,11 +808,15 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         const fourth = await paused();
         await backend.decideOutputLimit(projectHandle, chatId, lease.token, fourth.id,
             fourth.execution.id, 1, fourth.answerPartial!.cursor, 'continue');
-        await assert.rejects(failedTurn, /continuation failed or expired/);
+        await assert.rejects(failedTurn, /rejected the continuation/);
         const failed = (await backend.get(projectHandle, chatId))!.messages.at(-1)!;
         assert.equal(failed.execution.status, 'interrupted');
-        assert.equal(failed.execution.failure, 'Local Pi continuation failed or expired');
+        assert.match(failed.execution.failure ?? '', /rejected the continuation/);
+        assert.equal(failed.execution.failureCode, 'continuation_pi_rejected');
         assert.equal(failed.answerPartial?.text, 'Part 4');
+        const reopened = (await new ChatRepository().read(root)).chats[0].messages.at(-1)!;
+        assert.equal(reopened.execution.failureCode, 'continuation_pi_rejected');
+        assert.equal(reopened.answerPartial?.text, 'Part 4');
     } finally {
         if (owned) await backend.release(owned.projectHandle, owned.chatId, owned.token).catch(() => undefined);
         backend.dispose();
