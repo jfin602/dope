@@ -58,23 +58,30 @@ export class IncrementalAssessment {
         await this.store.updatePartialAssessment(this.root, this.identity, this.leaseToken,
             draft.revision, { ...partial, blocked: { ...partial.blocked, [path]: reason.slice(0, 80) } });
     }
-    static coverage(partial: Partial): { inspected: string[]; remaining: string[] } {
-        const inspected = partial.requested.filter(path => {
+    static coverage(partial: Partial): { inspected: string[]; remaining: string[];
+        progress: Record<string, { coveredBytes: number; fileBytes?: number; nextOffset: number | null;
+            expectedSourceHash?: string }> } {
+        const progress = Object.fromEntries(partial.requested.map(path => {
             const pages = partial.pages.filter(page => page.path === path)
                 .sort((a, b) => a.start - b.start);
-            if (!pages.length) return false;
+            if (!pages.length) return [path, { coveredBytes: 0, nextOffset: 0 }];
             let covered = 0;
             for (const page of pages) {
                 if (page.sourceHash !== pages[0].sourceHash || page.fileBytes !== pages[0].fileBytes ||
-                    page.start > covered) return false;
+                    page.start > covered) break;
                 covered = Math.max(covered, page.end);
             }
-            return covered === pages[0].fileBytes;
-        });
-        return { inspected, remaining: partial.requested.filter(path => !inspected.includes(path)) };
+            return [path, { coveredBytes: covered, fileBytes: pages[0].fileBytes,
+                nextOffset: covered === pages[0].fileBytes ? null : covered,
+                expectedSourceHash: pages[0].sourceHash }];
+        })) as Record<string, { coveredBytes: number; fileBytes?: number; nextOffset: number | null;
+            expectedSourceHash?: string }>;
+        const inspected = partial.requested.filter(path => progress[path].nextOffset === null);
+        return { inspected, remaining: partial.requested.filter(path => !inspected.includes(path)), progress };
     }
     async status(): Promise<{ assessment: string; sources: string; findings: number;
-        required: { path: string; state: string; reason?: string }[];
+        required: { path: string; state: string; reason?: string; coveredBytes: number;
+            fileBytes?: number; nextOffset: number | null; expectedSourceHash?: string }[];
         categories: Record<AssessmentCategory, string>; remaining: string[]; nextAction: string }> {
         const { draft, partial } = await this.snapshot();
         if (draft.assessment) return { assessment: this.identity.slug,
@@ -90,26 +97,31 @@ export class IncrementalAssessment {
         const incomplete = categories.find(category => categoryState[category] === 'incomplete');
         return { assessment: this.identity.slug,
             sources: `${coverage.inspected.length}/${partial.requested.length} inspected`,
-            required: partial.requested.map(path => ({ path,
+            required: partial.requested.map(path => ({ path, ...coverage.progress[path],
                 state: coverage.inspected.includes(path) ? 'required range inspected' :
                     partial.blocked[path] ? 'unavailable or blocked' :
                         partial.pages.some(page => page.path === path) ? 'partially inspected' : 'not inspected',
                 ...(partial.blocked[path] ? { reason: partial.blocked[path] } : {}) })),
             findings: categories.reduce((sum, category) => sum + partial.findings[category].length, 0),
             categories: categoryState, remaining: coverage.remaining,
-            nextAction: coverage.remaining.length ? `read_file ${coverage.remaining[0]} using offset 0 and continue to fileBytes` :
+            nextAction: coverage.remaining.length ? `read_file ${coverage.remaining[0]} using offset ${coverage.progress[coverage.remaining[0]].nextOffset}` +
+                (coverage.progress[coverage.remaining[0]].expectedSourceHash ?
+                    ` and expectedSourceHash ${coverage.progress[coverage.remaining[0]].expectedSourceHash}` :
+                    ' and maxBytes 4096') :
                 !partial.pages.length ? 'read_file relevant source with offset 0' :
                 !partial.scope ? 'stage scope' : incomplete ? `stage ${incomplete} or a justified empty reason` :
                     !partial.tiers ? 'stage T1/T2/T3' : 'assessment_finish' };
     }
     async stage(raw: unknown, refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>,
-        evidence: readonly AssessmentRead[]): Promise<{ accepted: true; category: string; findings: number; nextAction: string }> {
+        evidence: readonly AssessmentRead[]): Promise<{ accepted: true; idempotent: boolean;
+            category: string; findings: number; nextAction: string }> {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw))
             throw new Error('ASSESSMENT_STAGE_SHAPE: Supply a top-level category object');
         const input = raw as AssessmentStageInput;
-        if (!['scope', 'tiers', ...categories].includes(input.category) ||
-            Object.keys(input).some(key => !['category', 'claim', 'path', 'quote', 'reason', 'text', 'T1', 'T2', 'T3'].includes(key)))
+        if (!['scope', 'tiers', ...categories].includes(input.category))
             throw new Error('ASSESSMENT_STAGE_CATEGORY: Choose scope, tiers or one finding category');
+        if (Object.keys(input).some(key => !['category', 'claim', 'path', 'quote', 'reason', 'text', 'T1', 'T2', 'T3'].includes(key)))
+            throw new Error('ASSESSMENT_STAGE_SHAPE: Remove unsupported top-level fields');
         const { draft, partial } = await this.snapshot();
         if (draft.assessment) throw new Error('ASSESSMENT_STAGE_SEALED: Assessment is already complete');
         let next: Partial;
@@ -156,11 +168,12 @@ export class IncrementalAssessment {
                     emptyReasons: partial.emptyReasons };
             }
         }
-        if (JSON.stringify(next) !== JSON.stringify(partial))
+        const idempotent = JSON.stringify(next) === JSON.stringify(partial);
+        if (!idempotent)
             await this.store.updatePartialAssessment(this.root, this.identity, this.leaseToken,
                 draft.revision, next);
         const status = await this.status();
-        return { accepted: true, category: input.category, findings: status.findings,
+        return { accepted: true, idempotent, category: input.category, findings: status.findings,
             nextAction: status.nextAction };
     }
     async finish(): Promise<{ record: AssessmentRecord; revision: number;

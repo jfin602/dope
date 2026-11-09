@@ -369,6 +369,166 @@ test('P8-style assessment rejection persists one coded blocked draft after backe
     } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
 });
+
+test('R8 stage sequence saves safe ordered diagnostics for two accepts and three distinct rejects', async () => {
+    const temporary = await folder(), root = join(temporary, 'project');
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(join(root, 'src', 'clamp.js'), 'export function clamp(value) { return value; }\n');
+    await writeFile(join(root, 'package.json'), '{"name":"clamp","version":"1.4.2"}\n');
+    await execute('git', ['init', '-q', root]);
+    await execute('git', ['-C', root, 'add', 'src/clamp.js', 'package.json']);
+    await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+        'commit', '-qm', 'Fixture']);
+    const receipts: { code?: string }[] = [];
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
+                maxInputTokens: 16384 } }] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        await request.projectTools!.execute('read_file', { path: 'src/clamp.js', offset: 0, maxBytes: 4096 });
+        const attempts = [
+            { category: 'observations', claim: 'Clamp is exported', path: 'src/clamp.js', quote: 'export function clamp' },
+            { category: 'preservation', claim: 'Return value remains available', path: 'src/clamp.js',
+                quote: 'return value;' },
+            { category: 'observations', claim: 'Malformed', path: 'src/clamp.js', quote: 'return value;', extra: 'secret' },
+            { category: 'risks', claim: 'Unsupported', path: 'src/clamp.js', quote: 'SECRET QUOTE' },
+            { category: 'dependencies', reason: 'No dependencies before package read' }
+        ];
+        for (const args of attempts) receipts.push(JSON.parse(await request.projectTools!.execute('assessment_stage', args)));
+        yield { type: 'complete' as const, text: 'Incomplete assessment.', actualModelId: 'q4',
+            finishReason: 'stop' as const, usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 16384 }) };
+    const makeBackend = () => new ChatBackend(new ChatRepository(), { notifyChatEvent() {} },
+        models as never, composer as never, undefined, new ChatProjectGrounder({} as never));
+    const backend = makeBackend();
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'R8 diagnostics' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/prompt-ass clamp-api-correction Inspect src/clamp.js and package.json' }),
+        /ASSESSMENT_DEPENDENCIES_EMPTY/);
+        assert.deepEqual(receipts.map(item => item.code), [undefined, undefined,
+            'ASSESSMENT_STAGE_SHAPE', 'ASSESSMENT_UNSUPPORTED_SOURCE', 'ASSESSMENT_DEPENDENCIES_EMPTY']);
+        const inspect = async (target: ChatBackend, handle: string) => {
+            const saved = (await target.get(handle, chatId))!;
+            const events = saved.messages.find(message => message.role === 'assistant')?.execution.toolEvents
+                ?.filter(event => event.name === 'assessment_stage') ?? [];
+            assert.deepEqual(events.map(event => event.assessment?.code), ['ASSESSMENT_ACCEPTED',
+                'ASSESSMENT_ACCEPTED', 'ASSESSMENT_STAGE_SHAPE', 'ASSESSMENT_UNSUPPORTED_SOURCE',
+                'ASSESSMENT_DEPENDENCIES_EMPTY']);
+            assert.deepEqual(events.map(event => event.assessment?.acceptedFindings), [1, 2, 2, 2, 2]);
+            assert.deepEqual(events.map(event => event.assessment?.ordinal), [2, 3, 4, 5, 6]);
+            assert.deepEqual(events.map(event => event.assessment?.category), ['observations',
+                'preservation', 'observations', 'risks', 'dependencies']);
+            assert.equal(events.every(event => event.assessment?.previousFindingsPreserved), true);
+            assert.doesNotMatch(JSON.stringify(events), /SECRET QUOTE|secret|return value|No dependencies before/);
+        };
+        await inspect(backend, projectHandle);
+        await backend.release(projectHandle, chatId, lease.token);
+        backend.dispose();
+        const restarted = makeBackend();
+        try { const { projectHandle: reopened } = await restarted.attach(pathToFileURL(root).href);
+            await inspect(restarted, reopened);
+        } finally { restarted.dispose(); }
+    } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true,
+        maxRetries: 10, retryDelay: 25 }); }
+});
+
+test('Assessment output-limit Continue retains staged findings without broker replay', async () => {
+    const temporary = await folder(), root = join(temporary, 'project');
+    await mkdir(join(root, 'src'), { recursive: true });
+    await writeFile(join(root, 'src', 'clamp.js'), 'export function clamp(value) { return value; }\n');
+    await writeFile(join(root, 'package.json'), '{"name":"clamp","version":"1.4.2"}\n');
+    await execute('git', ['init', '-q', root]);
+    await execute('git', ['-C', root, 'add', 'src/clamp.js', 'package.json']);
+    await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+        'commit', '-qm', 'Fixture']);
+    let reads = 0, firstStages = 0, resumes = 0;
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
+                maxInputTokens: 16384 } }] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        reads++;
+        await request.projectTools!.execute('read_file', { path: 'src/clamp.js', offset: 0, maxBytes: 4096 });
+        firstStages++;
+        await request.projectTools!.execute('assessment_stage', { category: 'observations',
+            claim: 'Clamp is exported', path: 'src/clamp.js', quote: 'export function clamp' });
+        const continuation = { async *resume() {
+            resumes++;
+            await request.projectTools!.execute('assessment_stage', { category: 'preservation',
+                claim: 'Return value remains available', path: 'src/clamp.js', quote: 'return value;' });
+            await request.projectTools!.execute('assessment_stage', { category: 'dependencies',
+                reason: 'The requested source declares no imports' });
+            await request.projectTools!.execute('assessment_stage', { category: 'risks',
+                reason: 'No separate risk is evidenced by the requested source' });
+            await request.projectTools!.execute('assessment_stage', { category: 'scope',
+                text: 'Preserve the scalar API while checking clamp behavior' });
+            await request.projectTools!.execute('assessment_stage', { category: 'tiers',
+                T1: 'Focused source unit tests', T2: 'Cross-boundary integration checks',
+                T3: 'Independent manual browser qualification' });
+            const finished = JSON.parse(await request.projectTools!.execute('assessment_finish', {}));
+            assert.equal(finished.complete, true);
+            yield { type: 'complete' as const, text: 'Paused Assessment sealed.', actualModelId: 'q4',
+                finishReason: 'stop' as const, usage: { tokenMeasurement: 'unavailable' as const } };
+        }, async stop() { return { type: 'stopped-incomplete' as const, text: 'Paused',
+            segmentIndex: 1, usage: { tokenMeasurement: 'unavailable' as const },
+            originalFinishReason: 'length' as const, finishReason: 'owner-stop' as const,
+            actualModelId: 'q4' }; }, dispose() {} };
+        yield { type: 'paused' as const, text: 'Paused', novelText: 'Paused', segmentIndex: 1,
+            outputCeilingTokens: 2048, usage: { tokenMeasurement: 'unavailable' as const },
+            segmentUsage: { tokenMeasurement: 'unavailable' as const },
+            finishReason: 'length' as const, actualModelId: 'q4', continuation };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 16384 }) };
+    const backend = new ChatBackend(new ChatRepository(), { notifyChatEvent() {} }, models as never,
+        composer as never, undefined, new ChatProjectGrounder({} as never));
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Pause assessment' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        const turn = backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/prompt-ass clamp-api-correction Inspect src/clamp.js' });
+        void turn.catch(() => undefined);
+        let paused: Extract<NonNullable<Awaited<ReturnType<typeof backend.get>>>['messages'][number], { role: 'assistant' }> | undefined;
+        for (let i = 0; i < 200; i++) {
+            const item = (await backend.get(projectHandle, chatId))?.messages.at(-1);
+            if (item?.role === 'assistant' && item.execution.status === 'paused-output-limit') {
+                paused = item; break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 5));
+        }
+        assert.ok(paused);
+        assert.equal(paused.execution.toolEvents?.filter(event => event.name === 'assessment_stage').length, 1);
+        assert.equal(paused.execution.toolEvents?.find(event => event.name === 'assessment_stage')
+            ?.assessment?.acceptedFindings, 1);
+        await assert.rejects(backend.decideOutputLimit(projectHandle, chatId, id(), paused.id,
+            paused.execution.id, 1, paused.answerPartial!.cursor, 'continue'), /foreign/);
+        await backend.decideOutputLimit(projectHandle, chatId, lease.token, paused.id,
+            paused.execution.id, 1, paused.answerPartial!.cursor, 'continue');
+        await turn;
+        assert.equal(reads, 1);
+        assert.equal(firstStages, 1);
+        assert.equal(resumes, 1);
+        const saved = (await backend.get(projectHandle, chatId))!;
+        const assistant = saved.messages.find(message => message.role === 'assistant');
+        assert.equal(assistant?.execution.status, 'complete');
+        assert.equal(currentPromptDraft(saved)?.state, 'plan');
+        assert.equal(assistant?.execution.toolEvents?.filter(event => event.name === 'assessment_stage').length, 6);
+        assert.equal(assistant?.execution.toolEvents?.filter(event => event.name === 'assessment_finish').length, 1);
+    } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true,
+        maxRetries: 10, retryDelay: 25 }); }
+});
 test('final deltas reach Chat before completion and tool resets replace transient text', async () => {
     const root = await folder(), repository = new ChatRepository(), events: ChatEvent[] = [];
     let release!: () => void;

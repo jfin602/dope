@@ -98,12 +98,31 @@ test('incremental assessment persists five-file coverage, exact findings and jus
     await assert.rejects(controller.finish(), /ASSESSMENT_SOURCE_COVERAGE/);
     await read('package.json'); await read('docs/late-guide.md', false);
     assert.equal((await controller.status()).sources, '3/5 inspected');
-    assert.equal((await controller.status()).required.find(item =>
-        item.path === 'docs/late-guide.md')?.state, 'partially inspected');
+    const continuation = (await controller.status()).required.find(item => item.path === 'docs/late-guide.md');
+    assert.equal(continuation?.state, 'partially inspected');
+    assert.equal(continuation?.coveredBytes, 4096);
+    assert.equal(continuation?.nextOffset, 4096);
+    assert.match(continuation?.expectedSourceHash ?? '', /^[a-f0-9]{64}$/);
+    assert.match((await controller.status()).nextAction, /offset 4096 and expectedSourceHash/);
+    await assert.rejects(v.grounder.readFileRange(v.root, 'docs/late-guide.md', 4096, 4096,
+        '0'.repeat(64)), /Stale file continuation/);
+    assert.equal((await controller.status()).sources, '3/5 inspected');
+    const overlap = await v.grounder.readFileRange(v.root, 'docs/late-guide.md', 1024, 1024,
+        continuation!.expectedSourceHash);
+    await controller.readPage(overlap);
+    assert.equal((await controller.status()).required.find(item => item.path === 'docs/late-guide.md')
+        ?.nextOffset, 4096);
+    const latePage = await v.grounder.readFileRange(v.root, 'docs/late-guide.md', 4200, 4096,
+        continuation!.expectedSourceHash);
+    await controller.readPage(latePage);
+    assert.equal((await controller.status()).required.find(item => item.path === 'docs/late-guide.md')
+        ?.nextOffset, 4096, 'a late page cannot skip the unread gap');
     await assert.rejects(controller.stage({ category: 'dependencies', reason: 'No dependencies' },
         refs, evidence), /ASSESSMENT_DEPENDENCIES_EMPTY/);
     await read('docs/late-guide.md'); await read('RELEASE_NOTES.md');
     assert.equal((await controller.status()).sources, '5/5 inspected');
+    assert.equal((await controller.status()).required.find(item => item.path === 'docs/late-guide.md')
+        ?.nextOffset, null);
     await v.repo.release(v.root, v.chatId, v.lease);
     const claimed = await new ChatRepository().claim(v.root, v.chatId, 'owner-after-restart');
     if (!claimed.acquired) throw new Error('Reclaimed lease missing');

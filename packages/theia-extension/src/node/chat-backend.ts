@@ -2213,6 +2213,7 @@ export class ChatBackend implements ChatService {
         let finishedAssessment: AssessmentRecord | undefined;
         let rejectedAssessmentCalls = 0;
         let assessmentFailure: string | undefined;
+        let assessmentFindingCount = 0;
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
         let toolBytes = 0;
         const documentationPages: DocumentationReadPage[] = [];
@@ -2234,8 +2235,20 @@ export class ChatBackend implements ChatService {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
                 if (name.startsWith('assessment_')) {
                     const assessmentName = name as 'assessment_status' | 'assessment_stage' | 'assessment_finish';
+                    const stageArg = args && typeof args === 'object' && !Array.isArray(args) ?
+                        args as Record<string, unknown> : undefined;
+                    const category = ['scope', 'tiers', 'observations', 'preservation', 'dependencies', 'risks']
+                        .includes(String(stageArg?.category)) ? stageArg!.category as 'scope' | 'tiers' |
+                            'observations' | 'preservation' | 'dependencies' | 'risks' : 'unrecognized';
+                    const shape = !stageArg ? 'invalid' : category === 'scope' ? 'scope' :
+                        category === 'tiers' ? 'tiers' : stageArg.reason !== undefined ? 'empty' :
+                            stageArg.claim !== undefined || stageArg.path !== undefined || stageArg.quote !== undefined ?
+                                'finding' : 'invalid';
                     recordActivity('tool', `${assessmentName}: running`);
                     let status: 'completed' | 'failed' | 'denied' = 'denied';
+                    let stageCode = 'ASSESSMENT_INTERNAL';
+                    let stageField: 'none' | 'shape' | 'category' | 'citation' | 'source' |
+                        'authority' | 'resource' | 'internal' = 'internal';
                     try {
                         if (!protectedAssessment || !assessmentController || signal?.aborted || abort.signal.aborted ||
                             this.active(request.projectHandle) !== root || this.turns.get(key)?.abort !== abort ||
@@ -2259,6 +2272,12 @@ export class ChatBackend implements ChatService {
                                 ...(result as { refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> }).refs);
                         }
                         status = 'completed';
+                        if (assessmentName === 'assessment_stage') {
+                            const accepted = result as Awaited<ReturnType<IncrementalAssessment['stage']>>;
+                            assessmentFindingCount = accepted.findings;
+                            stageCode = accepted.idempotent ? 'ASSESSMENT_IDEMPOTENT' : 'ASSESSMENT_ACCEPTED';
+                            stageField = 'none';
+                        }
                         return JSON.stringify(name === 'assessment_finish' ?
                             { complete: true, revision: (result as { revision: number }).revision } : result);
                     } catch (error) {
@@ -2268,16 +2287,42 @@ export class ChatBackend implements ChatService {
                             error.message : 'ASSESSMENT_STAGE_FAILED: Retry after checking assessment_status';
                         assessmentFailure = message;
                         const [code, reason] = message.split(/:\s*/u, 2);
+                        stageCode = code;
+                        stageField = /AUTHORITY|STALE|SEALED/u.test(code) ? 'authority' :
+                            /SOURCE|COVERAGE|READ/u.test(code) ? 'source' :
+                                /LIMIT/u.test(code) ? 'resource' :
+                                    /CITATION|UNSUPPORTED|AMBIGUOUS/u.test(code) ? 'citation' :
+                                        /CATEGORY|SCOPE|TIERS|EMPTY/u.test(code) ? 'category' :
+                                            /SHAPE|JSON/u.test(code) ? 'shape' : 'internal';
+                        if (assessmentName === 'assessment_stage' && assessmentController)
+                            assessmentFindingCount = (await assessmentController.status().catch(() => undefined))
+                                ?.findings ?? assessmentFindingCount;
                         return JSON.stringify({ code, field: name === 'assessment_stage' ? 'category or citation' :
                             name, reason, expectedShape: name === 'assessment_stage' ?
                             '{category, claim, path, quote} or {category, reason} or scope/tiers' : '{}',
                             recovery: code === 'ASSESSMENT_SOURCE_COVERAGE' ? 'Use assessment_status, then read_file' :
-                                'Check assessment_status and retry with corrected arguments',
+                                code === 'ASSESSMENT_UNSUPPORTED_SOURCE' || code === 'ASSESSMENT_AMBIGUOUS_SOURCE' ?
+                                    'Use one exact unique quote from a brokered read; then check assessment_status' :
+                                    code === 'ASSESSMENT_DEPENDENCIES_EMPTY' ?
+                                        'Finish requested source coverage and cite declared dependencies; then check assessment_status' :
+                                        code === 'ASSESSMENT_STAGE_SHAPE' ?
+                                            'Supply the required top-level fields for this category; then check assessment_status' :
+                                            code === 'ASSESSMENT_CONFLICTING_REPLAY' ?
+                                                'Do not overwrite an accepted finding in this turn; check assessment_status' :
+                                                'Check assessment_status and retry with corrected arguments',
                             previousFindingsPreserved: true });
                     } finally {
                         recordActivity('tool', `${assessmentName}: ${status}`);
                         toolEvents.push({ name: assessmentName, status, truncated: false,
-                            brokerExecuted: status === 'completed', stage: 'broker' });
+                            brokerExecuted: status === 'completed', stage: 'broker',
+                            ...(assessmentName === 'assessment_stage' ? { assessment: {
+                                ordinal: toolEvents.length + 1, category, shape, code: stageCode,
+                                field: stageField, previousFindingsPreserved: true,
+                                acceptedFindings: assessmentFindingCount } } : {}) });
+                        if (assessmentName === 'assessment_stage' && assistant)
+                            await mutate({ type: 'record-assessment-tools', chatId: key,
+                                messageId: assistant.id, executionId: assistant.execution.id,
+                                toolEvents: [...toolEvents] });
                     }
                 }
                 if (name.startsWith('proposal_')) {
@@ -3137,6 +3182,8 @@ export class ChatBackend implements ChatService {
                         const finishAssistant = async (planningActivity?: ChatPlanningActivity) => {
                             const completed = await mutate({ type: 'finish-assistant', chatId: key, messageId: assistant!.id,
                             outcome: 'complete', content: output,
+                            ...(promptStage?.stage === 'prompt-ass' && finishedAssessment && partialSegments ?
+                                { replaceVerifiedAssessmentPartial: true } : {}),
                             ...(planningActivity ? { planningActivity } : {}),
                             activity: activity?.snapshot(event.finishReason === 'length' && !publicationIntent ?
                                 'provider-truncated' : undefined),

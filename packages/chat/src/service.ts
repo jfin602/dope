@@ -28,6 +28,8 @@ export type ChatOperation =
         segment: number; cursor: number; delta: string }
     | { type: 'reset-answer-partial'; chatId: ChatId; messageId: string; executionId: string;
         cursor: number }
+    | { type: 'record-assessment-tools'; chatId: ChatId; messageId: string; executionId: string;
+        toolEvents: NonNullable<ChatExecution['toolEvents']> }
     | { type: 'pause-output-limit'; chatId: ChatId; messageId: string; executionId: string;
         segment: number; cursor: number; finishReason: string; outputCeilingTokens?: number;
         tokenUsage?: ChatExecution['tokenUsage']; segmentUsage?: ChatExecution['tokenUsage'];
@@ -42,6 +44,7 @@ export type ChatOperation =
     | { type: 'record-assistant-activity'; chatId: ChatId; messageId: string; activity: ChatExecutionActivity }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
         content: string; activity?: ChatExecutionActivity; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;
+        replaceVerifiedAssessmentPartial?: boolean;
         failureCode?: ChatExecution['failureCode'];
         toolFailure?: ChatExecution['toolFailure'];
         planningActivity?: ChatPlanningActivity;

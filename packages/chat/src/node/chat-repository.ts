@@ -570,7 +570,8 @@ export class ChatRepository {
                 const lease = await this.lease(base, uuid(operation.chatId));
                 if (this.active(lease)) throw new Error('Cannot delete an open Chat');
             }
-            if (['append-user', 'begin-assistant', 'start-assistant', 'append-answer-partial', 'reset-answer-partial', 'pause-output-limit',
+            if (['append-user', 'begin-assistant', 'start-assistant', 'record-assessment-tools',
+                'append-answer-partial', 'reset-answer-partial', 'pause-output-limit',
                 'resume-output-limit', 'stop-incomplete', 'interrupt-output-limit',
                 'record-assistant-activity', 'finish-assistant'].includes(operation.type)) {
                 const chatId = (operation as Extract<ChatOperation, { chatId: string }>).chatId;
@@ -680,6 +681,25 @@ export class ChatRepository {
                         ...(operation.routingProvenance ? { routingProvenance: operation.routingProvenance } : {}) } });
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;
+                case 'record-assessment-tools': update(c => {
+                    const at = c.messages.findIndex(m => m.id === operation.messageId);
+                    const message = c.messages[at];
+                    if (!message || message.role !== 'assistant' || message.execution.id !== operation.executionId ||
+                        message.execution.status !== 'streaming' ||
+                        operation.toolEvents.at(-1)?.name !== 'assessment_stage' ||
+                        operation.toolEvents.length <= (message.execution.toolEvents?.length ?? 0) ||
+                        !(message.execution.toolEvents ?? []).every((previous, index) => {
+                            const incoming = operation.toolEvents[index];
+                            return incoming?.name === previous.name && incoming.status === previous.status &&
+                                incoming.assessment?.ordinal === previous.assessment?.ordinal &&
+                                incoming.assessment?.code === previous.assessment?.code;
+                        }))
+                        throw new Error('Stale Assessment tool diagnostics');
+                    const messages = [...c.messages];
+                    messages[at] = parseChatMessage({ ...message, execution: { ...message.execution,
+                        toolEvents: operation.toolEvents } });
+                    return { ...c, messages };
+                }); break;
                 case 'append-answer-partial':
                 case 'reset-answer-partial':
                 case 'pause-output-limit':
@@ -783,8 +803,15 @@ export class ChatRepository {
                         throw new Error('Failed assistant cannot commit conversational content');
                     if (operation.outcome === 'complete' && operation.finishReason === 'length')
                         throw new Error('Output limit cannot complete an assistant answer');
+                    const assessmentReplacement = operation.replaceVerifiedAssessmentPartial === true &&
+                        operation.outcome === 'complete' && !!message.answerPartial &&
+                        c.messages.slice(0, at).some(prior => prior.role === 'user' &&
+                            prior.promptDraft?.userMessageId === prior.id &&
+                            prior.content.startsWith('/prompt-ass '));
+                    if (operation.replaceVerifiedAssessmentPartial && !assessmentReplacement)
+                        throw new Error('Verified Assessment replacement requires an active named draft');
                     if (message.answerPartial && operation.outcome === 'complete' &&
-                        !operation.content.startsWith(message.answerPartial.text))
+                        !assessmentReplacement && !operation.content.startsWith(message.answerPartial.text))
                         throw new Error('Completed answer differs from saved partial');
                     if (message.activity && operation.activity &&
                         (operation.activity.events.length < message.activity.events.length ||

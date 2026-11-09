@@ -105,6 +105,11 @@ export interface ChatExecution {
         'assessment_status' | 'assessment_stage' | 'assessment_finish';
         status: 'completed' | 'failed' | 'denied'; truncated: boolean;
         code?: string; stage?: string; brokerExecuted?: boolean;
+        assessment?: { ordinal: number; category: 'scope' | 'tiers' | 'observations' | 'preservation' |
+            'dependencies' | 'risks' | 'unrecognized'; shape: 'finding' | 'empty' | 'scope' |
+            'tiers' | 'invalid'; code: string; field: 'none' | 'shape' | 'category' |
+            'citation' | 'source' | 'authority' | 'resource' | 'internal';
+            previousFindingsPreserved: boolean; acceptedFindings: number };
         offset?: number; pageSize?: number; sourceHashSupplied?: boolean; endOffset?: number;
         commandMode?: 'ask' | 'allow'; approval?: 'granted' | 'denied' | 'expired';
         commandExecuted?: boolean; commandDigest?: string }[];
@@ -540,15 +545,36 @@ function parseExecution(value: unknown): ChatExecution {
         execution.toolEvents = v.toolEvents.map(item => {
             const event = record(item, ['name', 'status', 'truncated', 'code', 'stage', 'brokerExecuted',
                 'offset', 'pageSize', 'sourceHashSupplied', 'endOffset', 'commandMode', 'approval',
-                'commandExecuted', 'commandDigest'], ['name', 'status', 'truncated']);
+                'commandExecuted', 'commandDigest', 'assessment'], ['name', 'status', 'truncated']);
             if (typeof event.truncated !== 'boolean') throw new Error('Invalid Chat tool truncation');
+            let assessment: NonNullable<NonNullable<ChatExecution['toolEvents']>[number]['assessment']> | undefined;
+            if (event.assessment !== undefined) {
+                if (event.name !== 'assessment_stage') throw new Error('Invalid Assessment diagnostic tool');
+                const detail = record(event.assessment, ['ordinal', 'category', 'shape', 'code', 'field',
+                    'previousFindingsPreserved', 'acceptedFindings'], ['ordinal', 'category', 'shape', 'code',
+                    'field', 'previousFindingsPreserved', 'acceptedFindings']);
+                if (!Number.isSafeInteger(detail.ordinal) || (detail.ordinal as number) < 1 ||
+                    (detail.ordinal as number) > 512 || !Number.isSafeInteger(detail.acceptedFindings) ||
+                    (detail.acceptedFindings as number) < 0 || (detail.acceptedFindings as number) > 48 ||
+                    typeof detail.code !== 'string' || !/^ASSESSMENT_[A-Z_]{2,64}$/u.test(detail.code) ||
+                    typeof detail.previousFindingsPreserved !== 'boolean')
+                    throw new Error('Invalid Assessment diagnostic');
+                assessment = { ordinal: detail.ordinal as number,
+                    category: choice(detail.category, ['scope', 'tiers', 'observations', 'preservation',
+                        'dependencies', 'risks', 'unrecognized'] as const, 'Assessment category'),
+                    shape: choice(detail.shape, ['finding', 'empty', 'scope', 'tiers', 'invalid'] as const, 'Assessment shape'),
+                    code: detail.code, field: choice(detail.field, ['none', 'shape', 'category', 'citation',
+                        'source', 'authority', 'resource', 'internal'] as const, 'Assessment field'),
+                    previousFindingsPreserved: detail.previousFindingsPreserved,
+                    acceptedFindings: detail.acceptedFindings as number };
+            }
             return { name: choice(event.name, ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command',
                 'dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command',
                 'roadmap_read', 'roadmap_stage', 'roadmap_cancel', 'roadmap_phase', 'roadmap_finish',
                 'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish',
                 'assessment_status', 'assessment_stage', 'assessment_finish'] as const,
                 'Chat tool'), status: choice(event.status, ['completed', 'failed', 'denied'] as const, 'Chat tool status'),
-                truncated: event.truncated,
+                truncated: event.truncated, ...(assessment ? { assessment } : {}),
                 ...(event.code === undefined ? {} : { code: choice(event.code, ['INVALID_ARGUMENTS',
                     'INVALID_OFFSET', 'INVALID_PAGE_SIZE', 'SOURCE_IDENTITY_REQUIRED',
                     'INVALID_SOURCE_IDENTITY', 'STALE_SOURCE', 'OUTPUT_BUDGET', 'AUTHORITY_DENIED',
