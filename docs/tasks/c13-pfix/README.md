@@ -1,3 +1,5 @@
+> **2026-11-09 FORWARD CORRECTION PLAN / DOCUMENTATION ONLY:** The owner-requested [Assessment failure and Managed / Unmanaged context plan](context-policy-correction-plan.md) incorporates the [pushed 32K/64K supplement](qualification/p8-r11-supplemental-32k-64k-benchmark-2026-11-09.md). Diagnose the actual worker failure and conflicting tool budgets before treating capacity or the settings toggle as the repair. Preserve the separate tool-16 and early tool-6 signatures, unknown usage/causes, original reports and executed prompts. The toggle replaces numeric fields and uses one operation-aware runtime policy. **No implementation, Run, new qualification, version change or Phase 13 progression is claimed.** Original stack planning below is historical.
+
 # c13-pfix — Owner-named Prompt Stack Draft
 
 **STATUS: OWNER-APPROVED DOCUMENTATION / AUTHORED ONLY.** Date: 2026-11-08. Source basis: `main` at `7e5e3745`. Version `0.13.11` unchanged. Not executed, built, tested or qualified by this proposal. Implementation requires a separate explicit owner Run.
