@@ -202,6 +202,42 @@ test('broker denial and broker execution failure retain distinct statuses', asyn
   }
 });
 
+test('worker policy origin and counts survive host failure without upgrading an old ACK', async () => {
+  const f = fixture();
+  try {
+    const turn = f.turn();
+    const id = f.frames[0].id;
+    f.offer(id, 1);
+    await tick();
+    f.host.acceptOutput(JSON.stringify({ id, ok: false, errorCode: 'resource_limit',
+      failureOrigin: 'tool_budget', toolStarts: 17, toolAcknowledgements: 16,
+      failedToolStart: { ordinal: 17, toolName: 'read_file' },
+      lastToolReceipt: { requestId: id, toolId: 1, toolName: 'read_file', outcome: 'completed' } }) + '\n');
+    await assert.rejects(turn, error => error.code === 'resource_limit' &&
+      error.toolFailure?.failureOrigin === 'tool_budget' && error.toolFailure?.toolStarts === 17 &&
+      error.toolFailure?.toolAcknowledgements === 16 &&
+      error.toolFailure?.failedToolStart?.ordinal === 17 &&
+      error.toolFailure?.lastConfirmed?.toolId === 1 &&
+      error.toolFailure?.brokerResultAcknowledged === false);
+  } finally { f.host.dispose(); }
+});
+
+test('worker frame rejects untrusted origin, counters and tool names', async () => {
+  const f = fixture();
+  try {
+    const turn = f.turn();
+    const id = f.frames[0].id;
+    f.host.acceptOutput(JSON.stringify({ id, ok: false, errorCode: 'resource_limit',
+      failureOrigin: 'secret-source', toolStarts: 2, toolAcknowledgements: 3,
+      failedToolStart: { ordinal: 3, toolName: 'src/private.js' } }) + '\n');
+    await assert.rejects(turn, error => error.code === 'resource_limit' &&
+      error.toolFailure?.failureOrigin === undefined &&
+      error.toolFailure?.toolAcknowledgements === undefined &&
+      error.toolFailure?.failedToolStart === undefined &&
+      !JSON.stringify(error.toolFailure).includes('private'));
+  } finally { f.host.dispose(); }
+});
+
 test('delivery failure, worker exit, cancellation and late frames clean pending state', async () => {
   const delivery = fixture(null);
   try {

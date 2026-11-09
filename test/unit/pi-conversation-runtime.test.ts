@@ -36,6 +36,22 @@ test('Pi turn preserves exact model, saved follow-up roles, streaming and bounde
     assert.equal((events.at(-1) as { usage: { totalTokens: number } }).usage.totalTokens, 27);
 });
 
+test('Pi adapter preserves policy failure provenance without treating it as transport', async () => {
+    const detail = { stage: 'resource_limit' as const, brokerResultAcknowledged: false,
+        failureOrigin: 'tool_budget' as const, toolStarts: 17, toolAcknowledgements: 16,
+        failedToolStart: { ordinal: 17, toolName: 'read_file' },
+        lastConfirmed: { requestId: 2, toolId: 16, toolName: 'read_file', outcome: 'completed' } };
+    const host = { start: async () => ({}), async *streamTurn() {
+        throw new PiWorkerFailure('resource_limit', undefined, detail);
+    } };
+    await assert.rejects(async () => {
+        for await (const _event of piConversation(selection,
+            { messages: [{ role: 'user', content: 'Inspect source' }] }, bridge as never,
+            { create: () => host, release: () => {} } as never)) { /* incomplete */ }
+    }, error => error.boundaryCode === 'resource_limit' &&
+        error.toolFailure?.failureOrigin === 'tool_budget' && /tool-call policy budget/.test(error.message));
+});
+
 test('Pi Chat passes brokered project tools through the exact local session', async () => {
     const observed: unknown[] = [];
     const localBridge = { bind: async (_selection: unknown, _host: unknown, cwd: string, options: unknown) => {

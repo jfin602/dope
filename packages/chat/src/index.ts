@@ -92,7 +92,12 @@ export interface ChatExecution {
         'continuation_pi_rejected' | 'continuation_model_drift';
     toolFailure?: { stage: string; requestId?: number; toolId?: number; toolName?: string;
         lastConfirmed?: { requestId: number; toolId: number; toolName: string; outcome: string };
-        brokerResultAcknowledged: boolean; elapsedMs?: number };
+        brokerResultAcknowledged: boolean; elapsedMs?: number;
+        failureOrigin?: 'tool_budget' | 'model_call_budget' | 'attempted_tool' |
+            'missing_final_assistant' | 'response_aborted' | 'provider_failure' |
+            'invalid_final_tool_call' | 'invalid_final_assistant';
+        toolStarts?: number; toolAcknowledgements?: number;
+        failedToolStart?: { ordinal: number; toolName: string } };
     contextUsage?: { usedTokens: number; budgetTokens: number };
     tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number;
         tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable' };
@@ -473,7 +478,8 @@ function parseExecution(value: unknown): ChatExecution {
             'continuation_pi_rejected', 'continuation_model_drift'] as const, 'failure code');
     if (v.toolFailure !== undefined) {
         const detail = record(v.toolFailure, ['stage', 'requestId', 'toolId', 'toolName',
-            'lastConfirmed', 'brokerResultAcknowledged', 'elapsedMs'], ['stage', 'brokerResultAcknowledged']);
+            'lastConfirmed', 'brokerResultAcknowledged', 'elapsedMs', 'failureOrigin',
+            'toolStarts', 'toolAcknowledgements', 'failedToolStart'], ['stage', 'brokerResultAcknowledged']);
         const stage = choice(detail.stage, ['session_init', 'provider_http', 'provider_connection',
             'tool_protocol', 'model_generation', 'worker_exit', 'worker_protocol', 'context_limit',
             'output_limit', 'worker_timeout', 'resource_limit', 'model_tool_call_invalid',
@@ -491,6 +497,26 @@ function parseExecution(value: unknown): ChatExecution {
             detail.toolName !== undefined && (typeof detail.toolName !== 'string' ||
                 !/^[a-z_]{1,64}$/u.test(detail.toolName))) throw new Error('Invalid Pi tool failure');
         let lastConfirmed: NonNullable<ChatExecution['toolFailure']>['lastConfirmed'];
+        const failureOrigin = detail.failureOrigin === undefined ? undefined : choice(detail.failureOrigin,
+            ['tool_budget', 'model_call_budget', 'attempted_tool', 'missing_final_assistant',
+                'response_aborted', 'provider_failure', 'invalid_final_tool_call',
+                'invalid_final_assistant'] as const, 'Pi failure origin');
+        const boundedCount = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 &&
+            (value as number) <= 1_000_000;
+        if (detail.toolStarts !== undefined && !boundedCount(detail.toolStarts) ||
+            detail.toolAcknowledgements !== undefined && (!boundedCount(detail.toolAcknowledgements) ||
+                detail.toolStarts !== undefined && (detail.toolAcknowledgements as number) > (detail.toolStarts as number)))
+            throw new Error('Invalid Pi failure counters');
+        let failedToolStart: NonNullable<ChatExecution['toolFailure']>['failedToolStart'];
+        if (detail.failedToolStart !== undefined) {
+            const failed = record(detail.failedToolStart, ['ordinal', 'toolName'], ['ordinal', 'toolName']);
+            if (!boundedCount(failed.ordinal) || (failed.ordinal as number) < 1 ||
+                typeof failed.toolName !== 'string' || !/^[a-z_]{1,64}$/u.test(failed.toolName) ||
+                detail.toolStarts !== undefined && (failed.ordinal as number) > (detail.toolStarts as number) ||
+                detail.brokerResultAcknowledged)
+                throw new Error('Invalid failed Pi tool start');
+            failedToolStart = failed as NonNullable<ChatExecution['toolFailure']>['failedToolStart'];
+        }
         if (detail.lastConfirmed !== undefined) {
             const last = record(detail.lastConfirmed, ['requestId', 'toolId', 'toolName', 'outcome'],
                 ['requestId', 'toolId', 'toolName', 'outcome']);
@@ -506,7 +532,12 @@ function parseExecution(value: unknown): ChatExecution {
             ...(detail.toolId !== undefined ? { toolId: detail.toolId as number } : {}),
             ...(detail.elapsedMs !== undefined ? { elapsedMs: detail.elapsedMs as number } : {}),
             ...(detail.toolName !== undefined ? { toolName: detail.toolName as string } : {}),
-            ...(lastConfirmed ? { lastConfirmed } : {}) };
+            ...(lastConfirmed ? { lastConfirmed } : {}),
+            ...(failureOrigin ? { failureOrigin } : {}),
+            ...(detail.toolStarts !== undefined ? { toolStarts: detail.toolStarts as number } : {}),
+            ...(detail.toolAcknowledgements !== undefined ?
+                { toolAcknowledgements: detail.toolAcknowledgements as number } : {}),
+            ...(failedToolStart ? { failedToolStart } : {}) };
     }
     const tokens = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 &&
         (value as number) <= 1_000_000_000;

@@ -60,8 +60,11 @@ export function classifyPiFailure(error: unknown): PiConversationFailure | undef
             'nonretryable-provider');
         case 'worker_timeout': return failure(
             'Pi worker stopped responding. Check LM Studio and retry the turn.', 'connection-unavailable');
-        case 'resource_limit': return failure(
-            'Pi worker resource limit was reached. Shorten the turn or reduce tool output, then retry.',
+        case 'resource_limit': return failure(error.toolFailure?.failureOrigin === 'tool_budget' ?
+            'Pi tool-call policy budget was reached. The saved tool count identifies the boundary.' :
+            error.toolFailure?.failureOrigin === 'model_call_budget' ?
+                'Pi model-call policy budget was reached. The saved call origin identifies the boundary.' :
+                'Pi worker resource limit was reached. Shorten the turn or reduce tool output, then retry.',
             'unsupported-capability');
         case 'continuation_unavailable': return failure(
             'Pi continuation unavailable or stale. Start a new authorized turn from the saved partial work.',

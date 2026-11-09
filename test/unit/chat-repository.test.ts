@@ -43,6 +43,8 @@ test('sanitized Pi failure stage and last acknowledged tool survive Chat restart
           startedAt: new Date().toISOString() } } }, lease.token);
     const toolFailure = { stage: 'tool_reply_delivery_failed', requestId: 3, toolId: 8,
       toolName: 'search_text', brokerResultAcknowledged: false,
+      failureOrigin: 'tool_budget' as const, toolStarts: 17, toolAcknowledgements: 16,
+      failedToolStart: { ordinal: 17, toolName: 'read_file' },
       lastConfirmed: { requestId: 3, toolId: 7, toolName: 'read_file', outcome: 'completed' } };
     state = await repo.mutate(root, state.revision, { type: 'finish-assistant', chatId,
       messageId, outcome: 'failed', content: '', failure: 'Pi tool transport stopped.',
@@ -52,11 +54,19 @@ test('sanitized Pi failure stage and last acknowledged tool survive Chat restart
     if (saved.role === 'assistant') {
       assert.deepEqual(saved.execution.toolFailure, toolFailure);
       assert.equal(saved.execution.failureCode, 'tool_reply_delivery_failed');
+      assert.deepEqual(saved.execution.selectedModel, model);
+      assert.equal(saved.execution.tokenUsage, undefined);
       assert.equal(saved.content, '');
     }
     assert.throws(() => parseChatMessage({ ...saved, execution: {
       ...saved.execution, toolFailure: { ...toolFailure, toolName: 'src/private.js' } } }),
     /Invalid Pi tool failure/);
+    assert.throws(() => parseChatMessage({ ...saved, execution: {
+      ...saved.execution, toolFailure: { ...toolFailure, failureOrigin: 'secret-source' } } }),
+    /Pi failure origin/);
+    assert.throws(() => parseChatMessage({ ...saved, execution: {
+      ...saved.execution, toolFailure: { ...toolFailure, toolAcknowledgements: 18 } } }),
+    /failure counters/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

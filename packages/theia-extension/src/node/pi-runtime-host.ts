@@ -65,7 +65,11 @@ export type PiWorkerFailureCode = 'session_init' | 'provider_http' | 'provider_c
 export interface PiToolFailureDetail { stage: PiWorkerFailureCode; requestId?: number;
     toolId?: number; toolName?: string; lastConfirmed?: { requestId: number;
         toolId: number; toolName: string; outcome: string }; brokerResultAcknowledged: boolean;
-    elapsedMs?: number }
+    elapsedMs?: number; failureOrigin?: 'tool_budget' | 'model_call_budget' | 'attempted_tool' |
+        'missing_final_assistant' | 'response_aborted' | 'provider_failure' |
+        'invalid_final_tool_call' | 'invalid_final_assistant';
+    toolStarts?: number; toolAcknowledgements?: number;
+    failedToolStart?: { ordinal: number; toolName: string } }
 export class PiWorkerFailure extends Error {
     constructor(readonly code: PiWorkerFailureCode, readonly httpStatus?: number,
         readonly toolFailure?: PiToolFailureDetail) {
@@ -81,6 +85,11 @@ const workerFailureCodes = new Set<PiWorkerFailureCode>(['session_init', 'provid
     'session_closed_with_pending_tool', 'tool_protocol_unknown',
     'continuation_unavailable', 'continuation_expired', 'continuation_result_invalid',
     'continuation_pi_rejected', 'continuation_model_drift']);
+const failureOrigins = new Set(['tool_budget', 'model_call_budget', 'attempted_tool',
+    'missing_final_assistant', 'response_aborted', 'provider_failure',
+    'invalid_final_tool_call', 'invalid_final_assistant']);
+const boundedCount = (value: unknown): value is number =>
+    Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1_000_000;
 const offeredToolNames = new Set(['read_file', 'list_files', 'search_paths', 'search_text',
     'run_command', 'edit_file', 'read_command_output', 'roadmap_read', 'roadmap_stage',
     'roadmap_cancel', 'roadmap_phase', 'roadmap_finish', 'proposal_status',
@@ -336,6 +345,8 @@ export class PiRuntimeHost {
             try {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
                     errorCode?: PiWorkerFailureCode; httpStatus?: number;
+                    failureOrigin?: unknown; toolStarts?: unknown; toolAcknowledgements?: unknown;
+                    failedToolStart?: unknown;
                     lastToolReceipt?: PiToolFailureDetail['lastConfirmed'];
                     event?: { type: 'delta'; text: string } | { type: 'reset' } |
                         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent;
@@ -445,7 +456,7 @@ export class PiRuntimeHost {
                     new PiWorkerFailure(record.errorCode,
                         Number.isSafeInteger(record.httpStatus) && record.httpStatus! >= 400 &&
                         record.httpStatus! <= 599 ? record.httpStatus : undefined,
-                        this.toolDetail(record.errorCode, record.lastToolReceipt)) :
+                        this.toolDetail(record.errorCode, record.lastToolReceipt, record)) :
                     new PiWorkerFailure('worker_protocol'));
             } catch (error) {
                 this.fail(error instanceof PiWorkerFailure ? error : new PiWorkerFailure('worker_protocol'));
@@ -472,7 +483,9 @@ export class PiRuntimeHost {
     dispose(): void { this.fail(new Error('Pi runtime disposed')); }
 
     private toolDetail(stage: PiWorkerFailureCode,
-        workerReceipt?: PiToolFailureDetail['lastConfirmed']): PiToolFailureDetail {
+        workerReceipt?: PiToolFailureDetail['lastConfirmed'],
+        frame?: { failureOrigin?: unknown; toolStarts?: unknown; toolAcknowledgements?: unknown;
+            failedToolStart?: unknown }): PiToolFailureDetail {
         const active = this.activeTools.entries().next().value as
             [number, { requestId: number; name: string; startedAt: number }] | undefined;
         const lastConfirmed = workerReceipt && Number.isSafeInteger(workerReceipt.requestId) &&
@@ -481,11 +494,30 @@ export class PiRuntimeHost {
             /^[a-z_]{1,64}$/u.test(workerReceipt.toolName) &&
             ['completed', 'failed', 'denied'].includes(workerReceipt.outcome) ?
             workerReceipt : this.lastConfirmed;
+        const failed = frame?.failedToolStart;
+        const failedToolStart = failed && typeof failed === 'object' && !Array.isArray(failed) &&
+            boundedCount((failed as { ordinal?: unknown }).ordinal) &&
+            (failed as { ordinal: number }).ordinal > 0 &&
+            (frame?.toolStarts === undefined || boundedCount(frame.toolStarts) &&
+                (failed as { ordinal: number }).ordinal <= frame.toolStarts) &&
+            typeof (failed as { toolName?: unknown }).toolName === 'string' &&
+            /^[a-z_]{1,64}$/u.test((failed as { toolName: string }).toolName) ?
+            failed as PiToolFailureDetail['failedToolStart'] : undefined;
+        const toolStarts = boundedCount(frame?.toolStarts) ? frame.toolStarts : undefined;
+        const toolAcknowledgements = boundedCount(frame?.toolAcknowledgements) &&
+            (toolStarts === undefined || frame.toolAcknowledgements <= toolStarts) ?
+            frame.toolAcknowledgements : undefined;
         return { stage, ...(active ? { toolId: active[0], requestId: active[1].requestId,
             toolName: active[1].name, elapsedMs: Math.min(1_800_000,
                 Math.max(0, Date.now() - active[1].startedAt)) } : {}),
             ...(lastConfirmed ? { lastConfirmed } : {}),
-            brokerResultAcknowledged: !active && !!lastConfirmed };
+            ...(failureOrigins.has(String(frame?.failureOrigin)) ?
+                { failureOrigin: frame!.failureOrigin as PiToolFailureDetail['failureOrigin'] } : {}),
+            ...(toolStarts !== undefined ? { toolStarts } : {}),
+            ...(toolAcknowledgements !== undefined ? { toolAcknowledgements } : {}),
+            ...(failedToolStart ? { failedToolStart } : {}),
+            // lastConfirmed describes a prior result, never proof that the failed attempt arrived.
+            brokerResultAcknowledged: false };
     }
 }
 
