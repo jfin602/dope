@@ -1,0 +1,27 @@
+TASK: Correction 13 / P12 — Manual connected Codex browser closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T3
+Qualify source truth and both settings modes: (A) with a real `/prompt-ass` read all five tracked files including late guide bytes >4096 using sourceHash pages, stage every required category + scope/T1/T2/T3 and actually call guarded `assessment_finish`; one sealed record must unlock Plan. (B) Test Managed normal concise Chat and protected Assessment/prompt commands with actual resolved budgets and tool counts; Unmanaged uses Pi within selected model limits without hidden Dope quotas; inspect real stream/tool activity and saved labels. (C) Test toggle Save/reload, output-limit Ask/Allow/Cancel, Stop, partial/Continue, cancellation, stale project/model decision, keyboard/narrow/touch/theme and provider permission. (D) Verify no duplicate broker effects, no cross-project source leak, no canonical prompt publish, Work run or Gate award.
+
+NARROW SOURCE SCOPE
+Manual connected Codex in-app browser, selected local GPT-OSS 20B, served Dope browser backend and a disposable tracked-clean five-file Assessment fixture. Read all P1–P11 actual reports, original R9/R10/R11 and supplemental records. Confirm exact final product HEAD, current version, dirty basis, served frontend/backend/worker hashes, actual loaded context; default to restored 16K rather than automatic capacity sweep.
+
+FOCUSED VALIDATION
+Use real GUI; record exact SHA/provenance, actual selected/model/reasoning/output policy, per-call usage or UNKNOWN, durations, file hashes, tool starts vs ACKs, stage outcomes, source coverage, model finish reasons and result. Save `docs/tasks/c13-context-recovery/qualification/p12-manual-browser-closeout.md` as append-only scoped evidence. Run one final targeted aggregate/build as warranted on identical tested source; rerun invalidated tests after repairs. Do not call tests-only proof a live browser PASS.
+
+NON-GOALS / SAFETY
+MANUAL FINAL CLOSEOUT ONLY: ordinary runner must stop before P12; do not run `--closeout`. Stop after first material authority/transport blocker with exact safe evidence; no forced 32K/64K, no large-repo copy or uncontrolled model load. Preserve original failures. State GREEN/PARTIAL/NOT GREEN/BLOCKED with explicit missing evidence, native Electron gap and no Phase 13 upgrade by implication.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Manual owner-reviewed evidence only; do not auto-run from the runner. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

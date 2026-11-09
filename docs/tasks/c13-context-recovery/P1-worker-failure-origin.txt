@@ -1,0 +1,27 @@
+TASK: Correction 13 / P1 — Typed Pi worker failure origin and tool-17 reproduction
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Replace ambiguous worker-internal completion/policy error classification with explicit typed origins. Preserve exact distinction between attempted tool/protocol invalidity, a Dope tool/model-call budget, missing final assistant, aborted response and provider failure. Reproduce more than 16 productive protected Assessment tool starts with mock provider and acknowledged broker results; vary arguments to avoid unchanged-evidence loop. Record failing-before classification and a guarded post-change outcome without yet changing the policy limit (P4 owns enforcement). Also cover early post-ACK failure with six tool responses as a distinct diagnostic signature.
+
+NARROW SOURCE SCOPE
+Restrict changes primarily to `packages/pi-runtime/worker.mjs` and worker/source fixtures in `test/unit/pi-runtime.test.mjs` / `pi-transport-fault-matrix.test.mjs`. Keep new fields bounded enums/counts and do not expose raw exceptions.
+
+FOCUSED VALIDATION
+Run `node --check packages/pi-runtime/worker.mjs` and focused `node --test test/unit/pi-runtime.test.mjs test/unit/pi-transport-fault-matrix.test.mjs` after rebuilding extension only if affected imports require it. Exercise actual emitted worker error frame, not just exported dispatch. Prove no generic string matching turns policy into `tool_protocol_unknown`; preserve malformed/duplicate reply tests.
+
+NON-GOALS / SAFETY
+No speculative root cause claim for historical 16K/32K or early 64K; no policy cap removal yet, no source-broker relaxation. Capture last ACK separately from failing event; no raw prompt, file, reasoning, arguments or credentials in diagnostics.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

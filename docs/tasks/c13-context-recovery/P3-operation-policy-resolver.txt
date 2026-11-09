@@ -1,0 +1,27 @@
+TASK: Correction 13 / P3 — Trusted command/stage-aware context policy resolver
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Resolve Managed defaults from **trusted dispatched** operation and stage, model loaded/provider capacity and reasoning support: ordinary Chat, investigation, docs review, prompt-ass/plan/write, phase Roadmap generation and Roadmap edit. Specify independent input composition, model output, tool-result page/payload and discretionary run budgets, with one owner for preset numbers and capacity fit. Unmanaged is explicit and has no Dope discretionary quotas; preserve real model/provider and safety-bound indicators. No privileged profile from quoted/model-origin slash text.
+
+NARROW SOURCE SCOPE
+Introduce one minimal policy resolver in the existing contracts/Chat/backend ownership seam; inspect `prompt-authoring-stage.ts`, `chat-backend.ts` and actual command dispatch. Keep a typed, versioned snapshot only; P4/P6/P7 wire enforcement later.
+
+FOCUSED VALIDATION
+Extend focused `test/unit/chat-backend.test.ts` / `prompt-authoring-stage.test.ts` plus a directly named resolver test. Prove each trusted stage chooses an appropriate class, no profile escalation from inert text, reasoning/model capacity clamps and no new tool permission. Compile only actually changed packages.
+
+NON-GOALS / SAFETY
+No universal 4K or 8K default disguised as Unmanaged. This phase defines no blanket quota removals or UI changes; staged owner approvals remain unchanged.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

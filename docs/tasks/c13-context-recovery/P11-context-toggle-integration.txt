@@ -1,0 +1,30 @@
+TASK: Correction 13 / P11 — Context limits toggle and cross-boundary qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T2
+Replace both Advanced numeric fields with one per-Chat `Context limits: Managed / Unmanaged` control, Managed default, compact mode-specific helper text. Save/reopen, focus/keyboard/narrow/theme/reduced motion and transcript/composer stability must work. On same source, verify actual provider mock requests for ordinary Chat vs protected `/prompt-ass` and `/prompt-write`; Managed uses appropriate command profiles, Unmanaged avoids all hidden old discretionary quotas. Verify migration, stale lease, cancelled turn, partial text isolation, broker denial, permission equivalence and precise error labels.
+
+NARROW SOURCE SCOPE
+UI implementation limited to `chat-panel-widget.ts` plus needed existing controller styling; integrated tests cover affected packages. Read ADR 0016 latest, ADR 0037, docs/ui/chat-panel-visual-contract.md. No new settings pane or numeric controls.
+
+FOCUSED VALIDATION
+Focused UI `test/unit/chat-panel.test.ts` then one consolidated directly affected T2 matrix: `chat.test.ts`, `chat-repository.test.ts`, `chat-backend.test.ts`, `pi-runtime.test.mjs`, `pi-transport-fault-matrix.test.mjs` and prompt staging tests that changed. Build affected packages in dependency order once. Do not reflexively run full `npm run check` or repeat another aggregate.
+
+NON-GOALS / SAFETY
+No UI toggle for tool permissions, no numeric backup inputs, no silent model/provider/reasoning change or automatic Work Run. Browser proof deferred to manual P12.
+
+SPECIAL CONDITION
+Classify source-only integration separately from later connected-browser human evidence. If P1–P10 prerequisites are NOT GREEN, do not mask that with a UI-only PASS.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

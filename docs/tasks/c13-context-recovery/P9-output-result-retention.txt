@@ -1,0 +1,27 @@
+TASK: Correction 13 / P9 — Reliable large Chat result framing and persistence
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Audit 65,536-byte accumulated answer, 12K tool-output and bounded frame/queue limits. Keep necessary wire and persistence integrity checks while permitting deliberately larger valid output by safe chunking or retained paged artifacts, never late-stage failure or invisible truncation after successful generation. Preserve explicit incomplete label and completed-only canonical answer. Include identity/order/UTF-8 offset checks and no event-loop flood.
+
+NARROW SOURCE SCOPE
+Scope `worker.mjs` / `pi-runtime-host.ts` and existing Chat answer partial/complete projection as required. Distinguish total answer size from single protocol frame size.
+
+FOCUSED VALIDATION
+Focused `test/unit/pi-runtime.test.mjs` / `pi-conversation-runtime.test.ts` / `chat-repository.test.ts` according to edits. Use synthetic Unicode >old boundary, duplicate/out-of-order segments, cancellation and recovery, no giant live response; build affected lib as required.
+
+NON-GOALS / SAFETY
+No arbitrary RAM streaming without backpressure, no changing Work event/record protocol accidentally, no claims of fully unlimited storage.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

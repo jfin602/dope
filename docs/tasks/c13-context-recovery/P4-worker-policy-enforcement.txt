@@ -1,0 +1,27 @@
+TASK: Correction 13 / P4 — Worker honors resolved operation limits without generic Assessment cutoff
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Replace generic `toolCount > 16` and other conflicting discretionary enforcement for protected Assessment with its resolved operation policy. Ensure the 17th permitted tool runs and returns one checked ACK while actual boundary+1 stops with explicit policy-limit code, not `tool_protocol_unknown`. Enforce Managed scoped model-call and tool counts; bypass those discretionary quotas in Unmanaged while retaining duplicate/repetition safeguards, authorization and real protocol frame bounds.
+
+NARROW SOURCE SCOPE
+Touch `packages/pi-runtime/worker.mjs` and only essential host policy-validation seam/tests. Consume the P3 policy snapshot with strict typing and command/tool-session identity checks; do not create duplicate preset tables.
+
+FOCUSED VALIDATION
+Focused actual worker-host mock-provider fixture: 17+ distinct productive tool starts, exactly-once result delivery, boundary+1, invalid/stale/foreign policy, ordinary Chat limits remain appropriate. `node --check`, worker and transport tests; build fresh extension lib only where needed.
+
+NON-GOALS / SAFETY
+No broad authority bypass, no arbitrary unlimited tool output, no provider capacity change, no rewrite of R11 cause. Stage/finish validation remains the original owner.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

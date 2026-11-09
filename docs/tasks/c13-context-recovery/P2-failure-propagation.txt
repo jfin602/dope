@@ -1,0 +1,27 @@
+TASK: Correction 13 / P2 — Host and Chat persistence of precise Pi failure provenance
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Carry P1 stable cause/origin and bounded tool/model counters from actual worker frame through host/adapter to saved assistant failure. Keep last acknowledged result distinct from current/failed tool attempt; preserve provider/model/lease and available per-call usage metadata when a later call fails. Unknown values stay unknown; never infer successful transport from an old ACK. Avoid collapsing a true policy refusal into a generic transport failure.
+
+NARROW SOURCE SCOPE
+Change only `pi-runtime-host.ts`, `pi-conversation-runtime.ts`, validated Chat failure fields in `packages/chat` and directly affected tests. Reuse the existing tool detail receipt, Chat execution and repository; no second database.
+
+FOCUSED VALIDATION
+Build only changed `@dope/chat` and extension outputs in dependency order; run directly affected `test/unit/pi-transport-fault-matrix.test.mjs`, `pi-conversation-runtime.test.ts` and `chat-repository.test.ts` cases as relevant; verify saved/reopened data and sanitized negatives.
+
+NON-GOALS / SAFETY
+No exposed raw worker exception/secret, no changed permission status, no replay of old tool calls or automatic fresh-session retry. Keep R10 sequence ownership intact.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

@@ -1,0 +1,27 @@
+TASK: Correction 13 / P10 — Pi-native compaction and effect-safe length continuation integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T2
+Integrate Managed and Unmanaged with Pi native proactive threshold compaction and safe same-session final continuation. Audit current blanket suppression during length/resume and `willRetry` cancellation: permit safe compaction paths backed by effect proof, fail closed on uncertain tool replay. Retain pending partial answer/staged Assessment on pause/stop/crash; ensure no old commands retrigger, stale model/project decisions cannot resume and user Stop works. Unmanaged must not silently reintroduce Managed aggregate segment quota; keep justified loop/resource safety.
+
+NARROW SOURCE SCOPE
+Inspect `worker.mjs`, `pi-conversation-runtime.ts`, `pi-runtime-host.ts` and ChatBackend Continue lease only. Reuse the R10 sequential iterator ownership repair and Dope's existing saved source/tool receipts; no parallel session manager.
+
+FOCUSED VALIDATION
+Run consolidated directly affected `test/unit/pi-runtime.test.mjs`, `pi-conversation-runtime.test.ts` and `chat-backend.test.ts` cases with offline provider. Cover threshold compaction, proposed overflow retry after effect, protected Assessment continuation, second Continue/R10 regression, cancellation, same-worker identity, previous tool only once. Build changed dependency outputs once; no browser run.
+
+NON-GOALS / SAFETY
+Do not rely on compaction as proof of source facts; recheck source hash and broker outcomes. No automatic fresh-session replay, authority escalation or wholesale new SDK implementation.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

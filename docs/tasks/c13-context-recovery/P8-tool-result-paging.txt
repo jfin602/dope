@@ -1,0 +1,27 @@
+TASK: Correction 13 / P8 — Operation-sized tool results and protected staging continuation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Managed tool output uses operation type and requested stage size; small receipts stay small while reads/searches paginate with exact sourceHash/nextOffset and complete source coverage. Unmanaged removes discretionary token quotas but retains safe per-frame transport bounds with paged results; no silent clipping of essential tool responses. Existing structured prompt/document stages can chunk within source-owned size limits, and required late file bytes remain retrievable. Unsupported oversize operations yield explicit safe diagnostic and next action.
+
+NARROW SOURCE SCOPE
+Inspect existing Chat broker read/list/search and Assessment/proposal stage owners plus worker tool reply `result.output` cap. Change only the smallest owner(s) needed for policy-aware bounded pages/receipts.
+
+FOCUSED VALIDATION
+Run focused `test/unit/pi-runtime.test.mjs`, `prompt-authoring-stage.test.ts` / `prompt-draft-store.test.ts` / `incremental-proposal-controller.test.ts` only where directly changed. Tests: multi-page 6584-byte late guide, disjoint/duplicate pages, wrong hash, status receipt and larger staged prompt with checked chunking.
+
+NON-GOALS / SAFETY
+No write permissions, no relaxed citation/publisher limit, no counting file listings as source coverage; do not solve with unlimited one-frame JSON.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

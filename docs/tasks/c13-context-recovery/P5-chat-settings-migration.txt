@@ -1,0 +1,27 @@
+TASK: Correction 13 / P5 — Per-Chat Managed/Unmanaged schema and old-settings normalization
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol Medium`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Persist a simple `managed | unmanaged` mode (Managed default) and snapshot it on Send for the execution. Read old Chat records with numeric `maxInputTokens` / `reservedOutputTokens` but normalize those values out of **active** budgeting; no invisible overrides after migration. Preserve original source/history/saved-chat retrieval, routing, reasoning and Ask/Allow/Cancel policy. Midturn toggling affects the next turn only; reload/restart safe.
+
+NARROW SOURCE SCOPE
+Restrict to `packages/chat/src/index.ts`, `packages/chat/src/node/chat-repository.ts`, Chat service settings operation and directly affected Chat tests. UI belongs to P11.
+
+FOCUSED VALIDATION
+Build `@dope/chat` once, run targeted `test/unit/chat.test.ts` / `chat-repository.test.ts`. Test historic records, current roundtrip, independent history and continuation policy, default and concurrency/snapshot safety.
+
+NON-GOALS / SAFETY
+No destructive rewriting of project Chats, no UI, no new permission or global AI Center settings.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

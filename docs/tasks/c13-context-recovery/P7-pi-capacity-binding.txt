@@ -1,0 +1,27 @@
+TASK: Correction 13 / P7 — Model bridge and Pi worker agree on effective per-call capacity
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Remove bridge-only 4K/8K caps as hidden restrictions under Unmanaged while retaining provider/model maximum and actual context headroom. Managed passes its P3/P6 stage allowance. Pi model registration and each prompt must agree on resolved maxTokens without an undocumented fallback; separate reasoning tokens, final output, last call and aggregate usage. Preserve exact model selection, no silent provider changes. A provider length stop is not automatically proof of context overflow.
+
+NARROW SOURCE SCOPE
+Scope `pi-model-bridge.ts`, `pi-conversation-runtime.ts` and worker binding model fields/validated request. Use the existing selected LM Studio connection, current loaded-context probe and declared provider max.
+
+FOCUSED VALIDATION
+Run focused `test/unit/pi-model-bridge.test.ts`, `pi-conversation-runtime.test.ts` and relevant `pi-runtime.test.mjs` synthetic SSE. Verify actual request max_tokens, loaded context 16K fixture and larger declared model without altering installed LM Studio settings; run needed builds once.
+
+NON-GOALS / SAFETY
+No forced model reload, no provider bypass or unlimited physical generation; do not modify host networking or grant new capabilities.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.

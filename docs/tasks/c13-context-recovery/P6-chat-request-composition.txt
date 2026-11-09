@@ -1,0 +1,27 @@
+TASK: Correction 13 / P6 — Composer and ChatBackend apply resolved context to real requests
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction-only; no manifest/package pin/lockfile version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/tasks/c13-context-recovery/{prompt-assessment,implementation-plan}.md and the linked c13-pfix forward plan/R11 supplement. Reconcile actual local HEAD, dirty owner work and preceding recorded prompt results; preserve all historical executed prompts and NOT GREEN reports. Inspect named source producers/consumers and exact test import/compiled-lib needs. Do not reset/stash/clean unrelated edits; runner owns checkpoint commits.
+
+GOAL — T1
+Replace hardcoded current Chat input/output numeric budget decisions with resolved effective policy. Managed selects contextual input and stage-appropriate next-call output; Unmanaged does not inherit old 8192 input or 2048 output. Preserve Pi's own native context projection, system instructions and explicitly selected attachments; fail honestly when actual loaded window cannot fit immutable request. Record effective policy/usage and differentiate model-request output vs tool result vs cumulative usage.
+
+NARROW SOURCE SCOPE
+Scope `chat-context-composer.ts` and `chat-backend.ts`; consume P3/P5 fields, with no extra context summarizer or source autoload. Read actual producer/consumer before changing request shape.
+
+FOCUSED VALIDATION
+Build changed extension and `@dope/chat` outputs as necessary, run focused `test/unit/chat-context-composer.test.ts` / `chat-backend.test.ts` cases for normal/Assessment/prompt-write, quoted command, history, provider/selection and budget refusal. Confirm actual generated request ceiling, not just settings.
+
+NON-GOALS / SAFETY
+No auto-source-body injection into Pi, no unsafe removal of real provider capacity checks, no changes to Docs/Assessment approval.
+
+EXIT
+Record source identity, changed files, exact commands/results, classified PASS/PARTIAL/NOT GREEN/BLOCKED and remaining gaps. An ordinary T1 task targets ≤8 minutes for implementation + focused checks (10-minute soft, 15-minute hard); narrow excessive work rather than skipping required protection. Do not self-commit, start another prompt, claim manual browser proof or silently broaden scope. No canonical publication, Work grants/Run, Roadmap Gate, Phase Green or package version advance. STOP.
