@@ -75,9 +75,11 @@ const roadmapResultShape = output => {
 };
 {
   const originalFetch = globalThis.fetch;
+  // Only a status class is retained; response bodies and endpoint credentials stay private.
+  globalThis.dopeProviderFailure = undefined;
   globalThis.fetch = async (url, options) => {
     const endpoint = String(url);
-    if (!endpoint.includes('/chat/completions') || (!continuationTrace && !roadmapGenerationId))
+    if (!endpoint.includes('/chat/completions'))
       return originalFetch(url, options);
     const started = Date.now();
     let body;
@@ -88,10 +90,13 @@ const roadmapResultShape = output => {
       outputBudget: body?.max_tokens, requestBytes: Buffer.byteLength(String(options?.body ?? ''), 'utf8') });
     try {
       const response = await originalFetch(url, options);
+      globalThis.dopeProviderFailure = response.ok ? undefined :
+        { kind: 'http', status: response.status };
       trace('model-response-headers', { status: response.status, elapsedMs: Date.now() - started });
       roadmapTrace('lm-response-headers', { status: response.status, elapsedMs: Date.now() - started });
       return response;
     } catch (error) {
+      globalThis.dopeProviderFailure = { kind: 'connection' };
       trace('model-request-failed', { elapsedMs: Date.now() - started,
         error: error instanceof Error ? error.name : 'unknown' });
       roadmapTrace('lm-request-failed', { elapsedMs: Date.now() - started,
@@ -605,6 +610,7 @@ export async function dispatch(message) {
         roadmapTrace('pi-worker-turn-start');
       }
       if (!resuming) {
+        globalThis.dopeProviderFailure = undefined;
         chatRepeat = undefined;
         chatLoopStopped = false;
         chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
@@ -944,12 +950,20 @@ async function accept(line) {
     } });
     process.stdout.write(`${JSON.stringify({ id, ok: true, data })}\n`);
   } catch (error) {
-    const safe = /cannot be compacted safely/.test(String(error?.message)) ?
-      'Pi context cannot be compacted safely; shorten the task or select a larger loaded Local model' :
-      ['open', 'complete', 'turn', 'resume', 'work'].includes(message?.type) ?
-      'Local Pi session failed; check the selected AI Center model and local server' :
-      String(error?.message ?? error);
-    process.stdout.write(`${JSON.stringify({ id, ok: false, error: safe })}\n`);
+    const detail = String(error?.message ?? '');
+    const provider = globalThis.dopeProviderFailure;
+    const errorCode = message?.type === 'tool-result' ? 'tool_protocol' :
+      /cannot be compacted safely|context overflow|segment budget exceeded/u.test(detail) ?
+      'context_limit' : /output exceeded limit|output limit exceeded/u.test(detail) ?
+      'output_limit' : /input limit exceeded|event limit exceeded/u.test(detail) ?
+      'resource_limit' : provider?.kind === 'http' ? 'provider_http' :
+      provider?.kind === 'connection' ? 'provider_connection' :
+      /Dope Chat tool|Unknown Pi tool result|Pi worker busy|Invalid Pi|tool call/u.test(detail) ?
+      'tool_protocol' : message?.type === 'open' ? 'session_init' :
+      ['turn', 'resume', 'complete', 'work'].includes(message?.type) ? 'model_generation' :
+      'worker_protocol';
+    process.stdout.write(`${JSON.stringify({ id, ok: false, errorCode,
+      ...(errorCode === 'provider_http' ? { httpStatus: provider.status } : {}) })}\n`);
   } finally {
     if (claimed) activeRequest = false;
   }

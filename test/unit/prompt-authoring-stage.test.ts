@@ -319,11 +319,86 @@ test('saved P8 GPT-OSS citation is denied while an exact quote from that same re
         quote: p8.quote })), refs, '', evidence), /UNSUPPORTED_SOURCE/);
 });
 
+test('exact P8-R2 provisional Assessment is denied against its two brokered reads', () => {
+    const source = "export function clamp(value, min, max) {\n  if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {\n    throw new TypeError('clamp expects numbers');\n  }\n  if (min > max) throw new RangeError('min must be at most max');\n  return Math.min(Math.max(value, min), max);\n}\n";
+    const tests = "import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { clamp } from '../src/clamp.js';\n\ntest('clamps inside and outside inclusive bounds', () => {\n  assert.equal(clamp(4, 0, 10), 4);\n  assert.equal(clamp(-3, 0, 10), 0);\n  assert.equal(clamp(13, 0, 10), 10);\n});\ntest('rejects reversed bounds', () => {\n  assert.throws(() => clamp(2, 4, 1), RangeError);\n});\n";
+    const pages = [
+        { path: 'src/clamp.js', text: source, sourceHash:
+            'cef929fb2f9f68f95e59747073fdd22c8f8bbb57e58a66e55acc958b658572ce' },
+        { path: 'test/clamp.test.js', text: tests, sourceHash:
+            '5453f135a604bfb10101c44c988c12b9a2122df5a58f7024485e0855b4453a4f' }
+    ].map(page => ({ ...page, start: 0, end: Buffer.byteLength(page.text) }));
+    assert.deepEqual(pages.map(page => page.end), [298, 382]);
+    const refs = pages.map(page => ({ kind: 'file', id: page.path, origin: 'tool',
+        sourceHash: page.sourceHash, start: page.start, end: page.end })) as never;
+    const model = {
+        scope: 'Assess clamp API and outline ten implementation responsibilities',
+        observations: [
+            { claim: 'clamp throws TypeError when non-number arguments are passed', path: 'src/clamp.js',
+                quote: "if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {\\n    throw new TypeError('clamp expects numbers');\\n  }" },
+            { claim: 'clamp throws RangeError for reversed bounds', path: 'src/clamp.js',
+                quote: "if (min > max) throw new RangeError('min must be at most max');" }
+        ],
+        preservation: [
+            { claim: 'test file asserts correct clamping behavior and error throwing', path: 'test/clamp.test.js',
+                quote: 'assert.equal(clamp(4, 0, 10), 4);\\n  assert.equal(clamp(-3, 0, 10), 0);\\n  assert.equal(clamp(13, 0, 10), 10);' },
+            { claim: 'test file checks reversed bounds error', path: 'test/clamp.test.js',
+                quote: 'assert.throws(() => clamp(2, 4, 1), RangeError);' }
+        ],
+        dependencies: [{ claim: 'clamp relies on Math.min and Math.max for clamping logic', path: 'src/clamp.js',
+            quote: 'return Math.min(Math.max(value, min), max);' }],
+        risks: [
+            { claim: 'clamp currently does not handle NaN or Infinity values explicitly', path: 'src/clamp.js',
+                quote: "if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {" },
+            { claim: 'no batch processing support in current implementation', path: 'src/clamp.js',
+                quote: "export function clamp(value, min, max) {\\n  if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {" }
+        ],
+        tiers: { T1: 'Implement input validation, bounds checks, NaN/Infinity handling, and batch API support.',
+            T2: 'Ensure compatibility with existing tests, integrate error handling into documentation, and add property-based tests for edge cases.',
+            T3: 'Conduct manual browser qualification to confirm behavior across browsers and environments.' }
+    };
+    assert.throws(() => validatedAssessment(JSON.stringify(model), refs,
+        '/prompt-ass clamp-api-correction Inspect src/clamp.js test/clamp.test.js package.json docs/late-guide.md RELEASE_NOTES.md',
+        pages), /ASSESSMENT_UNSUPPORTED_SOURCE/);
+    const corrected = { ...model, observations: [{ ...model.observations[0],
+        quote: "if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {" },
+        model.observations[1]], preservation: [
+            { ...model.preservation[0], quote: 'assert.equal(clamp(4, 0, 10), 4);' },
+            model.preservation[1]], risks: [model.risks[0],
+            { ...model.risks[1], quote: 'export function clamp(value, min, max) {' }] };
+    const record = validatedAssessment(JSON.stringify(corrected), refs,
+        'Inspect src/clamp.js test/clamp.test.js package.json docs/late-guide.md RELEASE_NOTES.md', pages);
+    assert.deepEqual(record.omittedRequestedFiles,
+        ['package.json', 'docs/late-guide.md', 'RELEASE_NOTES.md']);
+});
+
 test('assessment instruction asks for single-line citations and all requested late source', () => {
     const instruction = promptStageInstruction({ stage: 'prompt-ass', folder: 'clamp-api-correction' }, {});
     assert.match(instruction, /read every specifically requested file/);
     assert.match(instruction, /requested late section.*nextOffset.*sourceHash/);
     assert.match(instruction, /quote MUST be a short, unique, exact excerpt from ONE source line/);
-    assert.match(instruction, /Do not include a newline, backslash escape or whole-file quote/);
+    assert.match(instruction, /JSON \\n represents an actual newline after parsing/);
+    assert.match(instruction, /Do not reconstruct multiline code or quote an entire file/);
     assert.doesNotMatch(instruction, /\{claim,path,start,end,sourceHash,quote\}/);
+});
+
+test('assessment keeps JSON escaped newline distinct from literal source backslash-n', () => {
+    const text = 'first line\nsecond line\n';
+    const sourceHash = 'd'.repeat(64);
+    const evidence = [{ path: 'src/example.js', start: 0, end: Buffer.byteLength(text),
+        sourceHash, text }];
+    const refs = [{ kind: 'file', id: 'src/example.js', origin: 'tool', start: 0,
+        end: Buffer.byteLength(text), sourceHash }] as never;
+    const candidate = (quote: string) => ({ scope: 'Inspect source',
+        observations: [{ claim: 'Observed lines', path: 'src/example.js', quote }],
+        preservation: [{ claim: 'Observed lines', path: 'src/example.js', quote }],
+        dependencies: [{ claim: 'Observed lines', path: 'src/example.js', quote }],
+        risks: [{ claim: 'Observed lines', path: 'src/example.js', quote }],
+        tiers: { T1: 'Source checks', T2: 'Integration', T3: 'Manual browser' } });
+    const valid = validatedAssessment(JSON.stringify(candidate('first line\nsecond line')),
+        refs, '', evidence);
+    assert.equal(valid.observations[0].start, 0);
+    assert.equal(valid.observations[0].end, Buffer.byteLength('first line\nsecond line'));
+    assert.throws(() => validatedAssessment(JSON.stringify(candidate('first line\\nsecond line')),
+        refs, '', evidence), /UNSUPPORTED_SOURCE/);
 });

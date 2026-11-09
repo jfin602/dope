@@ -2,10 +2,51 @@ import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import { createHash } from 'node:crypto';
 import type { ConversationContinuation, ConversationEvent, ConversationRequest, ModelSelection } from '@dope/contracts/lib/model-runtime';
 import type { PiModelBridge } from './pi-model-bridge';
-import type { PiRuntimeFactory, PiRuntimeHost, PiTurnResult } from './pi-runtime-host';
+import { PiWorkerFailure, type PiWorkerFailureCode, type PiRuntimeFactory, type PiRuntimeHost, type PiTurnResult } from './pi-runtime-host';
 
 type ToolHandler = (call: { id: number; name: string; arguments: unknown }) => Promise<unknown>;
 const MAX_AGGREGATE_BYTES = 65536;
+export class PiConversationFailure extends ModelRuntimeFailure {
+    constructor(message: string, failureClass: ModelRuntimeFailure['failureClass'],
+        readonly boundaryCode: PiWorkerFailureCode) {
+        super(message, failureClass);
+    }
+}
+export function classifyPiFailure(error: unknown): PiConversationFailure | undefined {
+    if (!(error instanceof PiWorkerFailure)) return undefined;
+    const failure = (message: string, failureClass: ModelRuntimeFailure['failureClass']) =>
+        new PiConversationFailure(message, failureClass, error.code);
+    switch (error.code) {
+        case 'session_init': return failure(
+            'Pi session could not open. Restart Dope and retry with the selected Local model.', 'connection-unavailable');
+        case 'provider_http': return failure(
+            `Local provider returned HTTP ${error.httpStatus ?? 'error'} during generation. Check LM Studio and retry.`,
+            'transient-upstream');
+        case 'provider_connection': return failure(
+            'Local provider connection failed during generation. Check LM Studio and retry.', 'transient-transport');
+        case 'tool_protocol': return failure(
+            'Pi tool execution or protocol failed. Retry the turn; inspect the saved tool outcomes.',
+            'incomplete-answer');
+        case 'worker_exit': return failure(
+            'Pi worker exited during the turn. Restart Dope and retry.', 'connection-unavailable');
+        case 'worker_protocol': return failure(
+            'Pi worker protocol failed. Restart Dope and retry.', 'connection-unavailable');
+        case 'context_limit': return failure(
+            'Pi context budget was exhausted. Shorten the turn or choose a larger loaded model.',
+            'unsupported-capability');
+        case 'output_limit': return failure(
+            'Pi output budget was exhausted. Increase the Chat output limit or shorten the requested answer.',
+            'incomplete-answer');
+        case 'model_generation': return failure(
+            'Local model generation failed. Check the selected model in LM Studio and retry.',
+            'nonretryable-provider');
+        case 'worker_timeout': return failure(
+            'Pi worker stopped responding. Check LM Studio and retry the turn.', 'connection-unavailable');
+        case 'resource_limit': return failure(
+            'Pi worker resource limit was reached. Shorten the turn or reduce tool output, then retry.',
+            'unsupported-capability');
+    }
+}
 
 /** The only owner of a paused worker. A decision consumes its current segment exactly once. */
 export class PiConversationLease implements ConversationContinuation {
@@ -82,6 +123,8 @@ export class PiConversationLease implements ConversationContinuation {
             if (this.signal?.aborted)
                 throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
             if (error instanceof ModelRuntimeFailure) throw error;
+            const classified = classifyPiFailure(error);
+            if (classified) throw classified;
             throw new ModelRuntimeFailure('Local Pi continuation failed or expired', 'connection-unavailable');
         } finally {
             if (this.state === 'running') this.dispose();
@@ -136,7 +179,9 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 'connection-unavailable');
         }
         try { await host.start(); }
-        catch {
+        catch (error) {
+            const classified = classifyPiFailure(error);
+            if (classified?.message.includes('worker exited')) throw classified;
             throw new ModelRuntimeFailure('Bundled Pi worker unavailable; restart or reinstall Dope, then retry',
                 'connection-unavailable');
         }
@@ -201,6 +246,8 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
     } catch (error) {
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         if (error instanceof ModelRuntimeFailure) throw error;
+        const classified = classifyPiFailure(error);
+        if (classified) throw classified;
         if (error instanceof Error && /cannot be compacted/.test(error.message))
             throw new ModelRuntimeFailure('Local history cannot be compacted safely; shorten the turn or select a larger loaded model',
                 'unsupported-capability');

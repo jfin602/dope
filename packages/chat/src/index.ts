@@ -82,6 +82,9 @@ export interface ChatExecution {
     startedAt: string;
     finishedAt?: string;
     failure?: string; // User-safe summary; no raw provider payload.
+    failureCode?: 'session_init' | 'provider_http' | 'provider_connection' | 'tool_protocol' |
+        'model_generation' | 'worker_exit' | 'worker_protocol' | 'context_limit' | 'output_limit' |
+        'worker_timeout' | 'resource_limit' | 'chat_lease';
     contextUsage?: { usedTokens: number; budgetTokens: number };
     tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number;
         tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable' };
@@ -433,7 +436,7 @@ export function availableChatContextTokens(policy: ChatContextPolicy, modelWindo
 }
 
 function parseExecution(value: unknown): ChatExecution {
-    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'outputLimitPolicy', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
+    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'outputLimitPolicy', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'failureCode', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported execution schema');
     const execution: ChatExecution = { schemaVersion: 1, id: identifier(v.id), status: choice(v.status, statuses, 'assistant status'),
@@ -445,6 +448,10 @@ function parseExecution(value: unknown): ChatExecution {
     if (v.routingProvenance !== undefined) execution.routingProvenance = parseRoutingProvenance(v.routingProvenance);
     if (v.finishedAt !== undefined) execution.finishedAt = time(v.finishedAt);
     if (v.failure !== undefined) execution.failure = string(v.failure, 'failure');
+    if (v.failureCode !== undefined) execution.failureCode = choice(v.failureCode,
+        ['session_init', 'provider_http', 'provider_connection', 'tool_protocol',
+            'model_generation', 'worker_exit', 'worker_protocol', 'context_limit', 'output_limit',
+            'worker_timeout', 'resource_limit', 'chat_lease'] as const, 'failure code');
     const tokens = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 &&
         (value as number) <= 1_000_000_000;
     if (v.contextUsage !== undefined) {

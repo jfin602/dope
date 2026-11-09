@@ -51,6 +51,7 @@ import { IncrementalProposalController, type ProposalHandoff } from './increment
 import { documentModelStage, promptModelStage, proposalToolError } from './proposal-model-tools';
 import { IncrementalDocumentReview } from './incremental-document-review';
 import { IncrementalPromptStack } from './incremental-prompt-stack';
+import { PiConversationFailure } from './pi-conversation-runtime';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -2134,8 +2135,12 @@ export class ChatBackend implements ChatService {
         const key = request.chatId;
         const abort = new AbortController();
         this.turns.set(key, { token: request.leaseToken, abort });
+        let leaseRenewalFailed = false;
         const leaseHeartbeat = setInterval(() => {
-            void this.repository.renew(root, key, request.leaseToken).catch(() => abort.abort());
+            void this.repository.renew(root, key, request.leaseToken).catch(() => {
+                leaseRenewalFailed = true;
+                abort.abort();
+            });
         }, 20_000);
         leaseHeartbeat.unref?.();
         const mutate = async (operation: ChatOperation) => {
@@ -3185,7 +3190,8 @@ export class ChatBackend implements ChatService {
             if (assistant) {
                 if (localRoadmap && error instanceof LocalPlanningOutputFailure && error.rawText)
                     recordActivity('provisional', error.rawText);
-                const cancelled = abort.signal.aborted || error instanceof ModelRuntimeFailure && error.failureClass === 'cancelled';
+                const cancelled = !leaseRenewalFailed && (abort.signal.aborted ||
+                    error instanceof ModelRuntimeFailure && error.failureClass === 'cancelled');
                 const storageCode = (error as NodeJS.ErrnoException)?.code;
                 const baseFailure = error instanceof ModelRuntimeFailure ? error.message :
                     storageCode === 'ENOSPC' || storageCode === 'EDQUOT' ? 'Chat storage exhausted during activity capture' :
@@ -3198,7 +3204,11 @@ export class ChatBackend implements ChatService {
                     `Assessment blocked (${assessmentCode}): ${assessmentCode === 'ASSESSMENT_UNSUPPORTED_SOURCE' ?
                         'Citation does not match one unique verified source read. Read the source again and use an exact, unique quote.' :
                         'The structured assessment is invalid. Review the assessment format and retry Assessment.'}` : undefined;
-                const failure = diagnostic ?? (cancelled ? 'Conversation cancelled' : baseFailure);
+                const failure = leaseRenewalFailed ?
+                    'Chat ownership lease expired or changed during the turn. Reopen this Chat and start a new authorized turn.' :
+                    diagnostic ?? (cancelled ? 'Conversation cancelled' : baseFailure);
+                const failureCode = leaseRenewalFailed ? 'chat_lease' as const :
+                    error instanceof PiConversationFailure ? error.boundaryCode : undefined;
                 if (retainStreamedAnswer && output && output.startsWith(persistedPartial))
                     try { await persistOutputPartial(output); } catch { /* Storage failure is reported below. */ }
                 try { await flushActivity(); } catch { /* Final mutation below still carries the captured snapshot. */ }
@@ -3207,13 +3217,14 @@ export class ChatBackend implements ChatService {
                 try { await mutate(saved?.role === 'assistant' && saved.answerPartial ?
                     { type: 'interrupt-output-limit', chatId: key, messageId: assistant.id,
                         executionId: assistant.execution.id, cursor: saved.answerPartial.cursor,
-                        failure: cancelled ? 'Conversation cancelled' : failure, cancelled, sourceRefs, toolEvents,
+                        failure: cancelled ? 'Conversation cancelled' : failure, cancelled,
+                        ...(!cancelled && failureCode ? { failureCode } : {}), sourceRefs, toolEvents,
                         activity: activity?.snapshot() } :
                     { type: 'finish-assistant', chatId: key, messageId: assistant.id,
                     outcome: cancelled ? 'cancelled' : 'failed', content: '', activity: activity?.snapshot(),
                     contextUsage: { usedTokens: preview.usedTokens, budgetTokens: preview.budgetTokens },
                     ...(toolEvents.length ? { sourceRefs, toolEvents } : {}),
-                    ...(!cancelled ? { failure } : {}) });
+                    ...(!cancelled ? { failure, ...(failureCode ? { failureCode } : {}) } : {}) });
                     void this.repository.removeActivityLog(root, key, assistant.id, assistant.execution.id)
                         .catch(() => undefined); }
                 catch { /* A lost lease or newer revision is recovered by ChatRepository. */ }

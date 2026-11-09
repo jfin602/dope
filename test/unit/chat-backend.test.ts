@@ -10,6 +10,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend, forbidsProjectTools } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ModelRuntimeFailure } from '../../packages/contracts/lib/model-runtime.js';
+import { PiConversationFailure } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 
 test('explicit current-turn tool opt-out is narrow and distinct from read-only constraints', () => {
     assert.equal(forbidsProjectTools('What is 1+1? Do not call tools or modify files.'), true);
@@ -263,12 +264,15 @@ test('P8-style assessment rejection persists one coded blocked draft after backe
     await execute('git', ['-C', root, 'add', 'src/clamp.js', 'package.json']);
     await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
         'commit', '-qm', 'Fixture']);
+    let failPi = false;
     const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
         providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
                 maxInputTokens: 16384 } }] }] }),
     async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
         await request.projectTools!.execute('read_file', { path: 'src/clamp.js', offset: 0, maxBytes: 4096 });
+        if (failPi) throw new PiConversationFailure('Pi worker exited during the turn. Restart Dope and retry.',
+            'connection-unavailable', 'worker_exit');
         const finding = { claim: 'Saved P8 style source', path: 'src/clamp.js',
             quote: 'export function clamp(value) {\\n  return value;' };
         yield { type: 'complete' as const, text: JSON.stringify({ scope: 'Clamp review',
@@ -302,6 +306,20 @@ test('P8-style assessment rejection persists one coded blocked draft after backe
         assert.equal(saved.messages.filter(message => message.role === 'assistant').length, 1);
         await assert.rejects(readFile(join(root, 'docs', 'tasks', 'clamp-api-correction', 'prompt-assessment.md')),
             /ENOENT/);
+        failPi = true;
+        const secondChatId = id();
+        const revision = (await backend.read(projectHandle)).revision;
+        await backend.mutate({ projectHandle, expectedRevision: revision,
+            operation: { type: 'create-chat', id: secondChatId, folderPath: '', title: 'Pi failure' } });
+        const secondLease = await backend.claim({ projectHandle, chatId: secondChatId, ownerId: 'panel' });
+        if (!secondLease.acquired) throw new Error('Second lease missing');
+        await assert.rejects(backend.runTurn({ projectHandle, chatId: secondChatId,
+            leaseToken: secondLease.token, selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/prompt-ass clamp-pi-failure Inspect src/clamp.js' }), /Pi worker exited/);
+        const secondSaved = (await backend.get(projectHandle, secondChatId))!;
+        assert.match(currentPromptDraft(secondSaved)?.error ?? '', /Pi worker exited/);
+        assert.equal(secondSaved.messages.find(message => message.role === 'assistant')?.execution.failureCode,
+            'worker_exit');
         backend.dispose();
         const restarted = makeBackend();
         try {
@@ -310,6 +328,10 @@ test('P8-style assessment rejection persists one coded blocked draft after backe
             assert.equal(currentPromptDraft(reloaded)?.error, assistant.execution.failure);
             assert.equal(currentPromptDraft(reloaded)?.state, 'error');
             assert.equal(reloaded.messages.filter(message => message.role === 'assistant').length, 1);
+            assert.match(currentPromptDraft((await restarted.get(nextHandle, secondChatId))!)?.error ?? '',
+                /Pi worker exited/);
+            assert.equal((await restarted.get(nextHandle, secondChatId))?.messages.find(message =>
+                message.role === 'assistant')?.execution.failureCode, 'worker_exit');
         } finally { restarted.dispose(); }
     } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true }); }
 });

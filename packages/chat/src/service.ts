@@ -36,11 +36,12 @@ export type ChatOperation =
     | { type: 'resume-output-limit'; chatId: ChatId; messageId: string; executionId: string; cursor: number }
     | { type: 'stop-incomplete'; chatId: ChatId; messageId: string; executionId: string; cursor: number }
     | { type: 'interrupt-output-limit'; chatId: ChatId; messageId: string; executionId: string;
-        cursor: number; failure: string; cancelled?: boolean; sourceRefs?: ChatExecution['sourceRefs'];
+        cursor: number; failure: string; failureCode?: ChatExecution['failureCode']; cancelled?: boolean; sourceRefs?: ChatExecution['sourceRefs'];
         toolEvents?: ChatExecution['toolEvents']; activity?: ChatExecutionActivity }
     | { type: 'record-assistant-activity'; chatId: ChatId; messageId: string; activity: ChatExecutionActivity }
     | { type: 'finish-assistant'; chatId: ChatId; messageId: string; outcome: 'complete' | 'failed' | 'cancelled';
         content: string; activity?: ChatExecutionActivity; actualModel?: ChatModelProvenance; routingProvenance?: RoutingProvenance; failure?: string;
+        failureCode?: ChatExecution['failureCode'];
         planningActivity?: ChatPlanningActivity;
         contextUsage?: ChatExecution['contextUsage']; tokenUsage?: ChatExecution['tokenUsage'];
         compaction?: ChatExecution['compaction']; finishReason?: string;

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
 import { piConversation } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
+import { PiWorkerFailure } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 
 const selection = { connectionId: 'local', modelId: 'fixture-model' };
 const bridge = { bind: async () => ({ connectionId: 'local', modelId: 'fixture-model',
@@ -177,4 +178,29 @@ test('Pi repeated-evidence stop remains an incomplete answer, never a completion
             bridge as never, { create: () => host, release: () => {} } as never)) events.push(event);
     }, /stopped after repeated unchanged project evidence/);
     assert.equal(events.some(event => event.type === 'complete'), false);
+});
+
+test('Pi worker boundaries retain safe specific failures and release failed sessions', async () => {
+    const cases = [
+        ['session_init', /session could not open/],
+        ['provider_http', /HTTP 503/],
+        ['provider_connection', /provider connection failed/],
+        ['tool_protocol', /tool execution or protocol failed/],
+        ['worker_exit', /worker exited/],
+        ['context_limit', /context budget was exhausted/],
+        ['output_limit', /output budget was exhausted/],
+        ['model_generation', /model generation failed/]
+    ] as const;
+    for (const [code, expected] of cases) {
+        let released = 0;
+        const host = { start: async () => ({}), async *streamTurn() {
+            throw new PiWorkerFailure(code, code === 'provider_http' ? 503 : undefined);
+        } };
+        await assert.rejects(async () => {
+            for await (const _event of piConversation(selection,
+                { messages: [{ role: 'user', content: 'Inspect source' }] }, bridge as never,
+                { create: () => host, release: () => { released++; } } as never)) { /* incomplete */ }
+        }, expected);
+        assert.equal(released, 1);
+    }
 });

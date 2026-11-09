@@ -742,7 +742,8 @@ export class ChatRepository {
                                 operation.type === 'interrupt-output-limit' && operation.cancelled ?
                                     'cancelled' : 'interrupted', finishedAt: now,
                             ...(operation.type === 'interrupt-output-limit' ? {
-                                ...(!operation.cancelled ? { failure: operation.failure.slice(0, 1000) } : {}),
+                                ...(!operation.cancelled ? { failure: operation.failure.slice(0, 1000),
+                                    ...(operation.failureCode ? { failureCode: operation.failureCode } : {}) } : {}),
                                 ...(operation.sourceRefs ? { sourceRefs: operation.sourceRefs } : {}),
                                 ...(operation.toolEvents ? { toolEvents: operation.toolEvents } : {}) } : {}) },
                             ...(operation.type === 'interrupt-output-limit' && operation.activity ?
@@ -803,7 +804,8 @@ export class ChatRepository {
                         ...(operation.finishReason ? { finishReason: operation.finishReason } : {}),
                         ...(operation.sourceRefs ? { sourceRefs: operation.sourceRefs } : {}),
                         ...(operation.toolEvents ? { toolEvents: operation.toolEvents } : {}),
-                        ...(operation.outcome === 'failed' ? { failure: operation.failure } : {}) } });
+                        ...(operation.outcome === 'failed' ? { failure: operation.failure,
+                            ...(operation.failureCode ? { failureCode: operation.failureCode } : {}) } : {}) } });
                     return { ...c, lastInteractedAt: now, messages };
                 }); break;
                 default: throw new Error('Invalid Chat operation');

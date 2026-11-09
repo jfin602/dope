@@ -21,6 +21,15 @@ test('Pi worker resolves from the bundled browser backend and extension developm
   assert.equal(resolvePiWorkerPath(join(root, 'apps/electron/lib/backend'), undefined), expected);
 });
 
+test('bundled worker returns a bounded session initialization code', async () => {
+  const host = new PiRuntimeHost();
+  try {
+    await host.start();
+    await assert.rejects(host.openNoToolSession({ baseUrl: 'http://127.0.0.1:9/v1' }, '/tmp'),
+      error => error.code === 'session_init' && !String(error).includes('127.0.0.1'));
+  } finally { host.dispose(); }
+});
+
 async function protocolFixture(mode) {
   const host = new PiRuntimeHost('/unused');
   const calls = [];
@@ -57,7 +66,8 @@ async function protocolFixture(mode) {
         } else if (message.type === 'resume') {
           if (message.id !== pausedId || message.segmentIndex !== index + 1)
             send(message.id, { ok: false, error: 'Pi continuation unavailable or stale' });
-          else if (mode === 'provider-error') send(message.id, { ok: false, error: 'Provider failed' });
+          else if (mode === 'provider-error') send(message.id, { ok: false,
+            errorCode: 'provider_http', httpStatus: 503 });
           else if (mode !== 'hang') { index++; send(message.id, { ok: true, data: segment(index, 'stop') }); }
         } else if (message.type === 'stop') send(message.id,
           message.id === pausedId && message.segmentIndex === index ?
@@ -136,9 +146,9 @@ test('Pi continuation expires, rejects disposed workers and provider errors, and
         assert.throws(() => lease.resume(), /expired/);
       } else if (mode === 'disposed') {
         host.dispose();
-        await assert.rejects(Array.fromAsync(lease.resume()), /failed or expired/);
+        await assert.rejects(Array.fromAsync(lease.resume()), /failed or expired|worker protocol failed/);
       } else if (mode === 'provider-error') {
-        await assert.rejects(Array.fromAsync(lease.resume()), /failed or expired/);
+        await assert.rejects(Array.fromAsync(lease.resume()), /HTTP 503/);
         assert.throws(() => lease.resume(), /unavailable or stale/);
       } else {
         const pending = Array.fromAsync(lease.resume());

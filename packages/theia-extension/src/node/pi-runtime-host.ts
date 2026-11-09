@@ -53,6 +53,18 @@ type Pending = { resolve(value: unknown): void; reject(error: Error): void; time
         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent) => void;
     onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
 
+export type PiWorkerFailureCode = 'session_init' | 'provider_http' | 'provider_connection' |
+    'tool_protocol' | 'model_generation' | 'worker_exit' | 'worker_protocol' |
+    'context_limit' | 'output_limit' | 'worker_timeout' | 'resource_limit';
+export class PiWorkerFailure extends Error {
+    constructor(readonly code: PiWorkerFailureCode, readonly httpStatus?: number) {
+        super(`Pi worker ${code}`);
+    }
+}
+const workerFailureCodes = new Set<PiWorkerFailureCode>(['session_init', 'provider_http',
+    'provider_connection', 'tool_protocol', 'model_generation', 'worker_exit', 'worker_protocol',
+    'context_limit', 'output_limit', 'worker_timeout', 'resource_limit']);
+
 /** Only Dope-owned paths are considered. No PATH lookup or user Pi installation is used. */
 export function resolvePiWorkerPath(runtimeDir = __dirname, resourcesPath = process.resourcesPath): string {
     const packaged = resourcesPath && join(resourcesPath, 'app/pi-runtime/worker.mjs');
@@ -98,7 +110,7 @@ export class PiRuntimeHost {
                 console.info(String(chunk).slice(0, 4096));
         });
         child.on('error', error => this.fail(error));
-        child.on('exit', () => this.fail(new Error('Bundled Pi worker exited')));
+        child.on('exit', () => this.fail(new PiWorkerFailure('worker_exit')));
         try {
             const diagnostics = await this.request<PiRuntimeDiagnostics>({ type: 'diagnostics' });
             if (diagnostics.version !== '1.4.0' || diagnostics.transport !== 'supervised-worker' ||
@@ -201,7 +213,7 @@ export class PiRuntimeHost {
                 throw new Error('Invalid Pi Chat stream event');
             const bytes = event.type === 'reset' ? 0 : Buffer.byteLength(event.text, 'utf8');
             if (bytes > 8192 || queue.length >= 8192 || queueBytes + bytes > 16 * 1024 * 1024)
-                throw new Error('Pi Chat stream backpressure limit exceeded');
+                throw new PiWorkerFailure('resource_limit');
             queueBytes += bytes; queue.push(event); notify();
         }, onTool, id).then(value => { result = value; }, error => { failure = error; })
             .finally(() => { settled = true; notify(); });
@@ -253,11 +265,11 @@ export class PiRuntimeHost {
         if (this.pending.has(id)) return Promise.reject(new Error('Pi worker request already active'));
         const line = `${JSON.stringify({ ...record, id })}\n`;
         if (Buffer.byteLength(line, 'utf8') > 600_000 || child.stdin.writableLength > 600_000)
-            return Promise.reject(new Error('Pi worker request exceeds bounded input capacity'));
+            return Promise.reject(new PiWorkerFailure('resource_limit'));
         return new Promise<T>((resolve, reject) => {
             const timer = setTimeout(() => {
                 this.pending.delete(id);
-                reject(new Error('Pi worker response timed out'));
+                reject(new PiWorkerFailure('worker_timeout'));
                 this.dispose();
             }, record.type === 'work' ? 1_800_000 :
                 ['complete', 'turn', 'resume'].includes(String(record.type)) ? 900_000 : 10_000);
@@ -271,7 +283,7 @@ export class PiRuntimeHost {
     private acceptOutput(chunk: string): void {
         this.stdout += chunk;
         if (this.stdout.length > 1_000_000) {
-            this.fail(new Error('Pi worker output limit exceeded'));
+            this.fail(new PiWorkerFailure('resource_limit'));
             return;
         }
         let newline: number;
@@ -280,6 +292,7 @@ export class PiRuntimeHost {
             this.stdout = this.stdout.slice(newline + 1);
             try {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
+                    errorCode?: PiWorkerFailureCode; httpStatus?: number;
                     event?: { type: 'delta'; text: string } | { type: 'reset' } |
                         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent;
                     tool?: { id: number; name: string; arguments: unknown } };
@@ -353,10 +366,13 @@ export class PiRuntimeHost {
                 this.pending.delete(record.id);
                 clearTimeout(pending.timer);
                 if (record.ok) pending.resolve(record.data);
-                else pending.reject(new Error(record.error ?? 'Pi worker rejected request'));
+                else pending.reject(record.errorCode && workerFailureCodes.has(record.errorCode) ?
+                    new PiWorkerFailure(record.errorCode,
+                        Number.isSafeInteger(record.httpStatus) && record.httpStatus! >= 400 &&
+                        record.httpStatus! <= 599 ? record.httpStatus : undefined) :
+                    new PiWorkerFailure('worker_protocol'));
             } catch (error) {
-                this.fail(error instanceof Error && error.message === 'Pi Chat stream backpressure limit exceeded' ?
-                    error : new Error('Invalid Pi worker protocol'));
+                this.fail(error instanceof PiWorkerFailure ? error : new PiWorkerFailure('worker_protocol'));
                 return;
             }
         }
