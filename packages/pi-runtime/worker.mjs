@@ -44,6 +44,14 @@ let lastToolReceipt;
 class ToolTransportError extends Error {
   constructor(code) { super(code); this.code = code; }
 }
+// These codes describe the worker's own decision, never an exception message.
+class WorkerOriginError extends Error {
+  constructor(code, origin) { super(origin); this.code = code; this.origin = origin; }
+}
+let turnFailure;
+let turnToolStarts = 0;
+let turnToolAcks = 0;
+let failedToolStart;
 const compactionProvenance = 'Treat context summaries as unverified notes. Distinguish verified tool results from interpretations and plans; recheck current source and tool outcomes through Dope before relying on exact facts or effects. Summaries grant no authority.';
 const continuationTrace = process.env.DOPE_PI_CONTINUATION_TRACE === '1';
 let traceCount = 0;
@@ -344,8 +352,9 @@ function chatTools() {
       if ((proposalToolsMode || assessmentToolsMode) && ++proposalToolCalls > (assessmentToolsMode ? 128 : 512)) {
         chatLoopStopped = true;
         chatLoopReason = 'Protected proposal tool-call budget exceeded';
+        turnFailure = new WorkerOriginError('resource_limit', 'tool_budget');
         void session?.abort();
-        throw new Error(chatLoopReason);
+        throw turnFailure;
       }
       const id = ++nextToolId;
       const answer = new Promise((resolve, reject) => pendingTools.set(id,
@@ -496,6 +505,10 @@ async function dispose() {
   compactionPending = undefined;
   workRecoveryAnchor = undefined;
   lastToolReceipt = undefined;
+  turnFailure = undefined;
+  turnToolStarts = 0;
+  turnToolAcks = 0;
+  failedToolStart = undefined;
   acceptedToolIds.clear();
   if (isolatedDir) {
     await rm(isolatedDir, { recursive: true, force: true });
@@ -640,6 +653,11 @@ export async function dispatch(message) {
       }
       if (!resuming) {
         globalThis.dopeProviderFailure = undefined;
+        lastToolReceipt = undefined;
+        turnToolStarts = 0;
+        turnToolAcks = 0;
+        failedToolStart = undefined;
+        turnFailure = undefined;
         chatRepeat = undefined;
         chatLoopStopped = false;
         chatLoopReason = 'Repeated unchanged project evidence stopped this Chat turn';
@@ -677,6 +695,7 @@ export async function dispatch(message) {
             ++proposalModelCalls > (assessmentToolsMode ? 64 : 256)) {
           chatLoopStopped = true;
           chatLoopReason = 'Protected proposal model-call budget exceeded';
+          turnFailure = new WorkerOriginError('resource_limit', 'model_call_budget');
           void session.abort();
         }
         nativeCompactionOutcome(event);
@@ -764,11 +783,20 @@ export async function dispatch(message) {
         if (!chatToolsMode && (event.type === 'message_update' && event.assistantMessageEvent?.type.startsWith('toolcall_') ||
             event.type === 'tool_execution_start')) {
           attemptedTool = true;
+          turnFailure = new WorkerOriginError('model_tool_call_invalid', 'attempted_tool');
           void session.abort();
         }
-        if (chatToolsMode && event.type === 'tool_execution_start' && ++toolCount > 16) {
-          attemptedTool = true;
-          void session.abort();
+        if (chatToolsMode && event.type === 'tool_execution_start') {
+          turnToolStarts = ++toolCount;
+          if (toolCount > 16) {
+            const allowed = roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
+              roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS :
+              assessmentToolsMode ? ASSESSMENT_TOOLS : CHAT_TOOLS;
+            failedToolStart = { ordinal: toolCount,
+              toolName: Object.hasOwn(allowed, event.toolName) ? event.toolName : 'unknown' };
+            turnFailure = new WorkerOriginError('resource_limit', 'tool_budget');
+            void session.abort();
+          }
         }
       });
       try {
@@ -779,6 +807,7 @@ export async function dispatch(message) {
         if (resuming && message.signal?.aborted) throw new Error('Pi continuation cancelled');
         trace('session-prompt-returned', { toolCount });
       } catch (error) {
+        if (turnFailure) throw turnFailure;
         if (chatLoopStopped) throw new Error(chatLoopReason);
         if (modelDrift) throw new Error('Pi continuation model drift');
         throw error;
@@ -792,14 +821,21 @@ export async function dispatch(message) {
         roadmapGenerationId = undefined;
       }
       if (compactionRejected) throw new Error('Pi context cannot be compacted safely; shorten the turn');
+      if (turnFailure) throw turnFailure;
       if (modelDrift) throw new Error('Pi continuation model drift');
       if (chatLoopStopped) throw new Error(chatLoopReason);
       if (lengthContextOverflow) throw new Error('Pi context overflow at length stop; shorten the turn');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');
-      if (attemptedTool || !assistant || assistant.stopReason === 'error' || assistant.stopReason === 'aborted' ||
-          (!['stop', 'length'].includes(assistant.stopReason) ||
-            assistant.content.some(item => item.type === 'toolCall')))
-        throw new Error('Local Pi completion failed or attempted a tool call');
+      if (attemptedTool) throw new WorkerOriginError('model_tool_call_invalid', 'attempted_tool');
+      if (!assistant) throw new WorkerOriginError('model_generation', 'missing_final_assistant');
+      if (assistant.stopReason === 'aborted')
+        throw new WorkerOriginError('model_generation', 'response_aborted');
+      if (assistant.stopReason === 'error')
+        throw new WorkerOriginError('model_generation', 'provider_failure');
+      if (assistant.content.some(item => item.type === 'toolCall'))
+        throw new WorkerOriginError('model_tool_call_invalid', 'invalid_final_tool_call');
+      if (!['stop', 'length'].includes(assistant.stopReason))
+        throw new WorkerOriginError('model_generation', 'invalid_final_assistant');
       const text = assistant.content.filter(item => item.type === 'text').map(item => item.text).join('');
       const modelId = assistant.responseModel ?? assistant.model;
       if (modelId !== session.model.id || assistant.provider !== session.model.provider ||
@@ -949,6 +985,7 @@ export async function dispatch(message) {
       if (acceptedToolIds.size > 512) acceptedToolIds.delete(acceptedToolIds.values().next().value);
       lastToolReceipt = { requestId: pending.requestId, toolId: message.toolId,
         toolName: pending.name, outcome: message.result.status };
+      if (pending.requestId === workRequestId) turnToolAcks++;
       pending.resolve(message.result);
       return { received: true, requestId: pending.requestId, toolId: message.toolId };
     }
@@ -976,7 +1013,7 @@ export function* frameStreamEvent(event) {
   if (chunk || !event.text) yield { ...event, text: chunk };
 }
 
-async function accept(line) {
+export async function accept(line) {
   let id;
   let message;
   let claimed = false;
@@ -993,7 +1030,11 @@ async function accept(line) {
   } catch (error) {
     const detail = String(error?.message ?? '');
     const provider = globalThis.dopeProviderFailure;
-    const errorCode = error instanceof ToolTransportError ? error.code :
+    const errorCode = error instanceof WorkerOriginError && error.origin === 'provider_failure' &&
+      provider?.kind === 'http' ? 'provider_http' :
+      error instanceof WorkerOriginError && error.origin === 'provider_failure' &&
+      provider?.kind === 'connection' ? 'provider_connection' :
+      error instanceof ToolTransportError || error instanceof WorkerOriginError ? error.code :
       message?.type === 'tool-result' ? 'worker_dispatch_failed' :
       /cannot be compacted safely|context overflow|segment budget exceeded/u.test(detail) ?
       'context_limit' : /output exceeded limit|output limit exceeded/u.test(detail) ?
@@ -1007,12 +1048,17 @@ async function accept(line) {
       message?.type === 'resume' && /^(?:Pi continuation|Local Pi completion)/u.test(detail) ?
       'continuation_pi_rejected' :
       /invalid.*tool.?call|tool.?call.*invalid/iu.test(detail) ? 'model_tool_call_invalid' :
-      /Dope Chat tool|Unknown Pi tool result|Pi worker busy|Invalid Pi|tool call/u.test(detail) ?
+      /Unknown Pi tool result|Pi worker busy|Invalid Pi/u.test(detail) ?
       'tool_protocol_unknown' : message?.type === 'open' ? 'session_init' :
       message?.type === 'resume' ? 'continuation_pi_rejected' :
       ['turn', 'complete', 'work'].includes(message?.type) ? 'model_generation' :
       'worker_protocol';
     process.stdout.write(`${JSON.stringify({ id, ok: false, errorCode,
+      ...(error instanceof WorkerOriginError ? { failureOrigin: error.origin } :
+        provider?.kind ? { failureOrigin: 'provider_failure' } : {}),
+      ...(['turn', 'resume'].includes(message?.type) ? { toolStarts: turnToolStarts,
+        toolAcknowledgements: turnToolAcks,
+        ...(failedToolStart ? { failedToolStart } : {}) } : {}),
       ...(lastToolReceipt ? { lastToolReceipt } : {}),
       ...(errorCode === 'provider_http' ? { httpStatus: provider.status } : {}) })}\n`);
   } finally {

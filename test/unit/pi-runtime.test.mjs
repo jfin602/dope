@@ -20,6 +20,63 @@ import { runChatInvestigationCommand } from '../../packages/theia-extension/lib/
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapNativeStageOwner, NATIVE_ROADMAP_ACTION_FIELDS } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
 
+test('emitted worker failures separate tool-17 budget from provider failure after six ACKs', async () => {
+  const { mockProvider } = await import('../fixtures/pi-worker-mock-provider.mjs');
+  for (const [stopAfter, expectedCode, expectedOrigin] of [
+    [17, 'resource_limit', 'tool_budget'],
+    [6, 'provider_http', 'provider_failure']
+  ]) {
+    const originalFetch = globalThis.fetch;
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    globalThis.fetch = mockProvider(stopAfter);
+    const { accept } = await import(`../../packages/pi-runtime/worker.mjs?frame-case=${stopAfter}`);
+    const frames = [];
+    let toolRequests = 0;
+    process.stdout.write = chunk => {
+      let frame;
+      try { frame = JSON.parse(String(chunk)); } catch { return originalWrite(chunk); }
+      if (!Number.isSafeInteger(frame.id)) return originalWrite(chunk);
+      frames.push(frame);
+      if (frame.tool) {
+        toolRequests++;
+        queueMicrotask(() => { void accept(JSON.stringify({ id: 100 + toolRequests,
+          type: 'tool-result', requestId: frame.id, toolId: frame.tool.id,
+          result: { status: stopAfter === 6 && toolRequests === 1 ? 'denied' : 'completed',
+            output: `page ${toolRequests}` } })); });
+      }
+      return true;
+    };
+    try {
+      const model = { id: 'offline-assessment', name: 'Offline Assessment',
+        provider: 'dope-local', api: 'openai-completions', baseUrl: 'http://127.0.0.1:9/v1',
+        reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 8192, maxTokens: 512 };
+      await accept(JSON.stringify({ id: 1, type: 'open', mode: 'chat-tools', assessmentTools: true,
+        cwd: '/tmp', model }));
+      await accept(JSON.stringify({ id: 2, type: 'turn',
+        messages: [{ role: 'user', content: 'Inspect Assessment pages.' }], maxOutputTokens: 512 }));
+      await accept(JSON.stringify({ id: 3, type: 'close' }));
+    } finally {
+      process.stdout.write = originalWrite;
+      globalThis.fetch = originalFetch;
+    }
+    const failure = frames.find(frame => frame.id === 2 && frame.ok === false);
+    const expectedAcks = stopAfter === 17 ? 16 : 6;
+    assert.equal(toolRequests, expectedAcks);
+    assert.equal(failure.errorCode, expectedCode);
+    assert.equal(failure.failureOrigin, expectedOrigin);
+    assert.equal(failure.toolStarts, stopAfter);
+    assert.equal(failure.toolAcknowledgements, expectedAcks);
+    assert.equal(failure.lastToolReceipt?.toolId, expectedAcks);
+    assert.equal(failure.lastToolReceipt?.outcome, 'completed');
+    if (stopAfter === 6) assert.deepEqual(frames.filter(frame => frame.tool).map(frame =>
+      frame.tool.name).slice(0, 3), ['read_file', 'list_files', 'search_paths']);
+    assert.deepEqual(failure.failedToolStart, stopAfter === 17 ?
+      { ordinal: 17, toolName: 'read_file' } : undefined);
+    assert.ok(!JSON.stringify(failure).includes('src/page-'));
+    assert.notEqual(failure.errorCode, 'tool_protocol_unknown');
+  }
+});
 test('Pi worker resolves from the bundled browser backend and extension development layouts', () => {
   const root = resolve(import.meta.dirname, '../..');
   const expected = join(root, 'packages/pi-runtime/worker.mjs');
@@ -894,7 +951,8 @@ test('Pi keeps provider interruption and context overflow separate from output l
     }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
     await dispatch({ type: 'open', cwd, model });
     await assert.rejects(dispatch({ type: 'turn', maxOutputTokens: 128,
-      messages: [{ role: 'user', content: 'Interrupt.' }] }), /Local Pi completion failed/);
+      messages: [{ role: 'user', content: 'Interrupt.' }] }),
+    error => error.code === 'model_generation' && error.origin === 'provider_failure');
     await dispatch({ type: 'close' });
 
     globalThis.fetch = async () => new Response(
@@ -1350,7 +1408,8 @@ test('tool-call-like Local model output cannot execute a Pi tool', async () => {
     };
     await dispatch({ type: 'open', cwd, model });
     await assert.rejects(dispatch({ type: 'turn', maxOutputTokens: 128,
-      messages: [{ role: 'user', content: 'Call bash.' }] }), /failed or attempted a tool call/);
+      messages: [{ role: 'user', content: 'Call bash.' }] }),
+    error => error.code === 'model_tool_call_invalid' && error.origin === 'attempted_tool');
     await assert.rejects(access(marker), { code: 'ENOENT' });
   } finally {
     await dispatch({ type: 'close' });
