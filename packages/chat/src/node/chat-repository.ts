@@ -11,7 +11,7 @@ import type { ChatProposalProgress } from '../index';
 import { parseExecutionActivity, type ChatActivityEvent, type ChatExecutionActivity } from '../activity';
 
 const absent = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
-const DEFAULT_SETTINGS = { schemaVersion: 1 as const, modelPolicy: { type: 'follow-interactive' as const }, outputLimitPolicy: 'ask' as const, context: { maxInputTokens: 8192, reservedOutputTokens: 1024,
+const DEFAULT_SETTINGS = { schemaVersion: 1 as const, contextMode: 'managed' as const, modelPolicy: { type: 'follow-interactive' as const }, outputLimitPolicy: 'ask' as const, context: {
     history: 'recent' as const, savedChatSearch: false,
     allowedSources: [...MANUAL_CHAT_CONTEXT_SOURCES] } };
 const interrupted = 'Interrupted before completion';
@@ -667,7 +667,9 @@ export class ChatRepository {
                     if (chats[index]?.messages.some(item => item.role === 'assistant' &&
                         ['pending', 'streaming', 'paused-output-limit'].includes(item.execution.status)))
                         throw new Error('Chat execution already active');
-                    update(c => ({ ...c, lastInteractedAt: now, messages: [...c.messages, message] })); break;
+                    update(c => ({ ...c, lastInteractedAt: now, messages: [...c.messages,
+                        parseChatMessage({ ...message, execution: {
+                            ...message.execution, contextMode: c.settings.contextMode } })] })); break;
                 }
                 case 'start-assistant': update(c => {
                     const at = c.messages.findIndex(m => m.id === operation.messageId);

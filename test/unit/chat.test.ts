@@ -19,8 +19,8 @@ function sampleChat(): Chat {
   return {
     schemaVersion: 1, id: chatId, revision: 2, folderPath: 'Research/Nested',
     title: 'Draft', titleSource: 'placeholder', color: 'blue', createdAt: now, updatedAt: later, lastInteractedAt: later,
-    settings: { schemaVersion: 1, modelPolicy: { type: 'exact', model: selectedModel }, context: {
-      maxInputTokens: 4096, reservedOutputTokens: 512, history: 'recent', savedChatSearch: false,
+    settings: { schemaVersion: 1, contextMode: 'managed', outputLimitPolicy: 'ask', modelPolicy: { type: 'exact', model: selectedModel }, context: {
+      history: 'recent', savedChatSearch: false,
       allowedSources: ['editor', 'saved-chat'],
     } },
     messages: [
@@ -52,12 +52,35 @@ test('versioned Chat round trips with explicit execution and context provenance'
 
 test('generation limit settings migrate to Ask and reject invalid saved choices', () => {
   const legacy = sampleChat();
+  delete (legacy.settings as Partial<typeof legacy.settings>).outputLimitPolicy;
   assert.equal(parseChat(legacy).settings.outputLimitPolicy, 'ask');
   for (const policy of ['ask', 'allow', 'cancel'] as const)
     assert.equal(parseChat({ ...legacy, settings: { ...legacy.settings, outputLimitPolicy: policy } })
       .settings.outputLimitPolicy, policy);
   assert.throws(() => parseChat({ ...legacy, settings: { ...legacy.settings,
     outputLimitPolicy: 'forever' } }), /output limit policy/);
+});
+
+test('historic numeric context settings normalize without becoming active budgets', () => {
+  const chat = sampleChat();
+  const old = { ...chat, settings: { ...chat.settings, context: {
+    ...chat.settings.context, maxInputTokens: 1000, reservedOutputTokens: 100,
+  } } };
+  delete (old.settings as Partial<typeof old.settings>).contextMode;
+  const normalized = parseChat(old);
+  assert.equal(normalized.settings.contextMode, 'managed');
+  assert.equal('maxInputTokens' in normalized.settings.context, false);
+  assert.equal('reservedOutputTokens' in normalized.settings.context, false);
+  assert.equal(availableChatContextTokens(normalized.settings.context, 3000), 3000);
+  assert.deepEqual(normalized.messages, chat.messages);
+  assert.equal(normalized.settings.context.history, 'recent');
+  assert.equal(normalized.settings.context.savedChatSearch, false);
+  assert.deepEqual(parseChat({ ...chat, settings: { ...chat.settings, contextMode: 'unmanaged' } }).settings,
+    { ...chat.settings, context: { ...chat.settings.context, allowedSources: [...MANUAL_CHAT_CONTEXT_SOURCES] },
+      contextMode: 'unmanaged' });
+  assert.throws(() => parseChat({ ...chat, settings: { ...chat.settings, contextMode: 'automatic' } }), /context mode/);
+  assert.throws(() => parseChat({ ...chat, settings: { ...chat.settings, context: {
+    ...chat.settings.context, maxInputTokens: -1 } } }), /input budget/);
 });
 
 test('Chat retains only validated Pi compaction identities', () => {
@@ -154,6 +177,6 @@ test('interaction order, title authority and context budget are pure', () => {
   assert.equal(withAutomaticChatTitle(chat, 'New title').titleSource, 'automatic');
   const manual = { ...chat, titleSource: 'developer' as const };
   assert.equal(withAutomaticChatTitle(manual, 'Ignored'), manual);
-  assert.equal(availableChatContextTokens(chat.settings.context, 3000), 2488);
-  assert.equal(availableChatContextTokens(chat.settings.context, 100), 0);
+  assert.equal(availableChatContextTokens(chat.settings.context, 3000), 3000);
+  assert.equal(availableChatContextTokens(chat.settings.context, 100), 100);
 });

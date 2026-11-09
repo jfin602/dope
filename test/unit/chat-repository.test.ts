@@ -30,6 +30,37 @@ test('generation limit policy persists across repository reopen', async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('context mode persists per Chat and is fixed on assistant begin', async () => {
+  const root = await folder(), repo = new ChatRepository(), first = id(), second = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: first, folderPath: '' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: second, folderPath: '' });
+    assert.deepEqual(state.chats.map(chat => chat.settings.contextMode), ['managed', 'managed']);
+    state = await repo.mutate(root, state.revision, { type: 'set-settings', chatId: first,
+      settings: { ...state.chats[0].settings, contextMode: 'unmanaged' } });
+    const lease = await repo.claim(root, first, 'mode-test');
+    if (!lease.acquired) throw new Error('Chat claim missing');
+    const messageId = id();
+    state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId: first,
+      message: { schemaVersion: 1, id: messageId, role: 'assistant', createdAt: new Date().toISOString(),
+        content: '', execution: { schemaVersion: 1, id: id(), status: 'pending', selectedModel: model,
+          startedAt: new Date().toISOString() } } }, lease.token);
+    assert.equal(state.chats.find(chat => chat.id === first)?.messages[0].role, 'assistant');
+    const snapshot = state.chats.find(chat => chat.id === first)?.messages[0];
+    assert.equal(snapshot?.role === 'assistant' && snapshot.execution.contextMode, 'unmanaged');
+    state = await repo.mutate(root, state.revision, { type: 'set-settings', chatId: first,
+      settings: { ...state.chats.find(chat => chat.id === first)!.settings, contextMode: 'managed' } });
+    const reloaded = await new ChatRepository().read(root);
+    const saved = reloaded.chats.find(chat => chat.id === first)!;
+    assert.equal(saved.settings.contextMode, 'managed');
+    assert.equal(saved.messages[0].role === 'assistant' && saved.messages[0].execution.contextMode, 'unmanaged');
+    assert.equal(reloaded.chats.find(chat => chat.id === second)?.settings.contextMode, 'managed');
+    await assert.rejects(repo.mutate(root, state.revision, { type: 'set-settings', chatId: second,
+      settings: { ...reloaded.chats.find(chat => chat.id === second)!.settings, contextMode: 'invalid' as never } }), /context mode/);
+    await repo.release(root, first, lease.token);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('sanitized Pi failure stage and last acknowledged tool survive Chat restart', async () => {
   const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id();
   try {

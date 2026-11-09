@@ -53,16 +53,17 @@ export interface ChatContextRef {
 export interface ChatModelSelection { connectionId: string; modelId: string }
 export interface ChatModelProvenance extends ChatModelSelection { schemaVersion: 1; providerId: string; modelLabel: string }
 export type ChatModelPolicy = { type: 'exact'; model: ChatModelSelection } | { type: 'follow-interactive' };
+export type ChatContextMode = 'managed' | 'unmanaged';
+const contextModes: ChatContextMode[] = ['managed', 'unmanaged'];
 
 export interface ChatContextPolicy {
-    maxInputTokens: number;
-    reservedOutputTokens: number;
     history: 'recent' | 'none';
     savedChatSearch: boolean;
     allowedSources: ChatContextKind[];
 }
 export interface ChatSettings {
     schemaVersion: 1;
+    contextMode: ChatContextMode;
     modelPolicy: ChatModelPolicy;
     outputLimitPolicy: ChatOutputLimitPolicy;
     reasoningControls?: Record<string, string>;
@@ -75,6 +76,7 @@ export interface ChatExecution {
     id: string;
     status: AssistantStatus;
     selectedModel: ChatModelSelection; // Snapshotted at Send; never rewritten by settings.
+    contextMode?: ChatContextMode; // Snapshot at Send; older executions omit it.
     outputLimitPolicy?: ChatOutputLimitPolicy; // Snapshot for this execution; older records omit it.
     resolutionSource?: 'explicit-turn' | 'chat-exact-default' | 'role-policy';
     actualModel?: ChatModelProvenance; // Set when a runtime starts, then immutable.
@@ -415,20 +417,22 @@ export function parseChatContextRef(value: unknown): ChatContextRef {
     return ref;
 }
 export function parseChatSettings(value: unknown): ChatSettings {
-    const v = record(value, ['schemaVersion', 'modelPolicy', 'defaultModel', 'outputLimitPolicy', 'reasoningControls', 'reasoningDisplay', 'context'], ['schemaVersion', 'context']);
+    const v = record(value, ['schemaVersion', 'modelPolicy', 'defaultModel', 'contextMode', 'outputLimitPolicy', 'reasoningControls', 'reasoningDisplay', 'context'], ['schemaVersion', 'context']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported Chat settings schema');
     if (v.modelPolicy !== undefined && v.defaultModel !== undefined) throw new Error('Ambiguous Chat model policy');
     const c = record(v.context, ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources'],
-        ['maxInputTokens', 'reservedOutputTokens', 'history', 'savedChatSearch', 'allowedSources']);
+        ['history', 'savedChatSearch', 'allowedSources']);
+    // Validate historic numbers, then drop them. They must never become active request overrides.
+    if (c.maxInputTokens !== undefined) count(c.maxInputTokens, 'input budget', true);
+    if (c.reservedOutputTokens !== undefined) count(c.reservedOutputTokens, 'output reserve');
     if (typeof c.savedChatSearch !== 'boolean' || !Array.isArray(c.allowedSources)) throw new Error('Invalid context policy');
     const legacySources = c.allowedSources.map(source => choice(source, contextKinds, 'context source'));
     if (new Set(legacySources).size !== legacySources.length) throw new Error('Duplicate context source');
     const settings: ChatSettings = { schemaVersion: 1,
+        contextMode: v.contextMode === undefined ? 'managed' : choice(v.contextMode, contextModes, 'context mode'),
         outputLimitPolicy: v.outputLimitPolicy === undefined ? 'ask' : choice(v.outputLimitPolicy, outputPolicies, 'output limit policy'),
         modelPolicy: v.modelPolicy === undefined ? v.defaultModel === undefined ? { type: 'follow-interactive' } :
             { type: 'exact', model: parseChatModelSelection(v.defaultModel) } : parseChatModelPolicy(v.modelPolicy), context: {
-        maxInputTokens: count(c.maxInputTokens, 'input budget', true),
-        reservedOutputTokens: count(c.reservedOutputTokens, 'output reserve'),
         history: choice(c.history, ['recent', 'none'], 'history policy'),
         // Old per-source choices are accepted for saved Chat compatibility, then retired.
         savedChatSearch: c.savedChatSearch, allowedSources: [...MANUAL_CHAT_CONTEXT_SOURCES],
@@ -448,18 +452,17 @@ export function parseChatSettings(value: unknown): ChatSettings {
     return settings;
 }
 export function availableChatContextTokens(policy: ChatContextPolicy, modelWindowTokens: number): number {
-    count(policy.maxInputTokens, 'input budget', true);
-    count(policy.reservedOutputTokens, 'output reserve');
     count(modelWindowTokens, 'model window', true);
-    return Math.max(0, Math.min(policy.maxInputTokens, modelWindowTokens - policy.reservedOutputTokens));
+    return modelWindowTokens;
 }
 
 function parseExecution(value: unknown): ChatExecution {
-    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'outputLimitPolicy', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'failureCode', 'toolFailure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
+    const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'contextMode', 'outputLimitPolicy', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'failureCode', 'toolFailure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported execution schema');
     const execution: ChatExecution = { schemaVersion: 1, id: identifier(v.id), status: choice(v.status, statuses, 'assistant status'),
         selectedModel: parseChatModelSelection(v.selectedModel), startedAt: time(v.startedAt) };
+    if (v.contextMode !== undefined) execution.contextMode = choice(v.contextMode, contextModes, 'context mode');
     if (v.outputLimitPolicy !== undefined) execution.outputLimitPolicy = choice(v.outputLimitPolicy, outputPolicies, 'output limit policy');
     if (v.actualModel !== undefined) execution.actualModel = parseModelProvenance(v.actualModel);
     if (v.resolutionSource !== undefined) execution.resolutionSource = choice(v.resolutionSource,
