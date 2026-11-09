@@ -56,8 +56,10 @@ export function classifyPiFailure(error: unknown): PiConversationFailure | undef
             'Pi output budget was exhausted. Increase the Chat output limit or shorten the requested answer.',
             'incomplete-answer');
         case 'model_generation': return failure(
-            'Local model generation failed. Check the selected model in LM Studio and retry.',
-            'nonretryable-provider');
+            error.toolFailure?.providerSubcause === 'model_response' ?
+                'The provider returned a model error completion. Review the saved diagnostic before retrying.' :
+                'Local generation ended without a valid assistant completion. The underlying cause is unavailable.',
+            'incomplete-answer');
         case 'worker_timeout': return failure(
             'Pi worker stopped responding. Check LM Studio and retry the turn.', 'connection-unavailable');
         case 'resource_limit': return failure(error.toolFailure?.failureOrigin === 'tool_budget' ?

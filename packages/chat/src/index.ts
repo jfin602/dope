@@ -99,7 +99,12 @@ export interface ChatExecution {
             'missing_final_assistant' | 'response_aborted' | 'provider_failure' |
             'invalid_final_tool_call' | 'invalid_final_assistant';
         toolStarts?: number; toolAcknowledgements?: number;
-        failedToolStart?: { ordinal: number; toolName: string } };
+        failedToolStart?: { ordinal: number; toolName: string };
+        modelCallStage?: 'unknown' | 'request' | 'response_headers';
+        providerSubcause?: 'unknown' | 'http' | 'connection_or_stream' | 'model_response';
+        lastProviderResponseStatus?: number; httpStatus?: number;
+        providerUsage?: { call: number; inputTokens?: number; outputTokens?: number;
+            totalTokens: number; reasoningTokens?: number }[] };
     contextUsage?: { usedTokens: number; budgetTokens: number };
     tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number; reasoningTokens?: number;
         tokenMeasurement: 'provider-reported' | 'tokenizer' | 'estimated' | 'unavailable' };
@@ -456,6 +461,23 @@ export function availableChatContextTokens(policy: ChatContextPolicy, modelWindo
     return modelWindowTokens;
 }
 
+function parseProviderUsage(value: unknown): NonNullable<NonNullable<ChatExecution['toolFailure']>['providerUsage']> {
+    if (!Array.isArray(value) || value.length > 256) throw new Error('Invalid Pi provider usage');
+    return value.map((entry, index) => {
+        const item = record(entry, ['call', 'inputTokens', 'outputTokens', 'totalTokens',
+            'reasoningTokens'], ['call', 'totalTokens']);
+        if (item.call !== index + 1 || !Number.isSafeInteger(item.totalTokens) ||
+            (item.totalTokens as number) <= 0 || (item.totalTokens as number) > 1_000_000 ||
+            ['inputTokens', 'outputTokens', 'reasoningTokens'].some(key => item[key] !== undefined &&
+                (!Number.isSafeInteger(item[key]) || (item[key] as number) < 0 ||
+                    (item[key] as number) > 1_000_000)) ||
+            item.reasoningTokens !== undefined && item.outputTokens !== undefined &&
+                (item.reasoningTokens as number) > (item.outputTokens as number))
+            throw new Error('Invalid Pi provider usage');
+        return item as unknown as NonNullable<NonNullable<ChatExecution['toolFailure']>['providerUsage']>[number];
+    });
+}
+
 function parseExecution(value: unknown): ChatExecution {
     const v = record(value, ['schemaVersion', 'id', 'status', 'selectedModel', 'contextMode', 'outputLimitPolicy', 'resolutionSource', 'actualModel', 'routingProvenance', 'startedAt', 'finishedAt', 'failure', 'failureCode', 'toolFailure', 'contextUsage', 'tokenUsage', 'compaction', 'finishReason', 'sourceRefs', 'toolEvents'],
         ['schemaVersion', 'id', 'status', 'selectedModel', 'startedAt']);
@@ -482,7 +504,9 @@ function parseExecution(value: unknown): ChatExecution {
     if (v.toolFailure !== undefined) {
         const detail = record(v.toolFailure, ['stage', 'requestId', 'toolId', 'toolName',
             'lastConfirmed', 'brokerResultAcknowledged', 'elapsedMs', 'failureOrigin',
-            'toolStarts', 'toolAcknowledgements', 'failedToolStart'], ['stage', 'brokerResultAcknowledged']);
+            'toolStarts', 'toolAcknowledgements', 'failedToolStart', 'modelCallStage',
+            'providerSubcause', 'lastProviderResponseStatus', 'httpStatus', 'providerUsage'],
+            ['stage', 'brokerResultAcknowledged']);
         const stage = choice(detail.stage, ['session_init', 'provider_http', 'provider_connection',
             'tool_protocol', 'model_generation', 'worker_exit', 'worker_protocol', 'context_limit',
             'output_limit', 'worker_timeout', 'resource_limit', 'policy_limit', 'policy_invalid', 'model_tool_call_invalid',
@@ -537,6 +561,20 @@ function parseExecution(value: unknown): ChatExecution {
             ...(detail.toolName !== undefined ? { toolName: detail.toolName as string } : {}),
             ...(lastConfirmed ? { lastConfirmed } : {}),
             ...(failureOrigin ? { failureOrigin } : {}),
+            ...(detail.modelCallStage === undefined ? {} : { modelCallStage: choice(detail.modelCallStage,
+                ['unknown', 'request', 'response_headers'] as const, 'Pi model-call stage') }),
+            ...(detail.providerSubcause === undefined ? {} : { providerSubcause: choice(detail.providerSubcause,
+                ['unknown', 'http', 'connection_or_stream', 'model_response'] as const, 'Pi provider subcause') }),
+            ...(['lastProviderResponseStatus', 'httpStatus'].reduce((result, key) => {
+                const status = detail[key];
+                if (status !== undefined) {
+                    if (!Number.isSafeInteger(status) || (status as number) < (key === 'httpStatus' ? 400 : 100) ||
+                        (status as number) > 599) throw new Error('Invalid Pi provider status');
+                    Object.assign(result, { [key]: status });
+                }
+                return result;
+            }, {} as { lastProviderResponseStatus?: number; httpStatus?: number })),
+            ...(detail.providerUsage === undefined ? {} : { providerUsage: parseProviderUsage(detail.providerUsage) }),
             ...(detail.toolStarts !== undefined ? { toolStarts: detail.toolStarts as number } : {}),
             ...(detail.toolAcknowledgements !== undefined ?
                 { toolAcknowledgements: detail.toolAcknowledgements as number } : {}),

@@ -2,10 +2,22 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { createHash, randomUUID } from 'node:crypto';
 import { PiRuntimeHost, PiWorkerFailure } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
+import { classifyPiFailure } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
+import { parseChatMessage } from '../../packages/chat/lib/index.js';
 import { dispatch } from '../../packages/pi-runtime/worker.mjs';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
+const sha256 = text => createHash('sha256').update(text).digest('hex');
+function finishTurn(host, id, text = 'Done.') {
+  host.acceptOutput(JSON.stringify({ id, event: { type: 'result_chunk', sequence: 1,
+    offset: 0, text } }) + '\n');
+  host.acceptOutput(JSON.stringify({ id, event: { type: 'result_end', sequence: 2,
+    bytes: Buffer.byteLength(text, 'utf8'), sha256: sha256(text) } }) + '\n');
+  host.acceptOutput(JSON.stringify({ id, ok: true, data: { text: '', segmentIndex: 1,
+    modelId: 'fixture', finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' } } }) + '\n');
+}
 
 function fixture(ack = frame => ({ received: true, requestId: frame.requestId, toolId: frame.toolId })) {
   const host = new PiRuntimeHost('/unused');
@@ -66,11 +78,11 @@ test('healthy consecutive replies, independent host sessions, and reversed broke
       await tick();
       assert.deepEqual(ordered.frames.filter(frame => frame.type === 'tool-result').map(frame => frame.toolId), [2, 1]);
       assert.equal(ordered.host.activeTools.size, 0);
-      ordered.host.acceptOutput(JSON.stringify({ id: cId, ok: true, data: { done: true } }) + '\n');
+      finishTurn(ordered.host, cId);
       await c;
     } finally { ordered.host.dispose(); }
-    first.host.acceptOutput(JSON.stringify({ id: aId, ok: true, data: { done: true } }) + '\n');
-    second.host.acceptOutput(JSON.stringify({ id: bId, ok: true, data: { done: true } }) + '\n');
+    finishTurn(first.host, aId);
+    finishTurn(second.host, bId);
     await Promise.all([a, b]);
   } finally { first.host.dispose(); second.host.dispose(); }
 });
@@ -196,10 +208,143 @@ test('broker denial and broker execution failure retain distinct statuses', asyn
       await tick();
       assert.equal(f.frames.find(frame => frame.type === 'tool-result').result.status, status);
       assert.equal(f.host.lastConfirmed.outcome, status);
-      f.host.acceptOutput(JSON.stringify({ id, ok: true, data: { done: true } }) + '\n');
+      finishTurn(f.host, id);
       await turn;
     } finally { f.host.dispose(); }
   }
+});
+
+test('malformed result frames, wrong hash, missing end and mismatched completion fail closed', async () => {
+  for (const fault of ['bad-offset', 'bad-hash', 'missing-end', 'wrong-id']) {
+    const f = fixture();
+    try {
+      const turn = f.turn();
+      const id = f.frames[0].id;
+      f.host.acceptOutput(JSON.stringify({ id, event: { type: 'result_chunk', sequence: 1,
+        offset: fault === 'bad-offset' ? 1 : 0, text: 'Done.' } }) + '\n');
+      if (fault !== 'missing-end' && fault !== 'bad-offset')
+        f.host.acceptOutput(JSON.stringify({ id, event: { type: 'result_end', sequence: 2,
+          bytes: 5, sha256: fault === 'bad-hash' ? '0'.repeat(64) : sha256('Done.') } }) + '\n');
+      if (fault !== 'bad-offset') f.host.acceptOutput(JSON.stringify({ id: fault === 'wrong-id' ? id + 1 : id,
+        ok: true, data: { text: '', segmentIndex: 1, modelId: 'fixture',
+          finishReason: 'stop', usage: { tokenMeasurement: 'unavailable' } } }) + '\n');
+      await assert.rejects(turn, error => error.code ===
+        (fault === 'wrong-id' ? 'tool_reply_unmatched' : 'worker_protocol') &&
+        error.toolFailure?.brokerResultAcknowledged === false, fault);
+      assert.equal(f.host.lastConfirmed, undefined);
+    } finally { f.host.dispose(); }
+  }
+});
+
+test('offline provider success and seven failure paths retain bounded provenance and prior receipts', async () => {
+  for (const scenario of ['success', 'http', 'connection', 'reported-network-error',
+    'model-error', 'protocol-error', 'unknown-error',
+    'broker-then-model-error']) {
+    let calls = 0;
+    const provider = createServer(async (request, response) => {
+      for await (const _chunk of request) { /* Consume the offline request without storing content. */ }
+      calls++;
+      if (scenario === 'http') {
+        response.writeHead(503, { 'content-type': 'application/json' });
+        response.end('{"error":"private provider detail"}');
+        return;
+      }
+      if (scenario === 'connection') { response.destroy(); return; }
+      const base = { id: 'offline-fixture', object: 'chat.completion.chunk',
+        created: 1, model: 'offline-fixture' };
+      const send = (choice, usage) => response.write(`data: ${JSON.stringify({ ...base,
+        choices: choice ? [choice] : [], ...(usage ? { usage } : {}) })}\n\n`);
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      if (scenario === 'unknown-error') {
+        response.end('data: {not-json}\n\n');
+      } else if (scenario === 'protocol-error') {
+        response.end('data: [DONE]\n\n');
+      } else if (scenario === 'broker-then-model-error' && calls === 1) {
+        send({ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0,
+          id: 'call_local_1', type: 'function', function: { name: 'read_file',
+            arguments: '{"path":"src/sample.js"}' } }] }, finish_reason: null });
+        send({ index: 0, delta: {}, finish_reason: 'tool_calls' });
+        send(null, { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 });
+      } else {
+        send({ index: 0, delta: { role: 'assistant', content: 'Done.' }, finish_reason: null });
+        send({ index: 0, delta: {}, finish_reason: scenario === 'success' ? 'stop' :
+          scenario === 'reported-network-error' ? 'network_error' : 'error' });
+      }
+      if (scenario !== 'unknown-error' && scenario !== 'protocol-error')
+        response.end('data: [DONE]\n\n');
+    });
+    provider.listen(0, '127.0.0.1');
+    await once(provider, 'listening');
+    const model = { id: 'offline-fixture', name: 'Offline Fixture', api: 'openai-completions',
+      provider: 'dope-local', baseUrl: `http://127.0.0.1:${provider.address().port}/v1`,
+      reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0,
+        cacheWrite: 0 }, contextWindow: 4096, maxTokens: 512 };
+    const host = new PiRuntimeHost();
+    let effects = 0;
+    try {
+      await host.start();
+      await host.openChatToolsSession(model, '/tmp');
+      const execute = async () => Array.fromAsync(host.streamTurn([
+        { role: 'user', content: 'Inspect the fixture.' }
+      ], 512, undefined, async () => { effects++; return { status: 'failed', output: '' }; }));
+      if (scenario === 'success') {
+        const events = await execute();
+        assert.equal(events.at(-1)?.type, 'complete');
+        assert.equal(events.at(-1)?.result.text, 'Done.');
+      } else {
+        await assert.rejects(execute(), error => {
+          assert.equal(error.code, scenario === 'http' ? 'provider_http' :
+            scenario === 'connection' ? 'provider_connection' : 'model_generation');
+          assert.equal(error.toolFailure?.failureOrigin, 'provider_failure');
+          assert.equal(error.toolFailure?.providerSubcause, scenario === 'http' ? 'http' :
+            scenario === 'connection' || scenario === 'reported-network-error' ? 'connection_or_stream' :
+            scenario === 'model-error' || scenario === 'protocol-error' ||
+              scenario === 'broker-then-model-error' ?
+                'model_response' : 'unknown');
+          assert.equal(error.toolFailure?.modelCallStage,
+            scenario === 'connection' ? 'request' : 'response_headers');
+          assert.equal(error.toolFailure?.lastProviderResponseStatus,
+            scenario === 'http' ? 503 : scenario === 'connection' ? undefined : 200);
+          assert.equal(error.toolFailure?.httpStatus, scenario === 'http' ? 503 : undefined);
+          assert.equal(error.toolFailure?.brokerResultAcknowledged, false);
+          if (scenario === 'broker-then-model-error') {
+            assert.equal(error.toolFailure.lastConfirmed?.outcome, 'failed');
+            assert.equal(error.toolFailure.lastConfirmed?.toolId, 1);
+            assert.equal(error.toolFailure.providerUsage?.[0]?.totalTokens, 15);
+          } else assert.equal(error.toolFailure?.providerUsage, undefined);
+          assert.ok(!JSON.stringify(error.toolFailure).includes('private provider detail'));
+          return true;
+        });
+      }
+      assert.equal(effects, scenario === 'broker-then-model-error' ? 1 : 0);
+    } finally { host.dispose(); provider.close(); }
+  }
+});
+
+test('adapter and saved Chat retain only validated provider diagnostics and reported prior usage', () => {
+  const detail = { stage: 'model_generation', failureOrigin: 'provider_failure',
+    providerSubcause: 'unknown', modelCallStage: 'response_headers',
+    lastProviderResponseStatus: 200, brokerResultAcknowledged: false,
+    lastConfirmed: { requestId: 2, toolId: 1, toolName: 'read_file', outcome: 'failed' },
+    providerUsage: [{ call: 1, inputTokens: 10, outputTokens: 5, totalTokens: 15 }] };
+  const failure = classifyPiFailure(new PiWorkerFailure('model_generation', undefined, detail));
+  assert.equal(failure.boundaryCode, 'model_generation');
+  assert.equal(failure.toolFailure, detail);
+  assert.match(failure.message, /underlying cause is unavailable/);
+  const message = { schemaVersion: 1, id: randomUUID(), role: 'assistant',
+    createdAt: new Date().toISOString(), content: '', execution: { schemaVersion: 1,
+      id: randomUUID(), status: 'failed', selectedModel: { connectionId: 'local', modelId: 'fixture' },
+      startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(), failure: failure.message,
+      failureCode: failure.boundaryCode, toolFailure: detail } };
+  const saved = parseChatMessage(JSON.parse(JSON.stringify(message)));
+  assert.deepEqual(saved.execution.toolFailure, detail);
+  assert.equal(saved.execution.tokenUsage, undefined);
+  for (const bad of [{ ...detail, providerUsage: [{ call: 1, totalTokens: 0 }] },
+    { ...detail, providerSubcause: 'private provider detail' },
+    { ...detail, lastProviderResponseStatus: 999 },
+    { ...detail, providerUsage: [{ call: 1, totalTokens: 15, responseBody: 'secret' }] }])
+    assert.throws(() => parseChatMessage({ ...message, execution: {
+      ...message.execution, toolFailure: bad } }));
 });
 
 test('worker policy origin and counts survive host failure without upgrading an old ACK', async () => {

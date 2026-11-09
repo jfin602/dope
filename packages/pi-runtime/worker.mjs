@@ -55,6 +55,10 @@ let turnFailure;
 let turnToolStarts = 0;
 let turnToolAcks = 0;
 let failedToolStart;
+let providerUsage = [];
+let modelCallStage = 'unknown';
+let lastProviderResponseStatus;
+let providerSubcause = 'unknown';
 function checkedOperationPolicy(binding, model, operation) {
   const invalid = () => { throw new WorkerOriginError('policy_invalid', 'operation_policy'); };
   if (!binding || typeof binding !== 'object' || Array.isArray(binding) ||
@@ -136,8 +140,11 @@ const roadmapResultShape = output => {
       maxOutputTokens: body?.max_tokens, bodyBytes: Buffer.byteLength(String(options?.body ?? ''), 'utf8') });
     roadmapTrace('lm-request', { messages: body?.messages?.length, tools: body?.tools?.length,
       outputBudget: body?.max_tokens, requestBytes: Buffer.byteLength(String(options?.body ?? ''), 'utf8') });
+    modelCallStage = 'request';
     try {
       const response = await originalFetch(url, options);
+      modelCallStage = 'response_headers';
+      lastProviderResponseStatus = Number.isSafeInteger(response.status) ? response.status : undefined;
       globalThis.dopeProviderFailure = response.ok ? undefined :
         { kind: 'http', status: response.status };
       trace('model-response-headers', { status: response.status, elapsedMs: Date.now() - started });
@@ -145,6 +152,7 @@ const roadmapResultShape = output => {
       return response;
     } catch (error) {
       globalThis.dopeProviderFailure = { kind: 'connection' };
+      providerSubcause = 'connection_or_stream';
       trace('model-request-failed', { elapsedMs: Date.now() - started,
         error: error instanceof Error ? error.name : 'unknown' });
       roadmapTrace('lm-request-failed', { elapsedMs: Date.now() - started,
@@ -753,6 +761,10 @@ export async function dispatch(message) {
       let attemptedTool = false;
       let toolCount = resuming ? paused.toolCount : 0;
       let reportedInput = 0, reportedOutput = 0, reportedTotal = 0, reportedReasoning = 0;
+      providerUsage = [];
+      modelCallStage = 'unknown';
+      lastProviderResponseStatus = undefined;
+      providerSubcause = 'unknown';
       let lastCallOutputTokens;
       let usageUnknown = false;
       let modelDrift = false;
@@ -811,6 +823,12 @@ export async function dispatch(message) {
           roadmapTrace('tool-call-complete', { toolName: event.toolName, isError: event.isError === true });
         if (chatToolsMode && event.type === 'turn_end' && event.message?.role === 'assistant') {
           const usage = event.message.usage;
+          if (Number.isSafeInteger(usage?.totalTokens) && usage.totalTokens > 0 &&
+              providerUsage.length < 256) providerUsage.push({ call: providerUsage.length + 1,
+                inputTokens: Number.isSafeInteger(usage.input) ? usage.input : undefined,
+                outputTokens: Number.isSafeInteger(usage.output) ? usage.output : undefined,
+                totalTokens: usage.totalTokens,
+                ...(Number.isSafeInteger(usage.reasoning) ? { reasoningTokens: usage.reasoning } : {}) });
           lastCallOutputTokens = Number.isSafeInteger(usage?.output) && usage.output >= 0 ?
             usage.output : undefined;
           if (Number.isSafeInteger(usage?.totalTokens) && usage.totalTokens > 0) {
@@ -916,8 +934,15 @@ export async function dispatch(message) {
       if (!assistant) throw new WorkerOriginError('model_generation', 'missing_final_assistant');
       if (assistant.stopReason === 'aborted')
         throw new WorkerOriginError('model_generation', 'response_aborted');
-      if (assistant.stopReason === 'error')
+      if (assistant.stopReason === 'error') {
+        if (assistant.errorMessage === 'Provider finish_reason: network_error')
+          providerSubcause = 'connection_or_stream';
+        else if (typeof assistant.errorMessage === 'string' &&
+            (/^Provider finish_reason: [a-z_]+$/u.test(assistant.errorMessage) ||
+              assistant.errorMessage === 'Stream ended without finish_reason'))
+          providerSubcause = 'model_response';
         throw new WorkerOriginError('model_generation', 'provider_failure');
+      }
       if (assistant.content.some(item => item.type === 'toolCall'))
         throw new WorkerOriginError('model_tool_call_invalid', 'invalid_final_tool_call');
       if (!['stop', 'length'].includes(assistant.stopReason))
@@ -1166,6 +1191,10 @@ export async function accept(line) {
         provider?.kind ? { failureOrigin: 'provider_failure' } : {}),
       ...(['turn', 'resume'].includes(message?.type) ? { toolStarts: turnToolStarts,
         toolAcknowledgements: turnToolAcks,
+        modelCallStage, lastProviderResponseStatus,
+        providerSubcause: provider?.kind === 'http' ? 'http' :
+          provider?.kind === 'connection' ? 'connection_or_stream' : providerSubcause,
+        ...(providerUsage.length ? { providerUsage } : {}),
         ...(failedToolStart ? { failedToolStart } : {}) } : {}),
       ...(lastToolReceipt ? { lastToolReceipt } : {}),
       ...(errorCode === 'provider_http' ? { httpStatus: provider.status } : {}) })}\n`);

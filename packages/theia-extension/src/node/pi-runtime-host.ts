@@ -74,7 +74,12 @@ export interface PiToolFailureDetail { stage: PiWorkerFailureCode; requestId?: n
         'missing_final_assistant' | 'response_aborted' | 'provider_failure' |
         'invalid_final_tool_call' | 'invalid_final_assistant';
     toolStarts?: number; toolAcknowledgements?: number;
-    failedToolStart?: { ordinal: number; toolName: string } }
+    failedToolStart?: { ordinal: number; toolName: string };
+    modelCallStage?: 'unknown' | 'request' | 'response_headers';
+    providerSubcause?: 'unknown' | 'http' | 'connection_or_stream' | 'model_response';
+    lastProviderResponseStatus?: number; httpStatus?: number;
+    providerUsage?: { call: number; inputTokens?: number; outputTokens?: number;
+        totalTokens: number; reasoningTokens?: number }[] }
 export class PiWorkerFailure extends Error {
     constructor(readonly code: PiWorkerFailureCode, readonly httpStatus?: number,
         readonly toolFailure?: PiToolFailureDetail) {
@@ -355,7 +360,8 @@ export class PiRuntimeHost {
                 const record = JSON.parse(line) as { id: number; ok?: boolean; data?: unknown; error?: string;
                     errorCode?: PiWorkerFailureCode; httpStatus?: number;
                     failureOrigin?: unknown; toolStarts?: unknown; toolAcknowledgements?: unknown;
-                    failedToolStart?: unknown;
+                    failedToolStart?: unknown; modelCallStage?: unknown; providerSubcause?: unknown;
+                    lastProviderResponseStatus?: unknown; providerUsage?: unknown;
                     lastToolReceipt?: PiToolFailureDetail['lastConfirmed'];
                     event?: { type: 'delta'; text: string } | { type: 'reset' } |
                         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent;
@@ -508,7 +514,8 @@ export class PiRuntimeHost {
                     new PiWorkerFailure(record.errorCode,
                         Number.isSafeInteger(record.httpStatus) && record.httpStatus! >= 400 &&
                         record.httpStatus! <= 599 ? record.httpStatus : undefined,
-                        this.toolDetail(record.errorCode, record.lastToolReceipt, record)) :
+                        this.toolDetail(record.errorCode, record.lastToolReceipt, record,
+                            record.httpStatus)) :
                     new PiWorkerFailure('worker_protocol'));
                 this.pending.delete(record.id);
                 clearTimeout(pending.timer);
@@ -539,7 +546,9 @@ export class PiRuntimeHost {
     private toolDetail(stage: PiWorkerFailureCode,
         workerReceipt?: PiToolFailureDetail['lastConfirmed'],
         frame?: { failureOrigin?: unknown; toolStarts?: unknown; toolAcknowledgements?: unknown;
-            failedToolStart?: unknown }): PiToolFailureDetail {
+            failedToolStart?: unknown; modelCallStage?: unknown; providerSubcause?: unknown;
+            lastProviderResponseStatus?: unknown; providerUsage?: unknown },
+        httpStatus?: number): PiToolFailureDetail {
         const active = this.activeTools.entries().next().value as
             [number, { requestId: number; name: string; startedAt: number }] | undefined;
         const lastConfirmed = workerReceipt && Number.isSafeInteger(workerReceipt.requestId) &&
@@ -561,6 +570,16 @@ export class PiRuntimeHost {
         const toolAcknowledgements = boundedCount(frame?.toolAcknowledgements) &&
             (toolStarts === undefined || frame.toolAcknowledgements <= toolStarts) ?
             frame.toolAcknowledgements : undefined;
+        const usage = frame?.providerUsage;
+        const providerUsage = Array.isArray(usage) && usage.length <= 256 &&
+            usage.every((item, index) => item && typeof item === 'object' &&
+                Object.keys(item).every(key => ['call', 'inputTokens', 'outputTokens',
+                    'totalTokens', 'reasoningTokens'].includes(key)) && item.call === index + 1 &&
+                boundedCount(item.totalTokens) && item.totalTokens > 0 &&
+                ['inputTokens', 'outputTokens', 'reasoningTokens'].every(key =>
+                    item[key] === undefined || boundedCount(item[key])) &&
+                (item.reasoningTokens === undefined || item.outputTokens === undefined ||
+                    item.reasoningTokens <= item.outputTokens)) ? usage as PiToolFailureDetail['providerUsage'] : undefined;
         return { stage, ...(active ? { toolId: active[0], requestId: active[1].requestId,
             toolName: active[1].name, elapsedMs: Math.min(1_800_000,
                 Math.max(0, Date.now() - active[1].startedAt)) } : {}),
@@ -570,6 +589,16 @@ export class PiRuntimeHost {
             ...(toolStarts !== undefined ? { toolStarts } : {}),
             ...(toolAcknowledgements !== undefined ? { toolAcknowledgements } : {}),
             ...(failedToolStart ? { failedToolStart } : {}),
+            ...(['unknown', 'request', 'response_headers'].includes(String(frame?.modelCallStage)) ?
+                { modelCallStage: frame!.modelCallStage as PiToolFailureDetail['modelCallStage'] } : {}),
+            ...(['unknown', 'http', 'connection_or_stream', 'model_response'].includes(String(frame?.providerSubcause)) ?
+                { providerSubcause: frame!.providerSubcause as PiToolFailureDetail['providerSubcause'] } : {}),
+            ...(Number.isSafeInteger(frame?.lastProviderResponseStatus) &&
+                Number(frame?.lastProviderResponseStatus) >= 100 && Number(frame?.lastProviderResponseStatus) <= 599 ?
+                { lastProviderResponseStatus: frame!.lastProviderResponseStatus as number } : {}),
+            ...(Number.isSafeInteger(httpStatus) && httpStatus! >= 400 && httpStatus! <= 599 ?
+                { httpStatus } : {}),
+            ...(providerUsage ? { providerUsage } : {}),
             // lastConfirmed describes a prior result, never proof that the failed attempt arrived.
             brokerResultAcknowledged: false };
     }
