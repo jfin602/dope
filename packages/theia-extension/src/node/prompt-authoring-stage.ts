@@ -288,12 +288,12 @@ export function validatedAssessmentFinding(raw: unknown, kind: AssessmentCategor
         !!v.trim() && v.length <= limit && !/[\u0000-\u001f\u007f]/u.test(v);
     if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
         Object.keys(raw).sort().join(',') !== 'claim,path,quote')
-        throw new Error(`ASSESSMENT_CITATION: ${kind} requires claim, path and exact quote only`);
+        throw new Error(`ASSESSMENT_CITATION: ${kind} requires exactly {claim,path,quote}; remove offsets, hashes and other fields`);
     const item = raw as AssessmentCitation;
     if (!short(item.claim) || typeof item.quote !== 'string' || !item.quote.trim() ||
         item.quote.length > 200 || /[\u0000-\u0009\u000b-\u001f\u007f]/u.test(item.quote) ||
         typeof item.path !== 'string')
-        throw new Error(`ASSESSMENT_CITATION: ${kind} needs a bounded claim, path and quote`);
+        throw new Error(`ASSESSMENT_CITATION: ${kind} needs a nonempty claim (max 500 characters), project-relative path and verbatim quote (max 200 characters, no control characters)`);
     const read = refs.filter(ref => ref.kind === 'file' && ref.origin === 'tool' && ref.sourceHash &&
         Number.isSafeInteger(ref.start) && Number.isSafeInteger(ref.end) && ref.end! > ref.start!);
     const quoteBytes = Buffer.from(item.quote, 'utf8');
@@ -310,9 +310,15 @@ export function validatedAssessmentFinding(raw: unknown, kind: AssessmentCategor
                     sourceHash: page.sourceHash });
         }
     }
-    if (matches.size !== 1)
-        throw new Error(`ASSESSMENT_UNSUPPORTED_SOURCE: ${kind} citation has ${matches.size ?
-            'ambiguous repeated matches' : 'no exact brokered read match'}; read the source and use a unique exact quote`);
+    if (matches.size !== 1) {
+        const pathRead = evidence.some(page => page.path === item.path && read.some(ref =>
+            ref.id === page.path && ref.sourceHash === page.sourceHash &&
+            ref.start === page.start && ref.end === page.end));
+        throw new Error(`ASSESSMENT_UNSUPPORTED_SOURCE: ${kind} ${matches.size ?
+            'quote has ambiguous repeated matches in brokered pages; use a longer unique verbatim substring' :
+            pathRead ? 'quote is not present verbatim in the brokered read for this path; copy a shorter exact substring, using real newlines rather than literal backslash-n' :
+                'path has no successful matching brokered read; read that project-relative file before citing it'}`);
+    }
     return [...matches.values()][0];
 }
 /** Validate model claims against successful broker reads; metadata searches never count. */

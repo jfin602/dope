@@ -233,7 +233,7 @@ test('Pi worker boundaries retain safe specific failures and release failed sess
         ['worker_exit', /worker exited/],
         ['context_limit', /context budget was exhausted/],
         ['output_limit', /output budget was exhausted/],
-        ['model_generation', /model generation failed/]
+        ['model_generation', /generation ended without a valid assistant completion/]
     ] as const;
     for (const [code, expected] of cases) {
         let released = 0;

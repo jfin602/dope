@@ -383,7 +383,7 @@ function chatTools() {
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted directory. Read actual file pages for source coverage.' :
-      name === 'read_file' ? 'Read a project file by relative path. A path-only call returns the first bounded page. Continue with nextOffset and expectedSourceHash until nextOffset is null; listings and searches do not count as source coverage. Dope binds the full-file identity internally for proposal changes.' :
+      name === 'read_file' ? 'Read a project-relative path. The first page returns path, sourceHash, offset, endOffset and nextOffset. If nextOffset is a number, call read_file again with the SAME path, offset:nextOffset and expectedSourceHash:the EXACT returned sourceHash. Never omit or invent that hash on a later page; stop when nextOffset is null. Listings and searches do not count as source coverage.' :
       name === 'search_paths' ? 'Search eligible project paths by name. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted search. Search results do not prove file contents.' :
       name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Omit ids to discover entities; Phase entries include gateIds so you can read their Gates by ID. Results contain up to 20 entries; when nextOffset is not null, pass it as offset in another roadmap_read until all relevant entities are found. Read before staging; Dope retains source and revision preconditions.' :
       name === 'roadmap_phase' ? 'Submit the next Phase with nested Gates and observable Criteria. Wait for the checked noncanonical stage receipt before continuing. This tool cannot apply a Roadmap.' :
@@ -397,7 +397,7 @@ function chatTools() {
         'Stage one typed work step (kind work), detailed section (kind section), or separate terminal manual closeout (kind closeout). Give each work step a stable target ID; sections use that same target. Dope owns stage order and composition. Set complete:true on the last call for each target. Finish after all requested work steps and one closeout. This tool cannot publish files.' :
       name === 'proposal_finish' ? 'Request validation and sealing of the staged candidate. The finalMessage is untrusted display prose, not an approval.' :
       name === 'assessment_status' ? 'Read required source coverage, accepted finding counts and the next action.' :
-      name === 'assessment_stage' ? 'Submit one verified finding with category, claim, path and a unique exact quote from read_file. Use category scope with text; category tiers with T1/T2/T3; or category dependencies/risks with reason when no findings apply after all requested files are read. Dope derives source offsets and identity.' :
+      name === 'assessment_stage' ? 'For a finding send EXACTLY {category,claim,path,quote}: path is the project-relative read_file path and quote is a short, unique, verbatim substring of that file\'s successfully read text (real newlines, not backslash-n). Do not send offsets, hashes, source ranges or extra keys. Use {category:"scope",text} or {category:"tiers",T1,T2,T3}; after all files are fully read, empty dependencies/risks may use {category,reason}. A rejected finding does not erase accepted ones; correct its evidence before retrying.' :
       name === 'assessment_finish' ? 'Seal only after all requested file bytes and all categories are complete. Dope independently validates source citations, tiers and authority.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ?
@@ -629,7 +629,7 @@ export async function dispatch(message) {
           if (!chatToolsMode) throw new WorkerOriginError('policy_invalid', 'operation_policy');
           const operations = assessmentToolsMode ? ['prompt-ass'] : proposalToolsMode ?
             ['docs-review', 'prompt-plan', 'prompt-write'] : roadmapGenerationMode ? ['phase-roadmap'] :
-            roadmapToolsMode ? ['roadmap-edit'] : ['chat', 'investigation'];
+            roadmapToolsMode ? ['roadmap-edit'] : ['chat', 'investigation', 'prompt-plan'];
           operationPolicy = checkedOperationPolicy(message.operationPolicy, message.model, operations);
         }
         const chatToolNames = Object.keys(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :

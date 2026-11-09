@@ -2347,8 +2347,10 @@ export class ChatBackend implements ChatService {
                             name, reason, expectedShape: name === 'assessment_stage' ?
                             '{category, claim, path, quote} or {category, reason} or scope/tiers' : '{}',
                             recovery: code === 'ASSESSMENT_SOURCE_COVERAGE' ? 'Use assessment_status, then read_file' :
+                                code === 'ASSESSMENT_CITATION' ?
+                                    'Send only category, claim, project-relative path and a short verbatim quote; remove hashes, offsets and extra fields' :
                                 code === 'ASSESSMENT_UNSUPPORTED_SOURCE' || code === 'ASSESSMENT_AMBIGUOUS_SOURCE' ?
-                                    'Use one exact unique quote from a brokered read; then check assessment_status' :
+                                    'Use the stated path and one short unique verbatim substring from its successful read; check assessment_status before retrying' :
                                     code === 'ASSESSMENT_DEPENDENCIES_EMPTY' ?
                                         'Finish requested source coverage and cite declared dependencies; then check assessment_status' :
                                         code === 'ASSESSMENT_STAGE_SHAPE' ?
@@ -2675,6 +2677,10 @@ export class ChatBackend implements ChatService {
                     sourceHashSupplied: record.expectedSourceHash !== undefined };
                 try {
                     if (rangeRead) {
+                        const expectedPage = protectedAssessment && Number.isSafeInteger(record.offset) &&
+                            (record.offset as number) > 0 ?
+                            (await assessmentController!.status()).required.find(item =>
+                                item.path === record.path) : undefined;
                         const invalid = !Number.isSafeInteger(record.offset ?? 0) || (record.offset as number ?? 0) < 0 ?
                             ['INVALID_OFFSET', 'Use a nonnegative UTF-8 byte offset.'] :
                             !Number.isSafeInteger(record.maxBytes ?? 4096) || (record.maxBytes as number ?? 4096) < 1 ||
@@ -2686,11 +2692,24 @@ export class ChatBackend implements ChatService {
                             ['INVALID_SOURCE_IDENTITY', 'Use the sourceHash returned by the first page.'] :
                             (record.offset as number ?? 0) > 0 && !record.expectedSourceHash &&
                             !(docsReview && documentationHashes.has(record.path as string)) ?
-                            ['SOURCE_IDENTITY_REQUIRED', 'Start with offset 0 to obtain sourceHash, then retry the later range.'] : undefined;
+                            ['SOURCE_IDENTITY_REQUIRED', 'Start with offset 0 to obtain sourceHash, then retry the later range.'] :
+                            expectedPage && !expectedPage.coveredBytes ?
+                            ['INVALID_OFFSET', 'Read offset 0 successfully before continuing this Assessment file.'] :
+                            expectedPage && record.offset !== expectedPage.nextOffset ?
+                            ['INVALID_OFFSET', `Use the verified nextOffset ${expectedPage.nextOffset} for this Assessment file.`] :
+                            expectedPage && record.expectedSourceHash !== expectedPage.expectedSourceHash ?
+                            ['STALE_SOURCE', 'Use the exact sourceHash from the last verified read; current file identity is rechecked.'] :
+                            undefined;
                         if (invalid) {
                             toolEvents.push({ name: toolName, status: 'failed', truncated: false,
                                 code: invalid[0] as 'INVALID_OFFSET', stage: 'argument-validation',
                                 brokerExecuted: false, ...rangeMeta });
+                            if (invalid[0] === 'SOURCE_IDENTITY_REQUIRED' && protectedAssessment) {
+                                const required = (await assessmentController!.status()).required.find(item =>
+                                    item.path === record.path && item.nextOffset === record.offset &&
+                                    item.coveredBytes > 0 && item.expectedSourceHash);
+                                if (required) return `SOURCE_IDENTITY_REQUIRED: Continuation rejected; this page did not count as inspected. Previous verified receipt for ${required.path} has nextOffset ${required.nextOffset} and sourceHash ${required.expectedSourceHash}. Retry read_file with that exact offset and expectedSourceHash; the broker will recheck current file identity.`;
+                            }
                             return `${invalid[0]}: ${invalid[1]}`;
                         }
                         const page = await this.grounder!.readFileRange(root, record.path as string,
