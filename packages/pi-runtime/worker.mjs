@@ -249,9 +249,12 @@ const WORK_TOOLS = {
 const CHAT_TOOLS = {
   read_file: { path: Type.String(), offset: Type.Optional(Type.Integer()),
     maxBytes: Type.Optional(Type.Integer()), expectedSourceHash: Type.Optional(Type.String()) },
-  list_files: { path: Type.String() },
-  search_paths: { query: Type.String() },
-  search_text: { query: Type.String() },
+  list_files: { path: Type.String(), offset: Type.Optional(Type.Integer()),
+    maxBytes: Type.Optional(Type.Integer()), expectedResultHash: Type.Optional(Type.String()) },
+  search_paths: { query: Type.String(), offset: Type.Optional(Type.Integer()),
+    maxBytes: Type.Optional(Type.Integer()), expectedResultHash: Type.Optional(Type.String()) },
+  search_text: { query: Type.String(), offset: Type.Optional(Type.Integer()),
+    maxBytes: Type.Optional(Type.Integer()), expectedResultHash: Type.Optional(Type.String()) },
   run_command: { command: Type.String() }
 };
 // OpenAI-compatible local servers require a top-level object for function parameters.
@@ -359,9 +362,9 @@ function chatTools() {
     assessmentToolsMode ? ASSESSMENT_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
-      name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root; then read real files from that listing. Never use an absolute path.' :
-      name === 'read_file' ? `Read a project file by relative path. For an exact first page use offset 0 (maxBytes defaults to 4096); the reply supplies sourceHash and nextOffset. Pass sourceHash as expectedSourceHash for later pages. Dope binds the full-file identity internally for proposal changes. ${assessmentToolsMode ? 'Assessment path-only reads also return a bounded first page; continue until nextOffset is null.' : 'A path-only read retains the legacy prefix behavior.'}` :
-      name === 'search_paths' ? 'Search eligible project file and directory paths by name. Start with list_files on the root before concluding which files exist.' :
+      name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted directory. Read actual file pages for source coverage.' :
+      name === 'read_file' ? 'Read a project file by relative path. A path-only call returns the first bounded page. Continue with nextOffset and expectedSourceHash until nextOffset is null; listings and searches do not count as source coverage. Dope binds the full-file identity internally for proposal changes.' :
+      name === 'search_paths' ? 'Search eligible project paths by name. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted search. Search results do not prove file contents.' :
       name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Omit ids to discover entities; Phase entries include gateIds so you can read their Gates by ID. Results contain up to 20 entries; when nextOffset is not null, pass it as offset in another roadmap_read until all relevant entities are found. Read before staging; Dope retains source and revision preconditions.' :
       name === 'roadmap_phase' ? 'Submit the next Phase with nested Gates and observable Criteria. Wait for the checked noncanonical stage receipt before continuing. This tool cannot apply a Roadmap.' :
       name === 'roadmap_finish' ? 'Signal that no further Phase is proposed, listing unresolved or uncertain requirements. Dope checks the staged draft before review.' :
@@ -408,8 +411,13 @@ function chatTools() {
           toolId: id, status: result.status, ...roadmapResultShape(result.output ?? '') });
         if (result.status === 'denied') throw new Error('Dope Chat tool denied by project authority');
         if (result.status === 'failed') throw new Error('Dope Chat tool failed at project broker');
-        if (typeof result.output !== 'string' || Buffer.byteLength(result.output, 'utf8') > 12_000)
-          throw new Error('Dope Chat tool output limit exceeded');
+        // Receipts and source pages stay small. A protected staged operation may
+        // need a larger checked payload, but never an unbounded transport frame.
+        const resultLimit = name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ||
+          name === 'assessment_stage' ? 96_000 : 12_000;
+        if (typeof result.output !== 'string' || Buffer.byteLength(result.output, 'utf8') > resultLimit)
+          return { content: [{ type: 'text', text:
+            'OUTPUT_FRAME_LIMIT: Tool result exceeded its safe frame size. Use smaller source pages or staged chunks. For a staged operation call its status tool before retrying; the oversized response was not delivered as evidence.' }] };
         if (roadmapGenerationMode) return { content: [{ type: 'text', text: result.output }] };
         if (name === 'roadmap_stage' && roadmapResultShape(result.output).errorCode === 'ROADMAP_STAGE_ARGUMENTS') {
           const key = hash(JSON.stringify(normalized(params)));

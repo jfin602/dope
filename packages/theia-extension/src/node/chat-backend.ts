@@ -2637,11 +2637,12 @@ export class ChatBackend implements ChatService {
                 const field = name === 'read_file' || name === 'list_files' ? 'path' : 'query';
                 const record = args as Record<string, unknown>;
                 const keys = Object.keys(record);
-                const rangeRead = name === 'read_file' &&
-                    (protectedAssessment || keys.some(key => key !== 'path'));
-                if (typeof record[field] !== 'string' || (rangeRead ?
-                    keys.some(key => !['path', 'offset', 'maxBytes', 'expectedSourceHash'].includes(key)) :
-                    keys.length !== 1)) {
+                // Every model-facing file read is an exact, hash-bound page. A path-only
+                // read must not fall back to a clipped prefix with no continuation.
+                const rangeRead = name === 'read_file';
+                if (typeof record[field] !== 'string' || keys.some(key => !(rangeRead ?
+                    ['path', 'offset', 'maxBytes', 'expectedSourceHash'] :
+                    [field, 'offset', 'maxBytes', 'expectedResultHash']).includes(key))) {
                     if (name === 'read_file') {
                         toolEvents.push({ name, status: 'failed', truncated: false, code: 'INVALID_ARGUMENTS',
                             stage: 'argument-validation', brokerExecuted: false });
@@ -2677,8 +2678,6 @@ export class ChatBackend implements ChatService {
                                 brokerExecuted: false, ...rangeMeta });
                             return `${invalid[0]}: ${invalid[1]}`;
                         }
-                        const remaining = 32 * 1024 - toolBytes;
-                        if (remaining < 8200) throw new Error('Project discovery output limit reached');
                         const page = await this.grounder!.readFileRange(root, record.path as string,
                             record.offset === undefined ? 0 : record.offset as number,
                             record.maxBytes === undefined ? 4096 : record.maxBytes as number,
@@ -2688,8 +2687,7 @@ export class ChatBackend implements ChatService {
                             throw new Error('Project discovery cancelled');
                         const payload = JSON.stringify(page);
                         const payloadBytes = Buffer.byteLength(payload, 'utf8');
-                        if (payloadBytes > 8000 || payloadBytes > remaining) throw new Error('Project discovery output limit reached');
-                        toolBytes += payloadBytes;
+                        if (payloadBytes > 8000) throw new Error('Project discovery output limit reached');
                         if (docsReview) {
                             documentationHashes.set(page.path, page.sourceHash);
                             documentationPages.push(page);
@@ -2715,15 +2713,49 @@ export class ChatBackend implements ChatService {
                         await this.grounder!.searchText(root, record.query as string);
                     if (signal?.aborted || this.active(request.projectHandle) !== root) throw new Error('Project discovery cancelled');
                     const block = result.blocks[0];
-                    const remaining = Math.max(0, Math.min(8192, 32 * 1024 - toolBytes));
-                    if (!block || !remaining) throw new Error('Project discovery output limit reached');
+                    if (!block) throw new Error('Project discovery output limit reached');
                     if (protectedAssessment && name === 'read_file' &&
                         result.diagnostics.some(item => item.kind === 'unavailable'))
                         await assessmentController!.blockedRead(record.path as string, 'MISSING_OR_UNAVAILABLE');
-                    const excerpt = Buffer.from(block.text, 'utf8').subarray(0, remaining).toString('utf8').replace(/\uFFFD+$/, '');
-                    const truncated = excerpt !== block.text || result.diagnostics.some(item =>
+                    const invalidResultPage = (message: string) => {
+                        toolEvents.push({ name: toolName, status: 'failed', truncated: false,
+                            stage: 'broker', brokerExecuted: true });
+                        return message;
+                    };
+                    const offset = record.offset ?? 0, maxBytes = record.maxBytes ?? 1800;
+                    if (!Number.isSafeInteger(offset) || (offset as number) < 0 ||
+                        !Number.isSafeInteger(maxBytes) || (maxBytes as number) < 1 || (maxBytes as number) > 1800)
+                        return invalidResultPage('INVALID_RESULT_PAGE: Use offset >= 0 and maxBytes from 1 to 1800.');
+                    const resultHash = createHash('sha256').update(root).update('\0').update(name)
+                        .update('\0').update(record[field] as string).update('\0').update(block.text).digest('hex');
+                    if ((offset as number) > 0 && typeof record.expectedResultHash !== 'string')
+                        return invalidResultPage('RESULT_IDENTITY_REQUIRED: Start at offset 0, then use nextOffset and expectedResultHash.');
+                    if (record.expectedResultHash !== undefined && record.expectedResultHash !== resultHash)
+                        return invalidResultPage('STALE_RESULT: Repeat the listing or search from offset 0.');
+                    const bytes = Buffer.from(block.text, 'utf8');
+                    if ((offset as number) > bytes.length || ((offset as number) < bytes.length &&
+                        (bytes[offset as number] & 0xc0) === 0x80))
+                        return invalidResultPage('INVALID_RESULT_PAGE: Use the exact nextOffset returned by the prior page.');
+                    let end = Math.min(bytes.length, (offset as number) + (maxBytes as number));
+                    while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--;
+                    if (end === offset && end < bytes.length)
+                        return invalidResultPage('INVALID_RESULT_PAGE: Increase maxBytes to include the next UTF-8 character.');
+                    const excerpt = bytes.subarray(offset as number, end).toString('utf8');
+                    const nextOffset = end < bytes.length ? end : null;
+                    const truncated = nextOffset !== null || result.diagnostics.some(item =>
                         item.kind === 'truncated' || item.kind === 'omitted');
-                    toolBytes += Buffer.byteLength(excerpt);
+                    // Listing and search are discovery receipts, not source coverage.
+                    // A shortened result must say so and give an actionable next step.
+                    const payload = JSON.stringify({ source: block.ref.id, kind: block.ref.kind,
+                        contentHash: createHash('sha256').update(excerpt).digest('hex'),
+                        sourceHash: block.ref.sourceHash, resultHash, offset, endOffset: end, nextOffset,
+                        resultBytes: bytes.length, truncated,
+                        omitted: result.diagnostics.some(item => item.kind === 'omitted'), text: excerpt,
+                        ...(truncated ? { nextAction: nextOffset !== null ?
+                            'Continue with nextOffset and expectedResultHash; read files separately for source coverage.' :
+                            'Narrow the directory or search query; read files separately for source coverage.' } : {}) });
+                    if (Buffer.byteLength(payload, 'utf8') > 12_000)
+                        return invalidResultPage('OUTPUT_FRAME_LIMIT: Listing or search receipt is too large. Narrow the directory or query; read source through read_file pages.');
                     sourceRefs.push({ ...block.ref, origin: 'tool', includedBytes: Buffer.byteLength(excerpt),
                         ...(name === 'read_file' && !result.diagnostics.some(item => item.kind === 'unavailable') ?
                             { start: 0, end: Buffer.byteLength(excerpt, 'utf8') } : {}),
@@ -2736,9 +2768,6 @@ export class ChatBackend implements ChatService {
                             text: excerpt });
                     toolEvents.push({ name: toolName, status: 'completed', truncated,
                         stage: 'broker', brokerExecuted: true });
-                    const payload = JSON.stringify({ source: block.ref.id, kind: block.ref.kind,
-                        contentHash: sourceRefs.at(-1)!.contentHash, sourceHash: block.ref.sourceHash, truncated,
-                        omitted: result.diagnostics.some(item => item.kind === 'omitted'), text: excerpt });
                     return payload;
                 } catch (error) {
                     const message = error instanceof Error ? error.message : '';
@@ -2768,7 +2797,7 @@ export class ChatBackend implements ChatService {
                                         code === 'UNSAFE_PATH' ? 'authority' : 'argument-validation',
                             brokerExecuted: code !== 'OUTPUT_BUDGET', ...rangeMeta });
                         return code === 'STALE_SOURCE' ? 'STALE_SOURCE: Reread from offset 0 to obtain a fresh sourceHash.' :
-                            code === 'OUTPUT_BUDGET' ? 'OUTPUT_BUDGET: Use a smaller page or finish with available evidence.' :
+                            code === 'OUTPUT_BUDGET' ? 'OUTPUT_BUDGET: Retry read_file with a smaller maxBytes page; source coverage is incomplete.' :
                             code === 'MISSING_FILE' ? 'MISSING_FILE: Requested file is absent. Check the relative path with the owner.' :
                             code === 'UNSAFE_PATH' ? 'UNSAFE_PATH: Use an eligible project-relative file path.' :
                             'INVALID_OFFSET: Use an offset within the file at a UTF-8 boundary.';

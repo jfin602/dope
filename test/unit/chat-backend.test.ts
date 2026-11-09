@@ -641,6 +641,77 @@ test('cancelling after a live final delta does not save a completed answer', asy
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
 });
+test('Chat broker path-only reads expose exact late pages and reject stale continuations', async () => {
+    const root = await folder(), repository = new ChatRepository();
+    const guide = '# Guide\n' + 'a'.repeat(6571) + '\nLATE';
+    assert.equal(Buffer.byteLength(guide), 6584);
+    await writeFile(join(root, 'guide.md'), guide);
+    for (let index = 0; index < 50; index++)
+        await writeFile(join(root, `section-${String(index).padStart(2, '0')}-${'x'.repeat(35)}.md`), 'Listed only');
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 8192,
+                maxInputTokens: 8192 } }] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        const first = JSON.parse(await request.projectTools!.execute('read_file', { path: 'guide.md' }));
+        assert.equal(first.offset, 0);
+        assert.equal(first.nextOffset, 4096);
+        assert.equal(first.fileBytes, 6584);
+        const duplicate = JSON.parse(await request.projectTools!.execute('read_file', { path: 'guide.md' }));
+        assert.equal(duplicate.sourceHash, first.sourceHash);
+        const disjoint = JSON.parse(await request.projectTools!.execute('read_file',
+            { path: 'guide.md', offset: 5000, maxBytes: 1024, expectedSourceHash: first.sourceHash }));
+        assert.equal(disjoint.offset, 5000);
+        assert.equal(disjoint.nextOffset, 6024);
+        const late = JSON.parse(await request.projectTools!.execute('read_file',
+            { path: 'guide.md', offset: first.nextOffset, expectedSourceHash: first.sourceHash }));
+        assert.equal(first.text + late.text, guide);
+        assert.equal(late.nextOffset, null);
+        assert.match(late.text, /LATE$/u);
+        assert.match(await request.projectTools!.execute('read_file',
+            { path: 'guide.md', offset: 4096, expectedSourceHash: '0'.repeat(64) }), /^STALE_SOURCE:/u);
+        const listing = JSON.parse(await request.projectTools!.execute('list_files', { path: '' }));
+        assert.equal(listing.kind, 'directory');
+        assert.ok(listing.nextOffset > 0);
+        const listingLate = JSON.parse(await request.projectTools!.execute('list_files',
+            { path: '', offset: listing.nextOffset, expectedResultHash: listing.resultHash }));
+        const names = listing.text + listingLate.text;
+        assert.match(names, /section-00-/u);
+        assert.match(names, /section-49-/u);
+        assert.equal((names.match(/section-\d\d-/gu) ?? []).length, 50);
+        assert.equal(listingLate.nextOffset, null);
+        assert.match(await request.projectTools!.execute('list_files',
+            { path: '', offset: listing.nextOffset, expectedResultHash: '0'.repeat(64) }), /^STALE_RESULT:/u);
+        const search = JSON.parse(await request.projectTools!.execute('search_paths',
+            { query: 'section-', maxBytes: 128 }));
+        assert.ok(search.nextOffset > 0);
+        assert.equal(search.truncated, true);
+        const searchNext = JSON.parse(await request.projectTools!.execute('search_paths',
+            { query: 'section-', offset: search.nextOffset, maxBytes: 128,
+                expectedResultHash: search.resultHash }));
+        assert.equal(searchNext.offset, search.nextOffset);
+        assert.equal(searchNext.resultHash, search.resultHash);
+        assert.match(await request.projectTools!.execute('search_paths',
+            { query: 'section-', offset: search.nextOffset, expectedResultHash: '0'.repeat(64) }),
+            /^STALE_RESULT:/u);
+        yield { type: 'complete' as const, text: 'Pages verified.', actualModelId: 'q4' };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'Read guide' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 8192 }) };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never,
+        undefined, new ChatProjectGrounder({} as never));
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Read guide' });
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true,
+        maxRetries: 10, retryDelay: 25 }); }
+});
+
 test('a failed streamed answer remains inspectable after reload without becoming a final answer', async () => {
     const root = await folder(), repository = new ChatRepository();
     await writeFile(join(root, 'README.md'), 'Verified project purpose.');
@@ -748,7 +819,8 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
         assert.equal(first.execution.toolEvents?.[0]?.name, 'read_file');
         assert.equal(first.execution.toolEvents?.[0]?.status, 'completed');
         assert.equal(first.execution.sourceRefs?.[0]?.id, 'README.md');
-        assert.equal(first.execution.sourceRefs?.[0]?.sourceHash,
+        assert.match(first.execution.sourceRefs?.[0]?.sourceHash ?? '', /^[a-f0-9]{64}$/u);
+        assert.equal(first.execution.sourceRefs?.[0]?.contentHash,
             createHash('sha256').update('Verified source for this turn.').digest('hex'));
         assert.equal(first.execution.toolEvents?.length, 1);
         assert.equal(chatResponseCopyText(first), '');
