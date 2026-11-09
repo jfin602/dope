@@ -270,7 +270,7 @@ const partialBytes = (text: string): number => new TextEncoder().encode(text).le
 export function parseChatAnswerPartial(value: unknown): ChatAnswerPartial {
     const v = record(value, ['schemaVersion', 'text', 'cursor', 'segments'], ['schemaVersion', 'text', 'cursor', 'segments']);
     if (v.schemaVersion !== 1 || typeof v.text !== 'string' || !Array.isArray(v.segments) || v.segments.length > 32 ||
-        partialBytes(v.text) > 131_072 || v.cursor !== partialBytes(v.text)) throw new Error('Invalid Chat answer partial');
+        partialBytes(v.text) > 1_048_576 || v.cursor !== partialBytes(v.text)) throw new Error('Invalid Chat answer partial');
     let end = 0;
     const segments = v.segments.map((item, index) => {
         const s = record(item, ['number', 'start', 'end', 'finishReason', 'outputCeilingTokens', 'tokenUsage'], ['number', 'start', 'end', 'finishReason']);

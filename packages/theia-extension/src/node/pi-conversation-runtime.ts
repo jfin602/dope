@@ -6,7 +6,7 @@ import { PiWorkerFailure, type PiWorkerFailureCode, type PiToolFailureDetail,
     type PiRuntimeFactory, type PiRuntimeHost, type PiTurnResult } from './pi-runtime-host';
 
 type ToolHandler = (call: { id: number; name: string; arguments: unknown }) => Promise<unknown>;
-const MAX_AGGREGATE_BYTES = 65536;
+const MAX_AGGREGATE_BYTES = 1_048_576;
 export class PiConversationFailure extends ModelRuntimeFailure {
     constructor(message: string, failureClass: ModelRuntimeFailure['failureClass'],
         readonly boundaryCode: PiWorkerFailureCode, readonly toolFailure?: PiToolFailureDetail) {

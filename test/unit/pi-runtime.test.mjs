@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent,
+import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent, frameTurnResult,
   ROADMAP_ACTION_FIELDS, roadmapActionSchema, PROPOSAL_TOOLS, ASSESSMENT_TOOLS } from '../../packages/pi-runtime/worker.mjs';
 
 test('incremental assessment advertises top-level object tools without command or write access', () => {
@@ -296,7 +297,17 @@ async function protocolFixture(mode) {
       outputTokens: 5, totalTokens: 15, tokenMeasurement: 'provider-reported' })),
     usage: { inputTokens: 10 * n, outputTokens: 5 * n,
       totalTokens: 15 * n, tokenMeasurement: 'provider-reported' } });
-  const send = (id, record) => host.acceptOutput(JSON.stringify({ id, ...record }) + '\n');
+  const send = (id, record) => {
+    if (record.ok && typeof record.data?.text === 'string') {
+      for (const event of frameTurnResult(record.data))
+        host.acceptOutput(JSON.stringify({ id, event }) + '\n');
+      const novel = record.data.novelText;
+      record = { ...record, data: { ...record.data, text: '',
+        ...(typeof novel === 'string' ? { novelText: '', novelBytes: Buffer.byteLength(novel),
+          novelSha256: createHash('sha256').update(novel).digest('hex') } : {}) } };
+    }
+    host.acceptOutput(JSON.stringify({ id, ...record }) + '\n');
+  };
   host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
     stdin: { writableLength: 0, write(line, callback) {
       const message = JSON.parse(line);
@@ -624,6 +635,36 @@ test('Pi transport splits large Unicode reasoning deltas without changing conten
   assert.ok(frames.length > 1);
   assert.ok(frames.every(frame => Buffer.byteLength(frame.text, 'utf8') <= 8192));
   assert.equal(frames.map(frame => frame.text).join(''), input);
+});
+
+test('large Unicode Chat result frames retain all bytes and reject duplicate or displaced chunks', async () => {
+  const answer = `start-${'🔥漢字'.repeat(12_000)}-end`;
+  assert.ok(Buffer.byteLength(answer) > 65_536);
+  const frames = [...frameTurnResult({ text: answer })];
+  assert.ok(frames.length > 2);
+  assert.ok(frames.slice(0, -1).every(frame => Buffer.byteLength(frame.text) <= 8192));
+  const result = { text: '', segmentIndex: 1, modelId: 'offline-fixture', finishReason: 'stop',
+    usage: { tokenMeasurement: 'unavailable' } };
+  for (const tamper of ['none', 'duplicate', 'out-of-order', 'modified', 'missing-end']) {
+    const host = new PiRuntimeHost('/unused');
+    host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+      stdin: { writableLength: 0, write(_line, callback) { callback?.(); return true; } } };
+    try {
+      const pending = host.request({ type: 'turn' });
+      const id = host.nextId;
+      const ordered = tamper === 'duplicate' ? [frames[0], frames[0], ...frames.slice(1)] :
+        tamper === 'out-of-order' ? [frames[1], frames[0], ...frames.slice(2)] :
+        tamper === 'modified' ? [{ ...frames[0], text: `x${frames[0].text.slice(1)}` }, ...frames.slice(1)] :
+        tamper === 'missing-end' ? frames.slice(0, -1) : frames;
+      for (const event of ordered) {
+        host.acceptOutput(JSON.stringify({ id, event }) + '\n');
+        if (!host.child || host.child.killed) break;
+      }
+      if (host.child) host.acceptOutput(JSON.stringify({ id, ok: true, data: result }) + '\n');
+      if (tamper === 'none') assert.equal((await pending).text, answer);
+      else await assert.rejects(pending, error => error.code === 'worker_protocol');
+    } finally { host.dispose(); }
+  }
 });
 
 test('bundled Pi constructs and disposes without tools or project extensions', async () => {

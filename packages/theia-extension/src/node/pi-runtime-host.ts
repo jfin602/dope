@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { ConversationRequest } from '@dope/contracts/lib/model-runtime';
@@ -50,6 +51,9 @@ const consistentUsage = (result: PiTurnResult): boolean => {
 };
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout;
     lastWorkSequence?: number;
+    expectsResultChunks?: boolean; previousText?: string;
+    resultChunks?: string[]; resultBytes?: number; resultSequence?: number;
+    resultEnd?: { bytes: number; sha256: string };
     onEvent?: (event: { type: 'delta'; text: string } | { type: 'reset' } |
         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent) => void;
     onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
@@ -121,7 +125,7 @@ export class PiRuntimeHost {
     private readonly toolReplyRequestIds = new Set<number>();
     private readonly activeTools = new Map<number, { requestId: number; name: string; startedAt: number }>();
     private lastConfirmed?: PiToolFailureDetail['lastConfirmed'];
-    private paused?: { id: number; segmentIndex: number; maxOutputTokens: number };
+    private paused?: { id: number; segmentIndex: number; maxOutputTokens: number; text: string };
 
     constructor(private readonly workerPath = resolvePiWorkerPath(),
         private readonly executable = process.execPath) {}
@@ -225,7 +229,7 @@ export class PiRuntimeHost {
             throw new PiWorkerFailure('continuation_unavailable');
         this.paused = undefined; // Claim before the first await: duplicate resumes cannot replay tools.
         yield* this.streamSegment({ type: 'resume', segmentIndex,
-            maxOutputTokens: paused.maxOutputTokens }, paused.id, signal, onTool);
+            maxOutputTokens: paused.maxOutputTokens }, paused.id, signal, onTool, paused.text);
     }
 
     async stopTurn(segmentIndex: number): Promise<{ stopped: true; segmentIndex: number }> {
@@ -243,7 +247,7 @@ export class PiRuntimeHost {
     }
 
     private async *streamSegment(record: Record<string, unknown>, id: number, signal?: AbortSignal,
-        onTool?: NonNullable<Pending['onTool']>): AsyncIterable<PiTurnEvent> {
+        onTool?: NonNullable<Pending['onTool']>, previousText?: string): AsyncIterable<PiTurnEvent> {
         if (signal?.aborted) throw new Error('Pi turn cancelled');
         const queue: ({ type: 'delta'; text: string } | { type: 'reset' } |
             { type: 'activity'; kind: 'thinking' | 'provisional'; text: string })[] = [];
@@ -262,7 +266,7 @@ export class PiRuntimeHost {
             if (bytes > 8192 || queue.length >= 8192 || queueBytes + bytes > 16 * 1024 * 1024)
                 throw new PiWorkerFailure('resource_limit');
             queueBytes += bytes; queue.push(event); notify();
-        }, onTool, id).then(value => { result = value; }, error => { failure = error; })
+        }, onTool, id, previousText).then(value => { result = value; }, error => { failure = error; })
             .finally(() => { settled = true; notify(); });
         try {
             while (!settled || queue.length) {
@@ -281,7 +285,7 @@ export class PiRuntimeHost {
             if (result.segmentIndex !== (record.type === 'resume' ? record.segmentIndex : 1) ||
                 !['length', 'stop'].includes(result.finishReason) ||
                 !Number.isSafeInteger(result.segmentIndex) || result.segmentIndex < 1 ||
-                typeof result.text !== 'string' || Buffer.byteLength(result.text, 'utf8') > 65536 ||
+                typeof result.text !== 'string' || Buffer.byteLength(result.text, 'utf8') > 1_048_576 ||
                 typeof result.modelId !== 'string' || !validUsage(result.usage) ||
                 (result.segmentUsage !== undefined && !validUsage(result.segmentUsage)) ||
                 (result.usageSegments !== undefined && (!Array.isArray(result.usageSegments) ||
@@ -299,14 +303,14 @@ export class PiRuntimeHost {
                 throw new PiWorkerFailure(record.type === 'resume' ?
                     'continuation_result_invalid' : 'worker_protocol');
             if (result.finishReason === 'length') this.paused = { id, segmentIndex: result.segmentIndex,
-                maxOutputTokens: Number(record.maxOutputTokens) };
+                maxOutputTokens: Number(record.maxOutputTokens), text: result.text };
             yield { type: result.finishReason === 'length' ? 'paused' : 'complete',
                 result: { ...result, outputCeilingTokens: Number(record.maxOutputTokens) } };
         } finally { signal?.removeEventListener('abort', onAbort); }
     }
 
     private request<T>(record: Record<string, unknown>, onEvent?: Pending['onEvent'],
-        onTool?: Pending['onTool'], requestId?: number): Promise<T> {
+        onTool?: Pending['onTool'], requestId?: number, previousText?: string): Promise<T> {
         const child = this.child;
         if (!child || child.exitCode !== null || child.killed) return Promise.reject(
             new PiWorkerFailure(record.type === 'tool-result' ? 'tool_reply_delivery_failed' : 'worker_exit',
@@ -328,7 +332,8 @@ export class PiRuntimeHost {
                 this.fail(failure);
             }, record.type === 'work' ? 1_800_000 :
                 ['complete', 'turn', 'resume'].includes(String(record.type)) ? 900_000 : 10_000);
-            this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent, onTool });
+            this.pending.set(id, { resolve: value => resolve(value as T), reject, timer, onEvent, onTool,
+                expectsResultChunks: record.type === 'turn' || record.type === 'resume', previousText });
             child.stdin.write(line, error => {
                 if (error) this.fail(new PiWorkerFailure(record.type === 'tool-result' ?
                     'tool_reply_delivery_failed' : 'worker_protocol'));
@@ -358,6 +363,29 @@ export class PiRuntimeHost {
                 const pending = this.pending.get(record.id);
                 if (!pending) throw new PiWorkerFailure(this.toolReplyRequestIds.has(record.id) ?
                     'tool_reply_duplicate' : 'tool_reply_unmatched');
+                const resultEvent = record.event as unknown as { type?: string; sequence?: number;
+                        offset?: number; text?: string; bytes?: number; sha256?: string };
+                if (resultEvent?.type === 'result_chunk' || resultEvent?.type === 'result_end') {
+                    if (!pending.expectsResultChunks) throw new PiWorkerFailure('worker_protocol');
+                    const event = resultEvent;
+                    if (event.type === 'result_chunk') {
+                        const size = typeof event.text === 'string' ? Buffer.byteLength(event.text, 'utf8') : 0;
+                        if (pending.resultEnd || event.sequence !== (pending.resultSequence ?? 0) + 1 ||
+                            event.offset !== (pending.resultBytes ?? 0) || size < 1 || size > 8192 ||
+                            (pending.resultBytes ?? 0) + size > 1_048_576)
+                            throw new PiWorkerFailure('worker_protocol');
+                        (pending.resultChunks ??= []).push(event.text!);
+                        pending.resultSequence = event.sequence;
+                        pending.resultBytes = event.offset! + size;
+                    } else {
+                        if (pending.resultEnd || event.sequence !== (pending.resultSequence ?? 0) + 1 ||
+                            event.bytes !== (pending.resultBytes ?? 0) ||
+                            typeof event.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(event.sha256))
+                            throw new PiWorkerFailure('worker_protocol');
+                        pending.resultEnd = { bytes: event.bytes, sha256: event.sha256 };
+                    }
+                    continue;
+                }
                 if (record.tool) {
                     if (!pending.onTool || !Number.isSafeInteger(record.tool.id) || record.tool.id < 1 ||
                         typeof record.tool.name !== 'string') throw new PiWorkerFailure('tool_reply_invalid');
@@ -453,15 +481,37 @@ export class PiRuntimeHost {
                     pending.onEvent?.(record.event);
                     continue;
                 }
-                this.pending.delete(record.id);
-                clearTimeout(pending.timer);
-                if (record.ok) pending.resolve(record.data);
+                if (record.ok) {
+                    if (pending.expectsResultChunks) {
+                        const data = record.data as { text?: unknown; novelText?: unknown;
+                            novelBytes?: unknown; novelSha256?: unknown } | undefined;
+                        const text = (pending.resultChunks ?? []).join('');
+                        if (!pending.resultEnd || !data || data.text !== '' ||
+                            pending.resultEnd.bytes !== Buffer.byteLength(text, 'utf8') ||
+                            pending.resultEnd.sha256 !== createHash('sha256').update(text).digest('hex'))
+                            throw new PiWorkerFailure('worker_protocol');
+                        if (pending.previousText !== undefined) {
+                            if (!text.startsWith(pending.previousText) || data.novelText !== '' ||
+                                typeof data.novelBytes !== 'number' || typeof data.novelSha256 !== 'string')
+                                throw new PiWorkerFailure('worker_protocol');
+                            const novelText = text.slice(pending.previousText.length);
+                            if (data.novelBytes !== Buffer.byteLength(novelText, 'utf8') ||
+                                data.novelSha256 !== createHash('sha256').update(novelText).digest('hex'))
+                                throw new PiWorkerFailure('continuation_result_invalid');
+                            pending.resolve({ ...data, text, novelText });
+                        } else if (data.novelText !== undefined || data.novelBytes !== undefined ||
+                            data.novelSha256 !== undefined) throw new PiWorkerFailure('worker_protocol');
+                        else pending.resolve({ ...data, text });
+                    } else pending.resolve(record.data);
+                }
                 else pending.reject(record.errorCode && workerFailureCodes.has(record.errorCode) ?
                     new PiWorkerFailure(record.errorCode,
                         Number.isSafeInteger(record.httpStatus) && record.httpStatus! >= 400 &&
                         record.httpStatus! <= 599 ? record.httpStatus : undefined,
                         this.toolDetail(record.errorCode, record.lastToolReceipt, record)) :
                     new PiWorkerFailure('worker_protocol'));
+                this.pending.delete(record.id);
+                clearTimeout(pending.timer);
             } catch (error) {
                 this.fail(error instanceof PiWorkerFailure ? error : new PiWorkerFailure('worker_protocol'));
                 return;

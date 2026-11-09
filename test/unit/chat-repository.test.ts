@@ -242,6 +242,44 @@ test('completed continuation commits one answer; abandoned pause recovers as int
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('large Unicode answer survives ordered partial writes and completes without a lost tail', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id(), messageId = id(), executionId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'large-answer');
+    if (!lease.acquired) throw new Error('Chat claim missing');
+    state = await repo.mutate(root, state.revision, { type: 'begin-assistant', chatId, message: {
+      schemaVersion: 1, id: messageId, role: 'assistant', createdAt: state.chats[0].updatedAt, content: '',
+      execution: { schemaVersion: 1, id: executionId, status: 'pending', selectedModel: model,
+        startedAt: state.chats[0].updatedAt } } }, lease.token);
+    state = await repo.mutate(root, state.revision,
+      { type: 'start-assistant', chatId, messageId, actualModel: provenance }, lease.token);
+    const pieces = ['🔥漢字'.repeat(4_000), '🔥漢字'.repeat(4_000), 'tail'];
+    let cursor = 0;
+    for (const delta of pieces) {
+      const operation = { type: 'append-answer-partial' as const, chatId, messageId, executionId,
+        segment: 1, cursor, delta };
+      state = await repo.mutate(root, state.revision, operation, lease.token);
+      cursor += Buffer.byteLength(delta, 'utf8');
+      await assert.rejects(repo.mutate(root, state.revision, operation, lease.token), /cursor or execution/);
+    }
+    assert.ok(cursor > 65_536);
+    const answer = pieces.join('');
+    const saved = (await new ChatRepository().read(root)).chats[0].messages[0];
+    if (saved.role !== 'assistant') throw new Error('Assistant missing');
+    assert.equal(saved.answerPartial?.text, answer);
+    assert.equal(saved.answerPartial?.cursor, cursor);
+    assert.equal(saved.content, '');
+    state = await repo.mutate(root, state.revision,
+      { type: 'finish-assistant', chatId, messageId, outcome: 'complete', content: answer }, lease.token);
+    const completed = state.chats[0].messages[0];
+    if (completed.role !== 'assistant') throw new Error('Assistant missing');
+    assert.equal(completed.content, answer);
+    assert.equal(completed.answerPartial, undefined);
+    await repo.release(root, chatId, lease.token);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('historical locked Roadmap text remains readable and inert after generator removal', () => {
   const messageId = id(), executionId = id();
   const text = 'Phase 1 — Historical planning only. '.repeat(10);

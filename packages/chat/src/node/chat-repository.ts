@@ -723,7 +723,7 @@ export class ChatRepository {
                     } else if (operation.type === 'append-answer-partial') {
                         if (message.execution.status !== 'streaming' || operation.segment !== partial.segments.length + 1 ||
                             !operation.delta || new TextEncoder().encode(operation.delta).length > 65_536 ||
-                            partial.cursor + new TextEncoder().encode(operation.delta).length > 65_536)
+                            partial.cursor + new TextEncoder().encode(operation.delta).length > 1_048_576)
                             throw new Error('Stale or invalid Chat answer append');
                         messages[at] = parseChatMessage({ ...message, answerPartial: { ...partial,
                             text: partial.text + operation.delta, cursor: partial.cursor + new TextEncoder().encode(operation.delta).length } });

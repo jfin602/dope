@@ -2222,16 +2222,31 @@ export class ChatBackend implements ChatService {
         let partialSegments = 0;
         let persistedPartial = '';
         let lastPartialWrite = 0;
+        const appendPartialDelta = async (delta: string) => {
+            let chunk = '';
+            let bytes = 0;
+            const append = async () => {
+                if (!chunk) return;
+                await mutate({ type: 'append-answer-partial', chatId: key, messageId: assistant!.id,
+                    executionId: assistant!.execution.id, segment: partialSegments + 1,
+                    cursor: partialCursor, delta: chunk });
+                partialCursor += bytes;
+                chunk = ''; bytes = 0;
+            };
+            for (const char of delta) {
+                const size = Buffer.byteLength(char, 'utf8');
+                if (bytes + size > 32_768) await append();
+                chunk += char; bytes += size;
+            }
+            await append();
+        };
         const persistOutputPartial = async (text: string) => {
             if (!retainStreamedAnswer || !assistant || text === persistedPartial) return;
             if (!text.startsWith(persistedPartial)) throw new Error('Streamed answer differs from saved partial');
             const delta = text.slice(persistedPartial.length);
             if (!delta) return;
-            await mutate({ type: 'append-answer-partial', chatId: key, messageId: assistant.id,
-                executionId: assistant.execution.id, segment: partialSegments + 1,
-                cursor: partialCursor, delta });
+            await appendPartialDelta(delta);
             persistedPartial = text;
-            partialCursor += Buffer.byteLength(delta, 'utf8');
             lastPartialWrite = Date.now();
         };
         let actual: ChatModelProvenance = { schemaVersion: 1, connectionId: connection.id,
@@ -3030,12 +3045,7 @@ export class ChatBackend implements ChatService {
                         await this.repository.renew(root, key, request.leaseToken);
                         const novel = event.novelText;
                         if (retainStreamedAnswer) await persistOutputPartial(event.text);
-                        else if (novel) {
-                            await mutate({ type: 'append-answer-partial', chatId: key, messageId: assistant!.id,
-                                executionId: assistant!.execution.id, segment: event.segmentIndex,
-                                cursor: partialCursor, delta: novel });
-                            partialCursor += Buffer.byteLength(novel, 'utf8');
-                        }
+                        else if (novel) await appendPartialDelta(novel);
                         persistedPartial = event.text;
                         partialText = event.text;
                         partialSegments = event.segmentIndex;
@@ -3045,8 +3055,8 @@ export class ChatBackend implements ChatService {
                         const automaticDecision = chat.settings.outputLimitPolicy === 'cancel' ? 'stop' :
                             chat.settings.outputLimitPolicy === 'allow' ?
                                 // At most two automatic resumes (three segments), 8k reported tokens
-                                // and 48 KiB of retained answer text within the repository's 64 KiB bound.
-                                event.segmentIndex >= 3 || cumulativeOutputTokens >= 8192 || partialCursor >= 49_152 ?
+                                // and leave headroom under the bounded retained-answer limit.
+                                event.segmentIndex >= 3 || cumulativeOutputTokens >= 8192 || partialCursor >= 786_432 ?
                                     'stop' : 'continue' : undefined;
                         const decisionWait = automaticDecision ?? new Promise<'stop' | 'continue'>((resolve, reject) => {
                             let timer: ReturnType<typeof setTimeout>;
@@ -3133,7 +3143,7 @@ export class ChatBackend implements ChatService {
                         if (!protectedProposal) await this.repository.publishDelta(root, key, assistant.id,
                             assistant.execution.id, sequence++, event.text, request.leaseToken);
                         else sequence++;
-                        if (retainStreamedAnswer && output && (Buffer.byteLength(output, 'utf8') - partialCursor >= 1024 ||
+                        if (retainStreamedAnswer && output && (Buffer.byteLength(output, 'utf8') - partialCursor >= 32_768 ||
                             Date.now() - lastPartialWrite >= 3000)) await persistOutputPartial(output);
                     } else {
                         output = event.text;

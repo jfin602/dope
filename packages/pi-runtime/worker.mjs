@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { once } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -908,7 +909,8 @@ export async function dispatch(message) {
         throw new Error('Pi continuation model drift');
       const novelText = resuming ? novelAnswer(paused.text, text) : text;
       const accumulatedText = resuming ? paused.text + novelText : text;
-      if (Buffer.byteLength(accumulatedText, 'utf8') > 65536) throw new Error('Local Pi output exceeded limit');
+      // Keep a finite retention bound, distinct from the much smaller wire frame bound.
+      if (Buffer.byteLength(accumulatedText, 'utf8') > 1_048_576) throw new Error('Local Pi output exceeded limit');
       if (resuming && assistant.stopReason === 'stop' && novelText)
         message.emit?.({ type: 'delta', text: novelText });
       else if (!resuming && !roadmapToolsMode && !roadmapGenerationMode &&
@@ -1078,6 +1080,18 @@ export function* frameStreamEvent(event) {
   if (chunk || !event.text) yield { ...event, text: chunk };
 }
 
+export function* frameTurnResult(result) {
+  const text = result.text;
+  let offset = 0;
+  let sequence = 1;
+  for (const frame of frameStreamEvent({ type: 'delta', text })) {
+    if (!frame.text) continue;
+    yield { type: 'result_chunk', sequence: sequence++, offset, text: frame.text };
+    offset += Buffer.byteLength(frame.text, 'utf8');
+  }
+  yield { type: 'result_end', sequence, bytes: offset, sha256: hash(text) };
+}
+
 export async function accept(line) {
   let id;
   let message;
@@ -1091,7 +1105,16 @@ export async function accept(line) {
       for (const frame of frameStreamEvent(event))
         process.stdout.write(`${JSON.stringify({ id, event: frame })}\n`);
     } });
-    process.stdout.write(`${JSON.stringify({ id, ok: true, data })}\n`);
+    if ((message.type === 'turn' || message.type === 'resume') && typeof data?.text === 'string') {
+      for (const event of frameTurnResult(data))
+        if (!process.stdout.write(`${JSON.stringify({ id, event })}\n`))
+          await once(process.stdout, 'drain');
+      const novel = data.novelText;
+      if (!process.stdout.write(`${JSON.stringify({ id, ok: true, data: { ...data, text: '',
+        ...(typeof novel === 'string' ? { novelText: '', novelBytes: Buffer.byteLength(novel, 'utf8'),
+          novelSha256: hash(novel) } : {}) } })}\n`))
+        await once(process.stdout, 'drain');
+    } else process.stdout.write(`${JSON.stringify({ id, ok: true, data })}\n`);
   } catch (error) {
     const detail = String(error?.message ?? '');
     const provider = globalThis.dopeProviderFailure;
