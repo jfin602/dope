@@ -71,11 +71,14 @@ test('native prompt stages save an exact review candidate and publish only after
         browserRequired: true, efficiencyAudit: audit };
     const narration = '<img src=x onerror=alert(1)> Prepared feature prompts for review.';
     let calls = 0;
+    const outputCeilings: (number | undefined)[] = [];
     const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
         providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
                 maxInputTokens: 16384 } }] }] }),
-    async *generate(_selection: unknown, request: { projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+    async *generate(_selection: unknown, request: { maxOutputTokens?: number;
+        projectTools?: { execute(name: string, args: unknown): Promise<string> } }) {
+        outputCeilings.push(request.maxOutputTokens);
         const turn = calls++;
         if (turn < 2) {
             await request.projectTools!.execute('read_file',
@@ -160,6 +163,7 @@ test('native prompt stages save an exact review candidate and publish only after
         await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: '/prompt-ass clamp-api-correction Build ten work prompts plus a manual closeout' });
+        assert.equal(outputCeilings[0], 4096);
         const assessed = (await backend.get(projectHandle, chatId))!;
         const owner = assessed.messages.find(message => message.role === 'user' && message.promptDraft);
         assert.ok(owner?.role === 'user' && owner.promptDraft);
@@ -266,6 +270,7 @@ test('native prompt stages save an exact review candidate and publish only after
             .find(message => message.id === proposal.messageId)?.role, 'assistant');
         await assert.rejects(backend.publishPromptStack(projectHandle, chatId, currentToken,
             proposal.id, proposal.digest), /Pending prompt proposal required/);
+        assert.ok(outputCeilings.includes(6144), 'Plan/Write model requests use their resolved ceiling');
     } finally { backend.dispose(); await rm(temporary, { recursive: true, force: true,
         maxRetries: 10, retryDelay: 25 }); }
 });
@@ -1071,7 +1076,8 @@ test('ordinary Chat dispatches formatting guidance without changing its output b
         assert.match(format![0].content, /exact header names and column count/);
         assert.match(format![0].content, /comprehensive, multi-topic report/);
         assert.match(format![0].content, /stop when adequately answered/);
-        assert.equal(sent?.maxOutputTokens, 1024);
+        // The request uses the resolved ordinary-Chat profile, not the legacy saved reserve.
+        assert.equal(sent?.maxOutputTokens, 2048);
         assert.equal(preview.usedTokens, result.usedTokens);
         const reportPrompt = "Read this project's documentation and develop an understanding of the project. " +
             'Start with AGENTS.md if present, and independently discover the documentation relevant to understanding ' +
@@ -1091,6 +1097,15 @@ test('ordinary Chat dispatches formatting guidance without changing its output b
             message.content.includes('Follow its current output contract and explicit schema exactly')));
         assert.ok(!skill?.messages.some(message => message.role === 'system' &&
             /Do not use Markdown tables in ordinary Chat by default/.test(message.content)));
+        const saved = await backend.read(projectHandle);
+        const unmanaged = structuredClone(saved.chats.find(item => item.id === chatId)!.settings);
+        unmanaged.contextMode = 'unmanaged';
+        await backend.mutate({ projectHandle, expectedRevision: saved.revision,
+            operation: { type: 'set-settings', chatId, settings: unmanaged } });
+        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content: 'Unmanaged budget check' });
+        assert.equal(requests.find(request => request.messages.at(-1)?.content ===
+            'Unmanaged budget check')?.maxOutputTokens, undefined);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 

@@ -7,6 +7,7 @@ import test from 'node:test';
 import type { Chat } from '../../packages/chat/lib/index.js';
 import { ChatContextComposer, GROUNDED_CHAT_INSTRUCTION, GROUNDED_SOURCE_INSTRUCTION, ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
+import { resolveOperationContextPolicy } from '../../packages/theia-extension/lib/node/operation-context-policy.js';
 import { createSnapshot } from '../../packages/software-map/lib/index.js';
 import type { ProjectMindStore } from '../../packages/project-intelligence/lib/node/project-mind-store.js';
 import type { PlanningStore } from '../../packages/visual-planning/lib/node/planning-store.js';
@@ -20,6 +21,23 @@ const chat = (): Chat => ({ schemaVersion: 1, id: id(), revision: 0, folderPath:
   settings: { schemaVersion: 1, context: { maxInputTokens: 500, reservedOutputTokens: 0, history: 'recent', savedChatSearch: true,
     allowedSources: ['editor', 'selection', 'file', 'project-mind', 'architecture', 'physical-map', 'flow', 'planning-map', 'work-item', 'saved-chat'] } },
   messages: [] });
+
+test('resolved policy controls actual composition without legacy numeric settings', async () => {
+  const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
+    {} as SoftwareMapIndex, {} as ChatRepository);
+  const active = chat();
+  const capabilities = { ...model, contextWindowTokens: 16384, maxInputTokens: 16384 };
+  const managed = resolveOperationContextPolicy('managed', 'chat', capabilities);
+  const unmanaged = resolveOperationContextPolicy('unmanaged', 'chat', capabilities);
+  const content = 'x'.repeat(14000);
+  await assert.rejects(composer.compose('/fixture', active, content, [], capabilities,
+    undefined, false, false, undefined, false, false, false, false, false, managed),
+  /exceeds selected model input budget/);
+  const result = await composer.compose('/fixture', active, content, [], capabilities,
+    undefined, false, false, undefined, false, false, false, false, false, unmanaged);
+  assert.equal(result.budgetTokens, 16384);
+  assert.equal(result.messages.at(-1)?.content, content);
+});
 
 test('ordinary Chat distinguishes factual recall from requested advice and preserves source truth', () => {
   assert.match(GROUNDED_CHAT_INSTRUCTION, /For a direct factual or conversation-recall question, answer the requested fact directly/);
@@ -255,7 +273,7 @@ test('all bounded source kinds resolve through project authorities with durable 
 test('context and active history share selected-model budget with explicit omission diagnostics', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-context-budget-'));
   try {
-    await writeFile(join(root, 'large.txt'), 'x'.repeat(600));
+    await writeFile(join(root, 'large.txt'), 'x'.repeat(1800));
     const active = chat(); active.settings.context.maxInputTokens = 60;
     active.messages = [{ schemaVersion: 1, id: id(), role: 'user', createdAt: active.createdAt,
       content: 'old context '.repeat(25), contextRefs: [] },
@@ -269,14 +287,14 @@ test('context and active history share selected-model budget with explicit omiss
     assert.ok(result.diagnostics.some(item => item.kind === 'history'));
     assert.equal(result.messages.length, 1);
     assert.ok(result.usedTokens <= result.budgetTokens);
-    await assert.rejects(composer.compose(root, active, 'x'.repeat(300), [], model), /exceeds/);
+    await assert.rejects(composer.compose(root, active, 'x'.repeat(1500), [], model), /exceeds/);
     await assert.rejects(composer.compose(root, active, 'Question', Array(21).fill({ kind: 'file', id: 'large.txt' }), model), /Too many/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('automatic investigation references hash only bytes included in the measured context', async () => {
   const active = chat(); active.settings.context.maxInputTokens = 1200;
-  const source = 'verified evidence '.repeat(300);
+  const source = 'verified evidence '.repeat(900);
   const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore,
     {} as SoftwareMapIndex, {} as ChatRepository);
   const result = await composer.compose('/tmp', active, 'Plan this', [],
@@ -470,7 +488,7 @@ test('saved applied decisions survive reload and selected Roadmap facts outrank 
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('loaded context caps preview below Chat policy and omits oversized context', async () => {
+test('loaded context caps preview without a legacy output reserve and omits oversized context', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-loaded-context-'));
   try {
     await writeFile(join(root, 'large.txt'), 'x'.repeat(30000));
@@ -480,10 +498,10 @@ test('loaded context caps preview below Chat policy and omits oversized context'
     const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, {} as SoftwareMapIndex, {} as ChatRepository);
     const result = await composer.compose(root, active, 'Question', [{ kind: 'file', id: 'large.txt' }],
       { conversationalText: true, streaming: true, contextWindowTokens: 4096 });
-    assert.equal(result.budgetTokens, 3072);
-    assert.ok(result.usedTokens <= 3072);
+    assert.equal(result.budgetTokens, 4096);
+    assert.ok(result.usedTokens <= 4096);
     assert.ok(result.diagnostics.some(item => item.kind === 'truncated'));
-    await assert.rejects(composer.compose(root, active, 'x'.repeat(10000), [],
+    await assert.rejects(composer.compose(root, active, 'x'.repeat(15000), [],
       { conversationalText: true, streaming: true, contextWindowTokens: 4096 }), /exceeds selected model input budget/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -498,7 +516,8 @@ test('send persists only included references and supplies their bounded text to 
     const composer = new ChatContextComposer({} as ProjectMindStore, {} as PlanningStore, {} as SoftwareMapIndex, repository);
     let sent = '', failRetry = true, sentOutput: number | undefined, sentModel = '';
     const registry = { list: async () => ({ connections: [{ id: 'connected', ready: true, providerId: 'local',
-      models: [{ id: 'model', label: 'Model', usable: true, capabilities: model }] }] }),
+      models: [{ id: 'model', label: 'Model', usable: true, capabilities: {
+        ...model, contextWindowTokens: 4096, maxInputTokens: 4096 } }] }] }),
       async *generate(selection: { modelId: string }, request: { messages: { content: string }[]; maxOutputTokens?: number }) {
         if (request.maxOutputTokens !== undefined) {
           sentModel = selection.modelId;
@@ -530,7 +549,7 @@ test('send persists only included references and supplies their bounded text to 
       context: [{ kind: 'file', id: 'fact.txt' }] });
     assert.equal(preview.refs.length, 1);
     assert.match(sent, /The accepted fact/);
-    assert.equal(sentOutput, 17);
+    assert.equal(sentOutput, 2048);
     assert.equal(sentModel, 'model');
     const persisted = (await repository.read(root)).chats[0].messages[0];
     assert.equal(persisted.role, 'user');

@@ -53,7 +53,7 @@ import { documentModelStage, promptModelStage, proposalToolError } from './propo
 import { IncrementalDocumentReview } from './incremental-document-review';
 import { IncrementalPromptStack } from './incremental-prompt-stack';
 import { PiConversationFailure } from './pi-conversation-runtime';
-import { resolveOperationContextPolicy, trustedOperationForTurn } from './operation-context-policy';
+import { resolveOperationContextPolicy, trustedOperationForTurn, type OperationContextPolicy } from './operation-context-policy';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
     void projectId; void revision; void maxSteps;
@@ -261,15 +261,20 @@ export class ChatBackend implements ChatService {
         draft?: { text: string }, grounding?: GroundingResult, bridgeMode = false,
         opportunity?: string, piMode = false, roadmapSkill = false,
         roadmapPromptMode: 'ordinary' | 'native-roadmap-edit' = 'ordinary', ordinaryChat = false,
-        specializedTurn = false) {
+        specializedTurn = false, operationPolicy?: OperationContextPolicy) {
         const nativeRoadmap = roadmapPromptMode !== 'ordinary';
-        const capabilities = planningComposerCapabilities(model, budget, draft);
+        const draftTokens = draft ? Math.ceil(Buffer.byteLength(JSON.stringify(draft.text), 'utf8') / 3) + 4 : 0;
+        const baseCapabilities = planningComposerCapabilities(model, budget, draft);
+        const capabilities = draftTokens && !budget ? { ...baseCapabilities,
+            maxInputTokens: Math.max(0, Math.min(baseCapabilities.maxInputTokens ?? Infinity,
+                baseCapabilities.contextWindowTokens ?? Infinity) - draftTokens) } : baseCapabilities;
         let inputTokens = capabilities.maxInputTokens;
         for (let attempt = 0; attempt < 4; attempt++) {
             const composed = await this.composer!.compose(root, chat, content, context,
                 inputTokens === undefined ? capabilities : { ...capabilities, maxInputTokens: inputTokens }, grounding,
                 !!budget, bridgeMode, opportunity, piMode, roadmapSkill, nativeRoadmap, ordinaryChat,
-                specializedTurn);
+                specializedTurn, operationPolicy ?? resolveOperationContextPolicy(
+                    chat.settings.contextMode ?? 'managed', 'chat', capabilities, chat.settings.reasoningControls));
             if (!budget) return composed;
             const messages = this.withDraft(composed.messages, draft);
             const bytes = Buffer.byteLength(JSON.stringify(messages), 'utf8');
@@ -340,8 +345,15 @@ export class ChatBackend implements ChatService {
         if (draft && connection?.providerId !== 'local') throw new Error('Greenfield Chat planning requires a local model');
         const localRoadmap = connection?.providerId === 'local' && !publicationIntent &&
             (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') || !!draft || helpTurn);
-        const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
-            chat.settings.context.reservedOutputTokens, model.capabilities) : undefined;
+        const previewPolicy = resolveOperationContextPolicy(chat.settings.contextMode, trustedOperationForTurn({
+            docsReview: isBoundDocumentationSkill(skill, 'docs-review'), roadmapEdit: roadmapSkill,
+            investigation: !!helpTurn || !!draft || selections.length > 0,
+            promptStage: promptStageCommand(request.content, boundPromptStage(skill))?.stage
+        }), model.capabilities, chat.settings.reasoningControls);
+        const requestedOutput = previewPolicy.discretionary?.modelOutputTokens ??
+            model.capabilities.maxOutputTokens ?? model.capabilities.contextWindowTokens;
+        const budget = localRoadmap && requestedOutput ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
+            requestedOutput, model.capabilities) : undefined;
         const initialNative = roadmapSkill && !greenfieldSkill && roadmapBinding?.revision === 0;
         const nativeCandidate = roadmapSkill && !greenfieldSkill && connection?.providerId === 'local' &&
             !publicationIntent && !initialNative;
@@ -359,9 +371,9 @@ export class ChatBackend implements ChatService {
             connection?.providerId === 'local' ? undefined : await this.grounder?.ground(root, request.content),
             false, opportunity, connection?.providerId === 'local', roadmapSkill,
             nativeCandidate ? 'native-roadmap-edit' : 'ordinary', ordinaryChat,
-            !!skill || !!draft || selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap'));
-        if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget,
-            chat.settings.context.reservedOutputTokens);
+            !!skill || !!draft || selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap'),
+            previewPolicy);
+        if (budget) await this.verifyLoadedCapacity(request.selectedModel, budget, requestedOutput!);
         if (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
             throw new Error('Selected Roadmap context does not fit; shorten the request or select a larger local model');
@@ -1364,7 +1376,7 @@ export class ChatBackend implements ChatService {
         if (!model || !model.capabilities.contextWindowTokens)
             throw new Error('Selected local model is unavailable');
         // The dedicated dispatch above is the authority for this operation, not scope prose.
-        const operationPolicy = resolveOperationContextPolicy('managed', 'phase-roadmap',
+        const operationPolicy = resolveOperationContextPolicy(chat.settings.contextMode, 'phase-roadmap',
             model.capabilities, chat.settings.reasoningControls);
         // The dedicated generation session binds the same trusted operation as ordinary Chat dispatch.
         const connectionFingerprint = JSON.stringify(connection);
@@ -1397,7 +1409,8 @@ export class ChatBackend implements ChatService {
                 item.label !== index.linkedDocument.path));
         const composed = this.composer ? await this.composeTurn(root, cleanChat, scope, cleanSelections,
             model.capabilities, undefined, undefined, undefined, false, undefined, true,
-            false, 'ordinary', false, true) : undefined;
+            false, 'ordinary', false, true,
+            operationPolicy) : undefined;
         const contextRefs = composed?.refs ?? [];
         const executionId = randomUUID();
         const generationToolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
@@ -1541,14 +1554,19 @@ export class ChatBackend implements ChatService {
                     ...(composed?.messages.slice(0, -1) ?? []),
                     { role: 'user', content: (composed?.messages.at(-1)?.content ?? input.scope) + '\n\n' +
                         JSON.stringify({ project: input.context, scope: input.scope }) }];
-                const outputBudget = Math.min(4096, Math.max(2048, chat.settings.context.reservedOutputTokens));
+                const outputBudget = operationPolicy.discretionary?.modelOutputTokens ??
+                    model.capabilities.maxOutputTokens ?? model.capabilities.contextWindowTokens;
+                if (!outputBudget) throw new ModelRuntimeFailure('Selected model output capacity is unknown',
+                    'unsupported-capability');
                 traceGeneration(input.identity.generationId, 'model-dispatch',
                     { phase: input.phase, call: generationCallNumber, outputBudget,
                         messageBytes: Buffer.byteLength(JSON.stringify(messages), 'utf8') });
                 let firstProviderOutput = false;
                 for await (const event of this.models!.generate(selection!, {
                     messages, controls: chat.settings.reasoningControls, signal: input.signal,
-                    projectTools: tools, maxOutputTokens: outputBudget }, { localOnly: true })) {
+                    projectTools: tools,
+                    ...(operationPolicy.mode === 'managed' ? { maxOutputTokens: outputBudget } : {}) },
+                    { localOnly: true })) {
                     if (event.type === 'activity' || event.type === 'delta') {
                         if (event.text && !firstProviderOutput) {
                             firstProviderOutput = true;
@@ -2038,8 +2056,7 @@ export class ChatBackend implements ChatService {
             `The user explicitly requested up to ${request.planningSteps} small Roadmap steps. If the supplied evidence supports two or more safe unlinked edits, return one strict JSON object with exactly these fields: type "roadmap-sequence", projectId (exact project ID from evidence), ownerRevision (numeric current owner revision from evidence), and actions (two or three typed action objects). ` +
             'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
         const requestHard: AIRoleHardConstraints = { ...chatHard,
-            minimumKnownContextTokens: Math.ceil(Buffer.byteLength(content, 'utf8') / 3) + 4 +
-                chat.settings.context.reservedOutputTokens };
+            minimumKnownContextTokens: Math.ceil(Buffer.byteLength(content, 'utf8') / 3) + 5 };
         const following = !request.selectedModel && chat.settings.modelPolicy.type === 'follow-interactive';
         let selectedModel = request.selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ? chat.settings.modelPolicy.model : undefined);
         if (following) {
@@ -2079,12 +2096,16 @@ export class ChatBackend implements ChatService {
         if (!this.composer) throw new Error('Context composer unavailable');
         if (publicationIntent && connection.providerId !== 'local') throw new Error('Roadmap publication Chat requires a selected local model');
         const localRoadmap = roadmapTurn && connection.providerId === 'local' && !publicationIntent;
-        const reasoningOn = connection.providerId === 'local' && !!model.capabilities.localReasoning &&
-            (controls['reasoning.effort'] ?? model.capabilities.localReasoning.default) !== 'off';
-        const planningOutput = reasoningOn ? Math.max(2048, chat.settings.context.reservedOutputTokens) :
-            chat.settings.context.reservedOutputTokens;
+        const operationPolicy = resolveOperationContextPolicy(chat.settings.contextMode, trustedOperationForTurn({
+            promptStage: promptStage?.stage, docsReview, roadmapEdit: !!roadmapSkill,
+            investigation: !roadmapTurn && (!!skill || !!helpTurn) || !!opportunity || !!bridge
+        }), model.capabilities, controls);
+        const planningOutput = operationPolicy.discretionary?.modelOutputTokens ??
+            model.capabilities.maxOutputTokens ?? model.capabilities.contextWindowTokens ?? 0;
+        if (localRoadmap && !planningOutput)
+            throw new ModelRuntimeFailure('Selected local model output capacity is unknown', 'unsupported-capability');
         const budget = localRoadmap ? roadmapLocalBudget(model.capabilities.contextWindowTokens,
-            planningOutput, model.capabilities) : undefined;
+            planningOutput!, model.capabilities) : undefined;
         // Pi must discover source with its own brokered tools; automatic grounding is for other providers.
         const grounding = connection.providerId === 'local' ? undefined : await this.grounder?.ground(root, content);
         const priorRefs = retryIndex >= 0 ? (chat.messages[retryIndex - 1] as ChatUserMessage).contextRefs : undefined;
@@ -2096,16 +2117,12 @@ export class ChatBackend implements ChatService {
         const turnPrompt = nativeCandidate ? planningPrompt : skillInstruction ?
             { text: planningPrompt ? `${planningPrompt.text}\n\n${skillInstruction}` : skillInstruction } : planningPrompt;
         const ordinaryChat = !roadmapTurn && !docsReview && !skill;
-        const operationPolicy = resolveOperationContextPolicy('managed', trustedOperationForTurn({
-            promptStage: promptStage?.stage, docsReview, roadmapEdit: !!roadmapSkill,
-            investigation: !ordinaryChat || !!opportunity || !!bridge || !!helpTurn
-        }), model.capabilities, controls);
         const boundOperationPolicy = { commandId: randomUUID(), modelId: selectedModel.modelId,
             snapshot: operationPolicy };
         const composed = await this.composeTurn(root, contextChat, content, selections,
             model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local', roadmapSkill,
-            roadmapPromptMode, ordinaryChat, !!skill || roadmapTurn);
+            roadmapPromptMode, ordinaryChat, !!skill || roadmapTurn, operationPolicy);
         if (bridge) composed.refs.push(bridge.reference);
         if (selections.some(item => item.kind === 'roadmap-checkpoint' || item.kind === 'roadmap') &&
             !composed.refs.some(ref => ref.kind === 'roadmap-checkpoint' || ref.kind === 'roadmap'))
@@ -2881,8 +2898,14 @@ export class ChatBackend implements ChatService {
                     for (const [id, value] of Object.entries(controls))
                         if (!resolvedModel.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
                             throw new ModelRuntimeFailure('Role target does not support the saved reasoning control', 'unsupported-capability');
+                    const nextPolicy = resolveOperationContextPolicy(chat.settings.contextMode,
+                        operationPolicy.operation, resolvedModel.capabilities, controls);
+                    const nextOutput = nextPolicy.discretionary?.modelOutputTokens ??
+                        resolvedModel.capabilities.maxOutputTokens ?? resolvedModel.capabilities.contextWindowTokens ?? 0;
+                    if (localRoadmap && !nextOutput)
+                        throw new ModelRuntimeFailure('Selected local model output capacity is unknown', 'unsupported-capability');
                     const nextBudget = localRoadmap ? roadmapLocalBudget(resolvedModel.capabilities.contextWindowTokens,
-                        planningOutput, resolvedModel.capabilities) : undefined;
+                        nextOutput, resolvedModel.capabilities) : undefined;
                     if (nextBudget && (nextBudget.total !== budget?.total ||
                         nextBudget.inputBytes !== budget.inputBytes || nextBudget.output !== budget.output))
                         throw new ModelRuntimeFailure('Loaded local context or limits changed; preview this turn again',
@@ -2892,7 +2915,7 @@ export class ChatBackend implements ChatService {
                         resolvedConnection?.providerId === 'local' ? undefined :
                             grounding ?? await this.grounder?.ground(root, content),
                         !!bridge, opportunity, resolvedConnection?.providerId === 'local', roadmapSkill,
-                        roadmapPromptMode, ordinaryChat, !!skill || roadmapTurn);
+                        roadmapPromptMode, ordinaryChat, !!skill || roadmapTurn, nextPolicy);
                     if (bridge) next.refs.push(bridge.reference);
                     if (!sameRefIdentities(next.refs, preview.refs))
                         throw new Error('Fallback evidence differs; choose a model explicitly');
@@ -2904,13 +2927,13 @@ export class ChatBackend implements ChatService {
                         usedTokens: next.usedTokens, budgetTokens: next.budgetTokens };
                     return { messages: withRetryInstruction(this.withDraft(next.messages, turnPrompt), retryInstruction), controls, signal: abort.signal,
                         ...(resolvedConnection?.providerId === 'local' && projectTools ? { projectTools } : {}),
-                        ...(planningOutput > 0 ?
-                        { maxOutputTokens: nextBudget?.output ?? planningOutput } : {}) };
+                        ...(nextPolicy.mode === 'managed' ?
+                        { maxOutputTokens: nextBudget?.output ?? nextPolicy.discretionary!.modelOutputTokens } : {}) };
                 } }) : this.models!.generate(selectedModel!,
                 { messages: withRetryInstruction(this.withDraft(composed.messages, turnPrompt), retryInstruction), controls, signal: abort.signal,
                     ...(connection.providerId === 'local' && projectTools ? { projectTools } : {}),
-                    ...(planningOutput > 0 ?
-                        { maxOutputTokens: budget?.output ?? planningOutput } : {}) },
+                    ...(operationPolicy.mode === 'managed' ?
+                        { maxOutputTokens: budget?.output ?? operationPolicy.discretionary!.modelOutputTokens } : {}) },
                 localRoadmap ? { localOnly: true } : undefined);
             // The current protected command is already a complete typed intent. No model output
             // can add authority or improve the owner-issued publication preview.

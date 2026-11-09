@@ -1,7 +1,8 @@
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { isAbsolute, join, relative } from 'node:path';
-import { availableChatContextTokens, type Chat, type ChatContextRef } from '@dope/chat';
+import { type Chat, type ChatContextRef } from '@dope/chat';
+import type { OperationContextPolicy } from './operation-context-policy';
 import type { ChatContextDiagnostic, ChatContextSelection } from '@dope/chat/lib/service';
 import { roadmapElementContext } from './roadmap-element-context';
 import type { ConversationMessage, ConversationModelCapabilities } from '@dope/contracts/lib/model-runtime';
@@ -469,12 +470,17 @@ export class ChatContextComposer {
         capabilities: ConversationModelCapabilities, grounding?: GroundingResult,
         strictHelpJson = false, bridgeMode = false, roadmapOpportunity?: string,
         piMode = false, roadmapSkill = false, nativeRoadmap = false,
-        ordinaryChat = false, specializedTurn = false): Promise<ComposedChatContext> {
+        ordinaryChat = false, specializedTurn = false,
+        operationPolicy?: OperationContextPolicy): Promise<ComposedChatContext> {
         if (!content.trim()) throw new Error('Enter a message before sending');
         if (!Array.isArray(selections) || selections.length > 20) throw new Error('Too many context selections');
         const policy = chat.settings.context;
-        const window = capabilities.contextWindowTokens ?? policy.maxInputTokens + policy.reservedOutputTokens;
-        const budgetTokens = Math.min(availableChatContextTokens(policy, window), capabilities.maxInputTokens ?? Infinity);
+        // Unmanaged leaves optional packing to Pi, while still honoring the actual loaded/provider input limit.
+        // A missing capacity is not an old saved numeric setting or permission to invent one.
+        const budgetTokens = Math.min(operationPolicy?.discretionary?.inputCompositionTokens ?? Infinity,
+            capabilities.maxInputTokens ?? Infinity, capabilities.contextWindowTokens ?? Infinity);
+        if (!Number.isFinite(budgetTokens) || budgetTokens < 1)
+            throw new Error('Selected model input capacity is unknown or cannot fit this request');
         // Charge escaped JSON string bytes: the provider receives serialized messages,
         // where quotes, backslashes and newlines can expand source-heavy attachments.
         const tokens = (value: string) => Math.ceil(Buffer.byteLength(JSON.stringify(value), 'utf8') / 3) + 4;
