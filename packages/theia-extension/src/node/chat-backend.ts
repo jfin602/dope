@@ -3054,9 +3054,11 @@ export class ChatBackend implements ChatService {
                         await flushActivity();
                         const automaticDecision = chat.settings.outputLimitPolicy === 'cancel' ? 'stop' :
                             chat.settings.outputLimitPolicy === 'allow' ?
-                                // At most two automatic resumes (three segments), 8k reported tokens
-                                // and leave headroom under the bounded retained-answer limit.
-                                event.segmentIndex >= 3 || cumulativeOutputTokens >= 8192 || partialCursor >= 786_432 ?
+                                // Managed retains its discretionary segment budget. Unmanaged
+                                // continues within the checked retained-answer byte bound.
+                                partialCursor >= 786_432 || event.segmentIndex > 1 && !event.novelText ||
+                                operationPolicy.mode === 'managed' &&
+                                    (event.segmentIndex >= 3 || cumulativeOutputTokens >= 8192) ?
                                     'stop' : 'continue' : undefined;
                         const decisionWait = automaticDecision ?? new Promise<'stop' | 'continue'>((resolve, reject) => {
                             let timer: ReturnType<typeof setTimeout>;

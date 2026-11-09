@@ -909,7 +909,7 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
     }
 });
 
-test('Allow caps segments and cumulative tokens; Cancel retains first segment without resuming', async () => {
+test('Managed Allow caps segments; Unmanaged Allow continues; Cancel retains first segment', async () => {
     const root = await folder(), repository = new ChatRepository();
     let generated = 0, resumed = 0, stopped = 0;
     const paused = (segment: number): Extract<import('../../packages/contracts/lib/model-runtime.js').ConversationEvent,
@@ -917,7 +917,14 @@ test('Allow caps segments and cumulative tokens; Cancel retains first segment wi
         text: 'part'.repeat(segment), novelText: 'part', finishReason: 'length', actualModelId: 'q4',
         usage: { tokenMeasurement: 'provider-reported', outputTokens: segment * (generated === 3 ? 5000 : 10) },
         segmentUsage: { tokenMeasurement: 'provider-reported', outputTokens: generated === 3 ? 5000 : 10 },
-        continuation: { async *resume() { resumed++; yield paused(segment + 1); },
+        continuation: { async *resume() {
+            resumed++;
+            if (generated === 4 && segment === 4) {
+                yield { type: 'complete' as const, text: 'part'.repeat(5), actualModelId: 'q4',
+                    finishReason: 'stop' as const, usage: { tokenMeasurement: 'provider-reported' as const,
+                        outputTokens: 50 } };
+            } else yield paused(segment + 1);
+        },
             async stop() { stopped++; return { type: 'stopped-incomplete', text: 'part'.repeat(segment),
                 segmentIndex: segment, usage: { tokenMeasurement: 'provider-reported', outputTokens: segment * 10 },
                 originalFinishReason: 'length', finishReason: 'owner-stop', actualModelId: 'q4' }; },
@@ -932,13 +939,17 @@ test('Allow caps segments and cumulative tokens; Cancel retains first segment wi
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never, composer as never);
     try {
         const { projectHandle } = await backend.attach(pathToFileURL(root).href);
-        for (const [policy, expectedSegments] of [['allow', 3], ['cancel', 1], ['allow', 2]] as const) {
+        for (const [policy, expectedSegments, contextMode] of [
+            ['allow', 3, 'managed'], ['cancel', 1, 'managed'], ['allow', 2, 'managed'],
+            ['allow', 4, 'unmanaged']
+        ] as const) {
             const chatId = id();
             let state = await backend.mutate({ projectHandle, expectedRevision: (await backend.read(projectHandle)).revision,
                 operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Policy' } });
             state = await backend.mutate({ projectHandle, expectedRevision: state.revision,
                 operation: { type: 'set-settings', chatId, settings: {
-                    ...state.chats.find(chat => chat.id === chatId)!.settings, outputLimitPolicy: policy } } });
+                    ...state.chats.find(chat => chat.id === chatId)!.settings,
+                    outputLimitPolicy: policy, contextMode } } });
             const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
             if (!lease.acquired) throw new Error('Lease missing');
             await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
@@ -947,13 +958,14 @@ test('Allow caps segments and cumulative tokens; Cancel retains first segment wi
             assert.equal(message.role, 'assistant');
             if (message.role !== 'assistant') throw new Error('Assistant missing');
             assert.equal(message.execution.outputLimitPolicy, policy);
-            assert.equal(message.execution.status, 'stopped-incomplete');
-            assert.equal(message.answerPartial?.segments.length, expectedSegments);
-            assert.equal(message.content, '');
+            assert.equal(message.execution.status, contextMode === 'unmanaged' ? 'complete' : 'stopped-incomplete');
+            if (contextMode === 'managed') assert.equal(message.answerPartial?.segments.length, expectedSegments);
+            else assert.equal(message.answerPartial, undefined);
+            assert.equal(message.content, contextMode === 'unmanaged' ? 'part'.repeat(5) : '');
             await backend.release(projectHandle, chatId, lease.token);
         }
-        assert.equal(generated, 3);
-        assert.equal(resumed, 3);
+        assert.equal(generated, 4);
+        assert.equal(resumed, 7);
         assert.equal(stopped, 3);
     } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
 });

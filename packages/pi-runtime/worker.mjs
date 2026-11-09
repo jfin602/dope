@@ -39,6 +39,7 @@ let rejectedRoadmapStages = new Map();
 let compactionRecord;
 let compactionRejected = false;
 let compactionPending;
+let turnGeneratedText = false;
 let workRecoveryAnchor;
 const pendingTools = new Map();
 const acceptedToolIds = new Set();
@@ -193,10 +194,20 @@ function combinedUsage(segments) {
     'provider-reported' : 'unavailable' };
 }
 function beforeNativeCompaction(event) {
-  if (resumeInProgress) { compactionRejected = true; return { cancel: true }; }
-  // Pi's overflow recovery retries the interrupted turn. A Work tool may already
-  // have changed the candidate, so the only safe response is to stop the run.
-  if (event.willRetry) { compactionRejected = true; return { cancel: true }; }
+  // Pi's overflow recovery omits and replays the interrupted assistant attempt.
+  // Only a call with no tool start, acknowledged broker result, or emitted answer
+  // has a provably effect-free retry. A resumed final can also depend on earlier
+  // effects and its continuation control must never be replayed.
+  if (event.willRetry && (workMode || resumeInProgress || turnToolStarts || turnToolAcks ||
+      turnGeneratedText || pendingTools.size)) {
+    compactionRejected = true;
+    return { cancel: true };
+  }
+  if (!event.preparation || !Array.isArray(event.preparation.messagesToSummarize) ||
+      !Array.isArray(event.preparation.turnPrefixMessages)) {
+    compactionRejected = true;
+    return { cancel: true };
+  }
   compactionPending = { startedAt: Date.now(), originalSha256: hash(JSON.stringify({
     previousSummary: event.preparation.previousSummary ?? null,
     messages: [...event.preparation.messagesToSummarize, ...event.preparation.turnPrefixMessages] })) };
@@ -208,7 +219,7 @@ function nativeCompactionOutcome(event) {
   if (event.type !== 'compaction_end') return undefined;
   const pending = compactionPending;
   compactionPending = undefined;
-  if (!event.result || event.aborted || event.willRetry) {
+  if (!event.result || event.aborted) {
     trace('compaction-failed', { reason: event.reason, aborted: event.aborted === true });
     return { success: false, reason: event.reason };
   }
@@ -551,6 +562,7 @@ async function dispose() {
   compactionRecord = undefined;
   compactionRejected = false;
   compactionPending = undefined;
+  turnGeneratedText = false;
   workRecoveryAnchor = undefined;
   lastToolReceipt = undefined;
   turnFailure = undefined;
@@ -685,7 +697,8 @@ export async function dispatch(message) {
             typeof session.prompt !== 'function' || !Array.isArray(session.messages) ||
             message.cancelled === true || message.signal?.aborted)
           throw new Error('Pi same-session continuation unavailable or stale');
-        if (paused.segmentIndex >= 4 || paused.usage.outputTokens > 8192)
+        if (operationPolicy?.snapshot.mode !== 'unmanaged' &&
+            (paused.segmentIndex >= 4 || paused.usage.outputTokens > 8192))
           throw new Error('Pi continuation segment budget exceeded');
         // Consume the resume decision before any asynchronous work so retries cannot replay effects.
         pausedChatTurn = undefined;
@@ -693,6 +706,7 @@ export async function dispatch(message) {
       compactionRecord = undefined;
       compactionRejected = false;
       compactionPending = undefined;
+      turnGeneratedText = false;
       if (workMode || !session || (!resuming && (!Array.isArray(message.messages) || !message.messages.length ||
           sessionConsumed ||
           message.messages.at(-1)?.role !== 'user' ||
@@ -778,6 +792,9 @@ export async function dispatch(message) {
           session.settingsManager.setCompactionEnabled(false);
           outputLimitCompactionSuppressed = true;
         }
+        if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta' &&
+            typeof event.assistantMessageEvent.delta === 'string' && event.assistantMessageEvent.delta.length)
+          turnGeneratedText = true;
         if (roadmapGenerationMode && event.type === 'message_update' &&
             ['thinking_delta', 'text_delta', 'toolcall_delta'].includes(event.assistantMessageEvent?.type) &&
             typeof event.assistantMessageEvent.delta === 'string' &&
@@ -867,6 +884,9 @@ export async function dispatch(message) {
       });
       try {
         if (resuming) resumeInProgress = true;
+        // Pi 1.4.0 may omit a length-stopped continuation before its overflow
+        // hook runs. Keep this segment's partial answer intact; threshold
+        // compaction remains available on ordinary completed model turns.
         if (resuming) session.settingsManager.setCompactionEnabled(false);
         await session.prompt(resuming ? continuationControl(paused.text, message.segmentIndex) :
           message.messages.at(-1).content, { expandPromptTemplates: false });

@@ -704,7 +704,11 @@ test('Pi allows native threshold compaction but rejects effect-uncertain overflo
   assert.equal(result.tokensAfterEstimate, 900);
   assert.equal(result.summarizationTokensReported, 500);
   assert.equal(result.summaryBytes, Buffer.byteLength('Read failed; verify source again.'));
-  assert.deepEqual(beforeNativeCompaction({ preparation, reason: 'overflow', willRetry: true }), { cancel: true });
+  assert.equal(beforeNativeCompaction({ preparation, reason: 'overflow', willRetry: true }), undefined,
+    'an interrupted call with no tool or answer effect can retry in the same session');
+  assert.equal(nativeCompactionOutcome({ type: 'compaction_end', reason: 'overflow', aborted: false,
+    willRetry: true, result: { summary: 'Recheck source after retry.', tokensBefore: 3500 } }).success,
+  true, 'successful effect-free overflow compaction is retained');
   assert.deepEqual(nativeCompactionOutcome({ type: 'compaction_end', reason: 'overflow', aborted: true,
     willRetry: false }), { success: false, reason: 'overflow' });
 });
@@ -844,7 +848,8 @@ test('Pi resumes bounded length segments in the retained session without repeati
   try {
     for (const replies of [
       [['Part.', 'length'], ['Part. Next.', 'length'], ['Next. Done.', 'stop']],
-      [['', 'length'], ['Answer.', 'stop']]
+      [['', 'length'], ['Answer.', 'stop']],
+      [['1', 'length'], ['2', 'length'], ['3', 'length'], ['4', 'length'], ['5', 'stop']]
     ]) {
       const requests = [];
       globalThis.fetch = async (_url, options) => {
@@ -852,9 +857,16 @@ test('Pi resumes bounded length segments in the retained session without repeati
         const [content, reason] = replies[requests.length - 1];
         return new Response(frame(content, reason), { headers: { 'content-type': 'text/event-stream' } });
       };
-      await dispatch({ type: 'open', mode: 'chat-tools', cwd, model });
+      const operationPolicy = replies.length === 5 ? {
+        commandId: '44444444-4444-4444-8444-444444444444', modelId: model.id,
+        snapshot: resolveOperationContextPolicy('unmanaged', 'chat',
+          { contextWindowTokens: model.contextWindow, maxOutputTokens: model.maxTokens })
+      } : undefined;
+      await dispatch({ type: 'open', mode: 'chat-tools', cwd, model,
+        ...(operationPolicy ? { operationPolicy } : {}) });
       let result = await dispatch({ type: 'turn', id: 91, maxOutputTokens: 128,
-        messages: [{ role: 'user', content: 'Original request.' }] });
+        messages: [{ role: 'user', content: 'Original request.' }],
+        ...(operationPolicy ? { operationPolicy } : {}) });
       assert.equal(result.finishReason, 'length');
       for (let index = 2; index <= replies.length; index++) {
         await assert.rejects(dispatch({ type: 'resume', id: 91, segmentIndex: index + 1,
@@ -865,7 +877,8 @@ test('Pi resumes bounded length segments in the retained session without repeati
         assert.equal(JSON.stringify(requests[index - 1].messages).match(/Original request\./gu)?.length, 1);
       }
       assert.equal(result.finishReason, 'stop');
-      assert.equal(result.text, replies.length === 3 ? 'Part. Next. Done.' : 'Answer.');
+      assert.equal(result.text, replies.length === 3 ? 'Part. Next. Done.' :
+        replies.length === 2 ? 'Answer.' : '12345');
       assert.equal(result.usage.totalTokens, replies.length * 15);
       assert.equal(result.usageSegments.length, replies.length);
       assert.ok(result.usageSegments.every(segment => segment.totalTokens === 15));
@@ -993,6 +1006,9 @@ test('Pi continuation retains one brokered tool result and rejects stale or canc
     assert.deepEqual(tools.map(item => item.arguments.path), ['README.md', 'NEXT.md']);
     assert.equal(requests.length, 4);
     assert.equal(requests[3].messages.filter(item => item.role === 'tool').length, 2);
+    assert.deepEqual(beforeNativeCompaction({ preparation: { previousSummary: undefined,
+      messagesToSummarize: [], turnPrefixMessages: [] }, reason: 'overflow', willRetry: true }),
+    { cancel: true }, 'a prior brokered tool makes overflow replay unsafe');
     await dispatch({ type: 'close' });
     await assert.rejects(dispatch({ type: 'resume', id: 101, segmentIndex: 3,
       maxOutputTokens: 128 }), /unavailable or stale/);
@@ -1030,7 +1046,12 @@ test('Pi rejects compaction, cancellation, and model drift during a resumed segm
       if (failure !== 'drift') {
         for (let i = 0; !release && i < 100; i++) await new Promise(resolve => setTimeout(resolve, 1));
         assert.ok(release);
-        if (failure === 'compaction') assert.deepEqual(beforeNativeCompaction({ willRetry: false }), { cancel: true });
+        if (failure === 'compaction') {
+          const preparation = { previousSummary: undefined,
+            messagesToSummarize: [], turnPrefixMessages: [] };
+          assert.deepEqual(beforeNativeCompaction({ preparation, reason: 'overflow', willRetry: true }),
+            { cancel: true }, 'resume cannot replay its continuation control');
+        }
         else controller.abort();
         release();
       }
